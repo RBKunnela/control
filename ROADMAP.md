@@ -1,17 +1,17 @@
 # Roadmap
 
-What has to become true, in the order it is planned, without dates.
+What has to become true, in planned order, without dates.
 
 Guardana Control is meant to supervise an organization's AI agents across
 the channels an operator connects. Where an enforcement point sits in an
 agent's path, it decides a consequential action before it happens. Elsewhere
 it watches what agents and their runtimes report, compares that with their
 procedures and permissions, and reports deviations, access attempts and
-unfinished work through the paths the operator configured. It stops an agent
-only where the operator allowed that. MCP is the first channel, not the only one
+unfinished work. It stops an agent only where the operator allowed that. MCP
+is the first channel, not the only one
 ([ADR-0039](docs/adr/0039-many-channels-into-one-core.md)).
 
-Everything here is `planned`, and a finished item is deleted.
+Everything here is `planned`; a finished item is deleted.
 [docs/status.md](docs/status.md) is the inventory of what exists, the
 [delivery backlog](docs/backlog.md) gives each step its tasks and acceptance
 checks, and [ADR-0026](docs/adr/0026-first-value-and-external-extension-paths.md)
@@ -25,20 +25,23 @@ archive: a target to measure, not a measured result.
 
 A guide connects an existing MCP client and server, states what it covers and
 the identity it assumes, and ends in a local report. No setup step widens
-authority silently.
+authority silently. Configuration preview, explicit apply and undo are B23.
 
 ## 2. Integrations without a fork
 
 Done when a language-neutral enforcement API and a Python client wrap a
 custom tool with admission, authorized arguments, completion and abort. They
 bind identity and run, consume an approval once and never retry an uncertain
-effect. One framework integration chosen with early adopters ships first,
+effect. One framework or coding-runtime integration chosen with adopters ships first,
 then TypeScript and a second integration. Sensors independent of the agent follow: an
 egress proxy's access log, then process events. Sensors, detectors,
 reactions and notifiers get published data contracts and conformance suites
 any language can run, once two consumers have used each, and every port
 states the paths it covers. A Go seam becomes public only after two consumers
 use it and its record is accepted.
+
+[Planned requirements](docs/adoption-and-incident-workflows.md) add coding hooks
+(B24), tool-definition review (B25) and policy comparison (B27).
 
 ## 3. A small team
 
@@ -47,6 +50,9 @@ and stop; a stop can name an agent or a principal as well as a run; and
 evidence and observations can be retained, rotated, exported and recovered,
 without a managed service. Cross-project access, forged
 identity, approval replay and policy outage have adversarial tests.
+
+Finding review and incident export (B26) cannot change verdicts, approve actions
+or lift stops.
 
 ## 4. A fleet and wider protocols, when adopters need them
 

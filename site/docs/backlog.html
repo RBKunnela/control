@@ -94,6 +94,7 @@
 <li><a href="/docs/extending/adapters">Writing an adapter</a></li>
 </ul>
 <h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
 <li><a href="/docs/backlog" aria-current="page">Delivery backlog</a></li>
 <li><a href="/docs/changelog">Changelog</a></li>
 <li><a href="/docs/dependencies">Dependencies</a></li>
@@ -149,6 +150,12 @@ issue. Completion requires code, documentation and the applicable checks.</p>
 <td>none</td>
 <td>Copyable client/server instructions and a local profile work with an independently maintained server. Classification remains operator-owned; missing classification and unsupported methods are visible. At least three new users attempt the guide; time and help are recorded</td>
 </tr>
+<tr>
+<td>B23</td>
+<td>Preview and apply an existing MCP configuration</td>
+<td>B06</td>
+<td>A supported client configuration is read into an explicit change plan, with paths outside the gateway named. Dry-run writes nothing and starts no server; apply is explicit, preserves unrelated settings and makes an owner-only backup. A second apply is a no-op; undo refuses intervening edits. Malformed files, links, concurrent edits and credentials in output have adversarial cases. Measure setup with three users</td>
+</tr>
 </tbody>
 </table>
 <h2 id="milestone-2-integrations-without-a-fork">Milestone 2: integrations without a fork</h2>
@@ -170,9 +177,27 @@ issue. Completion requires code, documentation and the applicable checks.</p>
 </tr>
 <tr>
 <td>B11</td>
-<td>Ship Python and one framework integration</td>
+<td>Ship Python and one runtime integration</td>
 <td>B10</td>
-<td>A custom-tool wrapper and one adopter-selected framework integration run externally. Conformance covers block-before-send, rewritten bytes, pending approval, concurrent resume, unknown obligation, timeout, cancellation and completion. Publish covered and bypassing tool paths; digest parity precedes client-side hashes</td>
+<td>A Python custom-tool wrapper and one adopter-selected framework or coding-runtime integration run externally. Conformance covers block-before-send, rewritten bytes, pending approval, concurrent resume, unknown obligation, timeout, cancellation and completion. Publish covered and bypassing tool paths; digest parity precedes client-side hashes</td>
+</tr>
+<tr>
+<td>B24</td>
+<td>Qualify one coding-agent hook integration</td>
+<td>B10</td>
+<td>Choose one runtime with adopters and publish a per-event coverage and failure table. A pre-action hook earns enforcement coverage only by proving block-before-effect and authorized-byte handling; post-action hooks remain observations. Missing identity, disabled hooks, timeouts, malformed answers, unsupported obligations, cancellation and concurrent approval resumes never silently become authorization. The runtime's cooperation and bypasses are tested and stated</td>
+</tr>
+<tr>
+<td>B25</td>
+<td>Review changes to tool definitions</td>
+<td>B00</td>
+<td>Compare an operator-reviewed manifest with a newly observed one, name changed fields and old/new fingerprints, and export a bounded report with source and observation time. Reuse the existing classification refusal. Description, schema, metadata, removed and ambiguous tools, and a silent or unavailable source have cases. Review never repins a definition or signs a policy; unchanged definitions do not attest unchanged server code</td>
+</tr>
+<tr>
+<td>B27</td>
+<td>Compare and simulate a candidate policy</td>
+<td>B00</td>
+<td>A report names both policy digests, input provenance and per-case before/after verdicts, obligations and missing facts. Reuse the kernel's evaluation; publish denominators and unknowns. Cases cover broadened effects/resources, rule conflict, absent arguments or flow context, missing historic policy, gaps and changed definitions. Simulation sends no tool call, consumes no approval and cannot activate a policy</td>
 </tr>
 <tr>
 <td>B21</td>
@@ -188,10 +213,14 @@ issue. Completion requires code, documentation and the applicable checks.</p>
 </tr>
 </tbody>
 </table>
-<p>LangGraph and the OpenAI Agents SDK are candidates, not simultaneous delivery
-requirements. Select the first framework integration with adopters and test the framework's
+<p>LangGraph and the OpenAI Agents SDK are framework candidates. B24 is an
+alternative entry point to test with adopters, not a requirement to build a
+second runtime integration at once. Select one first integration and test its
 resume behavior. Transport retries may not replay a material tool execution.
 Custom policy-provider work preserves ADR-0017's veto-only semantics.</p>
+<p>The <a href="/docs/adoption-and-incident-workflows">adoption and incident requirements</a>
+define B23–B27. They extend these milestones without changing their order;
+runtime adapters and any new data contracts need their own accepted records.</p>
 <p>The existing event wire format is reused where it suffices. A query response
 or delivery wrapper has its own version; do not quietly add unknown fields to
 a strict v1 decoder. OTLP logs and traces need separate, tested destination
@@ -218,6 +247,12 @@ mappings.</p>
 <td>Add retention and recovery</td>
 <td>none</td>
 <td>Rotation, disk budget, cursor expiry, duplicates, interrupted export and backup/restore are tested for evidence and observations. A restored process cannot reuse spent approval authority or forget its rollback floor. Read-only inspection cannot mutate recovery state without saying so</td>
+</tr>
+<tr>
+<td>B26</td>
+<td>Review findings and export an incident package</td>
+<td>B13, B14</td>
+<td>A separate review log records scoped author, time, reason and revision for open/in-review/closed and disposition changes without changing the finding's verdict. Grouped occurrences retain source finding ids, rule versions, tenant/project and run references. Reopening, cross-project access, concurrent edits, export gaps and hostile text have cases. A metadata-only package joins the findings, decisions, approvals, policy/procedure digests, coverage and actual reaction results, marks missing inputs, and is read by an external consumer. Closing a case neither lifts a stop nor grants an approval</td>
 </tr>
 </tbody>
 </table>
@@ -322,6 +357,7 @@ sessions and feedback, consistent with the no-phone-home decision.</p>
 <li><a href="/docs/extending/adapters">Writing an adapter</a></li>
 </ul>
 <h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
 <li><a href="/docs/backlog" aria-current="page">Delivery backlog</a></li>
 <li><a href="/docs/changelog">Changelog</a></li>
 <li><a href="/docs/dependencies">Dependencies</a></li>

@@ -4,10 +4,10 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Guardana Control</title>
-<meta name="description" content="Decide which MCP tool calls your AI agents can run. Watch what they do, and step in only where you allow it."/>
+<meta name="description" content="Decide which MCP tool calls your AI agents can run. Hold consequential calls for approval. Find deviations. Keep the evidence."/>
 <link rel="canonical" href="https://control.guardana.dev/"/>
 <meta property="og:title" content="Guardana Control"/>
-<meta property="og:description" content="Decide which MCP tool calls your AI agents can run. Watch what they do, and step in only where you allow it."/>
+<meta property="og:description" content="Decide which MCP tool calls your AI agents can run. Hold consequential calls for approval. Find deviations. Keep the evidence."/>
 <meta property="og:type" content="website"/>
 <meta property="og:site_name" content="Guardana Control"/>
 <meta property="og:url" content="https://control.guardana.dev/"/>
@@ -47,6 +47,18 @@
     <a class="btn sec" href="/docs/guides/connect-an-existing-mcp-setup">Connect your MCP setup</a>
   </div>
   <p class="note">The demo shows an allowed call, a blocked call and a one-time approval, with no Go and no model key. <a href="/docs/reference/mcp-coverage">What the gateway covers</a> · <a href="/docs/concepts/threat-model">What it does not protect</a></p>
+</div></section>
+
+<section class="s alt-bg" id="use-cases"><div class="wrap">
+  <p class="eyebrow">When to use it</p>
+  <h2>Put a decision between the agent and the consequence</h2>
+  <p class="lede">For engineers connecting MCP tools and operators reviewing what a run did. Start with a call you need to control, then inspect its decision and evidence.</p>
+  <div class="verbs">
+    <div class="verb"><p class="n">01</p><h3>A write needs approval</h3><p>A tool can change a record or delete production data. Use the tested starter policy to require approval for writes and deny deletes in an environment named <code>prod</code>. An approval expires and permits that exact call once.</p><a class="more" href="/docs/reference/starter-packs">Start from a tested policy</a></div>
+    <div class="verb"><p class="n">02</p><h3>A tool changes after review</h3><p>A tool definition no longer matches the fingerprint you classified. When the gateway refreshes its manifest, that tool becomes unclassified and its calls are blocked in an enforcing mode. This checks the definition, not the server's implementation.</p><a class="more" href="/docs/concepts/mcp-gateway">How classification is bound</a></div>
+    <div class="verb"><p class="n">03</p><h3>A denied refund is tried another way</h3><p>The supervisor finds a retry through another tool on the same resource. Run the refund example, inspect the finding and stop that run's later calls through a signed route. Supervision and reaction run when you invoke them.</p><a class="more" href="/docs/guides/supervise-and-stop-a-run">Follow the refund example</a></div>
+  </div>
+  <p class="note">Only calls routed through the gateway can be enforced. Runtime traces are observations; a missing event is unknown. <a href="/docs/reference/coverage">Read the coverage map</a></p>
 </div></section>
 
 <section class="s" id="what"><div class="wrap">
@@ -160,12 +172,13 @@
   <p class="lede">All tasks below are <code>planned</code>. They name work to do, not capabilities to claim.</p>
   <ul class="items">
     <li data-backlog="B10"><span class="id">B10</span><span class="tx"><span class="t">Specify and build the enforcement API</span><span class="d">so a tool of your own, outside MCP, is decided the same way</span></span></li>
-    <li data-backlog="B11"><span class="id">B11</span><span class="tx"><span class="t">Ship Python and one framework integration</span><span class="d">so an agent written in Python is held to the same policy</span></span></li>
+    <li data-backlog="B11"><span class="id">B11</span><span class="tx"><span class="t">Ship Python and one runtime integration</span><span class="d">so a custom tool and one agent runtime use the same policy</span></span></li>
     <li data-backlog="B21"><span class="id">B21</span><span class="tx"><span class="t">Add sensors independent of the agent</span><span class="d">so you see where its traffic went, from a source it cannot influence</span></span></li>
     <li data-backlog="B12"><span class="id">B12</span><span class="tx"><span class="t">Publish the port contracts and add TypeScript</span><span class="d">so your own sensors and alerts plug in through published contracts</span></span></li>
     <li data-backlog="B13"><span class="id">B13</span><span class="tx"><span class="t">Authenticate operators and scope authority</span><span class="d">so a small team works with one gateway, each person with their own rights</span></span></li>
   </ul>
   <a class="more" href="/docs/backlog">The delivery backlog</a>
+  <p class="note"><a href="/docs/adoption-and-incident-workflows">Planned requirements for setup, coding hooks, tool changes and incident review</a></p>
   <div class="ask">
     <h3>Trying it with your own MCP setup?</h3>
     <p>Tell us which client and server you use, where setup stopped, and which action you want to control. <a href="https://github.com/guardana/control/issues/new?template=try-it.md">Open a short report</a></p>

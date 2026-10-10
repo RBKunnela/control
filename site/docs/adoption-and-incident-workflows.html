@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Adoption and incident workflows · Guardana Control</title>
+<meta name="description" content="Planned acceptance requirements for MCP setup, coding hooks, tool-definition review, policy simulation and incident review."/>
+<link rel="canonical" href="https://control.guardana.dev/docs/adoption-and-incident-workflows"/>
+<meta name="theme-color" content="#0B8F80"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="stylesheet" href="/assets/brand/v1/tokens.css"/>
+<link rel="stylesheet" href="/assets/control/control.css"/>
+<link rel="stylesheet" href="/assets/control/docs.css"/>
+</head>
+<body class="doc">
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap bar">
+  <a class="mark" href="/"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 4.5 5.6v6.1c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V5.6z"/><path d="M10.2 8.4v7.8M10.2 12.3h5.3"/></svg><span>Guardana <b>Control</b></span></a>
+  <a class="vlink" href="https://github.com/guardana/control/releases/tag/v0.10.2-alpha"><span class="ver">v0.10.2-alpha</span></a>
+  <nav aria-label="Primary">
+    <a href="/docs/">Docs</a>
+    <a href="/docs/status">Status</a>
+    <a class="hide-s" href="/docs/roadmap">Roadmap</a>
+    <a class="gh" href="https://github.com/guardana/control" aria-label="GitHub"><svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span class="hide-s">GitHub</span></a>
+  </nav>
+</div></header>
+<div class="wrap shell">
+<details class="mnav">
+<summary>Menu · <b>Adoption and incident workflows</b></summary>
+<nav class="inner" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows" aria-current="page">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</details>
+<main id="main" class="prose">
+<h1 id="adoption-and-incident-workflows">Adoption and incident workflows</h1>
+<p>Status: <code>planned</code>. These requirements define backlog B23–B27; they do not
+describe commands or contracts available today. <a href="/docs/status">status.md</a>
+is the implementation inventory, <a href="/docs/backlog">the backlog</a> holds acceptance
+checks, and <a href="/docs/roadmap">ROADMAP.md</a> owns milestone order. The delivery
+decision is proposed in <a href="/docs/adr/0050-adoption-workflows-preserve-authority-and-evidence">ADR-0050</a>.
+Each implementation that introduces a format, an adapter or authority needs
+its own accepted design record before code.</p>
+<p>The first users are engineers connecting a tool to an agent and operators
+investigating a run. Each workflow must answer: what path was covered, what
+action was permitted or refused, which policy made that decision, what the
+tool actually reported, and what remains unknown. A content detector's score
+is never a substitute for structured authorization.</p>
+<h2 id="b23-preview-an-existing-mcp-setup">B23 Preview an existing MCP setup</h2>
+<p>Read one documented client's existing configuration and produce a change
+plan. The plan names each file and server affected, the old and new route,
+the selected mode and identity assumptions, and paths that remain outside the
+gateway, including built-in tools. Credential values, environment values and
+tool content must not appear in the preview or logs.</p>
+<p>A dry-run writes no configuration and starts no upstream process. It reports
+unsupported configuration shapes and unreadable files explicitly. Applying
+the plan requires an explicit operator action, an owner-only backup, a check
+that the input has not changed and a bounded atomic write. Preserve unrelated
+settings. A second application makes no further change. Undo compares the
+current file with the applied output and refuses an intervening user edit
+rather than replacing it.</p>
+<p>Installation never infers authority from a tool description, sets an enforcing
+mode silently, repins a classification, widens an environment allowlist or
+starts a server discovered in a file. The operator classifies tools and names
+the mode, as <a href="/docs/adr/0013-mcp-interception-approvals-and-modes">ADR-0013</a> and
+<a href="/docs/adr/0032-the-enforcement-mode-has-no-default">ADR-0032</a> require. Verification
+after apply names a live allowed call, a refused or held material call and
+their evidence; reading configuration alone cannot establish enforcement.</p>
+<p>Acceptance includes malformed files, symbolic links, unsafe ownership,
+concurrent edits, repeated apply, interrupted writes, undo after user edits
+and credentials in failure text. Three voluntary onboarding sessions record
+time, assistance, failures and the first controlled action on the user's own
+setup. A successful install is not counted as that first action.</p>
+<h2 id="b24-qualify-one-coding-runtimes-hooks">B24 Qualify one coding runtime's hooks</h2>
+<p>Choose one runtime with adopters. It competes with the framework candidates
+for the first integration, so neither a fleet agent nor multiple coding
+plugins are prerequisites. Pin the runtime and hook protocol versions and
+publish a table for each event: proposed or already completed, enforcement
+or observation, identity source, rewritten-argument support, approval/resume
+support, deadlines, failure behavior and known bypasses.</p>
+<p>A pre-action hook is an enforcement point only where conformance proves that
+the runtime waits for admission and sends exactly the authorized bytes.
+Calling an evaluation endpoint and discarding its answer is not enforcement.
+If a hook cannot apply a required obligation, it refuses the action in an
+enforcing mode. If it cannot resume an approval safely, it declares that
+limitation and never turns pending into allow. Completion and failure hooks
+are sensors: they cannot prevent an effect that already happened. Evaluate
+tools that spawn processes separately; intercepting their launch does not
+establish coverage of every child effect.</p>
+<p>Identity and run binding are receiver-owned. A session or trace id supplied
+by the agent correlates records and grants nothing. Material actions fail
+closed on unavailable policy or required evidence unless an explicit risk
+setting says otherwise. A runtime that proceeds on a timeout cannot be
+labelled an enforcing boundary for that path. Disabled hooks and missing
+post-action reports remain a coverage gap or an unknown result. No uncertain
+material execution is automatically replayed.</p>
+<p>Conformance covers block-before-effect, changed arguments, unknown
+obligations, absent and forged run identity, missing hooks, malformed replies,
+service outage, timeout before and after a possible effect, cancellation and
+two concurrent resumes of one approval. Publish the bypass tests with the
+integration. The design uses B10's admission/completion lifecycle and
+<a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a>'s ports; an
+OpenAI-compatible model proxy alone does not cover local tool execution.</p>
+<h2 id="b25-review-tool-definition-changes">B25 Review tool-definition changes</h2>
+<p>Compare the operator-reviewed definition with the newly observed definition.
+The bounded report names the upstream, tool, old and new fingerprints,
+changed fields, observation time, source and classification state. Cover
+descriptions, input and output schemas, annotations and metadata, plus added,
+removed and ambiguous tools. Any claim about a server package, certificate
+or executable needs a separately obtained source; a definition fingerprint
+does not attest the implementation behind it.</p>
+<p>The gateway already refuses a refreshed definition whose fingerprint no
+longer matches its override, outside <code>OBSERVE</code>. This task adds a review
+workflow to that behavior. It does not add a semantic detector or presume
+every wording change is malicious. A silent server, a missing notification
+or a failed refresh is reported with the last observation and its limits;
+the report cannot guarantee the server disclosed a change.</p>
+<p>Reviewing the diff never approves an action, rewrites an override or signs a
+policy. The operator explicitly reclassifies and tests any replacement.
+Acceptance includes each changed field, removed tools, name collision,
+unreadable definitions, withheld credentials, an unavailable source and an
+unchanged definition behind which test server behavior changes. The last
+case demonstrates the limit instead of claiming supply-chain protection.</p>
+<h2 id="b27-compare-and-simulate-a-candidate-policy">B27 Compare and simulate a candidate policy</h2>
+<p>Compare current and candidate policy documents, then evaluate explicit cases
+through the kernel's own evaluator. The report names both document digests,
+the evaluation semantics, the source of each input and the before/after
+verdict, reasons, obligations and missing facts. Surface newly permitted
+effects and resources, changed approval requirements, undeclared facts and
+conflicting rules. Never resolve a conflict by inventing a second precedence
+order.</p>
+<p>Historical evidence usually contains hashes rather than arguments. A hash
+cannot reconstruct them. A comparison based on exports must mark any
+argument-dependent, flow-dependent or freshness-dependent result unknown
+when the input needed for it is absent. An operator-supplied fixture can
+support a result only with its origin and assumptions stated. Report the
+number evaluated, changed and unknown, with their denominators; do not call
+partially reconstructable runs a complete replay.</p>
+<p>Simulation sends no tool call, consumes no approval, publishes no bundle and
+activates no policy. Model or heuristic suggestions are drafts requiring
+operator review, tests and signing. Acceptance covers effect/resource
+broadening, conflict, unsupported versions, gaps, duplicate records, absent
+arguments or flow context, missing historic policy and changed tool
+definitions. The current <code>policy explain</code> and <code>policy test</code> remain the
+starting point; policy rollout and shadow evaluation of live traffic need
+separate designs.</p>
+<h2 id="b26-review-findings-and-export-an-incident-package">B26 Review findings and export an incident package</h2>
+<p>Start with a consumer of the existing findings export. Group related
+occurrences without replacing their source records. A group key includes
+tenant, project, rule id and rule version plus an explicitly defined bounded
+signature; preserve every source finding id and run reference. Repeated
+delivery cannot create a second occurrence. Unknown or truncated references
+remain visible, and an event count, occurrence count and case count are
+distinct measures.</p>
+<p>Keep four independent states:</p>
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th>What it means</th>
+<th>What may change it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Finding verdict</td>
+<td>Whether cited inputs support the finding: confirmed, suspected or indeterminate</td>
+<td>A new deterministic evaluation, with its provenance</td>
+</tr>
+<tr>
+<td>Review state and disposition</td>
+<td>Open, in review or closed; an operator may record confirmed issue, false positive or accepted risk as a separate disposition</td>
+<td>A scoped, authenticated review action</td>
+</tr>
+<tr>
+<td>Notification delivery</td>
+<td>Whether an alert reached its configured recipient</td>
+<td>A delivery acknowledgement</td>
+</tr>
+<tr>
+<td>Reaction result</td>
+<td>A scoped stop, its expiry or a lift, or a failed/unknown reaction</td>
+<td>The separately authorized reaction path</td>
+</tr>
+</tbody>
+</table>
+<p>A review is an append-only record with author, time, reason, previous revision
+and subject id. Concurrent updates cannot silently overwrite each other.
+Closing or dismissing a case cannot alter the finding's verdict, authorize a
+call, consume an approval, lift a stop or retune a policy. New evidence can
+reopen a case and retains its history. Cross-project grouping, reads and
+updates are refused. This depends on B13's authentication and B14's recovery;
+the CLI's current configured principal is not proof of a reviewer identity.</p>
+<p>Export a bounded, versioned incident package with finding and review records;
+the relevant action, decision, approval and result references; policy and
+procedure ids, versions and digests; source trust and correlation basis;
+coverage gaps; and reaction attempts and results. Include only available
+metadata by default. A missing policy body, missing segment, silent source or
+unconfirmed delivery is named, never reconstructed as fact. No prompts, tool
+content or hidden reasoning are added for the convenience of investigation.</p>
+<p>A consumer can read the package independently, check references and report
+missing inputs. Export resumes with stable identifiers and explicit gaps.
+Ordering or a digest of a package alone is not tamper evidence; hash links and
+signed checkpoints require their own implementation. Acceptance includes
+duplicate delivery, later occurrences after closure, reopening, conflicting
+review revisions, cross-project access, lost inputs, hostile text, bounds
+and a failed reaction that must not be displayed as a successful stop.</p>
+<h2 id="delivery-and-communication">Delivery and communication</h2>
+<p>B23 belongs to first value. B24, B25 and B27 belong to integrations; B26
+belongs to a small team. Existing trust, API, identity and retention work
+remain prerequisites. No schedule or SLA is implied.</p>
+<p>Describe a capability with its consequence, covered path, enforcing mode,
+failure behavior and a runnable example. Use exact-action approval, a changed
+tool definition and a denied refund retried another way as current examples.
+Keep planned coding hooks and incident review out of claims about what runs
+today. Measure gateway overhead separately from end-to-end policy/evidence
+latency, with workload, platform, concurrency, percentile and failures named.
+Do not claim universal agent coverage, autonomous real-time supervision,
+tamper-evident evidence or regulatory compliance from these requirements.</p>
+<p>Reversible PII tokenization, a vault, model-based content classifiers and
+automatic policy tuning are outside this delivery scope. A later proposal
+needs an adopter's data flow, trust direction, transform/approval binding,
+failure semantics and privacy design; it cannot silently add raw content
+capture or a model to default authorization.</p>
+<p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/adoption-and-incident-workflows.md">docs/adoption-and-incident-workflows.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.10.2-alpha, and <a href="https://github.com/guardana/control/tree/v0.10.2-alpha/docs">its documentation</a> is in its tag.</p>
+</main>
+<nav class="side" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows" aria-current="page">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</div>
+<footer class="foot"><div class="wrap row">
+  <p>Guardana Control · Apache-2.0</p>
+  <ul>
+    <li><a href="https://github.com/guardana/control">GitHub</a></li>
+    <li><a href="https://github.com/guardana/control/releases">Releases</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/SECURITY.md">Security</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/LICENSE">Licence Apache-2.0</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/TRADEMARKS.md">Trademarks</a></li>
+  </ul>
+</div></footer>
+</body>
+</html>

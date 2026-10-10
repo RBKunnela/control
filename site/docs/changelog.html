@@ -94,6 +94,7 @@
 <li><a href="/docs/extending/adapters">Writing an adapter</a></li>
 </ul>
 <h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
 <li><a href="/docs/backlog">Delivery backlog</a></li>
 <li><a href="/docs/changelog" aria-current="page">Changelog</a></li>
 <li><a href="/docs/dependencies">Dependencies</a></li>
@@ -113,6 +114,19 @@
 signed and attested from its tag; <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a> shows how to
 verify one.</p>
 <h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.10.2-alpha...HEAD">Unreleased</a></h2>
+<h3 id="added">Added</h3>
+<ul>
+<li>Planned requirements for previewing MCP setup, qualifying coding-agent
+hooks, reviewing tool-definition changes, simulating candidate policies and
+reviewing findings with an incident export (B23–B27), with proposed
+ADR-0050. Nothing of them is built.</li>
+</ul>
+<h3 id="changed">Changed</h3>
+<ul>
+<li>README and the home page show exact-action approval, changed tool definitions
+and a denied refund retried through another tool, with their coverage limits
+and links to the policies and runnable example.</li>
+</ul>
 <h3 id="fixed">Fixed</h3>
 <ul>
 <li><code>scripts/github-settings-check.sh</code> and the bootstrap, run by macOS's bash
@@ -140,7 +154,7 @@ published release rather than the next one, the repository's GitHub settings
 have a read-only check, and a pause file replaced during a read is read
 again. 0.10.1-alpha was tagged with most of these changes and never
 published: its release job stopped at the new image scan.</p>
-<h3 id="added">Added</h3>
+<h3 id="added-1">Added</h3>
 <ul>
 <li>The release scans every binary it ships before anything is attested or
 published: each binary of every archive and the image's binary for
@@ -154,7 +168,7 @@ a user writes or reads with the version this release writes, the versions it
 reads and its stability, held to the code's constants by a test. The wire
 contract's <code>1.0</code> is the one stable format; the product is still 0.x.</li>
 </ul>
-<h3 id="changed">Changed</h3>
+<h3 id="changed-1">Changed</h3>
 <ul>
 <li>The website names the published release, which <code>docs/docs.json</code> sets once a
 release is out, rather than the newest dated section of this file, and each
@@ -225,7 +239,7 @@ GO-2026-6604, GO-2026-6605, GO-2026-6607, GO-2026-6608 and GO-2026-6610 in
 <code>mime/multipart</code> and <code>os</code>; <code>govulncheck</code> found the plane's calls reaching
 the HTTP/2 ones under 1.27.1.</li>
 </ul>
-<h3 id="added-1">Added</h3>
+<h3 id="added-2">Added</h3>
 <ul>
 <li>Procedure schema <code>0.2</code>, read beside <code>0.1</code>
 (<a href="/docs/adr/0047-a-procedure-states-its-exceptions-resources-and-children">ADR-0047</a>).
@@ -264,7 +278,7 @@ line as well as colour. It shows each finding's calls and their neighbours,
 or with <code>--view-all</code> every call up to a bound
 (<a href="/docs/reference/run-view">run view</a>).</li>
 </ul>
-<h3 id="changed-1">Changed</h3>
+<h3 id="changed-2">Changed</h3>
 <ul>
 <li>Every reader of a route (<code>route sign</code>, <code>react</code>, a plane at start, <code>doctor</code> and
 the <code>stops</code> commands) refuses one that names a rule or a rule version outside
@@ -334,7 +348,7 @@ when it has a second name: a checkout under a umask of 002 needs
 user. An upstream that asks for more input ends the call as failed. A second
 override of one tool is refused at start. <code>runs open --parent</code> refuses a
 child whose expiry would pass its parent's.</p>
-<h3 id="added-2">Added</h3>
+<h3 id="added-3">Added</h3>
 <ul>
 <li>A confirmed finding can stop the run it is about
 (<a href="/docs/adr/0046-a-finding-stops-one-run-through-a-signed-route">ADR-0046</a>).
@@ -353,7 +367,7 @@ stopped run's children are not stopped. <code>doctor</code>, <code>/healthz</cod
 report the route and the list; <code>examples/refund-supervision/</code> stops one of
 two runs on a live plane and lifts the stop.</li>
 </ul>
-<h3 id="changed-2">Changed</h3>
+<h3 id="changed-3">Changed</h3>
 <ul>
 <li>The policy key and the freshness key, in the configuration and in
 <code>guardana-control policy renew</code>, are compared as points up to their sign:
@@ -480,7 +494,7 @@ observed tool call, and supervision let the runtime's own report of a step
 count as the step. <a href="/docs/status">docs/status.md</a> says what is
 <code>implemented</code> and what is <code>experimental</code>. Nothing here is a security boundary
 yet.</p>
-<h3 id="added-3">Added</h3>
+<h3 id="added-4">Added</h3>
 <ul>
 <li><code>guardana-control coverage</code> prints, for each path an operator declares in an
 inventory, whether a plane enforces it, decides it without enforcing it, a
@@ -505,7 +519,7 @@ suspected at most, and a skipped step is never confirmed. No plane reads a
 finding, and no finding stops a run. <code>examples/refund-supervision/</code> runs it
 on a live plane.</li>
 </ul>
-<h3 id="changed-3">Changed</h3>
+<h3 id="changed-4">Changed</h3>
 <ul>
 <li>An upstream's answer, wire error, listed item or tool definition that quotes
 a credential the plane sends reaches the agent as a fixed answer, never with
@@ -557,7 +571,7 @@ accepted another account's directory; and the commit gate could stamp a
 commit that broke the wire contract. <a href="/docs/status">docs/status.md</a> says
 what is <code>implemented</code> and what is <code>experimental</code>. Nothing here is a security
 boundary yet.</p>
-<h3 id="added-4">Added</h3>
+<h3 id="added-5">Added</h3>
 <ul>
 <li>Observations: <code>guardana-control observe import</code> reads an agent runtime's
 OpenTelemetry GenAI spans (OTLP/JSON, conventions 1.41.0) for one source an
@@ -574,7 +588,7 @@ envelope's <code>trace_id</code> and <code>span_id</code>, so a trail can be joi
 runtime's traces. A missing or malformed value leaves both empty and changes
 nothing else.</li>
 </ul>
-<h3 id="changed-4">Changed</h3>
+<h3 id="changed-5">Changed</h3>
 <ul>
 <li>The plan follows <a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a>:
 MCP is one channel of several. The next milestone is one task under
@@ -677,7 +691,7 @@ release gate counted a pull request run and could be passed by a tag named
 another account owned; and a stateful listener kept any number of sessions
 open. <a href="/docs/status">docs/status.md</a> says what is <code>implemented</code> and what is
 <code>experimental</code>. Nothing here is a security boundary yet.</p>
-<h3 id="added-5">Added</h3>
+<h3 id="added-6">Added</h3>
 <ul>
 <li><code>examples/evidence-report -state &lt;dir&gt;</code> follows a trail one export after
 another and raises local alerts: a JSON line each, appended to
@@ -722,7 +736,7 @@ refuses the key. <code>/metrics</code> carries
 <li><code>guardana-control policy explain</code> prints a <code>clock</code> line: <code>usable</code>, or why
 the clock stopped the decision.</li>
 </ul>
-<h3 id="changed-5">Changed</h3>
+<h3 id="changed-6">Changed</h3>
 <ul>
 <li>
 <p><strong>Breaking:</strong> a plane's configuration needs five more keys:
@@ -889,7 +903,7 @@ refusal printed a header credential; and some MCP clients refused the plane's
 answers as schema errors. <a href="/docs/status">docs/status.md</a> says what is
 <code>implemented</code> and what is <code>experimental</code>. Nothing here is a security boundary
 yet.</p>
-<h3 id="added-6">Added</h3>
+<h3 id="added-7">Added</h3>
 <ul>
 <li><code>guardana-control policy explain &lt;case&gt;</code> decides one case as <code>policy test</code>
 does and says how: the decision's verdict, action, mode, policy digest and
@@ -949,7 +963,7 @@ plane without <code>runs.dir</code> behaves as before. A stdio plane no longer w
 start lines into the protocol stream.
 <a href="/docs/status">docs/status.md</a> says what is <code>implemented</code> and what is
 <code>experimental</code>. Nothing here is a security boundary yet.</p>
-<h3 id="added-7">Added</h3>
+<h3 id="added-8">Added</h3>
 <ul>
 <li>Runs an operator opens
 (<a href="/docs/adr/0034-a-run-the-operator-opens-has-an-identity-of-its-own">ADR-0034</a>):
@@ -962,7 +976,7 @@ restart, and a held call resumes only from its own run. A refused token is
 answered with HTTP 401 or the JSON-RPC error <code>-31102</code>, and the refusals are
 counted by cause. A plane without <code>runs.dir</code> is unchanged.</li>
 </ul>
-<h3 id="changed-6">Changed</h3>
+<h3 id="changed-7">Changed</h3>
 <ul>
 <li>The release job waits for a maintainer to approve it in the <code>release</code>
 environment before it builds; <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a> has the step.</li>
@@ -984,7 +998,7 @@ are a demo archive that runs without Go, an evidence export another program
 resumes by cursor, and the documentation on the website.
 <a href="/docs/status">docs/status.md</a> says what is <code>implemented</code> and what is
 <code>experimental</code>. Nothing here is a security boundary yet.</p>
-<h3 id="changed-7">Changed</h3>
+<h3 id="changed-8">Changed</h3>
 <ul>
 <li><code>mode</code> has no default: a configuration that names no enforcement mode is
 refused at load instead of starting a plane in <code>OBSERVE</code>, which stops nothing
@@ -995,7 +1009,7 @@ default (<a href="/docs/adr/0032-the-enforcement-mode-has-no-default">ADR-0032</
 <code>dev --decision-point=silent</code>, which the old command lacks and now needs.
 <code>dev</code> refuses a system without process groups before it starts anything.</li>
 </ul>
-<h3 id="added-8">Added</h3>
+<h3 id="added-9">Added</h3>
 <ul>
 <li>A website for <code>control.guardana.dev</code> in <code>site/</code>: one static page with
 no script and nothing loaded from another host, whose diagrams
@@ -1056,7 +1070,7 @@ the gateway beside the archives, and pages that say what the plane
 protects, what it records and which failures it survives.
 <a href="/docs/status">docs/status.md</a> says what is <code>implemented</code> and what is
 <code>experimental</code>. Nothing here is a security boundary yet.</p>
-<h3 id="added-9">Added</h3>
+<h3 id="added-10">Added</h3>
 <ul>
 <li>Reason code <code>APPROVAL_STATE_UNKNOWN</code> (44, <code>INDETERMINATE</code>): a lost hold
 whose approval the plane could not read or trust closes with it, where
@@ -1082,7 +1096,7 @@ and where it stops; what a record holds, where it goes and how long it
 stays (<a href="/docs/concepts/threat-model">docs/concepts/threat-model.md</a>,
 <a href="/docs/concepts/privacy">docs/concepts/privacy.md</a>).</li>
 </ul>
-<h3 id="changed-8">Changed</h3>
+<h3 id="changed-9">Changed</h3>
 <ul>
 <li>A stdio upstream no longer inherits the plane's environment. It gets
 <code>PATH</code>, <code>HOME</code>, <code>LANG</code>, <code>LC_ALL</code>, <code>TMPDIR</code> and <code>USER</code>, each where the
@@ -1123,7 +1137,7 @@ Such an answer could be read as refused or as unavailable instead.</li>
 <p>The first public release. <a href="/docs/status">docs/status.md</a> says what is
 <code>implemented</code> and what is <code>experimental</code>. Nothing here is a security boundary
 yet.</p>
-<h3 id="added-10">Added</h3>
+<h3 id="added-11">Added</h3>
 <ul>
 <li>Wire contracts, frozen at <code>1.0</code>: eight protobuf files for the action
 envelope, the decision, approvals, results, events, findings, policy bundles
@@ -1247,6 +1261,7 @@ independence of this project from Guardana
 <li><a href="/docs/extending/adapters">Writing an adapter</a></li>
 </ul>
 <h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
 <li><a href="/docs/backlog">Delivery backlog</a></li>
 <li><a href="/docs/changelog" aria-current="page">Changelog</a></li>
 <li><a href="/docs/dependencies">Dependencies</a></li>

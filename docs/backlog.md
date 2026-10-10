@@ -28,20 +28,29 @@ issue. Completion requires code, documentation and the applicable checks.
 | ID | Work | Depends on | Acceptance |
 | --- | --- | --- | --- |
 | B06 | Connect an existing MCP setup | none | Copyable client/server instructions and a local profile work with an independently maintained server. Classification remains operator-owned; missing classification and unsupported methods are visible. At least three new users attempt the guide; time and help are recorded |
+| B23 | Preview and apply an existing MCP configuration | B06 | A supported client configuration is read into an explicit change plan, with paths outside the gateway named. Dry-run writes nothing and starts no server; apply is explicit, preserves unrelated settings and makes an owner-only backup. A second apply is a no-op; undo refuses intervening edits. Malformed files, links, concurrent edits and credentials in output have adversarial cases. Measure setup with three users |
 
 ## Milestone 2: integrations without a fork
 
 | ID | Work | Depends on | Acceptance |
 | --- | --- | --- | --- |
 | B10 | Specify and build the enforcement API | B00 | ADR defines admit/complete/abort, scoped opaque handles, expiry, authorized bytes, pending/resume, duplicate requests and abandoned executions. Authenticated scope is receiver-owned. Timeout after a possible effect produces an uncertain result and no automatic retry. A test distinguishes a cooperating client from an enforcement boundary |
-| B11 | Ship Python and one framework integration | B10 | A custom-tool wrapper and one adopter-selected framework integration run externally. Conformance covers block-before-send, rewritten bytes, pending approval, concurrent resume, unknown obligation, timeout, cancellation and completion. Publish covered and bypassing tool paths; digest parity precedes client-side hashes |
+| B11 | Ship Python and one runtime integration | B10 | A Python custom-tool wrapper and one adopter-selected framework or coding-runtime integration run externally. Conformance covers block-before-send, rewritten bytes, pending approval, concurrent resume, unknown obligation, timeout, cancellation and completion. Publish covered and bypassing tool paths; digest parity precedes client-side hashes |
+| B24 | Qualify one coding-agent hook integration | B10 | Choose one runtime with adopters and publish a per-event coverage and failure table. A pre-action hook earns enforcement coverage only by proving block-before-effect and authorized-byte handling; post-action hooks remain observations. Missing identity, disabled hooks, timeouts, malformed answers, unsupported obligations, cancellation and concurrent approval resumes never silently become authorization. The runtime's cooperation and bypasses are tested and stated |
+| B25 | Review changes to tool definitions | B00 | Compare an operator-reviewed manifest with a newly observed one, name changed fields and old/new fingerprints, and export a bounded report with source and observation time. Reuse the existing classification refusal. Description, schema, metadata, removed and ambiguous tools, and a silent or unavailable source have cases. Review never repins a definition or signs a policy; unchanged definitions do not attest unchanged server code |
+| B27 | Compare and simulate a candidate policy | B00 | A report names both policy digests, input provenance and per-case before/after verdicts, obligations and missing facts. Reuse the kernel's evaluation; publish denominators and unknowns. Cases cover broadened effects/resources, rule conflict, absent arguments or flow context, missing historic policy, gaps and changed definitions. Simulation sends no tool call, consumes no approval and cannot activate a policy |
 | B21 | Add sensors independent of the agent | ADR-0040 | An importer reads an egress proxy's access log under a descriptor marked independent, and a second reads process events from the host the agent runs on; a connection is attributed to a run only as well as the proxy identifies its caller, and an unattributed one stays unknown. The coverage map shows an egress destination the plane never decided on |
 | B12 | Publish the port contracts and add TypeScript | B11 for the enforcement client | Sensor, detector, reaction and notifier contracts are published with conformance suites of input and expected output files any language runs, once two consumers have used each. An external detector or notifier built from them alone passes its suite. Queue bounds, lag and failures are visible and cannot affect authorization. TypeScript passes the same client fixtures. A Go seam is promoted only with its own ADR and two consumers; nothing is loaded into a plane at run time |
 
-LangGraph and the OpenAI Agents SDK are candidates, not simultaneous delivery
-requirements. Select the first framework integration with adopters and test the framework's
+LangGraph and the OpenAI Agents SDK are framework candidates. B24 is an
+alternative entry point to test with adopters, not a requirement to build a
+second runtime integration at once. Select one first integration and test its
 resume behavior. Transport retries may not replay a material tool execution.
 Custom policy-provider work preserves ADR-0017's veto-only semantics.
+
+The [adoption and incident requirements](adoption-and-incident-workflows.md)
+define B23–B27. They extend these milestones without changing their order;
+runtime adapters and any new data contracts need their own accepted records.
 
 The existing event wire format is reused where it suffices. A query response
 or delivery wrapper has its own version; do not quietly add unknown fields to
@@ -54,6 +63,7 @@ mappings.
 | --- | --- | --- | --- |
 | B13 | Authenticate operators and scope authority | B10 | Reader/operator/admin capabilities are receiver-enforced; approval authority comes from authentication. Cross-project reads and operations are refused; a pause or a stop names its actual run, agent or principal scope, and only an authenticated author may sign a reaction route. Two users and overlapping runs pass adversarial tests. MCP upstream credentials remain separate from inbound credentials |
 | B14 | Add retention and recovery | none | Rotation, disk budget, cursor expiry, duplicates, interrupted export and backup/restore are tested for evidence and observations. A restored process cannot reuse spent approval authority or forget its rollback floor. Read-only inspection cannot mutate recovery state without saying so |
+| B26 | Review findings and export an incident package | B13, B14 | A separate review log records scoped author, time, reason and revision for open/in-review/closed and disposition changes without changing the finding's verdict. Grouped occurrences retain source finding ids, rule versions, tenant/project and run references. Reopening, cross-project access, concurrent edits, export gaps and hostile text have cases. A metadata-only package joins the findings, decisions, approvals, policy/procedure digests, coverage and actual reaction results, marks missing inputs, and is read by an external consumer. Closing a case neither lifts a stop nor grants an approval |
 
 ## Milestone 4: a fleet and wider protocols
 

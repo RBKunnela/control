@@ -29,12 +29,18 @@ agents on many channels; [docs/status.md](docs/status.md) lists what exists.
 
 ## The problem
 
-An agent chooses its tool and its arguments at run time, from text it read
-moments earlier. The tool holds the credential and executes whatever arrives
-at its API. In most deployments nothing between the two asks whether this
-agent, acting for this person, may do this to this resource now. When the
-action turns out wrong, the record is a transcript and a log, neither designed
-as evidence. Every new tool widens that gap.
+Untrusted text can make an agent change production, send customer data
+elsewhere or retry a denied action.
+
+- Hold writes for one exact-action approval: [starter policies](docs/reference/starter-packs.md).
+- Block a changed tool definition when its fingerprint no longer matches
+  the operator's classification: [MCP gateway](docs/concepts/mcp-gateway.md).
+- Find a denied refund retried through another tool, then stop
+  that run's later calls where a signed route allows:
+  [refund example](docs/guides/supervise-and-stop-a-run.md).
+
+Enforcement needs an enforcing mode; paths around the gateway remain outside
+its control.
 
 ## What it does
 
@@ -162,9 +168,8 @@ go install github.com/guardana/control/cmd/guardana-control@latest
 ## Related project: Guardana
 
 [Guardana](https://github.com/guardana/guardana) is a separate open-source
-project that verifies AI systems before and after deployment: it scans
-artifacts, probes endpoints and reads recorded traces, outside the request
-path. Guardana Control decides each call inside it.
+project that verifies AI systems before and after deployment, outside the
+request path. Guardana Control decides each call inside it.
 
 ```mermaid
 flowchart LR

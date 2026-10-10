@@ -11,6 +11,19 @@ verify one.
 
 ## [Unreleased]
 
+### Added
+
+- Planned requirements for previewing MCP setup, qualifying coding-agent
+  hooks, reviewing tool-definition changes, simulating candidate policies and
+  reviewing findings with an incident export (B23–B27), with proposed
+  ADR-0050. Nothing of them is built.
+
+### Changed
+
+- README and the home page show exact-action approval, changed tool definitions
+  and a denied refund retried through another tool, with their coverage limits
+  and links to the policies and runnable example.
+
 ### Fixed
 
 - `scripts/github-settings-check.sh` and the bootstrap, run by macOS's bash
