@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
+	"time"
 )
 
 // supported is true where the state can be judged and held and a program's
@@ -39,14 +40,31 @@ func ownGroup(cmd *exec.Cmd) {
 	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
 }
 
+// killGroup sends endGroup's signal; a test replaces it.
+var killGroup = func(pgid int) error { return syscall.Kill(-pgid, syscall.SIGKILL) }
+
+// groupSettle bounds how long endGroup asks again while the group is refused
+// with EPERM. On a loaded darwin kernel a leader just reaped can stay in its
+// group for a moment with no credentials to check, which is answered EPERM
+// though the group is the program's alone; a process of another account in
+// the group answers EPERM for good.
+const groupSettle = time.Second
+
 // endGroup kills the process group of a program that was started, so no
 // child of it outlives its delivery. A group with no process left is ESRCH.
 func endGroup(cmd *exec.Cmd) error {
 	if cmd.Process == nil {
 		return nil
 	}
-	if err := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL); err != nil && !errors.Is(err, syscall.ESRCH) {
-		return fmt.Errorf("killing the program's process group: %w", err)
+	deadline := time.Now().Add(groupSettle)
+	for pause := time.Millisecond; ; pause = min(2*pause, 100*time.Millisecond) {
+		err := killGroup(cmd.Process.Pid)
+		switch {
+		case err == nil, errors.Is(err, syscall.ESRCH):
+			return nil
+		case !errors.Is(err, syscall.EPERM) || time.Now().After(deadline):
+			return fmt.Errorf("killing the program's process group: %w", err)
+		}
+		time.Sleep(pause)
 	}
-	return nil
 }

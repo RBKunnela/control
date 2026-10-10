@@ -24,6 +24,11 @@ verify one.
   On a loaded machine `guardana-gateway scenario run` then failed a foreign
   trail file with the wrong reason. The spool is now read first, and a release
   is counted under the lock the exporter's counters are read under.
+- `guardana-control notify` could count a delivered alert as failed with
+  "killing the program's process group: operation not permitted". On a loaded
+  macOS host the kernel can refuse the program's group with EPERM for a moment
+  after its leader was reaped. It is now asked again for up to a second; a
+  group still refused after that is reported as before.
 
 ## [0.10.2-alpha] - 2026-10-10
 
