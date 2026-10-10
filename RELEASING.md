@@ -7,14 +7,14 @@ nothing is uploaded from a laptop.
 ## Cutting a release
 
 1. Give the version its section in `CHANGELOG.md`, with the date:
-   `## [X.Y.Z-alpha] - YYYY-MM-DD`. The workflow publishes that section as the
+   `## [X.Y.Z] - YYYY-MM-DD`. The workflow publishes that section as the
    release notes and fails if it is missing, undated or empty.
-   `scripts/release-notes.sh vX.Y.Z-alpha` prints it.
+   `scripts/release-notes.sh vX.Y.Z` prints it.
 2. Commit that on `main`, and let CI and Security finish green on it.
 3. Tag the commit and push the tag:
 
    ```sh
-   version=X.Y.Z-alpha
+   version=X.Y.Z
    git tag -a "v${version}" -m "Guardana Control ${version}"
    git push origin "v${version}"
    ```
@@ -23,17 +23,17 @@ nothing is uploaded from a laptop.
    maintainer or the admin may push a `v*` tag or approve its run.
 5. Once the release is published, set `"released"` in `docs/docs.json` to the
    version, run `make docs-gen` and commit. Only then does the website name
-   it; a dated section or a failed release changes nothing there.
+   it.
 
-A version with a pre-release part (`-alpha`, `-rc.1`) is a pre-release.
+A version is a plain `X.Y.Z`. A suffix such as `-rc.1` marks a preview of that
+number.
 
 ## What the workflow does
 
 1. Builds the binaries for Linux and macOS on amd64 and arm64 from the tagged
-   commit, packs per platform an archive of the two binaries with `LICENSE`,
-   `NOTICE`, `README.md` and `CHANGELOG.md` and a demo archive that adds the
-   demo's server, each with a CycloneDX bill of materials, and writes
-   `checksums.txt`.
+   commit, packs per platform an archive of the two binaries and a demo
+   archive that adds the demo's server, each with a CycloneDX bill of
+   materials, and writes `checksums.txt`.
 2. Signs `checksums.txt` with cosign, keyless: the certificate names this
    workflow and the tag.
 3. Pushes the image `ghcr.io/guardana/control-gateway`, `guardana-gateway`
@@ -47,11 +47,13 @@ A version with a pre-release part (`-alpha`, `-rc.1`) is a pre-release.
    publishes the draft with the image's digest in its notes.
 
 A known-vulnerable symbol in a binary, called or not, or a scan that could not
-run, stops the release until Go or the module is upgraded. The workflow
-refuses a tag whose commit is not on `main` or lacks a green CI and Security
-run, and publishes the draft only when it holds exactly the files it verified. A failure leaves no release, or an
-unpublished draft: delete the draft and the image's staging version, fix the
-cause, release the next version.
+run, stops the release. The workflow refuses a tag whose commit is not on
+`main` or lacks a green CI and Security run. Until Publish, a failure leaves at
+most a draft and the image's staging and version tags: delete them, fix the
+cause, release the next version. Publish makes the draft public only if it
+holds exactly the verified files, then reads it again, since GitHub cannot
+publish conditionally; a failure there leaves a public release and says what to
+do.
 
 ## A dry run
 
@@ -59,19 +61,19 @@ Run the workflow by hand with the tag the release will carry. It makes the
 same gate check, prints the notes, builds and scans the archives and the image
 as `0.0.0-snapshot.<commit>`, unsigned, runs the image and the demo for the
 runner's platform, and publishes nothing. `make release-snapshot`,
-`make check-demo-archive` and `make scan-binaries` do the same locally, with
-Docker running.
+`make check-demo-archive` and `make scan-binaries` build, scan and run the
+demo locally, with Docker running, and check neither the gate nor the notes.
 
 ## A tag never moves
 
-A published tag is never deleted, moved or reused, and a published release is
-never edited to hold other files. If a release is broken, say so in the next
-version's changelog and release that version.
+A published tag is never deleted, moved or reused, and a published release
+never gets other files. A broken release is named in the next version's
+changelog.
 
 ## Checking a download
 
-Take the archive you want, `checksums.txt` and `checksums.txt.sigstore.json`
-from the release page, then, for version `v0.1.0-alpha`:
+Download the archive, `checksums.txt` and `checksums.txt.sigstore.json`, then,
+for `v0.1.0-alpha`:
 
 ```sh
 sha256sum --ignore-missing -c checksums.txt
@@ -97,10 +99,10 @@ tag.
 Anyone with write access to the repository or package can overwrite a
 registry tag or a release's notes. Take the digest from the notes and check it
 with cosign v3 or later. The signature covers the index, not each platform's
-image. For `vX.Y.Z-alpha`:
+image. For `vX.Y.Z`:
 
 ```sh
-tag=vX.Y.Z-alpha
+tag=vX.Y.Z
 image=ghcr.io/guardana/control-gateway@sha256:<the digest in the release notes>
 
 cosign verify "$image" \

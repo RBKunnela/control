@@ -119,6 +119,13 @@ approve their own tag, and the admin may bypass the wait.</p>
 <code>scripts/lib/github-settings.sh</code>, which the bootstrap applies and a read-only
 check compares with GitHub, and the two-approval paths are spread over rulesets
 of at most 15 patterns each, GitHub's limit per reviewer.</p>
+<p>Amended before <code>v0.11.0</code>: a release is a plain <code>vX.Y.Z</code> from <code>v0.11.0</code> on.
+The <code>0.x</code> series already carries no compatibility promise, so a pre-release
+suffix said the same thing twice and marked every release a pre-release on
+GitHub. A suffix is kept for a preview of a version that will be released
+under its plain number, such as <code>v1.0.0-rc.1</code>. Once a plain release exists,
+<code>go install ...@latest</code> and GitHub's latest release skip any later
+pre-release, so a preview is installed by naming it.</p>
 <h2 id="context">Context</h2>
 <p>ADR-0008 set the rules before the repository existed. Every change would reach
 <code>main</code> through a pull request with one approving review, code-owner review on

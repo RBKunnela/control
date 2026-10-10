@@ -17,6 +17,14 @@ Amended after `v0.10.0-alpha`: the settings are declared in
 check compares with GitHub, and the two-approval paths are spread over rulesets
 of at most 15 patterns each, GitHub's limit per reviewer.
 
+Amended before `v0.11.0`: a release is a plain `vX.Y.Z` from `v0.11.0` on.
+The `0.x` series already carries no compatibility promise, so a pre-release
+suffix said the same thing twice and marked every release a pre-release on
+GitHub. A suffix is kept for a preview of a version that will be released
+under its plain number, such as `v1.0.0-rc.1`. Once a plain release exists,
+`go install ...@latest` and GitHub's latest release skip any later
+pre-release, so a preview is installed by naming it.
+
 ## Context
 
 ADR-0008 set the rules before the repository existed. Every change would reach

@@ -10,7 +10,7 @@ Watch what they do, and step in only where you allow it.
 [![Security](https://github.com/guardana/control/actions/workflows/security.yml/badge.svg)](https://github.com/guardana/control/actions/workflows/security.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/guardana/control/badge)](https://scorecard.dev/viewer/?uri=github.com/guardana/control)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15118/badge)](https://www.bestpractices.dev/projects/15118)
-[![Release](https://img.shields.io/github/v/release/guardana/control?include_prereleases&sort=semver)](https://github.com/guardana/control/releases)
+[![Release](https://img.shields.io/github/v/release/guardana/control?sort=semver)](https://github.com/guardana/control/releases)
 [![Go 1.27](https://img.shields.io/badge/go-1.27-00ADD8.svg)](go.mod)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](LICENSE)
 [![Status: alpha](https://img.shields.io/badge/status-alpha-orange.svg)](docs/status.md)
