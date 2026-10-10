@@ -41,10 +41,10 @@ another digest is refused.
 | `order` | each step id and the steps it must follow |
 | `allow` | tools the run may also call, each with `tool`, `upstream`, `observed_as` and `binds` |
 | `bindings` | at most 64, each a name and its calls' resource type; a `binds` lists at most one |
-| `exceptions` | at most 128, each an `id`, the rule it `waives`, a `step`, or for `STEP_OUTSIDE_PROCEDURE` a `tool` and `upstream` the procedure lacks, and one `condition`: `approval: granted`, `step_failed: <step>` or `reason: <code>`, a registered reason code. Only that rule, on an approval, and the three about steps take one, a skipped step not on an approval |
+| `exceptions` | at most 128, each an `id`, the rule it `waives`, a `step`, or for `STEP_OUTSIDE_PROCEDURE` a `tool` and `upstream` the procedure lacks, and one `condition`: `approval: granted`, `step_failed: <step>` or `reason: <code>`, a code on the call's policy decision. Only that rule, on an approval, and the three about steps take one, a skipped step not on an approval |
 | `children` | `inherit` or `separate`, below |
 | `rules` | for each rule of its schema, a `severity` (`info` to `critical`) and an `escalation` (`inform` or `alert`) |
-| `max_denials`, `deadline_seconds` | at least 1 each; leaving one out turns its rule off |
+| `max_denials`, `deadline_seconds` | at least 1; absent, its rule is off |
 
 ## What belongs to the run
 

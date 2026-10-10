@@ -190,7 +190,7 @@ and on an answer the <code>approver_id</code> and the optional <code>--reason</c
 approver typed them.</p>
 <p><code>ACTION_STARTED</code> carries no payload. <code>ACTION_COMPLETED</code> and <code>ACTION_FAILED</code>
 carry the result: its status, when it started and ended, the protocol's own
-status (<code>ok</code>, <code>isError</code>, <code>timeout</code>, <code>error</code>, <code>unhashable</code> for a result that
+status (<code>ok</code>, <code>isError</code>, <code>input_required</code> for an upstream that asked for input, <code>timeout</code>, <code>error</code>, <code>unhashable</code> for a result that
 cannot be encoded, whose status is then <code>UNKNOWN</code>, or a JSON-RPC error code,
 each after <code>withheld:</code> when the answer quoted a credential the plane sends and
 the agent was given a fixed answer instead), a

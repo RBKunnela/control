@@ -78,8 +78,8 @@ page is wrong.
   bump to any of them is read the same way.
 
 Beside those, code that ships imports only protobuf; `go list -deps
-./adapters/mcp` names the set above and nothing more. The test-only entry below
-is the only other module this repository imports itself. `examples/evidence-report`
+./adapters/mcp` names the set above and nothing more. The test-only entry and Goldmark, both below, are the only other modules this
+repository imports itself. `examples/evidence-report`
 is a module of its own that requires this one through a `replace`, so it reaches
 protobuf and nothing else, and ships in no binary
 ([ADR-0037](adr/0037-an-evidence-consumer-in-a-module-of-its-own.md)). There is no database
@@ -153,7 +153,7 @@ binary and none is in the request path.
 | `goimports` | `golang.org/x/tools` | `make fmt`, `make fmt-check` | BSD-3-Clause |
 | `govulncheck` | `golang.org/x/vuln` | `make security`; in binary mode, `scripts/scan-binaries.sh` over every binary of every release archive and the image's binary for each platform, before a release is attested or published | BSD-3-Clause |
 
-Every other module in `go.mod` is marked `// indirect` and arrives through
+Every other module in `go.mod` but Goldmark (below) is marked `// indirect` and arrives through
 those three or through the MCP module: `golang.org/x/mod`, `golang.org/x/sync`,
 `golang.org/x/sys`, `golang.org/x/telemetry`, `golang.org/x/tools` and
 `golang.org/x/vuln` through the tools; `github.com/google/jsonschema-go`,

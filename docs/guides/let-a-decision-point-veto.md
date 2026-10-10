@@ -107,7 +107,8 @@ guardana-gateway doctor --config gateway.yaml
 ```
 
 With every earlier check `ok`, the last line is `pdp`. `doctor` reads the decision point's published
-metadata, `/.well-known/authzen-configuration`, and compares it with your
+metadata, `/.well-known/authzen-configuration` followed by the identifier's
+path, and compares it with your
 identifier and evaluation endpoint: `ok` when it agrees, `fail` when it does
 not or leaves one out, `unknown` when it cannot be read or either is not a
 string. Only `doctor` reads it, and the plane

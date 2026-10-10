@@ -140,8 +140,7 @@ nothing to run in this image.</li>
 to a loopback IP literal, which here is the container itself.</li>
 <li><code>policy.state_dir: /var/lib/guardana/floors</code>, a volume that outlives the
 container, beside the spool and the approvals directory. Make it on the
-host with <code>guardana-control policy state init --kind plane</code>, then
-<code>chown -R 65532</code> it: the plane refuses a floor directory another user
+host with <code>guardana-control policy state init --kind plane --bundle-id &lt;bundle id&gt; floors</code>, then <code>chown -R 65532 floors</code>: the plane refuses a floor directory another user
 owns. A volume that does not outlive the container protects nothing: a
 floor made anew at each start takes any older bundle.</li>
 <li>The configuration directory owned by 65532, its files with one name each,

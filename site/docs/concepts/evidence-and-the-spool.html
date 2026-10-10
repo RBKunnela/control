@@ -234,8 +234,12 @@ that error depends on whether the effect has happened:</p>
 <td>a read its decision and mode let run runs unrecorded and is counted, unless its trail is held: a read that holds or resumes is blocked like a material call; its closing event is not attempted either, and such a call is never held for an approval</td>
 </tr>
 <tr>
-<td><code>ACTION_COMPLETED</code>, <code>ACTION_FAILED</code></td>
+<td><code>ACTION_COMPLETED</code>, <code>ACTION_FAILED</code> of a call that was sent</td>
 <td>the result is delivered anyway, the failure is counted, and the enforcement point takes no material call until an append succeeds</td>
+</tr>
+<tr>
+<td><code>ACTION_FAILED</code> of a call that was not sent</td>
+<td>the error is returned and counted as a failure before an effect; material calls go on</td>
 </tr>
 </tbody>
 </table>
@@ -311,8 +315,8 @@ the exporter work in records from there.</p>
 </tr>
 <tr>
 <td>Open</td>
-<td>the directory is locked for this process, every segment and the quarantine are read and checked, a torn tail of the last segment is cut and counted as truncated</td>
-<td><code>ErrLocked</code> for a directory another spool holds; <code>ErrCorrupt</code> for a record that does not check anywhere but that tail, or a segment out of sequence, with nothing deleted; <code>ErrForeignFile</code> for a file that is not the spool's, a segment or quarantine with a second name, another account's, or one the group or others may write among them</td>
+<td>the directory is locked for this process, every segment and the quarantine are read and checked, a torn tail of the last segment or of the quarantine is cut and counted as truncated</td>
+<td><code>ErrLocked</code> for a directory another spool holds; <code>ErrCorrupt</code> for a record that does not check anywhere but those tails, or a segment out of sequence, with nothing deleted; <code>ErrForeignFile</code> for a file that is not the spool's, a segment or quarantine with a second name, another account's, or one the group or others may write among them</td>
 </tr>
 <tr>
 <td>Break</td>

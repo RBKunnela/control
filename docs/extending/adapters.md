@@ -55,7 +55,7 @@ failing:
 | Call | Means |
 | --- | --- |
 | `Admit(ctx, Admission) Disposition` | decide one proposed action. There is no error return: whatever the plane cannot do is a block that names its cause, and the zero `Disposition` blocks |
-| `Close(ctx, disposition, sent, result) error` | the call ran; here are the bytes that went and what came back. An error means the record is not durable, or that the bytes sent were not the authorized ones (`ErrExecutedArgsMismatch`), which the record says |
+| `Close(ctx, disposition, sent, result) error` | the call ran; here are the bytes that went and what came back. An error means the record is not durable, or that the bytes sent were not the authorized ones (`ErrExecutedArgsMismatch`), which the record says; `ErrNothingSent` for nil bytes, after the execution is aborted; `ErrNotMinted` for a disposition this plane did not mint or closed already |
 | `Abort(ctx, disposition, cause) error` | the call did not go, and the cause says why: the adapter's own pre-send check, an obligation it applies, a call it cannot route, a call its protocol cannot express |
 | `Preview(ctx, Admission) *Decision` | what a call would be decided, recording and holding nothing. It is what shaping a listing asks |
 
@@ -88,8 +88,7 @@ adapter that observes while the operator believes it enforces.
    before anything runs: a transport it does not serve, an identity that claims
    what only a credential may say, two upstreams with one name, an incomplete
    classification.
-2. **Build the plane.** `gateway.New` takes the adapter, reads its capabilities
-   once, checks them against the mode and builds the kernel with the applicable
+2. **Build the plane.** `gateway.New` takes the adapter, reads its capabilities, checks them against the mode and builds the kernel with the applicable
    obligations derived from them.
 3. **Start.** The adapter connects what it talks to and reads what it needs to
    classify calls. An upstream it cannot reach fails the start rather than

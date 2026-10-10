@@ -112,8 +112,8 @@ What the plane does today:
   tool definition's fingerprint; the tool's own annotations never classify
   (`adapters/mcp/manifest.go`; `TestOverrideMustPinTheFingerprint`).
 - The upstream receives exactly the bytes that were authorized. A disposition
-  whose digest does not match its bytes is never sent, and a mismatch halts
-  material calls until the plane restarts (`internal/gateway/close.go`;
+  whose digest does not match its bytes is aborted unsent; sent bytes that
+  differ halt material calls until the plane restarts (`internal/gateway/close.go`;
   `TestMismatchNeverSends`, `TestCloseRecordsAMismatchAndHaltsMaterialCalls`).
 - An approval runs one call, with the bytes and bundle it was given for, once,
   before it expires (`internal/gateway/resume.go`;
@@ -202,7 +202,8 @@ What it does not do:
 
 - **It does not judge what a result says.** Whatever a server returns,
   injected instructions included, reaches the agent as it was sent, but for the
-  plane's own `_meta` keys and an answer that quotes a credential the plane
+  plane's own `_meta` keys, an answer asking for input, which ends in a fixed
+  error, and an answer that quotes a credential the plane
   sends, which is withheld (below). The plane records a hash of a result it can
   encode.
 - A tool the agent is shown comes with its description as the server wrote

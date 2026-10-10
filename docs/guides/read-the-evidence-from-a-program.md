@@ -38,9 +38,9 @@ Each line of `export.jsonl` is one JSON object with a `type`: a `header`, one
 `event` per event, a `gap` for a line that is not one readable event or reuses
 an event id with other content, a `duplicate` for a line repeated exactly, and
 a `trailer`. An event record carries the file's line as it is, never encoded
-again. The exit status is 0 when nothing was refused and nothing is missing, 1
-when the export is whole but holds a gap or a conflicting id, and 2 when it was
-refused, with no trailer written. An export with no trailer was cut short.
+again. It exits 0 with nothing refused and no gap, even if a limit ended it early, 1
+for a whole export with a gap or a conflicting id, and 2 when refused, with no
+trailer. An export with no trailer was cut short.
 
 ### 2. Resume where the last one stopped
 

@@ -8,7 +8,7 @@ covers: [cmd/guardana-gateway/serve.go, cmd/guardana-gateway/adapter.go, cmd/gua
 # Failure modes
 
 Each row says whether the plane blocks the call, its code, what the agent
-gets, whether the plane recovers without an operator, and the test that makes
+gets, whether the plane recovers alone, and the test that makes
 the failure happen; the sections say what the trail holds. The `chaos_` tests
 of `cmd/guardana-gateway/` run the built binary in `ENFORCE` against
 listeners, files and a child process that really fail. Nothing here is a
@@ -17,7 +17,7 @@ security boundary ([status](../status.md)).
 | Failure | The call | Reason code | The agent gets | Recovers by itself | Test |
 | --- | --- | --- | --- | --- | --- |
 | Collector gone, then back | runs | none | the upstream's answer | yes | `TestACollectorThatIsGoneBlocksNoCallAndGetsEveryRecordBack` |
-| Spool full | blocked before its effect | `EVIDENCE_UNAVAILABLE` | a tool result with `isError: true` and the code | yes, once draining frees the budget; quarantined records count until the operator removes them | `TestAFullSpoolBlocksCallsUntilTheCollectorDrainsIt` |
+| Spool full | blocked before its effect | `EVIDENCE_UNAVAILABLE` | a tool result with `isError: true` and the code | yes, once draining frees room; quarantined records count until `quarantine.log` is removed with the plane stopped | `TestAFullSpoolBlocksCallsUntilTheCollectorDrainsIt` |
 | Decision point silent | blocked | `PDP_TIMEOUT` | `isError` and the code | yes, each call asks again | `TestAnAskPastTheConfiguredTimeoutIsATimeout`, `TestEveryEffectClassUnderEveryAnswer` |
 | Decision point wrong or gone | blocked | `PDP_ANSWER_REFUSED`, `PDP_UNAVAILABLE` | `isError` and the code | yes, each call asks again | `TestAWrongOrAbsentDecisionPointBlocksOnARunningPlane` |
 | `stdio` upstream dies mid-call | sent once, never retried | none | a JSON-RPC error | no: restart the plane | `TestAStdioUpstreamThatDiesMidCallIsNeverASuccess` |

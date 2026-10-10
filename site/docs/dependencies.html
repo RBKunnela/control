@@ -173,8 +173,8 @@ middleware, the transports' concurrency helpers, system calls and its rate
 limiter. They sit in the request path with the module that brings them, and a
 bump to any of them is read the same way.</li>
 </ul>
-<p>Beside those, code that ships imports only protobuf; <code>go list -deps ./adapters/mcp</code> names the set above and nothing more. The test-only entry below
-is the only other module this repository imports itself. <code>examples/evidence-report</code>
+<p>Beside those, code that ships imports only protobuf; <code>go list -deps ./adapters/mcp</code> names the set above and nothing more. The test-only entry and Goldmark, both below, are the only other modules this
+repository imports itself. <code>examples/evidence-report</code>
 is a module of its own that requires this one through a <code>replace</code>, so it reaches
 protobuf and nothing else, and ships in no binary
 (<a href="/docs/adr/0037-an-evidence-consumer-in-a-module-of-its-own">ADR-0037</a>). There is no database
@@ -267,7 +267,7 @@ binary and none is in the request path.</p>
 </tr>
 </tbody>
 </table>
-<p>Every other module in <code>go.mod</code> is marked <code>// indirect</code> and arrives through
+<p>Every other module in <code>go.mod</code> but Goldmark (below) is marked <code>// indirect</code> and arrives through
 those three or through the MCP module: <code>golang.org/x/mod</code>, <code>golang.org/x/sync</code>,
 <code>golang.org/x/sys</code>, <code>golang.org/x/telemetry</code>, <code>golang.org/x/tools</code> and
 <code>golang.org/x/vuln</code> through the tools; <code>github.com/google/jsonschema-go</code>,

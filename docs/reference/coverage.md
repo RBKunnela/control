@@ -25,7 +25,8 @@ guardana-control coverage --inventory <file> [--plane <config> [--evidence <expo
 | Flag | What it reads |
 | --- | --- |
 | `--inventory` | the operator's inventory below, once; a file another account or a group can write is refused |
-| `--plane` | a plane's configuration, refused unless this account or root owns it and its directory and others cannot write them; read without this shell's environment |
+| `--plane` | a plane's configuration, refused unless this account or root owns it and its directory and others cannot write them, a sticky directory or root's
+on a read-only mount excepted; read without this shell's environment |
 | `--source`, `--log` | a source descriptor and its observation log's directory, paired in order ([observations](observations.md)) |
 | `--evidence` | the evidence export of the `--plane` before it, as `guardana-gateway trail export` writes it ([contracts](../contracts.md#the-evidence-export)); at most one per plane, refused when another account or a group can write it |
 

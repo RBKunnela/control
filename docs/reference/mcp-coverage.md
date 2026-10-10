@@ -66,11 +66,11 @@ when it is not `none` in a mode that does not enforce.
 | `annotate` | refused at start | each tool carries the verdict a call to it would get, under the gateway's `_meta` key |
 | `hide` | refused at start | a tool the preview denies, and every unclassified tool, is omitted |
 
-A preview is one decision made with no arguments, so a tool whose
-`resource_from` reads the resource from the arguments cannot be decided before
-the call exists. Such a tool stays in the list, and under `annotate` it is marked
-`DECIDED_PER_CALL`, unless a rule denies it without its arguments. Under `hide` it stays too:
-shaping subtracts what policy denies, never what it could not decide.
+A preview decides a tool with no arguments, so with no resource id. A tool the
+policy decides without that id carries its verdict. One whose effect class or
+rules need the id stays in the list, marked `DECIDED_PER_CALL` under
+`annotate` unless a rule denies it without its arguments, and kept under
+`hide`: shaping subtracts what policy denies, never what it could not decide.
 
 ## The codes the adapter mints
 

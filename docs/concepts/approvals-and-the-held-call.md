@@ -116,7 +116,7 @@ counted on `/healthz`:
 | --- | --- | --- |
 | an entry left `resuming` or `closing` by a plane that stopped mid-close | nothing: what landed on that trail is not something this plane can say | `holds_unmeasured`, and `doctor` names it |
 | an entry that will not decode | nothing, and the pass is not complete | `holds_unmeasured`, `reconcile_incomplete` |
-| `approvals.reconcile_max` entries read | the pass stops and reports itself unmeasured rather than done | `reconcile_incomplete` |
+| more journal entries than `approvals.reconcile_max` | the pass stops and reports itself unmeasured rather than done | `reconcile_incomplete` |
 
 A running plane that cannot write a held trail's closing record leaves that
 trail open, keeps its request id reserved until the plane restarts so no other

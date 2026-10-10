@@ -37,7 +37,7 @@ flowchart TD
     H --> I["A non-advisory obligation nobody here applies is DENY"]
     I --> V{"Verdict: any DENY wins, then any cause is INDETERMINATE, then what the rules concluded"}
     R --> T["Action: fixed for the four determinate verdicts, the fail-closed table for INDETERMINATE"]
-    U --> T
+        U --> V
     V --> T
 ```
 

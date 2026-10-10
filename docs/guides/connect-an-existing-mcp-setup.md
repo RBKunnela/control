@@ -96,8 +96,8 @@ guardana-gateway doctor --config plane.yaml
 
 The line to read is `upstreams`: `14 tool(s) listed, 14 classified, 0
 unclassified`. Each override pins one tool's definition by its fingerprint and
-says what the tool does: `READ` or `WRITE`, the resource it touches and where
-in the arguments that resource sits. The classification is yours. The server
+says what the tool does: `READ` or `WRITE`, the resource it touches and, for most, where in the arguments it
+sits. The classification is yours. The server
 marks its tools `readOnlyHint`, and the profile agrees with it, but a hint is
 the server's claim, never the plane's authority.
 

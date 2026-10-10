@@ -22,8 +22,9 @@ returned and judges nothing itself
   the plane's own blocks, such as a pause, counted by reason code.
 - The expected steps in the procedure's order, each with the numbers of its
   calls, or marked not seen.
-- Each finding with its rule, verdict, escalation, id, under a `0.2`
-  procedure the run it names, and the numbers of the calls it cites.
+- The first 1000 findings, each with its rule, verdict, escalation, id, under
+  a `0.2` procedure the run it names, and the numbers of the calls it cites;
+  and how many more there are.
 - The observed calls: number, mark, request or observation id, tool and
   upstream, step, run, time, export, outcome with the approval and the reason
   codes, resource, and the findings that cite the call.

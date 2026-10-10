@@ -82,7 +82,7 @@ them:
 | every call, while a configured stop list cannot be read or trusted | `INDETERMINATE` | `STOP_STATE_UNAVAILABLE` | a read extends the list accepted |
 | a call nothing classifies, in every mode but `OBSERVE` | `INDETERMINATE` | `ACTION_UNCLASSIFIED` | the operator classifies it |
 | a material call after an execution ran with bytes that were not authorized | `DENY` | `EXECUTED_ARGS_MISMATCH` | the enforcement point restarts |
-| a material call after a closing event the sink refused | `INDETERMINATE` | `EVIDENCE_UNAVAILABLE` | an append succeeds |
+| a material call after the sink refused the closing event of a call that was sent | `INDETERMINATE` | `EVIDENCE_UNAVAILABLE` | an append succeeds |
 | a call with no opened run of its identity where runs are presented, one whose run's state cannot be read, or one whose run the id source cannot name | `INDETERMINATE` | `EVIDENCE_UNAVAILABLE` | the run resolves and its state reads, or the id source names it |
 | a call whose producer sent a run-context tag under the reserved `flow.v` prefix, `OBSERVE` included, after the mode | `INDETERMINATE` | the code of the call's refusal, `INVALID_FIELD_VALUE` for the tag alone | the producer stops sending it |
 | an execution whose opened run expired before it started, or whose run's state cannot be raised, after the mode | `INDETERMINATE` | `EVIDENCE_UNAVAILABLE` | a run that is open, and a raise that succeeds |

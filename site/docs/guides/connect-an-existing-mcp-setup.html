@@ -172,8 +172,8 @@ is what step 9 reads.</p>
 <pre><code>guardana-gateway doctor --config plane.yaml
 </code></pre>
 <p>The line to read is <code>upstreams</code>: <code>14 tool(s) listed, 14 classified, 0 unclassified</code>. Each override pins one tool's definition by its fingerprint and
-says what the tool does: <code>READ</code> or <code>WRITE</code>, the resource it touches and where
-in the arguments that resource sits. The classification is yours. The server
+says what the tool does: <code>READ</code> or <code>WRITE</code>, the resource it touches and, for most, where in the arguments it
+sits. The classification is yours. The server
 marks its tools <code>readOnlyHint</code>, and the profile agrees with it, but a hint is
 the server's claim, never the plane's authority.</p>
 <p>A tool no override classifies, or one whose definition changed since its

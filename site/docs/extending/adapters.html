@@ -154,7 +154,7 @@ failing:</p>
 </tr>
 <tr>
 <td><code>Close(ctx, disposition, sent, result) error</code></td>
-<td>the call ran; here are the bytes that went and what came back. An error means the record is not durable, or that the bytes sent were not the authorized ones (<code>ErrExecutedArgsMismatch</code>), which the record says</td>
+<td>the call ran; here are the bytes that went and what came back. An error means the record is not durable, or that the bytes sent were not the authorized ones (<code>ErrExecutedArgsMismatch</code>), which the record says; <code>ErrNothingSent</code> for nil bytes, after the execution is aborted; <code>ErrNotMinted</code> for a disposition this plane did not mint or closed already</td>
 </tr>
 <tr>
 <td><code>Abort(ctx, disposition, cause) error</code></td>
@@ -226,8 +226,7 @@ adapter that observes while the operator believes it enforces.</p>
 before anything runs: a transport it does not serve, an identity that claims
 what only a credential may say, two upstreams with one name, an incomplete
 classification.</li>
-<li><strong>Build the plane.</strong> <code>gateway.New</code> takes the adapter, reads its capabilities
-once, checks them against the mode and builds the kernel with the applicable
+<li><strong>Build the plane.</strong> <code>gateway.New</code> takes the adapter, reads its capabilities, checks them against the mode and builds the kernel with the applicable
 obligations derived from them.</li>
 <li><strong>Start.</strong> The adapter connects what it talks to and reads what it needs to
 classify calls. An upstream it cannot reach fails the start rather than

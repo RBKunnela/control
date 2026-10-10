@@ -50,8 +50,8 @@ operations the conventions name that this importer does not map,
 
 Only these are copied: the operation, the name above, `gen_ai.provider.name`,
 `server.address`, `error.type` and the run attribute. A copied string longer
-than 256 bytes, made only of whitespace, or holding a control, format,
-separator, private-use or noncharacter code point or U+FFFD, is dropped and
+than 256 bytes, made only of whitespace, or holding a control, format, line or
+paragraph separator, private-use or noncharacter code point or U+FFFD, is dropped and
 counted. A span's name and its status message are never copied.
 
 | Field | From the span |
@@ -60,7 +60,7 @@ counted. A span's name and its status message are never copied.
 | `received_time` | the import's own clock reading, the same on every record of one import |
 | `stage` | failed when the status is error or `error.type` is present, completed when it ended, unknown otherwise |
 | `outcome.status` | the status as sent: unset, ok or error |
-| `correlation.trace_id`, `span_id`, `parent_span_id` | the span's ids, lowercase hex as the gateway records a call's trace; a span with a missing, zero or upper-case id, or a status code outside 0 to 2, is refused |
+| `correlation.trace_id`, `span_id`, `parent_span_id` | the span's ids, lowercase hex as the gateway records a call's trace; a span with no trace or span id, or a zero or upper-case id, or a status code outside 0 to 2, is refused |
 | `correlation.basis` | `BASIS_CLAIMED` when the run attribute holds `run-` and 32 lowercase hex digits, the form of a run an operator opened; any other value is dropped and counted, and the basis is `BASIS_NONE`. Whether the run exists is not checked |
 
 ## What an import drops
@@ -111,7 +111,7 @@ the bytes after it are left for the next import, since the exporter may still
 be writing them. A line with an unknown member, a member twice, an attribute
 twice, a `null`, an enum spelled as a string, nesting deeper than 32 or more
 than 262,144 array elements is refused, and every span in it is counted as
-refused. A line over 16 MiB is read through and refused without being held. An input over 256 MiB is
+refused. A line over 16 MiB is refused. The import reads its whole input into memory. An input over 256 MiB is
 refused whole. Exit 0: every span read was imported, skipped or a
 duplicate. Exit 1: something was refused or conflicted; the report says
 what. Exit 2: the import did not complete, for a usage error, a descriptor or

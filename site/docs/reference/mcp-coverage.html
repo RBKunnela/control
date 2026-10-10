@@ -267,11 +267,11 @@ when it is not <code>none</code> in a mode that does not enforce.</p>
 </tr>
 </tbody>
 </table>
-<p>A preview is one decision made with no arguments, so a tool whose
-<code>resource_from</code> reads the resource from the arguments cannot be decided before
-the call exists. Such a tool stays in the list, and under <code>annotate</code> it is marked
-<code>DECIDED_PER_CALL</code>, unless a rule denies it without its arguments. Under <code>hide</code> it stays too:
-shaping subtracts what policy denies, never what it could not decide.</p>
+<p>A preview decides a tool with no arguments, so with no resource id. A tool the
+policy decides without that id carries its verdict. One whose effect class or
+rules need the id stays in the list, marked <code>DECIDED_PER_CALL</code> under
+<code>annotate</code> unless a rule denies it without its arguments, and kept under
+<code>hide</code>: shaping subtracts what policy denies, never what it could not decide.</p>
 <h2 id="the-codes-the-adapter-mints">The codes the adapter mints</h2>
 <p>A <code>tools/call</code> answers a block and a pending state as a tool result with
 <code>isError: true</code>, the fields below in its <code>_meta</code> under <code>&lt;ns&gt;/</code> and no

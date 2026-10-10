@@ -228,8 +228,8 @@ mode but <code>OBSERVE</code>. Classification is the operator's override pinned 
 tool definition's fingerprint; the tool's own annotations never classify
 (<code>adapters/mcp/manifest.go</code>; <code>TestOverrideMustPinTheFingerprint</code>).</li>
 <li>The upstream receives exactly the bytes that were authorized. A disposition
-whose digest does not match its bytes is never sent, and a mismatch halts
-material calls until the plane restarts (<code>internal/gateway/close.go</code>;
+whose digest does not match its bytes is aborted unsent; sent bytes that
+differ halt material calls until the plane restarts (<code>internal/gateway/close.go</code>;
 <code>TestMismatchNeverSends</code>, <code>TestCloseRecordsAMismatchAndHaltsMaterialCalls</code>).</li>
 <li>An approval runs one call, with the bytes and bundle it was given for, once,
 before it expires (<code>internal/gateway/resume.go</code>;
@@ -317,7 +317,8 @@ failure reaches neither the agent nor the log with the URL
 <ul>
 <li><strong>It does not judge what a result says.</strong> Whatever a server returns,
 injected instructions included, reaches the agent as it was sent, but for the
-plane's own <code>_meta</code> keys and an answer that quotes a credential the plane
+plane's own <code>_meta</code> keys, an answer asking for input, which ends in a fixed
+error, and an answer that quotes a credential the plane
 sends, which is withheld (below). The plane records a hash of a result it can
 encode.</li>
 <li>A tool the agent is shown comes with its description as the server wrote

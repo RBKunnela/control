@@ -186,7 +186,8 @@ system's roots; there is no setting for a private certificate authority.</p>
 <pre><code>guardana-gateway doctor --config gateway.yaml
 </code></pre>
 <p>With every earlier check <code>ok</code>, the last line is <code>pdp</code>. <code>doctor</code> reads the decision point's published
-metadata, <code>/.well-known/authzen-configuration</code>, and compares it with your
+metadata, <code>/.well-known/authzen-configuration</code> followed by the identifier's
+path, and compares it with your
 identifier and evaluation endpoint: <code>ok</code> when it agrees, <code>fail</code> when it does
 not or leaves one out, <code>unknown</code> when it cannot be read or either is not a
 string. Only <code>doctor</code> reads it, and the plane

@@ -40,8 +40,8 @@ is published with each release, whose notes name its digest.
      to a loopback IP literal, which here is the container itself.
    - `policy.state_dir: /var/lib/guardana/floors`, a volume that outlives the
      container, beside the spool and the approvals directory. Make it on the
-     host with `guardana-control policy state init --kind plane`, then
-     `chown -R 65532` it: the plane refuses a floor directory another user
+     host with `guardana-control policy state init --kind plane --bundle-id <bundle id>
+     floors`, then `chown -R 65532 floors`: the plane refuses a floor directory another user
      owns. A volume that does not outlive the container protects nothing: a
      floor made anew at each start takes any older bundle.
    - The configuration directory owned by 65532, its files with one name each,

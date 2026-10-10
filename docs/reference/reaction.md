@@ -106,8 +106,7 @@ as the list stands under its lock, if:
 - the route permits it: its tenant, procedure and rule are a rule's.
 
 A finding the list names in any line writes nothing again, so a lift holds:
-what a run did while stopped is covered, and only a new finding after the lift
-stops it again. A stop expires at `react`'s clock plus the rule's lifetime,
+what a run did while stopped is covered; only a finding not yet listed, of any age, stops it again. A stop expires at `react`'s clock plus the rule's lifetime,
 never after the run's expiry rounded up to the second. `react` prints each line it wrote and one
 count line, and exits 0 when every finding the route allows is on the list,
 and 1 on any refusal, naming each finding it could not write. An interrupt, or

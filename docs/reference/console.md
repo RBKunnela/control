@@ -59,7 +59,8 @@ closed cleanly.
 - A trade at `/api/session` without the printed token, or once it was traded
   or is ten minutes old: 401. Any other request to the page's API without the
   session token: 401.
-- A request the browser says came from another origin or another site: 403.
+- A request to the page's API, with its token, that the browser says came from
+  another origin or another site: 403.
 - A write whose body is not `application/json`: 415; one over 4 KiB: 413; one
   that is not valid UTF-8, with a `\u` escape of half a UTF-16 pair that no
   other half completes, with a member the write does not take, a member name

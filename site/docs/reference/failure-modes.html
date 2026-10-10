@@ -107,7 +107,7 @@
 <main id="main" class="prose">
 <h1 id="failure-modes">Failure modes</h1>
 <p>Each row says whether the plane blocks the call, its code, what the agent
-gets, whether the plane recovers without an operator, and the test that makes
+gets, whether the plane recovers alone, and the test that makes
 the failure happen; the sections say what the trail holds. The <code>chaos_</code> tests
 of <code>cmd/guardana-gateway/</code> run the built binary in <code>ENFORCE</code> against
 listeners, files and a child process that really fail. Nothing here is a
@@ -137,7 +137,7 @@ security boundary (<a href="/docs/status">status</a>).</p>
 <td>blocked before its effect</td>
 <td><code>EVIDENCE_UNAVAILABLE</code></td>
 <td>a tool result with <code>isError: true</code> and the code</td>
-<td>yes, once draining frees the budget; quarantined records count until the operator removes them</td>
+<td>yes, once draining frees room; quarantined records count until <code>quarantine.log</code> is removed with the plane stopped</td>
 <td><code>TestAFullSpoolBlocksCallsUntilTheCollectorDrainsIt</code></td>
 </tr>
 <tr>

@@ -186,5 +186,5 @@ and fourteen times the bytes of the hundred-rule document without them.
 | Not | Because |
 | --- | --- |
 | A target or a service level | A later run compares with these only on the same machine in the same state. |
-| A gate | `make quality` fails on no duration, and a build that failed on one would be reporting on the host rather than on the change. |
-| A deployment's latency | The round trip runs in one process, with no network, TLS, real upstream or collector. |
+| A gate | `make quality` fails on no duration: a build failing on one would judge the host, not the change. |
+| A deployment's latency | The round trip runs in one process over loopback, with no TLS and no real upstream or collector. |

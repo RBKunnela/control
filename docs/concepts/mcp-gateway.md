@@ -242,7 +242,7 @@ open; past either bound a call blocks with `EVIDENCE_UNAVAILABLE`.
 | The bytes sent were not the authorized ones | `ACTION_FAILED` | `tool_protocol_status: EXECUTED_ARGS_MISMATCH`, and the plane takes no further material call until it restarts |
 | The adapter did not send, because its own check, an obligation, routing or translation refused | `ACTION_FAILED` | the cause's own reason code; the comparison did not run |
 | The answer quoted a credential the plane sends | the record its outcome gets; the agent gets a fixed answer | `tool_protocol_status: withheld:` and the status it would have had, the upstream's own hash ([ADR-0042](../adr/0042-an-answer-that-quotes-a-configured-credential-is-withheld.md)) |
-| The spool refused the closing record | the result is delivered anyway | counted, and material calls are refused until an append succeeds |
+| The spool refused the closing record of a call that was sent | the result is delivered anyway | counted, and material calls are refused until an append succeeds |
 
 ## An answer that quotes a credential
 

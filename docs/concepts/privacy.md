@@ -65,7 +65,7 @@ approver typed them.
 
 `ACTION_STARTED` carries no payload. `ACTION_COMPLETED` and `ACTION_FAILED`
 carry the result: its status, when it started and ended, the protocol's own
-status (`ok`, `isError`, `timeout`, `error`, `unhashable` for a result that
+status (`ok`, `isError`, `input_required` for an upstream that asked for input, `timeout`, `error`, `unhashable` for a result that
 cannot be encoded, whose status is then `UNKNOWN`, or a JSON-RPC error code,
 each after `withheld:` when the answer quoted a credential the plane sends and
 the agent was given a fixed answer instead), a

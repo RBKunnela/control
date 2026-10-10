@@ -161,7 +161,7 @@ another digest is refused.</p>
 </tr>
 <tr>
 <td><code>exceptions</code></td>
-<td>at most 128, each an <code>id</code>, the rule it <code>waives</code>, a <code>step</code>, or for <code>STEP_OUTSIDE_PROCEDURE</code> a <code>tool</code> and <code>upstream</code> the procedure lacks, and one <code>condition</code>: <code>approval: granted</code>, <code>step_failed: &lt;step&gt;</code> or <code>reason: &lt;code&gt;</code>, a registered reason code. Only that rule, on an approval, and the three about steps take one, a skipped step not on an approval</td>
+<td>at most 128, each an <code>id</code>, the rule it <code>waives</code>, a <code>step</code>, or for <code>STEP_OUTSIDE_PROCEDURE</code> a <code>tool</code> and <code>upstream</code> the procedure lacks, and one <code>condition</code>: <code>approval: granted</code>, <code>step_failed: &lt;step&gt;</code> or <code>reason: &lt;code&gt;</code>, a code on the call's policy decision. Only that rule, on an approval, and the three about steps take one, a skipped step not on an approval</td>
 </tr>
 <tr>
 <td><code>children</code></td>
@@ -173,7 +173,7 @@ another digest is refused.</p>
 </tr>
 <tr>
 <td><code>max_denials</code>, <code>deadline_seconds</code></td>
-<td>at least 1 each; leaving one out turns its rule off</td>
+<td>at least 1; absent, its rule is off</td>
 </tr>
 </tbody>
 </table>

@@ -553,11 +553,11 @@ and fourteen times the bytes of the hundred-rule document without them.</p>
 </tr>
 <tr>
 <td>A gate</td>
-<td><code>make quality</code> fails on no duration, and a build that failed on one would be reporting on the host rather than on the change.</td>
+<td><code>make quality</code> fails on no duration: a build failing on one would judge the host, not the change.</td>
 </tr>
 <tr>
 <td>A deployment's latency</td>
-<td>The round trip runs in one process, with no network, TLS, real upstream or collector.</td>
+<td>The round trip runs in one process over loopback, with no TLS and no real upstream or collector.</td>
 </tr>
 </tbody>
 </table>
