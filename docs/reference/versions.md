@@ -43,6 +43,7 @@ version. [status.md](../status.md) is the inventory.
 | Procedure test cases (`schema_version`) | — | `0.1` | `experimental` | [test a procedure](../guides/test-a-procedure.md#2-write-a-case) |
 | Finding records and log (`guardana.control.finding.v1alpha1`) | `0.1`, `0.2` | `0.1`, `0.2` | `experimental` | [supervision.md](supervision.md#the-finding-record-and-its-log) |
 | Findings export (`guardana.control.findings-export`) | `0.1` | — | `experimental` | [supervision.md](supervision.md#findings-export) |
+| Enforcement API (`guardana.control.enforce.v1alpha1`) | — | — | `experimental` | [contracts.md](../contracts.md#the-enforcement-api) |
 | Reaction route (`kind`) | — | `reaction-route/v1alpha1` | `experimental` | [contracts.md](../contracts.md#the-route) |
 | Stop list (`version`) | `1.0` | `1.0` | `experimental` | [contracts.md](../contracts.md#the-stop-list) |
 | Lift (`kind`, `version`) | `reaction-lift/v1alpha1`, `1.0` | `reaction-lift/v1alpha1`, `1.0` | `experimental` | [contracts.md](../contracts.md#the-lift) |

@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	enforcev1alpha1 "github.com/guardana/control/api/gen/go/guardana/control/enforce/v1alpha1"
 	findingv1alpha1 "github.com/guardana/control/api/gen/go/guardana/control/finding/v1alpha1"
 	observev1 "github.com/guardana/control/api/gen/go/guardana/control/observe/v1alpha1"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
@@ -102,6 +103,9 @@ func versionSpecs() map[string]versionSpec {
 				{"internal/runs/strict.go#SchemaVersion", writes},
 				{"internal/runs/strict.go#checkSchemaVersion/major", readsMajor},
 			},
+		},
+		"Enforcement API": {
+			name: func() string { return protoPackage(&enforcev1alpha1.AdmitRequest{}) },
 		},
 		"Observation records and log": {
 			name: func() string { return protoPackage(&observev1.Record{}) },

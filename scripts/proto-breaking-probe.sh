@@ -4,19 +4,20 @@
 # lines and blank lines aside, has to be exactly the text pinned below: one
 # module, the STANDARD lint rules with ignore comments in the protos refused,
 # the breaking rules `use: [FILE]` and `ignore: [the observation package, the
-# finding package]`, no other rule, exception or per-module override in any
-# YAML spelling. The rules buf itself reads for the module have to be the pinned
-# list of the FILE category, so a spelling the text check missed still fails
-# and a buf upgrade that changes the category is noticed. Then, in
-# scratch copies of buf.yaml and api/proto, one field of every file of the
-# frozen v1 package is renumbered, one file per copy, and buf breaking against
-# the unchanged copy has to fail naming that field; a copy that does not
-# compile, or a failure that names something else, is not a detected break.
-# A field of every file of the unstable observation and finding packages,
-# which buf.yaml ignores (ADR-0040, ADR-0045), renumbered the same way has to
-# pass, and has to fail naming that field once that package's ignore line is
-# dropped from the copy's buf.yaml. A buf that is missing, or a file holding no
-# field this script can find to renumber, fails it.
+# finding package, the enforcement package]`, no other rule, exception or
+# per-module override in any YAML spelling. The rules buf itself reads for the
+# module have to be the pinned list of the FILE category, so a spelling the
+# text check missed still fails and a buf upgrade that changes the category is
+# noticed. Then, in scratch copies of buf.yaml and api/proto, one field of
+# every file of the frozen v1 package is renumbered, one file per copy, and
+# buf breaking against the unchanged copy has to fail naming that field; a
+# copy that does not compile, or a failure that names something else, is not a
+# detected break. A field of every file of the unstable observation, finding
+# and enforcement packages, which buf.yaml ignores (ADR-0040, ADR-0045,
+# ADR-0051), renumbered the same way has to pass, and has to fail naming that
+# field once that package's ignore line is dropped from the copy's buf.yaml. A
+# buf that is missing, or a file holding no field this script can find to
+# renumber, fails it.
 set -euo pipefail
 
 _PROBE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
@@ -36,6 +37,7 @@ command -v buf >/dev/null 2>&1 || die "buf is not on PATH; nothing was probed"
 v1=guardana/control/v1
 observe=guardana/control/observe/v1alpha1
 finding=guardana/control/finding/v1alpha1
+enforce=guardana/control/enforce/v1alpha1
 moved=4000
 
 want_config="version: v2
@@ -50,13 +52,14 @@ breaking:
     - FILE
   ignore:
     - api/proto/${observe}
-    - api/proto/${finding}"
+    - api/proto/${finding}
+    - api/proto/${enforce}"
 # Only whole comment lines are dropped: with every other line pinned, none of
 # them can sit inside a scalar, and a trailing comment fails the comparison.
 got_config="$(sed -e '/^[[:space:]]*#/d' -e '/^[[:space:]]*$/d' buf.yaml)"
 if [[ "${got_config}" != "${want_config}" ]]; then
   diff <(printf '%s\n' "${want_config}") <(printf '%s\n' "${got_config}") >&2 || true
-  die "buf.yaml is not exactly the pinned module with lint ignore comments refused, the FILE rule and the observation and finding packages ignored (< pinned, > buf.yaml)"
+  die "buf.yaml is not exactly the pinned module with lint ignore comments refused, the FILE rule and the observation, finding and enforcement packages ignored (< pinned, > buf.yaml)"
 fi
 
 want_rules="ENUM_NO_DELETE ENUM_SAME_JSON_FORMAT ENUM_SAME_TYPE ENUM_VALUE_NO_DELETE
@@ -202,5 +205,7 @@ ignored "${observe}"
 observed="${ignored_files}"
 ignored "${finding}"
 findings="${ignored_files}"
+ignored "${enforce}"
+enforced="${ignored_files}"
 
-printf 'proto-breaking-probe: v1 compared in %d file(s); observe/v1alpha1 ignored in %d file(s), finding/v1alpha1 in %d file(s)\n' "${files}" "${observed}" "${findings}"
+printf 'proto-breaking-probe: v1 compared in %d file(s); observe/v1alpha1 ignored in %d file(s), finding/v1alpha1 in %d file(s), enforce/v1alpha1 in %d file(s)\n' "${files}" "${observed}" "${findings}" "${enforced}"

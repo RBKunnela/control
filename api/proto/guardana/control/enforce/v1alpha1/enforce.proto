@@ -1,0 +1,163 @@
+// Unstable enforcement API contract, served as JSON over HTTP on a Unix
+// socket at /enforce/v1alpha1/admit, /complete and /abort. Outside the v1
+// promise: it may change without a major version. See ADR-0051.
+//
+// The JSON is the protobuf JSON mapping, decoded strictly. Every enum's zero
+// value is UNSPECIFIED. In a request, an unspecified value or a number the
+// receiver does not know is refused as malformed; in an answer, it reads as
+// its most restrictive meaning, written beside each enum.
+
+syntax = "proto3";
+
+package guardana.control.enforce.v1alpha1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "guardana/control/v1/decision.proto";
+
+// A tool's request to act. It names no effect, resource, identity or run:
+// the receiver builds the envelope from the run token and the operator's
+// tool table.
+message AdmitRequest {
+  string tool = 1;
+  // The proposed argument bytes, as bytes so that no JSON library reorders
+  // or reformats them.
+  bytes arguments = 2;
+  // Optional; at most 64 characters from [A-Za-z0-9._-]. A second admit with
+  // the key of an execution still open in the same run is refused.
+  string request_key = 3;
+  // Optional W3C trace context, recorded as a claimed correlation.
+  string traceparent = 4;
+}
+
+// What the client does with an admit. Unspecified, or an outcome the client
+// does not know, reads as BLOCK.
+enum Outcome {
+  OUTCOME_UNSPECIFIED = 0;
+  // Send exactly Execution.authorized_arguments, then complete or abort.
+  OUTCOME_EXECUTE = 1;
+  // Send nothing.
+  OUTCOME_BLOCK = 2;
+  // Send nothing now; the call is held for approval.
+  OUTCOME_PENDING = 3;
+}
+
+message AdmitResponse {
+  Outcome outcome = 1;
+  guardana.control.v1.Decision decision = 2;
+  // Set only with OUTCOME_EXECUTE.
+  Execution execution = 3;
+  // Set only with OUTCOME_PENDING.
+  Pending pending = 4;
+}
+
+message Execution {
+  // Opaque, single use, scoped to the run that admitted it.
+  string handle = 1;
+  google.protobuf.Timestamp expires_at = 2;
+  // The bytes to send. They differ from the proposed ones when a rewriting
+  // obligation applied; the client compares bytes, never a digest.
+  bytes authorized_arguments = 3;
+  // An obligation type the client does not know is a reason to abort, never
+  // to execute.
+  repeated guardana.control.v1.Obligation obligations = 4;
+}
+
+// A held call. The client resumes by admitting the same tool and bytes in
+// the same run after retry_after; it never presents the approval.
+message Pending {
+  string approval_id = 1;
+  string action_digest = 2;
+  google.protobuf.Timestamp expires_at = 3;
+  google.protobuf.Duration retry_after = 4;
+}
+
+// What the client knows of the effect.
+enum CompletionStatus {
+  COMPLETION_STATUS_UNSPECIFIED = 0;
+  COMPLETION_STATUS_SUCCESS = 1;
+  COMPLETION_STATUS_FAILURE = 2;
+  // The client could not tell whether the effect happened.
+  COMPLETION_STATUS_TIMEOUT = 3;
+  COMPLETION_STATUS_CANCELLED = 4;
+  // The client could not tell whether the effect happened.
+  COMPLETION_STATUS_UNKNOWN = 5;
+}
+
+message CompleteRequest {
+  string handle = 1;
+  // The bytes that were sent, digested against the authorized envelope.
+  bytes sent_arguments = 2;
+  CompletionStatus status = 3;
+  google.protobuf.Timestamp started_at = 4;
+  google.protobuf.Timestamp ended_at = 5;
+  string result_hash = 6;
+  string side_effect_confirmation = 7;
+}
+
+// How an execution ended. Only RECORDED says the closing record landed;
+// unspecified reads as not recorded.
+enum Ending {
+  ENDING_UNSPECIFIED = 0;
+  ENDING_RECORDED = 1;
+  ENDING_RECORD_FAILED = 2;
+  // A read the operator let run unrecorded.
+  ENDING_UNRECORDED = 3;
+  // Neither completed nor aborted before the handle expired; closed as
+  // unknown.
+  ENDING_ABANDONED = 4;
+}
+
+message CompleteResponse {
+  Ending ending = 1;
+}
+
+// Why nothing was sent. Abort claims that no effect happened: a client that
+// cannot tell whether the bytes left completes with
+// COMPLETION_STATUS_UNKNOWN instead.
+enum AbortCause {
+  ABORT_CAUSE_UNSPECIFIED = 0;
+  // The authorized bytes are not the bytes the client would send.
+  ABORT_CAUSE_ARGUMENTS_DIFFER = 1;
+  // An obligation the client cannot apply.
+  ABORT_CAUSE_OBLIGATION = 2;
+  // Gave up before sending, cancelled, or could not reach the tool.
+  ABORT_CAUSE_NOT_SENT = 3;
+}
+
+message AbortRequest {
+  string handle = 1;
+  AbortCause cause = 2;
+}
+
+message AbortResponse {
+  Ending ending = 1;
+}
+
+// A refusal of the contract, answered before anything is written. Reason
+// codes stay on decisions and closing records. Unspecified, or a code the
+// client does not know, reads as a refusal of the request.
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+  // No run token, an unknown one, or one for a closed or expired run.
+  ERROR_CODE_UNAUTHENTICATED = 1;
+  // An unreadable body, an unknown field, or a value past its bound.
+  ERROR_CODE_MALFORMED = 2;
+  // A path naming a version this receiver does not serve.
+  ERROR_CODE_UNSUPPORTED_VERSION = 3;
+  // Unknown, expired, of another run, or never minted: one answer for all.
+  ERROR_CODE_HANDLE_UNKNOWN = 4;
+  // Already completed or aborted; Error.ending says how it ended.
+  ERROR_CODE_HANDLE_SPENT = 5;
+  // The request key of an execution still open in the same run.
+  ERROR_CODE_DUPLICATE_REQUEST = 6;
+  // The receiver cannot serve requests now.
+  ERROR_CODE_UNAVAILABLE = 7;
+}
+
+message Error {
+  ErrorCode code = 1;
+  string message = 2;
+  // Set only with ERROR_CODE_HANDLE_SPENT.
+  Ending ending = 3;
+}

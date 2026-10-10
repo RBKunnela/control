@@ -10,9 +10,10 @@ lint:
 breaking:
   use:
     - FILE
-  # The observation and finding packages are unstable (ADR-0040, ADR-0045);
-  # every other package is still compared. scripts/proto-breaking-probe.sh
-  # proves both.
+  # The observation, finding and enforcement packages are unstable (ADR-0040,
+  # ADR-0045, ADR-0051); every other package is still compared.
+  # scripts/proto-breaking-probe.sh proves both.
   ignore:
     - api/proto/guardana/control/observe/v1alpha1
     - api/proto/guardana/control/finding/v1alpha1
+    - api/proto/guardana/control/enforce/v1alpha1

@@ -120,6 +120,10 @@ verify one.</p>
 hooks, reviewing tool-definition changes, simulating candidate policies and
 reviewing findings with an incident export (B23–B27), with proposed
 ADR-0050. Nothing of them is built.</li>
+<li>The enforcement API contract, <code>guardana.control.enforce.v1alpha1</code>: the admit,
+complete and abort messages a tool outside MCP exchanges with the plane over
+HTTP and JSON on a Unix socket (ADR-0051). Unstable and outside the v1
+promise; <code>buf breaking</code> does not compare it.</li>
 </ul>
 <h3 id="changed">Changed</h3>
 <ul>
