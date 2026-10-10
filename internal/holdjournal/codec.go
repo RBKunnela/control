@@ -101,6 +101,9 @@ func (e Entry) check() error {
 	case e.Expires.IsZero():
 		return fmt.Errorf("%w: no expiry", ErrEntry)
 	}
+	if err := checkSchemaVersion(e.Approval.GetSchemaVersion()); err != nil {
+		return fmt.Errorf("the approval: %w", err)
+	}
 	if got := e.Approval.GetRequestId(); got != e.IDs.RequestID {
 		return fmt.Errorf("%w: the approval names request %q, the entry %q",
 			ErrEntry, cause(got), cause(e.IDs.RequestID))

@@ -42,6 +42,22 @@ verify one.
   macOS host the kernel can refuse the program's group with EPERM for a moment
   after its leader was reaped. It is now asked again for up to a second; a
   group still refused after that is reported as before.
+- Opening a findings log, an observation log or a trail file cut a torn last
+  line by the length read before the file was locked. When a second writer
+  opened the same file, cut the tail and committed a write between the first
+  one reading the length and taking the lock, the first then truncated that
+  committed write. Open now reads the length and judges the file again once
+  it holds the lock.
+- The records, markers, state and lock files under an approvals, a runs and
+  a hold journal directory were read when a group or the world could write
+  them, and all but the hold journal's also when another account owned them.
+  An account with write access to such a file could rewrite it in place,
+  granting an approval, extending a run or washing a root clean. Each is now
+  refused as a file that is not the directory's.
+- A hold journal entry was read whatever schema version its approval carried.
+  An approval of another major, or with none, now leaves the entry unreadable.
+- Closing an approvals handle while a call ran on it was a data race on whether
+  the handle was open.
 
 ## [0.10.2-alpha] - 2026-10-10
 

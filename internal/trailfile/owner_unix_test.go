@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"sync"
 	"syscall"
 	"testing"
 )
@@ -240,4 +241,103 @@ func stopCollector(t *testing.T) {
 		debug.SetMemoryLimit(limit)
 		debug.SetGCPercent(percent)
 	})
+}
+
+// openHeldBeforeLock starts an Open of path, returns once it has judged the
+// file and before it locks it, and gives back what lets it go on.
+func openHeldBeforeLock(t *testing.T, path string) (resume func() (*Writer, error)) {
+	t.Helper()
+	held, release := make(chan struct{}), make(chan struct{})
+	var first sync.Once
+	prev := ownerWanted
+	ownerWanted = func(info fs.FileInfo) int {
+		if info.Mode().IsRegular() {
+			stop := false
+			first.Do(func() { stop = true })
+			if stop {
+				close(held)
+				<-release
+			}
+		}
+		return prev(info)
+	}
+	type opened struct {
+		w   *Writer
+		err error
+	}
+	done := make(chan opened, 1)
+	go func() {
+		w, err := Open(path)
+		done <- opened{w, err}
+	}()
+	<-held
+	var r opened
+	var finish sync.Once
+	resume = func() (*Writer, error) {
+		finish.Do(func() {
+			close(release)
+			r = <-done
+		})
+		return r.w, r.err
+	}
+	t.Cleanup(func() {
+		if w, _ := resume(); w != nil {
+			_ = w.Close()
+		}
+		ownerWanted = prev
+	})
+	return resume
+}
+
+// TestOpenCutsByTheLengthItFindsUnderItsLock: a second Open takes the file
+// while the first waits to lock it, cuts the torn line and appends; the first
+// then keeps those lines and indexes them.
+func TestOpenCutsByTheLengthItFindsUnderItsLock(t *testing.T) {
+	path := trailPath(t)
+	head := lines(t, event(1))
+	writeFile(t, path, head+tornTail)
+	resume := openHeldBeforeLock(t, path)
+
+	b, err := Open(path)
+	if err != nil {
+		t.Fatalf("the second Open = %v", err)
+	}
+	mustAppend(t, b, event(2), event(3))
+	if err := b.Close(); err != nil {
+		t.Fatal(err)
+	}
+	appended := contents(t, path)
+	if len(appended) <= len(head) {
+		t.Fatalf("the second Open's append left %d bytes, no more than the %d before it", len(appended), len(head))
+	}
+
+	a, err := resume()
+	if err != nil {
+		t.Fatalf("the first Open = %v", err)
+	}
+	if got := contents(t, path); got != appended {
+		t.Errorf("after the first Open the file holds %d bytes, want the %d the second one appended", len(got), len(appended))
+	}
+	mustAppend(t, a, event(3))
+	if got := contents(t, path); got != appended {
+		t.Errorf("appending the second Open's last record again changed the file to %d bytes, want %d", len(got), len(appended))
+	}
+}
+
+// TestOpenJudgesTheFileAgainUnderItsLock: the file is judged as it is once
+// locked, not only as it was before.
+func TestOpenJudgesTheFileAgainUnderItsLock(t *testing.T) {
+	path := trailPath(t)
+	body := lines(t, event(1)) + tornTail
+	writeFile(t, path, body)
+	resume := openHeldBeforeLock(t, path)
+	if err := os.Chmod(path, 0o620); err != nil { //nolint:gosec // G302: the mode under test
+		t.Fatal(err)
+	}
+	if w, err := resume(); !errors.Is(err, ErrFileMode) || w != nil {
+		t.Errorf("Open = %v, %v; want ErrFileMode", w, err)
+	}
+	if got := contents(t, path); got != body {
+		t.Errorf("the refused Open changed the file to %d bytes, want %d", len(got), len(body))
+	}
 }

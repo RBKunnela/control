@@ -5,9 +5,11 @@ package observelog
 import (
 	"bytes"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	observev1 "github.com/guardana/control/api/gen/go/guardana/control/observe/v1alpha1"
@@ -297,5 +299,106 @@ func TestOpenRefusesAWholeLineNoWriteLeaves(t *testing.T) {
 	openLog(t, dir)
 	if got := string(contents(t, filepath.Join(dir, FileName))); got != body {
 		t.Errorf("Open changed an accepted log to %q", got)
+	}
+}
+
+// openHeldBeforeLock starts an Open of dir, returns once it has judged the
+// log file and before it locks it, and gives back what lets it go on.
+func openHeldBeforeLock(t *testing.T, dir string) (resume func() (*Log, error)) {
+	t.Helper()
+	held, release := make(chan struct{}), make(chan struct{})
+	var first sync.Once
+	prev := ownerWanted
+	ownerWanted = func(info fs.FileInfo) int {
+		if info.Mode().IsRegular() {
+			stop := false
+			first.Do(func() { stop = true })
+			if stop {
+				close(held)
+				<-release
+			}
+		}
+		return prev(info)
+	}
+	type opened struct {
+		l   *Log
+		err error
+	}
+	done := make(chan opened, 1)
+	go func() {
+		l, err := Open(dir)
+		done <- opened{l, err}
+	}()
+	<-held
+	var r opened
+	var finish sync.Once
+	resume = func() (*Log, error) {
+		finish.Do(func() {
+			close(release)
+			r = <-done
+		})
+		return r.l, r.err
+	}
+	t.Cleanup(func() {
+		if l, _ := resume(); l != nil {
+			_ = l.Close()
+		}
+		ownerWanted = prev
+	})
+	return resume
+}
+
+// TestOpenCutsByTheLengthItFindsUnderItsLock: a second Open takes the log
+// while the first waits to lock it, cuts the torn tail and commits a batch;
+// the first then keeps that batch and indexes it.
+func TestOpenCutsByTheLengthItFindsUnderItsLock(t *testing.T) {
+	dir, whole := logWithTail(t, `{`)
+	path := filepath.Join(dir, FileName)
+	resume := openHeldBeforeLock(t, dir)
+
+	b := openLog(t, dir)
+	write(t, b, report("2026-10-04T10:06:00Z"), observation(spanB, "write_file", "2026-10-04T10:06:00Z"))
+	mustDo(t, b.Close())
+	committed := contents(t, path)
+	if len(committed) <= whole {
+		t.Fatalf("the second Open's batch left %d bytes, no more than the %d before it", len(committed), whole)
+	}
+
+	a, err := resume()
+	if err != nil {
+		t.Fatalf("the first Open = %v", err)
+	}
+	if got := contents(t, path); !bytes.Equal(got, committed) {
+		t.Errorf("after the first Open the file holds %d bytes, want the %d the second one committed", len(got), len(committed))
+	}
+	if got := write(t, a, report("2026-10-04T10:07:00Z"), observation(spanB, "write_file", "2026-10-04T10:06:00Z")); got != (Written{Duplicates: 1}) {
+		t.Errorf("importing the second Open's observation again = %+v, want a duplicate", got)
+	}
+}
+
+// TestOpenJudgesTheLogFileAgainUnderItsLock: the file is judged as it is
+// once locked, not only as it was before.
+func TestOpenJudgesTheLogFileAgainUnderItsLock(t *testing.T) {
+	for name, c := range map[string]struct {
+		change func(t *testing.T, path string)
+		want   error
+	}{
+		"a mode the group may read": {func(t *testing.T, path string) {
+			mustDo(t, os.Chmod(path, 0o640)) //nolint:gosec // G302: the mode under test
+		}, ErrFileMode},
+		"a second name": {func(t *testing.T, path string) { mustDo(t, os.Link(path, path+".2")) }, ErrLinks},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir, whole := logWithTail(t, `{`)
+			path := filepath.Join(dir, FileName)
+			resume := openHeldBeforeLock(t, dir)
+			c.change(t, path)
+			if l, err := resume(); !errors.Is(err, c.want) || l != nil {
+				t.Errorf("Open = %v, %v; want %v", l, err, c.want)
+			}
+			if got := len(contents(t, path)); got != whole+1 {
+				t.Errorf("the refused Open changed the file to %d bytes, want %d", got, whole+1)
+			}
+		})
 	}
 }

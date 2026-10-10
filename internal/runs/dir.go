@@ -221,7 +221,10 @@ func scan(entries []os.DirEntry) ([]string, error) {
 
 // openRegular opens name with flag and refuses anything but the regular file
 // that stood at name when it looked: a symbolic link, a pipe, a device, or a
-// file swapped in between the look and the open.
+// file swapped in between the look and the open. It also refuses a file a
+// group or the world may write, or another user owns: such an account may
+// rewrite it in place, which a directory only its owner may write does not
+// prevent.
 func (d *dir) openRegular(name string, flag int) (*os.File, error) {
 	before, err := d.root.Lstat(name)
 	if err != nil {
@@ -240,6 +243,12 @@ func (d *dir) openRegular(name string, flag int) (*os.File, error) {
 	}
 	if !after.Mode().IsRegular() || !os.SameFile(before, after) {
 		return nil, errors.Join(fmt.Errorf("%w: %q changed while it was opened", ErrForeignFile, clip(name)), f.Close())
+	}
+	if after.Mode().Perm()&writableByOthers != 0 {
+		return nil, errors.Join(fmt.Errorf("%w: %q has mode %04o", ErrForeignFile, clip(name), after.Mode().Perm()), f.Close())
+	}
+	if err := files.CheckOwnedBy(after, effectiveUID()); err != nil {
+		return nil, errors.Join(fmt.Errorf("%w: %q: %w", ErrForeignFile, clip(name), err), f.Close())
 	}
 	return f, nil
 }

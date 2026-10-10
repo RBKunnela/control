@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -89,9 +90,11 @@ type store struct {
 	dir string
 	// root is the directory as it was opened. Every file is reached through
 	// it, never through dir.
-	root   *os.Root
-	opts   options
-	open   bool
+	root *os.Root
+	opts options
+	// open is read by usable before a call takes mu, so Close beside a call
+	// is answered ErrClosed rather than raced.
+	open   atomic.Bool
 	unlock func() error
 	// opened is the directory as it was judged at open, and every call is
 	// judged against it again.
@@ -145,7 +148,7 @@ func openStore(dir string, plane bool, opts []Option) (*store, error) {
 	if err := s.init(plane); err != nil {
 		return nil, errors.Join(err, s.unlock())
 	}
-	s.open = true
+	s.open.Store(true)
 	return s, nil
 }
 
@@ -286,7 +289,7 @@ func (s *store) writeMarker() error {
 // has no store at all, which is the fail-closed answer a composite literal
 // from another package gets.
 func (s *store) usable() error {
-	if s == nil || !s.open {
+	if s == nil || !s.open.Load() {
 		return ErrClosed
 	}
 	return nil
@@ -299,9 +302,8 @@ func (s *store) close() error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if !s.open {
+	if !s.open.Swap(false) {
 		return ErrClosed
 	}
-	s.open = false
 	return s.unlock()
 }

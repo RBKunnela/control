@@ -96,8 +96,9 @@ const (
 	// and not empty, or a marker this build cannot read.
 	ErrNotAStore Error = "approvals: the directory is not an approvals store"
 	// ErrForeignFile is a file under the directory that is neither a record,
-	// a projection, the marker nor a temporary file, and any entry that is
-	// not a regular file whatever it is called.
+	// a projection, the marker nor a temporary file, any entry that is not a
+	// regular file whatever it is called, and a file read that another
+	// account owns or a group or the world may write.
 	ErrForeignFile Error = "approvals: a file under the directory is not the store's"
 	// ErrTooManyRecords is a directory holding more records than the bound
 	// allows. A hold is refused; a listing says it is incomplete.

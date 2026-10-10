@@ -103,20 +103,22 @@ func open(dir string, ops fileOps) (*Log, error) {
 	return l, nil
 }
 
-// claim judges the open file, locks it, indexes its lines and cuts what
-// follows the last report. Nothing is cut before every whole line was read.
+// claim judges the open file, locks it, judges it again, indexes its lines
+// and cuts what follows the last report. Nothing is cut before every whole
+// line was read.
 func (l *Log) claim() error {
-	info, err := l.f.Stat()
-	if err != nil {
-		return err
-	}
-	if err := judgeFile(info); err != nil {
+	if _, err := judgedSize(l.f); err != nil {
 		return err
 	}
 	if err := lock(l.f); err != nil {
 		return err
 	}
-	size := info.Size()
+	// Another writer may have cut the file or committed a write between the
+	// first judgement and the lock; only a length read under it is the log's.
+	size, err := judgedSize(l.f)
+	if err != nil {
+		return err
+	}
 	if size > MaxLogBytes {
 		return fmt.Errorf("%w: %d bytes, limit %d", ErrTooLarge, size, MaxLogBytes)
 	}
@@ -138,6 +140,18 @@ func (l *Log) claim() error {
 		return l.writeHeader()
 	}
 	return nil
+}
+
+// judgedSize judges the open file as it is now and returns its length.
+func judgedSize(f *os.File) (int64, error) {
+	info, err := f.Stat()
+	if err != nil {
+		return 0, err
+	}
+	if err := judgeFile(info); err != nil {
+		return 0, err
+	}
+	return info.Size(), nil
 }
 
 // writeHeader starts an empty log with a header of a new random log id. A

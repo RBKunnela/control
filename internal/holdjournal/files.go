@@ -100,11 +100,11 @@ func (j *Journal) syncDir() error {
 }
 
 // openRegular opens name to read it, and refuses anything but a regular file
-// this account owns that stood at name when it looked. A handle on the
-// directory follows a symbolic link that stays inside it, so a link is refused
-// by its directory entry before the open; the open does not block, so a named
-// pipe swapped in after the look is refused by the descriptor rather than
-// waited on under the journal's mutex.
+// this account owns, and no group or other account may write, that stood at
+// name when it looked. A handle on the directory follows a symbolic link that
+// stays inside it, so a link is refused by its directory entry before the
+// open; the open does not block, so a named pipe swapped in after the look is
+// refused by the descriptor rather than waited on under the journal's mutex.
 func (j *Journal) openRegular(name string) (*os.File, error) {
 	before, err := j.root.Lstat(name)
 	if err != nil {
@@ -123,6 +123,9 @@ func (j *Journal) openRegular(name string) (*os.File, error) {
 	}
 	if !after.Mode().IsRegular() || !os.SameFile(before, after) {
 		return nil, errors.Join(fmt.Errorf("%w: %q changed while it was opened", ErrForeignFile, cause(name)), f.Close())
+	}
+	if after.Mode().Perm()&0o022 != 0 {
+		return nil, errors.Join(fmt.Errorf("%w: %q has mode %04o", ErrForeignFile, cause(name), after.Mode().Perm()), f.Close())
 	}
 	if err := checkOwner(after); err != nil {
 		return nil, errors.Join(fmt.Errorf("%q: %w", cause(name), err), f.Close())

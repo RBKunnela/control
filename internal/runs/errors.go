@@ -37,7 +37,8 @@ const (
 	// whose marker this build cannot read.
 	ErrNotRunsDir Error = "runs: the directory is not a runs directory"
 	// ErrForeignFile is a name under the directory this package does not
-	// write, and any entry that is not a regular file whatever it is called.
+	// write, any entry that is not a regular file whatever it is called, and
+	// a file read that another user owns or a group or the world may write.
 	ErrForeignFile Error = "runs: a file under the directory is not the directory's"
 	// ErrTooLarge is a file over the bound a read holds it to.
 	ErrTooLarge Error = "runs: the file is larger than the bound allows"

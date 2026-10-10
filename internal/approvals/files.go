@@ -9,6 +9,8 @@ import (
 	"os"
 	"slices"
 	"strings"
+
+	"github.com/guardana/control/internal/files"
 )
 
 // errExists is a name another writer linked first. Each caller translates it
@@ -117,6 +119,9 @@ func (s *store) readBounded(name string, limit int) ([]byte, error) {
 	if !info.Mode().IsRegular() {
 		return nil, fmt.Errorf("%w: %q is not a regular file", ErrForeignFile, cause(name))
 	}
+	if err := checkFile(name, info); err != nil {
+		return nil, err
+	}
 	raw, err := io.ReadAll(io.LimitReader(f, int64(limit)+1))
 	if err != nil {
 		return nil, err
@@ -125,6 +130,19 @@ func (s *store) readBounded(name string, limit int) ([]byte, error) {
 		return nil, fmt.Errorf("%w: over %d bytes", ErrRecordTooLarge, limit)
 	}
 	return raw, nil
+}
+
+// checkFile refuses a file a group or the world may write, or another account
+// owns. The directory being this account's alone does not keep out an account
+// that may write the file itself, and what is in a record is an approval.
+func checkFile(name string, info fs.FileInfo) error {
+	if info.Mode().Perm()&writableByOthers != 0 {
+		return fmt.Errorf("%w: %q has mode %04o", ErrForeignFile, cause(name), info.Mode().Perm())
+	}
+	if err := files.CheckOwnedBy(info, effectiveUID()); err != nil {
+		return fmt.Errorf("%w: %q: %w", ErrForeignFile, cause(name), err)
+	}
+	return nil
 }
 
 // present reports, without following a link at name, whether name is the

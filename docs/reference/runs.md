@@ -23,7 +23,10 @@ user owns, a group- or world-writable one, one holding a link or a file that is
 not the directory's, and one changed since it was opened are refused. A link
 to it is followed; what it names is judged. `runs open` makes an empty
 directory a runs directory; `runs close`, `runs list` and a plane refuse one.
-A temporary file a crash left while the directory was being made is ignored.
+A record, a state or a lock file another user owns or a group or the world
+may write is refused when it is read, and a token naming such a record
+resolves as unreadable. A temporary file a crash left while the directory was
+being made is ignored.
 Write access to it is the authority to open and to close a run, so keep it
 beside the approvals directory and back it up with it.
 

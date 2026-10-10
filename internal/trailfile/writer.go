@@ -93,21 +93,22 @@ func open(path string, ops fileOps) (*Writer, error) {
 	return w, nil
 }
 
-// claim judges the open file, locks it, reads the ids of its lines and cuts a
-// torn last line, and leaves the writer at the length the file is left with.
-// Nothing is cut before every whole line was read.
+// claim judges the open file, locks it, judges it again, reads the ids of its
+// lines and cuts a torn last line, and leaves the writer at the length the
+// file is left with. Nothing is cut before every whole line was read.
 func (w *Writer) claim() error {
-	info, err := w.f.Stat()
-	if err != nil {
-		return err
-	}
-	if err := judgeFile(info); err != nil {
+	if _, err := judgedSize(w.f); err != nil {
 		return err
 	}
 	if err := lock(w.f); err != nil {
 		return err
 	}
-	size := info.Size()
+	// Another writer may have cut the file or appended between the first
+	// judgement and the lock; only a length read under it is the writer's.
+	size, err := judgedSize(w.f)
+	if err != nil {
+		return err
+	}
 	end, err := lastLineEnd(w.f, size)
 	if err != nil {
 		return err
@@ -122,6 +123,18 @@ func (w *Writer) claim() error {
 	}
 	w.size = end
 	return nil
+}
+
+// judgedSize judges the open file as it is now and returns its length.
+func judgedSize(f *os.File) (int64, error) {
+	info, err := f.Stat()
+	if err != nil {
+		return 0, err
+	}
+	if err := judgeFile(info); err != nil {
+		return 0, err
+	}
+	return info.Size(), nil
 }
 
 // lastLineEnd returns the length of the file up to and including its last

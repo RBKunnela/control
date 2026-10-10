@@ -1,9 +1,12 @@
 package holdjournal_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"hash/crc32"
 	"os"
 	"sync"
 	"testing"
@@ -285,5 +288,42 @@ func TestManyCallersShareOneJournal(t *testing.T) {
 	}
 	if listing.Interrupted != callers/2 || len(listing.Held) != 0 || !listing.Complete {
 		t.Fatalf("after %d callers the listing is %+v", callers, listing)
+	}
+}
+
+// reframe puts a new header on body: the eight-byte magic, the body's length
+// and its CRC32C, both big-endian, as a writer of the directory would.
+func reframe(body []byte) []byte {
+	out := []byte("HOLDJRNL")
+	out = binary.BigEndian.AppendUint32(out, uint32(len(body))) //nolint:gosec // G115: a test body is small
+	out = binary.BigEndian.AppendUint32(out, crc32.Checksum(body, crc32.MakeTable(crc32.Castagnoli)))
+	return append(out, body...)
+}
+
+// TestAnEntryWhoseApprovalIsOfAnotherMajorIsUnreadable: the approval a close
+// is written from is read whole or not at all, so one this build does not read
+// leaves its entry unreadable and the pass unmeasured, however well the
+// entry's own version reads. The same file with its approval at 1.0 is held.
+func TestAnEntryWhoseApprovalIsOfAnotherMajorIsUnreadable(t *testing.T) {
+	ctx := context.Background()
+	dir := newDir(t)
+	j := openJournal(t, dir)
+	record(t, j, "req-1")
+	path := entryFileOf(t, dir, "req-1")
+	body := readFile(t, path)[16:]
+	if !bytes.Contains(body, []byte(`"schemaVersion":"1.0",`)) {
+		t.Fatalf("the entry carries no approval version to change: %s", body)
+	}
+	for _, edit := range [][]byte{[]byte(`"schemaVersion":"2.0",`), []byte(`"schemaVersion":"",`), nil} {
+		writeFile(t, path, reframe(bytes.Replace(body, []byte(`"schemaVersion":"1.0",`), edit, 1)))
+		listing, err := j.List(ctx, 8)
+		if err != nil || len(listing.Held) != 0 || listing.Unreadable != 1 || listing.Complete {
+			t.Errorf("a pass over an approval as %q reported %+v, %v; want it unreadable", edit, listing, err)
+		}
+	}
+	writeFile(t, path, reframe(body))
+	listing, err := j.List(ctx, 8)
+	if err != nil || len(listing.Held) != 1 || listing.Unreadable != 0 || !listing.Complete {
+		t.Errorf("a pass over the entry as written reported %+v, %v", listing, err)
 	}
 }

@@ -163,6 +163,12 @@ func TestTheDecoderTellsItsRefusalsApart(t *testing.T) {
 		"an approval this build cannot read": {
 			withBody(bytes.Replace(body, []byte(`"approvalId"`), []byte(`"approvalIx"`), 1)), ErrMalformed,
 		},
+		"an approval of a major nobody reads": {
+			withBody(bytes.Replace(body, []byte(`"schemaVersion":"1.0"`), []byte(`"schemaVersion":"2.0"`), 1)), ErrSchemaVersion,
+		},
+		"an approval with no schema version": {
+			withBody(bytes.Replace(body, []byte(`"schemaVersion":"1.0",`), nil, 1)), ErrSchemaVersion,
+		},
 		"an approval naming another request": {
 			withBody(bytes.Replace(body, []byte(`"requestId":"req-1"`), []byte(`"requestId":"req-2"`), 1)), ErrEntry,
 		},
@@ -234,6 +240,13 @@ func TestTheEncoderWritesNothingItsDecoderWouldRefuse(t *testing.T) {
 	damaged.LastEventID = ""
 	if _, err := encodeEntry(damaged, DefaultMaxEntryBytes); !errors.Is(err, ErrEntry) {
 		t.Fatalf("encoding an entry with no position: %v, want ErrEntry", err)
+	}
+	for _, v := range []string{"2.0", ""} {
+		other := seedEntry()
+		other.Approval.SchemaVersion = v
+		if _, err := encodeEntry(other, DefaultMaxEntryBytes); !errors.Is(err, ErrSchemaVersion) {
+			t.Fatalf("encoding an entry whose approval is %q: %v, want ErrSchemaVersion", v, err)
+		}
 	}
 	if _, err := encodeEntry(seedEntry(), 32); !errors.Is(err, ErrEntryTooLarge) {
 		t.Fatalf("encoding an entry over the bound: %v, want ErrEntryTooLarge", err)
