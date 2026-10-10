@@ -18,6 +18,12 @@ verify one.
   report it unknown: bash 3.2 fails a builtin's write to a pipe that a child's
   exit interrupts ("printf: write error: Interrupted system call"). The
   declarations are now printed through `cat`, which nothing interrupts.
+- `/healthz` could show the spool drained while the exporter's
+  `acknowledged` count did not yet include what it had released, since it
+  read the exporter first and the exporter counted a release after making it.
+  On a loaded machine `guardana-gateway scenario run` then failed a foreign
+  trail file with the wrong reason. The spool is now read first, and a release
+  is counted under the lock the exporter's counters are read under.
 
 ## [0.10.2-alpha] - 2026-10-10
 

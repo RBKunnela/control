@@ -161,6 +161,10 @@ func (p *plane) health(src gateway.PauseSource, clock func() time.Time) (healthA
 	stops := p.stopSource().Current()
 	now := clock()
 	stats := p.pipeline.Stats()
+	// The spool before the exporter: the exporter counts a release only once
+	// the spool made it, so in this order a released spool never shows with
+	// its records uncounted.
+	spoolStats, spoolErr := p.spool.Stats()
 	answer := healthAnswer{
 		Status:  "ok",
 		Mode:    p.cfg.ModeName,
@@ -202,9 +206,8 @@ func (p *plane) health(src gateway.PauseSource, clock func() time.Time) (healthA
 	if reason := p.stopped.Load(); reason != nil {
 		answer.Exporter["stopped"] = (*reason).Error()
 	}
-	spoolStats, err := p.spool.Stats()
-	if err != nil {
-		answer.Problems = append(answer.Problems, "spool: "+err.Error())
+	if spoolErr != nil {
+		answer.Problems = append(answer.Problems, "spool: "+spoolErr.Error())
 	} else {
 		answer.Spool = map[string]any{
 			"segments": spoolStats.Segments, "bytes": spoolStats.Bytes,

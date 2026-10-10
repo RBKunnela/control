@@ -193,3 +193,30 @@ func TestAReplayAfterAQuarantineWritesNoSecondCopy(t *testing.T) {
 		t.Errorf("Stats = %+v; want one record quarantined and one already held", es)
 	}
 }
+
+// TestStatsWaitsForAReleaseUnderWay: a reader of the spool's counters who saw
+// a batch released must then read it counted, so Stats waits while a release
+// holds its lock and answers the count the release left.
+func TestStatsWaitsForAReleaseUnderWay(t *testing.T) {
+	_, r, cursors := spoolOf(t, 2)
+	e := exporterOver(t, r, "http://127.0.0.1:1/v1/logs")
+	e.ackMu.Lock()
+	got := make(chan uint64, 1)
+	go func() { got <- e.Stats().Acknowledged }()
+	select {
+	case n := <-got:
+		e.ackMu.Unlock()
+		t.Fatalf("Stats answered %d while a release was under way", n)
+	case <-time.After(100 * time.Millisecond):
+	}
+	e.ackMu.Unlock()
+	if n := <-got; n != 0 {
+		t.Fatalf("Stats = %d before any release, want 0", n)
+	}
+	if err := e.release(&batch{events: []*controlv1.Event{sample(1), sample(2)}, cursor: cursors[1]}); err != nil {
+		t.Fatal(err)
+	}
+	if n := e.Stats().Acknowledged; n != 2 {
+		t.Fatalf("Stats = %d after releasing two records, want 2", n)
+	}
+}

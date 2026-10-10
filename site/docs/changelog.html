@@ -120,6 +120,12 @@ verify one.</p>
 report it unknown: bash 3.2 fails a builtin's write to a pipe that a child's
 exit interrupts (&quot;printf: write error: Interrupted system call&quot;). The
 declarations are now printed through <code>cat</code>, which nothing interrupts.</li>
+<li><code>/healthz</code> could show the spool drained while the exporter's
+<code>acknowledged</code> count did not yet include what it had released, since it
+read the exporter first and the exporter counted a release after making it.
+On a loaded machine <code>guardana-gateway scenario run</code> then failed a foreign
+trail file with the wrong reason. The spool is now read first, and a release
+is counted under the lock the exporter's counters are read under.</li>
 </ul>
 <h2 id="0102-alpha---2026-10-10"><a href="https://github.com/guardana/control/releases/tag/v0.10.2-alpha">0.10.2-alpha</a> - 2026-10-10</h2>
 <p>Fixes and release tooling from an outside audit of 0.10.0-alpha, with no new

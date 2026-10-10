@@ -57,8 +57,12 @@ type Exporter struct {
 	// running is held for the length of a Run, so a second one is refused.
 	running atomic.Bool
 
-	counters    [classes]atomic.Uint64
-	acked       atomic.Uint64
+	counters [classes]atomic.Uint64
+	// ackMu holds a release of the spool and its count together, and Stats
+	// reads the count under it: whoever saw the spool released then sees the
+	// records counted.
+	ackMu       sync.Mutex
+	acked       uint64
 	quarantined atomic.Uint64
 	skipped     atomic.Uint64
 	partial     atomic.Uint64
@@ -97,8 +101,11 @@ func New(opts Options, r *spool.Reader) (*Exporter, error) {
 
 // Stats reports the counters as they stand.
 func (e *Exporter) Stats() Stats {
+	e.ackMu.Lock()
+	acked := e.acked
+	e.ackMu.Unlock()
 	st := Stats{
-		Acknowledged:     e.acked.Load(),
+		Acknowledged:     acked,
 		Quarantined:      e.quarantined.Load(),
 		QuarantineHeld:   e.skipped.Load(),
 		PartialRejected:  e.partial.Load(),
@@ -115,6 +122,18 @@ func (e *Exporter) Stats() Stats {
 		st.Retries += e.counters[i].Load()
 	}
 	return st
+}
+
+// release acknowledges b to the spool and counts its records, as one step
+// for Stats.
+func (e *Exporter) release(b *batch) error {
+	e.ackMu.Lock()
+	defer e.ackMu.Unlock()
+	if err := e.reader.Ack(b.cursor); err != nil {
+		return err
+	}
+	e.acked += uint64(len(b.events))
+	return nil
 }
 
 // batch is one request's worth of records and the cursor past the last.
@@ -246,13 +265,11 @@ func (e *Exporter) acknowledge(queue <-chan *pending, slots <-chan struct{}, sto
 				stop()
 			}
 		default:
-			if aerr := e.reader.Ack(p.batch.cursor); aerr != nil {
+			if aerr := e.release(p.batch); aerr != nil {
 				halted = true
 				failed = fmt.Errorf("otel: acknowledging %d records: %w", len(p.batch.events), aerr)
 				stop()
-				break
 			}
-			e.acked.Add(uint64(len(p.batch.events)))
 		}
 		<-slots
 	}
