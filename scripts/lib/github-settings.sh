@@ -77,8 +77,11 @@ ACTIONS_APP_ID=15368
 # the MCP adapter, which classifies a tool, sends only the authorized bytes
 # under their obligations, names the run a call belongs to and withholds or
 # rewrites answers, the wire contracts and their fixtures, the gate's Go code that
-# reports test results and checks the documents, and the release and workflow
-# definitions with the tool digests the release job trusts. Each must be owned
+# reports test results and checks the documents, the plane's wiring of its
+# decision point, adapter, approvals and stop, and every file ADR-0008 says the
+# gate is built from: the scripts, the workflows and the rest of .github, the
+# release definition, the Makefile, the linter and buf configurations, go.mod
+# and go.sum. Each must be owned
 # by @guardana/security-maintainers in .github/CODEOWNERS, so the team that has
 # to approve is also the team a pull request asks. The rulesets carry them in
 # parts of at most REVIEWER_PATTERN_LIMIT, in this order.
@@ -103,6 +106,12 @@ TWO_APPROVAL_PATHS=(
   "cmd/guardana-control/stops.go"
   "cmd/guardana-control/supervise_input.go"
   "cmd/guardana-gateway/reaction.go"
+  "cmd/guardana-gateway/pdp.go"
+  "cmd/guardana-gateway/adapter.go"
+  "cmd/guardana-gateway/build.go"
+  "cmd/guardana-gateway/approvals.go"
+  "cmd/guardana-gateway/serve.go"
+  "cmd/guardana-gateway/stop.go"
   "adapters/authzen/**"
   "adapters/mcp/**"
   "pkg/contract/**"
@@ -111,10 +120,15 @@ TWO_APPROVAL_PATHS=(
   "testdata/**"
   "internal/testreport/**"
   "internal/docscheck/**"
-  ".github/workflows/**"
+  ".github/**"
   ".goreleaser.yaml"
-  "scripts/tool-versions.env"
-  "scripts/release-notes.sh"
+  "scripts/**"
+  "Makefile"
+  ".golangci.yml"
+  "buf.yaml"
+  "buf.gen.yaml"
+  "go.mod"
+  "go.sum"
 )
 
 # GitHub refuses a required reviewer with more than 15 file patterns, and the

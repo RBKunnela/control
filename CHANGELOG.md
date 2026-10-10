@@ -24,6 +24,11 @@ verify one.
 
 ### Changed
 
+- Two approvals from the security maintainers now cover every file ADR-0008
+  says the gate is built from (all of `scripts/` and `.github/`, the
+  `Makefile`, the linter and buf configurations, `go.mod` and `go.sum`) and
+  the gateway's wiring of its decision point, adapter, approvals and stop. A
+  test holds the declaration to the record's list.
 - README and the home page show exact-action approval, changed tool definitions
   and a denied refund retried through another tool, with their coverage limits
   and links to the policies and runnable example.
