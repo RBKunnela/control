@@ -78,7 +78,8 @@ func (s *Spool) Append(ctx context.Context, event *controlv1.Event) error {
 // closes a trail holding one, or why it is refused.
 func (s *Spool) admit(kind controlv1.EventKind, at trail, size int64) (reserve int64, closes bool, err error) {
 	held, open := s.reserved[at]
-	// extra is what the append adds to the bytes on disk plus the reservations.
+	// extra is what the append adds to the bytes on disk, reserve what it adds
+	// to the reservations.
 	extra := size
 	switch kind {
 	case controlv1.EventKind_EVENT_KIND_ACTION_STARTED:
@@ -91,7 +92,6 @@ func (s *Spool) admit(kind controlv1.EventKind, at trail, size int64) (reserve i
 			return 0, false, fmt.Errorf("%w: %d trails hold a reservation, the ceiling", ErrFull, len(s.reserved))
 		}
 		reserve = s.opts.ClosingReserve
-		extra += reserve
 	case controlv1.EventKind_EVENT_KIND_ACTION_COMPLETED, controlv1.EventKind_EVENT_KIND_ACTION_FAILED:
 		if open {
 			closes = true
@@ -101,7 +101,10 @@ func (s *Spool) admit(kind controlv1.EventKind, at trail, size int64) (reserve i
 			}
 		}
 	}
-	if s.bytesLocked()+s.reservedTotal+extra > s.opts.MaxBytes {
+	// Compared by what is left, never by a sum: a reserve near the type's
+	// limit would wrap the sum and admit the append.
+	room := s.opts.MaxBytes - s.bytesLocked() - s.reservedTotal
+	if extra > room || reserve > room-extra {
 		return 0, false, ErrFull
 	}
 	return reserve, closes, nil

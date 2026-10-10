@@ -170,3 +170,22 @@ func TestPageIsDeterministic(t *testing.T) {
 		t.Error("two calls to Page produced different bytes")
 	}
 }
+
+// TestTheListTimeoutRowSaysWhatItBounds: the list bound also bounds an
+// upstream's connection at start, and its zero is the adapter's own bound.
+func TestTheListTimeoutRowSaysWhatItBounds(t *testing.T) {
+	page, err := Page(gatewayconfig.Fields())
+	if err != nil {
+		t.Fatalf("Page: %v", err)
+	}
+	const note = "| bounds reading one upstream's list, and connecting to each upstream at start; `0` is the adapter's own `30s` |"
+	for _, line := range strings.Split(string(page), "\n") {
+		if strings.HasPrefix(line, "| `upstream.list_timeout` |") {
+			if !strings.HasSuffix(line, note) {
+				t.Errorf("the row is %q, want it to end %q", line, note)
+			}
+			return
+		}
+	}
+	t.Error("the page has no row for upstream.list_timeout")
+}

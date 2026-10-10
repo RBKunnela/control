@@ -182,6 +182,8 @@ type ListConfig struct {
 // UpstreamDefaults bound every upstream call.
 type UpstreamDefaults struct {
 	CallTimeout time.Duration
+	// ListTimeout bounds reading one upstream's list, and connecting to each
+	// upstream at start; zero is the adapter's own bound.
 	ListTimeout time.Duration
 }
 

@@ -27,7 +27,7 @@ func TestADirectoryAnotherUserOwnsIsRefused(t *testing.T) {
 	if _, err := runs.OpenPlane(dir); !errors.Is(err, runs.ErrOwner) {
 		t.Errorf("OpenPlane on another user's directory = %v, want ErrOwner", err)
 	}
-	if _, err := runs.OpenAdmin(dir); !errors.Is(err, runs.ErrOwner) {
+	if _, err := runs.OpenAdmin(context.Background(), dir); !errors.Is(err, runs.ErrOwner) {
 		t.Errorf("OpenAdmin on another user's directory = %v, want ErrOwner", err)
 	}
 	restore()

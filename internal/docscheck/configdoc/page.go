@@ -189,7 +189,7 @@ func renderRow(f gatewayconfig.Field) (string, error) {
 	}
 	note := values(f.Values)
 	if f.Path == listTimeoutKey {
-		note = "`0` is the adapter's own `" + adaptermcp.DefaultListTimeout.String() + "`"
+		note = "bounds reading one upstream's list, and connecting to each upstream at start; `0` is the adapter's own `" + adaptermcp.DefaultListTimeout.String() + "`"
 	}
 	return fmt.Sprintf("| `%s` | `%s` | %s | %s | %s | %s |\n",
 		f.Path, f.Env, f.Kind, code(f.Default), required, note), nil

@@ -31,6 +31,14 @@ const runsAuthority = "Write access to the runs directory is the authority to op
 // runsListBound is the most records runs list prints.
 const runsListBound = 1000
 
+// openRuns opens a runs directory with open, waiting at most runsLockWait for
+// another operator command's lock.
+func openRuns(open func(context.Context, string) (*runs.Admin, error), dir string) (*runs.Admin, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), runsLockWait)
+	defer cancel()
+	return open(ctx, dir)
+}
+
 // runsLockWait bounds how long a command waits for another operator command's
 // lock on the directory. A plane never takes it.
 const runsLockWait = 10 * time.Second
@@ -87,7 +95,7 @@ func runsOpenCommand(args []string, stdout, stderr io.Writer) int {
 			return usageError(stderr, runsOpenName, "--"+name+" is missing; every flag but --parent is required")
 		}
 	}
-	admin, err := runs.InitAdmin(flags.Arg(0))
+	admin, err := openRuns(runs.InitAdmin, flags.Arg(0))
 	if err != nil {
 		return fail(stderr, runsOpenName, err)
 	}
@@ -120,7 +128,7 @@ func runsCloseCommand(args []string, stdout, stderr io.Writer) int {
 	if flags.NArg() != 2 {
 		return usageError(stderr, runsCloseName, "takes the runs directory and a run id")
 	}
-	admin, err := runs.OpenAdmin(flags.Arg(0))
+	admin, err := openRuns(runs.OpenAdmin, flags.Arg(0))
 	if err != nil {
 		return fail(stderr, runsCloseName, err)
 	}
@@ -157,7 +165,7 @@ func withheldRunID(err error, what string) error {
 // hash. A listing the bound stopped fails after the lines it printed: it is
 // neither the whole directory nor an empty one.
 func runsListCommand(args []string, stdout, stderr io.Writer) int {
-	admin, err := runs.OpenAdmin(args[0])
+	admin, err := openRuns(runs.OpenAdmin, args[0])
 	if err != nil {
 		return fail(stderr, runsListName, err)
 	}

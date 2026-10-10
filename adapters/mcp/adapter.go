@@ -231,7 +231,13 @@ func (a *Adapter) refresh(ctx context.Context, upstream string, cs *mcp.ClientSe
 	return err
 }
 
+// connect is bounded by the list timeout: an upstream that takes the
+// connection and never answers its initialization would otherwise hold Start,
+// with no listener bound, until a signal. The session the library keeps does
+// not inherit this deadline.
 func (a *Adapter) connect(ctx context.Context, up Upstream) (*mcp.ClientSession, error) {
+	ctx, cancel := context.WithTimeout(ctx, a.listTimeout())
+	defer cancel()
 	client := mcp.NewClient(&mcp.Implementation{Name: brand.Gateway, Version: "0"}, &mcp.ClientOptions{
 		// The library would answer an upstream's input request itself and
 		// send the admitted call again; the plane decided one send.

@@ -23,25 +23,27 @@ type Admin struct {
 // OpenAdmin opens dir for the operator and writes nothing to it. It refuses a
 // group- or world-writable directory with ErrPermissions, a directory that is
 // not a runs directory, an empty one among them, with ErrNotRunsDir, and one
-// holding a file this package does not write with ErrForeignFile.
-func OpenAdmin(dir string) (*Admin, error) {
-	return openAdmin(dir, false)
+// holding a file this package does not write with ErrForeignFile. It waits
+// for the directory's lock, which another operator command may hold, until
+// ctx ends.
+func OpenAdmin(ctx context.Context, dir string) (*Admin, error) {
+	return openAdmin(ctx, dir, false)
 }
 
 // InitAdmin is OpenAdmin, except that an empty directory becomes a runs
 // directory first; so does one holding only what a crash left while its
 // marker was being created.
-func InitAdmin(dir string) (*Admin, error) {
-	return openAdmin(dir, true)
+func InitAdmin(ctx context.Context, dir string) (*Admin, error) {
+	return openAdmin(ctx, dir, true)
 }
 
-func openAdmin(dir string, initialise bool) (*Admin, error) {
+func openAdmin(ctx context.Context, dir string, initialise bool) (*Admin, error) {
 	d, err := openDir(dir)
 	if err != nil {
 		return nil, err
 	}
 	a := &Admin{d: d}
-	if err := a.init(initialise); err != nil {
+	if err := a.init(ctx, initialise); err != nil {
 		return nil, errors.Join(err, d.close())
 	}
 	return a, nil
@@ -50,8 +52,8 @@ func openAdmin(dir string, initialise bool) (*Admin, error) {
 // init judges what the directory holds as a plane does, under the
 // directory's lock; asked to, it first makes an empty directory a runs
 // directory.
-func (a *Admin) init(initialise bool) error {
-	unlock, err := a.d.lockDir(context.Background())
+func (a *Admin) init(ctx context.Context, initialise bool) error {
+	unlock, err := a.d.lockDir(ctx)
 	if err != nil {
 		return err
 	}

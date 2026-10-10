@@ -3,6 +3,7 @@
 package runs_test
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -24,7 +25,7 @@ func TestALeftoverOfTheMarkersWriteIsNotForeign(t *testing.T) {
 	if l, err := a.List(t.Context(), 10); err != nil || len(l.Records) != 1 || !l.Complete {
 		t.Errorf("List beside a leftover: %+v, %v; want the one run", l, err)
 	}
-	if _, err := runs.OpenAdmin(dir); err != nil {
+	if _, err := runs.OpenAdmin(context.Background(), dir); err != nil {
 		t.Errorf("OpenAdmin beside a leftover: %v", err)
 	}
 	if _, err := runs.OpenPlane(dir); err != nil {
@@ -47,7 +48,7 @@ func TestInitAdminMakesOnlyAnEmptyDirectoryARunsDirectory(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			dir := newDir(t)
 			plant(t, dir)
-			if _, err := runs.InitAdmin(dir); !errors.Is(err, runs.ErrNotRunsDir) {
+			if _, err := runs.InitAdmin(context.Background(), dir); !errors.Is(err, runs.ErrNotRunsDir) {
 				t.Errorf("InitAdmin: %v, want ErrNotRunsDir", err)
 			}
 			if _, err := os.Lstat(filepath.Join(dir, "runs.meta")); !errors.Is(err, os.ErrNotExist) {
@@ -69,7 +70,7 @@ func TestOpenAdminWritesNothing(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := runs.OpenAdmin(dir); !errors.Is(err, runs.ErrNotRunsDir) {
+			if _, err := runs.OpenAdmin(context.Background(), dir); !errors.Is(err, runs.ErrNotRunsDir) {
 				t.Errorf("OpenAdmin: %v, want ErrNotRunsDir", err)
 			}
 			if after, err := os.ReadDir(dir); err != nil || len(after) != len(before) {
@@ -94,7 +95,7 @@ func TestANonRegularEntryUnderALeftoversNameIsForeign(t *testing.T) {
 			if _, err := a.List(t.Context(), 10); !errors.Is(err, runs.ErrForeignFile) {
 				t.Errorf("List: %v", err)
 			}
-			if _, err := runs.OpenAdmin(dir); !errors.Is(err, runs.ErrForeignFile) {
+			if _, err := runs.OpenAdmin(context.Background(), dir); !errors.Is(err, runs.ErrForeignFile) {
 				t.Errorf("OpenAdmin: %v", err)
 			}
 			if _, err := runs.OpenPlane(dir); !errors.Is(err, runs.ErrForeignFile) {
@@ -116,7 +117,7 @@ func TestAForeignNameRefusesTheDirectory(t *testing.T) {
 			if _, err := a.List(t.Context(), 10); !errors.Is(err, runs.ErrForeignFile) {
 				t.Errorf("List: %v", err)
 			}
-			if _, err := runs.OpenAdmin(dir); !errors.Is(err, runs.ErrForeignFile) {
+			if _, err := runs.OpenAdmin(context.Background(), dir); !errors.Is(err, runs.ErrForeignFile) {
 				t.Errorf("OpenAdmin: %v", err)
 			}
 			if _, err := runs.OpenPlane(dir); !errors.Is(err, runs.ErrForeignFile) {
@@ -167,7 +168,7 @@ func TestAGroupWritableDirectoryIsRefused(t *testing.T) {
 	if err := os.Chmod(dir, 0o770); err != nil { //nolint:gosec // G302: the mode under test
 		t.Fatal(err)
 	}
-	if _, err := runs.OpenAdmin(dir); !errors.Is(err, runs.ErrPermissions) {
+	if _, err := runs.OpenAdmin(context.Background(), dir); !errors.Is(err, runs.ErrPermissions) {
 		t.Fatalf("OpenAdmin: %v", err)
 	}
 	if _, err := runs.OpenPlane(dir); !errors.Is(err, runs.ErrPermissions) {
@@ -239,7 +240,7 @@ func TestOnlyTheOperatorMakesARunsDirectory(t *testing.T) {
 
 	other := newDir(t)
 	writeFile(t, filepath.Join(other, "run-"+"0123456789abcdef0123456789abcdef"+".lock"), nil)
-	if _, err := runs.OpenAdmin(other); !errors.Is(err, runs.ErrNotRunsDir) {
+	if _, err := runs.OpenAdmin(context.Background(), other); !errors.Is(err, runs.ErrNotRunsDir) {
 		t.Fatalf("OpenAdmin of a directory with no marker: %v", err)
 	}
 }
@@ -254,7 +255,7 @@ func TestAMarkerThisBuildCannotReadIsRefused(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			dir := newDir(t)
 			writeFile(t, filepath.Join(dir, "runs.meta"), []byte(body))
-			if _, err := runs.OpenAdmin(dir); !errors.Is(err, runs.ErrNotRunsDir) {
+			if _, err := runs.OpenAdmin(context.Background(), dir); !errors.Is(err, runs.ErrNotRunsDir) {
 				t.Errorf("OpenAdmin: %v", err)
 			}
 			if _, err := runs.OpenPlane(dir); !errors.Is(err, runs.ErrNotRunsDir) {

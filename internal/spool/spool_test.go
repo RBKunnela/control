@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -598,5 +599,20 @@ func TestTheMarkOfWhatWasDeliveredBoundsAck(t *testing.T) {
 	}
 	if st := stats(t, s); st.Segments != 1 {
 		t.Errorf("Stats = %+v, want the third record still held", st)
+	}
+}
+
+// TestAReserveAtTheTypesLimitIsFull: a closing reserve as large as the budget
+// cannot be held beside the record that asks for it, even where the sum of
+// the two does not fit in an int64.
+func TestAReserveAtTheTypesLimitIsFull(t *testing.T) {
+	for name, limit := range map[string]int64{"2^62": 1 << 62, "MaxInt64": math.MaxInt64} {
+		t.Run(name, func(t *testing.T) {
+			s := open(t, spool.Options{Dir: t.TempDir(), MaxBytes: limit, SegmentBytes: 1 << 20, ClosingReserve: limit})
+			err := s.Append(context.Background(), event(controlv1.EventKind_EVENT_KIND_ACTION_STARTED, "req-1", 1))
+			if !errors.Is(err, spool.ErrFull) {
+				t.Fatalf("ACTION_STARTED with a reserve of the whole budget = %v, want ErrFull", err)
+			}
+		})
 	}
 }

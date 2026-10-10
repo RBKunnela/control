@@ -1,6 +1,7 @@
 package runs_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -29,7 +30,7 @@ func newDir(t *testing.T) string {
 
 func openAdmin(t *testing.T, dir string) *runs.Admin {
 	t.Helper()
-	a, err := runs.InitAdmin(dir)
+	a, err := runs.InitAdmin(context.Background(), dir)
 	if err != nil {
 		t.Fatalf("InitAdmin(%s): %v", dir, err)
 	}

@@ -3,6 +3,7 @@
 package runs_test
 
 import (
+	"context"
 	"errors"
 	"io/fs"
 	"os"
@@ -39,7 +40,7 @@ func TestEveryFileARunWritesIsItsOwnersAlone(t *testing.T) {
 
 func openRaiseAndClose(t *testing.T, dir string) (string, error) {
 	t.Helper()
-	a, err := runs.InitAdmin(dir)
+	a, err := runs.InitAdmin(context.Background(), dir)
 	if err != nil {
 		return "", err
 	}

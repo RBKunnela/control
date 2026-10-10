@@ -238,10 +238,8 @@ a tool result with <code>isError: true</code>; a blocked <code>resources/read</c
 <code>prompts/get</code>, whose results cannot say <code>isError</code>, is a JSON-RPC error with
 the adapter's code.</p>
 <h2 id="collector-gone-then-back">Collector gone, then back</h2>
-<p>The exporter resends with a backoff growing to <code>export.max_backoff</code>; every
-record stays in the spool (<code>/healthz</code>: <code>spool.unacknowledged</code>, and
-<code>exporter.retried_transport</code> for failed sends), and no call is blocked until
-the spool is full. Once a collector answers again, every record it accepts
+<p>The exporter resends with a backoff growing to <code>export.max_backoff</code>; every record stays in the spool (<code>/healthz</code>: <code>spool.unacknowledged</code>), and no
+call is blocked until the spool is full. Once a collector answers again, every record it accepts
 arrives, at least once, so it tells copies apart by <code>event_id</code>; one it keeps
 refusing goes to the spool's <code>quarantine.log</code>.
 <code>TestCollectorOutageBlocksNoDecision</code> in <code>internal/gateway/e2e/</code> holds the
@@ -258,27 +256,27 @@ spool has released what the collector accepted.</p>
 <p>The plane asks only when the answer would change a call's decision, so a
 failure blocks only calls a veto rule covers, and their trail ends
 <code>ACTION_BLOCKED</code> with the code. An ask past <code>pdp.timeout</code> is
-<code>PDP_TIMEOUT</code>. An answer that is no plain allow or deny is
-<code>PDP_ANSWER_REFUSED</code>: two <code>decision</code> members, even agreeing; a string for a
-boolean; a truncated or trailing document; an unknown member on an allow; or
-no decision. Nothing listening, a <code>500</code>, or an ask past <code>pdp.max_in_flight</code>
+<code>PDP_TIMEOUT</code>. An answer that is no plain allow or deny, such as two <code>decision</code> members or a
+string for a boolean, is <code>PDP_ANSWER_REFUSED</code>. Nothing listening, a <code>500</code>, or an ask past <code>pdp.max_in_flight</code>
 is <code>PDP_UNAVAILABLE</code>. A well-formed <code>false</code> is <code>PDP_DENY</code>; a forged <code>true</code> is
 read as an allow (<a href="/docs/concepts/threat-model">threat model</a>).</p>
 <h2 id="an-upstream-that-dies-mid-call">An upstream that dies mid-call</h2>
-<p>The upstream took the decided, started call and no answer came back. The
+<p>The upstream took the call and no answer came back. The
 agent gets a JSON-RPC error, never a result; the call is not sent again, and
 its trail ends <code>ACTION_FAILED</code> with an <code>UNKNOWN</code> result and
 <code>tool_protocol_status: error</code>, never <code>ACTION_COMPLETED</code>.</p>
 <ul>
-<li>A <code>stdio</code> upstream, a child process, that exits during a call is not
-started again: every later call to it is decided, started, closed that way
-and answered with an error until the plane restarts. Other upstreams run.</li>
-<li>An HTTP upstream that closes the connection after reading the call, before
-or after its status line, leaves that call's outcome unknown; the next
+<li>A <code>stdio</code> upstream that exits during a call is not
+started again: every later call to it is closed that way and answered with an error until
+the plane restarts. Other upstreams run.</li>
+<li>An HTTP upstream that closes the connection after reading the call leaves that call's outcome unknown; the next
 call to it is sent and answered.</li>
 </ul>
 <p>An upstream that answers nothing within <code>upstream.call_timeout</code> is closed
-with a <code>TIMEOUT</code> result (<code>TestUpstreamTimeoutIsRecordedAsOne</code>).</p>
+with a <code>TIMEOUT</code> result (<code>TestUpstreamTimeoutIsRecordedAsOne</code>). A <code>stdio</code>
+upstream that stops reading its input can hold a call's write, and a call
+queued behind it, past that bound; each closes <code>TIMEOUT</code> or unknown, never
+as not sent.</p>
 <h2 id="pause-file-unreadable">Pause file unreadable</h2>
 <p>At start, a pause file that is missing, garbled, too large, a link, a
 directory, or writable by the group or others refuses the start, naming

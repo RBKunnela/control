@@ -26,7 +26,7 @@ func readRun(dir, id string, mode supervise.Children) (supervise.Run, []supervis
 	if !observe.ValidRunID(id) {
 		return supervise.Run{}, nil, refusedInput("run", id, supervise.ErrRunID)
 	}
-	admin, err := runs.OpenAdmin(dir)
+	admin, err := openRuns(runs.OpenAdmin, dir)
 	if err != nil {
 		return supervise.Run{}, nil, refusedInput("runs", dir, err)
 	}

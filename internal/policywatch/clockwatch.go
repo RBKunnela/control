@@ -74,28 +74,42 @@ func (r *Refresher) watchClock(ctx context.Context, wg *sync.WaitGroup) {
 // clock rule needs that lock to withdraw, so a raise on a disk that stopped
 // answering would hold the clock rule off for good. A call given up goes on
 // in the background, and a raise it completes there is never lower: a failed
-// raise may have raised the floor.
-func Bounded(s policy.FloorStore) policy.FloorStore { return bounded{s} }
+// raise may have raised the floor. Calls take turns: one given up keeps the
+// turn until the store returns, so a store that stopped answering holds one
+// call in the background, not one per attempt.
+func Bounded(s policy.FloorStore) policy.FloorStore {
+	return &bounded{s: s, turn: make(chan struct{}, 1)}
+}
 
-type bounded struct{ s policy.FloorStore }
+type bounded struct {
+	s    policy.FloorStore
+	turn chan struct{}
+}
 
 type floorResult struct {
 	f   policy.Floor
 	err error
 }
 
-func (b bounded) Floor(ctx context.Context, bundleID string) (policy.Floor, error) {
-	return wait(ctx, func() (policy.Floor, error) { return b.s.Floor(ctx, bundleID) })
+func (b *bounded) Floor(ctx context.Context, bundleID string) (policy.Floor, error) {
+	return b.wait(ctx, func() (policy.Floor, error) { return b.s.Floor(ctx, bundleID) })
 }
 
-func (b bounded) Raise(ctx context.Context, st policy.Statement, now time.Time) (policy.Floor, error) {
-	return wait(ctx, func() (policy.Floor, error) { return b.s.Raise(ctx, st, now) })
+func (b *bounded) Raise(ctx context.Context, st policy.Statement, now time.Time) (policy.Floor, error) {
+	return b.wait(ctx, func() (policy.Floor, error) { return b.s.Raise(ctx, st, now) })
 }
 
-// wait runs call and returns its answer, or ctx's error once ctx ends first.
-func wait(ctx context.Context, call func() (policy.Floor, error)) (policy.Floor, error) {
+// wait takes the turn, runs call and returns its answer, or ctx's error once
+// ctx ends first. The turn is given back when call returns, not when wait does.
+func (b *bounded) wait(ctx context.Context, call func() (policy.Floor, error)) (policy.Floor, error) {
+	select {
+	case b.turn <- struct{}{}:
+	case <-ctx.Done():
+		return policy.Floor{}, ctx.Err()
+	}
 	done := make(chan floorResult, 1)
 	go func() {
+		defer func() { <-b.turn }()
 		f, err := call()
 		done <- floorResult{f, err}
 	}()

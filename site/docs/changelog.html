@@ -181,6 +181,17 @@ it; review catches that.</li>
 export instead of a walk that skips dot-directories.</li>
 <li>The release gate refuses a commit that is not main's head, and refuses
 unless main's newest CodeQL analysis is of the commit being released.</li>
+<li><code>guardana-gateway</code> waited at start, with no listener bound, on an upstream
+that took the connection and never answered its initialization. The
+connect is now bounded by <code>upstream.list_timeout</code>, and the configuration
+reference says so.</li>
+<li><code>runs open</code>, <code>runs close</code>, <code>runs list</code> and <code>supervise --runs</code> waited without
+a bound for another operator command's lock while opening the directory;
+their ten-second bound now covers the open too.</li>
+<li><code>supervise</code> read a request whose events name two runs as one run's request.
+Such a request is now in doubt and confirms nothing.</li>
+<li>A floor store that stopped answering kept one call per policy poll waiting
+in the background; calls to it now take turns, so at most one waits.</li>
 </ul>
 <h2 id="0102-alpha---2026-10-10"><a href="https://github.com/guardana/control/releases/tag/v0.10.2-alpha">0.10.2-alpha</a> - 2026-10-10</h2>
 <p>Fixes and release tooling from an outside audit of 0.10.0-alpha, with no new

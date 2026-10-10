@@ -9,6 +9,7 @@ import (
 	"time"
 
 	findingv1alpha1 "github.com/guardana/control/api/gen/go/guardana/control/finding/v1alpha1"
+	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/supervise"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -293,5 +294,24 @@ func TestATreeIsBoundedByMaxTreeRuns(t *testing.T) {
 	tree = append(tree, supervise.Run{ID: fmt.Sprintf("run-%032x", supervise.MaxTreeRuns), Tenant: tenant, Parent: runID})
 	if _, err := supervise.Evaluate(supervise.Input{Procedure: inheritProc(t), Run: tree[0], Tree: tree, Exports: x}); !errors.Is(err, supervise.ErrInput) {
 		t.Fatalf("a tree of %d: %v, want ErrInput", len(tree), err)
+	}
+}
+
+// TestARequestThatNamesTwoRunsConfirmsNothing: a request of the root whose
+// completion names the child is in doubt, so neither run gets a confirmed
+// deadline finding from it; a plane stamps one run on a whole trail.
+func TestARequestThatNamesTwoRunsConfirmsNothing(t *testing.T) {
+	x := export(call{req: "r1", tool: "get_order", upstream: "shop"})
+	last := x.Events[len(x.Events)-1]
+	if last.GetKind() != controlv1.EventKind_EVENT_KIND_ACTION_COMPLETED {
+		t.Fatalf("fixture: the last event is %v", last.GetKind())
+	}
+	last.RunId = childRun
+	last.OccurredAt = at(700 * time.Second)
+	res := treeEvaluate(t, supervise.Input{Procedure: inheritProc(t), Tree: family(), Exports: []supervise.Export{x}})
+	for _, v := range verdicts(res, supervise.RuleDeadlineExceeded) {
+		if v == childC || v == rootC {
+			t.Fatalf("DEADLINE_EXCEEDED %q from a request that names two runs, want no confirmed finding", v)
+		}
 	}
 }

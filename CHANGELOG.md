@@ -77,6 +77,17 @@ verify one.
   export instead of a walk that skips dot-directories.
 - The release gate refuses a commit that is not main's head, and refuses
   unless main's newest CodeQL analysis is of the commit being released.
+- `guardana-gateway` waited at start, with no listener bound, on an upstream
+  that took the connection and never answered its initialization. The
+  connect is now bounded by `upstream.list_timeout`, and the configuration
+  reference says so.
+- `runs open`, `runs close`, `runs list` and `supervise --runs` waited without
+  a bound for another operator command's lock while opening the directory;
+  their ten-second bound now covers the open too.
+- `supervise` read a request whose events name two runs as one run's request.
+  Such a request is now in doubt and confirms nothing.
+- A floor store that stopped answering kept one call per policy poll waiting
+  in the background; calls to it now take turns, so at most one waits.
 
 ## [0.10.2-alpha] - 2026-10-10
 

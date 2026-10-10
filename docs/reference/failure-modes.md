@@ -39,10 +39,8 @@ the adapter's code.
 
 ## Collector gone, then back
 
-The exporter resends with a backoff growing to `export.max_backoff`; every
-record stays in the spool (`/healthz`: `spool.unacknowledged`, and
-`exporter.retried_transport` for failed sends), and no call is blocked until
-the spool is full. Once a collector answers again, every record it accepts
+The exporter resends with a backoff growing to `export.max_backoff`; every record stays in the spool (`/healthz`: `spool.unacknowledged`), and no
+call is blocked until the spool is full. Once a collector answers again, every record it accepts
 arrives, at least once, so it tells copies apart by `event_id`; one it keeps
 refusing goes to the spool's `quarantine.log`.
 `TestCollectorOutageBlocksNoDecision` in `internal/gateway/e2e/` holds the
@@ -63,29 +61,29 @@ spool has released what the collector accepted.
 The plane asks only when the answer would change a call's decision, so a
 failure blocks only calls a veto rule covers, and their trail ends
 `ACTION_BLOCKED` with the code. An ask past `pdp.timeout` is
-`PDP_TIMEOUT`. An answer that is no plain allow or deny is
-`PDP_ANSWER_REFUSED`: two `decision` members, even agreeing; a string for a
-boolean; a truncated or trailing document; an unknown member on an allow; or
-no decision. Nothing listening, a `500`, or an ask past `pdp.max_in_flight`
+`PDP_TIMEOUT`. An answer that is no plain allow or deny, such as two `decision` members or a
+string for a boolean, is `PDP_ANSWER_REFUSED`. Nothing listening, a `500`, or an ask past `pdp.max_in_flight`
 is `PDP_UNAVAILABLE`. A well-formed `false` is `PDP_DENY`; a forged `true` is
 read as an allow ([threat model](../concepts/threat-model.md)).
 
 ## An upstream that dies mid-call
 
-The upstream took the decided, started call and no answer came back. The
+The upstream took the call and no answer came back. The
 agent gets a JSON-RPC error, never a result; the call is not sent again, and
 its trail ends `ACTION_FAILED` with an `UNKNOWN` result and
 `tool_protocol_status: error`, never `ACTION_COMPLETED`.
 
-- A `stdio` upstream, a child process, that exits during a call is not
-  started again: every later call to it is decided, started, closed that way
-  and answered with an error until the plane restarts. Other upstreams run.
-- An HTTP upstream that closes the connection after reading the call, before
-  or after its status line, leaves that call's outcome unknown; the next
+- A `stdio` upstream that exits during a call is not
+  started again: every later call to it is closed that way and answered with an error until
+the plane restarts. Other upstreams run.
+- An HTTP upstream that closes the connection after reading the call leaves that call's outcome unknown; the next
   call to it is sent and answered.
 
 An upstream that answers nothing within `upstream.call_timeout` is closed
-with a `TIMEOUT` result (`TestUpstreamTimeoutIsRecordedAsOne`).
+with a `TIMEOUT` result (`TestUpstreamTimeoutIsRecordedAsOne`). A `stdio`
+upstream that stops reading its input can hold a call's write, and a call
+queued behind it, past that bound; each closes `TIMEOUT` or unknown, never
+as not sent.
 
 ## Pause file unreadable
 

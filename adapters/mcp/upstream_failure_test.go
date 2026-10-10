@@ -344,3 +344,36 @@ func TestCloseNamesTheUpstreamAndNeverItsEndpoint(t *testing.T) {
 		t.Errorf("Close = %v; want it to begin %q and hold no credential", err, "mcp: close victim: ")
 	}
 }
+
+// TestStartGivesUpOnAnUpstreamThatNeverAnswers: an upstream that takes the
+// connection and never answers it fails Start within the list timeout, plus
+// the library's own close, rather than holding it until a signal.
+func TestStartGivesUpOnAnUpstreamThatNeverAnswers(t *testing.T) {
+	release := make(chan struct{})
+	silent := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		select {
+		case <-release:
+		case <-r.Context().Done():
+		}
+	}))
+	t.Cleanup(func() { close(release); silent.Close() })
+	v := newVictim()
+	a, err := mcp.New(newConfig(t, v, mcp.KindStatelessHTTP, &sdk.StreamableClientTransport{Endpoint: silent.URL + "/mcp"},
+		rigOptions{timeout: 200 * time.Millisecond, listTimeout: 200 * time.Millisecond}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- a.Start(ctx, &fakePipeline{decide: execute}) }()
+	select {
+	case err := <-done:
+		if err == nil || !strings.HasPrefix(err.Error(), "mcp: connect victim:") {
+			t.Fatalf("Start = %v, want a failure to connect victim", err)
+		}
+	case <-time.After(30 * time.Second):
+		cancel()
+		t.Fatalf("Start was still connecting 30s in with a 200ms list timeout; it returned %v only when cancelled", <-done)
+	}
+}

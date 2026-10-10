@@ -322,7 +322,7 @@ func TestRunsCloseRefusals(t *testing.T) {
 // opening time being the expiry less the lifetime asked for.
 func TestRunsListPrintsEachField(t *testing.T) {
 	dir := runsDir(t)
-	a, err := runs.InitAdmin(dir)
+	a, err := runs.InitAdmin(context.Background(), dir)
 	if err != nil {
 		t.Fatal(err)
 	}

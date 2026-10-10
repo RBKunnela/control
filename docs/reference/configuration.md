@@ -117,7 +117,7 @@ Rendered from the field table in `internal/gatewayconfig`. Rebuild it with
 | `list.shaping` | `GUARDANA_CONTROL_LIST_SHAPING` | one of | `none` | yes | `none`, `annotate`, `hide` |
 | `list.ttl` | `GUARDANA_CONTROL_LIST_TTL` | duration | `1m` | no |  |
 | `upstream.call_timeout` | `GUARDANA_CONTROL_UPSTREAM_CALL_TIMEOUT` | duration | `30s` | no |  |
-| `upstream.list_timeout` | `GUARDANA_CONTROL_UPSTREAM_LIST_TIMEOUT` | duration | `10s` | no | `0` is the adapter's own `30s` |
+| `upstream.list_timeout` | `GUARDANA_CONTROL_UPSTREAM_LIST_TIMEOUT` | duration | `10s` | no | bounds reading one upstream's list, and connecting to each upstream at start; `0` is the adapter's own `30s` |
 | `upstreams.N.name` | `GUARDANA_CONTROL_UPSTREAMS_N_NAME` | string |  | yes |  |
 | `upstreams.N.endpoint` | `GUARDANA_CONTROL_UPSTREAMS_N_ENDPOINT` | string |  | no |  |
 | `upstreams.N.command` | `GUARDANA_CONTROL_UPSTREAMS_N_COMMAND` | string |  | no |  |

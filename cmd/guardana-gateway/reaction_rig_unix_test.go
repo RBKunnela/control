@@ -105,7 +105,7 @@ func layOutReaction(t *testing.T, dir string) reaction.Route {
 			t.Fatal(err)
 		}
 	}
-	admin, err := runs.InitAdmin(filepath.Join(dir, "runs"))
+	admin, err := runs.InitAdmin(context.Background(), filepath.Join(dir, "runs"))
 	if err == nil {
 		err = admin.Close()
 	}

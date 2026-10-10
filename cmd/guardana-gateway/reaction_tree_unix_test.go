@@ -116,7 +116,7 @@ func (rp *runsPlane) withRouteDocument(doc string) {
 	if err := os.Mkdir(filepath.Join(rp.dir, "stops"), 0o700); err != nil {
 		rp.t.Fatal(err)
 	}
-	admin, err := runs.InitAdmin(rp.runs)
+	admin, err := runs.InitAdmin(context.Background(), rp.runs)
 	if err == nil {
 		err = admin.Close()
 	}
