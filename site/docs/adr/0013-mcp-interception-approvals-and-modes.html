@@ -114,6 +114,10 @@ Date: 2026-09-19</p>
 <a href="/docs/adr/0009-open-core-boundary">ADR-0009</a>,
 <a href="/docs/adr/0011-contract-corrections-before-publication">ADR-0011</a> and
 <a href="/docs/adr/0012-policy-kernel-semantics">ADR-0012</a>.</p>
+<p>Amended by <a href="/docs/adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api">ADR-0051</a>:
+the adapter's <code>Block</code> capability is a three-valued <code>Enforcement</code>, <code>None</code>,
+<code>Cooperative</code> or <code>Inline</code>; the MCP adapter is <code>Inline</code>, and an adapter whose
+caller enforces the decision is <code>Cooperative</code>.</p>
 <p>Amended by <a href="/docs/adr/0016-approval-providers-and-the-lost-hold">ADR-0016</a>: a hold the
 plane loses to a restart is closed from the plane's own hold journal rather than
 left open, and a store record the plane no longer holds is resolved as not

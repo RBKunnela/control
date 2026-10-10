@@ -59,3 +59,4 @@ request with `Status: proposed`, and set it to `accepted` when it merges.
 | [0048](0048-one-run-drawn-as-a-page-and-findings-exported-with-a-cursor.md) | One run drawn as a page, and findings exported with a cursor |
 | [0049](0049-the-site-names-the-published-release.md) | The site names the published release |
 | [0050](0050-adoption-workflows-preserve-authority-and-evidence.md) | Adoption workflows preserve authority and evidence |
+| [0051](0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api.md) | A tool outside MCP is admitted, completed and aborted through an enforcement API |

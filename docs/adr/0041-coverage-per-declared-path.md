@@ -16,6 +16,11 @@ whole, unfiltered one; a path is enforced only when every plane that
 classifies it enforces it; a read under `policy.fail_open_read` outside
 `LOCKDOWN` is decided, not enforced; a call around the plane exits 1.
 
+Amended by [ADR-0051](0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api.md):
+a path a `Cooperative` plane serves, such as a tool behind the enforcement
+API, is decided, not enforced, in every mode; only a plane that holds the path
+to the effect can make it enforced.
+
 ## Context
 
 An operator needs to know, for each thing an agent can do, whether a plane

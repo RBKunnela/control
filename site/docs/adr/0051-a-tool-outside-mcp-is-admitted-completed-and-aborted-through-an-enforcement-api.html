@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ADR-0051: A tool outside MCP is admitted, completed and aborted through an enforcement API · Guardana Control</title>
+<meta name="description" content="Decision record, accepted."/>
+<link rel="canonical" href="https://control.guardana.dev/docs/adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api"/>
+<meta name="theme-color" content="#0B8F80"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="stylesheet" href="/assets/brand/v1/tokens.css"/>
+<link rel="stylesheet" href="/assets/control/control.css"/>
+<link rel="stylesheet" href="/assets/control/docs.css"/>
+</head>
+<body class="doc">
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap bar">
+  <a class="mark" href="/"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 4.5 5.6v6.1c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V5.6z"/><path d="M10.2 8.4v7.8M10.2 12.3h5.3"/></svg><span>Guardana <b>Control</b></span></a>
+  <a class="vlink" href="https://github.com/guardana/control/releases/tag/v0.10.2-alpha"><span class="ver">v0.10.2-alpha</span></a>
+  <nav aria-label="Primary">
+    <a href="/docs/">Docs</a>
+    <a href="/docs/status">Status</a>
+    <a class="hide-s" href="/docs/roadmap">Roadmap</a>
+    <a class="gh" href="https://github.com/guardana/control" aria-label="GitHub"><svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span class="hide-s">GitHub</span></a>
+  </nav>
+</div></header>
+<div class="wrap shell">
+<details class="mnav">
+<summary>Menu · <b>ADR-0051: A tool outside MCP is admitted, completed and aborted through an enforcement API</b></summary>
+<nav class="inner" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</details>
+<main id="main" class="prose">
+<h1 id="adr-0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api">ADR-0051: A tool outside MCP is admitted, completed and aborted through an enforcement API</h1>
+<p>Status: accepted
+Date: 2026-10-10</p>
+<p>Builds on <a href="/docs/adr/0013-mcp-interception-approvals-and-modes">ADR-0013</a>,
+<a href="/docs/adr/0016-approval-providers-and-the-lost-hold">ADR-0016</a>,
+<a href="/docs/adr/0021-a-run-carries-what-it-took-in">ADR-0021</a>,
+<a href="/docs/adr/0034-a-run-the-operator-opens-has-an-identity-of-its-own">ADR-0034</a> and
+<a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a>. It is the record
+<a href="/docs/adr/0026-first-value-and-external-extension-paths">ADR-0026</a> asks for before an
+enforcement API is built. Amends ADR-0013's adapter capabilities and
+<a href="/docs/adr/0041-coverage-per-declared-path">ADR-0041</a>'s coverage table.</p>
+<h2 id="context">Context</h2>
+<p>The pipeline in <code>internal/gateway</code> is protocol-neutral. <code>Admit</code> decides an
+envelope with its argument bytes and answers with a disposition: block, hold
+for approval, or execute exactly the authorized bytes under an execution id.
+<code>Close</code> digests the bytes that were sent against the authorized envelope and
+writes the closing record; <code>Abort</code> records that nothing was sent. The MCP
+adapter is its only caller, in the same process, and it builds every envelope
+from the operator's manifest: the effect class, the resource and the trust of
+a tool come from an override pinned to the tool's definition, never from the
+agent.</p>
+<p>A tool written in Python inside an agent framework cannot call that pipeline.
+Milestone 2 needs a language-neutral way for such a tool to ask before it acts
+and to report what it did, so that one policy, one approval store and one
+evidence trail cover it as they cover an MCP call. The caller is another
+process on the other side of a socket, and three things the in-process adapter
+gets for free stop being true:</p>
+<ul>
+<li>The caller can lose an answer, retry, crash between the decision and the
+effect, or time out after an effect may have happened.</li>
+<li>The caller names itself. Nothing it puts in a request is evidence of who it
+is, which run it serves or what its call does.</li>
+<li>The caller can ignore the answer. The plane holds neither the tool's
+credential nor its connection, so a decision returned to a cooperating
+client does not prove the client enforced it.</li>
+</ul>
+<h2 id="decision">Decision</h2>
+<p><strong>One adapter, three operations, one unstable contract.</strong> <code>adapters/enforce</code>
+serves HTTP/1.1 with JSON bodies on a Unix domain socket and nowhere else. The
+plane creates the socket with mode 0600 in a directory it owns and checks both
+when it binds; a loopback address is refused, since any local account can
+reach one. It is a listener kind of <code>guardana-gateway</code> beside the MCP kinds,
+and one plane serves one adapter, so policy, mode, approvals, runs, pause and
+stops are configured as they are today. The operations are
+<code>POST /enforce/v1alpha1/admit</code>, <code>/complete</code> and <code>/abort</code>. The messages are a
+new package, <code>guardana.control.enforce.v1alpha1</code>, in <code>api/proto</code>. They reuse
+the v1 <code>Decision</code> and <code>Obligation</code> and add no field to any v1 message. The JSON
+is the protobuf JSON mapping, decoded strictly: an unknown field, a body past
+its bound or a path naming another version is refused with an error body,
+never ignored. Every enum's zero value is <code>UNSPECIFIED</code>, and a client reads an
+admit outcome it does not know, or <code>UNSPECIFIED</code>, as a block. The package is
+added to <code>buf.yaml</code>'s unstable list and to the configuration
+<code>scripts/proto-breaking-probe.sh</code> pins, so <code>buf breaking</code> keeps examining v1.</p>
+<p><strong>The receiver builds the envelope.</strong> An admit request carries a tool name,
+the proposed argument bytes as a base64 <code>bytes</code> field so that no JSON library
+reorders or reformats them, an optional W3C trace context and an optional
+request key. It carries no envelope, no effect, no resource, no identity and
+no run. The receiver builds the envelope from the run (below) and from the
+listener's tool table, in which the operator gives each tool its effect class,
+provider, resource type, the pointer the resource id is read from, the
+destination's trust zone and the trust and sensitivity of what it returns, as
+an MCP override does. A tool the table does not name is unclassified and
+blocked with <code>ACTION_UNCLASSIFIED</code>. The plane never sees the tool's
+definition, so no fingerprint binds a classification to one: a changed tool
+behind an unchanged name keeps its classification, and the record says so.
+The trace context is recorded as a claimed correlation, which stops nothing
+(ADR-0039).</p>
+<p><strong>An admit answer is one of three outcomes.</strong> <code>EXECUTE</code> carries the
+authorized argument bytes, the decision, the obligations the client honours
+and an execution handle with its expiry. <code>BLOCK</code> carries the decision with its
+reason codes; the client sends nothing. <code>PENDING</code> carries the approval id, the
+action digest, the approval's expiry and how long to wait before resuming.
+<code>INDETERMINATE</code> is answered as <code>BLOCK</code>. The client sends exactly the
+authorized bytes, which differ from what it proposed when a rewriting
+obligation applied, and an <code>EXECUTE</code> without them is aborted. It compares
+bytes, never a digest: no client computes the canonical digest until a second
+implementation passes the golden files in <code>testdata/digest/</code>. An obligation
+type the client does not know is a reason to abort, never to execute. This
+adapter applies no obligation of its own, so the kernel denies a call that
+needs one beyond the pipeline's rewriting, as it does for MCP.</p>
+<p><strong>The adapter declares that it cooperates.</strong> The adapter seam's <code>Block</code>
+capability becomes a three-valued <code>Enforcement</code>: <code>None</code>, the zero value, for
+an adapter that cannot keep a call from its effect; <code>Cooperative</code>, for one
+that hands a decision to a caller that enforces it; and <code>Inline</code>, for one that
+holds the path to the effect, as the MCP adapter holds the upstream
+connection. <code>ENFORCE</code>, <code>APPROVE</code> and <code>LOCKDOWN</code> need at least <code>Cooperative</code>,
+so a plane over this adapter decides, holds and records in those modes and
+says what it is. The coverage map reports every path a <code>Cooperative</code> plane
+serves as <code>decided, not enforced</code>, with a basis that names the cooperating
+client, in every mode; only an <code>Inline</code> plane can report <code>enforced</code>. A tool
+that verified a receiver-signed grant for the exact authorized bytes would
+make the tool the enforcement point; that needs a record of its own.</p>
+<p><strong>A handle is opaque, scoped and expiring.</strong> A handle is 128 bits from the
+operating system's random source, minted by the adapter and never derived
+from request data. It is bound to the run the receiver resolved for the admit
+and expires after the listener's execution lifetime, which is required,
+bounded and has no default. <code>complete</code> and <code>abort</code> resolve it only under the
+same run token. A handle that is unknown, expired, belongs to another run or
+was never minted gets one answer, <code>HANDLE_UNKNOWN</code>, which reveals nothing about
+other runs. A spent handle answers its own run, until it expires, with how it
+ended: <code>RECORDED</code>, <code>RECORD_FAILED</code>, <code>UNRECORDED</code> (a read the operator let run
+unrecorded) or <code>ABANDONED</code>. Only <code>RECORDED</code> says the closing record landed.
+These and the contract's other refusals (<code>DUPLICATE_REQUEST</code>, a malformed
+body) are error codes of the contract, answered before anything is written;
+reason codes stay on decisions and closing records.</p>
+<p><strong>Complete records what happened; an uncertain effect stays uncertain.</strong> A
+<code>complete</code> carries the handle, the bytes that were sent, a status (success,
+failure, timeout, cancelled or unknown), the start and end times, a result
+hash and a side-effect confirmation, and nothing else; the receiver builds the
+v1 result from them. It closes the execution as <code>Close</code> does: it digests the
+sent bytes under the authorized envelope and records a mismatch as
+<code>EXECUTED_ARGS_MISMATCH</code>. Over this adapter a mismatch blocks the material
+calls of that run until restart and no other run's, since the bytes are a
+client's report and a plane-wide halt would let any token holder stop every
+run. A mismatch shows a cooperating client's fault; a defecting client reports
+the authorized bytes and is not caught by it. A status of timeout or unknown
+is recorded as it is, with <code>retryable</code> false: the client could not tell
+whether the effect happened. The receiver never retries anything, and the
+reference client never sends an action again after a handle was issued. A new
+attempt is a new admit, decided anew, and an approval spent on the first
+attempt is not spent again.</p>
+<p><strong>Abort records that nothing was sent.</strong> An <code>abort</code> names one of three
+causes, each an existing <code>Abort</code> cause recorded as its registry code: the
+client's byte comparison failed, an obligation it cannot apply, or it gave up
+before sending, cancelled or unable to reach the tool. A client that cannot
+tell whether the bytes left completes with unknown, never aborts, since an
+abort is a claim that no effect happened.</p>
+<p><strong>An abandoned execution is closed as unknown.</strong> A handle neither completed
+nor aborted by its expiry is closed by the receiver: <code>ACTION_FAILED</code> with
+status unknown and the new reason code <code>EXECUTION_ABANDONED</code>, never success and
+never blocked, because the receiver cannot know whether the client acted. A
+ticker beside the plane's other readers calls the adapter's sweep, which reads
+the plane's clock and closes what expired through a new <code>Pipeline.Abandon</code>,
+bounded per pass. A graceful stop closes every open execution as abandoned
+before the spool drains. Only a crash leaves a trail at <code>ACTION_STARTED</code>,
+which today's readers show as open; journalling open executions across a
+restart is left to B14, as a lost hold is closed, never resumed, under
+ADR-0016. The evidence report shows a timeout or unknown closing as
+uncertain, not failed. supervise reads every <code>ACTION_FAILED</code> as failed;
+changing that changes the output of its rules, so it waits for its own record
+and version.</p>
+<p><strong>Duplicate requests get no second authorization.</strong> There is no idempotent
+replay of an <code>EXECUTE</code> answer: two callers holding one handle could both act on
+it. The receiver mints every request id, so the pipeline's refusal of a request
+id with an open trail never applies here. A client may send a request key of
+at most 64 characters from <code>[A-Za-z0-9._-]</code>, which the adapter reserves
+atomically before <code>Admit</code> and never writes to a log, a label or the evidence.
+A second admit with the key of an execution still open in the same run is
+refused with <code>DUPLICATE_REQUEST</code> before anything is written, and the first
+keeps its handle. Without a key, or once the first execution closed, an admit
+is a new request. A client that lost an admit answer never holds its handle:
+that execution is abandoned and closed as unknown, and its retry is decided
+anew. If the lost admit resumed an approval, the approval is spent and the
+retry is told so, which fails closed.</p>
+<p><strong>Pending and resume use the existing hold.</strong> A <code>PENDING</code> answer leaves the
+request held as an MCP hold is (ADR-0013), in the run that asked (ADR-0034).
+The approver decides out of band with <code>guardana-control approvals approve</code>.
+The client resumes by sending the same tool and bytes in the same run after
+the wait it was given. The pipeline resumes a hold whose binding, data labels
+and run context match and whose fresh decision has the same verdict, digest,
+rules and obligations; a policy reload that changes any of them holds the call
+anew. It consumes the approval through the approval store's compare-and-swap,
+once: of two concurrent resumes one gets <code>EXECUTE</code> and the other is refused
+<code>APPROVAL_ALREADY_USED</code>. The client never presents an approval, so an approval
+is never a token a client can replay. A resume after the hold expired is held
+anew with a new <code>PENDING</code>; the expired hold's trail gets <code>APPROVAL_EXPIRED</code>
+from the sweep.</p>
+<p><strong>The receiver owns the scope.</strong> Every request presents a run token
+(ADR-0034) in the <code>Run-Token</code> header, compared once, in constant time, with the
+hash in the run record. The tenant, principal and agent of the call are the
+run record's, which must equal the listener's configured identity, as on an
+MCP listener without an authenticator. A request with no token, an unknown
+one, or one for a closed or expired run is refused with 401 before its body is
+decoded, writes no trail and is counted by cause. The token is an
+operator-issued capability for one run: whoever holds it acts as that run, and
+the socket's owner and mode limit who can present one. Authenticated
+operators and principals of their own are B13's.</p>
+<p><strong>Conformance is files.</strong> <code>testdata/enforce/</code> holds the contract's cases as
+input and expected output files any language can run. <code>receiver/&lt;case&gt;/</code>
+holds the setup (policy, mode, run, a scripted clock), the exchange (each
+request and the answer it must get, with matchers for minted values) and the
+event kinds and codes the trail must hold. <code>client/&lt;case&gt;/</code> holds scripted
+receiver answers and what a client must do about each: whether the tool is
+reached, the bytes it sends, the abort cause or the completion status.
+<code>cases.json</code> lists every case with the contract version and the negative
+control that must fail it. A Go test runs both directories against the adapter
+and an in-repository reference client; a client in another language runs
+<code>client/</code> against its own file-driven receiver. The cases: block before send,
+rewritten bytes, pending then resume, two concurrent resumes, an unknown and
+an unspecified outcome, an unknown obligation, a timeout before and after a
+possible effect, cancellation, completion, a duplicate request key, an
+abandoned handle, an expired, foreign and spent handle, a missing and a
+foreign run token, an unclassified tool, an unknown field and an unknown
+version.</p>
+<h2 id="security--compatibility-impact">Security / compatibility impact</h2>
+<p>No model, pattern or client claim enters the decision: the kernel decides an
+envelope the receiver built from the operator's classification and the run it
+resolved. Every failure the adapter cannot resolve blocks: an unreadable
+request, a run that does not resolve, a sink that refuses the trail, a
+pipeline past its bound on open executions, an outcome a client does not
+know. An approval binds the exact action digest and is consumed once; a
+handle is single use. A non-idempotent effect is never retried by the receiver
+or by the reference client.</p>
+<p>The adapter is not a security boundary, and its coverage never says
+<code>enforced</code>. A client can ignore any answer, send other bytes than it reports,
+or report an effect that did not happen; the plane records what it was told.
+A stolen run token acts as that run until the run closes or expires. The
+classification is the operator's, by tool name, with no binding to what the
+tool does.</p>
+<p>Argument bytes reach the plane over the socket, as an MCP call's do; capture
+stays off by default, the result travels as a status and a hash, and hidden
+reasoning is never sent. The v1 contracts, the digest and its goldens and the
+reason-code numbers already assigned do not change; one code is appended. The
+MCP adapter declares <code>Inline</code> where it declared <code>Block</code>, which changes no
+behaviour. The listener needs a Unix socket, so this adapter runs on the
+platforms the releases ship, Linux and macOS.</p>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>The client sends a v1 envelope and the receiver overwrites the fields that
+carry authority: every v1 field added later would be a hole, and the client
+would still choose data labels and delegation the policy reads.</li>
+<li>An observe-only adapter: honest and simplest, but no approval and no hold
+for a Python tool, which is what milestone 2 is for.</li>
+<li>gRPC, or Connect: typed clients for free, but a new dependency in the
+request path and a toolchain a Python user installs before a single call;
+JSON over HTTP needs neither, and the contract stays protobuf.</li>
+<li>Replaying an <code>EXECUTE</code> answer to a duplicate admit: lets a client that lost
+the answer go on, but hands one authorization to two callers when the
+duplicate was a second worker, not a retry.</li>
+<li>An approval token the client presents on resume: a bearer approval can be
+copied to another run or process; the store's binding cannot.</li>
+<li>A caller credential of its own, mTLS or the socket's peer credentials:
+stronger answers to &quot;who calls&quot;, each a new store or platform code; the run
+token already binds a run to a principal and an agent through a record the
+operator wrote, and B13 will add an authenticator for every listener.</li>
+<li>A plane-wide halt on a reported mismatch, as for MCP: one client could stop
+every run.</li>
+<li>A loopback listener: reachable by every local account.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<p>A Python tool, and any language with HTTP, JSON and a Unix socket, can be
+decided by the same policy, approvals and trail as an MCP call before B11
+writes a client. The operator classifies each tool of an enforcement-API plane
+by name, as they classify MCP tools. The plane gains a listener kind, a tool
+table, an execution lifetime, a sweep, a run-scoped halt, one reason code and
+a three-valued enforcement capability, and the binary's wiring stops assuming
+the MCP adapter. An integration built on this API is cooperative by
+construction, so its coverage is never <code>enforced</code>. A lost admit answer can
+spend an approval, which costs the user a second approval and never a second
+effect.</p>
+<h2 id="validation">Validation</h2>
+<ul>
+<li>The conformance files run against the adapter and the reference client in
+<code>make test</code>, and each case's negative control fails when the behaviour it
+pins is removed.</li>
+<li>An end-to-end test drives one tool fixture with a cooperating and a
+defecting client under the same policy: after a <code>BLOCK</code> the cooperating
+client never reaches the tool, the defecting one does, neither trail shows
+<code>ACTION_STARTED</code>, and the coverage map reports the path <code>decided, not enforced</code>; an MCP plane in front of a tool of the same classification
+reports it <code>enforced</code>, and a defecting MCP client never reaches it.</li>
+<li>A mode test refuses <code>ENFORCE</code> for an adapter whose enforcement is <code>None</code>
+and accepts it for <code>Cooperative</code>; a coverage golden shows a <code>Cooperative</code>
+plane in <code>ENFORCE</code> as <code>decided, not enforced</code>.</li>
+<li>Adversarial tests: two concurrent resumes of one approval, two concurrent
+admits with one request key, a handle from another run, an expired handle,
+a replayed <code>complete</code>, an admit under a closed run, an admit body with any
+field outside the message, an argument over its bound, a client that never
+completes, a mismatch reported by one run while another run keeps
+executing, and a timeout reported after a possible effect.</li>
+<li><code>scripts/proto-breaking-probe.sh</code> fails when the new package is left out of
+its pinned configuration, and <code>buf breaking</code> still examines v1.</li>
+</ul>
+<p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api.md">docs/adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.10.2-alpha, and <a href="https://github.com/guardana/control/tree/v0.10.2-alpha/docs">its documentation</a> is in its tag.</p>
+</main>
+<nav class="side" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</div>
+<footer class="foot"><div class="wrap row">
+  <p>Guardana Control · Apache-2.0</p>
+  <ul>
+    <li><a href="https://github.com/guardana/control">GitHub</a></li>
+    <li><a href="https://github.com/guardana/control/releases">Releases</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/SECURITY.md">Security</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/LICENSE">Licence Apache-2.0</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/TRADEMARKS.md">Trademarks</a></li>
+  </ul>
+</div></footer>
+</body>
+</html>

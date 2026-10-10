@@ -10,6 +10,11 @@ Builds on [ADR-0004](0004-evidence-and-privacy-defaults.md),
 [ADR-0011](0011-contract-corrections-before-publication.md) and
 [ADR-0012](0012-policy-kernel-semantics.md).
 
+Amended by [ADR-0051](0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api.md):
+the adapter's `Block` capability is a three-valued `Enforcement`, `None`,
+`Cooperative` or `Inline`; the MCP adapter is `Inline`, and an adapter whose
+caller enforces the decision is `Cooperative`.
+
 Amended by [ADR-0016](0016-approval-providers-and-the-lost-hold.md): a hold the
 plane loses to a restart is closed from the plane's own hold journal rather than
 left open, and a store record the plane no longer holds is resolved as not
