@@ -10,7 +10,7 @@ import (
 const (
 	ciWorkflowPath = ".github/workflows/ci.yml"
 	ciGateJob      = "quality"
-	ciGateCommand  = "make quality"
+	ciGateCommand  = "env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS make quality GO=go"
 )
 
 // The keys the gate job and its gate step may carry. Anything else can skip
@@ -182,10 +182,11 @@ func ciGateProblems(lines []string) []string {
 	var gate []*yamlNode
 	for _, steps := range job.children("steps") {
 		for _, step := range steps.kids {
-			if slices.ContainsFunc(step.kids, func(k *yamlNode) bool { return k.key == "run" && k.value == ciGateCommand }) {
+			isGate := slices.ContainsFunc(step.kids, func(k *yamlNode) bool { return k.key == "run" && k.value == ciGateCommand })
+			if isGate {
 				gate = append(gate, step)
 			}
-			problems = append(problems, looseningProblems(step)...)
+			problems = append(problems, looseningProblems(step, isGate)...)
 		}
 	}
 	switch len(gate) {
@@ -224,10 +225,14 @@ func workflowLevelProblems(root *yamlNode) []string {
 // looseningProblems refuses a step of the gate job whose text names a
 // variable make or go reads its flags from. Any mention is refused, not only
 // a write to $GITHUB_ENV: a step can save the file's path for a later one, or
-// hand the name to a write through its env.
-func looseningProblems(step *yamlNode) []string {
+// hand the name to a write through its env. The gate command itself names the
+// variables it clears, and only that one line of the gate step is exempt.
+func looseningProblems(step *yamlNode, isGate bool) []string {
 	var problems []string
 	text := step.text()
+	if isGate {
+		text = strings.Replace(text, "run: "+ciGateCommand+"\n", "", 1)
+	}
 	for _, name := range ciLooseningNames {
 		if strings.Contains(text, name) {
 			problems = append(problems, fmt.Sprintf("line %d: a step of the %s job names %s, which a write to $GITHUB_ENV hands to the gate step", step.line, ciGateJob, name))
@@ -408,7 +413,7 @@ jobs:
           printf '%s\n' "${pins}" >>"$GITHUB_ENV"
           if: this is script text, not a key
       - name: Run the quality gate
-        run: make quality
+        run: env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS make quality GO=go
 
   other:
     if: false
@@ -421,22 +426,27 @@ func TestCIGateProblems(t *testing.T) {
 	if problems := ciGateProblems(strings.Split(ciFixture, "\n")); len(problems) != 0 {
 		t.Fatalf("the correct fixture reported %q", problems)
 	}
-	gateStep := "      - name: Run the quality gate\n        run: make quality\n"
+	gateRun := "run: " + ciGateCommand + "\n"
+	gateStep := "      - name: Run the quality gate\n        " + gateRun
 	jobHead := "    name: Quality gate\n"
 	pinsWrite := "          printf '%s\\n' \"${pins}\" >>\"$GITHUB_ENV\"\n"
 	cases := map[string]struct{ old, replacement, want string }{
-		"the quick gate":                {"run: make quality\n\n", "run: make quality-quick\n\n", `no step of the quality job runs exactly "make quality"`},
-		"the gate with a fallback":      {"run: make quality\n\n", "run: make quality || true\n\n", "runs exactly"},
-		"the gate in a block":           {"run: make quality\n\n", "run: |\n          make quality\n\n", "runs exactly"},
-		"the gate quoted":               {"run: make quality\n\n", "run: \"make quality\"\n\n", "runs exactly"},
+		"the quick gate":                {gateRun + "\n", "run: make quality-quick\n\n", "no step of the quality job runs exactly \"" + ciGateCommand + "\""},
+		"the gate in the caller's env":  {gateRun + "\n", "run: make quality GO=go\n\n", "runs exactly"},
+		"the gate with MAKEFLAGS kept":  {gateRun + "\n", "run: env -u GNUMAKEFLAGS -u MFLAGS make quality GO=go\n\n", "runs exactly"},
+		"the gate with GO from the env": {gateRun + "\n", "run: env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS make quality\n\n", "runs exactly"},
+		"the gate with a fallback":      {gateRun + "\n", "run: " + ciGateCommand + " || true\n\n", "runs exactly"},
+		"the gate in a block":           {gateRun + "\n", "run: |\n          " + ciGateCommand + "\n\n", "runs exactly"},
+		"the gate quoted":               {gateRun + "\n", "run: \"" + ciGateCommand + "\"\n\n", "runs exactly"},
 		"an if on the step":             {gateStep, gateStep + "        if: false\n", "carries if"},
-		"an if before the run":          {gateStep, "      - name: Run the quality gate\n        if: false\n        run: make quality\n", "carries if"},
+		"an if before the run":          {gateStep, "      - name: Run the quality gate\n        if: false\n        " + gateRun, "carries if"},
 		"continue-on-error on a step":   {gateStep, gateStep + "        continue-on-error: true\n", "carries continue-on-error"},
 		"a shell on the step":           {gateStep, gateStep + "        shell: true {0}\n", "carries shell"},
 		"env on the step":               {gateStep, gateStep + "        env:\n          MAKEFLAGS: -n\n", "carries env"},
 		"a working directory":           {gateStep, gateStep + "        working-directory: docs\n", "carries working-directory"},
-		"the run written twice":         {gateStep, gateStep + "        run: make quality\n", "carries run twice"},
-		"two gate steps":                {gateStep, gateStep + gateStep, `2 steps of the quality job run "make quality"`},
+		"the run written twice":         {gateStep, gateStep + "        " + gateRun, "carries run twice"},
+		"two gate steps":                {gateStep, gateStep + gateStep, "2 steps of the quality job run \"" + ciGateCommand + "\""},
+		"the gate step names a flag":    {gateStep, "      - name: Run the quality gate with GOFLAGS\n        " + gateRun, "names GOFLAGS"},
 		"an if on the job":              {jobHead, jobHead + "    if: false\n", "the quality job carries if"},
 		"continue-on-error on a job":    {jobHead, jobHead + "    continue-on-error: true\n", "the quality job carries continue-on-error"},
 		"needs on the job":              {jobHead, jobHead + "    needs: other\n", "the quality job carries needs"},

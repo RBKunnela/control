@@ -16,8 +16,13 @@ import (
 
 // fixtureEnv is the environment git runs with in a fixture repository: no
 // user or system configuration, and an identity for a commit.
+// fixtureEnv is the process's environment for a fixture tree, without the
+// commit file list a gate-commit export runs under, which names another tree.
 func fixtureEnv(dir string) []string {
-	return append(os.Environ(),
+	env := slices.DeleteFunc(os.Environ(), func(kv string) bool {
+		return strings.HasPrefix(kv, "REPO_FILES_LIST=") || strings.HasPrefix(kv, "REPO_FILES_LIST_ROOT=")
+	})
+	return append(env,
 		"HOME="+dir, "XDG_CONFIG_HOME="+dir, "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_CONFIG_NOSYSTEM=1",
 		"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@example.invalid",
 		"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@example.invalid")

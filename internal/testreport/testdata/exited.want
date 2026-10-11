@@ -1,0 +1,3 @@
+ok  	example.com/fixture/exited	0.342s
+test: UNFINISHED example.com/fixture/exited TestExits
+test: 0 skipped

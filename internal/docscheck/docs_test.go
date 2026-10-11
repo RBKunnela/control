@@ -56,9 +56,10 @@ func repoRoot(t *testing.T) string {
 }
 
 // repoFiles is what the repository at root holds: git's list in a work tree,
-// tracked and untracked files alike but none it ignores, and a walk of a tree
-// with no .git, an export, which holds nothing else. A .git that git cannot
-// list fails the test: the walk would judge local files git ignores.
+// tracked and untracked files alike but none it ignores; the commit's own list
+// in the export scripts/gate-commit.sh made; and a walk of any other tree with
+// no .git, an export, which holds nothing else. A .git that git cannot list
+// fails the test: the walk would judge local files git ignores.
 func repoFiles(t *testing.T, root string) []string {
 	t.Helper()
 	files, err := impact.RepositoryFiles(root, os.Environ())

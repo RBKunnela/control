@@ -62,6 +62,21 @@ verify one.
   An approval of another major, or with none, now leaves the entry unreadable.
 - Closing an approvals handle while a call ran on it was a data race on whether
   the handle was open.
+- `make quality` runs every check even when make is told one is up to date
+  (`-o`, `--old-file`, or either in `MAKEFLAGS` or `GNUMAKEFLAGS`), and refuses
+  a `MAKE` or `GO` from the environment, any command-line variable but
+  `GO=go`, `-e`, a `FUZZTIME` or `RANGE` from the environment, a makefile read
+  beside the `Makefile`, and an `--eval` or `-E` string for any target; its
+  second make starts with none of the first's flags, and CI clears make's
+  flag variables before running it.
+- The test report refuses a passing package in which a test started and never
+  reported a result, as when the test ends the process with exit status 0. A
+  test that writes its own pass before it exits still hides the tests after
+  it; review catches that.
+- The documentation checks read the commit's own file list in a gate-commit
+  export instead of a walk that skips dot-directories.
+- The release gate refuses a commit that is not main's head, and refuses
+  unless main's newest CodeQL analysis is of the commit being released.
 
 ## [0.10.2-alpha] - 2026-10-10
 

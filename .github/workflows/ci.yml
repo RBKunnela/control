@@ -116,7 +116,9 @@ jobs:
           echo "${bin}" >>"$GITHUB_PATH"
 
       - name: Run the quality gate
-        run: make quality
+        # make takes options from these variables, so an earlier step that
+        # set one could make it skip a check; GO names the go the gate runs.
+        run: env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS make quality GO=go
 
   proto-breaking:
     name: Wire contract compatibility

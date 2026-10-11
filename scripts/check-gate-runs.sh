@@ -5,12 +5,14 @@
 # head commit: a green pull request run says nothing about the push run on
 # main, so the script counts only a push run on main of exactly this commit
 # whose conclusion is success. A push of a tag named main reports main as its
-# branch too, for any commit, so the commit must also be main's head or an
-# ancestor of it. A run made green by a re-run counts, because GitHub reports
-# a run's latest attempt. Security's analysis step succeeds whatever CodeQL
-# raises, so an open CodeQL alert of severity high or critical on main refuses
-# the commit too (Scorecard's alerts judge the repository, not the code); alerts are kept per branch, not per commit, so main's
-# latest analysis is what is read. An answer that cannot be read is a refusal.
+# branch too, for any commit, so the commit must also be main's head. A run
+# made green by a re-run counts, because GitHub reports a run's latest attempt.
+# Security's analysis step succeeds whatever CodeQL raises, so an open CodeQL
+# alert of severity high or critical on main refuses the commit too
+# (Scorecard's alerts judge the repository, not the code). Alerts are kept per
+# branch, not per commit, and judge main's newest CodeQL analysis, so that
+# analysis has to be of this commit. An answer that cannot be read is a
+# refusal.
 # It asks GitHub, so it needs GH_TOKEN (or a gh login) with read access to the
 # repository's contents, Actions and security events, and GITHUB_REPOSITORY as
 # owner/name.
@@ -38,10 +40,10 @@ main="$(gh api "repos/${repo}/git/ref/heads/main" \
 status="$(gh api "repos/${repo}/compare/${main}...${sha}" \
   --jq 'if (.status | type) != "string" then error("the answer holds no status") else .status end')" ||
   die "could not compare ${sha} with main's head ${main} on GitHub"
-case "${status}" in
-  identical | behind) ;;
-  *) die "${sha} is not on main: compared with main's head ${main}, GitHub says '${status}'" ;;
-esac
+# behind is refused too: an older commit of main was judged by its own runs, but
+# main's alerts now describe a later commit.
+[[ "${status}" == identical ]] ||
+  die "${sha} is not main's head: compared with main's head ${main}, GitHub says '${status}'"
 
 # The first line is the total GitHub counts and the number of runs it answered
 # with; then one line per run: head_sha, event, head_branch, conclusion, with an
@@ -116,4 +118,27 @@ severe=""
   done
 } <<<"${alerts}"
 [[ -z "${severe}" ]] || die "main has open CodeQL alerts of severity high or critical: ${severe}"
-printf 'check-gate-runs: no open high or critical CodeQL alert on main (%d alert(s) read)\n' "${answered}"
+
+# Read after the alerts, so an analysis that lands in between is of another
+# commit and refuses, rather than leaving alerts of a later commit judged as
+# this one's. One line: commit, ref, tool and error of main's newest CodeQL
+# analysis, or "none" when GitHub lists none; a field of the wrong type is an
+# error.
+analysis_filter='if type != "array" then error("the answer is no list of analyses")
+  elif length == 0 then "none"
+  else .[0] | if (.commit_sha | type) != "string" or (.ref | type) != "string" or (.tool.name | type) != "string"
+      or (.error | type) != "string"
+    then error("an analysis without a commit, a ref, a tool or an error")
+    else [.commit_sha, .ref, .tool.name, (if .error == "" then "none" else .error end)] | @tsv end
+  end'
+analysis="$(gh api "repos/${repo}/code-scanning/analyses?tool_name=CodeQL&ref=refs/heads/main&sort=created&direction=desc&per_page=1" --jq "${analysis_filter}")" ||
+  die "could not read main's newest CodeQL analysis; refusing rather than guessing"
+IFS=$'\t' read -r analysed analysis_ref analysis_tool analysis_error <<<"${analysis}" || true
+[[ "${analysed:-}" != none ]] || die "GitHub lists no CodeQL analysis on main; refusing rather than guessing"
+[[ "${analysis_ref:-}" == refs/heads/main && "${analysis_tool:-}" == CodeQL ]] ||
+  die "GitHub answered an analysis by '${analysis_tool:-}' on '${analysis_ref:-}' for main's newest CodeQL analysis"
+[[ "${analysed}" == "${sha}" ]] ||
+  die "main's newest CodeQL analysis is of ${analysed}, not ${sha}, so main's alerts do not judge this commit"
+[[ "${analysis_error:-}" == none ]] ||
+  die "main's newest CodeQL analysis, of ${sha}, reports an error: ${analysis_error:-}"
+printf 'check-gate-runs: no open high or critical CodeQL alert on main (%d alert(s) read), whose newest CodeQL analysis is of %s\n' "${answered}" "${sha}"

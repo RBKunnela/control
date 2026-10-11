@@ -33,6 +33,8 @@ func TestSummarizeRecordedStreams(t *testing.T) {
 		{"filtered", testreport.Summary{Events: 6, Packages: 1, NoTestsRun: 1}, testreport.ErrNoTestsRun},
 		{"exitearly", testreport.Summary{Events: 3, Packages: 1, NoTestsRun: 1}, testreport.ErrNoTestsRun},
 		{"everyran", testreport.Summary{Events: 22, Packages: 3, Skipped: 1}, nil},
+		{"parallel", testreport.Summary{Events: 53, Packages: 1, Skipped: 1}, nil},
+		{"exited", testreport.Summary{Events: 10, Packages: 1, Unfinished: 1}, testreport.ErrUnfinished},
 		{"failing", testreport.Summary{Events: 30, Packages: 1, FailedPackages: 1, FailedTests: 3}, testreport.ErrFailed},
 		{"panicking", testreport.Summary{Events: 27, Packages: 1, FailedPackages: 1, FailedTests: 1}, testreport.ErrFailed},
 		{"broken", testreport.Summary{Events: 6, Packages: 1, FailedPackages: 1, BuildFailures: 1}, testreport.ErrFailed},
@@ -95,6 +97,31 @@ func TestSummarizeRefusesWhatDoesNotProveAPass(t *testing.T) {
 		{"a pass with no test run and no warning", `{"Action":"output","Package":"example.com/q","Output":"ok  \texample.com/q\t0.1s\n"}
 {"Action":"pass","Package":"example.com/q"}
 `, testreport.ErrNoTestsRun},
+		{"a test that started and never ended in a passing package", `{"Action":"start","Package":"example.com/p"}
+{"Action":"run","Package":"example.com/p","Test":"TestHangs"}
+{"Action":"output","Package":"example.com/p","Output":"ok  \texample.com/p\t0.1s\n"}
+{"Action":"pass","Package":"example.com/p"}
+`, testreport.ErrUnfinished},
+		{"a paused test that never continued", `{"Action":"run","Package":"example.com/p","Test":"TestX"}
+{"Action":"pass","Package":"example.com/p","Test":"TestX"}
+{"Action":"run","Package":"example.com/p","Test":"TestY"}
+{"Action":"pause","Package":"example.com/p","Test":"TestY"}
+{"Action":"pass","Package":"example.com/p"}
+`, testreport.ErrUnfinished},
+		{"a subtest that never ended under a parent that passed", `{"Action":"run","Package":"example.com/p","Test":"TestX"}
+{"Action":"run","Package":"example.com/p","Test":"TestX/sub"}
+{"Action":"pass","Package":"example.com/p","Test":"TestX"}
+{"Action":"pass","Package":"example.com/p"}
+`, testreport.ErrUnfinished},
+		{"a benchmark with no result", `{"Action":"run","Package":"example.com/p","Test":"BenchmarkX"}
+{"Action":"pass","Package":"example.com/p"}
+`, testreport.ErrUnfinished},
+		{"a result for a test that ended in another package", `{"Action":"run","Package":"example.com/p","Test":"TestX"}
+{"Action":"run","Package":"example.com/q","Test":"TestX"}
+{"Action":"pass","Package":"example.com/q","Test":"TestX"}
+{"Action":"pass","Package":"example.com/q"}
+{"Action":"pass","Package":"example.com/p"}
+`, testreport.ErrUnfinished},
 		{"a pass whose only test ran in another package", `{"Action":"run","Package":"example.com/p","Test":"TestX"}
 {"Action":"pass","Package":"example.com/p","Test":"TestX"}
 {"Action":"pass","Package":"example.com/q"}
@@ -227,7 +254,7 @@ func TestSummarizeReportsAReadFailureAfterAPass(t *testing.T) {
 }
 
 func FuzzSummarize(f *testing.F) {
-	for _, name := range []string{"passing", "skipping", "notests", "filtered", "exitearly", "everyran", "failing", "panicking", "broken", "all"} {
+	for _, name := range []string{"passing", "skipping", "notests", "filtered", "exitearly", "everyran", "parallel", "exited", "failing", "panicking", "broken", "all"} {
 		b, err := fs.ReadFile(os.DirFS("testdata"), name+".jsonl")
 		if err != nil {
 			f.Fatal(err)
@@ -242,13 +269,42 @@ func FuzzSummarize(f *testing.F) {
 		if err != nil {
 			return
 		}
-		if got.Packages == 0 || got.FailedPackages != 0 || got.FailedTests != 0 || got.BuildFailures != 0 || got.NoTestsRun != 0 {
+		if got.Packages == 0 || got.FailedPackages != 0 || got.FailedTests != 0 || got.BuildFailures != 0 || got.NoTestsRun != 0 || got.Unfinished != 0 {
 			t.Fatalf("Summarize passed %+v", got)
 		}
 		if !strings.HasSuffix(out.String(), " skipped\n") {
 			t.Fatalf("a pass without the skip count: %q", out.String())
 		}
 	})
+}
+
+func TestSummarizeNamesEveryTestThatNeverEnded(t *testing.T) {
+	input := `{"Action":"run","Package":"example.com/a","Test":"TestGone"}
+{"Action":"pass","Package":"example.com/a"}
+{"Action":"run","Package":"example.com/b","Test":"TestFine"}
+{"Action":"pass","Package":"example.com/b","Test":"TestFine"}
+{"Action":"pass","Package":"example.com/b"}
+{"Action":"run","Package":"example.com/c","Test":"TestOne"}
+{"Action":"run","Package":"example.com/c","Test":"TestTwo"}
+{"Action":"pass","Package":"example.com/c"}
+`
+	var out bytes.Buffer
+	got, err := testreport.Summarize(strings.NewReader(input), &out)
+	if !errors.Is(err, testreport.ErrUnfinished) {
+		t.Fatalf("Summarize error = %v, want ErrUnfinished", err)
+	}
+	if want := "example.com/a TestGone, example.com/c TestOne, example.com/c TestTwo"; !strings.Contains(err.Error(), want) {
+		t.Errorf("error %q does not name %q", err, want)
+	}
+	if got.Unfinished != 3 || got.Packages != 3 {
+		t.Errorf("Summary = %+v, want 3 packages and 3 tests that never ended", got)
+	}
+	want := "ok  \texample.com/a\nok  \texample.com/b\nok  \texample.com/c\n" +
+		"test: UNFINISHED example.com/a TestGone\ntest: UNFINISHED example.com/c TestOne\ntest: UNFINISHED example.com/c TestTwo\n" +
+		"test: 0 skipped\n"
+	if out.String() != want {
+		t.Errorf("transcript = %q, want %q", out.String(), want)
+	}
 }
 
 func TestSummarizeNamesEveryPackageThatRanNoTest(t *testing.T) {

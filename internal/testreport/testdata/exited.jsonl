@@ -1,0 +1,10 @@
+{"Time":"2026-10-10T22:51:46.031798+02:00","Action":"start","Package":"example.com/fixture/exited"}
+{"Time":"2026-10-10T22:51:46.373468+02:00","Action":"run","Package":"example.com/fixture/exited","Test":"TestFirst"}
+{"Time":"2026-10-10T22:51:46.373533+02:00","Action":"output","Package":"example.com/fixture/exited","Test":"TestFirst","Output":"=== RUN   TestFirst\n","OutputType":"frame"}
+{"Time":"2026-10-10T22:51:46.373593+02:00","Action":"output","Package":"example.com/fixture/exited","Test":"TestFirst","Output":"--- PASS: TestFirst (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-10-10T22:51:46.373603+02:00","Action":"pass","Package":"example.com/fixture/exited","Test":"TestFirst","Elapsed":0}
+{"Time":"2026-10-10T22:51:46.373612+02:00","Action":"run","Package":"example.com/fixture/exited","Test":"TestExits"}
+{"Time":"2026-10-10T22:51:46.373616+02:00","Action":"output","Package":"example.com/fixture/exited","Test":"TestExits","Output":"=== RUN   TestExits\n","OutputType":"frame"}
+{"Time":"2026-10-10T22:51:46.37362+02:00","Action":"output","Package":"example.com/fixture/exited","Output":"PASS\n","OutputType":"frame"}
+{"Time":"2026-10-10T22:51:46.373899+02:00","Action":"output","Package":"example.com/fixture/exited","Output":"ok  \texample.com/fixture/exited\t0.342s\n"}
+{"Time":"2026-10-10T22:51:46.37393+02:00","Action":"pass","Package":"example.com/fixture/exited","Elapsed":0.342}

@@ -25,8 +25,7 @@ nothing is uploaded from a laptop.
    version, run `make docs-gen` and commit. Only then does the website name
    it.
 
-A version is a plain `X.Y.Z`. A suffix such as `-rc.1` marks a preview of that
-number.
+A version is a plain `X.Y.Z`; a suffix such as `-rc.1` marks a preview of it.
 
 ## What the workflow does
 
@@ -47,13 +46,13 @@ number.
    publishes the draft with the image's digest in its notes.
 
 A known-vulnerable symbol in a binary, called or not, or a scan that could not
-run, stops the release. The workflow refuses a tag whose commit is not on
-`main` or lacks a green CI and Security run. Until Publish, a failure leaves at
-most a draft and the image's staging and version tags: delete them, fix the
-cause, release the next version. Publish makes the draft public only if it
-holds exactly the verified files, then reads it again, since GitHub cannot
-publish conditionally; a failure there leaves a public release and says what to
-do.
+run, stops the release. The workflow releases only `main`'s head, once CI and
+Security passed on it and `main`'s newest CodeQL analysis covers it: a push to
+`main` before approval fails it. Until Publish, a failure leaves at most a
+draft and the image's staging and version tags: delete them, fix the cause,
+release the next version. Publish makes the draft public only if it holds
+exactly the verified files, then reads it again; a failure there leaves a
+public release and says what to do.
 
 ## A dry run
 
@@ -62,7 +61,7 @@ same gate check, prints the notes, builds and scans the archives and the image
 as `0.0.0-snapshot.<commit>`, unsigned, runs the image and the demo for the
 runner's platform, and publishes nothing. `make release-snapshot`,
 `make check-demo-archive` and `make scan-binaries` build, scan and run the
-demo locally, with Docker running, and check neither the gate nor the notes.
+demo locally, with Docker, and check neither the gate nor the notes.
 
 ## A tag never moves
 
@@ -97,7 +96,7 @@ tag.
 ## Checking the image
 
 Anyone with write access to the repository or package can overwrite a
-registry tag or a release's notes. Take the digest from the notes and check it
+registry tag or release notes. Take the digest from the notes and check it
 with cosign v3 or later. The signature covers the index, not each platform's
 image. For `vX.Y.Z`:
 

@@ -99,16 +99,24 @@ type Files struct {
 // stands in and the source says so: an export with no repository is judged
 // the same as the work tree.
 func ListFiles(run Runner, walk func() ([]string, error)) (Files, error) {
+	return listFiles(run, func() ([]string, string, error) {
+		paths, err := walk()
+		return paths, "a walk of the tree", err
+	})
+}
+
+// listFiles is ListFiles with a fallback that names its own source.
+func listFiles(run Runner, fallback func() ([]string, string, error)) (Files, error) {
 	paths, err := gitFiles(run)
 	if errors.Is(err, ErrInvalid) {
 		return Files{}, err
 	}
 	if err != nil {
-		paths, walkErr := walk()
-		if walkErr != nil {
-			return Files{}, fmt.Errorf("%w; git ls-files: %w", walkErr, err)
+		paths, source, fallbackErr := fallback()
+		if fallbackErr != nil {
+			return Files{}, fmt.Errorf("%w; git ls-files: %w", fallbackErr, err)
 		}
-		return Files{Paths: paths, Source: fmt.Sprintf("a walk of the tree; git ls-files: %v", err)}, nil
+		return Files{Paths: paths, Source: fmt.Sprintf("%s; git ls-files: %v", source, err)}, nil
 	}
 	return Files{Paths: paths, Source: "git ls-files"}, nil
 }

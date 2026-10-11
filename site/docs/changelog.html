@@ -165,6 +165,21 @@ refused as a file that is not the directory's.</li>
 An approval of another major, or with none, now leaves the entry unreadable.</li>
 <li>Closing an approvals handle while a call ran on it was a data race on whether
 the handle was open.</li>
+<li><code>make quality</code> runs every check even when make is told one is up to date
+(<code>-o</code>, <code>--old-file</code>, or either in <code>MAKEFLAGS</code> or <code>GNUMAKEFLAGS</code>), and refuses
+a <code>MAKE</code> or <code>GO</code> from the environment, any command-line variable but
+<code>GO=go</code>, <code>-e</code>, a <code>FUZZTIME</code> or <code>RANGE</code> from the environment, a makefile read
+beside the <code>Makefile</code>, and an <code>--eval</code> or <code>-E</code> string for any target; its
+second make starts with none of the first's flags, and CI clears make's
+flag variables before running it.</li>
+<li>The test report refuses a passing package in which a test started and never
+reported a result, as when the test ends the process with exit status 0. A
+test that writes its own pass before it exits still hides the tests after
+it; review catches that.</li>
+<li>The documentation checks read the commit's own file list in a gate-commit
+export instead of a walk that skips dot-directories.</li>
+<li>The release gate refuses a commit that is not main's head, and refuses
+unless main's newest CodeQL analysis is of the commit being released.</li>
 </ul>
 <h2 id="0102-alpha---2026-10-10"><a href="https://github.com/guardana/control/releases/tag/v0.10.2-alpha">0.10.2-alpha</a> - 2026-10-10</h2>
 <p>Fixes and release tooling from an outside audit of 0.10.0-alpha, with no new

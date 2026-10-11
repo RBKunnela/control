@@ -19,8 +19,10 @@ var (
 	ErrNotEvent = errors.New("testreport: a line is not a test2json event")
 	// ErrNoPackages is returned when events were read but no package result.
 	ErrNoPackages = errors.New("testreport: no package result read")
-	// ErrUnfinished is returned when the stream ends before a package's result.
-	ErrUnfinished = errors.New("testreport: a package has no result")
+	// ErrUnfinished is returned when the stream ends before a package's result,
+	// or a package passes while a test it started has no result, as when the
+	// test ended the process with exit status 0.
+	ErrUnfinished = errors.New("testreport: a package or a test has no result")
 	// ErrFailed is returned when a build, a package or a test failed.
 	ErrFailed = errors.New("testreport: a build, package or test failed")
 	// ErrNoTestsRun is returned when a package with test files passed without
@@ -38,6 +40,7 @@ type Summary struct {
 	BuildFailures  int
 	Skipped        int // tests and subtests that skipped
 	NoTestsRun     int // packages that passed without a test's run event
+	Unfinished     int // tests that started in a passing package and reached no result
 }
 
 type event struct {
@@ -55,6 +58,7 @@ type output struct {
 type pkgState struct {
 	lines   []output
 	results map[string]string
+	started []string
 	ran     bool
 }
 
@@ -69,6 +73,7 @@ type reporter struct {
 	order    []string
 	skips    []skipped
 	noTests  []string
+	open     []string
 	badLines []int
 	writeErr error
 }
@@ -80,8 +85,9 @@ type reporter struct {
 // A line that is not an event is written through as it came.
 //
 // The error is nil only when the stream held at least one package result, every
-// line was an event, every package reached a result, nothing failed and no
-// package with test files passed without running one.
+// line was an event, every package reached a result, every test a passing
+// package started reached one too, nothing failed and no package with test
+// files passed without running one.
 func Summarize(r io.Reader, w io.Writer) (Summary, error) {
 	rep := &reporter{w: w, pkgs: map[string]*pkgState{}}
 	br := bufio.NewReader(r)
@@ -121,6 +127,7 @@ func (rep *reporter) line(n int, text string) {
 	case "run":
 		if e.Test != "" {
 			p.ran = true
+			p.started = append(p.started, e.Test)
 		}
 	case "output":
 		p.lines = append(p.lines, output{e.Test, e.Output})
@@ -181,6 +188,14 @@ func (rep *reporter) result(name string, p *pkgState, action string) {
 		rep.sum.NoTestsRun++
 		rep.noTests = append(rep.noTests, name)
 	}
+	if action == "pass" {
+		for _, test := range p.started {
+			if p.results[test] == "" {
+				rep.sum.Unfinished++
+				rep.open = append(rep.open, name+" "+test)
+			}
+		}
+	}
 	rep.write(line)
 }
 
@@ -236,10 +251,7 @@ func (rep *reporter) finish() error {
 		}
 	}
 	if rep.sum.Events > 0 {
-		for _, s := range rep.skips {
-			rep.write(fmt.Sprintf("%sSKIP %s %s: %s\n", label, s.pkg, s.test, s.message))
-		}
-		rep.write(fmt.Sprintf("%s%d skipped\n", label, rep.sum.Skipped))
+		rep.writeTail()
 	}
 	if len(rep.badLines) > 0 {
 		errs = append(errs, fmt.Errorf("%w: %d line(s), the first at line %d", ErrNotEvent, len(rep.badLines), rep.badLines[0]))
@@ -251,7 +263,10 @@ func (rep *reporter) finish() error {
 		errs = append(errs, ErrNoPackages)
 	}
 	if len(unfinished) > 0 {
-		errs = append(errs, fmt.Errorf("%w: %s", ErrUnfinished, strings.Join(unfinished, ", ")))
+		errs = append(errs, fmt.Errorf("%w: package %s", ErrUnfinished, strings.Join(unfinished, ", ")))
+	}
+	if len(rep.open) > 0 {
+		errs = append(errs, fmt.Errorf("%w: a passing package's test %s", ErrUnfinished, strings.Join(rep.open, ", ")))
 	}
 	if s := rep.sum; s.FailedPackages+s.FailedTests+s.BuildFailures > 0 {
 		errs = append(errs, fmt.Errorf("%w: %d package(s), %d test(s), %d build(s)",
@@ -264,6 +279,17 @@ func (rep *reporter) finish() error {
 		errs = append(errs, fmt.Errorf("testreport: writing the transcript: %w", rep.writeErr))
 	}
 	return errors.Join(errs...)
+}
+
+// writeTail writes every test that never ended, every skip and the skip count.
+func (rep *reporter) writeTail() {
+	for _, test := range rep.open {
+		rep.write(fmt.Sprintf("%sUNFINISHED %s\n", label, test))
+	}
+	for _, s := range rep.skips {
+		rep.write(fmt.Sprintf("%sSKIP %s %s: %s\n", label, s.pkg, s.test, s.message))
+	}
+	rep.write(fmt.Sprintf("%s%d skipped\n", label, rep.sum.Skipped))
 }
 
 func (rep *reporter) write(s string) {

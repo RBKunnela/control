@@ -29,6 +29,7 @@ case "$2" in
   */workflows/ci.yml/runs\?*) answer="${STUB_DIR}/ci.json" ;;
   */workflows/security.yml/runs\?*) answer="${STUB_DIR}/security.json" ;;
   "repos/owner/name/code-scanning/alerts?ref=refs/heads/main&state=open&per_page=100") answer="${STUB_DIR}/alerts.json" ;;
+  "repos/owner/name/code-scanning/analyses?tool_name=CodeQL&ref=refs/heads/main&sort=created&direction=desc&per_page=1") answer="${STUB_DIR}/analyses.json" ;;
   *) echo "stub gh: unexpected url $2" >&2; exit 64 ;;
 esac
 if [[ "$(head -c 5 "${answer}")" == "HTTP " ]]; then
@@ -39,11 +40,17 @@ exec jq -r "$4" "${answer}"
 `
 
 // gateAnswers are the stub's answers; an empty ref or compare is replaced by
-// main at gateMainSHA and a comparison that finds the commit identical, and
-// empty alerts by an empty list. An answer that starts with "HTTP " is a gh
-// failure: the stub prints it and exits 1.
+// main at gateMainSHA and a comparison that finds the commit identical, empty
+// alerts by an empty list, and empty analyses by one CodeQL analysis of
+// gateRunsSHA on main. An answer that starts with "HTTP " is a gh failure: the
+// stub prints it and exits 1.
 type gateAnswers struct {
-	ci, security, ref, compare, alerts string
+	ci, security, ref, compare, alerts, analyses string
+}
+
+func gateAnalysis(sha, ref, tool, analysisErr string) string {
+	return `{"id":7,"commit_sha":"` + sha + `","ref":"` + ref + `","tool":{"name":"` + tool + `","version":"2.0.0"},` +
+		`"category":"/language:go","error":"` + analysisErr + `","results_count":0}`
 }
 
 func gateRun(sha, event, branch, conclusion string) string {
@@ -147,7 +154,8 @@ func TestCheckGateRunsReadsTheRunItCounts(t *testing.T) {
 
 // A run whose head_branch is main is not enough: a push of a tag named main
 // carries that head_branch too, for any commit. The commit itself has to be
-// on main's branch head.
+// main's branch head; an older commit of main is refused, since main's alerts
+// describe a later one.
 func TestCheckGateRunsRefusesACommitNotOnMain(t *testing.T) {
 	bash, script := gateRunsTools(t)
 
@@ -159,9 +167,9 @@ func TestCheckGateRunsRefusesACommitNotOnMain(t *testing.T) {
 		want         string
 	}{
 		"main's head itself":      {ref, gateCompare("identical"), true, "security.yml passed on " + gateRunsSHA},
-		"an ancestor of main":     {ref, gateCompare("behind"), true, "security.yml passed on " + gateRunsSHA},
-		"a commit ahead of main":  {ref, gateCompare("ahead"), false, gateRunsSHA + " is not on main: compared with main's head " + gateMainSHA + ", GitHub says 'ahead'"},
-		"a commit beside main":    {ref, gateCompare("diverged"), false, "is not on main: compared with main's head " + gateMainSHA + ", GitHub says 'diverged'"},
+		"an ancestor of main":     {ref, gateCompare("behind"), false, gateRunsSHA + " is not main's head: compared with main's head " + gateMainSHA + ", GitHub says 'behind'"},
+		"a commit ahead of main":  {ref, gateCompare("ahead"), false, gateRunsSHA + " is not main's head: compared with main's head " + gateMainSHA + ", GitHub says 'ahead'"},
+		"a commit beside main":    {ref, gateCompare("diverged"), false, "is not main's head: compared with main's head " + gateMainSHA + ", GitHub says 'diverged'"},
 		"a comparison not found":  {ref, `{"message":"Not Found"}`, false, "could not compare " + gateRunsSHA + " with main's head " + gateMainSHA},
 		"a malformed comparison":  {ref, `{"status":`, false, "could not compare " + gateRunsSHA + " with main's head"},
 		"main not found":          {`{"message":"Not Found"}`, gateCompare("identical"), false, "could not read the head of main"},
@@ -211,7 +219,7 @@ func TestCheckGateRunsRefusesAnOpenSevereAlert(t *testing.T) {
 		pass   bool
 		want   string
 	}{
-		"no open alert": {"[]", true, "no open high or critical CodeQL alert on main (0 alert(s) read)"},
+		"no open alert": {"[]", true, "no open high or critical CodeQL alert on main (0 alert(s) read), whose newest CodeQL analysis is of " + gateRunsSHA},
 		"an open high Scorecard alert, which judges the repository": {"[" + toolAlert(2, "open", "high", "Scorecard") + "]", true, "no open high or critical CodeQL alert on main (1 alert(s) read)"},
 		"an alert with no tool": {`[{"number":1,"state":"open","rule":{"security_severity_level":"high"}}]`, false, "could not read the open code scanning alerts on main"},
 		"open medium and low alerts, and one with no security severity": {
@@ -245,6 +253,49 @@ func TestCheckGateRunsRefusesAnOpenSevereAlert(t *testing.T) {
 			out, urls, err := runCheckGateRuns(t, bash, script, gateAnswers{ci: good, security: good, alerts: tc.alerts})
 			checkGateVerdict(t, out, err, tc.pass, tc.want)
 			want := "repos/owner/name/code-scanning/alerts?ref=refs/heads/main&state=open&per_page=100"
+			if !slices.Contains(urls, want) {
+				t.Errorf("the script never asked for %q; it asked for %q", want, urls)
+			}
+		})
+	}
+}
+
+// Main's alerts judge main's newest analysis, so they say something about the
+// released commit only when that analysis is of it.
+func TestCheckGateRunsRefusesAlertsOfAnotherCommit(t *testing.T) {
+	bash, script := gateRunsTools(t)
+
+	good := gateRuns(gateRun(gateRunsSHA, "push", "main", "success"))
+	const main = "refs/heads/main"
+	cases := map[string]struct {
+		analyses string
+		pass     bool
+		want     string
+	}{
+		"the newest analysis is of the commit": {"[" + gateAnalysis(gateRunsSHA, main, "CodeQL", "") + "]", true, "whose newest CodeQL analysis is of " + gateRunsSHA},
+		"the newest analysis is of another commit": {
+			"[" + gateAnalysis(gateMainSHA, main, "CodeQL", "") + "]", false,
+			"main's newest CodeQL analysis is of " + gateMainSHA + ", not " + gateRunsSHA + ", so main's alerts do not judge this commit",
+		},
+		"an older analysis of the commit after a newer one": {
+			"[" + gateAnalysis(gateMainSHA, main, "CodeQL", "") + "," + gateAnalysis(gateRunsSHA, main, "CodeQL", "") + "]", false,
+			"main's newest CodeQL analysis is of " + gateMainSHA,
+		},
+		"no analysis":                        {"[]", false, "GitHub lists no CodeQL analysis on main; refusing rather than guessing"},
+		"an analysis that failed":            {"[" + gateAnalysis(gateRunsSHA, main, "CodeQL", "extraction failed") + "]", false, "main's newest CodeQL analysis, of " + gateRunsSHA + ", reports an error: extraction failed"},
+		"an analysis of another branch":      {"[" + gateAnalysis(gateRunsSHA, "refs/heads/feature", "CodeQL", "") + "]", false, "GitHub answered an analysis by 'CodeQL' on 'refs/heads/feature'"},
+		"an analysis by another tool":        {"[" + gateAnalysis(gateRunsSHA, main, "Scorecard", "") + "]", false, "GitHub answered an analysis by 'Scorecard' on 'refs/heads/main'"},
+		"an analysis without a commit":       {`[{"ref":"refs/heads/main","tool":{"name":"CodeQL"},"error":""}]`, false, "could not read main's newest CodeQL analysis"},
+		"an analysis without an error field": {`[{"commit_sha":"` + gateRunsSHA + `","ref":"refs/heads/main","tool":{"name":"CodeQL"}}]`, false, "could not read main's newest CodeQL analysis"},
+		"an answer that is no list":          {`{"message":"no analysis found"}`, false, "could not read main's newest CodeQL analysis; refusing rather than guessing"},
+		"malformed JSON":                     {`[{"commit_sha":`, false, "could not read main's newest CodeQL analysis"},
+		"a refused request":                  {"HTTP 403: Resource not accessible by integration", false, "could not read main's newest CodeQL analysis"},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			out, urls, err := runCheckGateRuns(t, bash, script, gateAnswers{ci: good, security: good, analyses: tc.analyses})
+			checkGateVerdict(t, out, err, tc.pass, tc.want)
+			want := "repos/owner/name/code-scanning/analyses?tool_name=CodeQL&ref=refs/heads/main&sort=created&direction=desc&per_page=1"
 			if !slices.Contains(urls, want) {
 				t.Errorf("the script never asked for %q; it asked for %q", want, urls)
 			}
@@ -290,9 +341,13 @@ func runCheckGateRuns(t *testing.T, bash, script string, a gateAnswers) (string,
 	if a.alerts == "" {
 		a.alerts = "[]"
 	}
+	if a.analyses == "" {
+		a.analyses = "[" + gateAnalysis(gateRunsSHA, "refs/heads/main", "CodeQL", "") + "]"
+	}
 	dir := t.TempDir()
 	for file, content := range map[string]string{
 		"ci.json": a.ci, "security.json": a.security, "ref.json": a.ref, "compare.json": a.compare, "alerts.json": a.alerts,
+		"analyses.json": a.analyses,
 	} {
 		if err := os.WriteFile(filepath.Join(dir, file), []byte(content), 0o600); err != nil {
 			t.Fatal(err)

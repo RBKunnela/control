@@ -6,21 +6,47 @@ RANGE ?= HEAD~1..HEAD
 PKGS := ./...
 FUZZTIME ?= 10s
 
+# An --eval or -E string, on the command line or in MAKEFLAGS or GNUMAKEFLAGS,
+# runs before this Makefile is read and can rename the goal or the default
+# goal around the guard below, so it is refused whatever the goal. make reports
+# every such string in -*-eval-flags-*-, which no eval can clear.
+ifneq ($(strip $(-*-eval-flags-*-)$(findstring --eval,$(MAKEFLAGS))),)
+$(error this Makefile takes no --eval or -E: $(-*-eval-flags-*-))
+endif
+
 # make quality reports green only over work it did. A dry run, a touch, a
-# question or ignored errors would print its last line over recipes that never
-# ran or failed; another makefile or a shell startup file could redefine what
-# the recipes run; and GOFLAGS would change what every go command builds and
-# tests. Each is refused before any recipe, however it was set, since an
-# earlier CI step can set any of them through the environment.
+# question, ignored errors or the environment over this Makefile would print
+# its last line over recipes that never ran or failed; another makefile, a
+# shell startup file, a stand-in for make or go, or a variable set on the
+# command line or taken from the environment could redefine what the recipes
+# run; and GOFLAGS would change what every go command builds and tests. Each
+# is refused before any recipe, however it was set, since an earlier CI step
+# can set any of them through the environment. GO=go is the one command-line
+# variable allowed, so a caller can name the go it means.
 ifneq ($(filter quality,$(MAKECMDGOALS)),)
 ifneq ($(strip $(MAKEFILES)$(BASH_ENV)$(ENV)),)
 $(error make quality reads this Makefile alone and starts its recipes' shell clean; MAKEFILES, BASH_ENV or ENV is set)
 endif
+ifneq ($(words $(MAKEFILE_LIST)),1)
+$(error make quality reads one makefile, this one: $(MAKEFILE_LIST))
+endif
+ifneq ($(origin MAKE),default)
+$(error make quality runs its checks through the make that reads this Makefile; MAKE comes from the $(origin MAKE): $(MAKE))
+endif
+ifneq ($(GO),go)
+$(error make quality runs go itself; GO is $(GO))
+endif
+ifneq ($(strip $(filter-out GO=go,$(MAKEOVERRIDES))),)
+$(error make quality sets no variable but GO=go: $(filter-out GO=go,$(MAKEOVERRIDES)))
+endif
+ifneq ($(origin FUZZTIME) $(origin RANGE),file file)
+$(error make quality takes FUZZTIME and RANGE from this Makefile; FUZZTIME comes from the $(origin FUZZTIME), RANGE from the $(origin RANGE))
+endif
 ifneq ($(strip $(GOFLAGS)$(shell $(GO) env GOFLAGS 2>/dev/null)),)
 $(error make quality builds what the module says; GOFLAGS is set: $(strip $(GOFLAGS) $(shell $(GO) env GOFLAGS 2>/dev/null)))
 endif
-ifneq ($(strip $(foreach f,n t q i,$(findstring $(f),$(firstword -$(MAKEFLAGS))))),)
-$(error make quality runs and checks every recipe; MAKEFLAGS asks for a dry run, a touch, a question or ignored errors: $(MAKEFLAGS))
+ifneq ($(strip $(foreach f,n t q i e,$(findstring $(f),$(firstword -$(MAKEFLAGS))))),)
+$(error make quality runs and checks every recipe; MAKEFLAGS asks for a dry run, a touch, a question, ignored errors or the environment over this Makefile: $(MAKEFLAGS))
 endif
 endif
 
@@ -152,7 +178,7 @@ vet:
 # file dropped at the root would replace the one the security maintainers own
 # and the agreement tests read. A nested module is linted with the same file.
 lint:
-	$(call each_module,(cd -- "$$dir" && golangci-lint run --config "$$REPO_ROOT/.golangci.yml" ./...),lint)
+	$(call each_module,(cd -- "$$dir" && golangci-lint run --allow-serial-runners --config "$$REPO_ROOT/.golangci.yml" ./...),lint)
 
 test:
 	$(call each_module,$(GO) -C "$$dir" test -count=1 -shuffle=on -json $$pkgs | $(GO) run scripts/test-report.go,test)
@@ -322,7 +348,16 @@ check-shell:
 
 quality-quick: fmt-check vet test check-imports
 
-quality: fmt-check vet lint test test-race fuzz-smoke security proto-check \
-         docs-check tidy-check check-imports check-imports-probe check-modules-probe check-brand \
-         check-sizes check-actions check-shell scan-binaries-probe
+# The checks run in a second make with their names written here, because make
+# skips a prerequisite it is told is up to date (-o, --old-file, or either in
+# MAKEFLAGS or GNUMAKEFLAGS) and would still print the pass line, and that
+# option never reaches a make started from a recipe. The second make starts
+# with no flags from this one. A makefile named after this one is read after
+# the guard, so the makefiles are counted again here.
+quality:
+	@[ $(words $(MAKEFILE_LIST)) = 1 ] || { echo "make quality reads one makefile, this one; $(words $(MAKEFILE_LIST)) were read" >&2; exit 1; }
+	@MAKEFLAGS= GNUMAKEFLAGS= MFLAGS= $(MAKE) --no-print-directory -f "$$REPO_ROOT/$(notdir $(firstword $(MAKEFILE_LIST)))" \
+	  fmt-check vet lint test test-race fuzz-smoke security proto-check \
+	  docs-check tidy-check check-imports check-imports-probe check-modules-probe check-brand \
+	  check-sizes check-actions check-shell scan-binaries-probe
 	@echo "quality: green"
