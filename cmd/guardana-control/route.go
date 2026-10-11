@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/ed25519"
 	"errors"
 	"flag"
 	"fmt"
@@ -165,6 +166,16 @@ func checkRouteOut(out string) error {
 // verifiedRoute reads the signed route at path, which routeFlag named, and
 // verifies it under the route key in the public key file --public-key names.
 func verifiedRoute(routeFlag, path, publicKey string) (reaction.Route, error) {
+	return readSignedRoute(routeFlag, path, publicKey, reaction.VerifyRoute)
+}
+
+// verifiedCarrySource is verifiedRoute for --carry-route, the one route that
+// may name a rule version a later one superseded.
+func verifiedCarrySource(path, publicKey string) (reaction.Route, error) {
+	return readSignedRoute("--carry-route", path, publicKey, reaction.VerifyCarrySource)
+}
+
+func readSignedRoute(routeFlag, path, publicKey string, verify func(reaction.Envelope, ed25519.PublicKey) (reaction.Route, error)) (reaction.Route, error) {
 	pub, err := readPublicKey("--public-key", publicKey)
 	if err != nil {
 		return reaction.Route{}, err
@@ -177,7 +188,7 @@ func verifiedRoute(routeFlag, path, publicKey string) (reaction.Route, error) {
 	if err != nil {
 		return reaction.Route{}, fmt.Errorf("%s %s: %w", routeFlag, path, err)
 	}
-	r, err := reaction.VerifyRoute(env, pub)
+	r, err := verify(env, pub)
 	if err != nil {
 		return reaction.Route{}, fmt.Errorf("%s %s: %w", routeFlag, path, err)
 	}

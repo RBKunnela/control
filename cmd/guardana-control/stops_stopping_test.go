@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -20,8 +21,12 @@ import (
 // a version that is not its own.
 var mayNotStop = []struct{ id, version string }{
 	{"EXCEPTION_TAKEN", "1"}, {"DENIED_ACTION_RETRIED_AROUND", "1"}, {"REQUIRED_STEP_SKIPPED", "1"},
-	{"NO_SUCH_RULE", "1"}, {"REPEATED_DENIAL", "9"},
+	{"NO_SUCH_RULE", "1"}, {"REPEATED_DENIAL", "9"}, {"REPEATED_DENIAL", "1"},
 }
+
+// supersededRule is the rule version a later one replaced, which only the
+// route a list is carried from may name.
+var supersededRule = struct{ id, version string }{"REPEATED_DENIAL", "1"}
 
 // mayNotStopRefusal is what a reader of a signed route says, after the flag
 // and path that named the route, of rules[i] naming id at version.
@@ -31,10 +36,10 @@ func mayNotStopRefusal(i int, id, version string) string {
 }
 
 // routeDocNaming is the fixture's route at serial with its first rule,
-// REPEATED_DENIAL at version "1", replaced by id at version.
+// REPEATED_DENIAL at version "2", replaced by id at version.
 func routeDocNaming(t *testing.T, serial int, id, version string) string {
 	t.Helper()
-	const first = `"rule_id":"REPEATED_DENIAL","rule_version":"1"`
+	const first = `"rule_id":"REPEATED_DENIAL","rule_version":"2"`
 	doc := routeDoc(seeded(0x4c), serial)
 	if !strings.Contains(doc, first) {
 		t.Fatalf("the route fixture holds no %s", first)
@@ -72,8 +77,9 @@ func (tr stopTree) listUnder(t *testing.T, name string, route reaction.Route, ru
 // not stop a run or a stopping rule at another version, is refused by stops
 // init, stops list, stops lift and both sides of a carry, each naming the
 // flag and the rule, over a list the judge accepts under that route, and
-// nothing is written. The 0.9 route naming REPEATED_DENIAL version "1", over
-// a list written the same way, is the control: every command takes it.
+// nothing is written; the superseded version alone is taken as the route a
+// list is carried from. The route naming REPEATED_DENIAL version "2", over a
+// list written the same way, is the control: every command takes it.
 func TestEveryStopsCommandRefusesARouteNamingARuleThatMayNotStop(t *testing.T) {
 	tr := newStopTree(t)
 	next := filepath.Join(tr.dir, "next.signed")
@@ -87,11 +93,7 @@ func TestEveryStopsCommandRefusesARouteNamingARuleThatMayNotStop(t *testing.T) {
 		before := readList(t, list)
 		fresh := ownerDir(t, filepath.Join(tr.dir, name+"-fresh"))
 		refusal := mayNotStopRefusal(0, c.id, c.version)
-		for _, run := range []struct {
-			what string
-			args []string
-			want string
-		}{
+		runs := []refusedRun{
 			{"stops init", withFlags(pub, "stops", "init", "--route", bad, fresh), "--route " + bad + ": " + refusal},
 			{"stops list", withFlags(pub, "stops", "list", "--route", bad, list), "--route " + bad + ": " + refusal},
 			{"stops lift", withFlags(pub, "stops", "lift", "--route", bad, "--key", tr.liftKey, "--run", tr.open, list),
@@ -100,12 +102,11 @@ func TestEveryStopsCommandRefusesARouteNamingARuleThatMayNotStop(t *testing.T) {
 				"--carry-route " + bad + ": " + refusal},
 			{"a carry into it", withFlags(pub, "stops", "init", "--route", bad, "--carry", tr.stops, "--carry-route", tr.route, fresh),
 				"--route " + bad + ": " + refusal},
-		} {
-			code, stdout, stderr := invoke(t, run.args...)
-			if code != exitFail || stdout != "" || !strings.Contains(stderr, run.want) {
-				t.Errorf("%s %s: %s answered %d: %q %q, want 1 and %q", c.id, c.version, run.what, code, stdout, stderr, run.want)
-			}
 		}
+		if c == supersededRule {
+			runs = slices.DeleteFunc(runs, func(r refusedRun) bool { return r.what == "a carry from it" })
+		}
+		expectRefused(t, c.id+" "+c.version, runs)
 		if !bytes.Equal(readList(t, list), before) {
 			t.Errorf("%s %s: a refused route changed the list", c.id, c.version)
 		}
@@ -127,6 +128,25 @@ func TestEveryStopsCommandRefusesARouteNamingARuleThatMayNotStop(t *testing.T) {
 	} {
 		if code, stdout, stderr := invoke(t, run.args...); code != exitOK || stderr != "" {
 			t.Errorf("the 0.9 route: %s answered %d: %q %q", run.what, code, stdout, stderr)
+		}
+	}
+}
+
+// refusedRun is one command a test expects to refuse with want.
+type refusedRun struct {
+	what string
+	args []string
+	want string
+}
+
+// expectRefused runs each of runs and expects it to answer 1 with nothing on
+// standard output and its want on standard error.
+func expectRefused(t *testing.T, label string, runs []refusedRun) {
+	t.Helper()
+	for _, run := range runs {
+		code, stdout, stderr := invoke(t, run.args...)
+		if code != exitFail || stdout != "" || !strings.Contains(stderr, run.want) {
+			t.Errorf("%s: %s answered %d: %q %q, want 1 and %q", label, run.what, code, stdout, stderr, run.want)
 		}
 	}
 }

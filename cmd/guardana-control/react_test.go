@@ -134,7 +134,7 @@ func TestReactWritesNothingForAFindingThatMayNotStop(t *testing.T) {
 		}), now},
 		{"a rule the route does not list", finding(1, tr.open, "DEADLINE_EXCEEDED", confirmed), now},
 		{"a rule version the route does not list", with(finding(1, tr.open, denial, confirmed), func(f *findingv1alpha1.FindingRecord) {
-			f.Finding.RuleVersion = "2"
+			f.Finding.RuleVersion = "1"
 		}), now},
 	} {
 		t.Run(c.name, func(t *testing.T) {
@@ -172,8 +172,8 @@ func TestReactStopsAChild(t *testing.T) {
 // a run, or a stopping rule at another version, beside one that may, is
 // refused whole before a finding is read. The log holds a confirmed finding
 // of that very rule at that version and the list is one the judge accepts
-// under the route, so only the check stands between it and a stop. A route
-// of 0.9 naming REPEATED_DENIAL version "1" is the control: it writes the
+// under the route, so only the check stands between it and a stop. The
+// route naming REPEATED_DENIAL version "2" is the control: it writes the
 // stop.
 func TestReactRefusesARouteNamingARuleThatMayNotStop(t *testing.T) {
 	tr := newStopTree(t)
@@ -216,10 +216,10 @@ func TestReactRefusesARouteNamingARuleThatMayNotStop(t *testing.T) {
 			}
 		}
 	}
-	a := setUp("control", doc(rule(outside, "1"), rule(denial, "1")))
+	a := setUp("control", doc(rule(outside, "1"), rule(denial, "2")))
 	var out, errOut bytes.Buffer
 	if code := react(context.Background(), a, time.Now(), &out, &errOut); code != exitOK || !strings.HasPrefix(out.String(), "stop line 3 run "+tr.open+" ") {
-		t.Fatalf("the 0.9 route: react answered %d: %q %q", code, out.String(), errOut.String())
+		t.Fatalf("the control route: react answered %d: %q %q", code, out.String(), errOut.String())
 	}
 }
 

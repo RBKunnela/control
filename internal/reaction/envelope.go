@@ -70,6 +70,32 @@ func SignRoute(r Route, key ed25519.PrivateKey) (Envelope, error) {
 // pub as DistinctKeys compares; every rule it names may stop a run
 // (CheckStopping).
 func VerifyRoute(env Envelope, pub ed25519.PublicKey) (Route, error) {
+	r, err := openRoute(env, pub)
+	if err != nil {
+		return Route{}, err
+	}
+	if err := CheckStopping(r); err != nil {
+		return Route{}, err
+	}
+	return r, nil
+}
+
+// VerifyCarrySource is VerifyRoute for the route a list is carried from: its
+// last check is CheckCarrySource, so it also reads a route naming a rule
+// version a later one superseded. Nothing but a carry calls it.
+func VerifyCarrySource(env Envelope, pub ed25519.PublicKey) (Route, error) {
+	r, err := openRoute(env, pub)
+	if err != nil {
+		return Route{}, err
+	}
+	if err := CheckCarrySource(r); err != nil {
+		return Route{}, err
+	}
+	return r, nil
+}
+
+// openRoute is VerifyRoute's checks up to the rules it names.
+func openRoute(env Envelope, pub ed25519.PublicKey) (Route, error) {
 	body, err := open(env, pub, envelopeRefusals{
 		payloadType: RoutePayloadType, limit: MaxRouteBytes, wrongType: ErrRoutePayloadType,
 		signatures: ErrRouteSignatures, tooLarge: ErrRouteTooLarge, key: ErrRouteKey, signature: ErrRouteSignature,
@@ -86,9 +112,6 @@ func VerifyRoute(env Envelope, pub ed25519.PublicKey) (Route, error) {
 	}
 	if policykey.SameKey(pub, r.liftKey) {
 		return Route{}, fmt.Errorf("%w: the route key is the route's lift key", ErrKeysEqual)
-	}
-	if err := CheckStopping(r); err != nil {
-		return Route{}, err
 	}
 	return r, nil
 }

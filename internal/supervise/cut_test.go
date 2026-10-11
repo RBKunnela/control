@@ -98,10 +98,12 @@ func TestAFindingAtTheBoundCitesEveryRecord(t *testing.T) {
 }
 
 // TestADoubtfulReferencePastTheCutKeepsIndeterminate: the last of many
-// denials has a broken trail; it is cited first and the finding is
+// denials, as many as max_denials, has a broken trail, so the clean ones do
+// not reach the bound alone; it is cited first and the finding is
 // indeterminate.
 func TestADoubtfulReferencePastTheCutKeepsIndeterminate(t *testing.T) {
 	n := supervise.MaxFindingRefs + 5
+	p := procWith(t, `"deadline_seconds":600,`, ``, `"max_denials":4`, fmt.Sprintf(`"max_denials":%d`, n))
 	x := export(manyDenials(n)...)
 	last := fmt.Sprintf("d%05d", n-1)
 	for _, ev := range x.Events {
@@ -109,7 +111,7 @@ func TestADoubtfulReferencePastTheCutKeepsIndeterminate(t *testing.T) {
 			ev.PrevEventId = last + "-e9"
 		}
 	}
-	f := evaluate(t, supervise.Input{Procedure: noDeadline(t), Exports: []supervise.Export{x}}).Findings[0]
+	f := evaluate(t, supervise.Input{Procedure: p, Exports: []supervise.Export{x}}).Findings[0]
 	got := cited(f)
 	if f.GetFinding().GetVerdict() != indetermin || got[0] != last || got[1] != "d00000" || f.GetRefsLeftOut() != 5 {
 		t.Fatalf("verdict %s, cites %q, leaves out %d", f.GetFinding().GetVerdict(), got, f.GetRefsLeftOut())

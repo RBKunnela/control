@@ -60,7 +60,7 @@ func eventOrder(a, b *controlv1.Event) int {
 
 // repeatedByRun is REPEATED_DENIAL under 0.2 for the denials of one tool
 // across the tree, which reach max_denials. A run whose own denials reach it
-// is confirmed on them alone. Otherwise a run with a denial at or after the
+// is confirmed on them alone, on its clean ones as cited says. Otherwise a run with a denial at or after the
 // one that brought the tree's count there is suspected: its finding needs
 // other runs' denials. When that order is untold, it is indeterminate.
 func (e *evaluation) repeatedByRun(tool [2]string, denials []*request) []draft {
@@ -88,7 +88,7 @@ func (e *evaluation) repeatedByRun(tool [2]string, denials []*request) []draft {
 	for _, run := range slices.Sorted(maps.Keys(own)) {
 		d := draft{rule: RuleRepeatedDenial, anchor: tool[:], cap: confirmed}
 		s := &refSet{}
-		for _, rq := range own[run] {
+		for _, rq := range cited(own[run], e.p.maxDenials) {
 			s.event(rq, rq.terminal)
 		}
 		switch {

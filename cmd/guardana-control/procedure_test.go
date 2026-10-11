@@ -20,7 +20,7 @@ func TestProcedureLintPrintsWhatTheProcedureConfigures(t *testing.T) {
 	for _, c := range []struct{ file, want string }{
 		{"refund-0.1.json", "schema_version: 0.1\nprocedure_id: refund\nversion: 1\n" +
 			"digest: c5f8c68405a63f0be8c3eb4bed6115d9a233d1ed759be6f4c85702adcb3a770a\n" +
-			"rule: REPEATED_DENIAL version 1, may stop\n" +
+			"rule: REPEATED_DENIAL version 2, may stop\n" +
 			"rule: STEP_OUTSIDE_PROCEDURE version 1, may stop\n" +
 			"rule: DEADLINE_EXCEEDED version 1, may stop\n" +
 			"rule: REQUIRED_STEP_SKIPPED version 1, never stops\n" +
@@ -29,7 +29,7 @@ func TestProcedureLintPrintsWhatTheProcedureConfigures(t *testing.T) {
 		{"refund-0.2.json", "schema_version: 0.2\nprocedure_id: refund\nversion: 2\n" +
 			"digest: 3bdccd18fb0503f6168a59a8bae712b9b37be7e4435f796b111be409f7d59dd6\n" +
 			"children: inherit\n" +
-			"rule: REPEATED_DENIAL version 1, may stop\n" +
+			"rule: REPEATED_DENIAL version 2, may stop\n" +
 			"rule: STEP_OUTSIDE_PROCEDURE version 1, may stop\n" +
 			"rule: DEADLINE_EXCEEDED version 1, may stop\n" +
 			"rule: REQUIRED_STEP_SKIPPED version 1, never stops\n" +

@@ -12,21 +12,22 @@ import (
 // mayStop is every rule, at its version, a confirmed finding of which may
 // stop a run, spelled here rather than read from the package under test.
 var mayStop = []reaction.StoppingRule{
-	{ID: "REPEATED_DENIAL", Version: "1"}, {ID: "STEP_OUTSIDE_PROCEDURE", Version: "1"},
+	{ID: "REPEATED_DENIAL", Version: "2"}, {ID: "STEP_OUTSIDE_PROCEDURE", Version: "1"},
 	{ID: "DEADLINE_EXCEEDED", Version: "1"}, {ID: "RESOURCE_OUTSIDE_RUN", Version: "1"},
 	{ID: "DENIED_ACTION_RETRIED_ARGUMENTS", Version: "1"}, {ID: "DENIED_ACTION_RETRIED_RESOURCE", Version: "1"},
 }
 
 // mayNotStop is every other rule supervise has, and ids no rule has, a
 // spelling of a stopping rule apart from its own among them, each at version
-// "1"; and each stopping rule at a version that is not its own.
+// "1"; and each stopping rule at a version that is not its own, a version it
+// had before among them.
 var mayNotStop = []reaction.StoppingRule{
 	{ID: "REQUIRED_STEP_SKIPPED", Version: "1"}, {ID: "STEP_OUT_OF_ORDER", Version: "1"},
 	{ID: "CONTINUED_AFTER_FAILURE", Version: "1"}, {ID: "DENIED_ACTION_RETRIED_AROUND", Version: "1"},
 	{ID: "EXCEPTION_TAKEN", Version: "1"}, {ID: "", Version: "1"}, {ID: "REPEATED_DENIALS", Version: "1"},
 	{ID: "repeated_denial", Version: "1"}, {ID: "REPEATED_DENIAL ", Version: "1"}, {ID: "DENIED_ACTION_RETRIED", Version: "1"},
-	{ID: "REPEATED_DENIAL", Version: "9"}, {ID: "REPEATED_DENIAL", Version: "2"}, {ID: "REPEATED_DENIAL", Version: "01"},
-	{ID: "REPEATED_DENIAL", Version: "1 "}, {ID: "REPEATED_DENIAL", Version: ""},
+	{ID: "REPEATED_DENIAL", Version: "9"}, {ID: "REPEATED_DENIAL", Version: "1"}, {ID: "REPEATED_DENIAL", Version: "02"},
+	{ID: "REPEATED_DENIAL", Version: "2 "}, {ID: "REPEATED_DENIAL", Version: ""},
 	{ID: "STEP_OUTSIDE_PROCEDURE", Version: "9"}, {ID: "DEADLINE_EXCEEDED", Version: "9"},
 	{ID: "RESOURCE_OUTSIDE_RUN", Version: "9"}, {ID: "DENIED_ACTION_RETRIED_ARGUMENTS", Version: "9"},
 	{ID: "DENIED_ACTION_RETRIED_RESOURCE", Version: "9"},

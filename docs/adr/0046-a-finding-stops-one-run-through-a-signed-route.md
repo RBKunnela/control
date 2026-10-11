@@ -16,6 +16,12 @@ Amended by [ADR-0047](0047-a-procedure-states-its-exceptions-resources-and-child
 verifying a route refuses a rule or version that may not stop, so every reader
 of a route refuses it.
 
+Amended in 0.11.0 (`REPEATED_DENIAL` version 2): a rule version a later one
+superseded, `REPEATED_DENIAL` `1`, is read only in the route a list is carried
+from. The carried list keeps its stops at that version, the judge holds each to
+the rule's current version under the new route, and no writer appends one, so
+an upgrade drops no stop and brings no lifted one back.
+
 ## Context
 
 ADR-0039 decided that a reaction turns a finding into a stop of one run's later

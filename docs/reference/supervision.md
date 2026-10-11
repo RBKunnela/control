@@ -70,7 +70,7 @@ the export being the plane's, and nothing else protects that.
 
 | Rule | Fires when |
 | --- | --- |
-| `REPEATED_DENIAL` | one tool on one upstream is denied by policy `max_denials` times; the plane's own blocks are counted apart |
+| `REPEATED_DENIAL` | one tool on one upstream is denied by policy `max_denials` times, plane blocks apart; doubtful denials dropped when others suffice |
 | `STEP_OUTSIDE_PROCEDURE` | a tool neither a step nor allowed is called, or reported and not joined to a plane call |
 | `DEADLINE_EXCEEDED` | events span over `deadline_seconds`; `0.2`: one per run with an event past it, timed from the tree's first event |
 | `REQUIRED_STEP_SKIPPED` | a required step has no instance |

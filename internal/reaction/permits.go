@@ -1,6 +1,7 @@
 package reaction
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -36,6 +37,29 @@ func (r Route) Permits(c StopClaim) error {
 		}
 	}
 	return ErrClaimRule
+}
+
+// permitsListed is Permits for a stop line of a list: a stop naming a rule
+// version StoppingRules superseded, which only a carry writes, is permitted
+// as a stop of the version that replaced it, with that rule's lifetime.
+func (r Route) permitsListed(c StopClaim) error {
+	err := r.Permits(c)
+	current, superseded := replacement(c.RuleID, c.RuleVersion)
+	if !errors.Is(err, ErrClaimRule) || !superseded {
+		return err
+	}
+	c.RuleVersion = current
+	return r.Permits(c)
+}
+
+// CheckCurrent refuses, with ErrStopSuperseded, a stop naming a rule version
+// StoppingRules superseded. The stop list's writers append no such stop; a
+// list holds one only as a carry brought it.
+func CheckCurrent(s Stop) error {
+	if Superseded(s.RuleID, s.RuleVersion) {
+		return fmt.Errorf("%w: rule_id %q rule_version %q", ErrStopSuperseded, s.RuleID, s.RuleVersion)
+	}
+	return nil
 }
 
 func (r Rule) permitsTimes(created, expires time.Time) error {

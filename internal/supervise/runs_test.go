@@ -2,6 +2,7 @@ package supervise_test
 
 import (
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -116,6 +117,39 @@ func TestARepeatedDenialWhoseCrossingIsUntoldIsIndeterminate(t *testing.T) {
 				t.Fatalf("findings %q, want %q:\n%s", got, c.want, dump(res.Findings))
 			}
 		})
+	}
+}
+
+// TestARunsCleanDenialsAtMaxDenialsConfirmWithoutTheDoubtfulOne: under 0.2
+// a run's own four clean denials and one in doubt are confirmed on the four
+// alone; its own three clean and one in doubt stay indeterminate on all four.
+func TestARunsCleanDenialsAtMaxDenialsConfirmWithoutTheDoubtfulOne(t *testing.T) {
+	for name, doubt := range doubtOf {
+		for _, c := range []struct {
+			clean    int
+			want     string
+			wantRefs string
+		}{
+			{4, rootC, "d1-e3 d2-e3 d3-e3 d4-e3"},
+			{3, rootI, "d1-e3 d2-e3 d3-e3 dx-e3"},
+		} {
+			t.Run(name+", "+strconv.Itoa(c.clean)+" clean", func(t *testing.T) {
+				var calls []call
+				for i := range c.clean {
+					calls = append(calls, deny("d"+strconv.Itoa(i+1), "", time.Duration(10*(i+1))*time.Second))
+				}
+				doubtful := deny("dx", "", 60*time.Second)
+				x := export(append(calls, doubtful)...)
+				exports := append([]supervise.Export{x}, doubt(&x, doubtful)...)
+				res := treeEvaluate(t, supervise.Input{Procedure: inheritProc(t), Tree: family(), Exports: exports})
+				if got := verdicts(res, supervise.RuleRepeatedDenial); !slices.Equal(got, []string{c.want}) {
+					t.Fatalf("findings %q, want %q:\n%s", got, c.want, dump(res.Findings))
+				}
+				if got := citedEvents(only(res, supervise.RuleRepeatedDenial)[0]); got != c.wantRefs {
+					t.Fatalf("cites %q, want %q", got, c.wantRefs)
+				}
+			})
+		}
 	}
 }
 

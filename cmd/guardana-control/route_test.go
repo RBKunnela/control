@@ -78,13 +78,14 @@ func TestRouteSignRefusesARuleThatMayNotStop(t *testing.T) {
 		{first, `"rule_id":"REPEATED_DENIALS"`, `rules[0]: rule_id "REPEATED_DENIALS" is no rule supervise has`},
 		{first, `"rule_id":"NO_SUCH_RULE"`, `rules[0]: rule_id "NO_SUCH_RULE" is no rule supervise has`},
 		{second + `,"rule_version":"1"`, second + `,"rule_version":"2"`, `rules[1]: rule_version "2" is not supervise's "1"`},
-		{first + `,"rule_version":"1"`, first + `,"rule_version":"01"`, `rules[0]: rule_version "01" is not supervise's "1"`},
-		{first + `,"rule_version":"1"`, first + `,"rule_version":"9"`, `rules[0]: rule_version "9" is not supervise's "1"`},
-		{first, `"rule_id":"REQUIRED_STEP_SKIPPED"`, "rules[0]: REQUIRED_STEP_SKIPPED: reaction: the route names a rule that " + refused},
-		{first + `,"rule_version":"1"`, `"rule_id":"STEP_OUT_OF_ORDER","rule_version":"2"`, "rules[0]: STEP_OUT_OF_ORDER: reaction: the route names a rule that " + refused},
+		{first + `,"rule_version":"2"`, first + `,"rule_version":"1"`, `rules[0]: rule_version "1" is not supervise's "2"`},
+		{first + `,"rule_version":"2"`, first + `,"rule_version":"02"`, `rules[0]: rule_version "02" is not supervise's "2"`},
+		{first + `,"rule_version":"2"`, first + `,"rule_version":"9"`, `rules[0]: rule_version "9" is not supervise's "2"`},
+		{first + `,"rule_version":"2"`, `"rule_id":"REQUIRED_STEP_SKIPPED","rule_version":"1"`, "rules[0]: REQUIRED_STEP_SKIPPED: reaction: the route names a rule that " + refused},
+		{first + `,"rule_version":"2"`, `"rule_id":"STEP_OUT_OF_ORDER","rule_version":"2"`, "rules[0]: STEP_OUT_OF_ORDER: reaction: the route names a rule that " + refused},
 		{second + `,"rule_version":"1"`, `"rule_id":"CONTINUED_AFTER_FAILURE","rule_version":"2"`, "rules[1]: CONTINUED_AFTER_FAILURE: reaction: the route names a rule that " + refused},
 		{second, `"rule_id":"DENIED_ACTION_RETRIED_AROUND"`, "rules[1]: DENIED_ACTION_RETRIED_AROUND: reaction: the route names a rule that " + refused},
-		{first, `"rule_id":"EXCEPTION_TAKEN"`, "rules[0]: EXCEPTION_TAKEN: reaction: the route names a rule that " + refused},
+		{first + `,"rule_version":"2"`, `"rule_id":"EXCEPTION_TAKEN","rule_version":"1"`, "rules[0]: EXCEPTION_TAKEN: reaction: the route names a rule that " + refused},
 	} {
 		body := routeDoc(seeded(0x4c), 1)
 		if !strings.Contains(body, c.from) {
@@ -108,9 +109,9 @@ func TestRouteSignRefusesARuleThatMayNotStop(t *testing.T) {
 func TestRouteSignSignsEveryRuleThatMayStop(t *testing.T) {
 	tr := newStopTree(t)
 	var rules []string
-	for _, id := range []string{"REPEATED_DENIAL", "STEP_OUTSIDE_PROCEDURE", "DEADLINE_EXCEEDED",
-		"RESOURCE_OUTSIDE_RUN", "DENIED_ACTION_RETRIED_ARGUMENTS", "DENIED_ACTION_RETRIED_RESOURCE"} {
-		rules = append(rules, `{"procedure_id":"refund","version":"1","digest":"`+stopProcDigest+`","rule_id":"`+id+`","rule_version":"1"}`)
+	for _, r := range [][2]string{{"REPEATED_DENIAL", "2"}, {"STEP_OUTSIDE_PROCEDURE", "1"}, {"DEADLINE_EXCEEDED", "1"},
+		{"RESOURCE_OUTSIDE_RUN", "1"}, {"DENIED_ACTION_RETRIED_ARGUMENTS", "1"}, {"DENIED_ACTION_RETRIED_RESOURCE", "1"}} {
+		rules = append(rules, `{"procedure_id":"refund","version":"1","digest":"`+stopProcDigest+`","rule_id":"`+r[0]+`","rule_version":"`+r[1]+`"}`)
 	}
 	lift := base64.StdEncoding.EncodeToString(seeded(0x4c).Public().(ed25519.PublicKey))
 	doc := filepath.Join(tr.dir, "route.json")

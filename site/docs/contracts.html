@@ -1638,7 +1638,9 @@ a later one; lines are counted from 1, the header's.</p>
 <p>A list is taken whole or not at all. A reader refuses a header that is not
 line 1 alone or names another route; a finding id two lines name; a stop the
 route does not permit, whose tenant is not the route's, whose procedure and
-rule are no rule of it, or whose expiry passes the rule's lifetime; a covered
+rule are no rule of it, or whose expiry passes the rule's lifetime; a stop
+that names a superseded version of a rule the route names at its current
+version is judged as that rule, which only a carried list holds; a covered
 line of another tenant; a <code>created_at</code> later than the reader's clock and its
 tolerance; and a lift that names a line at or after its own, names a run and
 line an earlier lift named, does not verify under the route's lift key, or

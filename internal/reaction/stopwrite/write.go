@@ -49,8 +49,12 @@ func Init(ctx context.Context, dir string, route reaction.Route, now time.Time) 
 }
 
 // AppendStop appends s to the list in dir, judged against route at the
-// writer's clock now, and returns its line number.
+// writer's clock now, and returns its line number. It refuses a stop naming a
+// rule version a later one superseded, which only a carry brings.
 func AppendStop(ctx context.Context, dir string, route reaction.Route, s reaction.Stop, now time.Time) (int64, error) {
+	if err := reaction.CheckCurrent(s); err != nil {
+		return 0, fmt.Errorf("%w: %w", ErrRefused, err)
+	}
 	return appendLine(ctx, dir, route, now, fixed(s.Marshal()))
 }
 
@@ -73,8 +77,12 @@ func AppendLift(ctx context.Context, dir string, route reaction.Route, l reactio
 // holds none: a stop with a longer lifetime is never cut short by covering
 // it under a shorter one. The choice is made under the lock, over the list as
 // it stands, so two writers never stop one run twice for one lifetime. It
-// returns the line number and whether the line is covered.
+// refuses s as AppendStop does, and returns the line number and whether the
+// line is covered.
 func AppendFinding(ctx context.Context, dir string, route reaction.Route, s reaction.Stop, now time.Time) (int64, bool, error) {
+	if err := reaction.CheckCurrent(s); err != nil {
+		return 0, false, fmt.Errorf("%w: %w", ErrRefused, err)
+	}
 	covered := false
 	n, err := appendLine(ctx, dir, route, now, func(list reaction.List) ([]byte, error) {
 		// Named before the bound is judged, so a finding another writer

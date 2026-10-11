@@ -120,6 +120,11 @@ anything&quot;: one can, through this record's route.</p>
 <code>Eligible</code> admits an open child of the finding's tenant, still one run's stop;
 verifying a route refuses a rule or version that may not stop, so every reader
 of a route refuses it.</p>
+<p>Amended in 0.11.0 (<code>REPEATED_DENIAL</code> version 2): a rule version a later one
+superseded, <code>REPEATED_DENIAL</code> <code>1</code>, is read only in the route a list is carried
+from. The carried list keeps its stops at that version, the judge holds each to
+the rule's current version under the new route, and no writer appends one, so
+an upgrade drops no stop and brings no lifted one back.</p>
 <h2 id="context">Context</h2>
 <p>ADR-0039 decided that a reaction turns a finding into a stop of one run's later
 calls, under a route signed with a key apart from the policy key, and that a

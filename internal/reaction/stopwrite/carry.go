@@ -34,7 +34,8 @@ type Carried struct {
 var carrying func()
 
 // Carry starts a stop list in dir, judged against route, from the list in
-// from, judged against fromRoute: the new list holds every stop of the old
+// from, judged against fromRoute, which alone may name a rule version a later
+// one superseded (reaction.CheckCarrySource): the new list holds every stop of the old
 // one no lift ended, expired or not, as it was, since the writer's clock may
 // be one a plane would not trust, and a covered line for every other finding
 // the old list names, so that a finding the old list names never stops a run
@@ -114,12 +115,12 @@ type part struct {
 // a refused header, a line refused for a created_at past the writer's clock,
 // which another writer whose clock runs ahead wrote in good faith, and a stop
 // or covered line after the refused line each refuse the carry, as does a
-// route naming a rule that may not stop a run.
+// route naming a rule that may not stop a run and was never superseded.
 func acceptedPart(route reaction.Route, old []byte, now time.Time) (part, error) {
-	if err := stopping(route); err != nil {
-		return part{}, err
+	if err := reaction.CheckCarrySource(route); err != nil {
+		return part{}, fmt.Errorf("%w: %w", ErrRefused, err)
 	}
-	list, err := reaction.Judge(route, reaction.Prefix{}, old, now, 0)
+	list, err := reaction.JudgeCarrySource(route, old, now)
 	if err == nil {
 		return part{list: list, accepted: old}, nil
 	}
@@ -138,7 +139,7 @@ func acceptedPart(route reaction.Route, old []byte, now time.Time) (part, error)
 		}
 	}
 	accepted := bytes.Join(lines[:at.Line-1], nil)
-	if list, err = reaction.Judge(route, reaction.Prefix{}, accepted, now, 0); err != nil {
+	if list, err = reaction.JudgeCarrySource(route, accepted, now); err != nil {
 		return part{}, fmt.Errorf("the list carried from: %w", refusal(err))
 	}
 	return part{list: list, accepted: accepted, leftOut: int64(len(lines)) - at.Line + 1, refused: at}, nil

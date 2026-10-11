@@ -251,7 +251,7 @@ func obsRef(src, id string) *findingv1alpha1.Reference {
 // ruleVersions is each rule's version, spelled here rather than read from the
 // package's table.
 var ruleVersions = map[string]string{
-	"REPEATED_DENIAL": "1", "STEP_OUTSIDE_PROCEDURE": "1", "DEADLINE_EXCEEDED": "1",
+	"REPEATED_DENIAL": "2", "STEP_OUTSIDE_PROCEDURE": "1", "DEADLINE_EXCEEDED": "1",
 	"REQUIRED_STEP_SKIPPED": "1", "STEP_OUT_OF_ORDER": "2", "CONTINUED_AFTER_FAILURE": "2",
 	"RESOURCE_OUTSIDE_RUN": "1", "DENIED_ACTION_RETRIED_ARGUMENTS": "1", "DENIED_ACTION_RETRIED_RESOURCE": "1",
 	"DENIED_ACTION_RETRIED_AROUND": "1", "EXCEPTION_TAKEN": "1",

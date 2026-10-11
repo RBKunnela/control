@@ -38,7 +38,7 @@ procedure_id: refund
 version: 2
 digest: 3bdccd18fb0503f6168a59a8bae712b9b37be7e4435f796b111be409f7d59dd6
 children: inherit
-rule: REPEATED_DENIAL version 1, may stop
+rule: REPEATED_DENIAL version 2, may stop
 rule: STEP_OUTSIDE_PROCEDURE version 1, may stop
 rule: DEADLINE_EXCEEDED version 1, may stop
 rule: REQUIRED_STEP_SKIPPED version 1, never stops

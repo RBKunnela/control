@@ -35,7 +35,7 @@ const stopProcDigest = "0123456789abcdef0123456789abcdef0123456789abcdef01234567
 const stopRouteDoc = `{"kind":"reaction-route/v1alpha1","route_id":"refund-stops","serial":SERIAL,` +
 	`"tenant_id":"acme","scope":"run","lift_public_key":"LIFTKEY","rules":[` +
 	`{"procedure_id":"refund","version":"1","digest":"` + stopProcDigest + `",` +
-	`"rule_id":"REPEATED_DENIAL","rule_version":"1","expires_seconds":600},` +
+	`"rule_id":"REPEATED_DENIAL","rule_version":"2","expires_seconds":600},` +
 	`{"procedure_id":"refund","version":"1","digest":"` + stopProcDigest + `",` +
 	`"rule_id":"STEP_OUTSIDE_PROCEDURE","rule_version":"1"}]}`
 
@@ -165,13 +165,17 @@ func (tr stopTree) judged(t *testing.T, now time.Time) reaction.List {
 func fid(n int) string { return fmt.Sprintf("fnd-%032x", n) }
 
 // finding is a deterministic finding of the refund procedure, numbered n,
-// about run, of rule, with verdict.
+// about run, of rule at the version supervise gives it, with verdict.
 func finding(n int, run, rule string, verdict controlv1.FindingVerdict) *findingv1alpha1.FindingRecord {
+	version := "1"
+	if rule == denial {
+		version = "2"
+	}
 	return &findingv1alpha1.FindingRecord{
 		SchemaVersion: "0.1", TenantId: "acme", ProjectId: "orders",
 		Procedure:  &findingv1alpha1.ProcedureRef{ProcedureId: "refund", Version: "1", Digest: stopProcDigest},
 		Escalation: findingv1alpha1.Escalation_ESCALATION_ALERT,
-		Finding: &controlv1.Finding{FindingId: fid(n), RuleId: rule, RuleVersion: "1",
+		Finding: &controlv1.Finding{FindingId: fid(n), RuleId: rule, RuleVersion: version,
 			Severity: controlv1.FindingSeverity_FINDING_SEVERITY_HIGH, Verdict: verdict, RunId: run,
 			Source: controlv1.FindingSource_FINDING_SOURCE_DETERMINISTIC},
 	}

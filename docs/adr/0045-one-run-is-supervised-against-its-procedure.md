@@ -23,6 +23,12 @@ a procedure of schema `0.2` states exceptions, resource bindings and how
 children are judged; each rule has a version of its own; a run's children can
 be supervised with it or on their own.
 
+Amended in 0.11.0 (`REPEATED_DENIAL` version 2): when some of the denials the
+rule would cite are in doubt, a broken chain or an event id read with two
+contents, it cites only the clean ones and keeps its verdict when at least
+`max_denials` are clean; a route naming version 1 is refused but as the
+source of a carry, which keeps its stops ([ADR-0046](0046-a-finding-stops-one-run-through-a-signed-route.md)).
+
 ## Context
 
 A plane decides each call on its own. Whether a run as a whole kept to the

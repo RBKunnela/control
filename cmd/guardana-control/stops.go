@@ -94,7 +94,7 @@ func stopsInit(a stopsInitArgs, dir string, now time.Time, stdout, stderr io.Wri
 		}
 		return emit(stdout, stderr, stopsInitName, headerLines(h), dir)
 	}
-	from, err := verifiedRoute("--carry-route", a.carryRoute, a.publicKey)
+	from, err := verifiedCarrySource(a.carryRoute, a.publicKey)
 	if err != nil {
 		return fail(stderr, stopsInitName, err)
 	}

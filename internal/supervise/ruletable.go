@@ -40,7 +40,7 @@ type ruleRow struct {
 var bothSchemas = []string{ProcedureSchema01, ProcedureSchema02}
 
 var ruleTable = [...]ruleRow{
-	{RuleRepeatedDenial, "1", true, true, false, bothSchemas},
+	{RuleRepeatedDenial, "2", true, true, false, bothSchemas},
 	{RuleStepOutsideProcedure, "1", true, true, true, bothSchemas},
 	{RuleDeadlineExceeded, "1", true, true, false, bothSchemas},
 	{RuleRequiredStepSkipped, "1", false, false, true, bothSchemas},

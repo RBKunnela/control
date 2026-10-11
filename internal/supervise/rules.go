@@ -42,12 +42,23 @@ func (e *evaluation) repeatedDenial() []draft {
 			continue
 		}
 		d := draft{rule: RuleRepeatedDenial, anchor: tool[:], cap: confirmed}
-		for _, rq := range denials {
+		for _, rq := range cited(denials, e.p.maxDenials) {
 			d.refs = append(d.refs, rq.ref(rq.terminal))
 		}
 		out = append(out, d)
 	}
 	return out
+}
+
+// cited is the denials a finding rests on: those whose trails are in no
+// doubt when at least n are, so a doubtful copy cannot weaken a count the
+// clean ones reach alone; otherwise all of them, and the doubt with them.
+func cited(denials []*request, n uint32) []*request {
+	clean := slices.DeleteFunc(slices.Clone(denials), func(rq *request) bool { return rq.doubt })
+	if uint64(len(clean)) < uint64(n) {
+		return denials
+	}
+	return clean
 }
 
 // outsideProcedure fires for each tool the plane saw called that is neither a

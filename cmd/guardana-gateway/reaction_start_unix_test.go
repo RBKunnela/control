@@ -253,17 +253,17 @@ func signedDirectly(t *testing.T, tr tree, rule, version string) {
 }
 
 // mayNotStop is each rule, at a version, a route may not name: rules whose
-// finding may not stop a run, an id no rule has, and two that may stop at a
-// version that is not their own.
+// finding may not stop a run, an id no rule has, and rules that may stop at a
+// version that is not their own, one a version it had before.
 var mayNotStop = []struct{ rule, version string }{
 	{"EXCEPTION_TAKEN", "1"}, {"DENIED_ACTION_RETRIED_AROUND", "1"}, {"REQUIRED_STEP_SKIPPED", "1"},
-	{"NO_SUCH_RULE", "1"}, {"REPEATED_DENIAL", "9"}, {"STEP_OUTSIDE_PROCEDURE", "2"},
+	{"NO_SUCH_RULE", "1"}, {"REPEATED_DENIAL", "9"}, {"REPEATED_DENIAL", "1"}, {"STEP_OUTSIDE_PROCEDURE", "2"},
 }
 
 // TestARouteNamingARuleThatMayNotStopRefusesTheStart: a route naming a rule
 // whose finding may not stop a run, no rule supervise has, or a stopping rule
-// at another version, is refused before the floor is touched. A 0.9 route
-// naming REPEATED_DENIAL version "1" over a list written the same way is the
+// at another version, is refused before the floor is touched. The route
+// naming REPEATED_DENIAL version "2" over a list written the same way is the
 // control, and starts.
 func TestARouteNamingARuleThatMayNotStopRefusesTheStart(t *testing.T) {
 	for _, c := range mayNotStop {
@@ -278,9 +278,9 @@ func TestARouteNamingARuleThatMayNotStopRefusesTheStart(t *testing.T) {
 	}
 	tr := newTree(t)
 	tr.withReaction(t)
-	signedDirectly(t, tr, "REPEATED_DENIAL", "1")
+	signedDirectly(t, tr, "REPEATED_DENIAL", "2")
 	if _, err := buildServing(t, tr); err != nil {
-		t.Fatalf("the 0.9 route: %v", err)
+		t.Fatalf("the control route: %v", err)
 	}
 }
 

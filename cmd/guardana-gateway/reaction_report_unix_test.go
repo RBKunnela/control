@@ -130,8 +130,8 @@ func TestDoctorFailsARouteBelowItsFloor(t *testing.T) {
 }
 
 // TestDoctorFailsARouteNamingARuleThatMayNotStop: doctor fails what the
-// start refuses, and says which rule, at which version, and why. The 0.9
-// route naming REPEATED_DENIAL version "1" is the control, and passes.
+// start refuses, and says which rule, at which version, and why. The route
+// naming REPEATED_DENIAL version "2" is the control, and passes.
 func TestDoctorFailsARouteNamingARuleThatMayNotStop(t *testing.T) {
 	for _, c := range mayNotStop {
 		tr := newTree(t)
@@ -146,9 +146,9 @@ func TestDoctorFailsARouteNamingARuleThatMayNotStop(t *testing.T) {
 	}
 	tr := newTree(t)
 	tr.withReaction(t)
-	signedDirectly(t, tr, "REPEATED_DENIAL", "1")
+	signedDirectly(t, tr, "REPEATED_DENIAL", "2")
 	if line := doctorLine(t, tr, "ok      reaction "); !strings.Contains(line, "route refunds serial 1") {
-		t.Errorf("the 0.9 route: the reaction line is %q", line)
+		t.Errorf("the control route: the reaction line is %q", line)
 	}
 }
 

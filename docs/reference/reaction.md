@@ -46,24 +46,23 @@ Sources: `cmd/guardana-control/react.go`, `cmd/guardana-control/stops.go`, `inte
 The route says which findings may stop a run: its tenant, and rules, each a
 procedure by id, version and digest and a supervise rule, with an optional
 lifetime for the stops it allows. Without one a stop lasts as long as its run.
-`route sign` signs it with a key of its own, writes the file mode `0644`,
+`route sign` signs it with its own key, writes the file mode `0644`,
 replacing only an earlier signed route, and prints `route_id`, `serial`,
-`digest`, `key_id` and `out`. It refuses a rule id supervise does not have, a
-`rule_version` that is not that rule's, and any rule but the six, at version
-`1`, whose finding may stop a run: `REPEATED_DENIAL`, `STEP_OUTSIDE_PROCEDURE`,
-`DEADLINE_EXCEEDED`, `RESOURCE_OUTSIDE_RUN`, `DENIED_ACTION_RETRIED_ARGUMENTS`
-and `DENIED_ACTION_RETRIED_RESOURCE`. Every reader of a signed route refuses
-one naming another. The route also names the lift key, whose holder alone
-can lift a stop while a plane runs, and which need not be on the plane's
-machine.
+`digest`, `key_id` and `out`. It refuses any rule but the six whose finding
+may stop a run, each at its version: `REPEATED_DENIAL` at `2`, and
+`STEP_OUTSIDE_PROCEDURE`, `DEADLINE_EXCEEDED`, `RESOURCE_OUTSIDE_RUN`,
+`DENIED_ACTION_RETRIED_ARGUMENTS` and `DENIED_ACTION_RETRIED_RESOURCE` at `1`.
+Every reader of a signed route refuses one naming another, but
+`--carry-route`. The route also names the lift key, whose holder alone can
+lift a stop while a plane runs, and which need not be on the plane's machine.
 
 The route floor keeps, per route id, the highest serial a plane took and its
 digest, in a directory of its own that `policy state init --kind route` makes.
 At start a plane refuses a missing floor, a route below the floor's serial,
 and a route at that serial with another digest. It raises the floor once the
 list's first read is served, before it listens, and never makes one. A plane reads the route at start only: a stale route can
-only stop too much, never grant. Changing it takes a carried list and a
-restart.
+only stop too much, never grant. Changing it, a rule's new version included,
+takes a carried list and a restart.
 
 ## The stop list
 
@@ -71,19 +70,20 @@ restart.
 `stop`, `covered` and `lift` lines, appended and never rewritten, at most
 4 MiB and 20 000 lines. Only the `stops` commands and `react` write it, each
 line under the list's lock, waiting up to ten seconds for another writer; a
-plane takes no lock. A writer cuts a torn last line back to its last newline before
-it appends, and refuses a write past the bound rather than cut a line it did
+plane takes no lock. A writer cuts a torn last line before it appends, and refuses a write past the bound rather than cut a line it did
 not read.
 
-`stops init` starts a list in a directory that exists, and refuses one whose
-list is there. With `--carry` it copies the old list's unlifted stops,
-expired or not, and names every other finding of it as covered, judging the
+`stops init` starts a list in an existing directory holding none. With
+`--carry` it copies the old list's unlifted stops, expired or not, and names every other finding of it as covered, judging the
 old list by `--carry-route` under the same route key and holding its lock
-until the new list is written, so the new list only adds. A list a plane
+until the new list is written, so the new list only adds. Only
+`--carry-route` may name a superseded version, `REPEATED_DENIAL` `1`: its stops
+keep it, judged as `2`, and no writer appends one. A version `2` finding
+stops a lifted run again. A list a plane
 refuses at one line is carried up to that line, and `stops init` says what it
 left out, unless a stop or covered line follows it or the line is dated past
-the writer's clock. Point `react` at the new list: no plane reads the old one
-again. `stops lift` signs a lift of one run through a line, by default the
+the writer's clock. Point `react` at the new list: no plane reads the old
+one. `stops lift` signs a lift of one run through a line, by default the
 last complete one, and refuses a key that is not the route's lift key and a
 lift that ends no stop. `stops list` prints the
 header, each stop no lift ended and whether it is active, the covered lines
@@ -92,9 +92,8 @@ clock would judge it.
 
 ## What react writes
 
-`react` verifies the route, refuses one naming a rule outside the six before
-reading a finding, refuses a list whose header names another route, reads the
-findings log and looks each finding's run up in the runs directory,
+`react` verifies the route before reading a finding, refuses a list whose
+header names another route, reads the findings log and looks each finding's run up in the runs directory,
 which it never writes. It holds no key and never lifts. For each finding the
 list does not name yet, it writes a `covered` line when the run has an active
 stop lasting at least as long as the new one would, and a `stop` otherwise,
@@ -119,8 +118,7 @@ open.
 At start, a plane with `reaction.route` refuses to serve unless all four of
 `reaction.route`, `reaction.public_key`, `reaction.floor_dir` and
 `reaction.stops` are set, with `runs.dir`; the route verifies under the key
-`reaction.public_key` names; its rules are among the six; its tenant is the
-listener's; the route key, the lift key, the policy key and the freshness key
+`reaction.public_key` names; its tenant is the listener's; the route key, the lift key, the policy key and the freshness key
 are four keys, compared as points up to their sign; the floor takes the route;
 and the first read of the list finds a state it can serve.
 

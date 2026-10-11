@@ -75,8 +75,9 @@ func confirmedLines(t *testing.T) string {
 
 // TestA01CorpusKeepsItsConfirmedFindingsByteForByte: the corpus's CONFIRMED
 // findings are those the golden holds, byte for byte, and the golden holds
-// one of every rule that can confirm. The golden is what a 0.1 procedure has
-// always confirmed, so it is never rewritten to match a change.
+// one of every rule that can confirm. The golden is what a 0.1 procedure
+// confirms, so only a rule's new version, which changes its finding ids,
+// rewrites its lines.
 func TestA01CorpusKeepsItsConfirmedFindingsByteForByte(t *testing.T) {
 	got := confirmedLines(t)
 	raw, err := os.ReadFile(confirmedGolden)

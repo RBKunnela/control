@@ -76,6 +76,10 @@ const (
 	ErrClaimLifetime Error = "reaction: the stop lasts longer than its rule allows"
 )
 
+// ErrStopSuperseded is CheckCurrent's refusal of a stop a writer would
+// append.
+const ErrStopSuperseded Error = "reaction: the stop names a rule version a later one superseded"
+
 // Eligible's refusals of a finding.
 const (
 	ErrFindingSource  Error = "reaction: the finding's source is not DETERMINISTIC"

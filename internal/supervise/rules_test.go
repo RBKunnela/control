@@ -155,6 +155,47 @@ func TestABrokenChainOrAConflictingEventIsIndeterminate(t *testing.T) {
 	}
 }
 
+// doubtOf is the ways a denial's trail falls into doubt: a broken chain, and
+// a copy of one of its events read with other contents.
+var doubtOf = map[string]func(x *supervise.Export, c call) []supervise.Export{
+	"a broken chain": func(x *supervise.Export, c call) []supervise.Export {
+		for _, ev := range x.Events {
+			if ev.GetEventId() == c.req+"-e3" {
+				ev.PrevEventId = c.req + "-e9"
+			}
+		}
+		return nil
+	},
+	"a conflicting copy": func(_ *supervise.Export, c call) []supervise.Export {
+		again := export(c)
+		again.Events[0].GetProposed().Action.Name = "get_order"
+		return []supervise.Export{again}
+	},
+}
+
+// TestCleanDenialsAtMaxDenialsConfirmWithoutTheDoubtfulOne: four clean
+// denials and one in doubt are confirmed on the four alone; three clean and
+// one in doubt are indeterminate on all four, as one in doubt makes them.
+func TestCleanDenialsAtMaxDenialsConfirmWithoutTheDoubtfulOne(t *testing.T) {
+	p := procWith(t)
+	denialID := id("REPEATED_DENIAL", "issue_refund", "pay")
+	for name, doubt := range doubtOf {
+		t.Run(name, func(t *testing.T) {
+			calls := denials(5)
+			x := export(calls...)
+			res := evaluate(t, supervise.Input{Procedure: p, Exports: append([]supervise.Export{x}, doubt(&x, calls[5])...)})
+			sameFindings(t, res.Findings, want(p, "REPEATED_DENIAL", high, alert, confirmed, denialID,
+				evRef("d1-e3", "d1"), evRef("d2-e3", "d2"), evRef("d3-e3", "d3"), evRef("d4-e3", "d4")))
+
+			calls = denials(4)
+			x = export(calls...)
+			res = evaluate(t, supervise.Input{Procedure: p, Exports: append([]supervise.Export{x}, doubt(&x, calls[4])...)})
+			sameFindings(t, res.Findings, want(p, "REPEATED_DENIAL", high, alert, indetermin, denialID,
+				evRef("d1-e3", "d1"), evRef("d2-e3", "d2"), evRef("d3-e3", "d3"), evRef("d4-e3", "d4")))
+		})
+	}
+}
+
 func closedRun(t *testing.T, p *supervise.Procedure, exports ...supervise.Export) *supervise.Result {
 	t.Helper()
 	return evaluate(t, supervise.Input{Procedure: p, Run: supervise.Run{Closed: true}, Exports: exports})

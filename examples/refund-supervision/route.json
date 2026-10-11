@@ -7,7 +7,7 @@
   "lift_public_key": "LIFT_PUBLIC_KEY_FROM_KEYGEN",
   "rules": [
     {"procedure_id": "refund", "version": "1", "digest": "d4155c98c7315b1e042a08d1bf781e7c7a10ae64d77df94080ccfe6b2424edf4",
-      "rule_id": "REPEATED_DENIAL", "rule_version": "1"},
+      "rule_id": "REPEATED_DENIAL", "rule_version": "2"},
     {"procedure_id": "refund", "version": "2", "digest": "59d217f597f317f281133fa2503bdefc9a2a5867da0ada1fd1b9fbdf43c8e3ca",
       "rule_id": "DENIED_ACTION_RETRIED_RESOURCE", "rule_version": "1"}
   ]

@@ -64,7 +64,7 @@ type judging struct {
 // signed run, line, list id and route digest are not its line's and the
 // header's. A refusal returns no List: a list is accepted whole or not.
 func Judge(route Route, accepted Prefix, content []byte, now time.Time, tolerance time.Duration) (List, error) {
-	complete, lines, err := judgeable(route, content, now, tolerance)
+	complete, lines, err := judgeable(route, CheckStopping, content, now, tolerance)
 	if err != nil {
 		return List{}, err
 	}
@@ -82,7 +82,7 @@ func Judge(route Route, accepted Prefix, content []byte, now time.Time, toleranc
 // created_at to now plus tolerance, and nothing else a line accepted before
 // was held to depends on the clock.
 func JudgeFrom(route Route, from List, content []byte, now time.Time, tolerance time.Duration) (List, error) {
-	complete, lines, err := judgeable(route, content, now, tolerance)
+	complete, lines, err := judgeable(route, CheckStopping, content, now, tolerance)
 	if err != nil {
 		return List{}, err
 	}
@@ -105,13 +105,29 @@ func JudgeFrom(route Route, from List, content []byte, now time.Time, tolerance 
 	return walk(route, from, complete, lines, sum, now, tolerance)
 }
 
+// JudgeCarrySource is Judge from the zero Prefix with no tolerance past now,
+// of the list a carry reads, against the route that list was written under,
+// which it holds to CheckCarrySource in place of CheckStopping. Nothing but a
+// carry calls it.
+func JudgeCarrySource(route Route, content []byte, now time.Time) (List, error) {
+	complete, lines, err := judgeable(route, CheckCarrySource, content, now, 0)
+	if err != nil {
+		return List{}, err
+	}
+	sum, err := extends(Prefix{}, complete)
+	if err != nil {
+		return List{}, err
+	}
+	return walk(route, List{}, complete, lines, sum, now, 0)
+}
+
 // judgeable is content's complete lines and their count, refused when route,
 // clock or tolerance cannot judge it or it is over a bound.
-func judgeable(route Route, content []byte, now time.Time, tolerance time.Duration) ([]byte, int64, error) {
+func judgeable(route Route, rules func(Route) error, content []byte, now time.Time, tolerance time.Duration) ([]byte, int64, error) {
 	if route.digest == "" {
 		return nil, 0, fmt.Errorf("%w: no route was read", ErrListRoute)
 	}
-	if err := CheckStopping(route); err != nil {
+	if err := rules(route); err != nil {
 		return nil, 0, err
 	}
 	if !policy.UsableTime(now) || tolerance < 0 {
@@ -233,7 +249,7 @@ func (j *judging) stopLine(n int64, s Stop) error {
 	if err := j.named(n, s.FindingID, s.CreatedAt); err != nil {
 		return err
 	}
-	if err := j.route.Permits(s.Claim()); err != nil {
+	if err := j.route.permitsListed(s.Claim()); err != nil {
 		return fmt.Errorf("%w: %w", ErrStopRefused, err)
 	}
 	j.seen.stops = append(j.seen.stops, Entry{Line: n, Stop: s})

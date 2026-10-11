@@ -128,6 +128,18 @@ promise; <code>buf breaking</code> does not compare it.</li>
 </ul>
 <h3 id="changed">Changed</h3>
 <ul>
+<li><code>REPEATED_DENIAL</code> is version 2. When some denials it would cite are in doubt
+(a broken chain or an event id read with two contents), it cites only the
+clean ones and stays <code>CONFIRMED</code> if at least <code>max_denials</code> are clean;
+otherwise nothing changes. Its finding ids change with the version.
+<code>route sign</code>, <code>react</code>, the <code>stops</code> writers and a plane refuse a route naming
+<code>rule_version</code> <code>&quot;1&quot;</code>. To upgrade, set it to <code>&quot;2&quot;</code>, raise the route's <code>serial</code>
+and sign it, run <code>stops init --route &lt;new&gt; --public-key &lt;file&gt; --carry &lt;old dir&gt; --carry-route &lt;old route&gt; &lt;new dir&gt;</code>, point <code>reaction.route</code>,
+<code>reaction.stops</code> and <code>react</code> at the new route and list, and restart the
+plane. The carry keeps every unlifted stop, at version 1. A lifted run whose
+denials still meet the rule is stopped again by its version 2 finding, which
+has another id, and is lifted again. Only <code>--carry-route</code> reads the old
+version.</li>
 <li>Two approvals from the security maintainers now cover every file ADR-0008
 says the gate is built from (all of <code>scripts/</code> and <code>.github/</code>, the
 <code>Makefile</code>, the linter and buf configurations, <code>go.mod</code> and <code>go.sum</code>) and

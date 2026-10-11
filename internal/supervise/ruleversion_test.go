@@ -9,8 +9,8 @@ import (
 
 // TestAFindingCarriesItsOwnRulesVersion: with REPEATED_DENIAL's version
 // changed in the table, its finding and its report row carry the new
-// version and its id hashes it where 0.1 hashed "1"; another rule keeps its
-// own.
+// version and its id hashes it in place of the table's; another rule keeps
+// its own.
 func TestAFindingCarriesItsOwnRulesVersion(t *testing.T) {
 	supervise.SetRuleVersion(t, supervise.RuleRepeatedDenial, "7")
 	calls := denials(4, call{req: "w1", tool: "wipe_disk", upstream: "ops", at: 70 * time.Second})

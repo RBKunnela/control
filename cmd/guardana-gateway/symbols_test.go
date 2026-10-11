@@ -51,6 +51,11 @@ var (
 		brand.ModulePath + "/internal/policystate.InitRoute",
 		brand.ModulePath + "/internal/policystate.(*dir).claimRoute",
 		brand.ModulePath + "/internal/policystate.(*dir).writeRouteMarker",
+		// A route at a superseded rule version is read only as the source of
+		// an operator's carry; a plane never accepts one.
+		brand.ModulePath + "/internal/reaction.CheckCarrySource",
+		brand.ModulePath + "/internal/reaction.VerifyCarrySource",
+		brand.ModulePath + "/internal/reaction.JudgeCarrySource",
 	}
 	gatewayHolds = []string{
 		brand.ModulePath + "/internal/approvals.(*Plane)",

@@ -24,6 +24,19 @@ verify one.
 
 ### Changed
 
+- `REPEATED_DENIAL` is version 2. When some denials it would cite are in doubt
+  (a broken chain or an event id read with two contents), it cites only the
+  clean ones and stays `CONFIRMED` if at least `max_denials` are clean;
+  otherwise nothing changes. Its finding ids change with the version.
+  `route sign`, `react`, the `stops` writers and a plane refuse a route naming
+  `rule_version` `"1"`. To upgrade, set it to `"2"`, raise the route's `serial`
+  and sign it, run `stops init --route <new> --public-key <file> --carry <old
+  dir> --carry-route <old route> <new dir>`, point `reaction.route`,
+  `reaction.stops` and `react` at the new route and list, and restart the
+  plane. The carry keeps every unlifted stop, at version 1. A lifted run whose
+  denials still meet the rule is stopped again by its version 2 finding, which
+  has another id, and is lifted again. Only `--carry-route` reads the old
+  version.
 - Two approvals from the security maintainers now cover every file ADR-0008
   says the gate is built from (all of `scripts/` and `.github/`, the
   `Makefile`, the linter and buf configurations, `go.mod` and `go.sum`) and
