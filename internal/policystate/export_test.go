@@ -21,3 +21,20 @@ func SetReplace(replace func(root *os.Root, name string, body []byte, perm fs.Fi
 	replaceIn = replace
 	return func() { replaceIn = saved }
 }
+
+// WritersWaiting is how many writers of this process wait for or hold the
+// lock of the directory at path.
+func WritersWaiting(path string) (int, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return 0, err
+	}
+	id, err := identify(info)
+	if err != nil {
+		return 0, err
+	}
+	t := turnOf(id)
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.writers, nil
+}

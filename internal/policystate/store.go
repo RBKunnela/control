@@ -170,7 +170,7 @@ func (s *Store) RaiseWith(ctx context.Context, st policy.Statement, now time.Tim
 		return policy.Floor{}, err
 	}
 	defer end()
-	unlock, err := s.d.lock(ctx)
+	unlock, err := s.d.lockToWrite(ctx)
 	if err != nil {
 		return policy.Floor{}, err
 	}

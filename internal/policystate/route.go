@@ -53,7 +53,7 @@ func InitRoute(ctx context.Context, dir, routeID string) (err error) {
 		return err
 	}
 	defer func() { err = errors.Join(err, d.close()) }()
-	unlock, err := d.lock(ctx)
+	unlock, err := d.lockToWrite(ctx)
 	if err != nil {
 		return err
 	}
@@ -164,7 +164,7 @@ func RaiseRoute(ctx context.Context, dir, routeID string, serial int64, digest s
 		return RouteFloor{}, err
 	}
 	defer func() { err = errors.Join(err, d.close()) }()
-	unlock, err := d.lock(ctx)
+	unlock, err := d.lockToWrite(ctx)
 	if err != nil {
 		return RouteFloor{}, err
 	}

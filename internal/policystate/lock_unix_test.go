@@ -166,6 +166,116 @@ func TestARaiseWaitingForTheLockRefusesADirectorySwappedMeanwhile(t *testing.T) 
 	if got := readFile(t, filepath.Join(dir+".old", fileA)); got != before {
 		t.Errorf("the raise wrote into the directory moved away: %s", got)
 	}
+	awaitWriters(t, dir+".old", 0)
+}
+
+// awaitWriters waits until n writers of this process wait for or hold the
+// lock of dir.
+func awaitWriters(t *testing.T, dir string, n int) {
+	t.Helper()
+	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(time.Millisecond) {
+		got, err := policystate.WritersWaiting(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got == n {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("%d writers wait for the lock, want %d", got, n)
+		}
+	}
+}
+
+// TestAReadThatStartsWhileARaiseWaitsReadsTheRaisedFloor: reads of this
+// process that start while a raise waits for the lock go after the raise, so
+// each reads the raised floor, whichever of them tries the lock first once it
+// is free.
+func TestAReadThatStartsWhileARaiseWaitsReadsTheRaisedFloor(t *testing.T) {
+	dir, s := raised(t)
+	readers := make([]*policystate.Store, 8)
+	for i := range readers {
+		readers[i] = open(t, dir)
+	}
+	release := holdLock(t, dir)
+	done := raiseWaiting(t, s)
+	awaitWriters(t, dir, 1)
+	read := make(chan string, len(readers))
+	for _, r := range readers {
+		go func() {
+			rec, err := r.Record(context.Background(), idA)
+			if err != nil {
+				read <- err.Error()
+				return
+			}
+			read <- describe(rec.Floor)
+		}()
+	}
+	time.Sleep(50 * time.Millisecond)
+	release()
+	if err := answer(t, done); err != nil {
+		t.Fatalf("the raise: %v", err)
+	}
+	for range readers {
+		select {
+		case got := <-read:
+			if !strings.Contains(got, " serial 6 ") {
+				t.Errorf("a read started while the raise waited read %s, want serial 6", got)
+			}
+		case <-time.After(10 * time.Second):
+			t.Fatal("a read never answered")
+		}
+	}
+}
+
+// TestAReadWaitingBehindARaiseEndsWithItsContext: a read that waits for a
+// raise of this process to take and release the lock still ends when its own
+// context does, while the raise goes on waiting.
+func TestAReadWaitingBehindARaiseEndsWithItsContext(t *testing.T) {
+	dir, s := raised(t)
+	reader := open(t, dir)
+	release := holdLock(t, dir)
+	done := raiseWaiting(t, s)
+	awaitWriters(t, dir, 1)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+	defer cancel()
+	read := make(chan error, 1)
+	go func() {
+		_, err := reader.Record(ctx, idA)
+		read <- err
+	}()
+	select {
+	case err := <-read:
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Errorf("a read behind a waiting raise: %v, want its deadline", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Error("a read behind a waiting raise outlived its context")
+	}
+	release()
+	if err := answer(t, done); err != nil {
+		t.Errorf("the raise: %v", err)
+	}
+}
+
+// TestARaiseThatGivesUpLeavesReadsFree: a raise whose context ends while
+// another process holds the lock stops counting as a writer, so a read once
+// the lock is free runs at once instead of waiting out its context.
+func TestARaiseThatGivesUpLeavesReadsFree(t *testing.T) {
+	dir, s := raised(t)
+	release := holdLock(t, dir)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+	defer cancel()
+	if _, err := s.Raise(ctx, statement(t, idA, 6, d6, "11:30:00"), noon(t)); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("a raise behind a held lock: %v, want its deadline", err)
+	}
+	release()
+	awaitWriters(t, dir, 0)
+	read, cancelRead := context.WithTimeout(t.Context(), time.Second)
+	defer cancelRead()
+	if rec, err := s.Record(read, idA); err != nil || rec.Floor.Serial() != 5 {
+		t.Errorf("a read after the raise gave up: %s, %v; want serial 5", describe(rec.Floor), err)
+	}
 }
 
 func TestARaiseCompletesWhileReadsRunWithoutPause(t *testing.T) {

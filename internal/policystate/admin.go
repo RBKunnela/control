@@ -43,7 +43,7 @@ func Init(ctx context.Context, dir string, kind Kind, bundleID string) (err erro
 		return err
 	}
 	defer func() { err = errors.Join(err, d.close()) }()
-	unlock, err := d.lock(ctx)
+	unlock, err := d.lockToWrite(ctx)
 	if err != nil {
 		return err
 	}
@@ -148,7 +148,7 @@ func Reset(ctx context.Context, dir string, kind Kind, to policy.Floor, reason s
 		return policy.Floor{}, err
 	}
 	defer func() { err = errors.Join(err, d.close()) }()
-	unlock, err := d.lock(ctx)
+	unlock, err := d.lockToWrite(ctx)
 	if err != nil {
 		return policy.Floor{}, err
 	}
