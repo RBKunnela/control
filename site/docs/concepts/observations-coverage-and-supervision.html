@@ -47,6 +47,7 @@
 <h2>Concepts</h2><ul>
 <li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
 <li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
 <li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
 <li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
 <li><a href="/docs/concepts/glossary">Glossary</a></li>
@@ -106,6 +107,11 @@
 </details>
 <main id="main" class="prose">
 <h1 id="observations-coverage-supervision-and-a-stop">Observations, coverage, supervision and a stop</h1>
+<p>This page describes the <code>experimental</code> commands available today. The
+<a href="/docs/concepts/control-and-supervision">control and supervision model</a> describes the
+broader 1.0 goal: observation across connected channels, ongoing procedure
+checks, operator review and reactions under authenticated scopes. That
+complete target is <code>planned</code>.</p>
 <p>A plane is a running <code>guardana-gateway</code>: it decides each of an agent's calls
 before the call runs (<a href="/docs/concepts/architecture">architecture.md</a>). Four parts work
 after a plane has decided, or on calls that pass no plane. An observation
@@ -247,6 +253,7 @@ rules, <code>internal/findinglog/</code> the findings log and its export, and
 <h2>Concepts</h2><ul>
 <li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
 <li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
 <li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
 <li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
 <li><a href="/docs/concepts/glossary">Glossary</a></li>

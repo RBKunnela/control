@@ -2,9 +2,9 @@
 
 # <img src="site/assets/control/mark.svg" height="30" alt=""> Guardana Control
 
-**Decide which MCP tool calls your AI agents can run.**
+**Observe your AI agents. Control how they act.**
 
-Watch what they do, and step in only where you allow it.
+See what an agent did, check its procedure, and react within your authority.
 
 [![CI](https://github.com/guardana/control/actions/workflows/ci.yml/badge.svg)](https://github.com/guardana/control/actions/workflows/ci.yml)
 [![Security](https://github.com/guardana/control/actions/workflows/security.yml/badge.svg)](https://github.com/guardana/control/actions/workflows/security.yml)
@@ -19,57 +19,54 @@ Watch what they do, and step in only where you allow it.
 
 </div>
 
-## Status: alpha
+## The 1.0 goal: observe, supervise, react
 
-An `experimental` gateway decides and enforces an agent's tool calls over the
-Model Context Protocol (MCP). Do not deploy this as a security boundary.
-[ROADMAP.md](ROADMAP.md) describes the goal, supervising an organization's
-agents on many channels; [docs/status.md](docs/status.md) lists what exists.
-[The tutorial](docs/get-started/try-the-demo.md) runs the demo.
+Guardana Control is a control and supervision layer for AI agents. Its 1.0
+goal is `planned` ([roadmap](ROADMAP.md)):
 
-## The problem
+- **Observe** actions and outcomes across connected tools, APIs, runtimes,
+  network and process sources. State each path's coverage, source trust and gaps.
+- **Supervise** runs against procedures and permissions. Report deviations,
+  denied actions tried another way, skipped work and uncertain outcomes.
+- **React** within scoped authority: inform, alert, request review, hold an
+  exact action for approval, pause calls or stop further actions.
 
-Untrusted text can make an agent change production, send customer data
-elsewhere or retry a denied action.
+Full observation means coverage of connected paths with unknowns visible.
+It does not mean every action is visible or controllable. Sensors report;
+enforcement points decide before effects. Read
+[the product model](docs/concepts/control-and-supervision.md).
 
-- Hold writes for one exact-action approval: [starter policies](docs/reference/starter-packs.md).
-- Block a changed tool definition when its fingerprint no longer matches
-  the operator's classification: [MCP gateway](docs/concepts/mcp-gateway.md).
-- Find a denied refund retried through another tool, then stop
-  that run's later calls where a signed route allows:
-  [refund example](docs/guides/supervise-and-stop-a-run.md).
+## Try the alpha
 
-Enforcement needs an enforcing mode; paths around the gateway remain outside
-its control.
+[Run the local demo](docs/get-started/try-the-demo.md): allow a call, block
+another and approve one exact action, without Go or a model key.
+[Connect your MCP setup](docs/guides/connect-an-existing-mcp-setup.md) afterwards.
 
-## What it does
+The gateway is `experimental`. Caller identity comes from configuration.
+The evidence trail is not tamper-evident. Do not deploy this as a security
+boundary. [Status](docs/status.md) is the inventory of what exists.
 
-It intercepts a consequential action before it happens and returns one of five
-verdicts:
+## What you can do today
 
-| Verdict | Meaning |
-| --- | --- |
-| `ALLOW` | The action proceeds. |
-| `DENY` | The action is blocked. |
-| `REQUIRE_APPROVAL` | This exact action runs only after an approval. |
-| `ALLOW_WITH_OBLIGATIONS` | The action proceeds under conditions, enforced unless advisory. |
-| `INDETERMINATE` | The decision could not be made. It is never an allow. |
+- Hold writes for an expiring approval of one exact action:
+  [starter policies](docs/reference/starter-packs.md).
+- Let your existing authorization service veto configured calls through the
+  [AuthZEN API](docs/guides/let-a-decision-point-veto.md).
+- Import runtime traces, inspect coverage, check a recorded run against its
+  procedure, and stop its later calls where a signed route allows:
+  [supervision](docs/guides/supervise-and-stop-a-run.md).
+- Block a tool whose definition no longer matches its reviewed fingerprint:
+  [MCP gateway](docs/concepts/mcp-gateway.md).
 
-It enforces the verdict except in `OBSERVE`; `APPROVE`, `LOCKDOWN` and a
-pause can be stricter. Nothing runs unrecorded unless the operator let a read do so. The
-record says who acted, on
-whose behalf, on what, what was decided, which policy version decided it, how
-the call ended, and a hash of any answer it could encode, never its content.
-Who acted is the configured principal; nothing authenticates callers yet.
-Verdict precedence and the fail-closed rules are in
-[ADR-0012](docs/adr/0012-policy-kernel-semantics.md), the evidence and privacy
-defaults in [ADR-0004](docs/adr/0004-evidence-and-privacy-defaults.md).
+Supervision and reaction run when you invoke them. A stop does not interrupt
+an operation already running. Paths around the gateway stay outside its control.
 
-## Architecture in 30 seconds
+## How a call is decided
 
-Today the enforcement point sits between an agent and its MCP servers and
-consults the built-in policy engine. An external decision point (PDP) can veto
-over AuthZEN but cannot grant (`experimental`).
+The MCP gateway consults signed policy before a tool call. An external PDP
+can veto but never widen local authority (`experimental`). Its silence blocks
+the calls it governs in an enforcing mode. It receives action metadata, not
+arguments. Evidence names the policy version and records the outcome.
 
 ```mermaid
 flowchart LR
@@ -86,31 +83,37 @@ flowchart LR
     class PEP accent
 ```
 
-The enforcement point is the only component this project adds to the request
-path. Evidence goes to a local spool first, so decisions do not wait for the
-exporter. If the spool fills, calls block, except a read the operator
-let run unrecorded, which is counted.
+Decisions do not wait for evidence export. A full spool blocks calls unless
+the operator explicitly let a read run unrecorded.
 
-## Where it is going
-
-MCP is one channel of several ([ROADMAP.md](ROADMAP.md),
-[ADR-0039](docs/adr/0039-many-channels-into-one-core.md)):
-
-| Today, `experimental` | `Planned` |
+| Verdict | In an enforcing mode |
 | --- | --- |
-| An MCP gateway deciding each call before it runs | Proxy and process sensors |
-| Signed policy, approvals, pause, evidence trail | Framework hooks |
-| Runtime traces kept as observations; a coverage map | Alerts beyond a local program |
-| One run checked against its procedure, stopped where a signed route allows | Operators with scoped rights |
+| `ALLOW` | Proceed. |
+| `DENY` | Block. |
+| `REQUIRE_APPROVAL` | Hold this exact action for one approval. |
+| `ALLOW_WITH_OBLIGATIONS` | Proceed under enforced conditions, unless advisory. |
+| `INDETERMINATE` | No decision; never an allow. |
+
+`OBSERVE` records decisions and lets calls run. No model grants authority.
+Content capture is off by default; hidden reasoning is never stored.
+
+## Connected channels towards 1.0
+
+The `planned` target connects enforcement and observation through one
+vocabulary ([ADR-0039](docs/adr/0039-many-channels-into-one-core.md)).
+An [Enforcement API](docs/adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api.md)
+is distinct from AuthZEN vetoes: custom tools ask before acting and report
+completion or abort. A cooperating client enforces its answer; that path is
+decided, not enforced by the receiver.
 
 ```mermaid
 flowchart TB
-    accTitle: Where Guardana Control is going
-    accDescr: Agents act through enforcement points, the MCP gateway today and framework hooks through an enforcement API later, which decide each call before it runs and record evidence. Sensors bring in what runtimes, proxies and processes report after the fact. A supervisor compares the evidence and the observations with procedures and permissions, maps which paths it covers, and raises findings. Findings go out as alerts, to OpenTelemetry and a SIEM, and to a run graph. Where the operator allowed it, a reaction stops one run at the enforcement points.
+    accTitle: The connected-channel target for 1.0
+    accDescr: The planned 1.0 target connects tools through the MCP gateway and cooperating clients over an enforcement API, and observations from runtimes, proxies and processes. A supervisor checks procedures and raises findings. Notifiers report them; scoped reactions stop later calls only at connected enforcement points. Coverage and missing observations remain explicit.
     AG[Agents]
     subgraph EP[Enforcement points]
         MCP["MCP gateway, today"]
-        HK[Framework hooks]
+        HK[Custom tools and framework hooks]
     end
     subgraph SN[Sensors]
         TR[Runtime traces and logs]
@@ -126,7 +129,7 @@ flowchart TB
         EX["OpenTelemetry, SIEM"]
         GR[Run graph]
     end
-    RE["Reaction: stop one run where allowed"]
+    RE["Reaction: scoped stops where allowed"]
     AG --> MCP
     AG --> HK
     MCP -->|allowed calls| TL
@@ -167,33 +170,19 @@ go install github.com/guardana/control/cmd/guardana-control@latest
 
 ## Related project: Guardana
 
-[Guardana](https://github.com/guardana/guardana) is a separate open-source
-project that verifies AI systems before and after deployment, outside the
-request path. Guardana Control decides each call inside it.
+[Guardana](https://github.com/guardana/guardana) verifies AI systems before
+and after deployment. Control observes and controls agents while they run.
+The projects are independent.
 
 ```mermaid
 flowchart LR
     accTitle: Where Guardana and Guardana Control sit in a system's life
-    accDescr: Guardana checks a build before its release. While the released agents run, Guardana Control decides their calls. After the release, Guardana compares what changed.
+    accDescr: Guardana checks a build before its release. While the released agents run, Guardana Control observes their runs and decides connected calls. After the release, Guardana compares what changed.
     B[Build] --> G1["Guardana<br/>checks before release"]
     G1 --> R[Release]
-    R --> C["Guardana Control<br/>decides while agents run"]
+    R --> C["Guardana Control<br/>observes and controls runs"]
     C --> G2["Guardana<br/>compares after release"]
 ```
 
-The two are independent: neither needs the other to build, run or be useful.
-They can work together through the formats each one publishes
-([ADR-0024](docs/adr/0024-control-and-guardana-are-independent.md)).
-
-## Links
-
-- [Documentation](docs/index.md)
-- [Contributing](CONTRIBUTING.md)
-- [Security](SECURITY.md)
-- [Governance](GOVERNANCE.md)
-- [Roadmap](ROADMAP.md)
-- [Releases](RELEASING.md)
-- [Decision records](docs/adr/README.md)
-- [Code of conduct](CODE_OF_CONDUCT.md)
-- [Trademarks](TRADEMARKS.md)
-- [License](LICENSE), Apache-2.0
+[Governance](GOVERNANCE.md) · [Decision records](docs/adr/README.md) ·
+[Code of conduct](CODE_OF_CONDUCT.md) · [Trademarks](TRADEMARKS.md)

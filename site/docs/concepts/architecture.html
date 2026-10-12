@@ -47,6 +47,7 @@
 <h2>Concepts</h2><ul>
 <li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
 <li><a href="/docs/concepts/architecture" aria-current="page">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
 <li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
 <li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
 <li><a href="/docs/concepts/glossary">Glossary</a></li>
@@ -106,8 +107,12 @@
 </details>
 <main id="main" class="prose">
 <h1 id="architecture">Architecture</h1>
-<p>What to hold in your head before reading the code. The gateway that decides
-and enforces is <code>experimental</code>, and nothing here is a security boundary yet.
+<p>Control has two paths: an enforcement point decides before an effect, and
+observation and supervision examine what connected sources report. The
+<code>planned</code> 1.0 target joins them with continuous observation and reactions
+within scoped authority; <a href="/docs/concepts/control-and-supervision">control and supervision</a>
+explains that product model. This page starts with today's request path.
+The gateway that decides and enforces is <code>experimental</code>, and nothing here is a security boundary yet.
 What exists, component by component, is in <a href="/docs/status">status.md</a>, and
 that page is the only inventory.</p>
 <h2 id="the-system-in-context">The system in context</h2>
@@ -399,7 +404,7 @@ influence a verdict stays small enough for one person to read, and that no new
 module or standard library package enters that set without an edit to the rule
 itself, which the gate checks. See
 <a href="/docs/adr/0007-repository-layout-and-dependency-rule">ADR-0007</a>.</p>
-<h2 id="where-it-is-going">Where it is going</h2>
+<h2 id="connected-channels-towards-10">Connected channels towards 1.0</h2>
 <p>This section is <code>planned</code>, in the order <a href="/docs/roadmap">ROADMAP.md</a> gives,
 and <a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a> records its shape;
 the observation log and its importer, the coverage map, supervision of one
@@ -611,6 +616,7 @@ and audited by someone who did not write it.</li>
 <h2>Concepts</h2><ul>
 <li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
 <li><a href="/docs/concepts/architecture" aria-current="page">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
 <li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
 <li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
 <li><a href="/docs/concepts/glossary">Glossary</a></li>

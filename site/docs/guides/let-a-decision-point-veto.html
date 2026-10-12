@@ -47,6 +47,7 @@
 <h2>Concepts</h2><ul>
 <li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
 <li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
 <li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
 <li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
 <li><a href="/docs/concepts/glossary">Glossary</a></li>
@@ -107,8 +108,9 @@
 <main id="main" class="prose">
 <h1 id="let-a-decision-point-veto-calls">Let a decision point veto calls</h1>
 <h2 id="when-to-use-this">When to use this</h2>
-<p>Your organization already decides access in a policy engine of its own, and
-some of the calls an agent makes should pass that engine too. The gateway can
+<p>Connect your organization's existing authorization service to the agent's
+decision path without replacing the signed local policy. Some of the calls
+an agent makes should pass that service too. The gateway can
 ask a decision point that speaks the OpenID AuthZEN Authorization API 1.0
 about those calls. Its answer can only veto: every grant still comes from a
 rule in your signed bundle, and while the decision point is silent, the calls
@@ -116,6 +118,11 @@ it governs are blocked in every mode that enforces; <code>OBSERVE</code> records
 silence and runs them
 (<a href="/docs/adr/0017-an-external-decision-point-can-veto">ADR-0017</a>). This is
 <code>experimental</code>; <a href="/docs/status">status.md</a> is the inventory.</p>
+<p>This is the external-veto API. The separate
+<a href="/docs/adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api">Enforcement API</a>
+is <code>planned</code> for custom tools asking Control before they act; an operator
+management API is another role. Their scopes are described in
+<a href="/docs/concepts/control-and-supervision#three-api-roles">control and supervision</a>.</p>
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
 <li>A gateway you can run (<a href="/docs/guides/run-the-gateway">run-the-gateway.md</a>) and a
@@ -242,6 +249,7 @@ Without the rules, the bundle decides as it did before.</p>
 <h2>Concepts</h2><ul>
 <li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
 <li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
 <li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
 <li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
 <li><a href="/docs/concepts/glossary">Glossary</a></li>

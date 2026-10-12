@@ -32,6 +32,7 @@ with `make docs-gen`; an edit made here does not survive the next run.
 
 - [Approvals and the held request](concepts/approvals-and-the-held-call.md): What the enforcement point holds when a call needs an approval, what a retry must equal to resume it, and the ways a hold ends.
 - [Architecture](concepts/architecture.md): The system in context, its containers, the request path from a proposed action to a decision and its evidence, the dependency rule, and where it is going.
+- [Control and supervision](concepts/control-and-supervision.md): The 1.0 goal for connected observation, procedure checks and scoped reactions, with today's alpha and the three API roles kept explicit.
 - [Enforcement modes](concepts/enforcement-modes.md): What each mode does with the kernel's decision, what it needs from an adapter, and which modes this build runs.
 - [Evidence and the spool](concepts/evidence-and-the-spool.md): The trail every call leaves, the order its events may take, and how the spool keeps them on disk before an exporter sees them.
 - [Glossary](concepts/glossary.md): One name per concept, as the pages and the code use it, with the symbol or path that defines each.

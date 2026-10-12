@@ -6,13 +6,13 @@ record wins and this file is wrong; fix it in the same change.
 
 ## What this project is
 
-Guardana Control is an inline control and evidence layer for AI agents. The
-design is to intercept a consequential action before it happens, decide on it
-from structured policy, enforce that decision, and append evidence naming the
-policy version that produced it. The first protocol target is the Model Context
-Protocol (MCP). An experimental MCP gateway decides and enforces calls;
-nothing here is a security boundary yet, and the inventory is
-[docs/status.md](docs/status.md).
+Guardana Control is a control and supervision layer for AI agents. The 1.0
+goal is observation across connected channels, procedure checks and reactions
+within the operator's authority, with gaps stated. On an enforcement path it
+decides a consequential action from structured policy before its effect and
+records the policy version. MCP is the first channel. The accepted architecture is
+[ADR-0039](docs/adr/0039-many-channels-into-one-core.md), the inventory is
+[docs/status.md](docs/status.md), and nothing here is a security boundary yet.
 
 ## Invariants
 

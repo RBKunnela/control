@@ -11,12 +11,20 @@ What exists in this repository today, component by component. Every other
 document points here rather than keeping its own list, so this is the only
 inventory in the project and the one that has to be right.
 
+The product goal is observation across connected agent paths, supervision
+against procedures and reactions within scoped authority. That complete 1.0
+target is `planned`; [control and supervision](concepts/control-and-supervision.md)
+explains it and [the roadmap](../ROADMAP.md) orders its delivery. The inventory
+below describes what the alpha can actually do.
+
 In short:
 
 - What you can do today: put the gateway between an MCP client and its
   servers and decide each tool call from a signed policy, allowing it,
   blocking it or holding it for one approval of that exact call. Each decision
-  is recorded with the policy version that made it. You can also check one
+  is recorded with the policy version that made it. An external AuthZEN
+  decision point can veto configured calls without granting authority. You
+  can import runtime traces as observations, inspect coverage, and check one
   opened run against its procedure, draw it as a page, hand its findings to a
   program, and stop that run where a signed route allows it.
 - The limits: the gateway sees only the calls routed through it, the caller's

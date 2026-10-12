@@ -47,6 +47,7 @@
 <h2>Concepts</h2><ul>
 <li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
 <li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
 <li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
 <li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
 <li><a href="/docs/concepts/glossary">Glossary</a></li>
@@ -138,6 +139,13 @@ the mode, as <a href="/docs/adr/0013-mcp-interception-approvals-and-modes">ADR-0
 <a href="/docs/adr/0032-the-enforcement-mode-has-no-default">ADR-0032</a> require. Verification
 after apply names a live allowed call, a refused or held material call and
 their evidence; reading configuration alone cannot establish enforcement.</p>
+<p>The first local report uses those source records to explain the proposed
+action, policy version, decision, known or uncertain tool result and the next
+operator step. It names coverage gaps and identity assumptions beside the
+outcome. An engineer can follow the record identifiers into the existing
+exports; an operator can see what needs review or a separate authorized
+reaction. Measure whether new users can explain that result, as well as
+whether they finish setup.</p>
 <p>Acceptance includes malformed files, symbolic links, unsafe ownership,
 concurrent edits, repeated apply, interrupted writes, undo after user edits
 and credentials in failure text. Three voluntary onboarding sessions record
@@ -316,6 +324,7 @@ capture or a model to default authorization.</p>
 <h2>Concepts</h2><ul>
 <li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
 <li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
 <li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
 <li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
 <li><a href="/docs/concepts/glossary">Glossary</a></li>

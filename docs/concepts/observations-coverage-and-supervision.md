@@ -7,6 +7,12 @@ covers: [internal/observe/**, internal/coverage/**, internal/supervise/**, inter
 
 # Observations, coverage, supervision and a stop
 
+This page describes the `experimental` commands available today. The
+[control and supervision model](control-and-supervision.md) describes the
+broader 1.0 goal: observation across connected channels, ongoing procedure
+checks, operator review and reactions under authenticated scopes. That
+complete target is `planned`.
+
 A plane is a running `guardana-gateway`: it decides each of an agent's calls
 before the call runs ([architecture.md](architecture.md)). Four parts work
 after a plane has decided, or on calls that pass no plane. An observation

@@ -7,8 +7,12 @@ covers: [cmd/guardana-gateway/**, cmd/guardana-control/**, adapters/**, internal
 
 # Architecture
 
-What to hold in your head before reading the code. The gateway that decides
-and enforces is `experimental`, and nothing here is a security boundary yet.
+Control has two paths: an enforcement point decides before an effect, and
+observation and supervision examine what connected sources report. The
+`planned` 1.0 target joins them with continuous observation and reactions
+within scoped authority; [control and supervision](control-and-supervision.md)
+explains that product model. This page starts with today's request path.
+The gateway that decides and enforces is `experimental`, and nothing here is a security boundary yet.
 What exists, component by component, is in [status.md](../status.md), and
 that page is the only inventory.
 
@@ -260,7 +264,7 @@ module or standard library package enters that set without an edit to the rule
 itself, which the gate checks. See
 [ADR-0007](../adr/0007-repository-layout-and-dependency-rule.md).
 
-## Where it is going
+## Connected channels towards 1.0
 
 This section is `planned`, in the order [ROADMAP.md](../../ROADMAP.md) gives,
 and [ADR-0039](../adr/0039-many-channels-into-one-core.md) records its shape;

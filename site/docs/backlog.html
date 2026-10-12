@@ -47,6 +47,7 @@
 <h2>Concepts</h2><ul>
 <li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
 <li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
 <li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
 <li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
 <li><a href="/docs/concepts/glossary">Glossary</a></li>
@@ -154,7 +155,7 @@ issue. Completion requires code, documentation and the applicable checks.</p>
 <td>B23</td>
 <td>Preview and apply an existing MCP configuration</td>
 <td>B06</td>
-<td>A supported client configuration is read into an explicit change plan, with paths outside the gateway named. Dry-run writes nothing and starts no server; apply is explicit, preserves unrelated settings and makes an owner-only backup. A second apply is a no-op; undo refuses intervening edits. Malformed files, links, concurrent edits and credentials in output have adversarial cases. Measure setup with three users</td>
+<td>A supported client configuration is read into an explicit change plan, with paths outside the gateway named. Dry-run writes nothing and starts no server; apply is explicit, preserves unrelated settings and makes an owner-only backup. A second apply is a no-op; undo refuses intervening edits. Verification shows a live allowed and refused or held call, policy version, reported result, coverage gaps and the next operator step in a readable local report linked to its source records. Malformed files, links, concurrent edits and credentials in output have adversarial cases. Measure setup with three users</td>
 </tr>
 </tbody>
 </table>
@@ -179,7 +180,7 @@ issue. Completion requires code, documentation and the applicable checks.</p>
 <td>B11</td>
 <td>Ship Python and one runtime integration</td>
 <td>B10</td>
-<td>A Python custom-tool wrapper and one adopter-selected framework or coding-runtime integration run externally. Conformance covers block-before-send, rewritten bytes, pending approval, concurrent resume, unknown obligation, timeout, cancellation and completion. Publish covered and bypassing tool paths; digest parity precedes client-side hashes</td>
+<td>A Python custom-tool wrapper and one adopter-selected framework or coding-runtime integration run externally. One copyable example shows an allow, a refusal and an exact-action approval, then follows the call's policy version and known or uncertain result into evidence. Conformance covers block-before-send, rewritten bytes, pending approval, concurrent resume, unknown obligation, timeout, cancellation and completion. Publish covered and bypassing tool paths; digest parity precedes client-side hashes</td>
 </tr>
 <tr>
 <td>B24</td>
@@ -254,6 +255,12 @@ mappings.</p>
 <td>B13, B14</td>
 <td>A separate review log records scoped author, time, reason and revision for open/in-review/closed and disposition changes without changing the finding's verdict. Grouped occurrences retain source finding ids, rule versions, tenant/project and run references. Reopening, cross-project access, concurrent edits, export gaps and hostile text have cases. A metadata-only package joins the findings, decisions, approvals, policy/procedure digests, coverage and actual reaction results, marks missing inputs, and is read by an external consumer. Closing a case neither lifts a stop nor grants an approval</td>
 </tr>
+<tr>
+<td>B28</td>
+<td>Run continuous supervision and authorized reaction</td>
+<td>B12, B13, B14, B21</td>
+<td>An operator-configured service follows versioned evidence and observation exports with durable cursors, checks procedures and delivers findings through bounded queues. Source silence, export gaps, sampling, lag and unreadable inputs remain visible and never look like completed work. Restart and replay do not duplicate an authority-bearing reaction. Every stop uses the existing confirmed-finding bar and a signed, scoped, expiring route; unknown or observation-only findings cannot stop a run. Tests exercise concurrent runs, source outage, partial exports, expired authority, replay and notifier failure. A notifier failure cannot grant authority or change a verdict; no reaction cancels an effect already running</td>
+</tr>
 </tbody>
 </table>
 <h2 id="milestone-4-a-fleet-and-wider-protocols">Milestone 4: a fleet and wider protocols</h2>
@@ -310,6 +317,7 @@ sessions and feedback, consistent with the no-phone-home decision.</p>
 <h2>Concepts</h2><ul>
 <li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
 <li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
 <li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
 <li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
 <li><a href="/docs/concepts/glossary">Glossary</a></li>

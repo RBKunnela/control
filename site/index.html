@@ -4,10 +4,10 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Guardana Control</title>
-<meta name="description" content="Decide which MCP tool calls your AI agents can run. Hold consequential calls for approval. Find deviations. Keep the evidence."/>
+<meta name="description" content="Observe AI agent runs and control consequential actions. Signed policies, AuthZEN API vetoes and evidence today; observation across connected channels and scoped reactions towards 1.0."/>
 <link rel="canonical" href="https://control.guardana.dev/"/>
 <meta property="og:title" content="Guardana Control"/>
-<meta property="og:description" content="Decide which MCP tool calls your AI agents can run. Hold consequential calls for approval. Find deviations. Keep the evidence."/>
+<meta property="og:description" content="Observe AI agent runs and control consequential actions. Signed policies, AuthZEN API vetoes and evidence today; observation across connected channels and scoped reactions towards 1.0."/>
 <meta property="og:type" content="website"/>
 <meta property="og:site_name" content="Guardana Control"/>
 <meta property="og:url" content="https://control.guardana.dev/"/>
@@ -15,7 +15,7 @@
 <meta property="og:image:type" content="image/png"/>
 <meta property="og:image:width" content="1200"/>
 <meta property="og:image:height" content="630"/>
-<meta property="og:image:alt" content="Guardana Control. Decide which MCP tool calls your AI agents can run."/>
+<meta property="og:image:alt" content="Guardana Control. Observe your AI agents. Control how they act."/>
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:image" content="https://control.guardana.dev/og.png"/>
 <meta name="theme-color" content="#0B8F80"/>
@@ -39,29 +39,87 @@
 <main id="main">
 <section class="hero"><div class="wrap hero-inner">
   <p class="pill"><i></i>Open source · Experimental alpha</p>
-  <h1 class="tagline">Decide which MCP tool calls your <span class="accent">AI agents</span> can run.</h1>
-  <p class="sub">Watch what they do, and step in only where you allow it.</p>
-  <p class="warn">Put a local gateway between your MCP client and its servers. A signed policy decides each tool call: it runs, it is blocked with its reason, or that exact call waits for one approval. Each decision is recorded with the policy version that made it. The <code class="st" data-status="Model Context Protocol (MCP) gateway">experimental</code> gateway sees only the calls routed through it, and the caller's identity comes from its configuration, not from a login. <strong>Do not deploy this as a security boundary.</strong></p>
+  <h1 class="tagline">Observe your <span class="accent">AI agents.</span> Control how they act.</h1>
+  <p class="sub">See what an agent did, whether it followed its procedure, and where you can intervene. Start with the alpha; explore connected observation and reaction in the 1.0 goal.</p>
+  <p class="warn">Today: an <code class="st" data-status="Model Context Protocol (MCP) gateway">experimental</code> MCP gateway, signed policies, AuthZEN API vetoes, runtime trace imports and supervision you invoke for one run. Caller identity is configured, and coverage has gaps. <strong>Do not deploy this as a security boundary.</strong></p>
   <div class="ctas">
     <a class="btn pri" href="/docs/get-started/try-the-demo">Run the local demo</a>
-    <a class="btn sec" href="/docs/guides/connect-an-existing-mcp-setup">Connect your MCP setup</a>
+    <a class="btn sec" href="#going">Explore the 1.0 goal</a>
   </div>
-  <p class="note">The demo shows an allowed call, a blocked call and a one-time approval, with no Go and no model key. <a href="/docs/reference/mcp-coverage">What the gateway covers</a> · <a href="/docs/concepts/threat-model">What it does not protect</a></p>
+  <p class="note">The demo shows an allowed call, a blocked call and one exact-action approval, with no Go and no model key. <a href="/docs/guides/connect-an-existing-mcp-setup">Connect your MCP setup</a> · <a href="/docs/concepts/threat-model">Read the current limits</a></p>
 </div></section>
 
-<section class="s alt-bg" id="use-cases"><div class="wrap">
+<section class="s alt-bg" id="going"><div class="wrap">
+  <p class="eyebrow">The 1.0 goal</p>
+  <h2>Observe the paths. Supervise the run. React within your authority.</h2>
+  <p class="lede">The complete 1.0 target is <code>planned</code> in the <a href="/docs/roadmap#the-10-target-observation-supervision-and-authorized-reaction">roadmap</a>. Follow actions from proposal to known or uncertain outcome across connected tools, APIs, runtimes, network and process sources. Compare them with procedures and permissions, then respond within the operator's scope.</p>
+  <figure class="fig" aria-labelledby="fig-going-cap">
+    <div class="cols">
+      <div><p class="colhead">What it watches</p><div class="stack">
+        <div class="card"><span class="k">MCP gateway <span class="tag">experimental</span></span><span class="d">decides each call before it runs</span></div>
+        <div class="card later"><span class="k">Custom tools and framework hooks <span class="tag planned">planned</span></span><span class="d">ask the Enforcement API; cooperating clients obey its decision</span></div>
+        <div class="card"><span class="k">Runtime traces <span class="tag">experimental</span></span><span class="d">what an agent's OpenTelemetry spans say it did, kept as testimony</span></div>
+        <div class="card later"><span class="k">Proxy logs and process sources <span class="tag planned">planned</span></span><span class="d">observations independent of the agent's own account</span></div>
+      </div></div>
+      <div class="arrow" aria-hidden="true"></div>
+      <div><p class="colhead">What it concludes</p>
+        <div class="card hub"><span class="k">Supervisor <span class="tag">experimental</span></span>
+          <ul>
+            <li>checks procedures, resources and permitted exceptions</li>
+            <li>raises a finding that cites its evidence</li>
+            <li>keeps missing steps and uncertain outcomes visible</li>
+          </ul><span class="d">Today you invoke it for a recorded run; continuous supervision is part of the 1.0 target.</span></div></div>
+      <div class="arrow" aria-hidden="true"></div>
+      <div><p class="colhead">What it does about it</p><div class="stack">
+        <div class="card"><span class="k">An alert <span class="tag">experimental</span></span><span class="d">handed to a program you name</span></div>
+        <div class="card"><span class="k">A stop of one run <span class="tag">experimental</span></span><span class="d">only where you allowed it</span></div>
+        <div class="card later"><span class="k">Delivery and review <span class="tag planned">planned</span></span><span class="d">webhooks, chat, monitoring and operator review</span></div>
+        <div class="card later"><span class="k">Authenticated scopes <span class="tag planned">planned</span></span><span class="d">run, agent or principal, with bounded reaction authority</span></div>
+      </div></div>
+    </div>
+    <figcaption id="fig-going-cap">Full observation means connected coverage with gaps visible. It does not mean every path is visible or every effect controllable. Source trust and undeclared paths remain explicit.</figcaption>
+  </figure>
+  <figure class="fig">
+    <table class="runtable">
+      <caption>Reaction in the 1.0 target. Each response has its own authority; an alert or closed review never grants permission or lifts a stop.</caption>
+      <thead><tr><th scope="col">Response</th><th scope="col">Purpose</th><th scope="col">Scope and limit</th></tr></thead>
+      <tbody>
+        <tr><td>Inform and alert</td><td>Record a finding and deliver it to the operator's tools</td><td>A notifier cannot authorize or stop an action</td></tr>
+        <tr><td>Review</td><td>A scoped operator assesses and acknowledges a finding</td><td>Closing review neither approves an action nor lifts a stop</td></tr>
+        <tr><td>Approve or deny</td><td>Decide a proposed action before its effect</td><td>An approval expires and permits one exact action once</td></tr>
+        <tr><td>Pause</td><td>Refuse calls in the configured scope</td><td>Only at connected enforcement points, before execution</td></tr>
+        <tr><td>Stop</td><td>Refuse later actions of a run, agent or principal</td><td>Signed, expiring authority; no cancellation or undo of an existing effect</td></tr>
+      </tbody>
+    </table>
+  </figure>
+  <p class="after">The alpha has exact-action approvals, pause and a stop of one run. You invoke supervision and reaction; there is no continuous supervisor. Authenticated operator review, wider stop scopes and additional delivery routes belong to the 1.0 target. <a href="/docs/concepts/control-and-supervision">Read the product model and current limits</a>.</p>
+</div></section>
+
+<section class="s" id="use-cases"><div class="wrap">
   <p class="eyebrow">When to use it</p>
-  <h2>Put a decision between the agent and the consequence</h2>
-  <p class="lede">For engineers connecting MCP tools and operators reviewing what a run did. Start with a call you need to control, then inspect its decision and evidence.</p>
+  <h2>Start with a call, then inspect the run</h2>
+  <p class="lede">These examples work in the alpha. Connect an MCP tool, add your existing authorization service, or check what a run did against its procedure.</p>
   <div class="verbs">
     <div class="verb"><p class="n">01</p><h3>A write needs approval</h3><p>A tool can change a record or delete production data. Use the tested starter policy to require approval for writes and deny deletes in an environment named <code>prod</code>. An approval expires and permits that exact call once.</p><a class="more" href="/docs/reference/starter-packs">Start from a tested policy</a></div>
-    <div class="verb"><p class="n">02</p><h3>A tool changes after review</h3><p>A tool definition no longer matches the fingerprint you classified. When the gateway refreshes its manifest, that tool becomes unclassified and its calls are blocked in an enforcing mode. This checks the definition, not the server's implementation.</p><a class="more" href="/docs/concepts/mcp-gateway">How classification is bound</a></div>
+    <div class="verb"><p class="n">02</p><h3>Your authorization service can veto</h3><p>Ask an external PDP through the AuthZEN API for the calls your signed policy routes there. It can veto a local permission and never widen it. An unavailable or unreadable answer blocks those calls in an enforcing mode; <code>OBSERVE</code> records the decision and lets them run.</p><a class="more" href="/docs/guides/let-a-decision-point-veto">Connect an AuthZEN veto</a></div>
     <div class="verb"><p class="n">03</p><h3>A denied refund is tried another way</h3><p>The supervisor finds a retry through another tool on the same resource. Run the refund example, inspect the finding and stop that run's later calls through a signed route. Supervision and reaction run when you invoke them.</p><a class="more" href="/docs/guides/supervise-and-stop-a-run">Follow the refund example</a></div>
   </div>
-  <p class="note">Only calls routed through the gateway can be enforced. Runtime traces are observations; a missing event is unknown. <a href="/docs/reference/coverage">Read the coverage map</a></p>
+  <figure class="fig">
+    <table class="runtable">
+      <caption>From the runnable refund example. The operator invokes supervision and reaction; the stop refuses later calls and does not undo the order update.</caption>
+      <thead><tr><th scope="col">Step</th><th scope="col">What you see</th></tr></thead>
+      <tbody>
+        <tr><td>Agent requests a refund</td><td>The policy blocks it: <code>RULE_DENY</code></td></tr>
+        <tr class="dev"><td>Agent updates the same order through another tool</td><td>The tool reports that the order is now marked refunded</td></tr>
+        <tr><td>Operator checks the run against its procedure</td><td>A confirmed finding: a denied action retried on the same resource</td></tr>
+        <tr><td>Operator reacts through the signed route</td><td>That run's next call is refused: <code>RUN_STOPPED</code>. Another run continues</td></tr>
+      </tbody>
+    </table>
+  </figure>
+  <p class="note">Only calls routed through the gateway can be enforced. Runtime traces are observations; a missing event is unknown. <a href="/docs/reference/coverage">Read the coverage map</a> · <a href="/docs/concepts/mcp-gateway">Bind classification to a reviewed tool definition</a></p>
 </div></section>
 
-<section class="s" id="what"><div class="wrap">
+<section class="s alt-bg" id="what"><div class="wrap">
   <p class="eyebrow">What it does</p>
   <h2>It intercepts a consequential action before it happens</h2>
   <p class="lede">It returns one of five verdicts. In a mode that enforces, they mean:</p>
@@ -80,10 +138,10 @@
   </div>
 </div></section>
 
-<section class="s alt-bg" id="today"><div class="wrap">
+<section class="s" id="today"><div class="wrap">
   <p class="eyebrow">Architecture</p>
   <h2>How a call is decided today</h2>
-  <p class="lede">The enforcement point sits between an agent and its MCP servers and consults the built-in policy engine. An external decision point (PDP) can veto over AuthZEN but cannot grant (<code class="st" data-status="External policy decision point (PDP) over AuthZEN, able to veto">experimental</code>).</p>
+  <p class="lede">The MCP gateway holds the tool connection and consults signed local policy. An external PDP can veto over the AuthZEN API (<code class="st" data-status="External policy decision point (PDP) over AuthZEN, able to veto">experimental</code>). Its question carries action metadata, never arguments or their hash.</p>
   <figure class="fig" aria-labelledby="fig-today-cap">
     <ol class="chain">
       <li class="card"><span class="k">Agent</span><span class="d">asks to call a tool over MCP</span></li>
@@ -103,79 +161,40 @@
     </div>
     <figcaption id="fig-today-cap">A call is decided before it runs, and its record names the decision and the policy version.</figcaption>
   </figure>
-  <p class="after">The enforcement point is the only component this project adds to the request path. Evidence goes to a local spool before export, so decisions do not wait for the exporter.</p>
+  <p class="after">Evidence goes to a local spool before export, so decisions do not wait for the exporter. A configured external veto adds its own bounded wait. The planned Enforcement API serves a different role: custom tools ask Control before acting, and a cooperating client enforces the answer. <a href="/docs/concepts/control-and-supervision#three-api-roles">The three API roles</a></p>
 </div></section>
 
-<section class="s" id="exists"><div class="wrap">
+<section class="s alt-bg" id="exists"><div class="wrap">
   <p class="eyebrow">docs/status.md</p>
   <h2>What exists today</h2>
   <p class="lede">Nothing here is a security boundary. The status page is the one inventory, component by component.</p>
   <ul class="items">
-    <li data-status="Decision kernel: the fixed order, the fail-closed table, the delegation check"><span class="st implemented">implemented</span><span class="t">Decision kernel: the fixed order, the fail-closed table, the delegation check</span></li>
-    <li data-status="Policy documents, signed bundles and the matcher"><span class="st implemented">implemented</span><span class="t">Policy documents, signed bundles and the matcher</span></li>
     <li data-status="Approval binding to one action digest and one bundle digest"><span class="st implemented">implemented</span><span class="t">Approval binding to one action digest and one bundle digest</span></li>
-    <li data-status="Canonical action digest"><span class="st implemented">implemented</span><span class="t">Canonical action digest</span></li>
     <li data-status="Model Context Protocol (MCP) gateway"><span class="st">experimental</span><span class="t">Model Context Protocol (MCP) gateway</span></li>
     <li data-status="External policy decision point (PDP) over AuthZEN, able to veto"><span class="st">experimental</span><span class="t">External policy decision point (PDP) over AuthZEN, able to veto</span></li>
+    <li data-status="Observations from sensors: an observation record, a source descriptor and one importer of OpenTelemetry GenAI traces"><span class="st">experimental</span><span class="t">Observations from sensors: an observation record, a source descriptor and one importer of OpenTelemetry GenAI traces</span></li>
+    <li data-status="Coverage map per declared path"><span class="st">experimental</span><span class="t">Coverage map per declared path</span></li>
     <li data-status="Supervision of one opened run against its procedure, and a notifier"><span class="st">experimental</span><span class="t">Supervision of one opened run against its procedure, and a notifier</span></li>
+    <li data-status="A confirmed finding stops one opened run, through a signed route"><span class="st">experimental</span><span class="t">A confirmed finding stops one opened run, through a signed route</span></li>
     <li data-status="Demo: two vulnerable MCP servers, their plane and seven scenarios"><span class="st">experimental</span><span class="t">Demo: two vulnerable MCP servers, their plane and seven scenarios</span></li>
   </ul>
   <a class="more" href="/docs/status">The full inventory</a>
 </div></section>
 
-<section class="s alt-bg" id="going"><div class="wrap">
-  <p class="eyebrow">ROADMAP.md</p>
-  <h2>Where it is going</h2>
-  <p class="lede">Further work is <code>planned</code> in the <a href="/docs/roadmap">roadmap</a>. MCP is the first of several channels through which it sees what agents do. Today it keeps an agent's runtime traces as testimony: what the runtime says the agent did, never proof. It maps which declared paths a gateway enforces. It checks one run against its procedure and the exceptions the procedure allows, with the run's children where the procedure says so. It draws that run as a page, hands its alerts to a program, and stops one run on a confirmed finding where the operator allowed it. Planned next: sensors the agent cannot influence, such as the proxies its traffic passes through, and alerts to the tools an operator already watches.</p>
-  <figure class="fig" aria-labelledby="fig-going-cap">
-    <div class="cols">
-      <div><p class="colhead">What it watches</p><div class="stack">
-        <div class="card"><span class="k">MCP gateway <span class="tag">experimental</span></span><span class="d">decides each call before it runs</span></div>
-        <div class="card"><span class="k">Runtime traces <span class="tag">experimental</span></span><span class="d">what an agent's OpenTelemetry spans say it did, kept as testimony</span></div>
-        <div class="card later"><span class="k">Proxy logs <span class="tag planned">planned</span></span><span class="d">where its traffic actually went</span></div>
-      </div></div>
-      <div class="arrow" aria-hidden="true"></div>
-      <div><p class="colhead">What it concludes</p>
-        <div class="card hub"><span class="k">Supervisor <span class="tag">experimental</span></span>
-          <ul>
-            <li>compares what happened with what was meant</li>
-            <li>raises a finding that cites its evidence</li>
-            <li>says which paths it could not see</li>
-          </ul></div></div>
-      <div class="arrow" aria-hidden="true"></div>
-      <div><p class="colhead">What it does about it</p><div class="stack">
-        <div class="card"><span class="k">An alert <span class="tag">experimental</span></span><span class="d">handed to a program you name</span></div>
-        <div class="card"><span class="k">A stop of one run <span class="tag">experimental</span></span><span class="d">only where you allowed it</span></div>
-        <div class="card"><span class="k">Evidence export <span class="tag">experimental</span></span><span class="d">for your own programs to read</span></div>
-      </div></div>
-    </div>
-    <figcaption id="fig-going-cap">It watches the channels you connect, and steps in only where you allow it.</figcaption>
-  </figure>
-  <figure class="fig">
-    <table class="runtable">
-      <caption>One refund run, as meant and as seen. A step outside the procedure is a finding; a step nothing saw is unknown, never done.</caption>
-      <thead><tr><th scope="col">Step</th><th scope="col">Meant</th><th scope="col">Seen</th></tr></thead>
-      <tbody>
-        <tr><td>Fetch the order</td><td><span class="m exp"><i aria-hidden="true"></i>expected</span></td><td><span class="m done"><i aria-hidden="true">✓</i>done</span></td></tr>
-        <tr><td>Assess the refund</td><td><span class="m exp"><i aria-hidden="true"></i>expected</span></td><td><span class="m done"><i aria-hidden="true">✓</i>done</span></td></tr>
-        <tr class="dev"><td>Send data to another host</td><td><span class="m none"><i aria-hidden="true">–</i>not in the procedure</span></td><td><span class="m find"><i aria-hidden="true">!</i>a finding</span></td></tr>
-        <tr><td>Approval</td><td><span class="m exp"><i aria-hidden="true"></i>expected</span></td><td><span class="m none"><i aria-hidden="true">?</i>not seen</span></td></tr>
-        <tr><td>Refund</td><td><span class="m exp"><i aria-hidden="true"></i>expected</span></td><td><span class="m none"><i aria-hidden="true">?</i>not seen</span></td></tr>
-      </tbody>
-    </table>
-  </figure>
-</div></section>
+
 
 <section class="s" id="planned"><div class="wrap">
   <p class="eyebrow">docs/backlog.md</p>
   <h2>What is planned next</h2>
   <p class="lede">All tasks below are <code>planned</code>. They name work to do, not capabilities to claim.</p>
   <ul class="items">
-    <li data-backlog="B10"><span class="id">B10</span><span class="tx"><span class="t">Specify and build the enforcement API</span><span class="d">so a tool of your own, outside MCP, is decided the same way</span></span></li>
+    <li data-backlog="B10"><span class="id">B10</span><span class="tx"><span class="t">Specify and build the enforcement API</span><span class="d">custom tools ask before acting, receive authorized bytes, and report completion or abort; the client enforces</span></span></li>
     <li data-backlog="B11"><span class="id">B11</span><span class="tx"><span class="t">Ship Python and one runtime integration</span><span class="d">so a custom tool and one agent runtime use the same policy</span></span></li>
     <li data-backlog="B21"><span class="id">B21</span><span class="tx"><span class="t">Add sensors independent of the agent</span><span class="d">so you see where its traffic went, from a source it cannot influence</span></span></li>
     <li data-backlog="B12"><span class="id">B12</span><span class="tx"><span class="t">Publish the port contracts and add TypeScript</span><span class="d">so your own sensors and alerts plug in through published contracts</span></span></li>
     <li data-backlog="B13"><span class="id">B13</span><span class="tx"><span class="t">Authenticate operators and scope authority</span><span class="d">so a small team works with one gateway, each person with their own rights</span></span></li>
+    <li data-backlog="B26"><span class="id">B26</span><span class="tx"><span class="t">Review findings and export an incident package</span><span class="d">scoped review and an evidence package, without changing a verdict or lifting a stop</span></span></li>
+    <li data-backlog="B28"><span class="id">B28</span><span class="tx"><span class="t">Run continuous supervision and authorized reaction</span><span class="d">follow connected evidence and observations, report gaps and lag, and react only through existing signed authority</span></span></li>
   </ul>
   <a class="more" href="/docs/backlog">The delivery backlog</a>
   <p class="note"><a href="/docs/adoption-and-incident-workflows">Planned requirements for setup, coding hooks, tool changes and incident review</a></p>
@@ -187,12 +206,12 @@
 
 <section class="related alt-bg" id="related"><div class="wrap">
   <h2>Related project: Guardana</h2>
-  <p class="aside">Guardana is a separate open-source project that verifies AI systems before and after deployment: it scans artifacts, probes endpoints and reads recorded traces, outside the request path. Guardana Control decides each call inside it.</p>
+  <p class="aside">Guardana is a separate open-source project that verifies AI systems before and after deployment: it scans artifacts, probes endpoints and reads recorded traces, outside the request path. Guardana Control observes agent runs and decides consequential actions on connected enforcement paths.</p>
   <figure class="fig" aria-label="Where Guardana and Guardana Control sit in a system's life">
     <ol class="chain">
       <li class="card"><span class="k">Before release</span><span class="d">Guardana checks the build</span></li>
       <li class="arrow" aria-hidden="true"></li>
-      <li class="card hub"><span class="k">While agents run</span><span class="d">Guardana Control decides their calls</span></li>
+      <li class="card hub"><span class="k">While agents run</span><span class="d">Guardana Control observes and controls runs</span></li>
       <li class="arrow" aria-hidden="true"></li>
       <li class="card"><span class="k">After release</span><span class="d">Guardana compares what changed</span></li>
     </ol>

@@ -1,81 +1,79 @@
 # Roadmap
 
-What has to become true, in planned order, without dates.
+Guardana Control is meant to observe and supervise an organization's AI
+agents across connected channels, then react within the operator's authority.
+MCP is the first channel. [ADR-0039](docs/adr/0039-many-channels-into-one-core.md)
+records the architecture.
 
-Guardana Control is meant to supervise an organization's AI agents across
-the channels an operator connects. Where an enforcement point sits in an
-agent's path, it decides a consequential action before it happens. Elsewhere
-it watches what agents and their runtimes report, compares that with their
-procedures and permissions, and reports deviations, access attempts and
-unfinished work. It stops an agent only where the operator allowed that. MCP
-is the first channel, not the only one
-([ADR-0039](docs/adr/0039-many-channels-into-one-core.md)).
+Everything here is `planned`, in delivery order, without dates. Finished
+tasks leave the [backlog](docs/backlog.md);
+[status](docs/status.md) is the inventory of what exists.
 
-Everything here is `planned`; a finished item is deleted.
-[docs/status.md](docs/status.md) is the inventory of what exists, the
-[delivery backlog](docs/backlog.md) gives each step its tasks and acceptance
-checks, and [ADR-0026](docs/adr/0026-first-value-and-external-extension-paths.md)
-with ADR-0039 records the order.
+## The 1.0 target: observation, supervision and authorized reaction
+
+1.0 targets observation from a proposed action through its known or uncertain
+outcome. Full observation means connected coverage with gaps and source trust
+visible. Undeclared paths remain unknown.
+[Control and supervision](docs/concepts/control-and-supervision.md) explains
+the complete product model and today's limits.
+
+| Area | Target for 1.0 | Delivery path |
+| --- | --- | --- |
+| Observe | Join tool and API evidence with runtime, proxy and process observations; show coverage, sampling and silence. | B10–B12, B21, B24 |
+| Supervise | Check procedures, permissions, resources, exceptions and child runs; report deviations and uncertain outcomes. | Existing supervision, B12, B26, B28 |
+| React | Inform, alert, request review, approve one exact action, pause calls or stop later actions within authenticated run, agent or principal scopes. | Existing controls, B12–B14, B26, B28 |
+| Integrate | MCP and custom tools share policy, approvals and evidence; publish each integration's enforcement and bypasses. | B10–B12, B24 |
+
+B28 adds continuous supervision beside agents. Today's commands run when
+invoked. Sensors report after effects; enforcement points act before them.
+A cooperating API client receives a decision without proving it obeyed.
+A stop affects later calls on connected enforcement paths, never an operation
+already running. It neither kills a process nor undoes an effect.
 
 ## 1. First value in one project
 
-Done when a new user sees an allowed call, a blocked call with its reason and
-one exact-action approval within ten minutes of downloading the release's demo
-archive: a target to measure, not a measured result.
-
-A guide connects an existing MCP client and server, states what it covers and
-the identity it assumes, and ends in a local report. No setup step widens
-authority silently. Configuration preview, explicit apply and undo are B23.
+A new user sees an allow, a block with its reason and an exact-action
+approval within ten minutes of downloading the release demo: a target to measure.
+Connecting an existing MCP setup ends in a local report with coverage and
+identity assumptions stated. The report shows the action, policy version,
+decision, known or uncertain result and next operator step. Configuration
+preview, explicit apply and undo are B23; setup never silently widens authority.
 
 ## 2. Integrations without a fork
 
-Done when a language-neutral enforcement API and a Python client wrap a
-custom tool with admission, authorized arguments, completion and abort. They
-bind identity and run, consume an approval once and never retry an uncertain
-effect. One framework or coding-runtime integration chosen with adopters ships first,
-then TypeScript and a second integration. Sensors independent of the agent follow: an
-egress proxy's access log, then process events. Sensors, detectors,
-reactions and notifiers get published data contracts and conformance suites
-any language can run, once two consumers have used each, and every port
-states the paths it covers. A Go seam becomes public only after two consumers
-use it and its record is accepted.
-
-[Planned requirements](docs/adoption-and-incident-workflows.md) add coding hooks
-(B24), tool-definition review (B25) and policy comparison (B27).
+The Enforcement API and a Python wrapper admit, complete and abort a custom
+tool call, bind run and identity, consume approval once and never retry an
+uncertain effect. Choose one framework or coding-runtime integration with
+adopters, then TypeScript and a second integration. Add proxy and process
+sensors. Publish port contracts with language-neutral conformance suites
+after two consumers use each. A public Go seam needs its own record.
+Tool-definition review and policy comparison (B25, B27) help operators
+revalidate changes before rollout.
 
 ## 3. A small team
 
-Done when authenticated principals hold scoped rights to read, approve, pause
-and stop; a stop can name an agent or a principal as well as a run; and
-evidence and observations can be retained, rotated, exported and recovered,
-without a managed service. Cross-project access, forged
-identity, approval replay and policy outage have adversarial tests.
-
-Finding review and incident export (B26) cannot change verdicts, approve actions
-or lift stops.
+Authenticated operators hold scoped read, approve, pause and stop rights.
+Retention, export and recovery work without a managed service. Continuous
+supervision and authorized reaction follow bounded exports (B28). Finding
+review and incident packages (B26) change no verdict and lift no stop.
 
 ## 4. A fleet and wider protocols, when adopters need them
 
-Done when many planes report to one self-hosted control plane that holds the
-inventory of agents, tools, sources and procedures, distributes signed policy
-and definitions and keeps tenants apart, and when HTTP tool APIs and
-agent-to-agent handoffs have adapters that keep authority from growing across
-a handoff. Outcomes are judged finished, degraded or unknown, with the cost
-per accepted outcome, and no quality judgment influences a verdict.
+Multiple planes feed a self-hosted inventory with signed distribution and
+tenant isolation. HTTP and agent-to-agent adapters preserve authority across
+handoffs. Outcome and cost analysis grants nothing. The
+[Guardana bridge](docs/adr/0024-control-and-guardana-are-independent.md)
+stays optional and off unless configured.
 
-The [Guardana](https://github.com/guardana/guardana) bridge stays optional and
-off unless configured
-([ADR-0024](docs/adr/0024-control-and-guardana-are-independent.md)).
+## Release bar for 1.0
 
-## 1.0
-
-1.0 commits to supported contracts and security claims. It requires published
-compatibility and migration policies, a second implementation of the action
-digest passing the same golden fixtures, two independently maintained
-integrations, a conformance suite and a stated coverage for every channel it
-claims, an external review of the threat model, an exercised disclosure
-process, adversarial isolation tests, tested offline use and recovery, and
-reproducible benchmarks of sustained tail latency. The observation contract
-is promoted to v1 by its own record, or stated outside the 1.0 promise. A
-claim of evidence integrity needs hash links and signed checkpoints. A count
-of features alone cannot meet this gate.
+Supported coverage and reactions require conformance suites, adversarial
+tests, explicit bounds and visible failures. 1.0 also requires compatibility
+and migration policies, a second digest implementation passing the goldens,
+two independently maintained integrations, external threat-model review,
+an exercised disclosure process, isolation tests, tested offline use and
+recovery, and reproducible sustained tail-latency benchmarks. Observation
+contracts need their own v1 record or an explicit exclusion. An evidence
+integrity claim needs hash links and signed checkpoints. Content capture
+stays off by default; hidden reasoning is never stored. Feature counts do
+not meet this bar.

@@ -45,6 +45,14 @@ the mode, as [ADR-0013](adr/0013-mcp-interception-approvals-and-modes.md) and
 after apply names a live allowed call, a refused or held material call and
 their evidence; reading configuration alone cannot establish enforcement.
 
+The first local report uses those source records to explain the proposed
+action, policy version, decision, known or uncertain tool result and the next
+operator step. It names coverage gaps and identity assumptions beside the
+outcome. An engineer can follow the record identifiers into the existing
+exports; an operator can see what needs review or a separate authorized
+reaction. Measure whether new users can explain that result, as well as
+whether they finish setup.
+
 Acceptance includes malformed files, symbolic links, unsafe ownership,
 concurrent edits, repeated apply, interrupted writes, undo after user edits
 and credentials in failure text. Three voluntary onboarding sessions record

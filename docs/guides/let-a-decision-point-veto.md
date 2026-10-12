@@ -9,8 +9,9 @@ covers: [cmd/guardana-gateway/pdp.go, cmd/guardana-gateway/health.go, adapters/a
 
 ## When to use this
 
-Your organization already decides access in a policy engine of its own, and
-some of the calls an agent makes should pass that engine too. The gateway can
+Connect your organization's existing authorization service to the agent's
+decision path without replacing the signed local policy. Some of the calls
+an agent makes should pass that service too. The gateway can
 ask a decision point that speaks the OpenID AuthZEN Authorization API 1.0
 about those calls. Its answer can only veto: every grant still comes from a
 rule in your signed bundle, and while the decision point is silent, the calls
@@ -18,6 +19,12 @@ it governs are blocked in every mode that enforces; `OBSERVE` records the
 silence and runs them
 ([ADR-0017](../adr/0017-an-external-decision-point-can-veto.md)). This is
 `experimental`; [status.md](../status.md) is the inventory.
+
+This is the external-veto API. The separate
+[Enforcement API](../adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api.md)
+is `planned` for custom tools asking Control before they act; an operator
+management API is another role. Their scopes are described in
+[control and supervision](../concepts/control-and-supervision.md#three-api-roles).
 
 ## Prerequisites
 

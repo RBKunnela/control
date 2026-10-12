@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Control and supervision · Guardana Control</title>
+<meta name="description" content="The 1.0 goal for connected observation, procedure checks and scoped reactions, with today&#39;s alpha and the three API roles kept explicit."/>
+<link rel="canonical" href="https://control.guardana.dev/docs/concepts/control-and-supervision"/>
+<meta name="theme-color" content="#0B8F80"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="stylesheet" href="/assets/brand/v1/tokens.css"/>
+<link rel="stylesheet" href="/assets/control/control.css"/>
+<link rel="stylesheet" href="/assets/control/docs.css"/>
+</head>
+<body class="doc">
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap bar">
+  <a class="mark" href="/"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 4.5 5.6v6.1c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V5.6z"/><path d="M10.2 8.4v7.8M10.2 12.3h5.3"/></svg><span>Guardana <b>Control</b></span></a>
+  <a class="vlink" href="https://github.com/guardana/control/releases/tag/v0.10.2-alpha"><span class="ver">v0.10.2-alpha</span></a>
+  <nav aria-label="Primary">
+    <a href="/docs/">Docs</a>
+    <a href="/docs/status">Status</a>
+    <a class="hide-s" href="/docs/roadmap">Roadmap</a>
+    <a class="gh" href="https://github.com/guardana/control" aria-label="GitHub"><svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span class="hide-s">GitHub</span></a>
+  </nav>
+</div></header>
+<div class="wrap shell">
+<details class="mnav">
+<summary>Menu · <b>Control and supervision</b></summary>
+<nav class="inner" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision" aria-current="page">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</details>
+<main id="main" class="prose">
+<h1 id="control-and-supervision">Control and supervision</h1>
+<p>Guardana Control is a control and supervision layer for AI agents. The
+<code>planned</code> 1.0 goal is to observe their actions across connected channels,
+compare runs with procedures and permissions, and react within the authority
+an operator granted. MCP is the first channel. The
+<a href="/docs/roadmap">roadmap</a> owns the delivery order and the 1.0 release bar;
+<a href="/docs/status">status</a> is the inventory of what exists. Nothing in the current
+alpha is a security boundary.</p>
+<h2 id="observe-the-connected-paths">Observe the connected paths</h2>
+<p>The 1.0 target is observation from a proposed action through its known or
+uncertain outcome, across the sources the operator connects:</p>
+<ul>
+<li>Enforcement points contribute the proposed action, decision, approval and
+reported result. A gateway that holds the tool connection can refuse a call
+before its effect.</li>
+<li>Custom tools and framework hooks ask the Enforcement API before acting,
+then report completion or abort. A cooperating client has to obey the
+decision; the receiver cannot prove that it did.</li>
+<li>Runtime traces and logs describe steps outside an enforcement point as
+observations. The runtime's own account can omit, sample or forge events.</li>
+<li>Egress proxy access logs and process sources add observations independent
+of an agent's own reporting. Their attribution is only as strong as the
+identity their source establishes.</li>
+</ul>
+<p>Each declared path needs a stated basis for what is visible and controllable:
+enforced, decided but not enforced, observed, inferred or not covered.
+Undeclared paths and unreadable or silent sources remain unknown. A missing
+event is never proof that nothing happened. This is what full observation
+means in the product target: connected coverage and its gaps are explicit,
+including when a run cannot be judged.</p>
+<p>An enforcement record and an observation stay separate. The first records
+what Control decided; the second records what a source said happened.
+Correlating them does not promote the source's trust or turn a trace id into
+authenticated identity. Prompt and tool content capture is off by default,
+and hidden model reasoning is never stored. Visibility does not require
+collecting a transcript.</p>
+<h2 id="supervise-a-run-against-its-procedure">Supervise a run against its procedure</h2>
+<p>The supervisor compares decisions and observations with a versioned
+procedure: the expected steps, their order and deadlines, permitted
+exceptions, resources and child runs. Findings name their evidence, rule
+version and certainty. They can describe a step outside the procedure,
+repeated denials, a denied action tried through another tool, skipped work,
+an overdue or unfinished run, and continuing after a failure.</p>
+<p>The 1.0 target joins this with ongoing observation, finding delivery and
+operator review beside the agents. Supervision never changes a policy
+verdict, grants permission or treats an uncertain outcome as success.
+Review records explain what an operator concluded without changing the
+finding's evidence or lifting a stop.</p>
+<p>Today supervision is <code>experimental</code>: <code>guardana-control supervise</code> reads
+exports when invoked, checks one opened run or its procedure's tree, writes
+findings and can draw a static page. <code>notify</code> hands alerts to a named program,
+and <code>findings export</code> exposes them with a cursor. There is no continuously
+running supervisor. The
+<a href="/docs/concepts/observations-coverage-and-supervision">observations and supervision model</a>
+explains these existing commands and their limits.</p>
+<h2 id="react-within-granted-authority">React within granted authority</h2>
+<p>The 1.0 target has two points at which a response can act. Before an effect,
+a policy can deny a proposed action, attach obligations or hold it for an
+expiring, single-use approval of one canonical action digest and policy
+bundle. After a finding, a configured route can record it, deliver an alert,
+request review or stop later actions where enforcement exists.</p>
+<table>
+<thead>
+<tr>
+<th>Response</th>
+<th>Authority and limit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Inform</td>
+<td>Record a finding and its evidence. This grants nothing.</td>
+</tr>
+<tr>
+<td>Alert</td>
+<td>Deliver the finding to an operator's program, webhook, chat or monitoring system. A notifier has no authority over the decision path.</td>
+</tr>
+<tr>
+<td>Review</td>
+<td>Let an authenticated operator acknowledge and assess a finding within their scope. Closing a review neither approves an action nor lifts a stop.</td>
+</tr>
+<tr>
+<td>Approval</td>
+<td>Let one exact action run once before its approval expires. A similar action or a later attempt needs its own decision.</td>
+</tr>
+<tr>
+<td>Pause</td>
+<td>Refuse proposed calls in the configured scope at enforcement points. Calls already running have passed that point.</td>
+</tr>
+<tr>
+<td>Stop</td>
+<td>Refuse later actions of the named run, agent or principal within a signed, expiring route and the operator's authenticated scope. It affects only connected enforcement paths.</td>
+</tr>
+</tbody>
+</table>
+<p>These are the <code>planned</code> 1.0 response scopes, not a claim that all operate in
+the alpha. Today approvals, pause, a local notifier and a stop of one opened
+run are <code>experimental</code>. A stop is written when the operator runs <code>react</code> and
+reaches the plane when it reads the list. It cannot name a whole tree, agent
+or principal. It does not cancel a running operation, kill a process or undo
+an effect.</p>
+<p>Automatic stopping has a higher evidence bar than notifying. Today only an
+eligible deterministic, <code>CONFIRMED</code> finding can produce a stop under a signed
+route. Observations alone and unknown findings stop nothing. Every scope
+needs an explicit authority; a sensor, detector or notifier never grants it.
+The default authorization path runs no model.</p>
+<h2 id="three-api-roles">Three API roles</h2>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>Role</th>
+<th>Current stage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AuthZEN authorization evaluation</td>
+<td>Consult an organization's external PDP for a veto of configured calls; the signed local policy remains the source of every grant.</td>
+<td><code>experimental</code></td>
+</tr>
+<tr>
+<td>Enforcement API</td>
+<td>Let a custom tool ask before acting, receive authorized argument bytes, and report completion or abort under a run token.</td>
+<td><code>planned</code>, specified in ADR-0051</td>
+</tr>
+<tr>
+<td>Control plane API</td>
+<td>Let authenticated operators read evidence and manage approvals, pause and stop within scoped rights.</td>
+<td><code>planned</code></td>
+</tr>
+</tbody>
+</table>
+<p>An AuthZEN veto is an input to the local decision. It can remove permission
+and never add it. A timeout, unavailable PDP or unreadable answer leaves a
+governed call indeterminate, which blocks it in an enforcing mode. In
+<code>OBSERVE</code>, the decision is recorded and the call runs. The external service
+receives structured action metadata, not arguments or their hash; it is not
+a payload-inspection API. The
+<a href="/docs/guides/let-a-decision-point-veto">AuthZEN guide</a> shows the two policy
+rules and configuration that enable it.</p>
+<p>The Enforcement API is a separate contract. Its operations are <code>admit</code>,
+<code>complete</code> and <code>abort</code>; its receiver resolves identity and run rather than
+trusting identity fields a client submits. Its first transport is JSON over
+HTTP on a local Unix socket. It is cooperative: even in <code>ENFORCE</code>, its paths
+are decided, not enforced by the receiver. A client can ignore a block or
+report bytes it did not send. An uncertain effect is recorded as uncertain
+and is never automatically retried.</p>
+<h2 id="from-the-alpha-to-10">From the alpha to 1.0</h2>
+<p>The alpha already joins an MCP enforcement path, imported runtime traces,
+coverage, procedure checks and run-scoped reaction, with the limits above.
+It uses configured principals and operator-issued run capabilities rather
+than authenticated end users. Its append-only evidence trail is not
+tamper-evident. These limits stay visible until their controls are built and
+verified.</p>
+<p>1.0 needs supported contracts and integrations, declared coverage per channel,
+authenticated scopes, exercised recovery and adversarial tests for reactions.
+It also needs the external review and compatibility work the roadmap names.
+Wider fleet management, new protocol adapters and outcome-cost analysis are
+demand-led work, rather than prerequisites hidden in the word &quot;observation&quot;.</p>
+<p>The decisions behind this model are
+<a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a>,
+<a href="/docs/adr/0045-one-run-is-supervised-against-its-procedure">ADR-0045</a>,
+<a href="/docs/adr/0046-a-finding-stops-one-run-through-a-signed-route">ADR-0046</a> and
+<a href="/docs/adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api">ADR-0051</a>.</p>
+<p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/concepts/control-and-supervision.md">docs/concepts/control-and-supervision.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.10.2-alpha, and <a href="https://github.com/guardana/control/tree/v0.10.2-alpha/docs">its documentation</a> is in its tag.</p>
+</main>
+<nav class="side" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision" aria-current="page">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</div>
+<footer class="foot"><div class="wrap row">
+  <p>Guardana Control · Apache-2.0</p>
+  <ul>
+    <li><a href="https://github.com/guardana/control">GitHub</a></li>
+    <li><a href="https://github.com/guardana/control/releases">Releases</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/SECURITY.md">Security</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/LICENSE">Licence Apache-2.0</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/TRADEMARKS.md">Trademarks</a></li>
+  </ul>
+</div></footer>
+</body>
+</html>
