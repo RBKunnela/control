@@ -10,7 +10,7 @@ Guardana Control is a control and supervision layer for AI agents. The 1.0
 goal is observation across connected channels, procedure checks and reactions
 within the operator's authority, with gaps stated. On an enforcement path it
 decides a consequential action from structured policy before its effect and
-records the policy version. MCP is the first channel. The accepted architecture is
+records the policy version. MCP is the first channel. The architecture is
 [ADR-0039](docs/adr/0039-many-channels-into-one-core.md), the inventory is
 [docs/status.md](docs/status.md), and nothing here is a security boundary yet.
 
@@ -45,14 +45,13 @@ breaking one, it needs an architecture decision record before it needs code.
 ## No false green
 
 A check that could not run reports an explicit unknown or a failure. It never
-reports a pass. No linter enforces this, so reviewers look for it on purpose:
+reports a pass. No linter enforces this; reviewers look for:
 an error assigned to `_`, a `return nil` where an unknown belongs, a check that
 an allowlist quietly skips, a documented capability that no test exercises, a
 test that asserts on the value it just constructed, a test whose assertions
 cannot fail, a gate whose command no-ops when the tool is missing. If you
 cannot verify something in the change you are making, say so in the pull
-request. An honest unknown is cheap; a green that examined nothing costs
-whoever trusts it later.
+request.
 
 ## Commands
 
@@ -65,11 +64,10 @@ whoever trusts it later.
   calls; read the exact set there rather than from a list in prose that can
   drift.
 
-`ci.yml` runs `make quality` itself, which is the point: a green local run and
-a green CI run are meant to mean the same thing. The two machines still differ,
-so a change is green when both are. The security and workflow-lint workflows do
-not call the gate; they run some of the same tools directly, over a wider scope.
-A change is not finished until `make quality` is green.
+`ci.yml` runs `make quality` itself. Local and CI runs must both be green.
+The security and workflow-lint workflows do not call the gate; they run
+some tools directly over a wider scope. A change is unfinished until
+`make quality` is green.
 
 ## Layout
 
@@ -94,7 +92,7 @@ A change is not finished until `make quality` is green.
   the same Go files on every platform: a file build constraints leave out here,
   and any source that is not plain Go, is refused.
 - Adapters may import core; the rule only constrains what core imports. Core
-  that needs adapter behaviour declares an interface an adapter implements.
+  needing adapter behaviour declares an interface an adapter implements.
 
 See [ADR-0007](docs/adr/0007-repository-layout-and-dependency-rule.md).
 
@@ -108,6 +106,13 @@ wrong, fix the gate in its own change and say why.
 
 A user-visible change carries its documentation in the same change. A decision
 that outlives the change needs a record in `docs/adr/`.
+
+Every release updates `docs/status.md`, `README.md`, `site/index.html` and
+affected docs against verified capabilities, removes delivered roadmap/backlog
+work, and regenerates the site. Promote `planned` only after implementation
+is exercised, and `experimental` only after documented readiness and
+compatibility checks pass. Record remaining limits; never promote by version
+alone. Follow [RELEASING.md](RELEASING.md) and verify publication.
 
 ## Dependencies
 

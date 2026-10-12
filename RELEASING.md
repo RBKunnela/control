@@ -1,17 +1,22 @@
 # Releasing
 
-How a version is cut, and how anyone checks what was published.
 `.github/workflows/release.yml` builds, signs and publishes every release;
-nothing is uploaded from a laptop.
+no asset is uploaded from a laptop.
 
 ## Cutting a release
 
-1. Give the version its section in `CHANGELOG.md`, with the date:
-   `## [X.Y.Z] - YYYY-MM-DD`. The workflow publishes that section as the
-   release notes and fails if it is missing, undated or empty.
-   `scripts/release-notes.sh vX.Y.Z` prints it.
-2. Commit that on `main`, and let CI and Security finish green on it.
-3. Tag the commit and push the tag:
+1. Reconcile `docs/status.md` with the candidate's exercised commands and
+   tests. Move built work out of `planned`; promote `experimental` only when
+   documented readiness, compatibility and applicable security checks pass.
+   Record the proof and remaining limits. A version number promotes nothing.
+2. Update `README.md`, `site/index.html` and affected guides, concepts and
+   references to that inventory. Remove delivered roadmap/backlog tasks;
+   keep incomplete ones `planned`. Regenerate pages with `make docs-gen`.
+3. Add the dated `## [X.Y.Z] - YYYY-MM-DD` section to `CHANGELOG.md`.
+   `scripts/release-notes.sh vX.Y.Z` prints it; the workflow publishes it
+   and refuses missing, undated or empty notes.
+4. Commit on `main`; wait for CI and Security to finish green.
+5. Tag the commit and push:
 
    ```sh
    version=X.Y.Z
@@ -19,55 +24,50 @@ nothing is uploaded from a laptop.
    git push origin "v${version}"
    ```
 
-4. Approve the waiting run: the tag's Release run, Review deployments. Only a
-   maintainer or the admin may push a `v*` tag or approve its run.
-5. Once the release is published, set `"released"` in `docs/docs.json` to the
-   version, run `make docs-gen` and commit. Only then does the website name
-   it.
+6. Approve the tag's Release run through Review deployments. Only a
+   maintainer or admin may push a `v*` tag or approve it.
+7. After publication, set `"released"` in `docs/docs.json`, regenerate and
+   commit. Verify the live version, capability labels, download and guide
+   links. Before publication the website must not name the new release.
 
 A version is a plain `X.Y.Z`; a suffix such as `-rc.1` marks a preview of it.
 
 ## What the workflow does
 
-1. Builds the binaries for Linux and macOS on amd64 and arm64 from the tagged
-   commit, packs per platform an archive of the two binaries and a demo
-   archive that adds the demo's server, each with a CycloneDX bill of
-   materials, and writes `checksums.txt`.
-2. Signs `checksums.txt` with cosign, keyless: the certificate names this
-   workflow and the tag.
-3. Pushes the image `ghcr.io/guardana/control-gateway`, `guardana-gateway`
-   alone as a nonroot user, for linux/amd64 and linux/arm64 under the staging
-   tag `sha-<commit>`, and drafts the release.
-4. Scans every binary of every archive, and the image's binary for each
-   platform, with `govulncheck -mode=binary` (`scripts/scan-binaries.sh`).
-5. Runs the demo archive with no Go on `PATH`, attests every file, and signs
-   and attests the image.
-6. Verifies it as a user would, tags the image with the version, and
-   publishes the draft with the image's digest in its notes.
+1. Builds `guardana-gateway` and `guardana-control` for Linux and macOS on
+   amd64 and arm64 from the tag. Each platform gets an archive of both
+   binaries and a demo archive including the server, each with a CycloneDX
+   bill of materials; writes `checksums.txt`.
+2. Cosign signs checksums keylessly; the certificate names this workflow and tag.
+3. Pushes `ghcr.io/guardana/control-gateway`: the gateway alone, nonroot,
+   linux/amd64 and linux/arm64, under `sha-<commit>`; drafts the release.
+4. Scans every archive and image binary on every platform with
+   `govulncheck -mode=binary` (`scripts/scan-binaries.sh`).
+5. Runs the demo without Go on `PATH`, attests every file, signs and attests
+   the image.
+6. Verifies downloads and image, adds the image's version tag, publishes the
+   draft with its digest.
 
-A known-vulnerable symbol in a binary, called or not, or a scan that could not
-run, stops the release. The workflow releases only `main`'s head, once CI and
-Security passed on it and `main`'s newest CodeQL analysis covers it: a push to
-`main` before approval fails it. Until Publish, a failure leaves at most a
-draft and the image's staging and version tags: delete them, fix the cause,
-release the next version. Publish makes the draft public only if it holds
-exactly the verified files, then reads it again; a failure there leaves a
-public release and says what to do.
+A known-vulnerable symbol, called or not, or an unavailable scan stops release.
+Only `main`'s head may release, with CI, Security and the newest CodeQL
+analysis covering it; advancing `main` before approval fails it. Before
+Publish, failure leaves at most a draft and staging/version image tags:
+delete them, fix the cause, release the next version. Publish requires
+exactly the verified files and reads them back; failure then leaves a public
+release and reports recovery steps.
 
 ## A dry run
 
-Run the workflow by hand with the tag the release will carry. It makes the
-same gate check, prints the notes, builds and scans the archives and the image
-as `0.0.0-snapshot.<commit>`, unsigned, runs the image and the demo for the
-runner's platform, and publishes nothing. `make release-snapshot`,
-`make check-demo-archive` and `make scan-binaries` build, scan and run the
-demo locally, with Docker, and check neither the gate nor the notes.
+Run the workflow manually with the intended tag. It checks the gate and notes,
+builds and scans unsigned `0.0.0-snapshot.<commit>` archives and image, runs
+the image and demo on the runner's platform, publishes nothing.
+`make release-snapshot`, `make check-demo-archive` and `make scan-binaries`
+build, scan and run locally with Docker; they check neither gate nor notes.
 
 ## A tag never moves
 
-A published tag is never deleted, moved or reused, and a published release
-never gets other files. A broken release is named in the next version's
-changelog.
+Never delete, move or reuse a published tag or replace release files.
+Name a broken release in the next version's changelog.
 
 ## Checking a download
 
@@ -88,10 +88,9 @@ gh attestation verify guardana-control_0.1.0-alpha_linux_amd64.tar.gz \
   --source-ref refs/tags/v0.1.0-alpha --deny-self-hosted-runners
 ```
 
-On macOS use `shasum -a 256 --ignore-missing -c checksums.txt`. In turn: the
-archive is the one the checksum file names, this repository's release workflow
-signed that file for that tag, and that workflow built the archive from that
-tag.
+On macOS use `shasum -a 256 --ignore-missing -c checksums.txt`. The checksum
+binds the archive, the signature binds this repository's workflow and tag,
+and the attestation binds the build to that tag.
 
 ## Checking the image
 
