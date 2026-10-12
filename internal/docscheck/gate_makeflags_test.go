@@ -113,8 +113,44 @@ const shellOffBelowTheTop = `override SHELL := $(if $(filter 0,$(MAKELEVEL)),/us
 
 // makeTakes reports whether make accepts args as options; make 3.81 has no
 // --eval and no -E, and before 4.4 no -E.
-func makeTakes(makeBin string, args ...string) bool {
-	return exec.Command(makeBin, append(args, "--version")...).Run() == nil //nolint:gosec // G204: make with fixed arguments
+func makeTakes(t *testing.T, makeBin string, args ...string) bool {
+	t.Helper()
+	cmd := exec.Command(makeBin, append(args, "--version")...) //nolint:gosec // G204: make with fixed arguments
+	// Probe make itself, away from this Makefile's refusal of eval and the
+	// flags inherited from the gate that started this test.
+	cmd.Dir = t.TempDir()
+	cmd.Env = cleanMakeEnv()
+	return cmd.Run() == nil
+}
+
+// makeReadsExtraFile measures the makefile option separately from eval:
+// make 4.3 ignores -f in these environment variables, while 4.4 reads it.
+func makeReadsExtraFile(t *testing.T, makeBin, flags string) bool {
+	t.Helper()
+	dir := t.TempDir()
+	for name, body := range map[string]string{
+		"Makefile": "probe:\n\t@printf '%s\\n' '$(words $(MAKEFILE_LIST))'\n",
+		"extra.mk": "",
+	} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cmd := exec.Command(makeBin, "-C", dir, "--no-print-directory", "probe") //nolint:gosec // G204: make with fixed arguments in a probe directory
+	cmd.Env = append(cleanMakeEnv(), flags+"=-f Makefile -f extra.mk")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("probe makefiles through %s: %v:\n%s", flags, err, out)
+	}
+	switch strings.TrimSpace(string(out)) {
+	case "1":
+		return false
+	case "2":
+		return true
+	default:
+		t.Fatalf("probe makefiles through %s returned an unknown count: %q", flags, out)
+		return false
+	}
 }
 
 // TestTheGateRunsTheChecksMakeWasToldToSkip: make told that every check of
@@ -136,18 +172,21 @@ func TestTheGateRunsTheChecksMakeWasToldToSkip(t *testing.T) {
 		oldLong = append(oldLong, "--old-file="+target)
 	}
 	evalRefused, shortRefused := "", ""
-	if makeTakes(makeBin, "--eval=X:=1") {
+	if makeTakes(t, makeBin, "--eval=X:=1") {
 		evalRefused = "this Makefile takes no --eval or -E"
 	}
-	if makeTakes(makeBin, "-E", "X:=1") {
+	if makeTakes(t, makeBin, "-E", "X:=1") {
 		shortRefused = "this Makefile takes no --eval or -E"
 	}
-	// make 3.81 takes no makefile from MAKEFLAGS, so this one runs the checks.
-	laterThroughFlags := standInRefusal
 	if evalRefused == "" {
 		t.Logf("%s takes no --eval; the eval cases assert only that make refuses them", makeBin)
-	} else {
+	}
+	laterThroughFlags, laterThroughGNUFlags := standInRefusal, standInRefusal
+	if makeReadsExtraFile(t, makeBin, "MAKEFLAGS") {
 		laterThroughFlags = "make quality reads one makefile, this one"
+	}
+	if makeReadsExtraFile(t, makeBin, "GNUMAKEFLAGS") {
+		laterThroughGNUFlags = "make quality reads one makefile, this one"
 	}
 	escaped := strings.ReplaceAll(shellOffBelowTheTop, " ", `\ `)
 	base := cleanMakeEnv()
@@ -171,7 +210,8 @@ func TestTheGateRunsTheChecksMakeWasToldToSkip(t *testing.T) {
 		{"an eval that names the default goal", []string{"--eval=" + shellOffBelowTheTop, "--eval=.DEFAULT_GOAL := quality"}, nil, evalRefused},
 		{"a makefile read before this one", []string{"-f", "empty.mk", "-f", "Makefile", "quality"}, nil, "make quality reads one makefile, this one"},
 		{"a makefile read after this one", []string{"-f", "Makefile", "-f", "empty.mk", "quality"}, nil, "make quality reads one makefile, this one"},
-		{"a makefile read after this one through MAKEFLAGS", []string{"quality"}, []string{"MAKEFLAGS=-f Makefile -f empty.mk"}, laterThroughFlags},
+		{"an additional makefile through MAKEFLAGS", []string{"quality"}, []string{"MAKEFLAGS=-f Makefile -f empty.mk"}, laterThroughFlags},
+		{"an additional makefile through GNUMAKEFLAGS", []string{"quality"}, []string{"GNUMAKEFLAGS=-f Makefile -f empty.mk"}, laterThroughGNUFlags},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			cmd := exec.Command(makeBin, append([]string{"-C", dir}, c.args...)...) //nolint:gosec // G204: make, in a stand-in tree, with fixed arguments
