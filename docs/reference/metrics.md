@@ -31,7 +31,8 @@ confirmed blocks every call but a read under `policy.fail_open_read`, which
 `guardana_control_policy_freshness`
 reports; and a refused evidence append
 blocks the call it records, which `guardana_control_pipeline_sink_failures_before_effect_total`
-counts.
+counts. That counter also holds a client's abort whose record was refused; the
+aborted call never ran, and the plane does not halt for it.
 
 No label carries an identifier, a digest or a reason: `code` is a code of the reason
 registry, or an error code of the enforcement API contract in lower case without its

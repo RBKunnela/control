@@ -52,6 +52,8 @@ boundary. [Status](docs/status.md) is the inventory of what exists.
   [starter policies](docs/reference/starter-packs.md).
 - Let your existing authorization service veto configured calls through the
   [AuthZEN API](docs/guides/let-a-decision-point-veto.md).
+- Let a tool of your own ask before it acts and report how it ended, through
+  the [Enforcement API](docs/guides/decide-a-tool-of-your-own.md).
 - Import runtime traces, inspect coverage, check a recorded run against its
   procedure, and stop its later calls where a signed route allows:
   [supervision](docs/guides/supervise-and-stop-a-run.md).
@@ -102,8 +104,8 @@ Content capture is off by default; hidden reasoning is never stored.
 The `planned` target connects enforcement and observation through one
 vocabulary ([ADR-0039](docs/adr/0039-many-channels-into-one-core.md)).
 An [Enforcement API](docs/adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api.md)
-is distinct from AuthZEN vetoes: custom tools ask before acting and report
-completion or abort. A cooperating client enforces its answer; that path is
+(`experimental`) is distinct from AuthZEN vetoes: custom tools ask before
+acting and report completion or abort. A cooperating client enforces its answer; that path is
 decided, not enforced by the receiver.
 
 ```mermaid

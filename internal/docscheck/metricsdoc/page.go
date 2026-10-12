@@ -109,7 +109,8 @@ func lead() string {
 		"`" + metrics.Prefix() + "policy_freshness`\n" +
 		"reports; and a refused evidence append\n" +
 		"blocks the call it records, which `" + metrics.Prefix() + "pipeline_sink_failures_before_effect_total`\n" +
-		"counts.\n\n" +
+		"counts. That counter also holds a client's abort whose record was refused; the\n" +
+		"aborted call never ran, and the plane does not halt for it.\n\n" +
 		"No label carries an identifier, a digest or a reason: `code` is a code of the reason\n" +
 		"registry, or an error code of the enforcement API contract in lower case without its\n" +
 		"`ERROR_CODE_` prefix; `cause` is why a read of the pause file was unknown, why a run token did not\n" +

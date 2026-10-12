@@ -41,7 +41,7 @@
   <p class="pill"><i></i>Open source · Experimental alpha</p>
   <h1 class="tagline">Observe your <span class="accent">AI agents.</span> Control how they act.</h1>
   <p class="sub">See what an agent did, whether it followed its procedure, and where you can intervene. Start with the alpha; explore connected observation and reaction in the 1.0 goal.</p>
-  <p class="warn">Today: an <code class="st" data-status="Model Context Protocol (MCP) gateway">experimental</code> MCP gateway, signed policies, AuthZEN API vetoes, runtime trace imports and supervision you invoke for one run. Caller identity is configured, and coverage has gaps. <strong>Do not deploy this as a security boundary.</strong></p>
+  <p class="warn">Today: an <code class="st" data-status="Model Context Protocol (MCP) gateway">experimental</code> MCP gateway, signed policies, AuthZEN API vetoes, an Enforcement API for your own tools, runtime trace imports and supervision you invoke for one run. Caller identity is configured, and coverage has gaps. <strong>Do not deploy this as a security boundary.</strong></p>
   <div class="ctas">
     <a class="btn pri" href="/docs/get-started/try-the-demo">Run the local demo</a>
     <a class="btn sec" href="#going">Explore the 1.0 goal</a>
@@ -57,7 +57,7 @@
     <div class="cols">
       <div><p class="colhead">What it watches</p><div class="stack">
         <div class="card"><span class="k">MCP gateway <span class="tag">experimental</span></span><span class="d">decides each call before it runs</span></div>
-        <div class="card later"><span class="k">Custom tools and framework hooks <span class="tag planned">planned</span></span><span class="d">ask the Enforcement API; cooperating clients obey its decision</span></div>
+        <div class="card"><span class="k">Custom tools <span class="tag">experimental</span></span><span class="d">ask the Enforcement API; a cooperating client obeys its decision, and framework hooks are planned</span></div>
         <div class="card"><span class="k">Runtime traces <span class="tag">experimental</span></span><span class="d">what an agent's OpenTelemetry spans say it did, kept as testimony</span></div>
         <div class="card later"><span class="k">Proxy logs and process sources <span class="tag planned">planned</span></span><span class="d">observations independent of the agent's own account</span></div>
       </div></div>
@@ -161,7 +161,7 @@
     </div>
     <figcaption id="fig-today-cap">A call is decided before it runs, and its record names the decision and the policy version.</figcaption>
   </figure>
-  <p class="after">Evidence goes to a local spool before export, so decisions do not wait for the exporter. A configured external veto adds its own bounded wait. The planned Enforcement API serves a different role: custom tools ask Control before acting, and a cooperating client enforces the answer. <a href="/docs/concepts/control-and-supervision#three-api-roles">The three API roles</a></p>
+  <p class="after">Evidence goes to a local spool before export, so decisions do not wait for the exporter. A configured external veto adds its own bounded wait. The experimental Enforcement API serves a different role: custom tools ask Control before acting, and a cooperating client enforces the answer. <a href="/docs/concepts/control-and-supervision#three-api-roles">The three API roles</a></p>
 </div></section>
 
 <section class="s alt-bg" id="exists"><div class="wrap">
@@ -172,11 +172,11 @@
     <li data-status="Approval binding to one action digest and one bundle digest"><span class="st implemented">implemented</span><span class="t">Approval binding to one action digest and one bundle digest</span></li>
     <li data-status="Model Context Protocol (MCP) gateway"><span class="st">experimental</span><span class="t">Model Context Protocol (MCP) gateway</span></li>
     <li data-status="External policy decision point (PDP) over AuthZEN, able to veto"><span class="st">experimental</span><span class="t">External policy decision point (PDP) over AuthZEN, able to veto</span></li>
+    <li data-status="Enforcement API receiver"><span class="st">experimental</span><span class="t">Enforcement API receiver</span></li>
     <li data-status="Observations from sensors: an observation record, a source descriptor and one importer of OpenTelemetry GenAI traces"><span class="st">experimental</span><span class="t">Observations from sensors: an observation record, a source descriptor and one importer of OpenTelemetry GenAI traces</span></li>
     <li data-status="Coverage map per declared path"><span class="st">experimental</span><span class="t">Coverage map per declared path</span></li>
     <li data-status="Supervision of one opened run against its procedure, and a notifier"><span class="st">experimental</span><span class="t">Supervision of one opened run against its procedure, and a notifier</span></li>
     <li data-status="A confirmed finding stops one opened run, through a signed route"><span class="st">experimental</span><span class="t">A confirmed finding stops one opened run, through a signed route</span></li>
-    <li data-status="Demo: two vulnerable MCP servers, their plane and seven scenarios"><span class="st">experimental</span><span class="t">Demo: two vulnerable MCP servers, their plane and seven scenarios</span></li>
   </ul>
   <a class="more" href="/docs/status">The full inventory</a>
 </div></section>
@@ -188,7 +188,6 @@
   <h2>What is planned next</h2>
   <p class="lede">All tasks below are <code>planned</code>. They name work to do, not capabilities to claim.</p>
   <ul class="items">
-    <li data-backlog="B10"><span class="id">B10</span><span class="tx"><span class="t">Specify and build the enforcement API</span><span class="d">custom tools ask before acting, receive authorized bytes, and report completion or abort; the client enforces</span></span></li>
     <li data-backlog="B11"><span class="id">B11</span><span class="tx"><span class="t">Ship Python and one runtime integration</span><span class="d">so a custom tool and one agent runtime use the same policy</span></span></li>
     <li data-backlog="B21"><span class="id">B21</span><span class="tx"><span class="t">Add sensors independent of the agent</span><span class="d">so you see where its traffic went, from a source it cannot influence</span></span></li>
     <li data-backlog="B12"><span class="id">B12</span><span class="tx"><span class="t">Publish the port contracts and add TypeScript</span><span class="d">so your own sensors and alerts plug in through published contracts</span></span></li>

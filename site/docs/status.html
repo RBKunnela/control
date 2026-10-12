@@ -122,7 +122,9 @@ below describes what the alpha can actually do.</p>
 servers and decide each tool call from a signed policy, allowing it,
 blocking it or holding it for one approval of that exact call. Each decision
 is recorded with the policy version that made it. An external AuthZEN
-decision point can veto configured calls without granting authority. You
+decision point can veto configured calls without granting authority. A tool
+outside MCP can ask a plane serving the enforcement API before it acts and
+enforce the answer itself. You
 can import runtime traces as observations, inspect coverage, and check one
 opened run against its procedure, draw it as a page, hand its findings to a
 program, and stop that run where a signed route allows it.</li>

@@ -408,8 +408,9 @@ itself, which the gate checks. See
 <h2 id="connected-channels-towards-10">Connected channels towards 1.0</h2>
 <p>This section is <code>planned</code>, in the order <a href="/docs/roadmap">ROADMAP.md</a> gives,
 and <a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a> records its shape;
-the observation log and its importer, the coverage map, supervision of one
-run, a local notifier and a stop of one run from a finding are built
+the enforcement API, the observation log and its importer, the coverage map,
+supervision of one run, a local notifier and a stop of one run from a finding
+are built
 (<a href="/docs/status">status.md</a>). The
 request path above stays how a plane stops a call. MCP is the first channel
 of several, and every channel or extension will be one of five ports, and say
@@ -418,9 +419,9 @@ which.</p>
 <p>Sources: <code>ROADMAP.md</code>, <code>internal/gateway/pause.go</code>, <code>adapters/authzen/client.go</code>.</p>
 <ul>
 <li><strong>Enforcement points</strong> see a proposed action before its effect and may block
-it, hold it for an approval or attach obligations. The MCP gateway is one
-today; an enforcement API will let a framework's hooks be another, from
-inside the agent.</li>
+it, hold it for an approval or attach obligations. The MCP gateway is one.
+A plane serving the enforcement API decides for a cooperating client, which
+enforces the answer itself; a framework's hooks over it are planned.</li>
 <li><strong>Sensors</strong> see an effect after it happened, or an indirect sign of it:
 the traces and logs an agent's runtime writes, a proxy's access log, process
 events. They report and never decide. An observation names its source and

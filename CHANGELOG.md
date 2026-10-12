@@ -11,66 +11,72 @@ verify one.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-12
+
+A tool outside MCP can now ask for a decision before it acts and report how
+the call ended, through the `experimental` enforcement API (ADR-0051). The
+same policy, approvals and trail apply as to an MCP call. A reference client and
+conformance cases that a client in another language can run come with it.
+`REPEATED_DENIAL` is version 2, which needs a signed route upgrade (see
+Changed). Fixes from a code audit bound several waits and refuse records
+another account could rewrite. From this release a version is a plain
+`X.Y.Z` without the `-alpha` suffix
+([ADR-0025](docs/adr/0025-public-repository-merges-and-releases.md)); the
+project is still alpha, and the `0.x` series still makes no compatibility
+promise between minor versions.
+
 ### Added
 
-- `guardana-gateway run` serves the enforcement API under
-  `listener.kind: enforce_api`: a sweep abandons expired handles, a stop
-  abandons every open execution before the spool drains, `/healthz` reports
-  them under `enforce`, and `doctor` checks such a plane.
-  `listener.max_open_per_run` (default 16) bounds one run's open executions
-  and must stay below `approvals.max_open`. A guide shows a tool of your own
-  decided through it.
+- The enforcement API contract, `guardana.control.enforce.v1alpha1`: the
+  `admit`, `complete` and `abort` messages a tool outside MCP exchanges with
+  the plane as JSON over HTTP on a Unix socket (ADR-0051). Unstable and
+  outside the v1 promise; `buf breaking` does not compare it.
+- `guardana-gateway run` serves it under `listener.kind: enforce_api`, with
+  `listener.socket`, `listener.execution_lifetime` (1s to 1h, no default),
+  `listener.max_body_bytes` (1 KiB to 256 KiB, default 128 KiB),
+  `listener.max_open_per_run` (default 16, below `approvals.max_open`) and a
+  `tools` table that classifies each tool by name. Such a plane needs
+  `runs.dir` and refuses upstreams, overrides and the keys only an MCP
+  listener reads; an MCP listener refuses the new keys. A sweep abandons
+  expired handles. A stop abandons every open execution before the spool
+  drains. `/healthz` reports the adapter's counts under `enforce`, and
+  `doctor` checks an enforcement API plane.
+  [A guide](docs/guides/decide-a-tool-of-your-own.md) shows a tool of your
+  own decided through it.
+- `adapters/enforce`, its adapter, builds a tool's envelope from the run
+  token and the operator's tool table. A handle is single use and expires.
+  The adapter refuses a duplicate request key, closes an expired execution as
+  abandoned and limits a run's open executions. It blocks a rewrite that
+  moves the decided resource, and answers `RECORDED` only once the closing
+  record is written. It declares cooperative enforcement and reads a
+  resource and a run token the way the MCP adapter does
+  (`internal/adapterkit`).
+- `internal/enforceclient`, the reference client, runs a tool only with the
+  bytes an `EXECUTE` answer authorized. It aborts on an obligation it does
+  not know, completes `UNKNOWN` when the tool cannot tell how the call ended,
+  and never sends a request twice. `testdata/enforce/` holds the client and the receiver
+  conformance cases, each with a negative control.
 - The coverage inventory kind `enforce_tool`: a tool an enforcement API plane
   classifies is "decided, not enforced" in every mode, since a cooperating
   client, not the plane, keeps it from its effect.
-
-- The gateway configuration takes `listener.kind: enforce_api`, with
-  `listener.socket`, `listener.execution_lifetime` (1s to 1h, no default),
-  `listener.max_body_bytes` (1 KiB to 256 KiB, default 128 KiB) and a `tools`
-  table that classifies each tool by name. Such a plane needs `runs.dir` and
-  refuses upstreams, overrides and the keys only an MCP listener reads; an
-  MCP listener refuses the new keys.
-
-- `adapters/enforce`, the enforcement API adapter (ADR-0051): a tool outside
-  MCP admits, completes and aborts over a Unix socket; its envelope comes from
-  the run token and the operator's tool table; a handle is single use and
-  expires; a duplicate request key is refused; an expired execution is closed
-  as abandoned; a run is held to a bound of open executions; a rewrite that
-  moves the decided resource is blocked; only a closing record that landed is
-  answered `RECORDED`. The adapter declares cooperative enforcement and
-  shares how a resource is read from the arguments, and how a run token is
-  read, with the MCP adapter (`internal/adapterkit`). The gateway does not
-  serve it yet.
-- The pipeline says which execution it handed out unrecorded
-  (`Disposition.Unrecorded`), and a closing or aborting record the sink
-  refused is `ErrNotRecorded`.
-- `testdata/enforce/receiver/`, the receiver conformance cases with a
-  negative control each; `cases.json` names each case's side.
-
-- `internal/enforceclient`, the reference client of the enforcement API: it
-  runs a tool only with the bytes an `EXECUTE` answer authorized, aborts on an
-  obligation it does not know, completes `UNKNOWN` when the tool cannot tell,
-  and never sends a request twice.
-- `testdata/enforce/`, the client conformance cases with a negative control
-  each, which a client in another language can run.
-
-- The pipeline can close an execution nobody completed or aborted as failed
-  with result unknown and the new reason code `EXECUTION_ABANDONED`, never as
-  a success and without halting the plane; a byte mismatch a client reports
-  through a cooperating adapter blocks only that run's material calls (through
-  an inline one it halts the plane). Metrics count them:
+- The pipeline can close an execution nobody completed or aborted as failed,
+  with result unknown and the new reason code `EXECUTION_ABANDONED`. It never
+  closes one as a success and does not halt the plane for it. A byte mismatch
+  a client reports through a cooperating adapter blocks only that run's
+  material calls; one reported through an inline adapter halts the plane.
+  Metrics count them:
   `pipeline_runs_halted`, `pipeline_abandoned_total`,
   `pipeline_sink_failures_abandoned_total`, `pipeline_halted_mismatch` and
-  `pipeline_halted_sink` (ADR-0051).
-
-- Planned requirements for previewing MCP setup, qualifying coding-agent
-  hooks, reviewing tool-definition changes, simulating candidate policies and
-  reviewing findings with an incident export (B23–B27), with proposed
-  ADR-0050. Nothing of them is built.
-- The enforcement API contract, `guardana.control.enforce.v1alpha1`: the admit,
-  complete and abort messages a tool outside MCP exchanges with the plane over
-  HTTP and JSON on a Unix socket (ADR-0051). Unstable and outside the v1
-  promise; `buf breaking` does not compare it.
+  `pipeline_halted_sink`.
+- [Control and supervision](docs/concepts/control-and-supervision.md)
+  explains the 1.0 goal and what the alpha does today: observation across
+  connected channels, procedure checks and reactions within scoped authority.
+  It keeps the AuthZEN, enforcement and operator API roles apart.
+  Backlog task B28 plans continuous supervision.
+- Planned requirements (B23–B27, proposed ADR-0050): previewing MCP setup,
+  qualifying coding-agent hooks, reviewing tool-definition changes,
+  simulating candidate policies and reviewing findings with an incident
+  export. None is built.
 
 ### Changed
 
@@ -80,7 +86,9 @@ verify one.
   `run` does, and judges pause entries against the tool table.
 - `approvals.max_held_per_run` (default 16, only with `runs.dir`, below
   `approvals.max_held`) bounds one run's held requests; an expired hold no
-  longer counts against its run. A tool's `provider` and `resource_type` are
+  longer counts against its run. A configuration with `runs.dir` and an
+  `approvals.max_held` of 16 or less no longer loads until
+  `approvals.max_held_per_run` is set below it. A tool's `provider` and `resource_type` are
   bounded at 1024 bytes. Under `policy.fail_open_read` an `enforce_tool` line
   says a read runs undecided while the policy is unavailable.
 - The configuration loader refuses a tool name over 1024 bytes, a
@@ -104,7 +112,6 @@ verify one.
   inline. `ENFORCE`, `APPROVE` and `LOCKDOWN` need at least a cooperating
   adapter, and the MCP adapter is inline; `doctor` and the modes table name
   cooperative and inline enforcement apart.
-  adapter, and the MCP adapter is inline.
 - Two approvals from the security maintainers now cover every file ADR-0008
   says the gate is built from (all of `scripts/` and `.github/`, the
   `Makefile`, the linter and buf configurations, `go.mod` and `go.sum`) and
@@ -113,6 +120,9 @@ verify one.
 - README and the home page show exact-action approval, changed tool definitions
   and a denied refund retried through another tool, with their coverage limits
   and links to the policies and runnable example.
+- README, the home page and the social card lead with observing agents and
+  controlling how they act. The 1.0 goal is marked `planned` beside what the
+  alpha does, and the declared repository description says the same.
 
 ### Fixed
 
@@ -187,6 +197,11 @@ verify one.
   Such a request is now in doubt and confirms nothing.
 - A floor store that stopped answering kept one call per policy poll waiting
   in the background; calls to it now take turns, so at most one waits.
+- A raise of a policy floor could wait out its deadline while reads of the
+  same floor directory in the same process ran back to back, since each read
+  took the lock again before the raise next tried. Reads that start while a
+  raise of the process waits now go after it; across processes the lock
+  still favours no one.
 
 ## [0.10.2-alpha] - 2026-10-10
 
@@ -1238,7 +1253,8 @@ yet.
   independence of this project from Guardana
   ([ADR-0024](docs/adr/0024-control-and-guardana-are-independent.md)).
 
-[Unreleased]: https://github.com/guardana/control/compare/v0.10.2-alpha...HEAD
+[Unreleased]: https://github.com/guardana/control/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/guardana/control/releases/tag/v0.11.0
 [0.10.2-alpha]: https://github.com/guardana/control/releases/tag/v0.10.2-alpha
 [0.10.1-alpha]: https://github.com/guardana/control/releases/tag/v0.10.1-alpha
 [0.10.0-alpha]: https://github.com/guardana/control/releases/tag/v0.10.0-alpha

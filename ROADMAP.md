@@ -19,10 +19,10 @@ the complete product model and today's limits.
 
 | Area | Target for 1.0 | Delivery path |
 | --- | --- | --- |
-| Observe | Join tool and API evidence with runtime, proxy and process observations; show coverage, sampling and silence. | B10–B12, B21, B24 |
+| Observe | Join tool and API evidence with runtime, proxy and process observations; show coverage, sampling and silence. | B11, B12, B21, B24 |
 | Supervise | Check procedures, permissions, resources, exceptions and child runs; report deviations and uncertain outcomes. | Existing supervision, B12, B26, B28 |
 | React | Inform, alert, request review, approve one exact action, pause calls or stop later actions within authenticated run, agent or principal scopes. | Existing controls, B12–B14, B26, B28 |
-| Integrate | MCP and custom tools share policy, approvals and evidence; publish each integration's enforcement and bypasses. | B10–B12, B24 |
+| Integrate | MCP and custom tools share policy, approvals and evidence; publish each integration's enforcement and bypasses. | B11, B12, B24 |
 
 B28 adds continuous supervision beside agents. Today's commands run when
 invoked. Sensors report after effects; enforcement points act before them.
@@ -41,9 +41,9 @@ preview, explicit apply and undo are B23; setup never silently widens authority.
 
 ## 2. Integrations without a fork
 
-The Enforcement API and a Python wrapper admit, complete and abort a custom
-tool call, bind run and identity, consume approval once and never retry an
-uncertain effect. Choose one framework or coding-runtime integration with
+A Python wrapper over the `experimental` Enforcement API admits, completes
+and aborts a custom tool call, binds run and identity, consumes approval once
+and never retries an uncertain effect. Choose one framework or coding-runtime integration with
 adopters, then TypeScript and a second integration. Add proxy and process
 sensors. Publish port contracts with language-neutral conformance suites
 after two consumers use each. A public Go seam needs its own record.

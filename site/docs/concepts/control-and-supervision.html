@@ -231,7 +231,7 @@ The default authorization path runs no model.</p>
 <tr>
 <td>Enforcement API</td>
 <td>Let a custom tool ask before acting, receive authorized argument bytes, and report completion or abort under a run token.</td>
-<td><code>planned</code>, specified in ADR-0051</td>
+<td><code>experimental</code>, <a href="/docs/guides/decide-a-tool-of-your-own">guide</a></td>
 </tr>
 <tr>
 <td>Control plane API</td>
@@ -256,8 +256,9 @@ are decided, not enforced by the receiver. A client can ignore a block or
 report bytes it did not send. An uncertain effect is recorded as uncertain
 and is never automatically retried.</p>
 <h2 id="from-the-alpha-to-10">From the alpha to 1.0</h2>
-<p>The alpha already joins an MCP enforcement path, imported runtime traces,
-coverage, procedure checks and run-scoped reaction, with the limits above.
+<p>The alpha already joins an MCP enforcement path, a cooperative enforcement
+API for custom tools, imported runtime traces, coverage, procedure checks and
+run-scoped reaction, with the limits above.
 It uses configured principals and operator-issued run capabilities rather
 than authenticated end users. Its append-only evidence trail is not
 tamper-evident. These limits stay visible until their controls are built and

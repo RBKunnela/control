@@ -104,7 +104,7 @@ The default authorization path runs no model.
 | API | Role | Current stage |
 | --- | --- | --- |
 | AuthZEN authorization evaluation | Consult an organization's external PDP for a veto of configured calls; the signed local policy remains the source of every grant. | `experimental` |
-| Enforcement API | Let a custom tool ask before acting, receive authorized argument bytes, and report completion or abort under a run token. | `planned`, specified in ADR-0051 |
+| Enforcement API | Let a custom tool ask before acting, receive authorized argument bytes, and report completion or abort under a run token. | `experimental`, [guide](../guides/decide-a-tool-of-your-own.md) |
 | Control plane API | Let authenticated operators read evidence and manage approvals, pause and stop within scoped rights. | `planned` |
 
 An AuthZEN veto is an input to the local decision. It can remove permission
@@ -126,8 +126,9 @@ and is never automatically retried.
 
 ## From the alpha to 1.0
 
-The alpha already joins an MCP enforcement path, imported runtime traces,
-coverage, procedure checks and run-scoped reaction, with the limits above.
+The alpha already joins an MCP enforcement path, a cooperative enforcement
+API for custom tools, imported runtime traces, coverage, procedure checks and
+run-scoped reaction, with the limits above.
 It uses configured principals and operator-issued run capabilities rather
 than authenticated end users. Its append-only evidence trail is not
 tamper-evident. These limits stay visible until their controls are built and

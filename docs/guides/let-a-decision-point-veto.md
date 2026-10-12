@@ -22,7 +22,8 @@ silence and runs them
 
 This is the external-veto API. The separate
 [Enforcement API](../adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api.md)
-is `planned` for custom tools asking Control before they act; an operator
+is `experimental`: custom tools ask Control before they act
+([guide](decide-a-tool-of-your-own.md)). An operator
 management API is another role. Their scopes are described in
 [control and supervision](../concepts/control-and-supervision.md#three-api-roles).
 

@@ -90,7 +90,8 @@ Conformance covers block-before-effect, changed arguments, unknown
 obligations, absent and forged run identity, missing hooks, malformed replies,
 service outage, timeout before and after a possible effect, cancellation and
 two concurrent resumes of one approval. Publish the bypass tests with the
-integration. The design uses B10's admission/completion lifecycle and
+integration. The design uses the enforcement API's admission and completion
+([ADR-0051](adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api.md)) and
 [ADR-0039](adr/0039-many-channels-into-one-core.md)'s ports; an
 OpenAI-compatible model proxy alone does not cover local tool execution.
 

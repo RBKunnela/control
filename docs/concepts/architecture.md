@@ -268,8 +268,9 @@ itself, which the gate checks. See
 
 This section is `planned`, in the order [ROADMAP.md](../../ROADMAP.md) gives,
 and [ADR-0039](../adr/0039-many-channels-into-one-core.md) records its shape;
-the observation log and its importer, the coverage map, supervision of one
-run, a local notifier and a stop of one run from a finding are built
+the enforcement API, the observation log and its importer, the coverage map,
+supervision of one run, a local notifier and a stop of one run from a finding
+are built
 ([status.md](../status.md)). The
 request path above stays how a plane stops a call. MCP is the first channel
 of several, and every channel or extension will be one of five ports, and say
@@ -322,9 +323,9 @@ flowchart TB
 Sources: `ROADMAP.md`, `internal/gateway/pause.go`, `adapters/authzen/client.go`.
 
 - **Enforcement points** see a proposed action before its effect and may block
-  it, hold it for an approval or attach obligations. The MCP gateway is one
-  today; an enforcement API will let a framework's hooks be another, from
-  inside the agent.
+  it, hold it for an approval or attach obligations. The MCP gateway is one.
+  A plane serving the enforcement API decides for a cooperating client, which
+  enforces the answer itself; a framework's hooks over it are planned.
 - **Sensors** see an effect after it happened, or an indirect sign of it:
   the traces and logs an agent's runtime writes, a proxy's access log, process
   events. They report and never decide. An observation names its source and
