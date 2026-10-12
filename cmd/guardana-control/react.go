@@ -65,6 +65,10 @@ func reactCommand(args []string, stdout, stderr io.Writer) int {
 	return react(ctx, *a, time.Now(), stdout, stderr)
 }
 
+// beforeStopsLock runs as a pass is about to wait for the lock on --stops.
+// A test signals the command from it.
+var beforeStopsLock = func() {}
+
 // react appends to the list in --stops a stop or a covered line for each
 // finding of the log the route allows to stop a run and the list does not
 // name yet. A route naming a rule that may not stop a run is refused whole
@@ -260,6 +264,7 @@ func (r *reactor) write(id string, c reaction.StopClaim, runID string) error {
 	// The wait is the lock's alone: reading and judging a list near its bound
 	// is work, and a pass over many findings must not spend one budget on it.
 	ctx, cancel := context.WithTimeout(r.ctx, r.lockWait)
+	beforeStopsLock()
 	n, covered, err := stopwrite.AppendFinding(ctx, r.dir, r.route, s, r.now)
 	cancel()
 	switch {

@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -101,7 +102,8 @@ func TestReactPrintsItsCountWhenTheLockIsNeverFree(t *testing.T) {
 // it, waiting on a lock another writer holds, ends on SIGTERM well before its
 // wait of ten seconds would run out, names the finding it was writing and
 // prints its count line. The test takes SIGTERM itself first, so a signal that
-// arrives before the command listens is never the default's.
+// arrives before the command listens is never the default's, and signals only
+// once the pass is about to wait, so a slow start ends no earlier step.
 func TestATerminationEndsAPassWaitingForTheLock(t *testing.T) {
 	tr := newStopTree(t)
 	log := tr.findingsDir(t, "log", finding(1, tr.open, denial, confirmed))
@@ -113,28 +115,8 @@ func TestATerminationEndsAPassWaitingForTheLock(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 		signal.Stop(caught)
 	}()
-	type answer struct {
-		code           int
-		stdout, stderr string
-	}
-	done := make(chan answer, 1)
 	started := time.Now()
-	go func() {
-		args := append([]string{"react", "--findings", log, "--runs", tr.runs, "--stops", tr.stops}, tr.routeArgs()...)
-		code, stdout, stderr := invoke(t, args...)
-		done <- answer{code, stdout, stderr}
-	}()
-	var got answer
-	for waiting := true; waiting; {
-		select {
-		case got = <-done:
-			waiting = false
-		case <-time.After(20 * time.Millisecond):
-			if err := syscall.Kill(os.Getpid(), syscall.SIGTERM); err != nil {
-				t.Fatal(err)
-			}
-		}
-	}
+	got := terminatedAtTheLock(t, append([]string{"react", "--findings", log, "--runs", tr.runs, "--stops", tr.stops}, tr.routeArgs()...))
 	if took := time.Since(started); took > stopsLockWait/2 {
 		t.Errorf("the pass ended after %v; a termination should end its lock wait at once", took)
 	}
@@ -145,6 +127,44 @@ func TestATerminationEndsAPassWaitingForTheLock(t *testing.T) {
 	}
 	if !bytes.Equal(tr.listBytes(t), before) {
 		t.Error("a terminated pass changed the list")
+	}
+}
+
+// commandAnswer is what one in-process run of the command answered.
+type commandAnswer struct {
+	code           int
+	stdout, stderr string
+}
+
+// terminatedAtTheLock runs the command with args and sends this process
+// SIGTERM every 20ms from the moment the pass is about to wait for the lock
+// on --stops until the command ends. A command that ends before it waits
+// fails the test.
+func terminatedAtTheLock(t *testing.T, args []string) commandAnswer {
+	t.Helper()
+	waiting := make(chan struct{})
+	var once sync.Once
+	beforeStopsLock = func() { once.Do(func() { close(waiting) }) }
+	t.Cleanup(func() { beforeStopsLock = func() {} })
+	done := make(chan commandAnswer, 1)
+	go func() {
+		code, stdout, stderr := invoke(t, args...)
+		done <- commandAnswer{code, stdout, stderr}
+	}()
+	select {
+	case got := <-done:
+		t.Fatalf("react ended before it waited for the lock: %d: %q\n%s", got.code, got.stderr, got.stdout)
+	case <-waiting:
+	}
+	for {
+		select {
+		case got := <-done:
+			return got
+		case <-time.After(20 * time.Millisecond):
+			if err := syscall.Kill(os.Getpid(), syscall.SIGTERM); err != nil {
+				t.Fatal(err)
+			}
+		}
 	}
 }
 

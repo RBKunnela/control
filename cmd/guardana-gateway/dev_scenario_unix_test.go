@@ -191,12 +191,18 @@ func TestADevScenarioPastTheBudgetStaysFresh(t *testing.T) {
 	// Dev renews every third of the budget, so twelve seconds leaves room for a
 	// renewal held up eight seconds by a loaded machine before a call goes stale.
 	const budget = 12 * time.Second
+	// The pauses are here to make the scenario long. A plane answers for a
+	// pause read three intervals old, so it reads once a second: a machine
+	// that holds a read up for a moment does not turn a PAUSED into a pause
+	// state the plane cannot vouch for.
+	const rounds = 16
 	d := writeDemo(t, newLiveUpstream(t).url, "5ms", "")
+	rewrite(t, d.config, "poll_interval: 100ms", "poll_interval: 1s")
 	rewrite(t, d.policy, `"maxStaleSeconds":600`, `"maxStaleSeconds":12`)
 	state := filepath.Join(t.TempDir(), "state")
 	started := time.Now()
 	code, stdout, stderr := runDevToEnd(t, 5*time.Minute, "--config", d.config, "--policy", d.policy,
-		"--state", state, "--scenario", pauseThenCall(t, 80))
+		"--state", state, "--scenario", pauseThenCall(t, rounds))
 	took := time.Since(started)
 	if code != exitOK || !strings.HasSuffix(stdout, "pause-then-call.json passed\n") {
 		t.Fatalf("exit %d after %v, want 0 and passed:\n%s\n%s", code, took, stdout, stderr)
@@ -205,8 +211,8 @@ func TestADevScenarioPastTheBudgetStaysFresh(t *testing.T) {
 		t.Fatalf("the scenario took %v, not past twice the %v budget, so it examined no renewal", took, budget)
 	}
 	decisions, digests, confirmed := decisionsOn(t, filepath.Join(state, "1-pause-then-call.json", "trail.jsonl"))
-	if decisions < 80 || len(digests) != 1 {
-		t.Errorf("%d decisions name %d bundle digest(s), want at least 80 naming one", decisions, len(digests))
+	if decisions < rounds || len(digests) != 1 {
+		t.Errorf("%d decisions name %d bundle digest(s), want at least %d naming one", decisions, len(digests), rounds)
 	}
 	if len(confirmed) < 3 {
 		t.Errorf("the decisions carry %d confirmation time(s) over %v; the statement was not renewed", len(confirmed), took)

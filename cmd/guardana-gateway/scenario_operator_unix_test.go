@@ -224,18 +224,21 @@ func TestAFailedPauseAddRemovesOnlyItsOwnEntry(t *testing.T) {
 
 // TestAFailedPauseAddIsCleanedUpAfterAnInterrupt: an interrupt that ends the
 // run while the add is under way still has the entry the add wrote removed.
+// The interrupt comes once the add has written its entry, however long the
+// steps before it take.
 func TestAFailedPauseAddIsCleanedUpAfterAnInterrupt(t *testing.T) {
 	dir := t.TempDir()
 	started := filepath.Join(dir, "started")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
-		for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+		for ctx.Err() == nil {
 			if _, err := os.Stat(started); err == nil {
-				break
+				cancel()
+				return
 			}
+			time.Sleep(10 * time.Millisecond)
 		}
-		cancel()
 	}()
 	add := `echo "OWN global created 2026-01-01T00:00:01Z reason \"$reason\"" >> "$state"; : > ` + started + `; exec sleep 5`
 	left, ran, err := failedAdd(ctx, t, dir, &scenario.Pause{Scope: pause.Scope{Kind: pause.ScopeGlobal}}, add)
