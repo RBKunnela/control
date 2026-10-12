@@ -49,6 +49,15 @@ func TestFieldsSpellTheTable(t *testing.T) {
 		{Path: "overrides.N.returns.sensitivity", Kind: "one of", Env: brand.Env("OVERRIDES_N_RETURNS_SENSITIVITY"),
 			Values: []string{"", "PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED", "SECRET"}},
 		{Path: "flow.max_runs", Kind: "integer", Default: "64", Env: brand.Env("FLOW_MAX_RUNS")},
+		{Path: "listener.kind", Kind: "one of", Default: "stateless_http", Required: true, Env: brand.Env("LISTENER_KIND"),
+			Values: []string{"stateless_http", "stateful_http", "stdio", "enforce_api"}},
+		{Path: "listener.socket", Kind: "string", Env: brand.Env("LISTENER_SOCKET")},
+		{Path: "listener.execution_lifetime", Kind: "duration", Env: brand.Env("LISTENER_EXECUTION_LIFETIME")},
+		{Path: "listener.max_body_bytes", Kind: "bytes, plain or with KiB, MiB, GiB", Default: "128KiB", Env: brand.Env("LISTENER_MAX_BODY_BYTES")},
+		{Path: "tools.N.provider", Kind: "string", Required: true, Env: brand.Env("TOOLS_N_PROVIDER")},
+		{Path: "tools.N.resource_from", Kind: "string", Env: brand.Env("TOOLS_N_RESOURCE_FROM")},
+		{Path: "tools.N.returns.trust", Kind: "one of", Env: brand.Env("TOOLS_N_RETURNS_TRUST"),
+			Values: []string{"", "TRUSTED_INTERNAL", "PARTNER", "UNTRUSTED_EXTERNAL", "USER_CONTROLLED", "MODEL_GENERATED"}},
 	} {
 		got, ok := byPath[want.Path]
 		if !ok {
@@ -129,20 +138,22 @@ func TestFieldsFollowTheTables(t *testing.T) {
 	if len(fields) != before+2 {
 		t.Fatalf("%d fields after two keys were added to the tables, want %d", len(fields), before+2)
 	}
-	scalarAt, itemAt := -1, -1
+	scalarAt, itemAt, toolsAt := -1, -1, -1
 	for i, f := range fields {
-		switch f.Path {
-		case "probe.count":
+		switch {
+		case f.Path == "probe.count":
 			scalarAt = i
-		case "overrides.N.probe":
+		case f.Path == "overrides.N.probe":
 			itemAt = i
+		case toolsAt < 0 && strings.HasPrefix(f.Path, "tools.N."):
+			toolsAt = i
 		}
 	}
 	if scalarAt != len(scalar) {
 		t.Errorf("the added scalar key is at %d, want %d, the end of the scalar table", scalarAt, len(scalar))
 	}
-	if itemAt != len(fields)-1 {
-		t.Errorf("the added override key is at %d, want the end", itemAt)
+	if toolsAt < 0 || itemAt != toolsAt-1 {
+		t.Errorf("the added override key is at %d, want the end of the override keys, before the tool keys at %d", itemAt, toolsAt)
 	}
 }
 
@@ -183,6 +194,9 @@ func TestDefaultsAreValuesTheirKeysTake(t *testing.T) {
 		t.Error(err)
 	}
 	if err := applyDefaults(&OverrideConfig{}, overrideFields); err != nil {
+		t.Error(err)
+	}
+	if err := applyDefaults(&ToolConfig{}, toolFields); err != nil {
 		t.Error(err)
 	}
 }

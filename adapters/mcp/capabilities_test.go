@@ -12,6 +12,7 @@ import (
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/guardana/control/adapters/mcp"
+	"github.com/guardana/control/internal/gateway"
 )
 
 // provenBy maps every capability and every obligation the adapter declares to
@@ -23,13 +24,13 @@ import (
 // declaration the table does not name and a table entry naming a test that is
 // not here.
 var provenBy = map[string][]string{
-	"ObserveRequest": {"TestAllowSendsTheAuthorizedBytes", "TestBlockNeverReachesUpstream"},
-	"ObserveResult":  {"TestAllowSendsTheAuthorizedBytes", "TestUpstreamErrorPassesThrough"},
-	"Block":          {"TestBlockNeverReachesUpstream", "TestZeroDispositionBlocks"},
-	"Authenticates":  {"TestAuthenticatedListenerBindsTheUser", "TestAuthenticatorWithoutUserBlocks"},
-	"BindEndUser":    {"TestAuthenticatedListenerBindsTheUser", "TestUnauthenticatedListenerDeclaresNoBinding"},
-	"SeeResourceIDs": {"TestResourceFromReadsTheResourceID"},
-	"PresentsRuns":   {"TestRunTokenReachesTheAdmission", "TestRefusedRunTokenIsA401BeforeTheLibrary", "TestStdioResolvesEveryMessage"},
+	"ObserveRequest":    {"TestAllowSendsTheAuthorizedBytes", "TestBlockNeverReachesUpstream"},
+	"ObserveResult":     {"TestAllowSendsTheAuthorizedBytes", "TestUpstreamErrorPassesThrough"},
+	"EnforcementInline": {"TestBlockNeverReachesUpstream", "TestZeroDispositionBlocks"},
+	"Authenticates":     {"TestAuthenticatedListenerBindsTheUser", "TestAuthenticatorWithoutUserBlocks"},
+	"BindEndUser":       {"TestAuthenticatedListenerBindsTheUser", "TestUnauthenticatedListenerDeclaresNoBinding"},
+	"SeeResourceIDs":    {"TestResourceFromReadsTheResourceID"},
+	"PresentsRuns":      {"TestRunTokenReachesTheAdmission", "TestRefusedRunTokenIsA401BeforeTheLibrary", "TestStdioResolvesEveryMessage"},
 
 	"read_only":          {"TestReadOnlyObligation"},
 	"restrict_resources": {"TestRestrictResourcesObligation"},
@@ -67,8 +68,8 @@ func TestEveryDeclaredCapabilityIsProven(t *testing.T) {
 }
 
 // declaredCapabilities is the union of what the adapter declares on each kind
-// of listener: every true flag of gateway.Capabilities by its field name, plus
-// every obligation by its type.
+// of listener: every true flag of gateway.Capabilities by its field name, the
+// enforcement it declares, plus every obligation by its type.
 func declaredCapabilities(t *testing.T) []string {
 	t.Helper()
 	var out []string
@@ -81,6 +82,12 @@ func declaredCapabilities(t *testing.T) []string {
 			if field.Type.Kind() == reflect.Bool && value.Field(i).Bool() && !slices.Contains(out, field.Name) {
 				out = append(out, field.Name)
 			}
+		}
+		enforcement := map[gateway.Enforcement]string{
+			gateway.EnforcementCooperative: "EnforcementCooperative", gateway.EnforcementInline: "EnforcementInline",
+		}[caps.Enforcement]
+		if enforcement != "" && !slices.Contains(out, enforcement) {
+			out = append(out, enforcement)
 		}
 		for _, obligation := range caps.Obligations {
 			if !slices.Contains(out, obligation) {

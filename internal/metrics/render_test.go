@@ -94,7 +94,7 @@ func TestEveryStatisticHasOneMetric(t *testing.T) {
 // that claims the statistic carries it, and every other metric is what it is
 // for a zero reading. A row reading a neighbour's field fails here.
 func TestEachMetricReadsItsOwnStatistic(t *testing.T) {
-	base := parse(t, Reading{})
+	base := map[bool][]metricstest.Family{false: parse(t, Reading{}), true: parse(t, Reading{EnforceAPI: true})}
 	code := reasons.All()[0].ID
 	for i, l := range readingLeaves(t) {
 		if l.path == "PauseState" || l.path == "PolicyFreshness" {
@@ -104,14 +104,14 @@ func TestEachMetricReadsItsOwnStatistic(t *testing.T) {
 		got := parse(t, r)
 		for _, m := range Table() {
 			fam, found := metricstest.Find(got, m.Name)
-			if r.SpoolBroken && readsSpool(m) {
+			if leftOut(r, m) {
 				if found {
 					t.Errorf("setting %s left %s in: %+v", l.path, m.Name, fam.Samples)
 				}
 				continue
 			}
 			if m.Reads != l.path {
-				if !reflect.DeepEqual(fam, family(t, base, m.Name)) {
+				if !reflect.DeepEqual(fam, family(t, base[r.EnforceAPI], m.Name)) {
 					t.Errorf("setting %s changed %s: %+v", l.path, m.Name, fam.Samples)
 				}
 				continue
@@ -143,10 +143,12 @@ func carries(t *testing.T, m Metric, fam metricstest.Family, l leaf, key, raw st
 }
 
 // readingWith is a zero Reading but for the statistic l, set to v: a flag
-// is set, and a map holds v under one key, code for the blocks. It returns
+// is set, and a map holds v under one key, code for the blocks. A statistic of
+// the enforcement API adapter is read on a plane that serves it. It returns
 // the key and the value as the text has to spell it.
 func readingWith(t *testing.T, l leaf, v uint64, code string) (r Reading, key, raw string) {
 	t.Helper()
+	r.EnforceAPI = strings.HasPrefix(l.path, "Enforce.")
 	field := reflect.ValueOf(&r).Elem().FieldByIndex(l.index)
 	raw = strconv.FormatUint(v, 10)
 	switch l.kind {
@@ -160,8 +162,10 @@ func readingWith(t *testing.T, l leaf, v uint64, code string) (r Reading, key, r
 		switch l.path {
 		case "Pipeline.Blocks":
 			key = code
-		case "Adapter.RunsRefusedAtRequest", "Adapter.RunsRefusedAtMessage":
+		case "Adapter.RunsRefusedAtRequest", "Adapter.RunsRefusedAtMessage", "Enforce.RunsRefused":
 			key = string(gateway.RunClosed)
+		case "Enforce.Refused":
+			key = "handle_spent"
 		case "Policy.Refused":
 			key = string(policywatch.CauseStatementFuture)
 		}
@@ -268,7 +272,7 @@ var zeroStates = map[string]string{"PauseState": "unknown", "PolicyFreshness": "
 // label is 0, a labelled counter has no sample, the pause state is unknown and
 // the policy unconfirmed, which are the zero states.
 func TestAZeroReadingIsZero(t *testing.T) {
-	for _, f := range parse(t, Reading{}) {
+	for _, f := range slices.Concat(parse(t, Reading{}), parse(t, Reading{EnforceAPI: true})) {
 		m := metric(t, f.Name)
 		switch {
 		case zeroStates[m.Reads] != "":
@@ -280,7 +284,7 @@ func TestAZeroReadingIsZero(t *testing.T) {
 				t.Errorf("%s has samples before anything was counted: %+v", f.Name, f.Samples)
 			}
 		default:
-			if s, ok := f.One(map[string]string{}); !ok || s.Raw != "0" || len(f.Samples) != 1 {
+			if s, ok := f.One(map[string]string{}); !ok || len(f.Samples) != 1 || (s.Raw != "0" && m.Reads != "EnforceAPI") {
 				t.Errorf("%s is not one 0: %+v", f.Name, f.Samples)
 			}
 		}
@@ -377,6 +381,7 @@ func TestNamesFollowTheConventions(t *testing.T) {
 			"Pipeline.Blocks": "code", "Pause.Failed": "cause", "PauseState": "state",
 			"Adapter.RunsRefusedAtRequest": "cause", "Adapter.RunsRefusedAtMessage": "cause",
 			"Policy.Refused": "cause", "PolicyFreshness": "state", "Stops.Failed": "cause",
+			"Enforce.Refused": "code", "Enforce.RunsRefused": "cause",
 		}[m.Reads]
 		if m.Label != wantLabel {
 			t.Errorf("%s reads %s and has label %q, want %q", m.Name, m.Reads, m.Label, wantLabel)
@@ -486,7 +491,7 @@ func parse(t *testing.T, r Reading) []metricstest.Family {
 	}
 	want := 0
 	for _, m := range Table() {
-		if !r.SpoolBroken || !readsSpool(m) {
+		if !leftOut(r, m) {
 			want++
 		}
 	}
@@ -498,6 +503,19 @@ func parse(t *testing.T, r Reading) []metricstest.Family {
 
 // readsSpool is a metric a broken spool leaves out.
 func readsSpool(m Metric) bool { return strings.HasPrefix(m.Reads, "Spool.") }
+
+// leftOut is whether r leaves m out of the text: the MCP adapter's metrics on
+// a plane serving the enforcement API, that adapter's on any other, and a
+// broken spool's.
+func leftOut(r Reading, m Metric) bool {
+	switch {
+	case strings.HasPrefix(m.Reads, "Adapter."):
+		return r.EnforceAPI
+	case strings.HasPrefix(m.Reads, "Enforce."):
+		return !r.EnforceAPI
+	}
+	return r.SpoolBroken && readsSpool(m)
+}
 
 func family(t *testing.T, families []metricstest.Family, name string) metricstest.Family {
 	t.Helper()

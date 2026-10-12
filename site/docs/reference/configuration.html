@@ -34,6 +34,7 @@
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
 <li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
@@ -113,7 +114,7 @@ underscore, sets that key and wins over the file. A key the table does not decla
 refused rather than ignored, and a required key with no default has to be set by the
 file or by a variable. A key with a default is never without a value, so <code>yes</code> under
 Required matters only where the default is empty. Some requirements depend on another
-key and are not in the table: an HTTP listener needs <code>listener.address</code>, and only a
+key and are not in the table: an MCP HTTP listener needs <code>listener.address</code>, and only a
 <code>stateful_http</code> listener takes <code>listener.session_idle</code>, from one minute to a day, and
 <code>listener.max_sessions</code>, from 1 to 16384; an upstream
 needs exactly one of <code>endpoint</code> and <code>command</code>; <code>evidence.fsync_interval</code> is needed
@@ -121,7 +122,20 @@ under the <code>interval</code> policy and refused under <code>every_record</cod
 provider needs <code>approvals.dir</code> and <code>approvals.hold_journal_dir</code>, and that journal
 directory may be neither the spool's nor the approvals directory, nor inside either;
 and <code>APPROVE</code> needs the <code>file</code> provider, since nothing outside the process answers a
-request held in memory. <code>upstream.call_timeout</code>, <code>pdp.timeout</code> and <code>export.timeout</code> have
+request held in memory. An <code>enforce_api</code> listener serves the enforcement API on the Unix
+socket <code>listener.socket</code> names, at most 103 bytes as it resolves; the plane checks that
+the socket's directory is its own with no permission for group or others, and checks
+neither a macOS access control list on it nor a parent directory another account may
+write. It needs <code>runs.dir</code>, <code>listener.execution_lifetime</code>, from one
+second to an hour with no default, and at least one entry of <code>tools</code>, each name once
+and at most 1024 bytes, each <code>resource_from</code> an RFC 6901 pointer of at most 8 tokens of
+64 bytes; <code>listener.max_body_bytes</code> takes 1KiB to 256KiB, <code>listener.max_open_per_run</code> is
+positive and below <code>approvals.max_open</code>, and a tool's resource has the plane's
+<code>tenant_id</code> and <code>environment</code>. It refuses <code>listener.address</code>, <code>listener.origins</code>,
+<code>upstreams</code>, <code>overrides</code> and the <code>upstream.</code> and <code>list.</code> keys, and every other kind refuses
+<code>listener.socket</code>, <code>listener.execution_lifetime</code>, <code>listener.max_body_bytes</code>,
+<code>listener.max_open_per_run</code> and <code>tools</code>.
+<code>upstream.call_timeout</code>, <code>pdp.timeout</code> and <code>export.timeout</code> have
 to be positive, so nothing waits on an upstream's call, the decision point or the
 collector without a bound; <code>upstream.list_timeout</code> may be zero, which is the adapter's
 own bound of <code>30s</code>, longer than the key's <code>10s</code> default, and no duration
@@ -200,13 +214,45 @@ allowed.</p>
 <td>one of</td>
 <td><code>stateless_http</code></td>
 <td>yes</td>
-<td><code>stateless_http</code>, <code>stateful_http</code>, <code>stdio</code></td>
+<td><code>stateless_http</code>, <code>stateful_http</code>, <code>stdio</code>, <code>enforce_api</code></td>
 </tr>
 <tr>
 <td><code>listener.address</code></td>
 <td><code>GUARDANA_CONTROL_LISTENER_ADDRESS</code></td>
 <td>string</td>
 <td><code>127.0.0.1:8080</code></td>
+<td>no</td>
+<td></td>
+</tr>
+<tr>
+<td><code>listener.socket</code></td>
+<td><code>GUARDANA_CONTROL_LISTENER_SOCKET</code></td>
+<td>string</td>
+<td></td>
+<td>no</td>
+<td></td>
+</tr>
+<tr>
+<td><code>listener.execution_lifetime</code></td>
+<td><code>GUARDANA_CONTROL_LISTENER_EXECUTION_LIFETIME</code></td>
+<td>duration</td>
+<td></td>
+<td>no</td>
+<td></td>
+</tr>
+<tr>
+<td><code>listener.max_body_bytes</code></td>
+<td><code>GUARDANA_CONTROL_LISTENER_MAX_BODY_BYTES</code></td>
+<td>bytes, plain or with KiB, MiB, GiB</td>
+<td><code>128KiB</code></td>
+<td>no</td>
+<td></td>
+</tr>
+<tr>
+<td><code>listener.max_open_per_run</code></td>
+<td><code>GUARDANA_CONTROL_LISTENER_MAX_OPEN_PER_RUN</code></td>
+<td>integer</td>
+<td><code>16</code></td>
 <td>no</td>
 <td></td>
 </tr>
@@ -463,6 +509,14 @@ allowed.</p>
 <td><code>GUARDANA_CONTROL_APPROVALS_MAX_HELD</code></td>
 <td>integer</td>
 <td><code>128</code></td>
+<td>no</td>
+<td></td>
+</tr>
+<tr>
+<td><code>approvals.max_held_per_run</code></td>
+<td><code>GUARDANA_CONTROL_APPROVALS_MAX_HELD_PER_RUN</code></td>
+<td>integer</td>
+<td><code>16</code></td>
 <td>no</td>
 <td></td>
 </tr>
@@ -834,6 +888,70 @@ allowed.</p>
 <td>no</td>
 <td>an empty value, <code>PUBLIC</code>, <code>INTERNAL</code>, <code>CONFIDENTIAL</code>, <code>RESTRICTED</code>, <code>SECRET</code></td>
 </tr>
+<tr>
+<td><code>tools.N.name</code></td>
+<td><code>GUARDANA_CONTROL_TOOLS_N_NAME</code></td>
+<td>string</td>
+<td></td>
+<td>yes</td>
+<td></td>
+</tr>
+<tr>
+<td><code>tools.N.effect</code></td>
+<td><code>GUARDANA_CONTROL_TOOLS_N_EFFECT</code></td>
+<td>one of</td>
+<td></td>
+<td>yes</td>
+<td><code>READ</code>, <code>WRITE</code>, <code>DELETE</code>, <code>EXECUTE</code>, <code>COMMUNICATE</code>, <code>TRANSACT</code>, <code>IDENTITY_OR_ACCESS</code>, <code>CONFIGURE</code>, <code>SPAWN_OR_DELEGATE</code></td>
+</tr>
+<tr>
+<td><code>tools.N.provider</code></td>
+<td><code>GUARDANA_CONTROL_TOOLS_N_PROVIDER</code></td>
+<td>string</td>
+<td></td>
+<td>yes</td>
+<td></td>
+</tr>
+<tr>
+<td><code>tools.N.resource_type</code></td>
+<td><code>GUARDANA_CONTROL_TOOLS_N_RESOURCE_TYPE</code></td>
+<td>string</td>
+<td></td>
+<td>yes</td>
+<td></td>
+</tr>
+<tr>
+<td><code>tools.N.resource_from</code></td>
+<td><code>GUARDANA_CONTROL_TOOLS_N_RESOURCE_FROM</code></td>
+<td>string</td>
+<td></td>
+<td>no</td>
+<td></td>
+</tr>
+<tr>
+<td><code>tools.N.trust_zone</code></td>
+<td><code>GUARDANA_CONTROL_TOOLS_N_TRUST_ZONE</code></td>
+<td>one of</td>
+<td></td>
+<td>no</td>
+<td>an empty value, <code>TRUSTED_INTERNAL</code>, <code>PARTNER</code>, <code>UNTRUSTED_EXTERNAL</code>, <code>USER_CONTROLLED</code>, <code>MODEL_GENERATED</code></td>
+</tr>
+<tr>
+<td><code>tools.N.returns.trust</code></td>
+<td><code>GUARDANA_CONTROL_TOOLS_N_RETURNS_TRUST</code></td>
+<td>one of</td>
+<td></td>
+<td>no</td>
+<td>an empty value, <code>TRUSTED_INTERNAL</code>, <code>PARTNER</code>, <code>UNTRUSTED_EXTERNAL</code>, <code>USER_CONTROLLED</code>, <code>MODEL_GENERATED</code></td>
+</tr>
+<tr>
+<td><code>tools.N.returns.sensitivity</code></td>
+<td><code>GUARDANA_CONTROL_TOOLS_N_RETURNS_SENSITIVITY</code></td>
+<td>one of</td>
+<td></td>
+<td>no</td>
+<td>an empty value, <code>PUBLIC</code>, <code>INTERNAL</code>, <code>CONFIDENTIAL</code>, <code>RESTRICTED</code>, <code>SECRET</code></td>
+</tr>
 </tbody>
 </table>
 <p>These keys hold a list or a map, one element per key:</p>
@@ -894,6 +1012,7 @@ A relative path resolves against the directory of the file.</p>
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
 <li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>

@@ -34,6 +34,7 @@
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
 <li><a href="/docs/guides/read-the-evidence-from-a-program" aria-current="page">Read the evidence from a program</a></li>
@@ -163,10 +164,11 @@ guardana-gateway trail export trail.jsonl | bin/evidence-report
 against its decision under an enforcing mode, when a result says the effect
 may have happened, or when the export held a gap, was cut, held no request,
 or went past 100 000 records or 64 MiB: missing evidence is reported as
-unknown or open, never as completed. It reads no effect class, so it cannot
+unknown or open, never as completed; a timeout or an unknown outcome as
+<code>uncertain</code>, not <code>failed</code>. It reads no effect class, so it cannot
 tell whether a material call ran without the approval <code>APPROVE</code> asks for, or
-under <code>LOCKDOWN</code>. Export the whole file, or one request at a time; a filter on
-kinds cuts the links between a request's events.</p>
+under <code>LOCKDOWN</code>. Export the whole file or one request: a filter on kinds
+cuts a request's links.</p>
 <h3 id="4-follow-a-trail-and-raise-alerts">4. Follow a trail and raise alerts</h3>
 <p>With <code>-state DIR</code> the example follows one trail from export to export. <code>-init</code>
 makes the directory, mode 0700, with an empty state and an empty alert log;
@@ -212,7 +214,11 @@ own, <code>&quot;v&quot;:1</code> and <code>experimental</code>, not a contract:
 </tr>
 <tr>
 <td><code>lifecycle_unknown</code></td>
-<td>a request the report calls <code>unknown</code>, with its note</td>
+<td>a request called <code>unknown</code></td>
+</tr>
+<tr>
+<td><code>effect_uncertain</code></td>
+<td>a request called <code>uncertain</code></td>
 </tr>
 <tr>
 <td><code>indeterminate</code></td>
@@ -273,6 +279,7 @@ content (<a href="/docs/concepts/privacy">privacy</a>).</li>
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
 <li><a href="/docs/guides/read-the-evidence-from-a-program" aria-current="page">Read the evidence from a program</a></li>

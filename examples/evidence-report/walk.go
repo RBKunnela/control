@@ -75,11 +75,23 @@ func (w *walker) take(ev *controlv1.Event) string {
 		if end == endUnknown {
 			return note
 		}
-		w.end = end
+		w.ended(end, note)
 	case controlv1.EventKind_EVENT_KIND_ACTION_BLOCKED:
 		w.end = endBlocked
 	}
 	return ""
+}
+
+// ended records how the action ended, beside any note already taken.
+func (w *walker) ended(end, note string) {
+	w.end = end
+	switch {
+	case note == "":
+	case w.note == "":
+		w.note = note
+	default:
+		w.note += "; " + note
+	}
 }
 
 // modeDefect names an event whose mode says nothing is known to have been
@@ -126,8 +138,10 @@ func (w *walker) authorized(id string) string {
 }
 
 // ending reads how a started action ended from its result. Only a success is
-// completed and only a result saying nothing was sent is aborted; a result
-// that is missing, unknown or at odds with its event may hide an effect.
+// completed and only a result saying nothing was sent is aborted. A failure
+// that timed out or whose outcome is unknown is uncertain: the run may have
+// had its effect. A result that is missing or at odds with its event leaves
+// the lifecycle unknown.
 func ending(ev *controlv1.Event) (string, string) {
 	id, kind, r := safe(ev.GetEventId()), ev.GetKind(), ev.GetResult()
 	if r == nil {
@@ -139,8 +153,10 @@ func ending(ev *controlv1.Event) (string, string) {
 		return endCompleted, ""
 	case failed && status == controlv1.ResultStatus_RESULT_STATUS_BLOCKED:
 		return endAborted, ""
-	case failed && (status == controlv1.ResultStatus_RESULT_STATUS_FAILURE || status == controlv1.ResultStatus_RESULT_STATUS_TIMEOUT):
+	case failed && status == controlv1.ResultStatus_RESULT_STATUS_FAILURE:
 		return endFailed, ""
+	case failed && (status == controlv1.ResultStatus_RESULT_STATUS_TIMEOUT || status == controlv1.ResultStatus_RESULT_STATUS_UNKNOWN):
+		return endUncertain, fmt.Sprintf("event %s is %s with result %s: the effect may have happened", id, kindName(kind), status)
 	}
 	return endUnknown, fmt.Sprintf("event %s is %s with result %s: the effect may have happened", id, kindName(kind), status)
 }

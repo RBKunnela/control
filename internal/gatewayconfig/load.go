@@ -119,6 +119,9 @@ func (b *binder) set(path, value, where string) error {
 	if rest, ok := strings.CutPrefix(path, "overrides."); ok {
 		return bindItem(&b.cfg.Overrides, overrideFields, rest, value, where, path, nil)
 	}
+	if rest, ok := strings.CutPrefix(path, "tools."); ok {
+		return bindItem(&b.cfg.Tools, toolFields, rest, value, where, path, nil)
+	}
 	return fmt.Errorf("%s: %s is not a configuration key", where, path)
 }
 
@@ -271,7 +274,7 @@ func (b *binder) header(variable, key, value string) (bool, error) {
 // sequenceOf names the sequence a variable was reaching into, so a variable
 // that names an entry the file does not declare says which sequence it meant.
 func sequenceOf(key string) (string, bool) {
-	sequences := []string{"upstreams", "overrides"}
+	sequences := []string{"upstreams", "overrides", "tools"}
 	for _, l := range listFields {
 		sequences = append(sequences, l.path)
 	}
@@ -284,8 +287,8 @@ func sequenceOf(key string) (string, bool) {
 }
 
 // envNames maps every variable this configuration reads to the key it sets:
-// the scalar keys, and the items of the lists and of the two sequences the
-// file declared, each at its own index.
+// the scalar keys, and the items of the lists and of the sequences the file
+// declared, each at its own index.
 func (b *binder) envNames() map[string]string {
 	known := map[string]string{}
 	for _, f := range configFields {
@@ -312,6 +315,12 @@ func (b *binder) envNames() map[string]string {
 	for i := range b.cfg.Overrides {
 		for _, f := range overrideFields {
 			path := fmt.Sprintf("overrides.%d.%s", i, f.path)
+			known[EnvName(path)] = path
+		}
+	}
+	for i := range b.cfg.Tools {
+		for _, f := range toolFields {
+			path := fmt.Sprintf("tools.%d.%s", i, f.path)
 			known[EnvName(path)] = path
 		}
 	}

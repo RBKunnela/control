@@ -1,0 +1,13 @@
+{
+  "tool": "refund",
+  "arguments": "{\"amount\":10,\"to\":\"acct-7\"}",
+  "run_token": "run-token-1",
+  "deadline_ms": 50,
+  "tool_does": {
+    "status": "COMPLETION_STATUS_SUCCESS",
+    "started_at": "2026-10-11T12:00:01Z",
+    "ended_at": "2026-10-11T12:00:02Z",
+    "result_hash": "sha256:5f1e",
+    "side_effect_confirmation": "refund r-1"
+  }
+}

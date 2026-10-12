@@ -77,6 +77,28 @@ func TestHealthAnswers503WhenTheArgumentsSentWereNotAuthorized(t *testing.T) {
 	}
 }
 
+// TestTheHaltNamesThePlanesHaltsAlone: each flag of the halt answer is the
+// plane's halt of that cause, and a mismatch that halted one run halts
+// neither.
+func TestTheHaltNamesThePlanesHaltsAlone(t *testing.T) {
+	cases := []struct {
+		name  string
+		stats gateway.Stats
+		want  haltAnswer
+	}{
+		{"a run halted on a reported mismatch", gateway.Stats{Mismatches: 1, RunsHalted: 1}, haltAnswer{}},
+		{"the plane halted on a mismatch", gateway.Stats{Halted: true, MismatchHalted: true, Mismatches: 1}, haltAnswer{ExecutedArgsMismatch: true}},
+		{"the plane halted on the sink", gateway.Stats{Halted: true, SinkHalted: true}, haltAnswer{EvidenceUnwritable: true}},
+		{"the sink halt after a run's mismatch", gateway.Stats{Halted: true, SinkHalted: true, Mismatches: 1, RunsHalted: 1}, haltAnswer{EvidenceUnwritable: true}},
+		{"both halts", gateway.Stats{Halted: true, MismatchHalted: true, SinkHalted: true, Mismatches: 1}, haltAnswer{ExecutedArgsMismatch: true, EvidenceUnwritable: true}},
+	}
+	for _, tc := range cases {
+		if got := haltOf(tc.stats); got != tc.want {
+			t.Errorf("%s: halt = %+v, want %+v", tc.name, got, tc.want)
+		}
+	}
+}
+
 // TestHealthAnswers503WhenTheSpoolCannotAnswer holds the other half of
 // invariant 5 at the health answer: a plane whose evidence store cannot report
 // on itself is not a plane anything should route to.

@@ -157,6 +157,7 @@ func (c *call) hold(binding approval.Binding) Disposition {
 		binding:     binding,
 		lastEventID: position,
 		expires:     a.GetExpiresAt().AsTime(),
+		run:         c.flow.openedID(),
 	}
 	// Journalled before anything is told about the hold and after
 	// APPROVAL_REQUESTED is on the trail, so the entry is only ever recorded

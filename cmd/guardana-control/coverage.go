@@ -175,9 +175,14 @@ func readInventoryFile(path string) (*coverage.Inventory, error) {
 	return inv, nil
 }
 
+// enforceListener is the listener kind that serves the enforcement API, whose
+// client enforces what the plane decides (ADR-0051).
+const enforceListener = "enforce_api"
+
 // readPlane loads a plane's configuration with no environment: the shell
 // running this command is not the plane's, so its variables say nothing of
-// how the plane runs.
+// how the plane runs. A plane serving the enforcement API is cooperative, and
+// its tool table names the tools it decides.
 func readPlane(path string) (coverage.Plane, error) {
 	cfg, err := gatewayconfig.Load(path, nil)
 	if err != nil {
@@ -187,7 +192,14 @@ func readPlane(path string) (coverage.Plane, error) {
 	if err != nil {
 		return coverage.Plane{}, refusedInput("plane", path, err)
 	}
-	p := coverage.Plane{Name: path, Mode: mode, FailOpenRead: cfg.Policy.FailOpenRead}
+	p := coverage.Plane{Name: path, Mode: mode, FailOpenRead: cfg.Policy.FailOpenRead, Cooperative: cfg.Listener.Kind == enforceListener}
+	for i, tool := range cfg.Tools {
+		effect, err := contract.ParseEffect(tool.Effect)
+		if err != nil {
+			return coverage.Plane{}, refusedInput("plane", path, fmt.Errorf("tools.%d: %w", i, err))
+		}
+		p.Tools = append(p.Tools, coverage.Tool{Name: tool.Name, Effect: effect})
+	}
 	for _, u := range cfg.Upstreams {
 		p.Upstreams = append(p.Upstreams, u.Name)
 	}

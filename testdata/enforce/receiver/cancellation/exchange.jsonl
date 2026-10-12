@@ -1,0 +1,2 @@
+{"as":"a","post":"/enforce/v1alpha1/admit","body":{"tool":"refund","arguments":{"$b64":"{\"account\":\"acc-1\",\"amount\":5}"}},"status":200,"answer":{"outcome":"OUTCOME_EXECUTE","decision":"*","execution":{"handle":{"$capture":"h"},"expiresAt":"*","authorizedArguments":{"$b64":"{\"account\":\"acc-1\",\"amount\":5}"}}}}
+{"as":"a","post":"/enforce/v1alpha1/complete","body":{"handle":{"$same":"h"},"sentArguments":{"$b64":"{\"account\":\"acc-1\",\"amount\":5}"},"status":"COMPLETION_STATUS_CANCELLED"},"status":200,"answer":{"ending":"ENDING_RECORDED"}}

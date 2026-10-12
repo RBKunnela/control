@@ -34,6 +34,7 @@
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
 <li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
@@ -286,7 +287,7 @@ them:</p>
 <td>the sink takes events again</td>
 </tr>
 <tr>
-<td>an execution past <code>MaxOpen</code>, or a hold past <code>MaxHeld</code></td>
+<td>an execution past <code>MaxOpen</code>, or a hold past <code>MaxHeld</code> or past one run's <code>approvals.max_held_per_run</code></td>
 <td><code>INDETERMINATE</code></td>
 <td><code>EVIDENCE_UNAVAILABLE</code></td>
 <td>an execution closes, or a hold ends</td>
@@ -396,7 +397,7 @@ table is rendered from the mode table in <code>internal/gateway/mode.go</code>.<
 </tr>
 <tr>
 <td><code>SHADOW</code></td>
-<td>observe the request, observe the result, block</td>
+<td>observe the request, observe the result, cooperative or inline enforcement</td>
 <td>planned: refused at start</td>
 </tr>
 <tr>
@@ -406,17 +407,17 @@ table is rendered from the mode table in <code>internal/gateway/mode.go</code>.<
 </tr>
 <tr>
 <td><code>APPROVE</code></td>
-<td>observe the request, observe the result, block</td>
+<td>observe the request, observe the result, cooperative or inline enforcement</td>
 <td>runs</td>
 </tr>
 <tr>
 <td><code>ENFORCE</code></td>
-<td>observe the request, observe the result, block</td>
+<td>observe the request, observe the result, cooperative or inline enforcement</td>
 <td>runs</td>
 </tr>
 <tr>
 <td><code>LOCKDOWN</code></td>
-<td>observe the request, observe the result, block</td>
+<td>observe the request, observe the result, cooperative or inline enforcement</td>
 <td>runs</td>
 </tr>
 <tr>
@@ -503,6 +504,7 @@ causes, <code>internal/pause</code> reads and writes the pause file, and
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
 <li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>

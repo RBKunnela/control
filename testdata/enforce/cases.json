@@ -1,0 +1,394 @@
+{
+  "cases": [
+    {
+      "id": "block",
+      "side": "client",
+      "contract": "v1alpha1",
+      "rule": "BLOCK sends nothing, even beside an execution the answer should not carry",
+      "negative_control": {
+        "defect": "block-executes-with-handle",
+        "breaks": "runs the tool when a BLOCK answer carries an execution"
+      }
+    },
+    {
+      "id": "unspecified-outcome",
+      "side": "client",
+      "contract": "v1alpha1",
+      "rule": "an unspecified outcome reads as BLOCK",
+      "negative_control": {
+        "defect": "unspecified-executes",
+        "breaks": "runs the tool when the outcome is absent and an execution is present"
+      }
+    },
+    {
+      "id": "unknown-outcome",
+      "side": "client",
+      "contract": "v1alpha1",
+      "rule": "an outcome number the client does not know reads as BLOCK",
+      "negative_control": {
+        "defect": "unknown-executes",
+        "breaks": "reads every outcome but BLOCK and PENDING as EXECUTE"
+      }
+    },
+    {
+      "id": "execute-plain",
+      "side": "client",
+      "contract": "v1alpha1",
+      "rule": "EXECUTE runs the tool once with the authorized bytes, then completes",
+      "negative_control": {
+        "defect": "skips-complete",
+        "breaks": "never sends complete after the tool ran"
+      }
+    },
+    {
+      "id": "execute-rewritten",
+      "side": "client",
+      "contract": "v1alpha1",
+      "rule": "the tool gets the authorized bytes, not the proposed ones",
+      "negative_control": {
+        "defect": "sends-proposed",
+        "breaks": "hands the tool the proposed bytes"
+      }
+    },
+    {
+      "id": "execute-without-arguments",
+      "side": "client",
+      "contract": "v1alpha1",
+      "rule": "an EXECUTE without authorized bytes is aborted",
+      "negative_control": {
+        "defect": "sends-proposed-when-empty",
+        "breaks": "hands the tool the proposed bytes when none were authorized"
+      }
+    },
+    {
+      "id": "unknown-obligation",
+      "side": "client",
+      "contract": "v1alpha1",
+      "rule": "an obligation type the client does not know is a reason to abort",
+      "negative_control": {
+        "defect": "ignores-obligations",
+        "breaks": "runs the tool whatever obligations the execution carries"
+      }
+    },
+    {
+      "id": "pending",
+      "side": "client",
+      "contract": "v1alpha1",
+      "rule": "PENDING goes back to the caller; resuming is the caller's new call",
+      "negative_control": {
+        "defect": "resumes-itself",
+        "breaks": "admits again by itself after a PENDING answer"
+      }
+    },
+    {
+      "id": "timeout-before-send",
+      "side": "client",
+      "contract": "v1alpha1",
+      "rule": "a caller whose deadline passed before the tool started aborts NOT_SENT",
+      "negative_control": {
+        "defect": "ignores-context",
+        "breaks": "runs the tool after the caller's deadline passed"
+      }
+    },
+    {
+      "id": "timeout-after-send",
+      "side": "client",
+      "contract": "v1alpha1",
+      "rule": "a tool that cannot tell whether its bytes left is completed UNKNOWN, never aborted",
+      "negative_control": {
+        "defect": "aborts-on-tool-error",
+        "breaks": "aborts NOT_SENT when the tool returns an error"
+      }
+    },
+    {
+      "id": "cancellation",
+      "side": "client",
+      "contract": "v1alpha1",
+      "rule": "a caller cancelled while the tool runs still gets its complete sent",
+      "negative_control": {
+        "defect": "completes-under-caller-context",
+        "breaks": "sends complete under the caller's cancelled context"
+      }
+    },
+    {
+      "id": "tool-unreachable",
+      "side": "client",
+      "contract": "v1alpha1",
+      "rule": "a tool that knows its bytes never left is aborted NOT_SENT",
+      "negative_control": {
+        "defect": "completes-when-not-sent",
+        "breaks": "completes FAILURE when the tool says nothing was sent"
+      }
+    },
+    {
+      "id": "completion",
+      "side": "client",
+      "contract": "v1alpha1",
+      "rule": "complete carries what the tool reported, and only RECORDED says the record landed",
+      "negative_control": {
+        "defect": "reports-success",
+        "breaks": "completes SUCCESS whenever the tool returned no error"
+      }
+    },
+    {
+      "id": "unauthenticated",
+      "side": "client",
+      "contract": "v1alpha1",
+      "rule": "a 401 ends the call; the client never admits again",
+      "negative_control": {
+        "defect": "retries-unauthenticated",
+        "breaks": "admits again after a 401"
+      }
+    },
+    {
+      "id": "malformed-answer",
+      "side": "client",
+      "contract": "v1alpha1",
+      "rule": "an answer with a member the message does not declare is not read",
+      "negative_control": {
+        "defect": "lenient-decoding",
+        "breaks": "discards members it does not know"
+      }
+    },
+    {
+      "id": "handle-spent",
+      "side": "client",
+      "contract": "v1alpha1",
+      "rule": "a HANDLE_SPENT answer to complete is final: its ending is reported, nothing is sent again",
+      "negative_control": {
+        "defect": "retries-complete",
+        "breaks": "sends complete again after a refusal"
+      }
+    },
+    {
+      "id": "block-before-send",
+      "side": "receiver",
+      "contract": "v1alpha1",
+      "rule": "a denied call is answered BLOCK with no execution, and its trail never reaches ACTION_STARTED",
+      "negative_control": {
+        "defect": "enforces-nothing",
+        "breaks": "answers a denied call EXECUTE"
+      }
+    },
+    {
+      "id": "rewritten-bytes",
+      "side": "receiver",
+      "contract": "v1alpha1",
+      "rule": "EXECUTE carries the bytes the rewriting obligations produced, not the proposed ones",
+      "negative_control": {
+        "defect": "hands-out-proposed-bytes",
+        "breaks": "authorizes the proposed bytes"
+      }
+    },
+    {
+      "id": "advisory-obligation",
+      "side": "receiver",
+      "contract": "v1alpha1",
+      "rule": "advisory obligations stay on the recorded decision and out of the execution",
+      "negative_control": {
+        "defect": "hands-out-advisory-obligations",
+        "breaks": "hands the client advisory obligations to honour"
+      }
+    },
+    {
+      "id": "pending-then-resume",
+      "side": "receiver",
+      "contract": "v1alpha1",
+      "rule": "a held call resumes when the same tool and bytes are admitted in the same run after the approval",
+      "negative_control": {
+        "defect": "binds-each-request-anew",
+        "breaks": "binds every request to its own id, so no resume matches its hold"
+      }
+    },
+    {
+      "id": "concurrent-resumes",
+      "side": "receiver",
+      "contract": "v1alpha1",
+      "rule": "of two concurrent resumes of one approval, exactly one is answered EXECUTE",
+      "negative_control": {
+        "defect": "replays-an-execute",
+        "breaks": "hands a duplicate admit the execution another admit was handed"
+      }
+    },
+    {
+      "id": "duplicate-request-key",
+      "side": "receiver",
+      "contract": "v1alpha1",
+      "rule": "an admit with the key of an execution still open in its run is refused before anything is written",
+      "negative_control": {
+        "defect": "ignores-request-keys",
+        "breaks": "drops the request key"
+      }
+    },
+    {
+      "id": "concurrent-request-key",
+      "side": "receiver",
+      "contract": "v1alpha1",
+      "rule": "of two concurrent admits with one key, exactly one is answered EXECUTE",
+      "negative_control": {
+        "defect": "ignores-request-keys",
+        "breaks": "drops the request key"
+      }
+    },
+    {
+      "id": "abandoned-handle",
+      "side": "receiver",
+      "contract": "v1alpha1",
+      "rule": "a handle neither completed nor aborted by its expiry is closed as unknown with EXECUTION_ABANDONED",
+      "negative_control": {
+        "defect": "never-sweeps",
+        "breaks": "never closes an expired execution"
+      }
+    },
+    {
+      "id": "expired-handle",
+      "side": "receiver",
+      "contract": "v1alpha1",
+      "rule": "an expired handle answers HANDLE_UNKNOWN",
+      "negative_control": {
+        "defect": "handles-never-expire",
+        "breaks": "reads a clock its handles never expire by"
+      }
+    },
+    {
+      "id": "foreign-handle",
+      "side": "receiver",
+      "contract": "v1alpha1",
+      "rule": "a handle of another run answers HANDLE_UNKNOWN and stays open for its own",
+      "negative_control": {
+        "defect": "tells-no-run-from-another",
+        "breaks": "resolves every token as one run"
+      }
+    },
+    {
+      "id": "spent-handle",
+      "side": "receiver",
+      "contract": "v1alpha1",
+      "rule": "a spent handle answers HANDLE_SPENT with its ending to its own run, and HANDLE_UNKNOWN to another",
+      "negative_control": {
+        "defect": "keeps-one-spent-handle",
+        "breaks": "forgets a spent handle once another is spent"
+      }
+    },
+    {
+      "id": "missing-run-token",
+      "side": "receiver",
+      "contract": "v1alpha1",
+      "rule": "a request with no run token is refused with 401 and writes nothing",
+      "negative_control": {
+        "defect": "token-optional",
+        "breaks": "serves a request with no token as a known run"
+      }
+    },
+    {
+      "id": "foreign-run-token",
+      "side": "receiver",
+      "contract": "v1alpha1",
+      "rule": "a token of another identity's run, or of no run, is refused with 401",
+      "negative_control": {
+        "defect": "ignores-run-identity",
+        "breaks": "resolves a run whoever it is for"
+      }
+    },
+    {
+      "id": "closed-run",
+      "side": "receiver",
+      "contract": "v1alpha1",
+      "rule": "a token of a closed run is refused with 401",
+      "negative_control": {
+        "defect": "ignores-closed-runs",
+        "breaks": "resolves a closed run"
+      }
+    },
+    {
+      "id": "unclassified-tool",
+      "side": "receiver",
+      "contract": "v1alpha1",
+      "rule": "a tool the table does not name is blocked as ACTION_UNCLASSIFIED",
+      "negative_control": {
+        "defect": "classifies-every-tool",
+        "breaks": "classifies a tool the table does not name"
+      }
+    },
+    {
+      "id": "unknown-field",
+      "side": "receiver",
+      "contract": "v1alpha1",
+      "rule": "an admit with a member the message does not declare is MALFORMED and writes nothing",
+      "negative_control": {
+        "defect": "lenient-decoding",
+        "breaks": "drops members it does not know"
+      }
+    },
+    {
+      "id": "unknown-version",
+      "side": "receiver",
+      "contract": "v1alpha1",
+      "rule": "a path naming another version is UNSUPPORTED_VERSION",
+      "negative_control": {
+        "defect": "any-version",
+        "breaks": "serves any version as v1alpha1"
+      }
+    },
+    {
+      "id": "timeout-after-send",
+      "side": "receiver",
+      "contract": "v1alpha1",
+      "rule": "a TIMEOUT or UNKNOWN completion is recorded as it is, never as a failure",
+      "negative_control": {
+        "defect": "records-an-uncertain-effect-as-failed",
+        "breaks": "records a timeout as a failure"
+      }
+    },
+    {
+      "id": "timeout-before-send",
+      "side": "receiver",
+      "contract": "v1alpha1",
+      "rule": "an abort NOT_SENT is recorded as a call given up before it was sent",
+      "negative_control": {
+        "defect": "records-not-sent-as-a-mismatch",
+        "breaks": "records every abort as an argument mismatch"
+      }
+    },
+    {
+      "id": "cancellation",
+      "side": "receiver",
+      "contract": "v1alpha1",
+      "rule": "a CANCELLED completion is recorded as cancelled",
+      "negative_control": {
+        "defect": "records-a-cancel-as-success",
+        "breaks": "records a cancel as a success"
+      }
+    },
+    {
+      "id": "completion",
+      "side": "receiver",
+      "contract": "v1alpha1",
+      "rule": "a completion lands as ACTION_COMPLETED before ENDING_RECORDED is answered",
+      "negative_control": {
+        "defect": "answers-without-recording",
+        "breaks": "answers RECORDED without closing the execution"
+      }
+    },
+    {
+      "id": "reported-mismatch",
+      "side": "receiver",
+      "contract": "v1alpha1",
+      "rule": "a reported mismatch halts the material calls of its own run and of no other",
+      "negative_control": {
+        "defect": "halts-the-plane",
+        "breaks": "halts every run on a reported mismatch"
+      }
+    },
+    {
+      "id": "untrusted-read-then-send",
+      "side": "receiver",
+      "contract": "v1alpha1",
+      "rule": "what the tool table says a tool returns raises its run: after an untrusted confidential read, a send to an untrusted destination is not executed",
+      "negative_control": {
+        "defect": "ignores-result-labels",
+        "breaks": "takes every tool's results as trusted and public"
+      }
+    }
+  ]
+}

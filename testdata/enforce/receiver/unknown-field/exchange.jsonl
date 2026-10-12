@@ -1,0 +1,1 @@
+{"as":"a","post":"/enforce/v1alpha1/admit","body":{"tool":"read_file","arguments":{"$b64":"{\"path\":\"notes.txt\"}"},"effect":"EFFECT_CLASS_READ"},"status":400,"answer":{"code":"ERROR_CODE_MALFORMED","message":"*"}}

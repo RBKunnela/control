@@ -149,6 +149,7 @@ const plainQuery = `{"limit":1000}`
 // a plane records a call nothing classifies.
 type proposal struct {
 	mode, trace, span, tenant, project, tool, upstream, kind string
+	protocol                                                 string
 	eventTenant, eventProject                                string
 	envelopeTenant, envelopeProject                          string
 	occurred                                                 time.Duration
@@ -166,6 +167,9 @@ func (p proposal) line() string {
 	effect := `,"effect":"EFFECT_CLASS_READ"`
 	if p.unclassified {
 		effect = ""
+	}
+	if p.protocol != "" {
+		effect += fmt.Sprintf(`,"protocol":%q`, p.protocol)
 	}
 	return fmt.Sprintf(`{"type":"event","offset":0,"cursor":"c","event":{"eventId":"e1",`+
 		`"kind":"EVENT_KIND_ACTION_PROPOSED","projectId":%q,"tenantId":%q,"occurredAt":%q,"schemaVersion":"1.0",`+

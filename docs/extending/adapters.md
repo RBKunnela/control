@@ -2,7 +2,7 @@
 title: Writing an adapter
 summary: The internal seam a protocol adapter implements, the capabilities it declares, and the conformance each one owes.
 type: extending
-covers: [internal/gateway/adapter.go, internal/gateway/mode.go, adapters/mcp/**]
+covers: [internal/gateway/adapter.go, internal/gateway/mode.go, internal/adapterkit/**, adapters/mcp/**, adapters/enforce/**]
 stability: development
 ---
 
@@ -11,8 +11,26 @@ stability: development
 An adapter translates one protocol into the envelope the kernel decides about,
 and turns the plane's answer back into something that protocol can say. It holds
 no policy meaning: what a call means lives in the envelope it builds and in the
-policy (invariant 7). The MCP adapter in `adapters/mcp/` is the worked example
-and the only one today.
+policy (invariant 7). The MCP adapter in `adapters/mcp/` is the worked example.
+
+The second adapter, `adapters/enforce/`, serves the enforcement API of
+[ADR-0051](../adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api.md)
+to a tool outside MCP, on a Unix socket; the gateway serves it under
+`listener.kind: enforce_api`
+([guides/decide-a-tool-of-your-own.md](../guides/decide-a-tool-of-your-own.md)). It builds each envelope from the run token and
+the operator's table of tools, never from what the client says about the
+call, and declares `Cooperative`: the client sends the bytes, so nothing the
+plane holds proves it obeyed. It applies no obligation of its own, aborts an
+execution whose rewritten bytes name another resource than the one decided
+on, closes what a client reports with `CloseReported`, and closes with
+`Abandon` every execution nobody completed or aborted before its handle
+expired. Its receiver cases are files in
+[testdata/enforce/](../../testdata/enforce/README.md).
+
+Both adapters read a call's resource id, the resource rewritten bytes name
+and the run token through `internal/adapterkit`, so one call is never read
+two ways: a spelling one adapter normalised and the other did not would slip
+past a rule the first one enforces.
 
 An adapter is the enforcement point among the five ports of
 [ADR-0039](../adr/0039-many-channels-into-one-core.md): it sees a call before
@@ -39,8 +57,8 @@ internal until its own decision promotes it. The second adapter is what shows
 what the two have in common; until then the shape may change with a minor
 release. That is what `stability: development` means here. An adapter is
 therefore written inside this repository: Go refuses to let another module
-import `internal/`, and an integration built elsewhere waits for the planned
-enforcement API ([backlog](../backlog.md), B10).
+import `internal/`, and an integration built elsewhere speaks the enforcement
+API instead.
 
 There is no declared API version. An adapter is compiled into the binary, so the
 compiler is the check that fails loudly, and
@@ -56,7 +74,9 @@ failing:
 | --- | --- |
 | `Admit(ctx, Admission) Disposition` | decide one proposed action. There is no error return: whatever the plane cannot do is a block that names its cause, and the zero `Disposition` blocks |
 | `Close(ctx, disposition, sent, result) error` | the call ran; here are the bytes that went and what came back. An error means the record is not durable, or that the bytes sent were not the authorized ones (`ErrExecutedArgsMismatch`), which the record says; `ErrNothingSent` for nil bytes, after the execution is aborted; `ErrNotMinted` for a disposition this plane did not mint or closed already |
+| `CloseReported(ctx, disposition, sent, result) error` | `Close` for bytes a cooperating caller reports it sent. A mismatch halts the material calls of that execution's opened run only, until restart; with no opened run, past `MaxRuns` halted runs, or through an adapter that is not cooperative, it halts the plane as `Close` does |
 | `Abort(ctx, disposition, cause) error` | the call did not go, and the cause says why: the adapter's own pre-send check, an obligation it applies, a call it cannot route, a call its protocol cannot express |
+| `Abandon(ctx, disposition) error` | nobody closed or aborted the execution before it expired. It is closed as `ACTION_FAILED` with status `UNKNOWN` and `EXECUTION_ABANDONED`, since nobody knows whether the call ran, and halts nothing; `ErrNotMinted` for an execution that is not open |
 | `Preview(ctx, Admission) *Decision` | what a call would be decided, recording and holding nothing. It is what shaping a listing asks |
 
 An adapter that has an execution open closes or aborts it. An execution left
@@ -68,7 +88,7 @@ open holds one of the plane's `MaxOpen` slots until the process ends.
 | --- | --- |
 | `ObserveRequest` | Needed by every mode: without seeing the call there is nothing to decide |
 | `ObserveResult` | Needed by every mode: a trail with no closing record is an action nobody knows the end of |
-| `Block` | Needed by `APPROVE`, `ENFORCE` and `LOCKDOWN`. An adapter without it never runs under a mode that enforces |
+| `Enforcement` | How far the adapter keeps a call from its effect: `None` (the zero value) cannot; `Cooperative` hands the decision to a caller that enforces it, so the plane decides and records and nothing proves the caller obeyed; `Inline` holds the path to the effect, as the MCP adapter holds the upstream connection. `APPROVE`, `ENFORCE` and `LOCKDOWN` need at least `Cooperative`, and a value outside the three is refused at start |
 | `Authenticates` | The adapter's listener establishes an end user before a call is translated |
 | `BindEndUser` | The adapter carries that identity into the envelope's principal. Declared without `Authenticates`, it is refused at start: without authentication there is no user, only a claim |
 | `PresentsRuns` | The adapter resolves a run token on every call and hands the run in. Declared exactly when the plane has a runs directory, or the plane is refused at start (ADR-0034) |
@@ -125,7 +145,10 @@ their `ArgumentsHashV1`. An adapter digests what it is about to send, compares,
 and aborts rather than sending on a mismatch. After the call it hands `Close` the
 bytes it sent, and the plane digests them again against its own record. An
 adapter that sends anything else is the failure this check exists to catch, and
-it stops the plane for material calls until it restarts.
+it stops the plane for material calls until it restarts. Bytes a caller only
+reports go to `CloseReported`, which stops that caller's run instead: a report
+proves nothing about what the caller sent, and a plane-wide halt would let one
+caller stop every run.
 
 ## Conformance
 
@@ -137,7 +160,7 @@ protocol, in the adapter's own package:
 | --- | --- |
 | `ObserveRequest` | the envelope the plane was asked about carries what the call said |
 | `ObserveResult` | the closing record carries the upstream's outcome |
-| `Block` | the upstream is never called for a blocked call |
+| `Enforcement` | `Inline`: the upstream is never called for a blocked call. `Cooperative`: a blocked call is answered as a block, and what the caller does about it is its own |
 | `Authenticates`, `BindEndUser` | the principal is the credential's user, and a request with no user is refused |
 | `SeeDelegation` | the chain in the call reaches the envelope |
 | `SeeResourceIDs` | the resource id in the envelope is the one the call names |
@@ -156,7 +179,7 @@ type Echo struct{}
 func (Echo) Name() string { return "echo" }
 
 func (Echo) Capabilities() gateway.Capabilities {
-    return gateway.Capabilities{ObserveRequest: true, ObserveResult: true, Block: true}
+    return gateway.Capabilities{ObserveRequest: true, ObserveResult: true, Enforcement: gateway.EnforcementInline}
 }
 
 func (e Echo) Handle(ctx context.Context, p *gateway.Pipeline, in Request) Response {

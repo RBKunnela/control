@@ -34,6 +34,7 @@
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
 <li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
@@ -1723,12 +1724,18 @@ outside the v1 promise and free to change without a major version.
 <code>Obligation</code> and adds no field to any v1 message.
 <a href="/docs/adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api">ADR-0051</a>
 records the receiver, <code>adapters/enforce</code>, and <a href="/docs/status">status.md</a> says
-whether it is built.</p>
+whether it is built. The cases a client in any language is held to are files
+in <a href="https://github.com/guardana/control/blob/main/testdata/enforce/README.md">testdata/enforce/</a>, which the reference
+client in <code>internal/enforceclient</code> runs.</p>
 <h3 id="transport">Transport</h3>
 <p>HTTP/1.1 on a Unix domain socket, never a TCP address. Every request is a
 <code>POST</code> whose body is one JSON object and carries the run's token in the
 <code>Run-Token</code> header
-(<a href="/docs/adr/0034-a-run-the-operator-opens-has-an-identity-of-its-own">ADR-0034</a>).</p>
+(<a href="/docs/adr/0034-a-run-the-operator-opens-has-an-identity-of-its-own">ADR-0034</a>).
+The socket's mode and its directory's owner limit who can present a token. The
+receiver checks mode bits, not darwin access control lists, and the socket's
+own directory, not the ones above it: an account that may write one of those
+can move the socket's directory aside.</p>
 <table>
 <thead>
 <tr>
@@ -1851,7 +1858,7 @@ closing records.</p>
 </tr>
 <tr>
 <td><code>ERROR_CODE_HANDLE_SPENT</code></td>
-<td>a handle already completed or aborted, answered to its own run until it expires</td>
+<td>a handle already completed or aborted, answered to its own run until it expires or the receiver's bound on the spent handles it keeps forgets it, after which it is <code>ERROR_CODE_HANDLE_UNKNOWN</code></td>
 </tr>
 <tr>
 <td><code>ERROR_CODE_DUPLICATE_REQUEST</code></td>
@@ -1859,7 +1866,7 @@ closing records.</p>
 </tr>
 <tr>
 <td><code>ERROR_CODE_UNAVAILABLE</code></td>
-<td>the receiver cannot serve requests now</td>
+<td>the receiver cannot serve requests now, or the run holds as many open executions as the receiver allows</td>
 </tr>
 </tbody>
 </table>
@@ -1872,6 +1879,7 @@ closing records.</p>
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
 <li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>

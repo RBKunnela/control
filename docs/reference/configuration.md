@@ -14,7 +14,7 @@ underscore, sets that key and wins over the file. A key the table does not decla
 refused rather than ignored, and a required key with no default has to be set by the
 file or by a variable. A key with a default is never without a value, so `yes` under
 Required matters only where the default is empty. Some requirements depend on another
-key and are not in the table: an HTTP listener needs `listener.address`, and only a
+key and are not in the table: an MCP HTTP listener needs `listener.address`, and only a
 `stateful_http` listener takes `listener.session_idle`, from one minute to a day, and
 `listener.max_sessions`, from 1 to 16384; an upstream
 needs exactly one of `endpoint` and `command`; `evidence.fsync_interval` is needed
@@ -22,7 +22,20 @@ under the `interval` policy and refused under `every_record`; the `file` approva
 provider needs `approvals.dir` and `approvals.hold_journal_dir`, and that journal
 directory may be neither the spool's nor the approvals directory, nor inside either;
 and `APPROVE` needs the `file` provider, since nothing outside the process answers a
-request held in memory. `upstream.call_timeout`, `pdp.timeout` and `export.timeout` have
+request held in memory. An `enforce_api` listener serves the enforcement API on the Unix
+socket `listener.socket` names, at most 103 bytes as it resolves; the plane checks that
+the socket's directory is its own with no permission for group or others, and checks
+neither a macOS access control list on it nor a parent directory another account may
+write. It needs `runs.dir`, `listener.execution_lifetime`, from one
+second to an hour with no default, and at least one entry of `tools`, each name once
+and at most 1024 bytes, each `resource_from` an RFC 6901 pointer of at most 8 tokens of
+64 bytes; `listener.max_body_bytes` takes 1KiB to 256KiB, `listener.max_open_per_run` is
+positive and below `approvals.max_open`, and a tool's resource has the plane's
+`tenant_id` and `environment`. It refuses `listener.address`, `listener.origins`,
+`upstreams`, `overrides` and the `upstream.` and `list.` keys, and every other kind refuses
+`listener.socket`, `listener.execution_lifetime`, `listener.max_body_bytes`,
+`listener.max_open_per_run` and `tools`.
+`upstream.call_timeout`, `pdp.timeout` and `export.timeout` have
 to be positive, so nothing waits on an upstream's call, the decision point or the
 collector without a bound; `upstream.list_timeout` may be zero, which is the adapter's
 own bound of `30s`, longer than the key's `10s` default, and no duration
@@ -52,8 +65,12 @@ Rendered from the field table in `internal/gatewayconfig`. Rebuild it with
 | `tenant_id` | `GUARDANA_CONTROL_TENANT_ID` | string |  | yes |  |
 | `environment` | `GUARDANA_CONTROL_ENVIRONMENT` | string |  | no |  |
 | `log.level` | `GUARDANA_CONTROL_LOG_LEVEL` | one of | `info` | no | `debug`, `info`, `warn`, `error` |
-| `listener.kind` | `GUARDANA_CONTROL_LISTENER_KIND` | one of | `stateless_http` | yes | `stateless_http`, `stateful_http`, `stdio` |
+| `listener.kind` | `GUARDANA_CONTROL_LISTENER_KIND` | one of | `stateless_http` | yes | `stateless_http`, `stateful_http`, `stdio`, `enforce_api` |
 | `listener.address` | `GUARDANA_CONTROL_LISTENER_ADDRESS` | string | `127.0.0.1:8080` | no |  |
+| `listener.socket` | `GUARDANA_CONTROL_LISTENER_SOCKET` | string |  | no |  |
+| `listener.execution_lifetime` | `GUARDANA_CONTROL_LISTENER_EXECUTION_LIFETIME` | duration |  | no |  |
+| `listener.max_body_bytes` | `GUARDANA_CONTROL_LISTENER_MAX_BODY_BYTES` | bytes, plain or with KiB, MiB, GiB | `128KiB` | no |  |
+| `listener.max_open_per_run` | `GUARDANA_CONTROL_LISTENER_MAX_OPEN_PER_RUN` | integer | `16` | no |  |
 | `listener.session_idle` | `GUARDANA_CONTROL_LISTENER_SESSION_IDLE` | duration | `30m` | no |  |
 | `listener.max_sessions` | `GUARDANA_CONTROL_LISTENER_MAX_SESSIONS` | integer | `1024` | no |  |
 | `listener.principal.id` | `GUARDANA_CONTROL_LISTENER_PRINCIPAL_ID` | string |  | yes |  |
@@ -86,6 +103,7 @@ Rendered from the field table in `internal/gatewayconfig`. Rebuild it with
 | `approvals.ttl` | `GUARDANA_CONTROL_APPROVALS_TTL` | duration | `15m` | no |  |
 | `approvals.retry_after` | `GUARDANA_CONTROL_APPROVALS_RETRY_AFTER` | duration | `30s` | no |  |
 | `approvals.max_held` | `GUARDANA_CONTROL_APPROVALS_MAX_HELD` | integer | `128` | no |  |
+| `approvals.max_held_per_run` | `GUARDANA_CONTROL_APPROVALS_MAX_HELD_PER_RUN` | integer | `16` | no |  |
 | `approvals.max_open` | `GUARDANA_CONTROL_APPROVALS_MAX_OPEN` | integer | `256` | no |  |
 | `approvals.max_records` | `GUARDANA_CONTROL_APPROVALS_MAX_RECORDS` | integer | `1024` | no |  |
 | `approvals.max_record_bytes` | `GUARDANA_CONTROL_APPROVALS_MAX_RECORD_BYTES` | integer | `16384` | no |  |
@@ -132,6 +150,14 @@ Rendered from the field table in `internal/gatewayconfig`. Rebuild it with
 | `overrides.N.trust_zone` | `GUARDANA_CONTROL_OVERRIDES_N_TRUST_ZONE` | one of |  | no | an empty value, `TRUSTED_INTERNAL`, `PARTNER`, `UNTRUSTED_EXTERNAL`, `USER_CONTROLLED`, `MODEL_GENERATED` |
 | `overrides.N.returns.trust` | `GUARDANA_CONTROL_OVERRIDES_N_RETURNS_TRUST` | one of |  | no | an empty value, `TRUSTED_INTERNAL`, `PARTNER`, `UNTRUSTED_EXTERNAL`, `USER_CONTROLLED`, `MODEL_GENERATED` |
 | `overrides.N.returns.sensitivity` | `GUARDANA_CONTROL_OVERRIDES_N_RETURNS_SENSITIVITY` | one of |  | no | an empty value, `PUBLIC`, `INTERNAL`, `CONFIDENTIAL`, `RESTRICTED`, `SECRET` |
+| `tools.N.name` | `GUARDANA_CONTROL_TOOLS_N_NAME` | string |  | yes |  |
+| `tools.N.effect` | `GUARDANA_CONTROL_TOOLS_N_EFFECT` | one of |  | yes | `READ`, `WRITE`, `DELETE`, `EXECUTE`, `COMMUNICATE`, `TRANSACT`, `IDENTITY_OR_ACCESS`, `CONFIGURE`, `SPAWN_OR_DELEGATE` |
+| `tools.N.provider` | `GUARDANA_CONTROL_TOOLS_N_PROVIDER` | string |  | yes |  |
+| `tools.N.resource_type` | `GUARDANA_CONTROL_TOOLS_N_RESOURCE_TYPE` | string |  | yes |  |
+| `tools.N.resource_from` | `GUARDANA_CONTROL_TOOLS_N_RESOURCE_FROM` | string |  | no |  |
+| `tools.N.trust_zone` | `GUARDANA_CONTROL_TOOLS_N_TRUST_ZONE` | one of |  | no | an empty value, `TRUSTED_INTERNAL`, `PARTNER`, `UNTRUSTED_EXTERNAL`, `USER_CONTROLLED`, `MODEL_GENERATED` |
+| `tools.N.returns.trust` | `GUARDANA_CONTROL_TOOLS_N_RETURNS_TRUST` | one of |  | no | an empty value, `TRUSTED_INTERNAL`, `PARTNER`, `UNTRUSTED_EXTERNAL`, `USER_CONTROLLED`, `MODEL_GENERATED` |
+| `tools.N.returns.sensitivity` | `GUARDANA_CONTROL_TOOLS_N_RETURNS_SENSITIVITY` | one of |  | no | an empty value, `PUBLIC`, `INTERNAL`, `CONFIDENTIAL`, `RESTRICTED`, `SECRET` |
 
 These keys hold a list or a map, one element per key:
 

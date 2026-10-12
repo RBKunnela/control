@@ -34,6 +34,7 @@
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
 <li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
@@ -522,6 +523,11 @@ only an approved, unconsumed record passes.</p>
 <td>the hold is refused with <code>EVIDENCE_UNAVAILABLE</code></td>
 </tr>
 <tr>
+<td><code>approvals.max_held_per_run</code></td>
+<td>the requests one opened run holds and not yet expired; 16 unless set, read only beside <code>runs.dir</code>, and below <code>approvals.max_held</code></td>
+<td>the hold is refused with <code>EVIDENCE_UNAVAILABLE</code></td>
+</tr>
+<tr>
 <td><code>approvals.max_open</code></td>
 <td>the executions handed out and not yet closed</td>
 <td>the call, resumed or not, blocks with <code>EVIDENCE_UNAVAILABLE</code></td>
@@ -606,6 +612,7 @@ wire is in <code>adapters/mcp/answer.go</code>.</p>
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
 <li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>

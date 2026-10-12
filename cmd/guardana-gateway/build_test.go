@@ -18,3 +18,15 @@ func TestThePipelineTakesTheConfiguredBoundOnRuns(t *testing.T) {
 		}
 	}
 }
+
+// TestThePipelineTakesTheConfiguredBoundOnOneRunsHolds: approvals.max_held_per_run
+// is the bound the pipeline holds one opened run to, for values that are not
+// the default.
+func TestThePipelineTakesTheConfiguredBoundOnOneRunsHolds(t *testing.T) {
+	for _, held := range []int{1, 3, 97} {
+		p := &plane{cfg: &gatewayconfig.Config{Approvals: gatewayconfig.ApprovalsConfig{MaxHeld: 128, MaxHeldPerRun: held}}}
+		if got := p.pipelineConfig(nil, controlv1.EnforcementMode_ENFORCEMENT_MODE_ENFORCE, nil).MaxHeldPerRun; got != held {
+			t.Errorf("approvals.max_held_per_run %d reaches the pipeline as %d", held, got)
+		}
+	}
+}

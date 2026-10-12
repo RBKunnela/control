@@ -35,7 +35,13 @@ func Prefix() string { return strings.ReplaceAll(brand.Slug, "-", "_") + "_" }
 // Reading is every statistic a plane reports, as its seams return them.
 type Reading struct {
 	Pipeline gateway.Stats
-	Adapter  adaptermcp.Stats
+	// Adapter is what the MCP adapter counted, written only where EnforceAPI
+	// is false.
+	Adapter adaptermcp.Stats
+	// EnforceAPI says the plane serves the enforcement API: Enforce is
+	// written and Adapter left out.
+	EnforceAPI bool
+	Enforce    EnforceCounts
 	// Pause is what the pause reader counted; zero where no pause file is
 	// configured.
 	Pause pause.PollStats
@@ -92,13 +98,14 @@ func Table() []Metric {
 }
 
 // Render writes every metric of the table for r, but those reading the spool
-// when r.SpoolBroken says it could not be read. It refuses a reading it cannot
-// write truthfully: a counter below zero, a pause state outside the four, and
-// counts outside a label's closed set that sum past a counter's range.
+// when r.SpoolBroken says it could not be read, and those of the adapter the
+// plane does not serve. It refuses a reading it cannot write truthfully: a
+// counter below zero, a pause state outside the four, and counts outside a
+// label's closed set that sum past a counter's range.
 func Render(r Reading) ([]byte, error) {
 	var b bytes.Buffer
 	for _, m := range table {
-		if r.SpoolBroken && strings.HasPrefix(m.Reads, "Spool.") {
+		if !written(r, m) {
 			continue
 		}
 		samples, err := m.read(r)
@@ -121,6 +128,19 @@ func Render(r Reading) ([]byte, error) {
 		return nil, errors.New("the table is empty")
 	}
 	return b.Bytes(), nil
+}
+
+// written is whether r carries m.
+func written(r Reading, m Metric) bool {
+	switch {
+	case strings.HasPrefix(m.Reads, "Adapter."):
+		return !r.EnforceAPI
+	case strings.HasPrefix(m.Reads, "Enforce."):
+		return r.EnforceAPI
+	case strings.HasPrefix(m.Reads, "Spool."):
+		return !r.SpoolBroken
+	}
+	return true
 }
 
 var (

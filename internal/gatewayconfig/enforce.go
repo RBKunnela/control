@@ -1,0 +1,194 @@
+package gatewayconfig
+
+import (
+	"fmt"
+	"strings"
+	"time"
+
+	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/pkg/contract"
+)
+
+// enforceKind is the listener that serves the enforcement API on a Unix
+// socket instead of MCP (ADR-0051).
+const enforceKind = "enforce_api"
+
+// The bounds of listener.execution_lifetime and listener.max_body_bytes, the
+// enforcement adapter's own.
+const (
+	minExecutionLifetime = time.Second
+	maxExecutionLifetime = time.Hour
+	minBodyBytes         = 1 << 10
+	maxBodyBytes         = 1 << 18
+)
+
+// maxSocketPath is the longest socket path the adapter binds: what a macOS
+// sockaddr_un holds, its terminator taken off.
+const maxSocketPath = 103
+
+// ToolConfig is the operator's classification of one tool of an enforcement
+// API listener, by name. Its resource's tenant and environment are the
+// listener's.
+type ToolConfig struct {
+	Name         string
+	Effect       string
+	Provider     string
+	ResourceType string
+	ResourceFrom string
+	// TrustZone is where a call to the tool sends data; ReturnsTrust and
+	// ReturnsSensitivity are what its results contain (ADR-0021).
+	TrustZone          string
+	ReturnsTrust       string
+	ReturnsSensitivity string
+}
+
+// Zone is the destination's trust zone of the tool. Empty is UNSPECIFIED,
+// which the contract counts as untrusted.
+func (t *ToolConfig) Zone() (controlv1.TrustZone, error) { return zoneNamed(t.TrustZone) }
+
+// ReturnsZone is the trust zone of what the tool returns. Empty is
+// UNSPECIFIED, which counts as untrusted.
+func (t *ToolConfig) ReturnsZone() (controlv1.TrustZone, error) { return zoneNamed(t.ReturnsTrust) }
+
+// ReturnsLevel is the highest sensitivity the tool returns. Empty is
+// UNSPECIFIED, which is unknown.
+func (t *ToolConfig) ReturnsLevel() (controlv1.Sensitivity, error) {
+	return sensitivityNamed(t.ReturnsSensitivity)
+}
+
+// enforceOnly are the scalar keys only an enforce_api listener reads.
+var enforceOnly = []string{"listener.socket", "listener.execution_lifetime", "listener.max_body_bytes", "listener.max_open_per_run"}
+
+// mcpOnly are the scalar keys only an MCP listener reads: they bound an
+// upstream or shape a tool list, and an enforce_api listener has neither.
+var mcpOnly = []string{"listener.address", "upstream.call_timeout", "upstream.list_timeout", "list.shaping", "list.ttl"}
+
+// checkKindKeys refuses a key the listener's kind does not read: a key that
+// applies to nothing is a setting the operator believes is in force.
+func (c *Config) checkKindKeys() error {
+	if c.Listener.Kind == enforceKind {
+		return c.checkEnforceAPI()
+	}
+	for _, key := range enforceOnly {
+		if c.wasSet(key) {
+			return fmt.Errorf("%s: only an %s listener reads it, and the kind is %s", key, enforceKind, c.Listener.Kind)
+		}
+	}
+	if len(c.Tools) > 0 {
+		return fmt.Errorf("tools: only an %s listener classifies tools by name, and the kind is %s; an MCP tool is classified in overrides", enforceKind, c.Listener.Kind)
+	}
+	return nil
+}
+
+// checkEnforceAPI holds an enforce_api listener to what the enforcement
+// adapter serves: a Unix socket, operator-opened runs, a bounded execution
+// lifetime and body, and a tool table in place of upstreams (ADR-0051).
+func (c *Config) checkEnforceAPI() error {
+	for _, key := range mcpOnly {
+		if c.wasSet(key) {
+			return fmt.Errorf("%s: an %s listener serves no MCP client and calls no upstream, so it reads no %s", key, enforceKind, key)
+		}
+	}
+	if err := c.checkEnforceListener(); err != nil {
+		return err
+	}
+	switch {
+	case c.Runs.Dir == "":
+		return fmt.Errorf("runs.dir: no value, and every request to an %s listener presents a run token, which only an opened run has (ADR-0034)", enforceKind)
+	case len(c.Upstreams) > 0:
+		return fmt.Errorf("upstreams: an %s listener calls no upstream; its tools are named in tools", enforceKind)
+	case len(c.Overrides) > 0:
+		return fmt.Errorf("overrides: an %s listener classifies its tools in tools", enforceKind)
+	}
+	return c.checkTools()
+}
+
+// checkEnforceListener refuses an origin, a missing socket or one whose path
+// the adapter cannot bind, a lifetime or a body bound the adapter would
+// refuse, and a bound on a run's open executions that is not below the
+// plane's: at the plane's own bound a handful of runs would hold every slot.
+func (c *Config) checkEnforceListener() error {
+	l := c.Listener
+	switch {
+	case len(l.Origins) > 0:
+		return fmt.Errorf("listener.origins: an %s listener serves a Unix socket, which no browser calls", enforceKind)
+	case l.Socket == "":
+		return fmt.Errorf("listener.socket: an %s listener serves on a Unix socket, and no path is named", enforceKind)
+	case len(c.Resolve(l.Socket)) > maxSocketPath:
+		return fmt.Errorf("listener.socket: the path is %d bytes as it resolves, and a socket path is at most %d", len(c.Resolve(l.Socket)), maxSocketPath)
+	case l.ExecutionLifetime == 0:
+		return fmt.Errorf("listener.execution_lifetime: no value, and an %s listener needs one; it has no default", enforceKind)
+	case l.ExecutionLifetime < minExecutionLifetime || l.ExecutionLifetime > maxExecutionLifetime:
+		return fmt.Errorf("listener.execution_lifetime: %v is outside %v to %v", l.ExecutionLifetime, minExecutionLifetime, maxExecutionLifetime)
+	case l.MaxBodyBytes < minBodyBytes || l.MaxBodyBytes > maxBodyBytes:
+		return fmt.Errorf("listener.max_body_bytes: %d is outside %d to %d", l.MaxBodyBytes, minBodyBytes, maxBodyBytes)
+	case l.MaxOpenPerRun < 1:
+		return fmt.Errorf("listener.max_open_per_run: %d is not a positive bound", l.MaxOpenPerRun)
+	case c.Approvals.MaxOpen <= l.MaxOpenPerRun:
+		return fmt.Errorf("approvals.max_open: %d is at or below listener.max_open_per_run, %d, so one run could hold every open execution of the plane", c.Approvals.MaxOpen, l.MaxOpenPerRun)
+	}
+	return nil
+}
+
+// checkTools refuses an empty table, which would leave every call
+// unclassified, an entry missing a key, a name, a provider, a resource type or
+// a resource pointer the adapter refuses, and a second entry of one name.
+func (c *Config) checkTools() error {
+	if len(c.Tools) == 0 {
+		return fmt.Errorf("tools: no tool; an %s listener blocks every call to a tool it does not classify", enforceKind)
+	}
+	seen := make(map[string]int, len(c.Tools))
+	for i := range c.Tools {
+		t := &c.Tools[i]
+		if err := checkRequired(t, toolFields, fmt.Sprintf("tools.%d.", i)); err != nil {
+			return err
+		}
+		for _, f := range []struct{ key, value string }{{"name", t.Name}, {"provider", t.Provider}, {"resource_type", t.ResourceType}} {
+			if len(f.value) > contract.MaxStringBytes {
+				return fmt.Errorf("tools.%d.%s: %d bytes, past the %d a %s takes", i, f.key, len(f.value), contract.MaxStringBytes, f.key)
+			}
+		}
+		if err := checkPointer(t.ResourceFrom); err != nil {
+			return fmt.Errorf("tools.%d.resource_from: %w", i, err)
+		}
+		if first, ok := seen[t.Name]; ok {
+			return fmt.Errorf("tools.%d: the tool %s is classified by tools.%d already", i, quoteValue(t.Name), first)
+		}
+		seen[t.Name] = i
+	}
+	return nil
+}
+
+// The bounds on a resource pointer the adapters take.
+const (
+	maxPointerTokens    = 8
+	maxPointerTokenSize = 64
+)
+
+// checkPointer refuses what the adapters' pointer check refuses: a pointer
+// that is not RFC 6901 or is past its bounds. The approver's binary loads
+// this package and may not link the adapters' kit, which reaches the
+// gateway, so a test holds the two checks to one answer.
+func checkPointer(p string) error {
+	if p == "" {
+		return nil
+	}
+	if !strings.HasPrefix(p, "/") {
+		return fmt.Errorf("%s does not start with /", quoteValue(p))
+	}
+	tokens := strings.Split(p[1:], "/")
+	if len(tokens) > maxPointerTokens {
+		return fmt.Errorf("%d tokens, limit %d", len(tokens), maxPointerTokens)
+	}
+	for _, tok := range tokens {
+		if len(tok) > maxPointerTokenSize {
+			return fmt.Errorf("a token of %d bytes, limit %d", len(tok), maxPointerTokenSize)
+		}
+		for i := 0; i < len(tok); i++ {
+			if tok[i] == '~' && (i+1 >= len(tok) || (tok[i+1] != '0' && tok[i+1] != '1')) {
+				return fmt.Errorf("a ~ that escapes neither ~ nor /")
+			}
+		}
+	}
+	return nil
+}

@@ -105,7 +105,7 @@ func TestNoRequest(t *testing.T) {
 	for name, in := range map[string]string{"no event": newExport("1.0").whole(), "a filter that passed nothing": filtered} {
 		t.Run(name, func(t *testing.T) {
 			check(t, reportCase{in: in,
-				totals: "totals: requests 0, completed 0, failed 0, aborted 0, blocked 0, open 0, unknown 0; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
+				totals: "totals: requests 0, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 0, unknown 0; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
 				code:   1, stderr: "accounts for no request"})
 		})
 	}
@@ -120,7 +120,7 @@ func TestConflictAcrossRequests(t *testing.T) {
 	check(t, reportCase{in: newExport("1.0").event(r1...).event(r2...).whole(),
 		rows: []string{"t\tp\tr1\trun-r1\tread_order\tALLOW\tRULE_ALLOW\t-\tno\t-\tunknown\tevent r1-4 is held twice with different content",
 			"t\tp\tr2\trun-r2\trefund\tDENY\tRULE_DENY\tDENY RULE_DENY\tno\t-\tunknown\tevent r1-4 is held twice with different content"},
-		totals: "totals: requests 2, completed 0, failed 0, aborted 0, blocked 0, open 0, unknown 2; gaps 0, duplicates 0, conflicting 1, refused 0" + endReached,
+		totals: "totals: requests 2, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 0, unknown 2; gaps 0, duplicates 0, conflicting 1, refused 0" + endReached,
 		code:   1, stderr: "different content"})
 }
 

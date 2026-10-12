@@ -38,6 +38,7 @@ type Config struct {
 
 	Upstreams []UpstreamConfig
 	Overrides []OverrideConfig
+	Tools     []ToolConfig
 
 	// dir is the directory of the file the configuration was read from, which
 	// every relative path in it resolves against.
@@ -47,19 +48,25 @@ type Config struct {
 	source map[string]string
 }
 
-// ListenerConfig is the agent-facing side.
+// ListenerConfig is the agent-facing side. Socket, ExecutionLifetime,
+// MaxBodyBytes and MaxOpenPerRun are the enforcement API's, which serves on a
+// Unix socket.
 type ListenerConfig struct {
-	Kind            string
-	Address         string
-	Origins         []string
-	PrincipalID     string
-	PrincipalType   string
-	PrincipalTenant string
-	AgentID         string
-	AgentFramework  string
-	AgentVersion    string
-	SessionIdle     time.Duration
-	MaxSessions     int
+	Kind              string
+	Address           string
+	Socket            string
+	ExecutionLifetime time.Duration
+	MaxBodyBytes      int64
+	MaxOpenPerRun     int
+	Origins           []string
+	PrincipalID       string
+	PrincipalType     string
+	PrincipalTenant   string
+	AgentID           string
+	AgentFramework    string
+	AgentVersion      string
+	SessionIdle       time.Duration
+	MaxSessions       int
 }
 
 // HealthConfig is the plane's own answers.
@@ -127,7 +134,10 @@ type ApprovalsConfig struct {
 	TTL            time.Duration
 	RetryAfter     time.Duration
 	MaxHeld        int
-	MaxOpen        int
+	// MaxHeldPerRun bounds the requests one opened run holds; only a plane
+	// with a runs directory reads it.
+	MaxHeldPerRun int
+	MaxOpen       int
 	// MaxRecords and MaxRecordBytes bound the approvals directory and the
 	// hold journal alike: one held request is one record and one entry.
 	MaxRecords     int

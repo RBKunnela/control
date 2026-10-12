@@ -1,20 +1,18 @@
 package mcp
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/adapterkit"
 	"github.com/guardana/control/internal/canon"
 	"github.com/guardana/control/internal/gateway"
 	"github.com/guardana/control/internal/secretscan"
@@ -23,13 +21,6 @@ import (
 // fingerprintDomain separates a tool fingerprint from every other digest
 // this module computes.
 const fingerprintDomain = "mcp-tool-fingerprint/v1\n"
-
-// Bounds on a ResourceFrom pointer: enough for any argument shape a tool
-// reads, and small enough that resolving one costs nothing.
-const (
-	maxPointerTokens    = 8
-	maxPointerTokenSize = 64
-)
 
 // Override is the operator's classification of one tool definition. The
 // fingerprint pins the definition it classifies: a tool whose name matches
@@ -125,83 +116,10 @@ func Fingerprint(t *mcp.Tool) (string, error) {
 // checkPointer refuses a ResourceFrom pointer that is not RFC 6901 or is
 // outside the bound. The empty pointer names no resource and is allowed.
 func checkPointer(p string) error {
-	if p == "" {
-		return nil
-	}
-	if !strings.HasPrefix(p, "/") {
-		return fmt.Errorf("%w: ResourceFrom %q does not start with /", ErrOverride, p)
-	}
-	tokens := strings.Split(p[1:], "/")
-	if len(tokens) > maxPointerTokens {
-		return fmt.Errorf("%w: ResourceFrom has %d tokens, limit %d", ErrOverride, len(tokens), maxPointerTokens)
-	}
-	for _, tok := range tokens {
-		if len(tok) > maxPointerTokenSize {
-			return fmt.Errorf("%w: a ResourceFrom token is %d bytes, limit %d", ErrOverride, len(tok), maxPointerTokenSize)
-		}
-		for i := 0; i < len(tok); i++ {
-			if tok[i] == '~' && (i+1 >= len(tok) || (tok[i+1] != '0' && tok[i+1] != '1')) {
-				return fmt.Errorf("%w: ResourceFrom has a bare ~", ErrOverride)
-			}
-		}
+	if err := adapterkit.CheckPointer(p); err != nil {
+		return fmt.Errorf("%w: ResourceFrom: %w", ErrOverride, err)
 	}
 	return nil
-}
-
-// resolvePointer reads the resource id at pointer p in the arguments: a
-// string as it stands, a number as the text the canonical form writes for it,
-// anything else as no id. It decodes the document itself rather than through
-// the canonical form, which the digest applies later to the same bytes.
-func resolvePointer(args []byte, p string) string {
-	if p == "" || len(args) == 0 {
-		return ""
-	}
-	dec := json.NewDecoder(bytes.NewReader(args))
-	dec.UseNumber()
-	var v any
-	if err := dec.Decode(&v); err != nil {
-		return ""
-	}
-	for _, tok := range strings.Split(p[1:], "/") {
-		var ok bool
-		if v, ok = step(v, tok); !ok {
-			return ""
-		}
-	}
-	return scalarText(v)
-}
-
-// step descends one pointer token: a member of an object, or an element of
-// an array by a decimal index without a leading zero.
-func step(v any, tok string) (any, bool) {
-	tok = strings.ReplaceAll(strings.ReplaceAll(tok, "~1", "/"), "~0", "~")
-	switch c := v.(type) {
-	case map[string]any:
-		next, ok := c[tok]
-		return next, ok
-	case []any:
-		i, err := strconv.Atoi(tok)
-		if err != nil || i < 0 || i >= len(c) || (len(tok) > 1 && tok[0] == '0') {
-			return nil, false
-		}
-		return c[i], true
-	}
-	return nil, false
-}
-
-// scalarText is a number's canonical text, so every spelling of one value,
-// 42 and 42.0 among them, names one resource. A number the canonical form
-// refuses names none; the digest refuses the call it is in.
-func scalarText(v any) string {
-	switch s := v.(type) {
-	case string:
-		return s
-	case json.Number:
-		if text, err := canon.CanonicalizeJSON([]byte(s.String())); err == nil {
-			return string(text)
-		}
-	}
-	return ""
 }
 
 // manifest is the adapter's own view of every upstream's tools, keyed by

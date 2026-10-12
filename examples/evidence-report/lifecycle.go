@@ -14,6 +14,9 @@ import (
 const (
 	endCompleted = "completed"
 	endFailed    = "failed"
+	// endUncertain is a run that ended without anyone knowing whether its
+	// effect happened: a timeout, or an outcome reported unknown.
+	endUncertain = "uncertain"
 	endAborted   = "aborted"
 	endBlocked   = "blocked"
 	endOpen      = "open"

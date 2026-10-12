@@ -1,0 +1,4 @@
+{"as":"a","post":"/enforce/v1alpha1/admit","body":{"tool":"refund","arguments":{"$b64":"{\"account\":\"acc-1\",\"amount\":5}"}},"status":200,"answer":{"outcome":"OUTCOME_PENDING","decision":"*","pending":{"approvalId":{"$capture":"p"},"actionDigest":"*","expiresAt":"*","retryAfter":"5s"}}}
+{"approve":"p"}
+{"advance":"5s"}
+{"together":{"requests":[{"as":"a","post":"/enforce/v1alpha1/admit","body":{"tool":"refund","arguments":{"$b64":"{\"account\":\"acc-1\",\"amount\":5}"}},"status":200},{"as":"a","post":"/enforce/v1alpha1/admit","body":{"tool":"refund","arguments":{"$b64":"{\"account\":\"acc-1\",\"amount\":5}"}},"status":200}],"answers":[{"status":200,"answer":{"outcome":"OUTCOME_EXECUTE","decision":"*","execution":{"handle":{"$capture":"h"},"expiresAt":"*","authorizedArguments":{"$b64":"{\"account\":\"acc-1\",\"amount\":5}"}}}},{"status":200,"answer":{"outcome":"OUTCOME_BLOCK","decision":"*"}}]}}

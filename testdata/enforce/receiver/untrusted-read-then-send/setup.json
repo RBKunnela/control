@@ -1,0 +1,66 @@
+{
+  "mode": "ENFORCEMENT_MODE_ENFORCE",
+  "rules": [
+    {
+      "id": "allow-reads",
+      "effect": "ALLOW",
+      "when": {
+        "action": {
+          "effect": [
+            "READ"
+          ]
+        }
+      }
+    },
+    {
+      "id": "allow-mail",
+      "effect": "ALLOW",
+      "when": {
+        "action": {
+          "name": [
+            "send_mail"
+          ]
+        }
+      }
+    },
+    {
+      "id": "deny-toxic",
+      "effect": "DENY",
+      "reason": "TOXIC_FLOW_SENSITIVE_TO_EXTERNAL",
+      "when": {
+        "flow": {
+          "toxicAtLeast": "CONFIDENTIAL"
+        }
+      }
+    }
+  ],
+  "tools": [
+    {
+      "name": "read_file",
+      "effect": "EFFECT_CLASS_READ",
+      "provider": "files",
+      "resource_type": "file",
+      "resource_from": "/path",
+      "returns_trust": "TRUST_ZONE_UNTRUSTED_EXTERNAL",
+      "returns_sensitivity": "SENSITIVITY_CONFIDENTIAL"
+    },
+    {
+      "name": "send_mail",
+      "effect": "EFFECT_CLASS_COMMUNICATE",
+      "provider": "mail",
+      "resource_type": "mailbox",
+      "resource_from": "/to",
+      "trust_zone": "TRUST_ZONE_UNTRUSTED_EXTERNAL",
+      "returns_trust": "TRUST_ZONE_TRUSTED_INTERNAL",
+      "returns_sensitivity": "SENSITIVITY_PUBLIC"
+    }
+  ],
+  "execution_lifetime": "60s",
+  "runs": [
+    {
+      "name": "a",
+      "token": "run-a.token-a",
+      "for": "listener"
+    }
+  ]
+}

@@ -19,11 +19,14 @@ var gateTrees = []string{"internal/testreport", "internal/docscheck"}
 // route floors and their refresh, the owner and mode checks of the
 // configuration and of every store, the runs a stop names and the findings a
 // stop rests on, the external decision point's answer, which may only veto,
-// and the MCP adapter, which classifies a tool, sends the authorized bytes under
-// their obligations, names a call's run and withholds answers.
+// the MCP adapter, which classifies a tool, sends the authorized bytes under
+// their obligations, names a call's run and withholds answers, and the
+// enforcement API adapter, which builds a tool's envelope from the operator's
+// table, resolves a run token and hands out single-use handles, and what
+// both adapters read a call's resource and run token through.
 var authorizationTrees = []string{
 	"internal/reaction", "internal/policystate", "internal/gatewayconfig", "internal/files", "internal/policywatch",
-	"internal/runs", "internal/findinglog", "adapters/authzen", "adapters/mcp",
+	"internal/runs", "internal/findinglog", "adapters/authzen", "adapters/mcp", "adapters/enforce", "internal/adapterkit",
 }
 
 const githubSettings = "scripts/lib/github-settings.sh"

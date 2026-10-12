@@ -1,0 +1,1 @@
+{"as":"c","post":"/enforce/v1alpha1/admit","body":{"tool":"read_file","arguments":{"$b64":"{\"path\":\"notes.txt\"}"}},"status":401,"answer":{"code":"ERROR_CODE_UNAUTHENTICATED","message":"*"}}

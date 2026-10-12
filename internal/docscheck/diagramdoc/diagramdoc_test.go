@@ -57,11 +57,11 @@ func TestModeTableNamesTheRecordsRows(t *testing.T) {
 	text := string(out)
 	for _, want := range []string{
 		"| `OBSERVE` | observe the request, observe the result | runs |",
-		"| `SHADOW` | observe the request, observe the result, block | planned: refused at start |",
+		"| `SHADOW` | observe the request, observe the result, cooperative or inline enforcement | planned: refused at start |",
 		"| `WARN` | observe the request, observe the result | planned: refused at start |",
-		"| `APPROVE` | observe the request, observe the result, block | runs |",
-		"| `ENFORCE` | observe the request, observe the result, block | runs |",
-		"| `LOCKDOWN` | observe the request, observe the result, block | runs |",
+		"| `APPROVE` | observe the request, observe the result, cooperative or inline enforcement | runs |",
+		"| `ENFORCE` | observe the request, observe the result, cooperative or inline enforcement | runs |",
+		"| `LOCKDOWN` | observe the request, observe the result, cooperative or inline enforcement | runs |",
 		"| `UNSPECIFIED` | nothing: refused as configuration | refused at start |",
 		"| a number no build declares | nothing: refused as configuration | refused at start |",
 	} {

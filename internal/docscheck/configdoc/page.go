@@ -116,7 +116,7 @@ func lead(listDefault string) string {
 		"refused rather than ignored, and a required key with no default has to be set by the\n" +
 		"file or by a variable. A key with a default is never without a value, so `yes` under\n" +
 		"Required matters only where the default is empty. Some requirements depend on another\n" +
-		"key and are not in the table: an HTTP listener needs `listener.address`, and only a\n" +
+		"key and are not in the table: an MCP HTTP listener needs `listener.address`, and only a\n" +
 		"`stateful_http` listener takes `listener.session_idle`, from one minute to a day, and\n" +
 		"`listener.max_sessions`, from 1 to 16384; an upstream\n" +
 		"needs exactly one of `endpoint` and `command`; `evidence.fsync_interval` is needed\n" +
@@ -124,7 +124,20 @@ func lead(listDefault string) string {
 		"provider needs `approvals.dir` and `approvals.hold_journal_dir`, and that journal\n" +
 		"directory may be neither the spool's nor the approvals directory, nor inside either;\n" +
 		"and `APPROVE` needs the `file` provider, since nothing outside the process answers a\n" +
-		"request held in memory. `upstream.call_timeout`, `pdp.timeout` and `export.timeout` have\n" +
+		"request held in memory. An `enforce_api` listener serves the enforcement API on the Unix\n" +
+		"socket `listener.socket` names, at most 103 bytes as it resolves; the plane checks that\n" +
+		"the socket's directory is its own with no permission for group or others, and checks\n" +
+		"neither a macOS access control list on it nor a parent directory another account may\n" +
+		"write. It needs `runs.dir`, `listener.execution_lifetime`, from one\n" +
+		"second to an hour with no default, and at least one entry of `tools`, each name once\n" +
+		"and at most 1024 bytes, each `resource_from` an RFC 6901 pointer of at most 8 tokens of\n" +
+		"64 bytes; `listener.max_body_bytes` takes 1KiB to 256KiB, `listener.max_open_per_run` is\n" +
+		"positive and below `approvals.max_open`, and a tool's resource has the plane's\n" +
+		"`tenant_id` and `environment`. It refuses `listener.address`, `listener.origins`,\n" +
+		"`upstreams`, `overrides` and the `upstream.` and `list.` keys, and every other kind refuses\n" +
+		"`listener.socket`, `listener.execution_lifetime`, `listener.max_body_bytes`,\n" +
+		"`listener.max_open_per_run` and `tools`.\n" +
+		"`upstream.call_timeout`, `pdp.timeout` and `export.timeout` have\n" +
 		"to be positive, so nothing waits on an upstream's call, the decision point or the\n" +
 		"collector without a bound; `" + listTimeoutKey + "` may be zero, which is the adapter's\n" +
 		"own bound of `" + adaptermcp.DefaultListTimeout.String() + "`, longer than the key's `" + listDefault + "` default, and no duration\n" +

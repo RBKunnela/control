@@ -35,7 +35,10 @@ type healthAnswer struct {
 	Approvals map[string]any `json:"approvals"`
 	// Runs says whether runs are local or opened by the operator, and what
 	// the listener refused and the pipeline could not read or raise.
-	Runs     map[string]any `json:"runs"`
+	Runs map[string]any `json:"runs"`
+	// Enforce is what an enforcement API listener's adapter counted, left
+	// out on an MCP listener.
+	Enforce  map[string]any `json:"enforce,omitempty"`
 	Spool    map[string]any `json:"spool"`
 	Exporter map[string]any `json:"exporter"`
 	// Pause is the operator's pause state as a call admitted now would be
@@ -58,7 +61,9 @@ type pauseAnswer struct {
 	Global  bool   `json:"global"`
 	// UnlistedOnly names the entries of an upstream this plane does not have,
 	// or of a tool its upstream does not list: each pauses only calls that
-	// carry no provider, which are calls to names no upstream lists.
+	// carry no provider, which are calls to names no upstream lists. On an
+	// enforce_api plane it names the entries of a provider or a tool its tool
+	// table lacks, which pause no call the plane runs.
 	UnlistedOnly []string `json:"unlisted_only"`
 	// AgeMS is left out where nothing was read: a plane with no pause file.
 	AgeMS *int64 `json:"age_ms,omitempty"`
@@ -67,12 +72,20 @@ type pauseAnswer struct {
 	Polls map[string]any `json:"polls,omitempty"`
 }
 
-// haltAnswer names the halts of ADR-0013 by what raised each. The pipeline
-// reports one flag for both, so a mismatch is read from its own counter and an
-// unwritable closing record from the flag that outlives it.
+// haltAnswer names the plane's halts of ADR-0013 by what raised each. A
+// mismatch that halted one opened run halts neither flag; RunsHalted counts
+// it.
 type haltAnswer struct {
 	ExecutedArgsMismatch bool `json:"executed_args_mismatch"`
 	EvidenceUnwritable   bool `json:"evidence_unwritable"`
+}
+
+// haltOf names the plane's halts in stats.
+func haltOf(stats gateway.Stats) haltAnswer {
+	return haltAnswer{
+		ExecutedArgsMismatch: stats.MismatchHalted,
+		EvidenceUnwritable:   stats.SinkHalted,
+	}
 }
 
 type bundleAnswer struct {
@@ -120,10 +133,16 @@ func (p *plane) metrics(src gateway.PauseSource, clock func() time.Time) ([]byte
 		p.logger.Warn("metrics: the spool cannot report", "err", err)
 	}
 	r := metrics.Reading{
-		Pipeline: p.pipeline.Stats(), Adapter: p.adapter.Stats(),
+		Pipeline:   p.pipeline.Stats(),
 		PauseState: snap.State(), PauseEntries: len(snap.Entries()),
 		Spool: spoolStats, SpoolBroken: err != nil,
 		Exporter: p.exporter.Stats(), ExporterStopped: p.stopped.Load() != nil,
+	}
+	if p.adapter != nil {
+		r.Adapter = p.adapter.Stats()
+	}
+	if p.enforce != nil {
+		r.EnforceAPI, r.Enforce = true, metrics.EnforceOf(p.enforce.Stats())
 	}
 	if p.poller != nil {
 		r.Pause = p.poller.Stats()
@@ -166,19 +185,22 @@ func (p *plane) health(src gateway.PauseSource, clock func() time.Time) (healthA
 	// its records uncounted.
 	spoolStats, spoolErr := p.spool.Stats()
 	answer := healthAnswer{
-		Status:  "ok",
-		Mode:    p.cfg.ModeName,
-		Adapter: p.adapter.Name(),
-		UptimeS: now.Sub(p.started).Seconds(),
-		Halted:  stats.Halted,
-		Halt: haltAnswer{
-			ExecutedArgsMismatch: stats.Mismatches > 0,
-			EvidenceUnwritable:   stats.Halted && stats.Mismatches == 0,
-		},
-		Pipeline:  pipelineCounters(stats, p.adapter.Stats()),
+		Status:    "ok",
+		Mode:      p.cfg.ModeName,
+		Adapter:   p.seam().Name(),
+		UptimeS:   now.Sub(p.started).Seconds(),
+		Halted:    stats.Halted,
+		Halt:      haltOf(stats),
 		Approvals: approvalCounters(p.cfg.Approvals.Provider, stats),
-		Runs:      runCounters(p.runsDir != nil, stats, p.adapter.Stats()),
 		Exporter:  exporterCounters(p.exporter.Stats()),
+	}
+	if p.enforce != nil {
+		es := p.enforce.Stats()
+		answer.Pipeline, answer.Enforce = pipelineOnly(stats), enforceCounters(es)
+		answer.Runs = map[string]any{"kind": "opened", "refused_at_request": es.RunsRefused, "state_failures": stats.RunStateFailures}
+	} else {
+		answer.Pipeline = pipelineCounters(stats, p.adapter.Stats())
+		answer.Runs = runCounters(p.runsDir != nil, stats, p.adapter.Stats())
 	}
 	policySnap := p.holder.Current()
 	if policySnap != nil {
@@ -257,16 +279,27 @@ func (p *plane) pauseAnswer(snap pause.Snapshot, now time.Time) pauseAnswer {
 	return out
 }
 
+// pipelineCounters is the pipeline's counters and the MCP adapter's beside
+// them.
 func pipelineCounters(s gateway.Stats, adapter adaptermcp.Stats) map[string]any {
+	out := pipelineOnly(s)
+	out["admitted"], out["blocked"], out["sent"] = adapter.Admitted, adapter.Blocked, adapter.Sent
+	out["close_failures"], out["refresh_failures"] = adapter.CloseFailures, adapter.RefreshFailures
+	return out
+}
+
+// pipelineOnly is what the pipeline counted, whatever adapter it serves:
+// executions abandoned and runs halted on a reported mismatch among them.
+func pipelineOnly(s gateway.Stats) map[string]any {
 	return map[string]any{
 		"blocks": s.Blocks, "pending": s.Pending, "executed": s.Executed,
 		"sink_failures_before_effect": s.SinkFailuresBeforeEffect,
 		"sink_failures_after_effect":  s.SinkFailuresAfterEffect,
+		"sink_failures_abandoned":     s.SinkFailuresAbandoned,
 		"reads_unrecorded":            s.ReadsUnrecorded, "mismatches": s.Mismatches,
 		"multi_use_refused": s.MultiUseRefused, "open": s.Open, "held": s.Held,
+		"abandoned": s.Abandoned, "runs_halted": s.RunsHalted,
 		"runs": s.Runs, "flow_uncomputed": s.FlowUncomputed,
-		"admitted": adapter.Admitted, "blocked": adapter.Blocked, "sent": adapter.Sent,
-		"close_failures": adapter.CloseFailures, "refresh_failures": adapter.RefreshFailures,
 		"asks": askCounters(s.Asks),
 	}
 }

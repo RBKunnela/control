@@ -25,6 +25,9 @@ type planeState struct {
 	stopUnknown  bool
 	sinkHalt     bool
 	mismatchHalt bool
+	// runHalt: a caller reported bytes that were not the authorized ones for
+	// an execution of the call's opened run (ADR-0051).
+	runHalt bool
 	// runRefused: the call needs an opened run the plane cannot vouch for or
 	// read, or a local run the id source could not name (ADR-0034).
 	runRefused bool
@@ -49,7 +52,7 @@ func planeCauses(s planeState) []cause {
 	}{
 		{s.paused, cause{codePaused, verdictDeny}},
 		{s.stopped, cause{codeRunStopped, verdictDeny}},
-		{s.material && s.mismatchHalt, cause{codeExecutedArgsMismatch, verdictDeny}},
+		{s.material && (s.mismatchHalt || s.runHalt), cause{codeExecutedArgsMismatch, verdictDeny}},
 		{s.material && s.mode == modeLockdown, cause{codeLockdown, verdictDeny}},
 		{s.pauseUnknown, cause{codePauseStateUnavailable, verdictIndeterminate}},
 		{s.stopUnknown, cause{codeStopStateUnavailable, verdictIndeterminate}},
@@ -101,12 +104,14 @@ func (c *call) takeStates() {
 // blockedNow takes the pause and stop states and the clock again right
 // before an irreversible step, a resume consuming its approval or an
 // execution handed out, since a store or a sink that syncs can outlast a
-// snapshot. A state that covers the call or cannot be read blocks it there,
+// snapshot, and a halt can be raised meanwhile. A state that covers the call
+// or cannot be read, or a halt that covers a material one, blocks it there,
 // listing every cause the plane names now, and reports so.
 func (c *call) blockedNow() bool {
 	c.takeStates()
 	state := c.planeState()
-	if !state.paused && !state.pauseUnknown && !state.stopped && !state.stopUnknown {
+	halted := state.material && (state.sinkHalt || state.mismatchHalt || state.runHalt)
+	if !halted && !state.paused && !state.pauseUnknown && !state.stopped && !state.stopUnknown {
 		return false
 	}
 	c.causes = planeCauses(state)
@@ -121,7 +126,7 @@ func (c *call) blockedNow() bool {
 // the agent sent or a local run the plane minted: a call with no opened run
 // asks about the empty run id, which no line of a list can name.
 func (c *call) planeState() planeState {
-	sink, mismatch := c.p.counts.halts()
+	sink, mismatch, runHalt := c.p.counts.halts(c.flow.openedID())
 	action := c.in.Envelope.GetAction()
 	state := c.pause.State()
 	var runID, tenantID string
@@ -139,6 +144,7 @@ func (c *call) planeState() planeState {
 		stopUnknown:  stops == reaction.Unknown,
 		sinkHalt:     sink,
 		mismatchHalt: mismatch,
+		runHalt:      runHalt,
 		runRefused:   c.flow.kind == flowUnnamed || c.flow.kind == flowUnavailable,
 	}
 }

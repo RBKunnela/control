@@ -37,6 +37,7 @@ const (
 	codeApprovalBundleMismatch = "APPROVAL_BUNDLE_MISMATCH"
 	codeObligationNotApplied   = "OBLIGATION_NOT_UNDERSTOOD"
 	codeInvalidFieldValue      = "INVALID_FIELD_VALUE"
+	codeExecutionAbandoned     = "EXECUTION_ABANDONED"
 	decisionSchemaVersion      = "1.0"
 	approvalSchemaVersion      = "1.0"
 	resultSchemaVersion        = "1.0"
@@ -48,6 +49,7 @@ const (
 	approvalRejected           = controlv1.ApprovalState_APPROVAL_STATE_REJECTED
 	resultSuccess              = controlv1.ResultStatus_RESULT_STATUS_SUCCESS
 	resultBlocked              = controlv1.ResultStatus_RESULT_STATUS_BLOCKED
+	resultUnknown              = controlv1.ResultStatus_RESULT_STATUS_UNKNOWN
 	modeObserve                = controlv1.EnforcementMode_ENFORCEMENT_MODE_OBSERVE
 	modeApprove                = controlv1.EnforcementMode_ENFORCEMENT_MODE_APPROVE
 	modeLockdown               = controlv1.EnforcementMode_ENFORCEMENT_MODE_LOCKDOWN

@@ -75,7 +75,7 @@ func TestTheOtherTimeoutsRefuseWhatTheirClientsRefuse(t *testing.T) {
 // cannot join the table untested.
 func TestNoDurationTakesANegativeValue(t *testing.T) {
 	keys := []string{
-		"listener.session_idle", "policy.max_stale", "policy.poll_interval", "pdp.timeout",
+		"listener.session_idle", "listener.execution_lifetime", "policy.max_stale", "policy.poll_interval", "pdp.timeout",
 		"approvals.ttl", "approvals.retry_after", "pause.poll_interval", "reaction.poll_interval", "evidence.fsync_interval",
 		"export.timeout", "export.linger", "export.backoff", "export.max_backoff",
 		"list.ttl", "upstream.call_timeout", "upstream.list_timeout",

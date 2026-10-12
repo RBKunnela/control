@@ -34,6 +34,7 @@
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
 <li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
@@ -110,8 +111,24 @@
 <p>An adapter translates one protocol into the envelope the kernel decides about,
 and turns the plane's answer back into something that protocol can say. It holds
 no policy meaning: what a call means lives in the envelope it builds and in the
-policy (invariant 7). The MCP adapter in <code>adapters/mcp/</code> is the worked example
-and the only one today.</p>
+policy (invariant 7). The MCP adapter in <code>adapters/mcp/</code> is the worked example.</p>
+<p>The second adapter, <code>adapters/enforce/</code>, serves the enforcement API of
+<a href="/docs/adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api">ADR-0051</a>
+to a tool outside MCP, on a Unix socket; the gateway serves it under
+<code>listener.kind: enforce_api</code>
+(<a href="/docs/guides/decide-a-tool-of-your-own">guides/decide-a-tool-of-your-own.md</a>). It builds each envelope from the run token and
+the operator's table of tools, never from what the client says about the
+call, and declares <code>Cooperative</code>: the client sends the bytes, so nothing the
+plane holds proves it obeyed. It applies no obligation of its own, aborts an
+execution whose rewritten bytes name another resource than the one decided
+on, closes what a client reports with <code>CloseReported</code>, and closes with
+<code>Abandon</code> every execution nobody completed or aborted before its handle
+expired. Its receiver cases are files in
+<a href="https://github.com/guardana/control/blob/main/testdata/enforce/README.md">testdata/enforce/</a>.</p>
+<p>Both adapters read a call's resource id, the resource rewritten bytes name
+and the run token through <code>internal/adapterkit</code>, so one call is never read
+two ways: a spelling one adapter normalised and the other did not would slip
+past a rule the first one enforces.</p>
 <p>An adapter is the enforcement point among the five ports of
 <a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a>: it sees a call before
 its effect. Sensors, detectors, reactions and notifiers run as separate
@@ -132,8 +149,8 @@ internal until its own decision promotes it. The second adapter is what shows
 what the two have in common; until then the shape may change with a minor
 release. That is what <code>stability: development</code> means here. An adapter is
 therefore written inside this repository: Go refuses to let another module
-import <code>internal/</code>, and an integration built elsewhere waits for the planned
-enforcement API (<a href="/docs/backlog">backlog</a>, B10).</p>
+import <code>internal/</code>, and an integration built elsewhere speaks the enforcement
+API instead.</p>
 <p>There is no declared API version. An adapter is compiled into the binary, so the
 compiler is the check that fails loudly, and
 <a href="/docs/adr/0007-repository-layout-and-dependency-rule">ADR-0007</a> forbids the
@@ -158,8 +175,16 @@ failing:</p>
 <td>the call ran; here are the bytes that went and what came back. An error means the record is not durable, or that the bytes sent were not the authorized ones (<code>ErrExecutedArgsMismatch</code>), which the record says; <code>ErrNothingSent</code> for nil bytes, after the execution is aborted; <code>ErrNotMinted</code> for a disposition this plane did not mint or closed already</td>
 </tr>
 <tr>
+<td><code>CloseReported(ctx, disposition, sent, result) error</code></td>
+<td><code>Close</code> for bytes a cooperating caller reports it sent. A mismatch halts the material calls of that execution's opened run only, until restart; with no opened run, past <code>MaxRuns</code> halted runs, or through an adapter that is not cooperative, it halts the plane as <code>Close</code> does</td>
+</tr>
+<tr>
 <td><code>Abort(ctx, disposition, cause) error</code></td>
 <td>the call did not go, and the cause says why: the adapter's own pre-send check, an obligation it applies, a call it cannot route, a call its protocol cannot express</td>
+</tr>
+<tr>
+<td><code>Abandon(ctx, disposition) error</code></td>
+<td>nobody closed or aborted the execution before it expired. It is closed as <code>ACTION_FAILED</code> with status <code>UNKNOWN</code> and <code>EXECUTION_ABANDONED</code>, since nobody knows whether the call ran, and halts nothing; <code>ErrNotMinted</code> for an execution that is not open</td>
 </tr>
 <tr>
 <td><code>Preview(ctx, Admission) *Decision</code></td>
@@ -187,8 +212,8 @@ open holds one of the plane's <code>MaxOpen</code> slots until the process ends.
 <td>Needed by every mode: a trail with no closing record is an action nobody knows the end of</td>
 </tr>
 <tr>
-<td><code>Block</code></td>
-<td>Needed by <code>APPROVE</code>, <code>ENFORCE</code> and <code>LOCKDOWN</code>. An adapter without it never runs under a mode that enforces</td>
+<td><code>Enforcement</code></td>
+<td>How far the adapter keeps a call from its effect: <code>None</code> (the zero value) cannot; <code>Cooperative</code> hands the decision to a caller that enforces it, so the plane decides and records and nothing proves the caller obeyed; <code>Inline</code> holds the path to the effect, as the MCP adapter holds the upstream connection. <code>APPROVE</code>, <code>ENFORCE</code> and <code>LOCKDOWN</code> need at least <code>Cooperative</code>, and a value outside the three is refused at start</td>
 </tr>
 <tr>
 <td><code>Authenticates</code></td>
@@ -284,7 +309,10 @@ their <code>ArgumentsHashV1</code>. An adapter digests what it is about to send,
 and aborts rather than sending on a mismatch. After the call it hands <code>Close</code> the
 bytes it sent, and the plane digests them again against its own record. An
 adapter that sends anything else is the failure this check exists to catch, and
-it stops the plane for material calls until it restarts.</p>
+it stops the plane for material calls until it restarts. Bytes a caller only
+reports go to <code>CloseReported</code>, which stops that caller's run instead: a report
+proves nothing about what the caller sent, and a plane-wide halt would let one
+caller stop every run.</p>
 <h2 id="conformance">Conformance</h2>
 <p>A declared capability that no test exercises is a documented capability that does
 not exist, so each one is exercised against an in-process server of the
@@ -306,8 +334,8 @@ protocol, in the adapter's own package:</p>
 <td>the closing record carries the upstream's outcome</td>
 </tr>
 <tr>
-<td><code>Block</code></td>
-<td>the upstream is never called for a blocked call</td>
+<td><code>Enforcement</code></td>
+<td><code>Inline</code>: the upstream is never called for a blocked call. <code>Cooperative</code>: a blocked call is answered as a block, and what the caller does about it is its own</td>
 </tr>
 <tr>
 <td><code>Authenticates</code>, <code>BindEndUser</code></td>
@@ -340,7 +368,7 @@ the gateway's name, a result larger than its bound, a call that cannot be routed
 func (Echo) Name() string { return &#34;echo&#34; }
 
 func (Echo) Capabilities() gateway.Capabilities {
-    return gateway.Capabilities{ObserveRequest: true, ObserveResult: true, Block: true}
+    return gateway.Capabilities{ObserveRequest: true, ObserveResult: true, Enforcement: gateway.EnforcementInline}
 }
 
 func (e Echo) Handle(ctx context.Context, p *gateway.Pipeline, in Request) Response {
@@ -369,6 +397,7 @@ func (e Echo) Handle(ctx context.Context, p *gateway.Pipeline, in Request) Respo
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
 <li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>

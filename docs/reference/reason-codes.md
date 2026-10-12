@@ -72,3 +72,4 @@ with `make docs-gen`; an edit made here does not survive the next run.
 | `APPROVAL_STATE_UNKNOWN` | 44 | `INDETERMINATE` | The enforcement point could not read or trust the approver's answer for a lost hold, so the call was never run. |
 | `RUN_STOPPED` | 45 | `DENY` | A stop the operator's route allows names the opened run this call belongs to, so the enforcement point blocked it whatever the policy decided. |
 | `STOP_STATE_UNAVAILABLE` | 46 | `INDETERMINATE` | The enforcement point could not read or trust the stop list, so it blocked the call rather than assume that no run is stopped. |
+| `EXECUTION_ABANDONED` | 47 | `INDETERMINATE` | An execution the enforcement point handed out was neither completed nor aborted before it expired, so it was closed without knowing whether the call ran. |

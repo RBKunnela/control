@@ -1,0 +1,16 @@
+{
+  "tool_reached": false,
+  "requests": [
+    {
+      "path": "/enforce/v1alpha1/admit",
+      "body": {
+        "tool": "refund",
+        "arguments": "eyJhbW91bnQiOjEwLCJ0byI6ImFjY3QtNyJ9"
+      }
+    }
+  ],
+  "returns": {
+    "error": "refused",
+    "code": "ERROR_CODE_UNAUTHENTICATED"
+  }
+}

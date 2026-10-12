@@ -64,7 +64,13 @@ func (f *inflight) wrap(next http.Handler) http.Handler {
 // at the bound is cut from its agent by closing the connection, which does
 // not end the call itself, so the stop is an error: that call's closing
 // record may come after the spool closed, or never.
+//
+// An enforcement API plane holds no call: its clients run the tools. Its stop
+// abandons every execution it handed out instead (ADR-0051).
 func (p *plane) stopServing(bound []listening) error {
+	if p.enforce != nil {
+		return p.stopEnforcing(bound)
+	}
 	deadline := time.Now().Add(p.callBound)
 	p.adapter.StopAdmitting()
 	for _, b := range bound {
@@ -91,7 +97,12 @@ func (p *plane) stopServing(bound []listening) error {
 // is asked when run returns and again once the plane is released, for a call
 // that outlived the stop.
 func (p *plane) lostClosings() error {
-	n := p.adapter.Stats().CloseFailures
+	var n int64
+	if p.enforce != nil {
+		n = p.enforceLost()
+	} else {
+		n = p.adapter.Stats().CloseFailures
+	}
 	if seen := p.lost.Swap(n); n > seen {
 		return fmt.Errorf("%d call(s) could not append their closing record; their trails stay open", n-seen)
 	}

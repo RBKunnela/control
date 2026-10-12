@@ -1,8 +1,6 @@
 package mcp
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -12,7 +10,7 @@ import (
 	"time"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
-	"github.com/guardana/control/internal/canon"
+	"github.com/guardana/control/internal/adapterkit"
 	"github.com/guardana/control/internal/gateway"
 	"github.com/guardana/control/pkg/contract"
 )
@@ -86,46 +84,9 @@ func authorizedSend(c *call, d gateway.Disposition) (applied, error) {
 }
 
 // sameResource reports whether the authorized bytes name the resource the
-// envelope was decided on. The member reads as the decided id and is, in
-// canonical form, the member the agent proposed: an object, a list or a
-// boolean there reads as no id on either side, so a rewrite inside it is
-// caught only by the second.
+// envelope was decided on.
 func sameResource(c *call, authorized []byte) bool {
-	from := c.entry.ResourceFrom
-	if resolvePointer(authorized, from) != c.admission.Envelope.GetResource().GetId() {
-		return false
-	}
-	proposed, err := memberHash(c.admission.Arguments, from)
-	if err != nil {
-		return false
-	}
-	got, err := memberHash(authorized, from)
-	return err == nil && got == proposed
-}
-
-// memberHash is the canonical hash of the member at pointer p in args, "null"
-// for a null member and "" for an absent one.
-func memberHash(args []byte, p string) (string, error) {
-	dec := json.NewDecoder(bytes.NewReader(args))
-	dec.UseNumber()
-	var v any
-	if err := dec.Decode(&v); err != nil {
-		return "", err
-	}
-	for _, tok := range strings.Split(p[1:], "/") {
-		var ok bool
-		if v, ok = step(v, tok); !ok {
-			return "", nil
-		}
-	}
-	if v == nil {
-		return "null", nil
-	}
-	raw, err := json.Marshal(v)
-	if err != nil {
-		return "", err
-	}
-	return canon.ArgumentsHashV1(raw)
+	return adapterkit.SameResource(c.admission.Arguments, authorized, c.entry.ResourceFrom, c.admission.Envelope.GetResource().GetId())
 }
 
 // applyObligations checks every obligation against the call and returns

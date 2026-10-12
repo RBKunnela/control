@@ -80,10 +80,11 @@ It exits 1 when a request's chain is broken or unfinished, when a call ran
 against its decision under an enforcing mode, when a result says the effect
 may have happened, or when the export held a gap, was cut, held no request,
 or went past 100 000 records or 64 MiB: missing evidence is reported as
-unknown or open, never as completed. It reads no effect class, so it cannot
+unknown or open, never as completed; a timeout or an unknown outcome as
+`uncertain`, not `failed`. It reads no effect class, so it cannot
 tell whether a material call ran without the approval `APPROVE` asks for, or
-under `LOCKDOWN`. Export the whole file, or one request at a time; a filter on
-kinds cuts the links between a request's events.
+under `LOCKDOWN`. Export the whole file or one request: a filter on kinds
+cuts a request's links.
 
 ### 4. Follow a trail and raise alerts
 
@@ -124,7 +125,8 @@ own, `"v":1` and `experimental`, not a contract:
 | --- | --- |
 | `evidence_gap` | a gap record, its reason in `note` |
 | `conflicting_event` | an event id read before with another line |
-| `lifecycle_unknown` | a request the report calls `unknown`, with its note |
+| `lifecycle_unknown` | a request called `unknown` |
+| `effect_uncertain` | a request called `uncertain` |
 | `indeterminate` | an `INDETERMINATE` verdict, the kernel's or a block's |
 | `plane_block` | a block with a decision of the plane's own, such as a pause |
 | `approval_expired` | an approval nobody answered in time |

@@ -42,8 +42,18 @@ func scraped(t *testing.T, p *plane) []metricstest.Family {
 	if err != nil {
 		t.Fatalf("the strict reader refused /metrics: %v\n%s", err, answer.Body.String())
 	}
-	if len(families) != len(metrics.Table()) {
-		t.Fatalf("/metrics holds %d families, the table %d rows", len(families), len(metrics.Table()))
+	other := "Enforce."
+	if p.enforce != nil {
+		other = "Adapter."
+	}
+	want := 0
+	for _, m := range metrics.Table() {
+		if !strings.HasPrefix(m.Reads, other) {
+			want++
+		}
+	}
+	if len(families) != want {
+		t.Fatalf("/metrics holds %d families, want the %d rows of the table this plane's adapter writes", len(families), want)
 	}
 	return families
 }

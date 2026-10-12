@@ -34,6 +34,7 @@
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
 <li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
@@ -173,7 +174,7 @@ of paths is refused.</p>
 </tr>
 <tr>
 <td><code>kind</code></td>
-<td><code>mcp_tool</code> with <code>upstream</code> and <code>tool</code>, one path per pair; <code>egress</code> with <code>host</code>; <code>http_api</code> or <code>process</code> with <code>name</code></td>
+<td><code>mcp_tool</code> with <code>upstream</code> and <code>tool</code>, one path per pair; <code>enforce_tool</code> with <code>tool</code>, a tool an enforcement API plane's <code>tools</code> table names, one path per tool; <code>egress</code> with <code>host</code>; <code>http_api</code> or <code>process</code> with <code>name</code></td>
 </tr>
 <tr>
 <td><code>sources</code></td>
@@ -196,11 +197,11 @@ when given, that server address.</p>
 <tbody>
 <tr>
 <td>enforced</td>
-<td>every plane that counts for the tool is in <code>ENFORCE</code>, <code>APPROVE</code> or <code>LOCKDOWN</code>, and none lets the read fail open</td>
+<td>every plane that counts for the tool holds the path to the effect, is in <code>ENFORCE</code>, <code>APPROVE</code> or <code>LOCKDOWN</code>, and none lets the read fail open</td>
 </tr>
 <tr>
 <td>decided, not enforced</td>
-<td>a plane counts for it in <code>OBSERVE</code>, or under <code>policy.fail_open_read</code> outside <code>LOCKDOWN</code>, where a read runs undecided while the policy is unavailable</td>
+<td>a plane counts for it in <code>OBSERVE</code>, or under <code>policy.fail_open_read</code> outside <code>LOCKDOWN</code>, where a read runs undecided while the policy is unavailable, or serves the enforcement API, in any mode</td>
 </tr>
 <tr>
 <td>observed</td>
@@ -216,8 +217,13 @@ when given, that server address.</p>
 </tr>
 </tbody>
 </table>
-<p>Only an <code>mcp_tool</code> can be enforced or decided. A plane counts for a tool when
-it lists the tool's upstream: with an override that classifies the tool, or
+<p>Only an <code>mcp_tool</code> can be enforced, and only it and an <code>enforce_tool</code> decided.
+A plane serving the enforcement API (<code>listener.kind: enforce_api</code>) counts for
+an <code>enforce_tool</code> its <code>tools</code> table names, and decides it in every mode it
+runs in, never enforces it: it hands the decision to a cooperating client,
+which may ignore it, and the line says so
+(<a href="/docs/adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api">ADR-0051</a>).
+An MCP plane counts for an <code>mcp_tool</code> when it lists the tool's upstream: with an override that classifies the tool, or
 without one, when a call to it is unclassified, blocked in a mode that
 enforces and let run in <code>OBSERVE</code>. A plane in <code>SHADOW</code> or <code>WARN</code> refuses to
 start and counts for nothing. A classification is the configuration's
@@ -229,7 +235,8 @@ receive time; one heard after the command's clock is unknown.</p>
 <p>Beside an enforced or decided path, each matching observation is checked
 against the exports of the planes that count for it. It is joined when it, or
 an observation below it in the same trace, tenant and project, has the span id
-of a tool call's proposal for that tool on that upstream, in the same tenant
+of a tool call's proposal for that tool on that upstream, or for an
+<code>enforce_tool</code> of that tool through the enforcement API, in the same tenant
 and project, recorded in a mode
 at least as strong as the path's state. A call every such plane's export could
 have shown and none does is printed as a call around the plane. The check is
@@ -286,6 +293,7 @@ lines for each plane, each source and the joins, and last the line
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
 <li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>

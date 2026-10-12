@@ -113,6 +113,9 @@ var wantTriples = []triple{
 	// 46 is INDETERMINATE and not RUN_STOPPED: a stop list the plane cannot
 	// read or trust says nothing about which run is stopped.
 	{"STOP_STATE_UNAVAILABLE", 46, controlv1.Verdict_VERDICT_INDETERMINATE},
+	// 47 is INDETERMINATE: an execution nobody completed or aborted may or may
+	// not have had its effect.
+	{"EXECUTION_ABANDONED", 47, controlv1.Verdict_VERDICT_INDETERMINATE},
 }
 
 // wantTriples names verdicts by symbol, and a symbol is only worth pinning if
@@ -282,6 +285,19 @@ func TestTheUnknownApprovalStateSaysTheAnswerWasNotRead(t *testing.T) {
 	}
 	if code.Summary != want {
 		t.Errorf("APPROVAL_STATE_UNKNOWN says %q, want %q", code.Summary, want)
+	}
+}
+
+// An abandoned execution closes with an outcome nobody knows, so its code
+// says the call may have run and never that it failed or was blocked.
+func TestTheAbandonedCodeSaysTheOutcomeIsUnknown(t *testing.T) {
+	const want = "An execution the enforcement point handed out was neither completed nor aborted before it expired, so it was closed without knowing whether the call ran."
+	code, ok := reasons.Lookup("EXECUTION_ABANDONED")
+	if !ok {
+		t.Fatal("the registry holds no EXECUTION_ABANDONED")
+	}
+	if code.Summary != want {
+		t.Errorf("EXECUTION_ABANDONED says %q, want %q", code.Summary, want)
 	}
 }
 

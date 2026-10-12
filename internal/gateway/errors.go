@@ -57,6 +57,8 @@ const (
 	// ErrMaxHeld is a zero or negative bound on held requests: every held
 	// request is kept in memory until it is resumed or expires.
 	ErrMaxHeld Error = "gateway: the bound on held requests has to be positive"
+	// ErrMaxHeldPerRun is a negative bound on the requests one run holds.
+	ErrMaxHeldPerRun Error = "gateway: the bound on one run's held requests cannot be negative"
 	// ErrMaxOpen is a zero or negative bound on open executions: every
 	// execution handed out is kept in memory until it is closed or aborted.
 	ErrMaxOpen Error = "gateway: the bound on open executions has to be positive"
@@ -150,13 +152,18 @@ const (
 	ErrNotMinted Error = "gateway: this pipeline minted no open execution for the disposition"
 	// ErrExecutedArgsMismatch is a closing whose sent bytes digest differently
 	// from the authorized arguments. The closing record says so, and the
-	// plane takes no further material call.
+	// plane, or after CloseReported through a cooperative adapter the
+	// execution's opened run, takes no further material call.
 	ErrExecutedArgsMismatch Error = "gateway: the executed arguments differ from the authorized ones"
 	// ErrNothingSent is a Close with nil sent bytes. A call the adapter did not
 	// send is aborted, never closed: a closing record says what ran.
 	ErrNothingSent Error = "gateway: Close takes the bytes that were sent; a call that was not sent is aborted"
 	// ErrAbortCause is an AbortCause this build does not declare.
 	ErrAbortCause Error = "gateway: no such abort cause"
+	// ErrNotRecorded wraps the sink's refusal of a closing, an aborting or an
+	// abandoning record, so a caller tells a record that did not land from one
+	// that did and says the arguments differed.
+	ErrNotRecorded Error = "gateway: the sink refused the record"
 )
 
 // ErrUnbuilt is an operation this build does not perform yet. It fails closed:

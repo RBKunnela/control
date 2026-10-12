@@ -39,6 +39,7 @@ func versionSpecs() map[string]versionSpec {
 				{"internal/evidence/event.go#SchemaVersion", writes},
 				{"internal/core/codes.go#schemaVersion", writes},
 				{"adapters/mcp/translate.go#schemaVersion", writes},
+				{"adapters/enforce/translate.go#schemaVersion", writes},
 				{"internal/gateway/decisions.go#decisionSchemaVersion", writes},
 				{"internal/gateway/decisions.go#approvalSchemaVersion", writes},
 				{"internal/gateway/decisions.go#resultSchemaVersion", writes},

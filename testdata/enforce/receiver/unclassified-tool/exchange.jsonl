@@ -1,0 +1,1 @@
+{"as":"a","post":"/enforce/v1alpha1/admit","body":{"tool":"drop_database","arguments":{"$b64":"{\"name\":\"prod\"}"}},"status":200,"answer":{"outcome":"OUTCOME_BLOCK","decision":"*"}}

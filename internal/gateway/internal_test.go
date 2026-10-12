@@ -39,7 +39,7 @@ type internalAdapter struct{}
 func (internalAdapter) Name() string { return "internal" }
 
 func (internalAdapter) Capabilities() Capabilities {
-	return Capabilities{ObserveRequest: true, ObserveResult: true, Block: true}
+	return Capabilities{ObserveRequest: true, ObserveResult: true, Enforcement: EnforcementInline}
 }
 
 // internalPipeline is a pipeline over one rule, with everything else the

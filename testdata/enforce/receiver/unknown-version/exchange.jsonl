@@ -1,0 +1,1 @@
+{"as":"a","post":"/enforce/v1alpha2/admit","body":{"tool":"read_file","arguments":{"$b64":"{\"path\":\"notes.txt\"}"}},"status":404,"answer":{"code":"ERROR_CODE_UNSUPPORTED_VERSION","message":"*"}}

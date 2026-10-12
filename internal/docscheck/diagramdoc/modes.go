@@ -51,7 +51,9 @@ func capabilityList(c gateway.Capabilities) string {
 		on   bool
 		name string
 	}{
-		{c.ObserveRequest, "observe the request"}, {c.ObserveResult, "observe the result"}, {c.Block, "block"},
+		{c.ObserveRequest, "observe the request"}, {c.ObserveResult, "observe the result"},
+		{c.Enforcement == gateway.EnforcementCooperative, "cooperative or inline enforcement"},
+		{c.Enforcement == gateway.EnforcementInline, "inline enforcement"},
 		{c.Authenticates, "authenticate"}, {c.BindEndUser, "bind the end user"},
 		{c.SeeDelegation, "see the delegation"}, {c.SeeResourceIDs, "see resource identifiers"},
 	} {

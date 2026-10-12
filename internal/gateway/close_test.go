@@ -131,6 +131,15 @@ func TestCloseRefusesWhatItDidNotMint(t *testing.T) {
 	}
 }
 
+// expectHalts asserts which of the plane's halts stand, and that Halted is
+// either of them.
+func expectHalts(t *testing.T, h *harness, mismatch, sink bool) {
+	t.Helper()
+	if s := h.p.Stats(); s.MismatchHalted != mismatch || s.SinkHalted != sink || s.Halted != (mismatch || sink) {
+		t.Errorf("Stats = %+v; want MismatchHalted %v and SinkHalted %v", s, mismatch, sink)
+	}
+}
+
 // TestASinkThatRefusesTheClosingRecordHaltsUntilAnAppendSucceeds: the sink
 // error is returned as is, the plane counts it and takes no material call,
 // a read runs only under the risk setting; once the sink takes records again
@@ -147,6 +156,7 @@ func TestASinkThatRefusesTheClosingRecordHaltsUntilAnAppendSucceeds(t *testing.T
 		if s := h.p.Stats(); !s.Halted || s.SinkFailuresAfterEffect != 1 {
 			t.Errorf("Stats = %+v; want Halted and one failure after the effect", s)
 		}
+		expectHalts(t, h, false, true)
 		expectBlock(t, h.admit(requestNamed(writeEnvelope(), "req-2"), []byte(`{}`)), verdictIndeterminate, codeEvidenceUnavailable, gateway.PDPType)
 		read := h.admit(requestNamed(readEnvelope(), "req-3"), []byte(`{}`))
 		if unrecorded && read.Action != core.Execute {
@@ -169,6 +179,7 @@ func TestASinkThatRefusesTheClosingRecordHaltsUntilAnAppendSucceeds(t *testing.T
 		if h.p.Stats().Halted {
 			t.Errorf("unrecorded=%v: the halted call's own records left the plane halted", unrecorded)
 		}
+		expectHalts(t, h, false, false)
 		if d := h.admit(requestNamed(writeEnvelope(), "req-5"), []byte(`{}`)); d.Action != core.Execute {
 			t.Errorf("unrecorded=%v: after an append succeeded a write: Action = %d, want Execute", unrecorded, d.Action)
 		}
@@ -241,10 +252,10 @@ func TestAnAppendInFlightDoesNotLiftAHaltRaisedWhileItRan(t *testing.T) {
 	}
 }
 
-// TestAnEndTheSinkRefusesKeepsTheResumedEntry: an approved call whose closing
-// or aborting record the sink refuses leaves its trail open, so the journal
-// keeps its entry at resuming for a later plane to report; one whose record
-// lands leaves the journal empty.
+// TestAnEndTheSinkRefusesKeepsTheResumedEntry: an approved call whose closing,
+// aborting or abandoning record the sink refuses leaves its trail open, so the
+// journal keeps its entry at resuming for a later plane to report; one whose
+// record lands leaves the journal empty.
 func TestAnEndTheSinkRefusesKeepsTheResumedEntry(t *testing.T) {
 	ends := map[string]struct {
 		kind controlv1.EventKind
@@ -255,6 +266,9 @@ func TestAnEndTheSinkRefusesKeepsTheResumedEntry(t *testing.T) {
 		}},
 		"abort": {kindFailed, func(h *harness, d gateway.Disposition) error {
 			return h.p.Abort(context.Background(), d, gateway.AbortObligation)
+		}},
+		"abandon": {kindFailed, func(h *harness, d gateway.Disposition) error {
+			return h.p.Abandon(context.Background(), d)
 		}},
 	}
 	for name, e := range ends {

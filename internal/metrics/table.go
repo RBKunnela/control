@@ -16,7 +16,7 @@ import (
 
 // table is the one list of metrics: Render writes it, the reference page
 // lists it, and the tests walk the statistics against it.
-var table = slices.Concat(seamRows, stopRows, policyRows, storeRows)
+var table = slices.Concat(seamRows, enforceRows, stopRows, policyRows, storeRows)
 
 // seamRows are the pipeline's, the decision point's, the adapter's and the
 // pause file reader's.
@@ -43,6 +43,15 @@ var seamRows = []Metric{
 	count("pipeline_mismatches_total", "Pipeline.Mismatches",
 		"Closings whose sent bytes were not the authorized ones.",
 		func(r Reading) uint64 { return r.Pipeline.Mismatches }),
+	level("pipeline_runs_halted", "Pipeline.RunsHalted",
+		"Opened runs whose material calls are blocked until restart because a caller reported bytes that were not the authorized ones.",
+		func(r Reading) int64 { return int64(r.Pipeline.RunsHalted) }),
+	count("pipeline_abandoned_total", "Pipeline.Abandoned",
+		"Executions nobody completed or aborted before they expired, closed with the outcome unknown.",
+		func(r Reading) uint64 { return r.Pipeline.Abandoned }),
+	count("pipeline_sink_failures_abandoned_total", "Pipeline.SinkFailuresAbandoned",
+		"Closing records of abandoned executions that could not be written; none halts material calls.",
+		func(r Reading) uint64 { return r.Pipeline.SinkFailuresAbandoned }),
 	count("pipeline_multi_use_refused_total", "Pipeline.MultiUseRefused",
 		"Approvals a store held as multi-use, which the plane left pending.",
 		func(r Reading) uint64 { return r.Pipeline.MultiUseRefused }),
@@ -77,6 +86,12 @@ var seamRows = []Metric{
 		"1 when a halt stops material calls: a closing record could not be written and no append has succeeded since, "+
 			"or an execution sent bytes that were not authorized. Calls are still blocked for other causes while it reads 0.",
 		func(r Reading) bool { return r.Pipeline.Halted }),
+	flag("pipeline_halted_mismatch", "Pipeline.MismatchHalted",
+		"1 when an execution sent bytes that were not authorized and the mismatch halted the plane, not one run; it stands until restart.",
+		func(r Reading) bool { return r.Pipeline.MismatchHalted }),
+	flag("pipeline_halted_sink", "Pipeline.SinkHalted",
+		"1 when a closing record could not be written and no append has succeeded since.",
+		func(r Reading) bool { return r.Pipeline.SinkHalted }),
 	count("pipeline_flow_uncomputed_total", "Pipeline.FlowUncomputed",
 		"Calls decided with a flow state nobody computed, so a flow rule is undetermined for each.",
 		func(r Reading) uint64 { return r.Pipeline.FlowUncomputed }),

@@ -1,0 +1,53 @@
+{
+  "mode": "ENFORCEMENT_MODE_ENFORCE",
+  "rules": [
+    {
+      "id": "capped-refunds",
+      "effect": "ALLOW_WITH_OBLIGATIONS",
+      "obligations": [
+        {
+          "type": "cap_amount",
+          "params": {
+            "max": "1000"
+          }
+        }
+      ],
+      "when": {
+        "action": {
+          "name": [
+            "refund"
+          ]
+        }
+      }
+    }
+  ],
+  "tools": [
+    {
+      "name": "refund",
+      "effect": "EFFECT_CLASS_TRANSACT",
+      "provider": "payments",
+      "resource_type": "account",
+      "resource_from": "/account"
+    },
+    {
+      "name": "read_file",
+      "effect": "EFFECT_CLASS_READ",
+      "provider": "files",
+      "resource_type": "file",
+      "resource_from": "/path"
+    }
+  ],
+  "execution_lifetime": "60s",
+  "runs": [
+    {
+      "name": "a",
+      "token": "run-a.token-a",
+      "for": "listener"
+    },
+    {
+      "name": "b",
+      "token": "run-b.token-b",
+      "for": "listener"
+    }
+  ]
+}

@@ -18,6 +18,7 @@ const (
 	codeGap          = "evidence_gap"
 	codeConflict     = "conflicting_event"
 	codeUnknown      = "lifecycle_unknown"
+	codeUncertain    = "effect_uncertain"
 	codeUndecided    = "indeterminate"
 	codePlaneBlock   = "plane_block"
 	codeExpired      = "approval_expired"
@@ -25,7 +26,7 @@ const (
 	alertLineVersion = 1
 )
 
-var codes = []string{codeGap, codeConflict, codeUnknown, codeUndecided, codePlaneBlock, codeExpired, codeOpenBound}
+var codes = []string{codeGap, codeConflict, codeUnknown, codeUncertain, codeUndecided, codePlaneBlock, codeExpired, codeOpenBound}
 
 // gapReasons are the reasons the export gives a gap; an alert says no other.
 var gapReasons = []string{"malformed", "too_long", "unsupported_version", "conflicting_event_id", "carriage_return", "partial_tail"}

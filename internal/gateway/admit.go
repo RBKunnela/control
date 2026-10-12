@@ -300,10 +300,11 @@ func (c *call) close() {
 // that clock, one that resumes nothing and whose agent gave up on it, or one
 // the pipeline cannot name, cannot keep under its own name, cannot keep
 // within MaxOpen, or whose opened run's state it cannot raise, is blocked
-// before it is recorded as started; that block closes the trail, so a resumed
-// hold's entry is forgotten there, as Close would. A resumed one whose
-// approval expired while ACTION_STARTED was appended is aborted instead of
-// handed out.
+// before it is recorded as started, and so is one those checks refuse when
+// they are made again after a raise that wrote; that block closes the trail,
+// so a resumed hold's entry is forgotten there, as Close would. A resumed one
+// whose approval expired while ACTION_STARTED was appended is aborted instead
+// of handed out.
 func (c *call) start(trail *evidence.Builder) Disposition {
 	requestID := c.requestID
 	if c.refusedBeforeStart() {
@@ -312,15 +313,22 @@ func (c *call) start(trail *evidence.Builder) Disposition {
 	handle, executionID := c.decision.GetDecisionId(), c.p.cfg.NewID()
 	ex := &execution{
 		trail: trail, requestID: requestID, executionID: executionID,
-		envelope: c.env, digest: c.actionDigest, unrecorded: c.unrecorded,
+		envelope: c.env, digest: c.actionDigest, runID: c.flow.openedID(), unrecorded: c.unrecorded,
 	}
 	if executionID == "" || !c.p.keep(handle, ex) {
 		c.decide(verdictIndeterminate, codeEvidenceUnavailable)
 		return c.blockStart(trail, requestID)
 	}
-	if !c.raise() {
+	ok, wrote := c.raise()
+	if !ok {
 		c.p.drop(handle)
 		c.decide(verdictIndeterminate, codeEvidenceUnavailable)
+		return c.blockStart(trail, requestID)
+	}
+	// A raise can wait on its root's lock; a pause or stop published while it
+	// waited covers the call before it is recorded as started.
+	if wrote && c.refusedBeforeStart() {
+		c.p.drop(handle)
 		return c.blockStart(trail, requestID)
 	}
 	if !c.record(trail.Started(executionID)) {
@@ -342,6 +350,7 @@ func (c *call) start(trail *evidence.Builder) Disposition {
 		AuthorizedDigest: c.digest,
 		ExecutionID:      executionID,
 		Obligations:      c.rest,
+		Unrecorded:       ex.unrecorded,
 		handle:           handle,
 	}
 }

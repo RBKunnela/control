@@ -38,6 +38,17 @@ type Stats struct {
 	// sink refused an event of, once per read, whether the read then ran or
 	// was blocked.
 	ReadsUnrecorded uint64
+	// SinkFailuresAbandoned counts closing records of abandoned executions
+	// that could not be written. None halts the plane: nothing says the
+	// effect happened, and each leaves its trail at ACTION_STARTED.
+	SinkFailuresAbandoned uint64
+	// Abandoned counts executions closed as abandoned, their record written
+	// or not.
+	Abandoned uint64
+	// RunsHalted is the opened runs whose material calls are blocked until
+	// restart because a caller reported bytes that were not the authorized
+	// ones; at most MaxRuns, past which a report halts the plane.
+	RunsHalted int
 	// Mismatches counts closings whose sent bytes were not the authorized
 	// ones, whatever the effect class of the call.
 	Mismatches uint64
@@ -92,11 +103,17 @@ type Stats struct {
 	// Asks is what the plane asked the external decision point and what came
 	// back. decision_latency_us on a decision is the kernel's alone.
 	Asks Asks
-	// Halted says the plane takes no material call: a closing record could
-	// not be written and no append has succeeded since, or an execution of
-	// any effect class ran with bytes that were not authorized, which stands
-	// until restart.
+	// Halted says the plane takes no material call: MismatchHalted,
+	// SinkHalted or both. A run halted on its own is counted in RunsHalted,
+	// not here.
 	Halted bool
+	// MismatchHalted says an execution of any effect class ran with bytes
+	// that were not authorized and the mismatch halted the plane rather than
+	// one run. It stands until restart.
+	MismatchHalted bool
+	// SinkHalted says a closing record could not be written and no append
+	// has succeeded since.
+	SinkHalted bool
 }
 
 // Asks counts the pipeline's calls to its DecisionPoint's Ask, by what each
@@ -127,8 +144,10 @@ type counters struct {
 	// before a failure and returned after it does not lift the halt that
 	// failure raised.
 	failures uint64
-	// sinkHalt lifts when an append succeeds; mismatchHalt never does.
+	// sinkHalt lifts when an append succeeds; mismatchHalt never does, and
+	// neither does a run's entry in runHalts.
 	sinkHalt, mismatchHalt bool
+	runHalts               map[string]struct{}
 }
 
 func (c *counters) blocked(code string) {
@@ -183,18 +202,37 @@ func (c *counters) sinkFailed(afterEffect bool) {
 	c.stats.SinkFailuresBeforeEffect++
 }
 
-func (c *counters) mismatched() {
+// mismatched counts a mismatch and halts run, or the plane when run is empty
+// or bound other runs are halted already.
+func (c *counters) mismatched(run string, bound int) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.stats.Mismatches++
-	c.mismatchHalt = true
+	if _, halted := c.runHalts[run]; run == "" || (!halted && len(c.runHalts) >= bound) {
+		c.mismatchHalt = true
+		return
+	}
+	if c.runHalts == nil {
+		c.runHalts = make(map[string]struct{})
+	}
+	c.runHalts[run] = struct{}{}
 }
 
-// halts reports the two halts.
-func (c *counters) halts() (sink, mismatch bool) {
+// sinkFailedAbandoning records a refused closing of an abandoned execution,
+// which halts nothing.
+func (c *counters) sinkFailedAbandoning() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.sinkHalt, c.mismatchHalt
+	c.failures++
+	c.stats.SinkFailuresAbandoned++
+}
+
+// halts reports the two plane halts and whether run is halted on its own.
+func (c *counters) halts(run string) (sink, mismatch, runHalt bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	_, runHalt = c.runHalts[run]
+	return c.sinkHalt, c.mismatchHalt, run != "" && runHalt
 }
 
 func (c *counters) snapshot() Stats {
@@ -202,6 +240,8 @@ func (c *counters) snapshot() Stats {
 	defer c.mu.Unlock()
 	out := c.stats
 	out.Blocks = maps.Clone(c.stats.Blocks)
+	out.MismatchHalted, out.SinkHalted = c.mismatchHalt, c.sinkHalt
 	out.Halted = c.sinkHalt || c.mismatchHalt
+	out.RunsHalted = len(c.runHalts)
 	return out
 }

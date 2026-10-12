@@ -40,22 +40,30 @@ func modeName(mode controlv1.EnforcementMode) string {
 	return strings.TrimPrefix(mode.String(), "ENFORCEMENT_MODE_")
 }
 
-// checkPlane refuses a mode or an override effect the contract does not
-// declare, which no configuration the loader accepts can hold.
+// checkPlane refuses a mode, or an effect of an override or a tool, the
+// contract does not declare, which no configuration the loader accepts can
+// hold.
 func checkPlane(p Plane) error {
 	if _, err := classOf(p.Mode); err != nil {
 		return err
 	}
+	effects := make([]controlv1.EffectClass, 0, len(p.Overrides)+len(p.Tools))
 	for _, o := range p.Overrides {
-		v := controlv1.EffectClass(0).Descriptor().Values().ByNumber(o.Effect.Number())
-		if v == nil || o.Effect == controlv1.EffectClass_EFFECT_CLASS_UNSPECIFIED {
-			return fmt.Errorf("%w: plane %s: effect %d is not one the contract declares", ErrInput, printable(p.Name), o.Effect)
+		effects = append(effects, o.Effect)
+	}
+	for _, t := range p.Tools {
+		effects = append(effects, t.Effect)
+	}
+	for _, e := range effects {
+		v := controlv1.EffectClass(0).Descriptor().Values().ByNumber(e.Number())
+		if v == nil || e == controlv1.EffectClass_EFFECT_CLASS_UNSPECIFIED {
+			return fmt.Errorf("%w: plane %s: effect %d is not one the contract declares", ErrInput, printable(p.Name), e)
 		}
 	}
 	return nil
 }
 
-// planeCoverage is the planes' state for an mcp_tool path: enforced only when
+// planeCoverage is the planes' state for a tool path: enforced only when
 // every plane that classifies it enforces it, otherwise the weakest plane's
 // state. It returns a line per plane in front of the path, and the planes
 // that classify it.
@@ -79,10 +87,55 @@ func planeCoverage(planes []Plane, path Path) (State, []PlaneLine, []Plane) {
 	return state, lines, by
 }
 
-// planeLine is one plane's state for path. A plane stands in front of the
-// path when it lists the path's upstream or has an override for its tool, and
-// classifies it when, besides, its mode runs.
+// planeLine is one plane's state for path, never more than decided for a
+// cooperative plane.
 func planeLine(p Plane, path Path) (PlaneLine, bool, bool) {
+	if path.Kind == KindEnforceTool {
+		return toolTableLine(p, path)
+	}
+	line, classifies, inFront := mcpLine(p, path)
+	if p.Cooperative && line.State > Decided {
+		line.State, line.Basis = Decided, line.Basis+"; "+cooperating
+	}
+	return line, classifies, inFront
+}
+
+// cooperating is why a plane whose adapter hands its decisions to a client
+// enforces nothing it decides (ADR-0051).
+const cooperating = "a cooperating client enforces the decision, which the plane cannot keep from the effect"
+
+// toolTableLine is a plane's state for an enforce_tool path. A plane stands
+// in front of it when its tool table names the tool, and decides it in every
+// mode it runs in: the client it answers may ignore the answer.
+func toolTableLine(p Plane, path Path) (PlaneLine, bool, bool) {
+	i := slices.IndexFunc(p.Tools, func(t Tool) bool { return t.Name == path.Tool })
+	if i < 0 {
+		return PlaneLine{}, false, false
+	}
+	line := PlaneLine{Plane: p.Name}
+	head := modeName(p.Mode)
+	class, _ := classOf(p.Mode)
+	switch {
+	case class == modeRefused:
+		line.Basis = head + refusedAtStart
+		return line, false, true
+	case class == modeEnforces && p.Tools[i].Effect == controlv1.EffectClass_EFFECT_CLASS_READ && failOpenRead(p):
+		head += readsUndecided
+	}
+	line.State = Decided
+	line.Basis = head + "; the tool table classifies it by name; " + cooperating + "; no tool definition is checked" + planeUnread
+	return line, true, true
+}
+
+const (
+	refusedAtStart = " is refused at start by the plane, so it classifies nothing"
+	readsUndecided = " with fail_open_read: a read runs undecided while the policy is unavailable"
+)
+
+// mcpLine is one plane's state for an mcp_tool path. A plane stands in front
+// of the path when it lists the path's upstream or has an override for its
+// tool, and classifies it when, besides, its mode runs.
+func mcpLine(p Plane, path Path) (PlaneLine, bool, bool) {
 	fingerprints, readUndecided := overridesFor(p, path)
 	if len(fingerprints) == 0 && !slices.Contains(p.Upstreams, path.Upstream) {
 		return PlaneLine{}, false, false
@@ -92,7 +145,7 @@ func planeLine(p Plane, path Path) (PlaneLine, bool, bool) {
 	head := modeName(p.Mode)
 	switch {
 	case class == modeRefused:
-		line.Basis = head + " is refused at start by the plane, so it classifies nothing"
+		line.Basis = head + refusedAtStart
 		return line, false, true
 	case len(fingerprints) == 0:
 		return unclassifiedLine(line, class, head), true, true
@@ -100,7 +153,7 @@ func planeLine(p Plane, path Path) (PlaneLine, bool, bool) {
 		line.State = Decided
 	case readUndecided:
 		line.State = Decided
-		head += " with fail_open_read: a read runs undecided while the policy is unavailable"
+		head += readsUndecided
 	default:
 		line.State = Enforced
 	}

@@ -16,6 +16,9 @@ const (
 	KindHTTPAPI = "http_api"
 	KindProcess = "process"
 	KindEgress  = "egress"
+	// KindEnforceTool is a tool a client asks the enforcement API about
+	// before it acts, named as the listener's tool table names it.
+	KindEnforceTool = "enforce_tool"
 )
 
 const (
@@ -29,6 +32,8 @@ var kindNames = map[string][]string{
 	KindHTTPAPI: {"name"},
 	KindProcess: {"name"},
 	KindEgress:  {"host"},
+	// An enforce_tool is named as a tool table names it, with no upstream.
+	KindEnforceTool: {"tool"},
 }
 
 // Inventory is the operator's statement of the paths agents are expected to
@@ -38,7 +43,8 @@ type Inventory struct {
 }
 
 // Path is one declared path. Which names are set depends on Kind: Upstream
-// and Tool for mcp_tool, Host for egress, Name for http_api and process.
+// and Tool for mcp_tool, Tool for enforce_tool, Host for egress, Name for
+// http_api and process.
 type Path struct {
 	ID       string
 	Kind     string
@@ -64,7 +70,8 @@ type PathSource struct {
 // read: strict JSON of at most 1 MiB, an unknown or repeated member refused,
 // schema_version "0.1" only, and at least one path. An id is 1 to 64 bytes of
 // [a-z0-9._-] and unique, an mcp_tool's upstream and tool pair is unique, and
-// a path names a source once. Every refusal wraps ErrInventory.
+// a path names a source once, and an enforce_tool's tool is unique. Every
+// refusal wraps ErrInventory.
 func ReadInventory(b []byte) (*Inventory, error) {
 	inv, err := readInventory(b)
 	if err != nil {
@@ -105,9 +112,10 @@ func readInventory(b []byte) (*Inventory, error) {
 	return inv, nil
 }
 
-// unique refuses an id declared twice, and an upstream's tool declared twice.
+// unique refuses an id declared twice, an upstream's tool declared twice, and
+// an enforce_tool's tool declared twice.
 func unique(paths []Path) error {
-	ids, tools := map[string]bool{}, map[[2]string]bool{}
+	ids, tools, named := map[string]bool{}, map[[2]string]bool{}, map[string]bool{}
 	for i, p := range paths {
 		pair := [2]string{p.Upstream, p.Tool}
 		switch {
@@ -115,10 +123,15 @@ func unique(paths []Path) error {
 			return fmt.Errorf("paths[%d]: id %s declared twice", i, p.ID)
 		case p.Kind == KindMCPTool && tools[pair]:
 			return fmt.Errorf("paths[%d]: tool %s on %s declared twice", i, strconv.QuoteToASCII(p.Tool), strconv.QuoteToASCII(p.Upstream))
+		case p.Kind == KindEnforceTool && named[p.Tool]:
+			return fmt.Errorf("paths[%d]: %s %s declared twice", i, KindEnforceTool, strconv.QuoteToASCII(p.Tool))
 		}
 		ids[p.ID] = true
-		if p.Kind == KindMCPTool {
+		switch p.Kind {
+		case KindMCPTool:
 			tools[pair] = true
+		case KindEnforceTool:
+			named[p.Tool] = true
 		}
 	}
 	return nil
@@ -132,7 +145,7 @@ func readPath(raw json.RawMessage) (Path, error) {
 	kind, err := probe.str("kind")
 	names, known := kindNames[kind]
 	if err != nil || !known {
-		return Path{}, fmt.Errorf("kind: want %s, %s, %s or %s", KindMCPTool, KindHTTPAPI, KindProcess, KindEgress)
+		return Path{}, fmt.Errorf("kind: want %s, %s, %s, %s or %s", KindMCPTool, KindEnforceTool, KindHTTPAPI, KindProcess, KindEgress)
 	}
 	m, err := object(raw, append([]string{"id", "kind", "sources"}, names...)...)
 	if err != nil {

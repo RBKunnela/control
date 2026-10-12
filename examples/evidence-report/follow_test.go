@@ -50,7 +50,7 @@ func gapAlert(offset int64, reason string) expectedAlert {
 }
 
 func totalsLine(requests, completed, blocked, open, unknown, gaps, duplicates, conflicting int, trailer string) string {
-	return fmt.Sprintf("totals: requests %d, completed %d, failed 0, aborted 0, blocked %d, open %d, unknown %d; "+
+	return fmt.Sprintf("totals: requests %d, completed %d, failed 0, uncertain 0, aborted 0, blocked %d, open %d, unknown %d; "+
 		"gaps %d, duplicates %d, conflicting %d, refused 0; %s", requests, completed, blocked, open, unknown, gaps, duplicates, conflicting, trailer)
 }
 

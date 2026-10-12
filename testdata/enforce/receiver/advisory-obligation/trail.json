@@ -1,0 +1,21 @@
+{
+  "events": [
+    {
+      "kind": "EVENT_KIND_ACTION_PROPOSED"
+    },
+    {
+      "kind": "EVENT_KIND_POLICY_DECIDED",
+      "codes": [
+        "OBLIGATIONS_ATTACHED"
+      ]
+    },
+    {
+      "kind": "EVENT_KIND_ACTION_STARTED"
+    },
+    {
+      "kind": "EVENT_KIND_ACTION_COMPLETED",
+      "status": "RESULT_STATUS_SUCCESS",
+      "code": ""
+    }
+  ]
+}

@@ -17,8 +17,9 @@ type modeRow struct {
 // answer.
 var observe = Capabilities{ObserveRequest: true, ObserveResult: true}
 
-// enforce is observe plus the power to stop a call.
-var enforce = Capabilities{ObserveRequest: true, ObserveResult: true, Block: true}
+// enforce is observe plus a decision someone enforces: the adapter itself, or
+// the caller it hands the decision to (ADR-0051).
+var enforce = Capabilities{ObserveRequest: true, ObserveResult: true, Enforcement: EnforcementCooperative}
 
 // modes is the table ADR-0013 names, one row per declared mode. UNSPECIFIED is
 // absent on purpose: it is refused as configuration, not mapped. SHADOW acts
@@ -51,9 +52,10 @@ func Requirements(mode controlv1.EnforcementMode) (Capabilities, error) {
 	return row.needs, nil
 }
 
-// checkAdapter refuses, at start, an adapter that cannot enforce mode, an
-// adapter that declares an obligation the catalogue lacks, and an adapter that
-// binds an end user on a listener that authenticates nobody.
+// checkAdapter refuses, at start, an adapter that cannot enforce mode or
+// declares an enforcement this build does not know, an adapter that declares
+// an obligation the catalogue lacks, and an adapter that binds an end user on
+// a listener that authenticates nobody.
 func checkAdapter(mode controlv1.EnforcementMode, a Adapter) error {
 	if a == nil {
 		return ErrNoAdapter
@@ -63,7 +65,7 @@ func checkAdapter(mode controlv1.EnforcementMode, a Adapter) error {
 		return err
 	}
 	caps := a.Capabilities()
-	if !caps.covers(need) {
+	if caps.Enforcement > EnforcementInline || !caps.covers(need) {
 		return fmt.Errorf("%w: %s under %s", ErrCapability, a.Name(), mode)
 	}
 	if err := checkObligations(caps.Obligations); err != nil {

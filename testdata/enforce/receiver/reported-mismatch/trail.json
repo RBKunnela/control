@@ -1,0 +1,70 @@
+{
+  "events": [
+    {
+      "kind": "EVENT_KIND_ACTION_PROPOSED"
+    },
+    {
+      "kind": "EVENT_KIND_POLICY_DECIDED",
+      "codes": [
+        "RULE_ALLOW"
+      ]
+    },
+    {
+      "kind": "EVENT_KIND_ACTION_STARTED"
+    },
+    {
+      "kind": "EVENT_KIND_ACTION_PROPOSED"
+    },
+    {
+      "kind": "EVENT_KIND_POLICY_DECIDED",
+      "codes": [
+        "RULE_ALLOW"
+      ]
+    },
+    {
+      "kind": "EVENT_KIND_ACTION_STARTED"
+    },
+    {
+      "kind": "EVENT_KIND_ACTION_FAILED",
+      "status": "RESULT_STATUS_SUCCESS",
+      "code": "EXECUTED_ARGS_MISMATCH"
+    },
+    {
+      "kind": "EVENT_KIND_ACTION_PROPOSED"
+    },
+    {
+      "kind": "EVENT_KIND_POLICY_DECIDED",
+      "codes": [
+        "RULE_ALLOW"
+      ]
+    },
+    {
+      "kind": "EVENT_KIND_ACTION_BLOCKED",
+      "codes": [
+        "EXECUTED_ARGS_MISMATCH"
+      ]
+    },
+    {
+      "kind": "EVENT_KIND_ACTION_COMPLETED",
+      "status": "RESULT_STATUS_SUCCESS",
+      "code": ""
+    },
+    {
+      "kind": "EVENT_KIND_ACTION_PROPOSED"
+    },
+    {
+      "kind": "EVENT_KIND_POLICY_DECIDED",
+      "codes": [
+        "RULE_ALLOW"
+      ]
+    },
+    {
+      "kind": "EVENT_KIND_ACTION_STARTED"
+    },
+    {
+      "kind": "EVENT_KIND_ACTION_COMPLETED",
+      "status": "RESULT_STATUS_SUCCESS",
+      "code": ""
+    }
+  ]
+}

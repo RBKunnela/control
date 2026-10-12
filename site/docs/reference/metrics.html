@@ -34,6 +34,7 @@
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
 <li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
@@ -117,6 +118,9 @@ metric reading the spool is left out of the text rather than written as zero; th
 is still answered. A reading the text cannot carry truthfully answers 503 with no body:
 a counter below zero, a pause state outside the four, a freshness state outside the
 three, or counts outside a label's closed set that sum past a counter's range.</p>
+<p>A plane whose listener serves the enforcement API writes the <code>guardana_control_enforce_</code>
+metrics and leaves out the MCP adapter's <code>guardana_control_adapter_</code> ones; any other
+plane does the reverse, and <code>guardana_control_listener_enforce_api</code> says which.</p>
 <p><code>guardana_control_pipeline_halted</code> is not the only thing that stops calls. While it
 reads 0, an unknown pause state takes no call at all, which <code>guardana_control_pause_state</code>
 reports under <code>state=&quot;unknown&quot;</code>; in every mode but OBSERVE a policy that is not
@@ -126,11 +130,13 @@ reports; and a refused evidence append
 blocks the call it records, which <code>guardana_control_pipeline_sink_failures_before_effect_total</code>
 counts.</p>
 <p>No label carries an identifier, a digest or a reason: <code>code</code> is a code of the reason
-registry; <code>cause</code> is why a read of the pause file was unknown, why a run token did not
+registry, or an error code of the enforcement API contract in lower case without its
+<code>ERROR_CODE_</code> prefix; <code>cause</code> is why a read of the pause file was unknown, why a run token did not
 resolve, or why a poll of the policy moved nothing; and <code>state</code> is one of the four pause
 states or the three freshness states. A code or a cause outside its set is counted under
 <code>other</code>, so no count is dropped. Reads names the statistic: <code>Pipeline</code> is the
-pipeline's, <code>Adapter</code> the MCP adapter's, <code>Pause</code> the pause file reader's, <code>Policy</code> the
+pipeline's, <code>Adapter</code> the MCP adapter's, <code>Enforce</code> the enforcement API adapter's,
+<code>Pause</code> the pause file reader's, <code>Policy</code> the
 policy refresher's, <code>Spool</code> the evidence spool's and <code>Exporter</code> the exporter's.</p>
 <p>Rendered from the table in <code>internal/metrics</code>. Rebuild it with <code>make docs-gen</code>; an
 edit made here does not survive the next run.</p>
@@ -193,6 +199,27 @@ edit made here does not survive the next run.</p>
 <td></td>
 <td><code>Pipeline.Mismatches</code></td>
 <td>Closings whose sent bytes were not the authorized ones.</td>
+</tr>
+<tr>
+<td><code>guardana_control_pipeline_runs_halted</code></td>
+<td>gauge</td>
+<td></td>
+<td><code>Pipeline.RunsHalted</code></td>
+<td>Opened runs whose material calls are blocked until restart because a caller reported bytes that were not the authorized ones.</td>
+</tr>
+<tr>
+<td><code>guardana_control_pipeline_abandoned_total</code></td>
+<td>counter</td>
+<td></td>
+<td><code>Pipeline.Abandoned</code></td>
+<td>Executions nobody completed or aborted before they expired, closed with the outcome unknown.</td>
+</tr>
+<tr>
+<td><code>guardana_control_pipeline_sink_failures_abandoned_total</code></td>
+<td>counter</td>
+<td></td>
+<td><code>Pipeline.SinkFailuresAbandoned</code></td>
+<td>Closing records of abandoned executions that could not be written; none halts material calls.</td>
 </tr>
 <tr>
 <td><code>guardana_control_pipeline_multi_use_refused_total</code></td>
@@ -270,6 +297,20 @@ edit made here does not survive the next run.</p>
 <td></td>
 <td><code>Pipeline.Halted</code></td>
 <td>1 when a halt stops material calls: a closing record could not be written and no append has succeeded since, or an execution sent bytes that were not authorized. Calls are still blocked for other causes while it reads 0.</td>
+</tr>
+<tr>
+<td><code>guardana_control_pipeline_halted_mismatch</code></td>
+<td>gauge</td>
+<td></td>
+<td><code>Pipeline.MismatchHalted</code></td>
+<td>1 when an execution sent bytes that were not authorized and the mismatch halted the plane, not one run; it stands until restart.</td>
+</tr>
+<tr>
+<td><code>guardana_control_pipeline_halted_sink</code></td>
+<td>gauge</td>
+<td></td>
+<td><code>Pipeline.SinkHalted</code></td>
+<td>1 when a closing record could not be written and no append has succeeded since.</td>
 </tr>
 <tr>
 <td><code>guardana_control_pipeline_flow_uncomputed_total</code></td>
@@ -452,6 +493,83 @@ edit made here does not survive the next run.</p>
 <td></td>
 <td><code>PauseEntries</code></td>
 <td>Pause entries in force.</td>
+</tr>
+<tr>
+<td><code>guardana_control_listener_enforce_api</code></td>
+<td>gauge</td>
+<td></td>
+<td><code>EnforceAPI</code></td>
+<td>1 when the plane serves the enforcement API: the metrics of its adapter are written and those of the MCP adapter left out.</td>
+</tr>
+<tr>
+<td><code>guardana_control_enforce_open_handles</code></td>
+<td>gauge</td>
+<td></td>
+<td><code>Enforce.Open</code></td>
+<td>Executions the enforcement API handed out whose handle is still open.</td>
+</tr>
+<tr>
+<td><code>guardana_control_enforce_executed_total</code></td>
+<td>counter</td>
+<td></td>
+<td><code>Enforce.Executed</code></td>
+<td>Admits answered EXECUTE.</td>
+</tr>
+<tr>
+<td><code>guardana_control_enforce_blocked_total</code></td>
+<td>counter</td>
+<td></td>
+<td><code>Enforce.Blocked</code></td>
+<td>Admits answered BLOCK, including executions not handed out because their resource moved.</td>
+</tr>
+<tr>
+<td><code>guardana_control_enforce_pending_total</code></td>
+<td>counter</td>
+<td></td>
+<td><code>Enforce.Pending</code></td>
+<td>Admits answered PENDING.</td>
+</tr>
+<tr>
+<td><code>guardana_control_enforce_completed_total</code></td>
+<td>counter</td>
+<td></td>
+<td><code>Enforce.Completed</code></td>
+<td>Executions a client completed.</td>
+</tr>
+<tr>
+<td><code>guardana_control_enforce_aborted_total</code></td>
+<td>counter</td>
+<td></td>
+<td><code>Enforce.Aborted</code></td>
+<td>Executions a client aborted, and those the adapter aborted because their resource moved.</td>
+</tr>
+<tr>
+<td><code>guardana_control_enforce_abandoned_total</code></td>
+<td>counter</td>
+<td></td>
+<td><code>Enforce.Abandoned</code></td>
+<td>Executions the adapter abandoned: expired, open at shutdown, or handed to nobody.</td>
+</tr>
+<tr>
+<td><code>guardana_control_enforce_records_failed_total</code></td>
+<td>counter</td>
+<td></td>
+<td><code>Enforce.RecordsFailed</code></td>
+<td>Abandons and aborts whose closing record could not be written; each leaves its trail open.</td>
+</tr>
+<tr>
+<td><code>guardana_control_enforce_refused_total</code></td>
+<td>counter</td>
+<td><code>code</code></td>
+<td><code>Enforce.Refused</code></td>
+<td>Requests the enforcement API refused, by its error code, refused run tokens included; a code the contract does not declare is counted under other.</td>
+</tr>
+<tr>
+<td><code>guardana_control_enforce_runs_refused_total</code></td>
+<td>counter</td>
+<td><code>cause</code></td>
+<td><code>Enforce.RunsRefused</code></td>
+<td>Requests refused because their run token did not resolve, by cause.</td>
 </tr>
 <tr>
 <td><code>guardana_control_stops_polls_total</code></td>
@@ -709,6 +827,7 @@ edit made here does not survive the next run.</p>
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
 <li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>

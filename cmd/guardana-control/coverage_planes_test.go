@@ -134,3 +134,90 @@ func TestCoverageRefusesAnExportAnotherAccountCouldWrite(t *testing.T) {
 		})
 	}
 }
+
+// enforcePlane is a plane serving the enforcement API in mode, its tool
+// table classifying refund and lookup by name.
+const enforcePlane = `mode: %s
+project_id: orders
+tenant_id: acme
+environment: dev
+
+listener:
+  kind: enforce_api
+  socket: /run/plane/enforce.sock
+  execution_lifetime: 30s
+  principal:
+    id: agent-runner
+  agent:
+    id: refund-worker
+
+runs:
+  dir: runs
+
+policy:
+  bundle_id: fixture
+  bundle_file: policy.bundle
+  key_id: k1
+  public_key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  statement_file: policy.statement
+  state_dir: floors
+  freshness_key_id: f1
+  freshness_public_key: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=
+  poll_interval: 5s
+
+evidence:
+  dir: spool
+
+export:
+  endpoint: http://127.0.0.1:4318/v1/logs
+  allow_plaintext: true
+%s
+tools:
+  - name: refund
+    effect: TRANSACT
+    provider: payments
+    resource_type: order
+    resource_from: /order_id
+  - name: lookup
+    effect: READ
+    provider: payments
+    resource_type: order
+`
+
+// TestCoverageReadsAnEnforcementAPIPlanesToolTable: the tools of a plane
+// serving the enforcement API are decided, not enforced, in every mode that
+// plane runs in, on a basis naming the cooperating client; a tool its table
+// does not name, and the MCP path no MCP plane serves, are not covered.
+func TestCoverageReadsAnEnforcementAPIPlanesToolTable(t *testing.T) {
+	for _, mode := range []string{"OBSERVE", "ENFORCE", "APPROVE", "LOCKDOWN"} {
+		t.Run(mode, func(t *testing.T) {
+			tr := newCoverageTree(t, `,
+ {"id":"payments.refund","kind":"enforce_tool","tool":"refund"},
+ {"id":"payments.void","kind":"enforce_tool","tool":"void"}`)
+			api := filepath.Join(tr.dir, "enforce.yaml")
+			approvals := ""
+			if mode == "APPROVE" {
+				approvals = "\napprovals:\n  provider: file\n  dir: approvals\n  hold_journal_dir: holds\n"
+			}
+			writeFixture(t, api, fmt.Sprintf(enforcePlane, mode, approvals))
+			code, stdout, stderr := invoke(t, tr.args("--plane", api)...)
+			if code != 1 || stderr != "" {
+				t.Fatalf("exit %d, stderr %q, stdout %q", code, stderr, stdout)
+			}
+			want := []string{
+				"payments.refund decided, not enforced: planes " + api,
+				"  plane " + api + ": decided, not enforced: " + mode + "; the tool table classifies it by name; " +
+					"a cooperating client enforces the decision, which the plane cannot keep from the effect; " +
+					"no tool definition is checked; the plane's environment is not read",
+				"  join: none checked: no source is named for it",
+				"payments.void not covered: no plane classifies it and no live source observed it",
+			}
+			if got := strings.Join(outputLines(stdout), "\n"); !strings.Contains(got, strings.Join(want, "\n")) {
+				t.Fatalf("output:\n%s\nwant it to hold:\n%s", got, strings.Join(want, "\n"))
+			}
+			if strings.Contains(strings.ReplaceAll(stdout, "not enforced", ""), "enforced") {
+				t.Errorf("an enforcement API plane enforced something:\n%s", stdout)
+			}
+		})
+	}
+}

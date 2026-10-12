@@ -180,7 +180,7 @@ func then(a []step, b ...step) []step { return append(append([]step(nil), a...),
 
 func unknownOne(name, in, row string) reportCase {
 	return reportCase{name: name, in: in, rows: []string{row},
-		totals: "totals: requests 1, completed 0, failed 0, aborted 0, blocked 0, open 0, unknown 1; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
+		totals: "totals: requests 1, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 0, unknown 1; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
 		code:   1, stderr: "not every request"}
 }
 
@@ -205,7 +205,7 @@ func TestLifecycleShapes(t *testing.T) {
 			"t\tp\tr1\trun-r1\tread_order\tALLOW\tRULE_ALLOW\t-\tno\t-\tunknown\tevent r1-3 is ACTION_STARTED and names no execution"),
 		{name: "an expired window asked again, answered and run", in: whole("r5", again...),
 			rows:   []string{"t\tp\tr5\trun-r5\tupdate_order\tREQUIRE_APPROVAL\tAPPROVAL_REQUIRED\t-\tyes\tapproved\tcompleted\t-"},
-			totals: "totals: requests 1, completed 1, failed 0, aborted 0, blocked 0, open 0, unknown 0; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached},
+			totals: "totals: requests 1, completed 1, failed 0, uncertain 0, aborted 0, blocked 0, open 0, unknown 0; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) { check(t, tc) })
@@ -245,8 +245,9 @@ func TestPayloads(t *testing.T) {
 }
 
 // TestResults holds the end to what the result says: completed only on a
-// success, aborted when nothing was sent, failed on a failure or a timeout,
-// and unknown whenever the effect may have happened.
+// success, aborted when nothing was sent, failed on a failure, uncertain on a
+// failure whose effect nobody could tell, a timeout or an unknown outcome,
+// and unknown whenever the result is at odds with its event or missing.
 func TestResults(t *testing.T) {
 	closed := func(kind, extra string) string {
 		return whole("r1", allowed[0], allowed[1], allowed[2], step{kind, extra})
@@ -254,10 +255,15 @@ func TestResults(t *testing.T) {
 	one := func(end string) string {
 		counts := map[string]int{}
 		counts[end] = 1
-		return fmt.Sprintf("totals: requests 1, completed %d, failed %d, aborted %d, blocked 0, open 0, unknown %d; "+
-			"gaps 0, duplicates 0, conflicting 0, refused 0"+endReached, counts["completed"], counts["failed"], counts["aborted"], counts["unknown"])
+		return fmt.Sprintf("totals: requests 1, completed %d, failed %d, uncertain %d, aborted %d, blocked 0, open 0, unknown %d; "+
+			"gaps 0, duplicates 0, conflicting 0, refused 0"+endReached, counts["completed"], counts["failed"], counts["uncertain"], counts["aborted"], counts["unknown"])
 	}
 	row := "t\tp\tr1\trun-r1\tread_order\tALLOW\tRULE_ALLOW\t-\tno\t-\t"
+	uncertain := func(status string) reportCase {
+		return reportCase{name: "ACTION_FAILED " + status, in: closed("ACTION_FAILED", ended("x1", status)),
+			rows:   []string{row + "uncertain\tevent r1-4 is ACTION_FAILED with result RESULT_STATUS_" + status + ": the effect may have happened"},
+			totals: one("uncertain"), code: 1, stderr: "1 request(s) ended uncertain"}
+	}
 	mayHave := func(kind, status string) reportCase {
 		return unknownOne(kind+" "+status, closed(kind, ended("x1", status)),
 			row+"unknown\tevent r1-4 is "+kind+" with result RESULT_STATUS_"+status+": the effect may have happened")
@@ -266,12 +272,12 @@ func TestResults(t *testing.T) {
 		{name: "a success", in: closed("ACTION_COMPLETED", ended("x1", "SUCCESS")), rows: []string{row + "completed\t-"}, totals: one("completed")},
 		{name: "nothing sent", in: closed("ACTION_FAILED", ended("x1", "BLOCKED")), rows: []string{row + "aborted\t-"}, totals: one("aborted")},
 		{name: "a failure", in: closed("ACTION_FAILED", ended("x1", "FAILURE")), rows: []string{row + "failed\t-"}, totals: one("failed")},
-		{name: "a timeout", in: closed("ACTION_FAILED", ended("x1", "TIMEOUT")), rows: []string{row + "failed\t-"}, totals: one("failed")},
+		uncertain("TIMEOUT"),
+		uncertain("UNKNOWN"),
 		mayHave("ACTION_COMPLETED", "FAILURE"),
 		mayHave("ACTION_COMPLETED", "BLOCKED"),
 		mayHave("ACTION_COMPLETED", "UNKNOWN"),
 		mayHave("ACTION_FAILED", "SUCCESS"),
-		mayHave("ACTION_FAILED", "UNKNOWN"),
 		mayHave("ACTION_FAILED", "UNSPECIFIED"),
 		mayHave("ACTION_FAILED", "CANCELLED"),
 		unknownOne("a result the contract does not declare", closed("ACTION_FAILED", execution("x1")+`,"result":{"status":99}`),
@@ -323,7 +329,7 @@ func TestEnforcement(t *testing.T) {
 		return reportCase{name: verdict + " run under " + short, in: inModeWhole(mode, ran(verdict)),
 			rows: []string{"t\tp\tr2\trun-r2\trefund\t" + verdict + "\tRULE_X\t-\tno\t-\tcompleted\tran under " + short +
 				", which enforces nothing, after verdict " + verdict + " and no approval"},
-			totals: "totals: requests 1, completed 1, failed 0, aborted 0, blocked 0, open 0, unknown 0; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached}
+			totals: "totals: requests 1, completed 1, failed 0, uncertain 0, aborted 0, blocked 0, open 0, unknown 0; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached}
 	}
 	unlifted := func(name, mode, verdict string) reportCase {
 		short := strings.TrimPrefix(mode, "ENFORCEMENT_MODE_")
@@ -334,7 +340,7 @@ func TestEnforcement(t *testing.T) {
 	lifted := func(name, mode, verdict string) reportCase {
 		return reportCase{name: name, in: inModeWhole(mode, approvedRan(verdict)),
 			rows:   []string{"t\tp\tr2\trun-r2\trefund\t" + verdict + "\tRULE_X\t-\tyes\tapproved\tcompleted\t-"},
-			totals: "totals: requests 1, completed 1, failed 0, aborted 0, blocked 0, open 0, unknown 0; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached}
+			totals: "totals: requests 1, completed 1, failed 0, uncertain 0, aborted 0, blocked 0, open 0, unknown 0; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached}
 	}
 	drop := func(events []string, i int) []string {
 		out := append([]string(nil), events...)
@@ -369,7 +375,7 @@ func TestEnforcement(t *testing.T) {
 		{name: "a denied action approved and run under OBSERVE", in: inModeWhole("ENFORCEMENT_MODE_OBSERVE", approvedRan("DENY")),
 			rows: []string{"t\tp\tr2\trun-r2\trefund\tDENY\tRULE_X\t-\tyes\tapproved\tcompleted\t" +
 				"ran under OBSERVE, which enforces nothing, after verdict DENY, which no approval lifts"},
-			totals: "totals: requests 1, completed 1, failed 0, aborted 0, blocked 0, open 0, unknown 0; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached},
+			totals: "totals: requests 1, completed 1, failed 0, uncertain 0, aborted 0, blocked 0, open 0, unknown 0; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached},
 		observed("ENFORCEMENT_MODE_OBSERVE", "DENY"),
 		observed("ENFORCEMENT_MODE_WARN", "INDETERMINATE"),
 		unknownOne("an event that names no mode", newExport("1.0").event(drop(r1, 2)...).whole(),

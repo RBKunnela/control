@@ -1,0 +1,16 @@
+{
+  "events": [
+    {
+      "kind": "EVENT_KIND_ACTION_PROPOSED"
+    },
+    {
+      "kind": "EVENT_KIND_POLICY_DECIDED",
+      "codes": [
+        "RULE_ALLOW"
+      ]
+    },
+    {
+      "kind": "EVENT_KIND_ACTION_STARTED"
+    }
+  ]
+}

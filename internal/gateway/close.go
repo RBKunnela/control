@@ -22,12 +22,27 @@ import (
 // disposition this pipeline did not mint, or closed already, is refused with
 // ErrNotMinted. A mismatch is recorded as ACTION_FAILED naming
 // EXECUTED_ARGS_MISMATCH, returned as ErrExecutedArgsMismatch, and halts
-// material calls until restart; a sink error is returned as is and halts them
-// until an append succeeds. The caller delivers the result either way. The
-// journal entry of a hold the execution resumed is forgotten only once the
-// closing record lands: a trail a refused append left open keeps its entry, for
-// a later plane to report as an interrupted close.
+// material calls until restart; a sink error is returned wrapped in
+// ErrNotRecorded and halts them until an append succeeds. The caller delivers
+// the result either way. The journal entry of a hold the execution resumed is
+// forgotten only once the closing record lands: a trail a refused append left
+// open keeps its entry, for a later plane to report as an interrupted close.
 func (p *Pipeline) Close(ctx context.Context, d Disposition, sent []byte, result *controlv1.ActionResult) error {
+	return p.close(ctx, d, sent, result, false)
+}
+
+// CloseReported is Close for bytes a caller reports it sent rather than bytes
+// the adapter sent itself (ADR-0051). Through a cooperative adapter it differs
+// in what a mismatch halts: the material calls of the execution's opened run,
+// until restart, since a plane-wide halt would let any caller stop every run.
+// A mismatch of an execution no opened run names, of a run past MaxRuns halted
+// runs, or reported through an adapter that is not cooperative, which has no
+// caller to report for it, halts the plane as Close does.
+func (p *Pipeline) CloseReported(ctx context.Context, d Disposition, sent []byte, result *controlv1.ActionResult) error {
+	return p.close(ctx, d, sent, result, true)
+}
+
+func (p *Pipeline) close(ctx context.Context, d Disposition, sent []byte, result *controlv1.ActionResult, reported bool) error {
 	if p == nil || p.kernel == nil {
 		return ErrUnbuilt
 	}
@@ -46,7 +61,7 @@ func (p *Pipeline) Close(ctx context.Context, d Disposition, sent []byte, result
 	matched := err == nil && executed == ex.digest
 	var mismatch error
 	if !matched {
-		p.counts.mismatched()
+		p.counts.mismatched(p.haltScope(ex, reported), p.cfg.MaxRuns)
 		mismatch = ErrExecutedArgsMismatch
 		if err != nil {
 			mismatch = fmt.Errorf("%w: %w", ErrExecutedArgsMismatch, err)
@@ -59,13 +74,21 @@ func (p *Pipeline) Close(ctx context.Context, d Disposition, sent []byte, result
 	if err := p.sinkAppend(ctx, ex.closing(result, executed, matched)); err != nil {
 		p.counts.sinkFailed(true)
 		if mismatch != nil {
-			return fmt.Errorf("%w: %w", mismatch, err)
+			return fmt.Errorf("%w: %w: %w", mismatch, ErrNotRecorded, err)
 		}
-		return err
+		return fmt.Errorf("%w: %w", ErrNotRecorded, err)
 	}
 	p.counts.appended(gen)
 	p.journalForget(ctx, ex.requestID)
 	return mismatch
+}
+
+// haltScope is the opened run a mismatch of ex halts, or empty for the plane.
+func (p *Pipeline) haltScope(ex *execution, reported bool) string {
+	if !reported || p.cfg.Adapter.Capabilities().Enforcement != EnforcementCooperative {
+		return ""
+	}
+	return ex.runID
 }
 
 // closeUnsent ends an execution the adapter closed with no bytes: the record
@@ -148,8 +171,8 @@ func (c AbortCause) code() (string, bool) {
 // consumes the execution and never halts the plane. It refuses a cause this
 // build does not declare with ErrAbortCause, leaving the execution open, and a
 // disposition it did not mint, or closed already, with ErrNotMinted; a sink
-// error is returned as is, and the journal entry of a hold the execution
-// resumed stays, as it does at Close.
+// error is returned wrapped in ErrNotRecorded, and the journal entry of a hold
+// the execution resumed stays, as it does at Close.
 func (p *Pipeline) Abort(ctx context.Context, d Disposition, cause AbortCause) error {
 	if p == nil || p.kernel == nil {
 		return ErrUnbuilt
@@ -179,7 +202,7 @@ func (p *Pipeline) abort(ctx context.Context, d Disposition, code string) error 
 	gen := p.counts.generation()
 	if err := p.sinkAppend(ctx, ex.trail.Failed(aborted)); err != nil {
 		p.counts.sinkFailed(false)
-		return err
+		return fmt.Errorf("%w: %w", ErrNotRecorded, err)
 	}
 	p.counts.appended(gen)
 	p.journalForget(ctx, ex.requestID)
@@ -196,4 +219,39 @@ func (ex *execution) stamp(result *controlv1.ActionResult) *controlv1.ActionResu
 	out.RequestId = ex.requestID
 	out.ExecutionId = ex.executionID
 	return out
+}
+
+// Abandon closes an execution that was neither closed nor aborted by its
+// expiry: ACTION_FAILED whose result is UNKNOWN, not retryable, carrying
+// EXECUTION_ABANDONED in tool_protocol_status and no executed digest, because
+// nobody knows whether the call ran and no comparison did (ADR-0051). It
+// consumes the execution and never halts the plane, a sink refusal included,
+// which is returned wrapped in ErrNotRecorded and leaves the journal entry of
+// a hold the execution resumed, as Abort does. A disposition this pipeline did not mint,
+// or closed already, is refused with ErrNotMinted.
+func (p *Pipeline) Abandon(ctx context.Context, d Disposition) error {
+	if p == nil || p.kernel == nil {
+		return ErrUnbuilt
+	}
+	ctx = context.WithoutCancel(ctx)
+	ex := p.take(d.handle)
+	if ex == nil {
+		return ErrNotMinted
+	}
+	p.counts.add(func(s *Stats) *uint64 { return &s.Abandoned })
+	if ex.unrecorded {
+		return nil
+	}
+	abandoned := ex.stamp(nil)
+	abandoned.Status = resultUnknown
+	abandoned.ToolProtocolStatus = codeExecutionAbandoned
+	abandoned.EndedAt = timestampOf(p.cfg.Clock())
+	gen := p.counts.generation()
+	if err := p.sinkAppend(ctx, ex.trail.Failed(abandoned)); err != nil {
+		p.counts.sinkFailedAbandoning()
+		return fmt.Errorf("%w: %w", ErrNotRecorded, err)
+	}
+	p.counts.appended(gen)
+	p.journalForget(ctx, ex.requestID)
+	return nil
 }

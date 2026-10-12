@@ -99,6 +99,9 @@ func lead() string {
 		"is still answered. A reading the text cannot carry truthfully answers 503 with no body:\n" +
 		"a counter below zero, a pause state outside the four, a freshness state outside the\n" +
 		"three, or counts outside a label's closed set that sum past a counter's range.\n\n" +
+		"A plane whose listener serves the enforcement API writes the `" + metrics.Prefix() + "enforce_`\n" +
+		"metrics and leaves out the MCP adapter's `" + metrics.Prefix() + "adapter_` ones; any other\n" +
+		"plane does the reverse, and `" + metrics.Prefix() + "listener_enforce_api` says which.\n\n" +
 		"`" + metrics.Prefix() + "pipeline_halted` is not the only thing that stops calls. While it\n" +
 		"reads 0, an unknown pause state takes no call at all, which `" + metrics.Prefix() + "pause_state`\n" +
 		"reports under `state=\"unknown\"`; in every mode but OBSERVE a policy that is not\n" +
@@ -108,11 +111,13 @@ func lead() string {
 		"blocks the call it records, which `" + metrics.Prefix() + "pipeline_sink_failures_before_effect_total`\n" +
 		"counts.\n\n" +
 		"No label carries an identifier, a digest or a reason: `code` is a code of the reason\n" +
-		"registry; `cause` is why a read of the pause file was unknown, why a run token did not\n" +
+		"registry, or an error code of the enforcement API contract in lower case without its\n" +
+		"`ERROR_CODE_` prefix; `cause` is why a read of the pause file was unknown, why a run token did not\n" +
 		"resolve, or why a poll of the policy moved nothing; and `state` is one of the four pause\n" +
 		"states or the three freshness states. A code or a cause outside its set is counted under\n" +
 		"`" + metrics.Other + "`, so no count is dropped. Reads names the statistic: `Pipeline` is the\n" +
-		"pipeline's, `Adapter` the MCP adapter's, `Pause` the pause file reader's, `Policy` the\n" +
+		"pipeline's, `Adapter` the MCP adapter's, `Enforce` the enforcement API adapter's,\n" +
+		"`Pause` the pause file reader's, `Policy` the\n" +
 		"policy refresher's, `Spool` the evidence spool's and `Exporter` the exporter's.\n\n" +
 		"Rendered from the table in `internal/metrics`. Rebuild it with `make docs-gen`; an\n" +
 		"edit made here does not survive the next run.\n\n"

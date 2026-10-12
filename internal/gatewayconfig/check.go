@@ -17,7 +17,7 @@ func (c *Config) check() error {
 	if err := checkRequired(c, configFields, ""); err != nil {
 		return err
 	}
-	for _, check := range []func() error{c.checkListener, c.checkSessionIdle, c.checkMaxSessions, c.checkPolicy, c.checkPDP, c.checkApprovals, c.checkPause, c.checkRuns, c.checkReaction, c.checkFlow, c.checkEvidence, c.checkExport, c.checkShaping, c.checkTimeouts, c.checkUpstreams, c.checkOverrides} {
+	for _, check := range []func() error{c.checkKindKeys, c.checkListener, c.checkSessionIdle, c.checkMaxSessions, c.checkPolicy, c.checkPDP, c.checkApprovals, c.checkPause, c.checkRuns, c.checkReaction, c.checkFlow, c.checkEvidence, c.checkExport, c.checkShaping, c.checkTimeouts, c.checkUpstreams, c.checkOverrides} {
 		if err := check(); err != nil {
 			return err
 		}
@@ -175,6 +175,7 @@ func (c *Config) checkApprovalBounds() error {
 		{"approvals.max_records", c.Approvals.MaxRecords},
 		{"approvals.max_record_bytes", c.Approvals.MaxRecordBytes},
 		{"approvals.reconcile_max", c.Approvals.ReconcileMax},
+		{"approvals.max_held_per_run", c.Approvals.MaxHeldPerRun},
 	} {
 		if bound.n <= 0 {
 			return fmt.Errorf("%s: %d; the bound has to be positive", bound.key, bound.n)

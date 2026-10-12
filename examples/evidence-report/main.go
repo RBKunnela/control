@@ -32,8 +32,10 @@
 // It exits 0 when the export accounts for at least one request, every
 // request's lifecycle is complete, and nothing is missing: the trailer was
 // read, the file's end was reached, and no gap, conflicting event or refused
-// record was seen. It exits 1 when anything is missing, unknown or cut, or
-// the export is refused, and 2 on a usage error.
+// record was seen. It exits 1 when anything is missing, unknown, uncertain or
+// cut, or the export is refused, and 2 on a usage error. A run that timed out
+// or reported an unknown outcome ended uncertain, never failed: its effect may
+// have happened.
 //
 // With -state DIR it follows one trail from export to export instead: -init
 // makes the directory, -cursor prints the cursor the next export starts
@@ -140,7 +142,7 @@ func reportOnce(stdin io.Reader, stdout, stderr io.Writer) int {
 func say(w io.Writer, line string) { _, _ = fmt.Fprintln(w, name+": "+line) }
 
 // totals counts the rows by how their requests ended.
-type totals struct{ requests, completed, failed, aborted, blocked, open, unknown int }
+type totals struct{ requests, completed, failed, uncertain, aborted, blocked, open, unknown int }
 
 func (t *totals) add(r row) {
 	t.requests++
@@ -149,6 +151,8 @@ func (t *totals) add(r row) {
 		t.completed++
 	case endFailed:
 		t.failed++
+	case endUncertain:
+		t.uncertain++
 	case endAborted:
 		t.aborted++
 	case endBlocked:
@@ -161,9 +165,9 @@ func (t *totals) add(r row) {
 }
 
 func (t totals) line(x *export) string {
-	return fmt.Sprintf("totals: requests %d, completed %d, failed %d, aborted %d, blocked %d, open %d, unknown %d; "+
+	return fmt.Sprintf("totals: requests %d, completed %d, failed %d, uncertain %d, aborted %d, blocked %d, open %d, unknown %d; "+
 		"gaps %d, duplicates %d, conflicting %d, refused %d; %s",
-		t.requests, t.completed, t.failed, t.aborted, t.blocked, t.open, t.unknown,
+		t.requests, t.completed, t.failed, t.uncertain, t.aborted, t.blocked, t.open, t.unknown,
 		x.gaps, x.duplicates, x.conflicting, x.refused, x.trailerState())
 }
 
@@ -187,6 +191,9 @@ func (x *export) missing(t totals) []string {
 	}
 	if t.open > 0 || t.unknown > 0 {
 		out = append(out, fmt.Sprintf("not every request's lifecycle is complete: %d open, %d unknown", t.open, t.unknown))
+	}
+	if t.uncertain > 0 {
+		out = append(out, fmt.Sprintf("%d request(s) ended uncertain: each ran and nobody knows whether its effect happened", t.uncertain))
 	}
 	return out
 }

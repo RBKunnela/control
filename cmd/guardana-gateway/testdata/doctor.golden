@@ -6,6 +6,10 @@ ok      configuration <tree>/doctor.yaml parses, 24 key(s) set, the rest at thei
        log.level                    info                     (default)
        listener.kind                stateless_http           (<tree>/doctor.yaml:9)
        listener.address             127.0.0.1:8080           (<tree>/doctor.yaml:10)
+       listener.socket                                       (default)
+       listener.execution_lifetime                           (default)
+       listener.max_body_bytes      131072                   (default)
+       listener.max_open_per_run    16                       (default)
        listener.session_idle        30m0s                    (default)
        listener.max_sessions        1024                     (default)
        listener.principal.id        agent-runner             (<tree>/doctor.yaml:14)
@@ -38,6 +42,7 @@ ok      configuration <tree>/doctor.yaml parses, 24 key(s) set, the rest at thei
        approvals.ttl                15m0s                    (default)
        approvals.retry_after        30s                      (default)
        approvals.max_held           128                      (default)
+       approvals.max_held_per_run   16                       (default)
        approvals.max_open           256                      (default)
        approvals.max_records        1024                     (default)
        approvals.max_record_bytes   16384                    (default)
@@ -81,5 +86,5 @@ ok      runs          local: one run per principal and agent, kept in memory, so
 ok      reaction      disabled: reaction.route is not set, so no finding stops a run
 ok      export        OTLP/HTTP JSON logs to http://127.0.0.1:4318/v1/logs, 0 header(s), at most 128 record(s) per request, 4 in flight
 ok      secrets       upstream answers are scanned for 0 configured value(s); 0 value(s) shorter than 8 bytes are not
-ok      seams         the mcp adapter declares observe_request, observe_result, block, see_resource_ids, which covers what OBSERVE needs; at most 128 held and 256 open, an approval lasts 15m0s and a retry is asked for after 30s
+ok      seams         the mcp adapter declares observe_request, observe_result, enforcement_inline, see_resource_ids, which covers what OBSERVE needs; at most 128 held and 256 open, an approval lasts 15m0s and a retry is asked for after 30s
 unknown upstreams     not every upstream answered: <reason>

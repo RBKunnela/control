@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"testing"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
@@ -34,26 +35,54 @@ func TestEveryDeclaredModeHasARow(t *testing.T) {
 	}
 }
 
-func TestBlockingModesNeedBlock(t *testing.T) {
+func TestBlockingModesNeedACooperatingAdapter(t *testing.T) {
 	cases := []struct {
-		mode  controlv1.EnforcementMode
-		block bool
-		err   error
+		mode        controlv1.EnforcementMode
+		enforcement gateway.Enforcement
+		err         error
 	}{
-		{controlv1.EnforcementMode_ENFORCEMENT_MODE_OBSERVE, false, nil},
-		{controlv1.EnforcementMode_ENFORCEMENT_MODE_APPROVE, true, nil},
-		{controlv1.EnforcementMode_ENFORCEMENT_MODE_ENFORCE, true, nil},
-		{controlv1.EnforcementMode_ENFORCEMENT_MODE_LOCKDOWN, true, nil},
+		{controlv1.EnforcementMode_ENFORCEMENT_MODE_OBSERVE, gateway.EnforcementNone, nil},
+		{controlv1.EnforcementMode_ENFORCEMENT_MODE_APPROVE, gateway.EnforcementCooperative, nil},
+		{controlv1.EnforcementMode_ENFORCEMENT_MODE_ENFORCE, gateway.EnforcementCooperative, nil},
+		{controlv1.EnforcementMode_ENFORCEMENT_MODE_LOCKDOWN, gateway.EnforcementCooperative, nil},
 		// The planned rows are readable before they are built: SHADOW acts on
 		// the enforced decision, so it needs to block; WARN lets every call
 		// proceed.
-		{controlv1.EnforcementMode_ENFORCEMENT_MODE_SHADOW, true, gateway.ErrModePlanned},
-		{controlv1.EnforcementMode_ENFORCEMENT_MODE_WARN, false, gateway.ErrModePlanned},
+		{controlv1.EnforcementMode_ENFORCEMENT_MODE_SHADOW, gateway.EnforcementCooperative, gateway.ErrModePlanned},
+		{controlv1.EnforcementMode_ENFORCEMENT_MODE_WARN, gateway.EnforcementNone, gateway.ErrModePlanned},
 	}
 	for _, tc := range cases {
 		need, err := gateway.Requirements(tc.mode)
-		if !errors.Is(err, tc.err) || need.Block != tc.block || !need.ObserveRequest || !need.ObserveResult {
-			t.Errorf("Requirements(%s) = %+v, %v; want Block=%v with both observes and %v", tc.mode, need, err, tc.block, tc.err)
+		if !errors.Is(err, tc.err) || need.Enforcement != tc.enforcement || !need.ObserveRequest || !need.ObserveResult {
+			t.Errorf("Requirements(%s) = %+v, %v; want Enforcement=%d with both observes and %v", tc.mode, need, err, tc.enforcement, tc.err)
+		}
+	}
+}
+
+// TestEachEnforcementIsHeldAgainstEachMode: through New, an adapter that
+// cannot keep a call from its effect runs only under OBSERVE, a cooperating
+// one and an inline one under every mode this build enforces, and a value
+// this build does not declare under none.
+func TestEachEnforcementIsHeldAgainstEachMode(t *testing.T) {
+	const undeclared = gateway.EnforcementInline + 1
+	accepted := map[gateway.Enforcement][]controlv1.EnforcementMode{
+		gateway.EnforcementNone:        {modeObserve},
+		gateway.EnforcementCooperative: {modeObserve, modeApprove, modeEnforce, modeLockdown},
+		gateway.EnforcementInline:      {modeObserve, modeApprove, modeEnforce, modeLockdown},
+		undeclared:                     nil,
+	}
+	for enforcement, modes := range accepted {
+		for _, mode := range allModes {
+			cfg := validConfig(t)
+			cfg.Mode = mode
+			cfg.Adapter = fakeAdapter{name: "fake", caps: gateway.Capabilities{ObserveRequest: true, ObserveResult: true, Enforcement: enforcement}}
+			_, err := gateway.New(cfg)
+			switch want := slices.Contains(modes, mode); {
+			case want && err != nil:
+				t.Errorf("Enforcement %d under %s: New = %v, want it built", enforcement, mode, err)
+			case !want && !errors.Is(err, gateway.ErrCapability):
+				t.Errorf("Enforcement %d under %s: New = %v, want ErrCapability", enforcement, mode, err)
+			}
 		}
 	}
 }

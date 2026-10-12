@@ -40,6 +40,12 @@ type Plane struct {
 	Upstreams []string
 	// Overrides are the configuration's classified tools.
 	Overrides []Override
+	// Cooperative says the plane's adapter hands each decision to a client
+	// that enforces it, as the enforcement API does: the plane cannot keep a
+	// call from its effect, so nothing it classifies is enforced.
+	Cooperative bool
+	// Tools are what an enforcement API listener's tool table classifies.
+	Tools []Tool
 	// Export is this plane's evidence export for the join; nil when none was
 	// given, so no observation can be shown to have gone around this plane.
 	Export *Export
@@ -52,6 +58,13 @@ type Override struct {
 	Tool        string
 	Fingerprint string
 	Effect      controlv1.EffectClass
+}
+
+// Tool is one tool an enforcement API listener's tool table classifies by
+// name, and the effect class it assigns.
+type Tool struct {
+	Name   string
+	Effect controlv1.EffectClass
 }
 
 // Source is one observation source whose descriptor was read. A descriptor
@@ -179,7 +192,7 @@ func (in Input) check() (map[string]*Source, error) {
 func (in Input) path(p Path, sources map[string]*Source, walked families) PathCoverage {
 	pc := PathCoverage{Path: p}
 	planeState, counting := NotCovered, []Plane(nil)
-	if p.Kind == KindMCPTool {
+	if p.Kind == KindMCPTool || p.Kind == KindEnforceTool {
 		planeState, pc.Planes, counting = planeCoverage(in.Planes, p)
 	}
 	for _, ps := range p.Sources {

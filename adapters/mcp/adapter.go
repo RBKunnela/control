@@ -11,6 +11,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/guardana/control/internal/adapterkit"
 	"github.com/guardana/control/internal/brand"
 	"github.com/guardana/control/internal/gateway"
 )
@@ -59,7 +60,7 @@ type Adapter struct {
 
 	admitted, blocked, sent, closeFailures, refreshFailures atomic.Int64
 	sessionsRefused, withheld                               atomic.Int64
-	refusedAtRequest, refusedAtMessage                      *runCounter
+	refusedAtRequest, refusedAtMessage                      *adapterkit.RunCounter
 	flights                                                 flights
 }
 
@@ -146,7 +147,7 @@ func New(cfg Config) (*Adapter, error) {
 	}
 	a := &Adapter{
 		cfg: cfg, manifest: newManifest(cfg.Overrides, cfg.Secrets), lists: newListCache(cfg.ListTTL), logger: cfg.Logger,
-		refusedAtRequest: newRunCounter(), refusedAtMessage: newRunCounter(),
+		refusedAtRequest: adapterkit.NewRunCounter(), refusedAtMessage: adapterkit.NewRunCounter(),
 	}
 	if a.logger == nil {
 		a.logger = slog.New(slog.DiscardHandler)
@@ -180,7 +181,7 @@ func (a *Adapter) Capabilities() gateway.Capabilities {
 	return gateway.Capabilities{
 		ObserveRequest: true,
 		ObserveResult:  true,
-		Block:          true,
+		Enforcement:    gateway.EnforcementInline,
 		Authenticates:  authenticates,
 		BindEndUser:    authenticates,
 		PresentsRuns:   a.cfg.Listener.Runs != nil,
@@ -289,7 +290,7 @@ func (a *Adapter) Stats() Stats {
 	return Stats{
 		Admitted: a.admitted.Load(), Blocked: a.blocked.Load(), Sent: a.sent.Load(),
 		CloseFailures: a.closeFailures.Load(), RefreshFailures: a.refreshFailures.Load(),
-		RunsRefusedAtRequest: a.refusedAtRequest.snapshot(), RunsRefusedAtMessage: a.refusedAtMessage.snapshot(),
+		RunsRefusedAtRequest: RunRefusals(a.refusedAtRequest.Snapshot()), RunsRefusedAtMessage: RunRefusals(a.refusedAtMessage.Snapshot()),
 		SessionsRefused: a.sessionsRefused.Load(), SessionsLive: a.statefulSessions(),
 		Withheld: a.withheld.Load(),
 	}

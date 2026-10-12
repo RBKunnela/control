@@ -2,7 +2,7 @@
 title: Wire contracts
 summary: What the v1 messages are versioned by, what a receiver refuses them for, and how the evidence events chain.
 type: spec
-covers: [api/proto/guardana/control/v1/**, api/gen/go/guardana/control/v1/**, api/proto/guardana/control/enforce/**, api/gen/go/guardana/control/enforce/**, pkg/contract/**, internal/canon/**, internal/evidence/chain.go, internal/evidence/version.go, internal/trailfile/export.go, internal/trailfile/export_records.go, internal/trailfile/cursor.go, internal/lineexport/**, internal/runs/record.go, internal/runs/state.go, internal/reaction/route.go, internal/reaction/line.go, internal/reaction/lift.go, internal/reaction/envelope.go, internal/reaction/judge.go, testdata/contracts/**, testdata/digest/**, testdata/export/**]
+covers: [api/proto/guardana/control/v1/**, api/gen/go/guardana/control/v1/**, api/proto/guardana/control/enforce/**, api/gen/go/guardana/control/enforce/**, pkg/contract/**, internal/canon/**, internal/evidence/chain.go, internal/evidence/version.go, internal/trailfile/export.go, internal/trailfile/export_records.go, internal/trailfile/cursor.go, internal/lineexport/**, internal/runs/record.go, internal/runs/state.go, internal/reaction/route.go, internal/reaction/line.go, internal/reaction/lift.go, internal/reaction/envelope.go, internal/reaction/judge.go, testdata/contracts/**, testdata/digest/**, testdata/enforce/**, testdata/export/**]
 stability: stable
 ---
 
@@ -1351,7 +1351,9 @@ outside the v1 promise and free to change without a major version.
 `Obligation` and adds no field to any v1 message.
 [ADR-0051](adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api.md)
 records the receiver, `adapters/enforce`, and [status.md](status.md) says
-whether it is built.
+whether it is built. The cases a client in any language is held to are files
+in [testdata/enforce/](../testdata/enforce/README.md), which the reference
+client in `internal/enforceclient` runs.
 
 ### Transport
 
@@ -1359,6 +1361,10 @@ HTTP/1.1 on a Unix domain socket, never a TCP address. Every request is a
 `POST` whose body is one JSON object and carries the run's token in the
 `Run-Token` header
 ([ADR-0034](adr/0034-a-run-the-operator-opens-has-an-identity-of-its-own.md)).
+The socket's mode and its directory's owner limit who can present a token. The
+receiver checks mode bits, not darwin access control lists, and the socket's
+own directory, not the ones above it: an account that may write one of those
+can move the socket's directory aside.
 
 | Path | Body | Answer |
 | --- | --- | --- |
@@ -1436,6 +1442,6 @@ closing records.
 | `ERROR_CODE_MALFORMED` | an unreadable body, a member the message does not declare, or a value past its bound |
 | `ERROR_CODE_UNSUPPORTED_VERSION` | a path naming a version the receiver does not serve |
 | `ERROR_CODE_HANDLE_UNKNOWN` | a handle unknown, expired, of another run or never minted: one answer for all four |
-| `ERROR_CODE_HANDLE_SPENT` | a handle already completed or aborted, answered to its own run until it expires |
+| `ERROR_CODE_HANDLE_SPENT` | a handle already completed or aborted, answered to its own run until it expires or the receiver's bound on the spent handles it keeps forgets it, after which it is `ERROR_CODE_HANDLE_UNKNOWN` |
 | `ERROR_CODE_DUPLICATE_REQUEST` | the request key of an execution still open in the same run |
-| `ERROR_CODE_UNAVAILABLE` | the receiver cannot serve requests now |
+| `ERROR_CODE_UNAVAILABLE` | the receiver cannot serve requests now, or the run holds as many open executions as the receiver allows |

@@ -76,7 +76,9 @@ ACTIONS_APP_ID=15368
 # of every store, the external decision point's answer, which may only veto,
 # the MCP adapter, which classifies a tool, sends only the authorized bytes
 # under their obligations, names the run a call belongs to and withholds or
-# rewrites answers, the wire contracts and their fixtures, the gate's Go code that
+# rewrites answers, the enforcement API adapter, which builds a tool's envelope
+# from the operator's table and hands out single-use handles, the wire
+# contracts and their fixtures, the gate's Go code that
 # reports test results and checks the documents, the plane's wiring of its
 # decision point, adapter, approvals and stop, and every file ADR-0008 says the
 # gate is built from: the scripts, the workflows and the rest of .github, the
@@ -114,6 +116,8 @@ TWO_APPROVAL_PATHS=(
   "cmd/guardana-gateway/stop.go"
   "adapters/authzen/**"
   "adapters/mcp/**"
+  "adapters/enforce/**"
+  "internal/adapterkit/**"
   "pkg/contract/**"
   "pkg/policyprovider/**"
   "api/proto/**"

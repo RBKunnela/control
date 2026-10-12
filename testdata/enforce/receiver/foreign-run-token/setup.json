@@ -1,0 +1,55 @@
+{
+  "mode": "ENFORCEMENT_MODE_ENFORCE",
+  "rules": [
+    {
+      "id": "allow-reads",
+      "effect": "ALLOW",
+      "when": {
+        "action": {
+          "effect": [
+            "READ"
+          ]
+        }
+      }
+    }
+  ],
+  "tools": [
+    {
+      "name": "refund",
+      "effect": "EFFECT_CLASS_TRANSACT",
+      "provider": "payments",
+      "resource_type": "account",
+      "resource_from": "/account"
+    },
+    {
+      "name": "read_file",
+      "effect": "EFFECT_CLASS_READ",
+      "provider": "files",
+      "resource_type": "file",
+      "resource_from": "/path"
+    }
+  ],
+  "execution_lifetime": "60s",
+  "runs": [
+    {
+      "name": "a",
+      "token": "run-a.token-a",
+      "for": "listener"
+    },
+    {
+      "name": "b",
+      "token": "run-b.token-b",
+      "for": "listener"
+    },
+    {
+      "name": "o",
+      "token": "run-o.token-o",
+      "for": "other"
+    },
+    {
+      "name": "z",
+      "token": "run-z.token-z",
+      "for": "nobody"
+    }
+  ]
+}

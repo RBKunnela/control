@@ -1,0 +1,17 @@
+{
+  "tool_reached": false,
+  "requests": [
+    {
+      "path": "/enforce/v1alpha1/admit",
+      "body": {
+        "tool": "refund",
+        "arguments": "eyJhbW91bnQiOjEwLCJ0byI6ImFjY3QtNyJ9"
+      }
+    }
+  ],
+  "returns": {
+    "error": "pending",
+    "approval_id": "ap-1",
+    "retry_after": "30s"
+  }
+}

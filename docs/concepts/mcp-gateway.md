@@ -230,8 +230,8 @@ decides again as a gate, and the approval satisfies the wait and nothing else. A
 retry that differs in one of those fields is a new request with a new hold. A
 consumed approval answers `APPROVAL_ALREADY_USED`, an expired one
 `APPROVAL_EXPIRED`, a rejected one `APPROVAL_REJECTED`. The plane holds at most
-`approvals.max_held` requests and keeps at most `approvals.max_open` executions
-open; past either bound a call blocks with `EVIDENCE_UNAVAILABLE`.
+`approvals.max_held` requests, 16 of one opened run, and keeps at most
+`approvals.max_open` executions open; past either bound a call blocks with `EVIDENCE_UNAVAILABLE`.
 
 ## What the closing record carries
 

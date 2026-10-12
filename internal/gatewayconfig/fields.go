@@ -14,7 +14,7 @@ import (
 // package owns takes a lower-case name.
 var (
 	modeNames         = []string{"OBSERVE", "SHADOW", "WARN", "APPROVE", "ENFORCE", "LOCKDOWN"}
-	listenerKinds     = []string{"stateless_http", "stateful_http", "stdio"}
+	listenerKinds     = []string{"stateless_http", "stateful_http", "stdio", enforceKind}
 	fsyncPolicies     = []string{"every_record", "interval"}
 	unwritablePolicy  = []string{"block", "allow_reads"}
 	approvalProviders = []string{ProviderMemory, ProviderFile}
@@ -45,7 +45,7 @@ func ModeNames() []string { return slices.Clone(modeNames) }
 
 // configFields is every scalar key of the configuration, in the order the
 // reference page and `doctor` print them. Nothing outside this table, the
-// two item tables, the lists and the maps below is a key at all.
+// three item tables, the lists and the maps below is a key at all.
 var configFields = []field[Config]{
 	enumField("mode", "", modeNames, true, func(c *Config) *string { return &c.ModeName }),
 	stringField("project_id", "", true, func(c *Config) *string { return &c.ProjectID }),
@@ -55,6 +55,10 @@ var configFields = []field[Config]{
 
 	enumField("listener.kind", "stateless_http", listenerKinds, true, func(c *Config) *string { return &c.Listener.Kind }),
 	stringField("listener.address", "127.0.0.1:8080", false, func(c *Config) *string { return &c.Listener.Address }),
+	filePath(stringField("listener.socket", "", false, func(c *Config) *string { return &c.Listener.Socket })),
+	noDefaultDuration("listener.execution_lifetime", func(c *Config) *time.Duration { return &c.Listener.ExecutionLifetime }),
+	bytesField("listener.max_body_bytes", "128KiB", func(c *Config) *int64 { return &c.Listener.MaxBodyBytes }),
+	intField("listener.max_open_per_run", "16", func(c *Config) *int { return &c.Listener.MaxOpenPerRun }),
 	durationField("listener.session_idle", "30m", func(c *Config) *time.Duration { return &c.Listener.SessionIdle }),
 	intField("listener.max_sessions", "1024", func(c *Config) *int { return &c.Listener.MaxSessions }),
 	stringField("listener.principal.id", "", true, func(c *Config) *string { return &c.Listener.PrincipalID }),
@@ -91,6 +95,7 @@ var configFields = []field[Config]{
 	durationField("approvals.ttl", "15m", func(c *Config) *time.Duration { return &c.Approvals.TTL }),
 	durationField("approvals.retry_after", "30s", func(c *Config) *time.Duration { return &c.Approvals.RetryAfter }),
 	intField("approvals.max_held", "128", func(c *Config) *int { return &c.Approvals.MaxHeld }),
+	intField("approvals.max_held_per_run", "16", func(c *Config) *int { return &c.Approvals.MaxHeldPerRun }),
 	intField("approvals.max_open", "256", func(c *Config) *int { return &c.Approvals.MaxOpen }),
 	intField("approvals.max_records", "1024", func(c *Config) *int { return &c.Approvals.MaxRecords }),
 	intField("approvals.max_record_bytes", "16384", func(c *Config) *int { return &c.Approvals.MaxRecordBytes }),
@@ -152,6 +157,18 @@ var overrideFields = []field[OverrideConfig]{
 	enumField("trust_zone", "", trustZoneNames, false, func(o *OverrideConfig) *string { return &o.TrustZone }),
 	enumField("returns.trust", "", trustZoneNames, false, func(o *OverrideConfig) *string { return &o.ReturnsTrust }),
 	enumField("returns.sensitivity", "", sensitivityNames, false, func(o *OverrideConfig) *string { return &o.ReturnsSensitivity }),
+}
+
+// toolFields is every key of one entry of the tools sequence.
+var toolFields = []field[ToolConfig]{
+	stringField("name", "", true, func(o *ToolConfig) *string { return &o.Name }),
+	enumField("effect", "", effectNames, true, func(o *ToolConfig) *string { return &o.Effect }),
+	stringField("provider", "", true, func(o *ToolConfig) *string { return &o.Provider }),
+	stringField("resource_type", "", true, func(o *ToolConfig) *string { return &o.ResourceType }),
+	stringField("resource_from", "", false, func(o *ToolConfig) *string { return &o.ResourceFrom }),
+	enumField("trust_zone", "", trustZoneNames, false, func(o *ToolConfig) *string { return &o.TrustZone }),
+	enumField("returns.trust", "", trustZoneNames, false, func(o *ToolConfig) *string { return &o.ReturnsTrust }),
+	enumField("returns.sensitivity", "", sensitivityNames, false, func(o *ToolConfig) *string { return &o.ReturnsSensitivity }),
 }
 
 // listField is a key whose value is a sequence of scalars, one item per
@@ -223,14 +240,15 @@ type Field struct {
 const IndexPlaceholder = "N"
 
 // Fields lists every declared key, in the tables' order: the scalar keys,
-// then the keys of an upstream entry and of an override entry with the index
-// placeholder in their paths. It is read from the same tables the loader
+// then the keys of an upstream entry, an override entry and a tool entry with
+// the index placeholder in their paths. It is read from the same tables the loader
 // binds, so a key the loader reads is a key it lists.
 func Fields() []Field {
 	var out []Field
 	out = appendFields(out, "", configFields)
 	out = appendFields(out, "upstreams."+IndexPlaceholder+".", upstreamFields)
 	out = appendFields(out, "overrides."+IndexPlaceholder+".", overrideFields)
+	out = appendFields(out, "tools."+IndexPlaceholder+".", toolFields)
 	return out
 }
 

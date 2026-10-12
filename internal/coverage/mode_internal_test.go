@@ -53,7 +53,7 @@ func disagreement(mode controlv1.EnforcementMode) string {
 		want = modeRefused
 	case gerr != nil:
 		return fmt.Sprintf("Requirements: %v", gerr)
-	case need.Block:
+	case need.Enforcement >= gateway.EnforcementCooperative:
 		want = modeEnforces
 	default:
 		want = modeDecides

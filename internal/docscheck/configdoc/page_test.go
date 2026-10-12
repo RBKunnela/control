@@ -189,3 +189,22 @@ func TestTheListTimeoutRowSaysWhatItBounds(t *testing.T) {
 	}
 	t.Error("the page has no row for upstream.list_timeout")
 }
+
+// TestThePageSaysWhatTheSocketCheckLeavesOut: the plane judges the socket's
+// directory by its mode bits alone, so the page names what that leaves out.
+func TestThePageSaysWhatTheSocketCheckLeavesOut(t *testing.T) {
+	page, err := Page(gatewayconfig.Fields())
+	if err != nil {
+		t.Fatalf("Page: %v", err)
+	}
+	text := strings.Join(strings.Fields(string(page)), " ")
+	for _, want := range []string{
+		"at most 103 bytes as it resolves",
+		"checks neither a macOS access control list on it nor a parent directory another account may write",
+		"`listener.max_open_per_run` is positive and below `approvals.max_open`",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("the page does not say %q", want)
+		}
+	}
+}

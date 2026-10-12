@@ -23,12 +23,16 @@ func (o *OverrideConfig) ReturnsZone() (controlv1.TrustZone, error) {
 // ReturnsLevel is the highest sensitivity the override's tool returns, as the
 // contract names it. Empty is UNSPECIFIED, which is unknown.
 func (o *OverrideConfig) ReturnsLevel() (controlv1.Sensitivity, error) {
-	if o.ReturnsSensitivity == "" {
+	return sensitivityNamed(o.ReturnsSensitivity)
+}
+
+func sensitivityNamed(name string) (controlv1.Sensitivity, error) {
+	if name == "" {
 		return controlv1.Sensitivity_SENSITIVITY_UNSPECIFIED, nil
 	}
-	number, ok := controlv1.Sensitivity_value["SENSITIVITY_"+o.ReturnsSensitivity]
+	number, ok := controlv1.Sensitivity_value["SENSITIVITY_"+name]
 	if !ok || number == int32(controlv1.Sensitivity_SENSITIVITY_UNSPECIFIED) {
-		return 0, fmt.Errorf("the contract declares no sensitivity %q", o.ReturnsSensitivity)
+		return 0, fmt.Errorf("the contract declares no sensitivity %q", name)
 	}
 	return controlv1.Sensitivity(number), nil
 }

@@ -75,7 +75,7 @@ const (
 func TestDemoExport(t *testing.T) {
 	check(t, reportCase{in: demoExport(t),
 		rows:   []string{demoRead, demoRefund, demoRead2, demoUpdate, demoExportR, demoRead3},
-		totals: "totals: requests 6, completed 4, failed 0, aborted 0, blocked 2, open 0, unknown 0; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached})
+		totals: "totals: requests 6, completed 4, failed 0, uncertain 0, aborted 0, blocked 2, open 0, unknown 0; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached})
 }
 
 // TestDemoExportFormat holds the format this reader derives to the one the
@@ -120,12 +120,12 @@ func TestDemoExportMissingEvent(t *testing.T) {
 				"acme\tdemo\tX6UOSKZEM2VGIJQBNZWDBGDTAK\tUJ5UZ5EISEH5ER3ICMSG3MXL36\tupdate_order\tREQUIRE_APPROVAL\tAPPROVAL_REQUIRED\t-\tyes\tpending\tunknown\t" +
 					"event 6TQ6IH26Z6XYWW73XM3FIPBNJF follows KYS2M627UE5VUQ3K5YENIRSRUJ, which this export does not hold",
 				demoExportR, demoRead3},
-			totals: "totals: requests 6, completed 3, failed 0, aborted 0, blocked 2, open 0, unknown 1; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
+			totals: "totals: requests 6, completed 3, failed 0, uncertain 0, aborted 0, blocked 2, open 0, unknown 1; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
 			code:   1, stderr: "not every request"},
 		{name: "the action's end", in: withoutEvent(t, "N6C4KYP5HWIXN5IV4HX46WNENQ"),
 			rows: []string{"acme\tdemo\tTAFPANRXBE74OUOC6GPEUWIPHB\tCKP6ZFVISD6LOWS66ZAYKVCII6\tread_order\tALLOW\tRULE_ALLOW\t-\tno\t-\topen\t" + notEnded,
 				demoRefund, demoRead2, demoUpdate, demoExportR, demoRead3},
-			totals: "totals: requests 6, completed 3, failed 0, aborted 0, blocked 2, open 1, unknown 0; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
+			totals: "totals: requests 6, completed 3, failed 0, uncertain 0, aborted 0, blocked 2, open 1, unknown 0; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
 			code:   1, stderr: "not every request"},
 	}
 	for _, tc := range cases {

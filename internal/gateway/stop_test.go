@@ -386,8 +386,9 @@ func TestAStopWrittenDuringTheAskBitesThatCall(t *testing.T) {
 }
 
 // TestTheStopSourceIsReadWithThePauseSource: on the rewrite path with an ask,
-// the call reads the stop state before the ask, after it, and right before
-// it starts, and a stop served by any of the three reads blocks it.
+// the call reads the stop state before the ask, after it, right before it
+// starts and, since its result raises its root, after the raise; a stop
+// served by any of the four reads blocks it.
 func TestTheStopSourceIsReadWithThePauseSource(t *testing.T) {
 	clearState, stop := stopped(t), stopped(t, "run-a")
 	for _, c := range []struct {
@@ -398,8 +399,9 @@ func TestTheStopSourceIsReadWithThePauseSource(t *testing.T) {
 	}{
 		{"stopped before the ask", []reaction.Snapshot{stop}, 1, 0, true},
 		{"stopped during the ask", []reaction.Snapshot{clearState, stop}, 2, 1, true},
-		{"clear throughout", []reaction.Snapshot{clearState, clearState, clearState}, 3, 1, false},
+		{"clear throughout", []reaction.Snapshot{clearState, clearState, clearState, clearState}, 4, 1, false},
 		{"stopped before the start", []reaction.Snapshot{clearState, clearState, stop}, 3, 1, true},
+		{"stopped during the raise", []reaction.Snapshot{clearState, clearState, clearState, stop}, 4, 1, true},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			src := newStopSource(c.snaps...)

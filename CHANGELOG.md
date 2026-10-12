@@ -13,6 +13,56 @@ verify one.
 
 ### Added
 
+- `guardana-gateway run` serves the enforcement API under
+  `listener.kind: enforce_api`: a sweep abandons expired handles, a stop
+  abandons every open execution before the spool drains, `/healthz` reports
+  them under `enforce`, and `doctor` checks such a plane.
+  `listener.max_open_per_run` (default 16) bounds one run's open executions
+  and must stay below `approvals.max_open`. A guide shows a tool of your own
+  decided through it.
+- The coverage inventory kind `enforce_tool`: a tool an enforcement API plane
+  classifies is "decided, not enforced" in every mode, since a cooperating
+  client, not the plane, keeps it from its effect.
+
+- The gateway configuration takes `listener.kind: enforce_api`, with
+  `listener.socket`, `listener.execution_lifetime` (1s to 1h, no default),
+  `listener.max_body_bytes` (1 KiB to 256 KiB, default 128 KiB) and a `tools`
+  table that classifies each tool by name. Such a plane needs `runs.dir` and
+  refuses upstreams, overrides and the keys only an MCP listener reads; an
+  MCP listener refuses the new keys.
+
+- `adapters/enforce`, the enforcement API adapter (ADR-0051): a tool outside
+  MCP admits, completes and aborts over a Unix socket; its envelope comes from
+  the run token and the operator's tool table; a handle is single use and
+  expires; a duplicate request key is refused; an expired execution is closed
+  as abandoned; a run is held to a bound of open executions; a rewrite that
+  moves the decided resource is blocked; only a closing record that landed is
+  answered `RECORDED`. The adapter declares cooperative enforcement and
+  shares how a resource is read from the arguments, and how a run token is
+  read, with the MCP adapter (`internal/adapterkit`). The gateway does not
+  serve it yet.
+- The pipeline says which execution it handed out unrecorded
+  (`Disposition.Unrecorded`), and a closing or aborting record the sink
+  refused is `ErrNotRecorded`.
+- `testdata/enforce/receiver/`, the receiver conformance cases with a
+  negative control each; `cases.json` names each case's side.
+
+- `internal/enforceclient`, the reference client of the enforcement API: it
+  runs a tool only with the bytes an `EXECUTE` answer authorized, aborts on an
+  obligation it does not know, completes `UNKNOWN` when the tool cannot tell,
+  and never sends a request twice.
+- `testdata/enforce/`, the client conformance cases with a negative control
+  each, which a client in another language can run.
+
+- The pipeline can close an execution nobody completed or aborted as failed
+  with result unknown and the new reason code `EXECUTION_ABANDONED`, never as
+  a success and without halting the plane; a byte mismatch a client reports
+  through a cooperating adapter blocks only that run's material calls (through
+  an inline one it halts the plane). Metrics count them:
+  `pipeline_runs_halted`, `pipeline_abandoned_total`,
+  `pipeline_sink_failures_abandoned_total`, `pipeline_halted_mismatch` and
+  `pipeline_halted_sink` (ADR-0051).
+
 - Planned requirements for previewing MCP setup, qualifying coding-agent
   hooks, reviewing tool-definition changes, simulating candidate policies and
   reviewing findings with an incident export (B23–B27), with proposed
@@ -24,6 +74,19 @@ verify one.
 
 ### Changed
 
+- On an `enforce_api` plane `/metrics` writes the enforcement API adapter's
+  counts (`enforce_*`) and the flag `listener_enforce_api`, and leaves out the
+  MCP adapter's `adapter_*` metrics. `doctor` checks the socket's directory as
+  `run` does, and judges pause entries against the tool table.
+- `approvals.max_held_per_run` (default 16, only with `runs.dir`, below
+  `approvals.max_held`) bounds one run's held requests; an expired hold no
+  longer counts against its run. A tool's `provider` and `resource_type` are
+  bounded at 1024 bytes. Under `policy.fail_open_read` an `enforce_tool` line
+  says a read runs undecided while the policy is unavailable.
+- The configuration loader refuses a tool name over 1024 bytes, a
+  `resource_from` the adapters refuse, and a socket path over 103 bytes.
+- `examples/evidence-report` reports a timeout or unknown outcome as
+  `uncertain`, not `failed`, exits 1 on it, and raises `effect_uncertain`.
 - `REPEATED_DENIAL` is version 2. When some denials it would cite are in doubt
   (a broken chain or an event id read with two contents), it cites only the
   clean ones and stays `CONFIRMED` if at least `max_denials` are clean;
@@ -37,6 +100,11 @@ verify one.
   denials still meet the rule is stopped again by its version 2 finding, which
   has another id, and is lifted again. Only `--carry-route` reads the old
   version.
+- The adapter capability `Block` is now `Enforcement`: none, cooperative or
+  inline. `ENFORCE`, `APPROVE` and `LOCKDOWN` need at least a cooperating
+  adapter, and the MCP adapter is inline; `doctor` and the modes table name
+  cooperative and inline enforcement apart.
+  adapter, and the MCP adapter is inline.
 - Two approvals from the security maintainers now cover every file ADR-0008
   says the gate is built from (all of `scripts/` and `.github/`, the
   `Makefile`, the linter and buf configurations, `go.mod` and `go.sum`) and
@@ -80,6 +148,19 @@ verify one.
   An approval of another major, or with none, now leaves the entry unreadable.
 - Closing an approvals handle while a call ran on it was a data race on whether
   the handle was open.
+- A pause, a stop or a halt that came while an opened run's root was being
+  raised was missed, and the call was recorded as started anyway. The plane
+  now checks them again after a raise that wrote, and a halt raised after
+  admission also blocks a material call before a resume spends its approval
+  and before it starts.
+- One opened run can hold at most 16 requests for approval, so it cannot fill
+  `approvals.max_held` for every other run; a hold past that is blocked
+  `EVIDENCE_UNAVAILABLE`, like one past `approvals.max_held`.
+- `/healthz` names only the plane's own halts: a mismatch that halted one run
+  no longer sets `halt.executed_args_mismatch`, and `halt.evidence_unwritable`
+  is set beside it when both stand.
+- A client's abort whose record the sink refused counts as a lost closing
+  record, so `run` exits 1, as a lost completion did.
 - `make quality` runs every check even when make is told one is up to date
   (`-o`, `--old-file`, or either in `MAKEFLAGS` or `GNUMAKEFLAGS`), and refuses
   a `MAKE` or `GO` from the environment, any command-line variable but

@@ -1,0 +1,30 @@
+{
+  "tool_reached": true,
+  "tool_received": "{\"amount\":10,\"to\":\"acct-7\"}",
+  "requests": [
+    {
+      "path": "/enforce/v1alpha1/admit",
+      "body": {
+        "tool": "refund",
+        "arguments": "eyJhbW91bnQiOjEwLCJ0byI6ImFjY3QtNyJ9"
+      }
+    },
+    {
+      "path": "/enforce/v1alpha1/complete",
+      "body": {
+        "handle": "h-1",
+        "sentArguments": "eyJhbW91bnQiOjEwLCJ0byI6ImFjY3QtNyJ9",
+        "status": "COMPLETION_STATUS_FAILURE",
+        "startedAt": "2026-10-11T12:00:01Z",
+        "endedAt": "2026-10-11T12:00:03Z",
+        "resultHash": "sha256:77aa",
+        "sideEffectConfirmation": "declined by bank"
+      }
+    }
+  ],
+  "completion_status": "COMPLETION_STATUS_FAILURE",
+  "returns": {
+    "error": "not_recorded",
+    "ending": "ENDING_RECORD_FAILED"
+  }
+}

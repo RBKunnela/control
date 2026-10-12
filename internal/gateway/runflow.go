@@ -49,14 +49,24 @@ func (p *Pipeline) readOpened(ctx context.Context, in Admission) (flow, bool) {
 	}, true
 }
 
+// openedID is the id of the opened run a call runs under, or empty when the
+// plane vouched for none.
+func (f flow) openedID() string {
+	if f.kind != flowOpened {
+		return ""
+	}
+	return f.opened.ID
+}
+
 // raise writes into an opened run's root what the call's result brings in,
 // before the execution is recorded as started, and reports whether the
-// execution may go on. A result the state read when the call started already
-// covers writes nothing, since a root's state only rises. Local runs are
-// tainted in memory after ACTION_STARTED instead, as ADR-0021 has it.
-func (c *call) raise() bool {
+// execution may go on and whether anything was written. A result the state
+// read when the call started already covers writes nothing, since a root's
+// state only rises. Local runs are tainted in memory after ACTION_STARTED
+// instead, as ADR-0021 has it.
+func (c *call) raise() (ok, wrote bool) {
 	if c.flow.kind != flowOpened {
-		return true
+		return true, false
 	}
 	join := func(s RunState) RunState {
 		if contract.IsUntrusted(c.in.ResultTrust) {
@@ -66,15 +76,15 @@ func (c *call) raise() bool {
 		return s
 	}
 	if join(c.flow.read) == c.flow.read {
-		return true
+		return true, false
 	}
 	ctx, cancel := context.WithTimeout(c.ctx, runStateWait)
 	defer cancel()
 	if err := c.p.cfg.Runs.Raise(ctx, c.flow.opened.Root, join); err != nil {
 		c.p.counts.add(func(s *Stats) *uint64 { return &s.RunStateFailures })
-		return false
+		return false, false
 	}
-	return true
+	return true, true
 }
 
 // runLapsed reports whether the call's opened run expired by the clock the

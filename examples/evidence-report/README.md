@@ -18,11 +18,11 @@ go -C examples/evidence-report build -o "$PWD/bin/" .
 
 It exits 0 only when every request ended on an unbroken chain the plane
 allows and the export was whole. A request is `blocked`, `completed` only on
-success, `aborted` when nothing was sent, `failed` on a failure or timeout,
-otherwise `unknown`: the effect may have happened, as with a run under an
-enforcing mode after any verdict but an allow, unless `REQUIRE_APPROVAL` was
-answered yes. Anything unknown, open or missing exits 1, as does an export
-over 100 000 records or 64 MiB; a usage error, 2.
+success, `aborted` when nothing was sent, `failed` on a failure,
+`uncertain` on a timeout or an unknown outcome, otherwise `unknown`: the
+effect may have happened, as with a run under an enforcing mode against its
+decision. Anything unknown, uncertain, open or missing exits 1, as does an
+export over 100 000 records or 64 MiB; a usage error, 2.
 
 ## Following a trail
 

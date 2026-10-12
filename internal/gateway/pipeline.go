@@ -48,6 +48,10 @@ type disabledStops struct{}
 
 func (disabledStops) Current() reaction.Snapshot { return reaction.DisabledSnapshot() }
 
+// DefaultMaxHeldPerRun is how many requests one opened run may hold for an
+// approval when Config.MaxHeldPerRun is zero.
+const DefaultMaxHeldPerRun = 16
+
 // Config configures a Pipeline once, at New.
 type Config struct {
 	// Mode is the plane's enforcement mode, applied after the decision to
@@ -115,6 +119,11 @@ type Config struct {
 	// positive. A request past it is refused as a hold the store would not
 	// keep.
 	MaxHeld int
+	// MaxHeldPerRun bounds the requests one opened run holds for an approval
+	// and not yet expired, so no one run fills MaxHeld for every other; zero
+	// takes DefaultMaxHeldPerRun. A request past it is refused as one past
+	// MaxHeld is. Calls under no opened run are held to MaxHeld alone.
+	MaxHeldPerRun int
 	// MaxOpen bounds the executions handed out and not yet closed or aborted;
 	// positive. A call past it is blocked with EVIDENCE_UNAVAILABLE, because
 	// the plane would have nowhere to record its closing.
@@ -175,6 +184,10 @@ type Disposition struct {
 	Obligations []*controlv1.Obligation
 	// Pending is the state to answer with when Action is AwaitApproval.
 	Pending *Pending
+	// Unrecorded says the execution is a read handed out under
+	// AllowReadsUnrecorded after the sink refused its trail: no record of it
+	// is written, its closing included.
+	Unrecorded bool
 	// handle names the execution in the pipeline's own record; Close and
 	// Abort resolve it there and trust nothing else in this value.
 	handle string
@@ -214,6 +227,8 @@ type execution struct {
 	// with the other.
 	envelope *controlv1.ActionEnvelope
 	digest   string
+	// runID is the opened run the call ran under; empty for a local run.
+	runID string
 	// unrecorded: the sink refused the trail and the read ran anyway under
 	// AllowReadsUnrecorded, so the closing record is not written either.
 	unrecorded bool
@@ -235,7 +250,8 @@ type openTrail struct {
 // store, clock or id source, a stop source other than StopsDisabled on a plane
 // that serves no opened run,
 // an id source that returns an empty id or one id twice, a lifetime, retry
-// interval or bound that is not positive, a decision point the current policy
+// interval or bound that is not positive, a negative bound on one run's held
+// requests, a decision point the current policy
 // does not read or a policy that reads one none is configured for, a decision point
 // without its identifier or a positive deadline, and kernel options the
 // kernel refuses.
@@ -256,6 +272,9 @@ func New(cfg Config) (*Pipeline, error) {
 	kernel, err := core.New(opts, cfg.Clock, cfg.NewID)
 	if err != nil {
 		return nil, err
+	}
+	if cfg.MaxHeldPerRun == 0 {
+		cfg.MaxHeldPerRun = DefaultMaxHeldPerRun
 	}
 	return &Pipeline{cfg: cfg, kernel: kernel, open: make(map[string]*execution), trails: make(map[string]openTrail), runs: make(map[runKey]*run)}, nil
 }
@@ -306,8 +325,8 @@ func checkSources(cfg Config) error {
 }
 
 // checkBounds refuses a lifetime, retry interval, hold bound, bound on open
-// executions or bound on runs that is not positive, and a negative bound on a
-// reconciliation.
+// executions or bound on runs that is not positive, and a negative bound on
+// one run's holds or on a reconciliation.
 func checkBounds(cfg Config) error {
 	switch {
 	case cfg.ApprovalTTL <= 0:
@@ -316,6 +335,8 @@ func checkBounds(cfg Config) error {
 		return fmt.Errorf("%w: %v", ErrRetryAfter, cfg.RetryAfter)
 	case cfg.MaxHeld <= 0:
 		return fmt.Errorf("%w: %d", ErrMaxHeld, cfg.MaxHeld)
+	case cfg.MaxHeldPerRun < 0:
+		return fmt.Errorf("%w: %d", ErrMaxHeldPerRun, cfg.MaxHeldPerRun)
 	case cfg.MaxOpen <= 0:
 		return fmt.Errorf("%w: %d", ErrMaxOpen, cfg.MaxOpen)
 	case cfg.MaxRuns <= 0:

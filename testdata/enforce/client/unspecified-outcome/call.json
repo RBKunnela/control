@@ -1,0 +1,5 @@
+{
+  "tool": "refund",
+  "arguments": "{\"amount\":10,\"to\":\"acct-7\"}",
+  "run_token": "run-token-1"
+}

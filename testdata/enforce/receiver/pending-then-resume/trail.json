@@ -1,0 +1,27 @@
+{
+  "events": [
+    {
+      "kind": "EVENT_KIND_ACTION_PROPOSED"
+    },
+    {
+      "kind": "EVENT_KIND_POLICY_DECIDED",
+      "codes": [
+        "APPROVAL_REQUIRED"
+      ]
+    },
+    {
+      "kind": "EVENT_KIND_APPROVAL_REQUESTED"
+    },
+    {
+      "kind": "EVENT_KIND_APPROVAL_DECIDED"
+    },
+    {
+      "kind": "EVENT_KIND_ACTION_STARTED"
+    },
+    {
+      "kind": "EVENT_KIND_ACTION_COMPLETED",
+      "status": "RESULT_STATUS_SUCCESS",
+      "code": ""
+    }
+  ]
+}

@@ -2,8 +2,6 @@ package mcp
 
 import (
 	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +13,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/adapterkit"
 	"github.com/guardana/control/internal/canon"
 	"github.com/guardana/control/internal/gateway"
 	"github.com/guardana/control/pkg/contract"
@@ -159,7 +158,7 @@ func (a *Adapter) toolCall(req *mcp.CallToolRequest) call {
 	env.Action.Provider = entry.Upstream
 	env.Resource = &controlv1.Resource{
 		Type:        entry.ResourceType,
-		Id:          resolvePointer(args, entry.ResourceFrom),
+		Id:          adapterkit.ResourceID(args, entry.ResourceFrom),
 		TenantId:    up.TenantID,
 		Environment: up.Environment,
 	}
@@ -263,31 +262,16 @@ func recordable(env *controlv1.ActionEnvelope, err error) error {
 		return err
 	}
 	if ve.Field == "action.name" && env.Action != nil {
-		env.Action.Name = placeholder(env.Action.Name)
+		env.Action.Name = adapterkit.Placeholder(env.Action.Name)
 	}
 	if ve.Field == "" || strings.HasPrefix(ve.Field, "context.tags") {
 		env.Context.Tags = nil
 	}
 	if ve.Field == "resource.id" && env.Resource != nil {
-		env.Resource.Id = placeholder(env.Resource.Id)
+		env.Resource.Id = adapterkit.Placeholder(env.Resource.Id)
 	}
 	dropOverlong(env)
 	return err
-}
-
-// overlongPrefix starts the placeholder of a name or a resource taken off a
-// refused envelope; the digest after it ties the record to the original
-// without holding it (ADR-0043).
-const overlongPrefix = "overlong:sha256:"
-
-// placeholder is what a name or resource taken off is recorded as; nothing
-// stays nothing.
-func placeholder(original string) string {
-	if original == "" {
-		return ""
-	}
-	sum := sha256.Sum256([]byte(original))
-	return overlongPrefix + hex.EncodeToString(sum[:])
 }
 
 // dropOverlong replaces the action's name and the resource's id with their
@@ -295,10 +279,10 @@ func placeholder(original string) string {
 // tag.
 func dropOverlong(env *controlv1.ActionEnvelope) {
 	if len(env.GetAction().GetName()) > contract.MaxStringBytes {
-		env.Action.Name = placeholder(env.Action.Name)
+		env.Action.Name = adapterkit.Placeholder(env.Action.Name)
 	}
 	if len(env.GetResource().GetId()) > contract.MaxStringBytes {
-		env.Resource.Id = placeholder(env.Resource.Id)
+		env.Resource.Id = adapterkit.Placeholder(env.Resource.Id)
 	}
 	if env.Context != nil {
 		env.Context.Tags = slices.DeleteFunc(env.Context.Tags, func(tag string) bool { return len(tag) > contract.MaxStringBytes })

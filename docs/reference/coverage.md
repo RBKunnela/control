@@ -49,7 +49,7 @@ of paths is refused.
 | Member | Meaning |
 | --- | --- |
 | `id` | unique, 1 to 64 bytes of `a-z`, `0-9`, `.`, `_`, `-` |
-| `kind` | `mcp_tool` with `upstream` and `tool`, one path per pair; `egress` with `host`; `http_api` or `process` with `name` |
+| `kind` | `mcp_tool` with `upstream` and `tool`, one path per pair; `enforce_tool` with `tool`, a tool an enforcement API plane's `tools` table names, one path per tool; `egress` with `host`; `http_api` or `process` with `name` |
 | `sources` | each a `source_id` that would see the path, the `name` its observation carries and, optionally, its `server_address` |
 
 An observation matches a path when it comes from that source in the tenant
@@ -62,14 +62,19 @@ Each path gets the first state that holds:
 
 | State | When |
 | --- | --- |
-| enforced | every plane that counts for the tool is in `ENFORCE`, `APPROVE` or `LOCKDOWN`, and none lets the read fail open |
-| decided, not enforced | a plane counts for it in `OBSERVE`, or under `policy.fail_open_read` outside `LOCKDOWN`, where a read runs undecided while the policy is unavailable |
+| enforced | every plane that counts for the tool holds the path to the effect, is in `ENFORCE`, `APPROVE` or `LOCKDOWN`, and none lets the read fail open |
+| decided, not enforced | a plane counts for it in `OBSERVE`, or under `policy.fail_open_read` outside `LOCKDOWN`, where a read runs undecided while the policy is unavailable, or serves the enforcement API, in any mode |
 | observed | a source live within its heartbeat holds a matching observation; the weakest trust of the descriptor and the observations is printed |
 | unknown | a source the path names is past its heartbeat or was never heard |
 | not covered | nothing above |
 
-Only an `mcp_tool` can be enforced or decided. A plane counts for a tool when
-it lists the tool's upstream: with an override that classifies the tool, or
+Only an `mcp_tool` can be enforced, and only it and an `enforce_tool` decided.
+A plane serving the enforcement API (`listener.kind: enforce_api`) counts for
+an `enforce_tool` its `tools` table names, and decides it in every mode it
+runs in, never enforces it: it hands the decision to a cooperating client,
+which may ignore it, and the line says so
+([ADR-0051](../adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api.md)).
+An MCP plane counts for an `mcp_tool` when it lists the tool's upstream: with an override that classifies the tool, or
 without one, when a call to it is unclassified, blocked in a mode that
 enforces and let run in `OBSERVE`. A plane in `SHADOW` or `WARN` refuses to
 start and counts for nothing. A classification is the configuration's
@@ -83,7 +88,8 @@ receive time; one heard after the command's clock is unknown.
 Beside an enforced or decided path, each matching observation is checked
 against the exports of the planes that count for it. It is joined when it, or
 an observation below it in the same trace, tenant and project, has the span id
-of a tool call's proposal for that tool on that upstream, in the same tenant
+of a tool call's proposal for that tool on that upstream, or for an
+`enforce_tool` of that tool through the enforcement API, in the same tenant
 and project, recorded in a mode
 at least as strong as the path's state. A call every such plane's export could
 have shown and none does is printed as a call around the plane. The check is

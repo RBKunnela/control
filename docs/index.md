@@ -18,6 +18,7 @@ with `make docs-gen`; an edit made here does not survive the next run.
 ## Guides
 
 - [Connect an existing MCP setup](guides/connect-an-existing-mcp-setup.md): Put the plane between an MCP client and a server you already use, classify the server's tools, hold its writes for approval, and end in a local report.
+- [Decide a tool of your own](guides/decide-a-tool-of-your-own.md): Serve the enforcement API, classify your tools by name, and have a client ask before each call and report how it ended, under one policy and trail.
 - [Keep two tasks apart](guides/keep-two-tasks-apart.md): Open a run per task in a runs directory, point a plane at it, and give each agent its token, so what one task took in never decides another's calls.
 - [Let a decision point veto calls](guides/let-a-decision-point-veto.md): Point the gateway at an AuthZEN decision point, write the two rules that let it veto a scope, test what each answer does, and check the plane before it serves.
 - [Read the evidence from a program](guides/read-the-evidence-from-a-program.md): Export a trail file in the versioned format, resume where the last export stopped, and rebuild each call's lifecycle without importing the project's internals.

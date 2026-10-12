@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/guardana/control/internal/gateway"
 )
 
 // TestDoctorPrintsEveryCheckAndStopsAtTheFirstUnknown runs the committed
@@ -244,5 +246,20 @@ func withOverride(t *testing.T, tr tree, fingerprint string) {
 		"\n    effect: READ\n    resource_type: order\n    resource_from: /id\n"
 	if err := os.WriteFile(filepath.Clean(tr.config), append(raw, override...), 0o600); err != nil { //nolint:gosec // G703: the configuration under the test's temp dir
 		t.Fatalf("writing the configuration: %v", err)
+	}
+}
+
+// TestTheCapabilityListNamesHowTheAdapterEnforces: a caller that enforces and
+// an adapter that holds the path to the effect are named apart, and one that
+// cannot enforce is named as neither.
+func TestTheCapabilityListNamesHowTheAdapterEnforces(t *testing.T) {
+	for enforcement, want := range map[gateway.Enforcement]string{
+		gateway.EnforcementNone:        "observe_request",
+		gateway.EnforcementCooperative: "observe_request, enforcement_cooperative",
+		gateway.EnforcementInline:      "observe_request, enforcement_inline",
+	} {
+		if got := capabilityList(gateway.Capabilities{ObserveRequest: true, Enforcement: enforcement}); got != want {
+			t.Errorf("enforcement %d: %q, want %q", enforcement, got, want)
+		}
 	}
 }

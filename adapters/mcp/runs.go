@@ -2,22 +2,20 @@ package mcp
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
-	"slices"
-	"sync/atomic"
 
 	"github.com/modelcontextprotocol/go-sdk/auth"
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/guardana/control/internal/adapterkit"
 	"github.com/guardana/control/internal/gateway"
 )
 
 // RunTokenHeader is the header an HTTP request presents its run token in
 // (ADR-0034). Nothing else a request carries selects a run.
-const RunTokenHeader = "Run-Token"
+const RunTokenHeader = adapterkit.RunTokenHeader
 
 // runRefusedBody and runRefusedMessage are the one answer to a refused run
 // token whatever the cause, so the agent learns nothing about which runs
@@ -46,48 +44,18 @@ func checkRunsSource(l Listener) error {
 	return nil
 }
 
-// runCounter counts refusals by the position of their cause in
-// gateway.RunCauses.
-type runCounter struct {
-	causes []gateway.RunCause
-	n      []atomic.Uint64
-}
-
-func newRunCounter() *runCounter {
-	causes := gateway.RunCauses()
-	return &runCounter{causes: causes, n: make([]atomic.Uint64, len(causes))}
-}
-
-// count adds one refusal; a cause outside the set, which resolve never
-// returns, is counted as unreadable rather than panicking a handler.
-func (c *runCounter) count(cause gateway.RunCause) {
-	i := slices.Index(c.causes, cause)
-	if i < 0 {
-		i = slices.Index(c.causes, gateway.RunUnreadable)
-	}
-	c.n[i].Add(1)
-}
-
-func (c *runCounter) snapshot() RunRefusals {
-	out := make(RunRefusals, len(c.causes))
-	for i, cause := range c.causes {
-		out[cause] = c.n[i].Load()
-	}
-	return out
-}
-
 // runsCheck refuses a request whose run token does not resolve before the
 // library reads it, on every verb: 401 with the challenge and one body. It
 // sits inside the authenticator, so the user it bound is who the run must be
 // for.
 func (a *Adapter) runsCheck(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token, cause := headerToken(r.Header)
+		token, cause := adapterkit.HeaderToken(r.Header)
 		if cause == "" {
 			_, cause = a.resolve(r.Context(), token, auth.TokenInfoFromContext(r.Context()))
 		}
 		if cause != "" {
-			a.refusedAtRequest.count(cause)
+			a.refusedAtRequest.Count(cause)
 			w.Header().Set("WWW-Authenticate", RunTokenHeader)
 			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -113,37 +81,21 @@ func (a *Adapter) messageRun(ctx context.Context, req mcp.Request) (*gateway.Ope
 	}
 	token, cause := a.cfg.Listener.RunToken, gateway.RunCause("")
 	if a.cfg.Listener.Kind != KindStdio {
-		token, cause = headerToken(header)
+		token, cause = adapterkit.HeaderToken(header)
 	}
 	var run *gateway.OpenedRun
 	if cause == "" {
 		run, cause = a.resolve(ctx, token, info)
 	}
 	if cause != "" {
-		a.refusedAtMessage.count(cause)
+		a.refusedAtMessage.Count(cause)
 		return nil, &jsonrpc.Error{Code: CodeRunRefused, Message: runRefusedMessage}
 	}
 	return run, nil
 }
 
-// headerToken is the one Run-Token value of h. None, or an empty one, is
-// missing; two are malformed, since a proxy and the gateway could each read
-// another.
-func headerToken(h http.Header) (string, gateway.RunCause) {
-	values := h.Values(RunTokenHeader)
-	switch {
-	case len(values) > 1:
-		return "", gateway.RunMalformed
-	case len(values) == 0 || values[0] == "":
-		return "", gateway.RunMissing
-	}
-	return values[0], ""
-}
-
 // resolve asks the resolver about token for the listener's identity at the
-// adapter's clock. A refusal naming one of gateway.RunCauses is that cause;
-// any other error, a refusal naming none (the empty cause included, which
-// would read as no refusal), or a run without an id, is unreadable.
+// adapter's clock, as adapterkit.Resolve does, once the identity is known.
 func (a *Adapter) resolve(ctx context.Context, token string, info *auth.TokenInfo) (*gateway.OpenedRun, gateway.RunCause) {
 	if token == "" {
 		return nil, gateway.RunMissing
@@ -152,16 +104,9 @@ func (a *Adapter) resolve(ctx context.Context, token string, info *auth.TokenInf
 	if !ok {
 		return nil, gateway.RunOtherIdentity
 	}
-	run, err := a.cfg.Listener.Runs.Resolve(ctx, token, who, a.cfg.Clock())
-	if err != nil {
-		var refusal *gateway.RunRefusal
-		if errors.As(err, &refusal) && slices.Contains(gateway.RunCauses(), refusal.Cause) {
-			return nil, refusal.Cause
-		}
-		return nil, gateway.RunUnreadable
-	}
-	if run.ID == "" {
-		return nil, gateway.RunUnreadable
+	run, cause := adapterkit.Resolve(ctx, a.cfg.Listener.Runs, token, who, a.cfg.Clock())
+	if cause != "" {
+		return nil, cause
 	}
 	return &run, ""
 }

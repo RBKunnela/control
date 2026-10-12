@@ -309,4 +309,10 @@ var codes = [...]Code{
 		Verdict: controlv1.Verdict_VERDICT_INDETERMINATE,
 		Summary: "The enforcement point could not read or trust the stop list, so it blocked the call rather than assume that no run is stopped.",
 	},
+	{
+		ID:      "EXECUTION_ABANDONED",
+		Num:     47,
+		Verdict: controlv1.Verdict_VERDICT_INDETERMINATE,
+		Summary: "An execution the enforcement point handed out was neither completed nor aborted before it expired, so it was closed without knowing whether the call ran.",
+	},
 }

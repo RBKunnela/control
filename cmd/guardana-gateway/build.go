@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"path/filepath"
 	"sync/atomic"
 	"time"
 
 	"github.com/guardana/control/adapters/authzen"
+	"github.com/guardana/control/adapters/enforce"
 	adaptermcp "github.com/guardana/control/adapters/mcp"
 	"github.com/guardana/control/adapters/otel"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
@@ -37,7 +39,10 @@ type plane struct {
 	// it current.
 	policy   *planePolicy
 	pipeline *gateway.Pipeline
+	// adapter is the MCP adapter of an MCP listener and enforce the
+	// enforcement API's of an enforce_api listener; one of them is nil.
 	adapter  *adaptermcp.Adapter
+	enforce  *enforce.Adapter
 	reader   *spool.Reader
 	exporter *otel.Exporter
 	// pdp is the decision point's client, nil where none is configured.
@@ -75,6 +80,8 @@ type plane struct {
 	calls            inflight
 	// lost is the count of lost closing records lostClosings last reported.
 	lost atomic.Int64
+	// socket is the enforcement API's listener once bound.
+	socket net.Listener
 }
 
 // role says what the plane being built is for. It is a parameter and not a
@@ -99,6 +106,9 @@ const (
 // address: everything that can be refused is refused here, before anything
 // serves.
 func build(cfg *gatewayconfig.Config, logger *slog.Logger, now time.Time, r role, tokenPath string) (*plane, error) {
+	if err := servedKind(cfg.Listener.Kind); err != nil {
+		return nil, err
+	}
 	pp, err := startPolicy(cfg, logger, r)
 	if err != nil {
 		return nil, err
@@ -121,11 +131,21 @@ func build(cfg *gatewayconfig.Config, logger *slog.Logger, now time.Time, r role
 // reconciliation writes evidence and resolves records, and `run` is the one
 // command that calls for it (ADR-0016).
 //
-// An inspecting plane opens no runs directory and serves local runs, and
-// reads no route and no stop list; doctor examines each on its own.
+// An inspecting plane reads no route and no stop list; doctor examines each
+// on its own. It opens no runs directory and serves local runs, but over an
+// enforce_api listener, whose adapter resolves a run on every request: it
+// opens the directory then as run does, which takes no lock and writes
+// nothing there.
 func (p *plane) open(r role, tokenPath string) error {
 	if r == roleInspect {
 		p.store = &gateway.MemoryApprovals{}
+		if p.cfg.Listener.Kind == enforceKind {
+			dir, _, err := openRuns(p.cfg, "")
+			if err != nil {
+				return err
+			}
+			p.runsDir = dir
+		}
 		return p.wire()
 	}
 	dir, token, err := openRuns(p.cfg, tokenPath)
@@ -149,18 +169,23 @@ func (p *plane) open(r role, tokenPath string) error {
 	return p.wire()
 }
 
-// wire builds the adapter, the decision point's client, the pipeline and the
-// exporter over the spool this plane already holds.
+// wire builds the adapter the listener's kind serves, the decision point's
+// client, the pipeline and the exporter over the spool this plane already
+// holds.
 func (p *plane) wire() error {
-	adapterConfig, err := adapterConfig(p.cfg, p.logger)
-	if err != nil {
-		return err
+	var (
+		seam     gateway.Adapter
+		mcp      *adaptermcp.Adapter
+		enforcer *enforce.Adapter
+		err      error
+	)
+	if p.cfg.Listener.Kind == enforceKind {
+		enforcer, err = newEnforcer(p.cfg, p.runsDir)
+		seam = enforcer
+	} else {
+		mcp, err = p.newMCPAdapter()
+		seam = mcp
 	}
-	if p.runsDir != nil {
-		adapterConfig.Listener.Runs = runsDir{p.runsDir}
-		adapterConfig.Listener.RunToken = p.runToken
-	}
-	adapter, err := adaptermcp.New(adapterConfig)
 	if err != nil {
 		return err
 	}
@@ -172,7 +197,7 @@ func (p *plane) wire() error {
 	if err != nil {
 		return err
 	}
-	pipeline, err := gateway.New(p.pipelineConfig(adapter, mode, pdp))
+	pipeline, err := gateway.New(p.pipelineConfig(seam, mode, pdp))
 	if err != nil {
 		return explainDecisionPoint(err)
 	}
@@ -195,13 +220,34 @@ func (p *plane) wire() error {
 	if err != nil {
 		return err
 	}
-	p.adapter, p.pipeline, p.reader, p.exporter, p.pdp = adapter, pipeline, reader, exporter, pdp
+	p.adapter, p.enforce, p.pipeline, p.reader, p.exporter, p.pdp = mcp, enforcer, pipeline, reader, exporter, pdp
 	return nil
+}
+
+// newMCPAdapter builds the MCP adapter over the runs this plane opened.
+func (p *plane) newMCPAdapter() (*adaptermcp.Adapter, error) {
+	adapterConfig, err := adapterConfig(p.cfg, p.logger)
+	if err != nil {
+		return nil, err
+	}
+	if p.runsDir != nil {
+		adapterConfig.Listener.Runs = runsDir{p.runsDir}
+		adapterConfig.Listener.RunToken = p.runToken
+	}
+	return adaptermcp.New(adapterConfig)
+}
+
+// seam is the adapter the pipeline was built over.
+func (p *plane) seam() gateway.Adapter {
+	if p.enforce != nil {
+		return p.enforce
+	}
+	return p.adapter
 }
 
 // pipelineConfig is the pipeline's configuration over the seams this plane
 // holds, the adapter and the decision point's client.
-func (p *plane) pipelineConfig(adapter *adaptermcp.Adapter, mode controlv1.EnforcementMode, pdp *authzen.Client) gateway.Config {
+func (p *plane) pipelineConfig(adapter gateway.Adapter, mode controlv1.EnforcementMode, pdp *authzen.Client) gateway.Config {
 	c := gateway.Config{
 		Mode:    mode,
 		Adapter: adapter,
@@ -221,6 +267,7 @@ func (p *plane) pipelineConfig(adapter *adaptermcp.Adapter, mode controlv1.Enfor
 		ApprovalTTL:          p.cfg.Approvals.TTL,
 		RetryAfter:           p.cfg.Approvals.RetryAfter,
 		MaxHeld:              p.cfg.Approvals.MaxHeld,
+		MaxHeldPerRun:        p.cfg.Approvals.MaxHeldPerRun,
 		MaxOpen:              p.cfg.Approvals.MaxOpen,
 		MaxRuns:              p.cfg.Flow.MaxRuns,
 		AllowReadsUnrecorded: p.cfg.Evidence.OnUnwritable == "allow_reads",

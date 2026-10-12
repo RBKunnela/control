@@ -75,15 +75,21 @@ func startLine(cfg *gatewayconfig.Config) string {
 		brand.Gateway, version, cfg.ModeName, oneLine(cfg.Policy.BundleID), cfg.Policy.FailOpenRead, oneLine(cfg.Resolve(cfg.Evidence.Dir)))
 }
 
-// startPlane builds the serving plane from cfg and connects its upstreams,
-// which is everything a plane does before it binds. A plane it cannot start
-// is released before the refusal returns.
+// startPlane builds the serving plane from cfg and starts its adapter: an
+// MCP adapter connects its upstreams, the enforcement API's binds the
+// pipeline. That is everything a plane does before it binds. A plane it
+// cannot start is released before the refusal returns.
 func startPlane(ctx context.Context, cfg *gatewayconfig.Config, stderr io.Writer, tokenPath string) (*plane, error) {
 	p, err := build(cfg, newLogger(cfg.LogLevel, stderr), time.Now(), roleServe, tokenPath)
 	if err != nil {
 		return nil, err
 	}
-	if err := p.startUpstreams(ctx); err != nil {
+	if p.enforce != nil {
+		err = p.enforce.Start(p.pipeline)
+	} else {
+		err = p.startUpstreams(ctx)
+	}
+	if err != nil {
 		return nil, errors.Join(err, p.close())
 	}
 	return p, nil
@@ -169,6 +175,9 @@ func (p *plane) run(ctx context.Context, stdout io.Writer, listen listenFunc, dr
 	var wg sync.WaitGroup
 	stopped := make(chan error, len(bound)+1)
 	p.startReaders(ctx, exportCtx, &wg)
+	if p.enforce != nil {
+		p.serveEnforcing(ctx, &wg, stopped)
+	}
 	for _, b := range bound {
 		wg.Add(1)
 		go func(b listening) {
@@ -196,6 +205,23 @@ func (p *plane) run(ctx context.Context, stdout io.Writer, listen listenFunc, dr
 	stopExport()
 	wg.Wait()
 	return errors.Join(first, cut, p.lostClosings())
+}
+
+// serveEnforcing answers the enforcement API on the bound socket and runs its
+// sweep, each until ctx ends and counted in wg; a socket that stops serving on
+// its own is sent on stopped.
+func (p *plane) serveEnforcing(ctx context.Context, wg *sync.WaitGroup, stopped chan<- error) {
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		if err := p.enforce.Serve(ctx, p.socket); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			stopped <- err
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		p.sweep(ctx)
+	}()
 }
 
 // startReaders runs what feeds a serving plane: the exporter until exportCtx
@@ -269,12 +295,29 @@ type listening struct {
 }
 
 // bind takes every address this configuration asks for before anything serves:
-// the agent-facing listener when it speaks HTTP, and the plane's own answers
-// when an address is configured for them. An address that is taken is a
-// refusal, and whatever was bound before it is released.
+// the enforcement API's socket, or the agent-facing listener when it speaks
+// HTTP, and the plane's own answers when an address is configured for them.
+// An address that is taken is a refusal, and whatever was bound before it is
+// released.
 func (p *plane) bind(stdout io.Writer, listen listenFunc) ([]listening, error) {
+	if p.enforce != nil {
+		ln, err := p.enforce.Listen()
+		if err != nil {
+			return nil, err
+		}
+		p.socket = ln
+		writeLine(stdout, "listening for tools on "+ln.Addr().String())
+	}
+	bound, err := p.bindTCP(stdout, listen)
+	if err != nil && p.socket != nil {
+		err = errors.Join(err, p.socket.Close())
+	}
+	return bound, err
+}
+
+func (p *plane) bindTCP(stdout io.Writer, listen listenFunc) ([]listening, error) {
 	var wanted []wantedServer
-	if p.cfg.Listener.Kind != "stdio" {
+	if p.cfg.Listener.Kind != "stdio" && p.enforce == nil {
 		agents := func() (http.Handler, error) {
 			h, err := p.adapter.Handler()
 			if err != nil {

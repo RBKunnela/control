@@ -20,6 +20,10 @@ is still answered. A reading the text cannot carry truthfully answers 503 with n
 a counter below zero, a pause state outside the four, a freshness state outside the
 three, or counts outside a label's closed set that sum past a counter's range.
 
+A plane whose listener serves the enforcement API writes the `guardana_control_enforce_`
+metrics and leaves out the MCP adapter's `guardana_control_adapter_` ones; any other
+plane does the reverse, and `guardana_control_listener_enforce_api` says which.
+
 `guardana_control_pipeline_halted` is not the only thing that stops calls. While it
 reads 0, an unknown pause state takes no call at all, which `guardana_control_pause_state`
 reports under `state="unknown"`; in every mode but OBSERVE a policy that is not
@@ -30,11 +34,13 @@ blocks the call it records, which `guardana_control_pipeline_sink_failures_befor
 counts.
 
 No label carries an identifier, a digest or a reason: `code` is a code of the reason
-registry; `cause` is why a read of the pause file was unknown, why a run token did not
+registry, or an error code of the enforcement API contract in lower case without its
+`ERROR_CODE_` prefix; `cause` is why a read of the pause file was unknown, why a run token did not
 resolve, or why a poll of the policy moved nothing; and `state` is one of the four pause
 states or the three freshness states. A code or a cause outside its set is counted under
 `other`, so no count is dropped. Reads names the statistic: `Pipeline` is the
-pipeline's, `Adapter` the MCP adapter's, `Pause` the pause file reader's, `Policy` the
+pipeline's, `Adapter` the MCP adapter's, `Enforce` the enforcement API adapter's,
+`Pause` the pause file reader's, `Policy` the
 policy refresher's, `Spool` the evidence spool's and `Exporter` the exporter's.
 
 Rendered from the table in `internal/metrics`. Rebuild it with `make docs-gen`; an
@@ -49,6 +55,9 @@ edit made here does not survive the next run.
 | `guardana_control_pipeline_sink_failures_after_effect_total` | counter |  | `Pipeline.SinkFailuresAfterEffect` | Closing records that could not be written; each halted material calls. |
 | `guardana_control_pipeline_reads_unrecorded_total` | counter |  | `Pipeline.ReadsUnrecorded` | Reads under allow_reads whose trail the sink refused an event of. |
 | `guardana_control_pipeline_mismatches_total` | counter |  | `Pipeline.Mismatches` | Closings whose sent bytes were not the authorized ones. |
+| `guardana_control_pipeline_runs_halted` | gauge |  | `Pipeline.RunsHalted` | Opened runs whose material calls are blocked until restart because a caller reported bytes that were not the authorized ones. |
+| `guardana_control_pipeline_abandoned_total` | counter |  | `Pipeline.Abandoned` | Executions nobody completed or aborted before they expired, closed with the outcome unknown. |
+| `guardana_control_pipeline_sink_failures_abandoned_total` | counter |  | `Pipeline.SinkFailuresAbandoned` | Closing records of abandoned executions that could not be written; none halts material calls. |
 | `guardana_control_pipeline_multi_use_refused_total` | counter |  | `Pipeline.MultiUseRefused` | Approvals a store held as multi-use, which the plane left pending. |
 | `guardana_control_pipeline_unheld_records_total` | counter |  | `Pipeline.UnheldRecords` | Approval records for a request the plane did not hold, each held anew. |
 | `guardana_control_pipeline_journal_refusals_total` | counter |  | `Pipeline.JournalRefusals` | Hold journal writes that failed. |
@@ -60,6 +69,8 @@ edit made here does not survive the next run.
 | `guardana_control_pipeline_open_executions` | gauge |  | `Pipeline.Open` | Executions handed out and not yet closed or aborted. |
 | `guardana_control_pipeline_held_requests` | gauge |  | `Pipeline.Held` | Requests held for an approval that has not expired. |
 | `guardana_control_pipeline_halted` | gauge |  | `Pipeline.Halted` | 1 when a halt stops material calls: a closing record could not be written and no append has succeeded since, or an execution sent bytes that were not authorized. Calls are still blocked for other causes while it reads 0. |
+| `guardana_control_pipeline_halted_mismatch` | gauge |  | `Pipeline.MismatchHalted` | 1 when an execution sent bytes that were not authorized and the mismatch halted the plane, not one run; it stands until restart. |
+| `guardana_control_pipeline_halted_sink` | gauge |  | `Pipeline.SinkHalted` | 1 when a closing record could not be written and no append has succeeded since. |
 | `guardana_control_pipeline_flow_uncomputed_total` | counter |  | `Pipeline.FlowUncomputed` | Calls decided with a flow state nobody computed, so a flow rule is undetermined for each. |
 | `guardana_control_pipeline_runs` | gauge |  | `Pipeline.Runs` | Local runs the pipeline keeps a flow state for in memory. |
 | `guardana_control_pipeline_run_state_failures_total` | counter |  | `Pipeline.RunStateFailures` | Reads and raises of an opened run's root state that failed, each of which blocked its call. |
@@ -86,6 +97,17 @@ edit made here does not survive the next run.
 | `guardana_control_pause_changes_total` | counter |  | `Pause.Changes` | Reads whose state, cause or entries differ from the read before, the first included. |
 | `guardana_control_pause_state` | gauge | `state` | `PauseState` | 1 for the pause state a call admitted now is decided under, 0 for the three others. |
 | `guardana_control_pause_entries` | gauge |  | `PauseEntries` | Pause entries in force. |
+| `guardana_control_listener_enforce_api` | gauge |  | `EnforceAPI` | 1 when the plane serves the enforcement API: the metrics of its adapter are written and those of the MCP adapter left out. |
+| `guardana_control_enforce_open_handles` | gauge |  | `Enforce.Open` | Executions the enforcement API handed out whose handle is still open. |
+| `guardana_control_enforce_executed_total` | counter |  | `Enforce.Executed` | Admits answered EXECUTE. |
+| `guardana_control_enforce_blocked_total` | counter |  | `Enforce.Blocked` | Admits answered BLOCK, including executions not handed out because their resource moved. |
+| `guardana_control_enforce_pending_total` | counter |  | `Enforce.Pending` | Admits answered PENDING. |
+| `guardana_control_enforce_completed_total` | counter |  | `Enforce.Completed` | Executions a client completed. |
+| `guardana_control_enforce_aborted_total` | counter |  | `Enforce.Aborted` | Executions a client aborted, and those the adapter aborted because their resource moved. |
+| `guardana_control_enforce_abandoned_total` | counter |  | `Enforce.Abandoned` | Executions the adapter abandoned: expired, open at shutdown, or handed to nobody. |
+| `guardana_control_enforce_records_failed_total` | counter |  | `Enforce.RecordsFailed` | Abandons and aborts whose closing record could not be written; each leaves its trail open. |
+| `guardana_control_enforce_refused_total` | counter | `code` | `Enforce.Refused` | Requests the enforcement API refused, by its error code, refused run tokens included; a code the contract does not declare is counted under other. |
+| `guardana_control_enforce_runs_refused_total` | counter | `cause` | `Enforce.RunsRefused` | Requests refused because their run token did not resolve, by cause. |
 | `guardana_control_stops_polls_total` | counter |  | `Stops.Polls` | Reads of the stop list, the first included. |
 | `guardana_control_stops_poll_failures_total` | counter | `cause` | `Stops.Failed` | Reads of the stop list whose state was unknown, by cause; each blocked every call until a read was whole again; a cause the reader does not declare is counted under other. |
 | `guardana_control_stops_active_entries` | gauge |  | `Stops.Active` | Stops active at the clock of the last read of the stop list. |

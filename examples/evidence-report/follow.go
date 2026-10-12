@@ -308,8 +308,8 @@ func (f *follower) eventAlerts(kernel *decisionFacts, e *event) {
 }
 
 // close ends a request: its row is printed, it is remembered as ended while
-// its last event is in the window, and an unknown end raises an alert at the
-// event that ended it.
+// its last event is in the window, and an unknown or uncertain end raises an
+// alert at the event that ended it.
 func (f *follower) close(o *openRequest, end, note string, e *event) {
 	delete(f.s.open, o.key)
 	r := row{key: o.key}
@@ -323,8 +323,11 @@ func (f *follower) close(o *openRequest, end, note string, e *event) {
 		}
 		f.s.closed[o.key] = c
 	}
-	if end == endUnknown {
+	switch end {
+	case endUnknown:
 		f.raise(noted(eventAlert(codeUnknown, e), note))
+	case endUncertain:
+		f.raise(noted(eventAlert(codeUncertain, e), note))
 	}
 }
 

@@ -81,26 +81,3 @@ func TestAFractionInASchemaIsFingerprinted(t *testing.T) {
 		t.Error("a definition whose default moved from 0.7 to 0.8 kept its classification")
 	}
 }
-
-// TestResourceIDOfANumberIsItsCanonicalText: a number at a ResourceFrom
-// pointer becomes the text the digest writes for it, so 42.0 names the
-// resource 42 names and a rule on that id matches both spellings.
-func TestResourceIDOfANumberIsItsCanonicalText(t *testing.T) {
-	for args, want := range map[string]string{
-		`{"n":42}`:                  "42",
-		`{"n":42.0}`:                "42",
-		`{"n":4.2e1}`:               "42",
-		`{"n":-0.0}`:                "0",
-		`{"n":0.70}`:                "0.7",
-		`{"n":1e-7}`:                "1e-7",
-		`{"n":"42.0"}`:              "42.0",
-		`{"n":9007199254740992}`:    "",
-		`{"n":0.30000000000000001}`: "",
-		`{"n":1e400}`:               "",
-		`{"n":[42]}`:                "",
-	} {
-		if got := resolvePointer([]byte(args), "/n"); got != want {
-			t.Errorf("resolvePointer(%s) = %q, want %q", args, got, want)
-		}
-	}
-}

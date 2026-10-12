@@ -17,7 +17,7 @@ const (
 	rowFailed       = "t\tp\tr6\trun-r6\texport_orders\tALLOW\tRULE_ALLOW\t-\tno\t-\tfailed\t-"
 	rowUndetermined = "t\tp\tr7\trun-r7\texport_orders\tINDETERMINATE\tRULE_UNDETERMINED,PDP_TIMEOUT\t=\tno\t-\tblocked\t-"
 
-	oneCompleted = "totals: requests 1, completed 1, failed 0, aborted 0, blocked 0, open 0, unknown 0; "
+	oneCompleted = "totals: requests 1, completed 1, failed 0, uncertain 0, aborted 0, blocked 0, open 0, unknown 0; "
 	endReached   = "; trailer end reached"
 )
 
@@ -61,19 +61,19 @@ func TestReport(t *testing.T) {
 	cases := []reportCase{
 		{name: "clean lifecycles joined by their links, not the file's order", in: newExport("1.0").event(clean...).whole(),
 			rows: []string{rowAllowed, rowDenied, rowApproved, rowRejected, rowExpired, rowFailed, rowUndetermined},
-			totals: "totals: requests 7, completed 2, failed 1, aborted 0, blocked 4, open 0, unknown 0; " +
+			totals: "totals: requests 7, completed 2, failed 1, uncertain 0, aborted 0, blocked 4, open 0, unknown 0; " +
 				"gaps 0, duplicates 0, conflicting 0, refused 0" + endReached},
 		{name: "a higher minor is read", in: newExport("1.7").event(r1...).whole(),
 			rows: []string{rowAllowed}, totals: oneCompleted + "gaps 0, duplicates 0, conflicting 0, refused 0" + endReached},
 		{name: "a missing middle event breaks the chain", in: newExport("1.0").event(without(r1, 1)...).event(chain("r2", denied...)...).whole(),
 			rows: []string{"t\tp\tr1\trun-r1\tread_order\t-\t-\t-\tno\t-\tunknown\tevent r1-3 follows r1-2, which this export does not hold", rowDenied},
-			totals: "totals: requests 2, completed 0, failed 0, aborted 0, blocked 1, open 0, unknown 1; " +
+			totals: "totals: requests 2, completed 0, failed 0, uncertain 0, aborted 0, blocked 1, open 0, unknown 1; " +
 				"gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
 			code: 1, stderr: "not every request"},
 		{name: "a missing last event leaves the request open", in: newExport("1.0").event(r1[:3]...).event(chain("r8", held...)...).whole(),
 			rows: []string{"t\tp\tr1\trun-r1\tread_order\tALLOW\tRULE_ALLOW\t-\tno\t-\topen\tno event ends the action",
 				"t\tp\tr8\trun-r8\tupdate_order\tREQUIRE_APPROVAL\tAPPROVAL_REQUIRED\t-\tyes\tpending\topen\tno event ends the action"},
-			totals: "totals: requests 2, completed 0, failed 0, aborted 0, blocked 0, open 2, unknown 0; " +
+			totals: "totals: requests 2, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 2, unknown 0; " +
 				"gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
 			code: 1, stderr: "not every request"},
 		{name: "a gap record", in: newExport("1.0").event(r1...).gap("malformed").whole(),
@@ -88,7 +88,7 @@ func TestReport(t *testing.T) {
 			rows: []string{rowAllowed}, totals: oneCompleted + "gaps 0, duplicates 1, conflicting 0, refused 0" + endReached},
 		{name: "one event id with two contents", in: newExport("1.0").event(r1...).event(strings.Replace(r1[3], "x1", "x9", 1)).whole(),
 			rows: []string{"t\tp\tr1\trun-r1\tread_order\tALLOW\tRULE_ALLOW\t-\tno\t-\tunknown\tevent r1-4 is held twice with different content"},
-			totals: "totals: requests 1, completed 0, failed 0, aborted 0, blocked 0, open 0, unknown 1; " +
+			totals: "totals: requests 1, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 0, unknown 1; " +
 				"gaps 0, duplicates 0, conflicting 1, refused 0" + endReached,
 			code: 1, stderr: "different content"},
 		{name: "an unknown record type", in: newExport("1.0").event(r1...).raw(`{"type":"annotation","offset":900}`).whole(),
@@ -150,46 +150,46 @@ func eventCases(r1 []string) []reportCase {
 	return []reportCase{
 		{name: "an event of another major", in: newExport("1.0").event(r1[:3]...).event(strings.Replace(r1[3], `"1.0"`, `"2.0"`, 1)).whole(),
 			rows:   []string{"t\tp\tr1\trun-r1\tread_order\tALLOW\tRULE_ALLOW\t-\tno\t-\topen\tno event ends the action"},
-			totals: "totals: requests 1, completed 0, failed 0, aborted 0, blocked 0, open 1, unknown 0; gaps 0, duplicates 0, conflicting 0, refused 1" + endReached,
+			totals: "totals: requests 1, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 1, unknown 0; gaps 0, duplicates 0, conflicting 0, refused 1" + endReached,
 			code:   1, stderr: "schema_version"},
 		{name: "an event with a field the contract does not name", in: newExport("1.0").event(r1[:3]...).event(strings.Replace(r1[3], "}", `,"granted":true}`, 1)).whole(),
 			rows:   []string{"t\tp\tr1\trun-r1\tread_order\tALLOW\tRULE_ALLOW\t-\tno\t-\topen\tno event ends the action"},
-			totals: "totals: requests 1, completed 0, failed 0, aborted 0, blocked 0, open 1, unknown 0; gaps 0, duplicates 0, conflicting 0, refused 1" + endReached,
+			totals: "totals: requests 1, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 1, unknown 0; gaps 0, duplicates 0, conflicting 0, refused 1" + endReached,
 			code:   1, stderr: "an event the contract does not read"},
 		{name: "offsets out of the file's order", in: backwards.cut() + strings.Replace(backwards.trailerLine(true, 0), `"gap":0`, `"gap":1`, 1) + "\n",
 			rows: []string{rowAllowed}, totals: oneCompleted + "gaps 0, duplicates 0, conflicting 0, refused 1" + endReached,
 			code: 1, stderr: "offset"},
 		{name: "two events follow one", in: newExport("1.0").event(r1...).event(evt("r1", "r1-x", "r1-1", "POLICY_DECIDED", decided("ALLOW", "RULE_ALLOW"))).whole(),
 			rows:   []string{"t\tp\tr1\trun-r1\tread_order\tALLOW\tRULE_ALLOW\t-\tno\t-\tunknown\tevents r1-2 and r1-x both follow r1-1"},
-			totals: "totals: requests 1, completed 0, failed 0, aborted 0, blocked 0, open 0, unknown 1; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
+			totals: "totals: requests 1, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 0, unknown 1; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
 			code:   1, stderr: "not every request"},
 		{name: "two events start one request", in: newExport("1.0").event(r1...).event(evt("r1", "r1-y", "", "ACTION_PROPOSED", proposed("read_order"))).whole(),
 			rows:   []string{"t\tp\tr1\trun-r1\tread_order\tALLOW\tRULE_ALLOW\t-\tno\t-\tunknown\tevents r1-1 and r1-y both start the request"},
-			totals: "totals: requests 1, completed 0, failed 0, aborted 0, blocked 0, open 0, unknown 1; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
+			totals: "totals: requests 1, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 0, unknown 1; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
 			code:   1, stderr: "not every request"},
 		{name: "a step the lifecycle does not take", in: newExport("1.0").event(chain("r1", allowed[0], allowed[2], allowed[3])...).whole(),
 			rows:   []string{"t\tp\tr1\trun-r1\tread_order\t-\t-\t-\tno\t-\tunknown\tACTION_STARTED cannot follow ACTION_PROPOSED"},
-			totals: "totals: requests 1, completed 0, failed 0, aborted 0, blocked 0, open 0, unknown 1; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
+			totals: "totals: requests 1, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 0, unknown 1; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
 			code:   1, stderr: "not every request"},
 		{name: "a kind this reader cannot place", in: newExport("1.0").event(r1[:3]...).event(strings.Replace(r1[3], `"EVENT_KIND_ACTION_COMPLETED"`, "99", 1)).whole(),
 			rows:   []string{"t\tp\tr1\trun-r1\tread_order\tALLOW\tRULE_ALLOW\t-\tno\t-\tunknown\tevent r1-4 has kind 99, which this reader cannot place"},
-			totals: "totals: requests 1, completed 0, failed 0, aborted 0, blocked 0, open 0, unknown 1; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
+			totals: "totals: requests 1, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 0, unknown 1; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
 			code:   1, stderr: "not every request"},
 		{name: "a decision event without its decision", in: newExport("1.0").event(chain("r1", allowed[0], step{"POLICY_DECIDED", ""}, allowed[2], allowed[3])...).whole(),
 			rows:   []string{"t\tp\tr1\trun-r1\tread_order\t-\t-\t-\tno\t-\tunknown\tevent r1-2 is POLICY_DECIDED and carries no decision"},
-			totals: "totals: requests 1, completed 0, failed 0, aborted 0, blocked 0, open 0, unknown 1; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
+			totals: "totals: requests 1, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 0, unknown 1; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
 			code:   1, stderr: "not every request"},
 		{name: "an answer that is neither yes nor no", in: newExport("1.0").event(chain("r3", approved[0], approved[1], approved[2], step{"APPROVAL_DECIDED", approval("PENDING")}, approved[4], approved[5])...).whole(),
 			rows:   []string{"t\tp\tr3\trun-r3\tupdate_order\tREQUIRE_APPROVAL\tAPPROVAL_REQUIRED\t-\tyes\tunknown\tunknown\tevent r3-4 decides the approval as APPROVAL_STATE_PENDING"},
-			totals: "totals: requests 1, completed 0, failed 0, aborted 0, blocked 0, open 0, unknown 1; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
+			totals: "totals: requests 1, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 0, unknown 1; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
 			code:   1, stderr: "not every request"},
 		{name: "an end naming another execution", in: newExport("1.0").event(chain("r1", allowed[0], allowed[1], allowed[2], step{"ACTION_COMPLETED", execution("x9")})...).whole(),
 			rows:   []string{"t\tp\tr1\trun-r1\tread_order\tALLOW\tRULE_ALLOW\t-\tno\t-\tunknown\tevent r1-4 ends execution x9, not x1, which started"},
-			totals: "totals: requests 1, completed 0, failed 0, aborted 0, blocked 0, open 0, unknown 1; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
+			totals: "totals: requests 1, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 0, unknown 1; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
 			code:   1, stderr: "not every request"},
 		{name: "an event naming no request", in: newExport("1.0").event(strings.Replace(evt("r1", "r1-1", "", "ACTION_PROPOSED", proposed("read_order")), `"requestId":"r1",`, "", 1)).whole(),
 			rows:   []string{"t\tp\t-\trun-r1\tread_order\t-\t-\t-\tno\t-\tunknown\tan event names no tenant, project or request"},
-			totals: "totals: requests 1, completed 0, failed 0, aborted 0, blocked 0, open 0, unknown 1; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
+			totals: "totals: requests 1, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 0, unknown 1; gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
 			code:   1, stderr: "not every request"},
 		{name: "a replacement character in a value is quoted", in: newExport("1.0").event(chain("r1", step{"ACTION_PROPOSED", proposed("read�order")}, allowed[1], allowed[2], allowed[3])...).whole(),
 			rows:   []string{"t\tp\tr1\trun-r1\t\"read�order\"\tALLOW\tRULE_ALLOW\t-\tno\t-\tcompleted\t-"},

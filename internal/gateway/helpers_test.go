@@ -85,7 +85,7 @@ type fakeAdapter struct {
 func (a fakeAdapter) Name() string                       { return a.name }
 func (a fakeAdapter) Capabilities() gateway.Capabilities { return a.caps }
 
-var enforcing = gateway.Capabilities{ObserveRequest: true, ObserveResult: true, Block: true}
+var enforcing = gateway.Capabilities{ObserveRequest: true, ObserveResult: true, Enforcement: gateway.EnforcementInline}
 
 // snapshotSource serves one snapshot and counts how often it was asked.
 type snapshotSource struct {

@@ -141,3 +141,42 @@ func TestAnApprovalBoundHasToBePositive(t *testing.T) {
 		}
 	}
 }
+
+// TestTheBoundOnOneRunsHoldsStaysBelowThePlanes: under opened runs one run
+// holds fewer requests than the plane, or it alone fills every hold of every
+// other run; the bound is positive, defaults to 16, and is read only where a
+// runs directory serves opened runs, an MCP listener's or an enforce_api one's.
+func TestTheBoundOnOneRunsHoldsStaysBelowThePlanes(t *testing.T) {
+	if cfg := load(t, writeDocument(t, enforceDocument)); cfg.Approvals.MaxHeldPerRun != 16 {
+		t.Errorf("approvals.max_held_per_run defaults to %d, want 16", cfg.Approvals.MaxHeldPerRun)
+	}
+	mcpRuns := document + "\nruns:\n  dir: runs\n" + fileProvider
+	for _, doc := range []string{enforceDocument, mcpRuns} {
+		for _, env := range []map[string]string{
+			{"approvals.max_held": "17"},
+			{"approvals.max_held_per_run": "3", "approvals.max_held": "4"},
+			{"approvals.max_held_per_run": "1", "approvals.max_held": "2"},
+		} {
+			path := writeDocument(t, doc)
+			for k, v := range env {
+				setEnv(t, k, v)
+			}
+			if _, err := Load(path, os.Environ()); err != nil {
+				t.Errorf("%v was refused: %v", env, err)
+			}
+		}
+		refusedSaying(t, doc, map[string]string{"approvals.max_held": "16"}, "approvals.max_held_per_run: 16 is at or above approvals.max_held")
+		refusedSaying(t, doc, map[string]string{"approvals.max_held_per_run": "4", "approvals.max_held": "4"}, "approvals.max_held_per_run: ")
+		refusedSaying(t, doc, map[string]string{"approvals.max_held_per_run": "0"}, "approvals.max_held_per_run: ")
+		refusedSaying(t, doc, map[string]string{"approvals.max_held_per_run": "-1"}, "approvals.max_held_per_run: ")
+	}
+	if cfg := load(t, write(t, "")); cfg.Approvals.MaxHeld != 128 {
+		t.Fatalf("approvals.max_held = %d", cfg.Approvals.MaxHeld)
+	}
+	path := write(t, "")
+	setEnv(t, "approvals.max_held", "8")
+	if _, err := Load(path, os.Environ()); err != nil {
+		t.Errorf("approvals.max_held 8 without a runs directory was refused: %v", err)
+	}
+	refusedSaying(t, document, map[string]string{"approvals.max_held_per_run": "4"}, "approvals.max_held_per_run: set, and no runs.dir")
+}

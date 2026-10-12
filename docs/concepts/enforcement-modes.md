@@ -88,7 +88,7 @@ them:
 | an execution whose opened run expired before it started, or whose run's state cannot be raised, after the mode | `INDETERMINATE` | `EVIDENCE_UNAVAILABLE` | a run that is open, and a raise that succeeds |
 | a request id whose trail is still open in this enforcement point, unless the call resumes that trail | `INDETERMINATE` | `INVALID_FIELD_VALUE` | that trail closes |
 | an event the sink will not take before the effect, for a material call, or for a read without `AllowReadsUnrecorded` | `INDETERMINATE` | `EVIDENCE_UNAVAILABLE` | the sink takes events again |
-| an execution past `MaxOpen`, or a hold past `MaxHeld` | `INDETERMINATE` | `EVIDENCE_UNAVAILABLE` | an execution closes, or a hold ends |
+| an execution past `MaxOpen`, or a hold past `MaxHeld` or past one run's `approvals.max_held_per_run` | `INDETERMINATE` | `EVIDENCE_UNAVAILABLE` | an execution closes, or a hold ends |
 
 When a call has more than one of the first eight causes, or one of them and
 `LOCKDOWN` on a material call, the decision on the block lists every one, in
@@ -186,11 +186,11 @@ table is rendered from the mode table in `internal/gateway/mode.go`.
 | --- | --- | --- |
 | `UNSPECIFIED` | nothing: refused as configuration | refused at start |
 | `OBSERVE` | observe the request, observe the result | runs |
-| `SHADOW` | observe the request, observe the result, block | planned: refused at start |
+| `SHADOW` | observe the request, observe the result, cooperative or inline enforcement | planned: refused at start |
 | `WARN` | observe the request, observe the result | planned: refused at start |
-| `APPROVE` | observe the request, observe the result, block | runs |
-| `ENFORCE` | observe the request, observe the result, block | runs |
-| `LOCKDOWN` | observe the request, observe the result, block | runs |
+| `APPROVE` | observe the request, observe the result, cooperative or inline enforcement | runs |
+| `ENFORCE` | observe the request, observe the result, cooperative or inline enforcement | runs |
+| `LOCKDOWN` | observe the request, observe the result, cooperative or inline enforcement | runs |
 | a number no build declares | nothing: refused as configuration | refused at start |
 <!-- /generated -->
 

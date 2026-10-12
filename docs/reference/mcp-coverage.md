@@ -112,8 +112,8 @@ and undecided answers carry neither.
 
 ## Reason codes in the gateway's answers
 
-A decision the kernel made comes back as the kernel wrote it;
-[reference/reason-codes](reason-codes.md) has every code and its number. The codes below are the enforcement
+A kernel decision comes back as written;
+[reference/reason-codes](reason-codes.md) lists every code and its number. The codes below are the enforcement
 point's own.
 
 | Code | When |
@@ -128,6 +128,7 @@ point's own.
 | `APPROVAL_NOT_RESUMED`, `APPROVAL_STATE_UNKNOWN` | a request this plane lost to a restart was granted, or its answer could not be read or trusted; it never ran |
 | `APPROVAL_DIGEST_MISMATCH`, `APPROVAL_BUNDLE_MISMATCH` | an approval a store returned named another action or another policy bundle |
 | `EXECUTED_ARGS_MISMATCH` | the bytes about to be sent, or the bytes sent, were not the authorized ones |
+| `EXECUTION_ABANDONED` | never in an MCP answer |
 | `OBLIGATION_NOT_UNDERSTOOD` | an obligation the plane cannot apply, or whose parameters it cannot read, or a rewrite changed the member `resource_from` reads |
 | `INVALID_FIELD_VALUE`, `MALFORMED_INPUT` | the call, classified or not, could not be translated into a valid envelope; `INVALID_FIELD_VALUE` also when its request id names a trail still open in the gateway |
 | `POLICY_UNAVAILABLE` | a block reached the adapter with a decision naming no cause; it answers with the kernel's code for an absent policy rather than invent a second fail-closed answer |

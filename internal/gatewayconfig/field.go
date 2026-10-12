@@ -140,8 +140,15 @@ func durationField[T any](path, def string, get func(*T) *time.Duration) field[T
 // to set to a positive value. It shows as empty while unset, which is how
 // checkRequired tells a key nobody set.
 func requiredDuration[T any](path string, get func(*T) *time.Duration) field[T] {
-	f := durationField(path, "", get)
+	f := noDefaultDuration(path, get)
 	f.required = true
+	return f
+}
+
+// noDefaultDuration is a positive duration with no default, which another
+// key decides whether a configuration has to set.
+func noDefaultDuration[T any](path string, get func(*T) *time.Duration) field[T] {
+	f := durationField(path, "", get)
 	parse := f.set
 	f.set = func(t *T, v string) error {
 		if err := parse(t, v); err != nil {

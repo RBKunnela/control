@@ -52,6 +52,8 @@
 /cmd/guardana-gateway/stop.go @guardana/security-maintainers
 /adapters/authzen/     @guardana/security-maintainers
 /adapters/mcp/         @guardana/security-maintainers
+/adapters/enforce/     @guardana/security-maintainers
+/internal/adapterkit/  @guardana/security-maintainers
 /pkg/contract/         @guardana/security-maintainers
 /pkg/policyprovider/   @guardana/security-maintainers
 /api/proto/            @guardana/security-maintainers

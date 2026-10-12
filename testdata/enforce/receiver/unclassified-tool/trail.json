@@ -1,0 +1,19 @@
+{
+  "events": [
+    {
+      "kind": "EVENT_KIND_ACTION_PROPOSED"
+    },
+    {
+      "kind": "EVENT_KIND_POLICY_DECIDED",
+      "codes": [
+        "MALFORMED_INPUT"
+      ]
+    },
+    {
+      "kind": "EVENT_KIND_ACTION_BLOCKED",
+      "codes": [
+        "ACTION_UNCLASSIFIED"
+      ]
+    }
+  ]
+}

@@ -14,8 +14,8 @@ type Capabilities struct {
 	ObserveRequest bool
 	// ObserveResult: the adapter sees what the upstream answered.
 	ObserveResult bool
-	// Block: the adapter can stop a call from reaching the upstream.
-	Block bool
+	// Enforcement is how far the adapter can keep a call from its effect.
+	Enforcement Enforcement
 	// Authenticates: the adapter's listener establishes an end-user identity
 	// before a call is translated. Without it there is no user to bind, only
 	// a claim, so BindEndUser is refused.
@@ -37,6 +37,22 @@ type Capabilities struct {
 	Obligations []string
 }
 
+// Enforcement is how far an adapter can keep a call from its effect. The
+// values are ordered: each one can do what the one before it does.
+type Enforcement uint8
+
+const (
+	// EnforcementNone is an adapter that cannot keep a call from its effect.
+	EnforcementNone Enforcement = iota
+	// EnforcementCooperative is an adapter that hands each decision to a
+	// caller that enforces it: the plane decides, holds and records, and
+	// nothing it holds proves the caller obeyed.
+	EnforcementCooperative
+	// EnforcementInline is an adapter that holds the path to the effect and
+	// sends only what the plane authorized.
+	EnforcementInline
+)
+
 // Adapter is the seam between the pipeline and a protocol. It translates; the
 // meaning of a call lives in the envelope it builds and in the policy, never
 // here.
@@ -47,12 +63,15 @@ type Adapter interface {
 	Capabilities() Capabilities
 }
 
-// covers reports whether every capability set in need is set in c.
+// covers reports whether every capability set in need is set in c, and c
+// enforces at least as far as need does.
 func (c Capabilities) covers(need Capabilities) bool {
+	if c.Enforcement < need.Enforcement {
+		return false
+	}
 	for _, pair := range [...]struct{ have, need bool }{
 		{c.ObserveRequest, need.ObserveRequest},
 		{c.ObserveResult, need.ObserveResult},
-		{c.Block, need.Block},
 		{c.Authenticates, need.Authenticates},
 		{c.BindEndUser, need.BindEndUser},
 		{c.SeeDelegation, need.SeeDelegation},

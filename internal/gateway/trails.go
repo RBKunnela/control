@@ -28,6 +28,9 @@ type heldRequest struct {
 	binding     approval.Binding
 	lastEventID string
 	expires     time.Time
+	// run is the opened run the request is held under, empty when the plane
+	// vouched for none.
+	run string
 }
 
 // keep records an execution under its handle until Close or Abort. It refuses
@@ -81,17 +84,23 @@ func (p *Pipeline) reserve(ctx context.Context, requestID string, now time.Time)
 
 // holdOpen marks the open trail of h's request held until h expires and keeps
 // the record a retry resumes from, or reports that MaxHeld requests are held
-// already.
+// already, or MaxHeldPerRun under h's opened run and unexpired when h was
+// requested. A hold the sweep has not closed yet still counts against
+// MaxHeld, since it keeps its trail and its record until it is closed.
 func (p *Pipeline) holdOpen(h *heldRequest) bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	held := 0
+	now := h.approval.GetRequestedAt().AsTime()
+	held, ofRun := 0, 0
 	for _, t := range p.trails {
 		if t.held != nil {
 			held++
+			if h.run != "" && t.held.run == h.run && now.Before(t.held.expires) {
+				ofRun++
+			}
 		}
 	}
-	if held >= p.cfg.MaxHeld {
+	if held >= p.cfg.MaxHeld || ofRun >= p.cfg.MaxHeldPerRun {
 		return false
 	}
 	p.trails[h.ids.RequestID] = openTrail{held: h}

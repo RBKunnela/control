@@ -34,6 +34,7 @@
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
 <li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
@@ -406,6 +407,12 @@ with <code>make docs-gen</code>; an edit made here does not survive the next run
 <td><code>INDETERMINATE</code></td>
 <td>The enforcement point could not read or trust the stop list, so it blocked the call rather than assume that no run is stopped.</td>
 </tr>
+<tr>
+<td><code>EXECUTION_ABANDONED</code></td>
+<td>47</td>
+<td><code>INDETERMINATE</code></td>
+<td>An execution the enforcement point handed out was neither completed nor aborted before it expired, so it was closed without knowing whether the call ran.</td>
+</tr>
 </tbody>
 </table>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/reference/reason-codes.md">docs/reference/reason-codes.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.10.2-alpha, and <a href="https://github.com/guardana/control/tree/v0.10.2-alpha/docs">its documentation</a> is in its tag.</p>
@@ -417,6 +424,7 @@ with <code>make docs-gen</code>; an edit made here does not survive the next run
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
 <li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>

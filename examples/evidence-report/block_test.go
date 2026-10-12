@@ -2,7 +2,7 @@ package main
 
 import "testing"
 
-const oneBlocked = "totals: requests 1, completed 0, failed 0, aborted 0, blocked 1, open 0, unknown 0; " +
+const oneBlocked = "totals: requests 1, completed 0, failed 0, uncertain 0, aborted 0, blocked 1, open 0, unknown 0; " +
 	"gaps 0, duplicates 0, conflicting 0, refused 0" + endReached
 
 // TestBlockColumn holds the block column to the decision ACTION_BLOCKED

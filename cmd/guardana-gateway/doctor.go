@@ -121,6 +121,7 @@ func printSettings(w io.Writer, cfg *gatewayconfig.Config) {
 	for i, up := range cfg.Upstreams {
 		printUpstream(w, i, up)
 	}
+	printTools(func(line string) { writeLine(w, line) }, cfg.Tools)
 	for i, o := range cfg.Overrides {
 		writeLine(w, fmt.Sprintf("       %-28s %s/%s is %s on %s from %s, returns %s %s, fingerprint %s",
 			fmt.Sprintf("overrides.%d", i), oneLine(o.Upstream), oneLine(o.Tool), o.Effect, oneLine(o.ResourceType),
@@ -152,18 +153,25 @@ func (d *examination) mode(context.Context) (string, string, string) {
 	if err != nil {
 		return verdictFail, "mode", err.Error()
 	}
-	return verdictOK, "mode", fmt.Sprintf("%s needs %s from the adapter; list shaping %s",
-		d.cfg.ModeName, capabilityList(needs), d.cfg.List.Shaping)
+	found := fmt.Sprintf("%s needs %s from the adapter", d.cfg.ModeName, capabilityList(needs))
+	if d.cfg.Listener.Kind != enforceKind {
+		found += "; list shaping " + d.cfg.List.Shaping
+	}
+	return verdictOK, "mode", found
 }
 
-// capabilityList names the capabilities a mode needs, in a fixed order.
+// capabilityList names the capabilities a mode needs or an adapter declares,
+// in a fixed order. A mode that needs enforcement_cooperative takes an adapter
+// that declares enforcement_inline too.
 func capabilityList(c gateway.Capabilities) string {
 	var out []string
 	for _, pair := range []struct {
 		name string
 		set  bool
 	}{
-		{"observe_request", c.ObserveRequest}, {"observe_result", c.ObserveResult}, {"block", c.Block},
+		{"observe_request", c.ObserveRequest}, {"observe_result", c.ObserveResult},
+		{"enforcement_cooperative", c.Enforcement == gateway.EnforcementCooperative},
+		{"enforcement_inline", c.Enforcement == gateway.EnforcementInline},
 		{"authenticates", c.Authenticates}, {"bind_end_user", c.BindEndUser},
 		{"see_delegation", c.SeeDelegation}, {"see_resource_ids", c.SeeResourceIDs},
 	} {
@@ -327,17 +335,25 @@ func (d *examination) seams(context.Context) (string, string, string) {
 	d.plane = p
 	return verdictOK, "seams", fmt.Sprintf(
 		"the %s adapter declares %s, which covers what %s needs; at most %d held and %d open, an approval lasts %s and a retry is asked for after %s",
-		p.adapter.Name(), capabilityList(p.adapter.Capabilities()), d.cfg.ModeName,
+		p.seam().Name(), capabilityList(p.seam().Capabilities()), d.cfg.ModeName,
 		d.cfg.Approvals.MaxHeld, d.cfg.Approvals.MaxOpen, d.cfg.Approvals.TTL, d.cfg.Approvals.RetryAfter)
 }
 
 // upstreams connects every upstream through the plane the previous check built,
 // reads its tools into the manifest and says which of them the operator's
 // overrides classify. An unclassified tool is blocked in every mode but
-// OBSERVE, so outside OBSERVE it is not a pass.
+// OBSERVE, so outside OBSERVE it is not a pass. An enforce_api plane has no
+// upstream; there it checks the socket's directory as run's Listen does.
 func (d *examination) upstreams(ctx context.Context) (string, string, string) {
 	if d.plane == nil {
 		return verdictUnknown, "upstreams", "the plane was not built, so nothing connected"
+	}
+	if d.plane.enforce != nil {
+		if err := d.plane.enforce.CheckSocketDir(); err != nil {
+			return verdictFail, "upstreams", err.Error()
+		}
+		return verdictOK, "upstreams", fmt.Sprintf("an %s plane calls no upstream; %d tool(s) are classified by name, "+
+			"each decision handed to a cooperating client; the socket's directory is this user's alone", enforceKind, len(d.cfg.Tools))
 	}
 	ctx, cancel := context.WithTimeout(ctx, doctorTimeout)
 	defer cancel()

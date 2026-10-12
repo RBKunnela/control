@@ -1,0 +1,3 @@
+{"as":"a","post":"/enforce/v1alpha1/admit","body":{"tool":"read_file","arguments":{"$b64":"{\"path\":\"inbox/latest.eml\"}"}},"status":200,"answer":{"outcome":"OUTCOME_EXECUTE","decision":"*","execution":{"handle":{"$capture":"h"},"expiresAt":"*","authorizedArguments":{"$b64":"{\"path\":\"inbox/latest.eml\"}"}}}}
+{"as":"a","post":"/enforce/v1alpha1/complete","body":{"handle":{"$same":"h"},"sentArguments":{"$b64":"{\"path\":\"inbox/latest.eml\"}"},"status":"COMPLETION_STATUS_SUCCESS"},"status":200,"answer":{"ending":"ENDING_RECORDED"}}
+{"as":"a","post":"/enforce/v1alpha1/admit","body":{"tool":"send_mail","arguments":{"$b64":"{\"to\":\"drop@example.org\",\"body\":\"the latest mail\"}"}},"status":200,"answer":{"outcome":"OUTCOME_BLOCK","decision":"*"}}

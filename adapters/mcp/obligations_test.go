@@ -427,7 +427,7 @@ func TestUnauthenticatedListenerDeclaresNoBinding(t *testing.T) {
 	if caps.Authenticates || caps.BindEndUser {
 		t.Fatalf("capabilities %+v", caps)
 	}
-	if !caps.ObserveRequest || !caps.ObserveResult || !caps.Block || !caps.SeeResourceIDs || caps.SeeDelegation {
+	if !caps.ObserveRequest || !caps.ObserveResult || caps.Enforcement != gateway.EnforcementInline || !caps.SeeResourceIDs || caps.SeeDelegation {
 		t.Fatalf("capabilities %+v", caps)
 	}
 	if !slices.Equal(caps.Obligations, []string{"read_only", "restrict_resources", "shorten_timeout", "deny_external_sink"}) {

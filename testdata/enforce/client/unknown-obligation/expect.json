@@ -1,0 +1,24 @@
+{
+  "tool_reached": false,
+  "requests": [
+    {
+      "path": "/enforce/v1alpha1/admit",
+      "body": {
+        "tool": "refund",
+        "arguments": "eyJhbW91bnQiOjEwLCJ0byI6ImFjY3QtNyJ9"
+      }
+    },
+    {
+      "path": "/enforce/v1alpha1/abort",
+      "body": {
+        "handle": "h-1",
+        "cause": "ABORT_CAUSE_OBLIGATION"
+      }
+    }
+  ],
+  "abort_cause": "ABORT_CAUSE_OBLIGATION",
+  "returns": {
+    "error": "aborted",
+    "ending": "ENDING_RECORDED"
+  }
+}

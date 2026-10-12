@@ -30,18 +30,18 @@ func TestOpenBound(t *testing.T) {
 		alerts, totals, next string
 		nextAlerts           string
 	}{
-		{open: 10_000, totals: "totals: requests 10000, completed 0, failed 0, aborted 0, blocked 0, open 10000, unknown 0; " +
+		{open: 10_000, totals: "totals: requests 10000, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 10000, unknown 0; " +
 			"gaps 0, duplicates 0, conflicting 0, refused 0; trailer end reached",
-			next: columns + "\n" + "totals: requests 10000, completed 0, failed 0, aborted 0, blocked 0, open 10000, unknown 0; " +
+			next: columns + "\n" + "totals: requests 10000, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 10000, unknown 0; " +
 				"gaps 0, duplicates 0, conflicting 0, refused 0; trailer end reached\n",
 			nextAlerts: undecided},
 		{open: 10_001, code: 1, alerts: `{"v":1,"alert":"open_bound","tenant":"t","project":"p","request":"q0","run":"run-q0",` +
 			`"offset":%d,"note":"more than 10000 requests are open: the oldest is no longer followed, and its later events read as broken"}` + "\n",
-			totals: "totals: requests 10000, completed 0, failed 0, aborted 0, blocked 0, open 10000, unknown 0; " +
+			totals: "totals: requests 10000, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 10000, unknown 0; " +
 				"gaps 0, duplicates 0, conflicting 0, refused 0; trailer end reached",
 			next: columns + "\n" +
 				"t\tp\tq0\trun-q0\t-\tINDETERMINATE\tPDP_TIMEOUT\t-\tno\t-\tunknown\tevent q0-2 follows q0-1, of a request no longer followed\n" +
-				"totals: requests 10001, completed 0, failed 0, aborted 0, blocked 0, open 10000, unknown 1; " +
+				"totals: requests 10001, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 10000, unknown 1; " +
 				"gaps 0, duplicates 0, conflicting 0, refused 0; trailer end reached\n",
 			nextAlerts: undecided + `{"v":1,"alert":"lifecycle_unknown","tenant":"t","project":"p","request":"q0","run":"run-q0","event":"q0-2",` +
 				`"offset":%d,"note":"event q0-2 follows q0-1, of a request no longer followed"}` + "\n"},
@@ -90,9 +90,9 @@ func TestDedupWindowBound(t *testing.T) {
 		code     int
 		totals   string
 	}{
-		{findings: 2, totals: "totals: requests 0, completed 0, failed 0, aborted 0, blocked 0, open 0, unknown 0; " +
+		{findings: 2, totals: "totals: requests 0, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 0, unknown 0; " +
 			"gaps 0, duplicates 1, conflicting 0, refused 0; trailer end reached"},
-		{findings: 3, code: 1, totals: "totals: requests 0, completed 0, failed 0, aborted 0, blocked 0, open 0, unknown 0; " +
+		{findings: 3, code: 1, totals: "totals: requests 0, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 0, unknown 0; " +
 			"gaps 0, duplicates 0, conflicting 0, refused 0; trailer end reached"},
 	} {
 		t.Run(fmt.Sprint(tc.findings), func(t *testing.T) {
