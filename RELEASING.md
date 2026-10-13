@@ -17,8 +17,9 @@ own ([ADR-0052](docs/adr/0052-a-change-is-gated-on-its-pull-request.md)).
 3. Add the dated `## [X.Y.Z] - YYYY-MM-DD` section to `CHANGELOG.md`.
    `scripts/release-notes.sh vX.Y.Z` prints it; the workflow publishes it
    and refuses missing, undated or empty notes.
-4. Commit, gate the commit cold with `scripts/gate-commit.sh`, push it to
-   `main`, and wait for CI and Security to finish green.
+4. Commit: this is the release commit. Gate it cold with
+   `scripts/gate-commit.sh`; the admin pushes it to `main`. Wait for CI and
+   Security to finish green.
 5. Tag the commit and push:
 
    ```sh
@@ -30,7 +31,7 @@ own ([ADR-0052](docs/adr/0052-a-change-is-gated-on-its-pull-request.md)).
 6. Approve the tag's Release run through Review deployments. Only a
    maintainer or admin may push a `v*` tag or approve it.
 7. After publication, set `"released"` in `docs/docs.json`, regenerate and
-   commit. Verify the live version, capability labels, download and guide
+   open a pull request. Verify the live version, capability labels, download and guide
    links. Before publication the website must not name the new release.
 
 A version is a plain `X.Y.Z`; a suffix such as `-rc.1` marks a preview of it.

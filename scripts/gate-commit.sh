@@ -4,7 +4,8 @@
 # the commit into a scratch directory, never the working tree or the index,
 # which can differ from the commit by a file staged, deleted or left out. A
 # green run leaves a stamp under the repository's git directory that
-# scripts/pre-push.sh requires before the commit may leave this machine.
+# scripts/pre-push.sh requires before the commit is pushed to main or tagged as
+# a release.
 #
 # Before the gate it refuses an archive that is not the commit: every path,
 # mode and blob `git ls-tree` names must be extracted as it is, since an

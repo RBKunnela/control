@@ -466,7 +466,8 @@ JSON
     "main: pull requests")
       # A change reaches main by squash-merged pull request, reviewed and green.
       # The admin bypasses this ruleset and its two-approval parts, and no
-      # other, to push directly.
+      # other, to merge a change no second maintainer can approve and to push
+      # a release commit.
       patterns="$(two_approval_patterns_json 1)" || return 1
       rule="$(pull_request_rule_json "${patterns}" "${security_team_id}")" || return 1
       checks="$(checks_json)" || return 1

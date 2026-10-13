@@ -1,29 +1,35 @@
 #!/usr/bin/env bash
-# A git pre-push hook: refuses a push to main unless every commit it would
-# send has a green stamp from scripts/gate-commit.sh, which ran the whole gate
-# on that commit's own archive. A push to any other ref needs no stamp: what
-# it sends reaches main only through a pull request, whose checks run the gate.
-# The destination decides, so a branch pushed under the name main is a push to
-# main.
+# A git pre-push hook: refuses a push to main, and a push of a release tag,
+# unless every commit it counts has a green stamp from scripts/gate-commit.sh,
+# which ran the whole gate on that commit's own archive. A push to any other
+# ref needs no stamp: what it sends reaches main only through a pull request,
+# whose checks run the gate. The destination decides, so a branch pushed under
+# the name main is a push to main.
 #
-# A commit counts as sent unless the destination remote already holds it: on
-# an existing branch, what lies past the remote's tip; on a new one, what no
-# tracking ref of that remote reaches, whatever other remotes hold. A commit
-# list git cannot give refuses the push.
+# For main the commits counted are those past the remote's tip. For a main the
+# remote does not hold yet it is every commit, since what the remote holds on
+# other branches was never gated. For a v* tag it is the commit the tag names:
+# a release is cut from a commit that was gated cold. A line git did not write,
+# or a commit list git cannot give, refuses the push.
 #
 #   ln -s ../../scripts/pre-push.sh .git/hooks/pre-push
 set -euo pipefail
 
+refuse() {
+  printf 'pre-push: %s; nothing pushed\n' "$*" >&2
+  exit 1
+}
+
 # git names the destination remote in $1, or repeats its URL there when the
-# push names no remote; a URL matches no tracking ref, so every commit counts.
+# push names no remote.
 remote="${1:-}"
 if [[ -z "${remote}" || "${remote}" == *[\*\?\[]* ]]; then
-  printf 'pre-push: no destination remote named, or one git would read as a pattern: %q; nothing pushed\n' "${remote}" >&2
-  exit 1
+  refuse "no destination remote named, or one git would read as a pattern: $(printf '%q' "${remote}")"
 fi
 
 stamps="$(git rev-parse --git-common-dir)/gate-green"
-zero="0000000000000000000000000000000000000000"
+sha_shape='^([0-9a-f]{40}|[0-9a-f]{64})$'
+zero_shape='^0+$'
 
 # green says whether the stamp at $1 is the one line scripts/gate-commit.sh
 # writes, in a regular file and nothing after it. The byte count catches what
@@ -39,28 +45,42 @@ green() {
 }
 missing=0
 checked=0
-to_main=0
+judged=0
 
-# git hands the hook one line per ref: <local ref> <local sha> <remote ref> <remote sha>.
-while read -r local_ref local_sha remote_ref remote_sha; do
-  [[ -n "${local_ref}" ]] || continue
-  if [[ -z "${remote_ref}" || -z "${remote_sha}" ]]; then
-    printf 'pre-push: a line that names no destination ref and commit: %q; nothing pushed\n' "${local_ref} ${local_sha}" >&2
-    exit 1
+# git hands the hook one line per ref: <local ref> <local sha> <remote ref>
+# <remote sha>. The local ref is the source as it was typed and may hold
+# spaces; the other three cannot, so a line is read from its end.
+while IFS= read -r line || [[ -n "${line}" ]]; do
+  [[ -n "${line}" ]] || continue
+  remote_sha="${line##* }"
+  rest="${line% *}"
+  remote_ref="${rest##* }"
+  rest="${rest% *}"
+  local_sha="${rest##* }"
+  if [[ "${rest}" != *" "* || "${remote_ref}" != refs/* ||
+    ! "${local_sha}" =~ ${sha_shape} || ! "${remote_sha}" =~ ${sha_shape} ]]; then
+    refuse "a line git did not write: $(printf '%q' "${line}")"
   fi
-  [[ "${remote_ref}" == "refs/heads/main" ]] || continue
-  [[ "${local_sha}" != "${zero}" ]] || continue # a deletion sends no commit
-  to_main=1
-  if [[ "${remote_sha}" == "${zero}" ]]; then
-    range=("${local_sha}" --not "--remotes=${remote}")
-  else
-    range=("${remote_sha}..${local_sha}")
-  fi
+  local_ref="${rest% *}"
+
+  case "${remote_ref}" in
+    refs/heads/main | refs/tags/v*) ;;
+    *) continue ;;
+  esac
+  [[ ! "${local_sha}" =~ ${zero_shape} ]] || continue # a deletion sends no commit
+  judged=$((judged + 1))
+
   # The exit status, not an empty list, tells "nothing to send" from a list
   # git could not give.
-  if ! sent="$(git rev-list "${range[@]}")"; then
-    printf 'pre-push: the commits %s would send to %s could not be listed; nothing pushed\n' "${local_ref}" "${remote}" >&2
-    exit 1
+  if [[ "${remote_ref}" == refs/tags/* ]]; then
+    sent="$(git rev-parse --verify --quiet "${local_sha}^{commit}")" ||
+      refuse "${local_ref} names no commit for ${remote_ref}"
+  elif [[ "${remote_sha}" =~ ${zero_shape} ]]; then
+    sent="$(git rev-list "${local_sha}")" ||
+      refuse "the commits ${local_ref} would send to ${remote} could not be listed"
+  else
+    sent="$(git rev-list "${remote_sha}..${local_sha}")" ||
+      refuse "the commits ${local_ref} would send to ${remote} could not be listed"
   fi
   while read -r sha; do
     [[ -n "${sha}" ]] || continue
@@ -75,12 +95,11 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   done <<<"${sent}"
 done
 
-if [[ ${to_main} -eq 0 ]]; then
-  printf 'pre-push: nothing sent to main; no stamp required\n' >&2
+if [[ ${judged} -eq 0 ]]; then
+  printf 'pre-push: nothing sent to main and no release tag; no stamp required\n' >&2
   exit 0
 fi
 if [[ ${missing} -ne 0 ]]; then
-  printf 'pre-push: %d of %d commit(s) ungated; nothing pushed\n' "${missing}" "${checked}" >&2
-  exit 1
+  refuse "${missing} of ${checked} commit(s) ungated"
 fi
 printf 'pre-push: %d commit(s), each gated green on its own archive\n' "${checked}" >&2

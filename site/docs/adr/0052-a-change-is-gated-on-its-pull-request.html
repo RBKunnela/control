@@ -128,14 +128,17 @@ gates, on the release path, where a failure costs the most.</p>
 commits as it needs, and reaches <code>main</code> as one squash-merged pull request.
 That holds for the admin too. The admin's bypass covers the approving reviews
 a sole maintainer cannot give themselves; it is not used to merge past a red
-or missing check. Nothing enforces that difference, since a ruleset's bypass
-is whole: it is a rule the admin keeps.</li>
+or missing check. Nothing enforces that difference today: the review rule and
+the required checks sit in one ruleset, and its bypass waives both. It is a
+rule the admin keeps.</li>
 <li><strong>The gate of record for a change is <code>make quality</code> on its pull request.</strong>
-While working, <code>make quality-quick</code> and the linters. <code>scripts/pre-push.sh</code>
-requires a stamp only for commits sent to <code>main</code>.</li>
+While working, <code>make quality-quick</code> and the linters.</li>
 <li><strong>A release commit is also gated cold on a maintainer's machine</strong>, then
 pushed to <code>main</code> by the admin, as <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a> says.
-It is the one commit that still arrives without a pull request.</li>
+It is the commit a release's tag names, and the one commit that still
+arrives without a pull request. <code>scripts/pre-push.sh</code> requires a stamp for
+commits sent to <code>main</code> and for the commit a <code>v*</code> tag names, and for nothing
+else.</li>
 <li><strong>One writer at a time merges into <code>main</code> and releases.</strong> Parallel work, a
 maintainer's own included, arrives as a pull request and waits for that
 writer.</li>
@@ -146,8 +149,8 @@ own.</li>
 <li><strong>A scheduled run finds clock-dependent tests.</strong> Every night the race tests
 run under processor load on Linux and macOS. A red night opens an issue.
 <code>test-race</code> stays in <code>make quality</code>.</li>
-<li><strong>The whole tree is audited on the way to 1.0</strong>: at least every third
-release, and before 1.0 itself, by a reviewer who did not write the changes,
+<li><strong>The whole tree is audited regularly</strong>: at least every third release, and
+before 1.0, by a reviewer who did not write the changes,
 against the invariants, the roadmap and what the pages claim. A finding is
 verified at its source before it is acted on, and its fix is an ordinary
 change.</li>
@@ -159,7 +162,8 @@ the pull request's head and CI's run on <code>main</code> after the merge. CI ru
 Linux. A defect that shows only on macOS is found by the nightly run or by the
 release commit's cold gate, later than before. The checks of a pull request
 still run from its own tree, so a change to a workflow or to the gate is held
-by review, as ADR-0025 says.</p>
+by its review. With one maintainer the admin's own change there has no second
+reviewer and is held by the admin alone, as ADR-0025 already says.</p>
 <h2 id="alternatives-considered">Alternatives considered</h2>
 <ul>
 <li>A cold local gate for every commit, as before: the strongest evidence for
@@ -168,7 +172,7 @@ machine per commit.</li>
 <li>A local gate for changes to authorization paths as well: most changes of the
 next milestone touch the gate or the workflows, so little would change.</li>
 <li>A lock file the hook reads to name the writer: more code in a gate script
-for a rule the up-to-date-branch check already keeps for pull requests.</li>
+for a rule one writer keeps by merging one pull request at a time.</li>
 <li>A nightly run on Linux only: cheaper, and blind to the platform the gate
 no longer runs on.</li>
 <li>A release for every user-visible change: the release procedure's fixed cost
@@ -181,10 +185,12 @@ is shorter. The nightly workflow is one more thing that can be red, and a red
 night is fixed like any defect, never rerun until it passes.</p>
 <h2 id="validation">Validation</h2>
 <p><code>make pre-push-probe</code>, part of <code>make quality</code>, runs the hook in a throwaway
-repository: it must pass a branch push of a commit nobody gated and refuse the
-same commit sent to <code>main</code>, under any local branch name, with no stamp or a
-malformed one. <code>ci.yml</code> runs <code>make quality</code> on every pull request, and the
-ruleset requires that check.</p>
+repository, on lines written by hand and on real pushes. The hook must pass a
+branch push of commits nobody gated, and refuse them sent to <code>main</code> under any
+source spelling, sent to a remote that has no <code>main</code>, or tagged as a release,
+and refuse a stamp that is missing or is not the one line the gate writes.
+<code>ci.yml</code> runs <code>make quality</code> on every pull request, and the ruleset requires
+that check.</p>
 <p>Planned: the nightly workflow, added in a change of its own, whose runs show
 whether it finds anything.</p>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/adr/0052-a-change-is-gated-on-its-pull-request.md">docs/adr/0052-a-change-is-gated-on-its-pull-request.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.11.0, and <a href="https://github.com/guardana/control/tree/v0.11.0/docs">its documentation</a> is in its tag.</p>

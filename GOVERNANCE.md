@@ -45,16 +45,19 @@ resolved conversations, the required checks, and two approvals from
 lists. Whether two approvers paired stays a rule the maintainers apply and
 record in the pull request.
 
-With one maintainer, a change to those paths waits for a second maintainer or
-a reviewer invited to the security maintainers for it. Which of
+With one maintainer, another author's change to those paths waits for a second
+maintainer or a reviewer invited to the security maintainers for it. Which of
 the two happened is written in the pull request, and a change that has not met
 it does not merge. A dependency update to the workflows is the exception: the
 admin merges it once its checks pass, and says so in the pull request.
 
-The repository admin merges their own pull requests once checks pass, with
-no second reviewer, and pushes only a release commit directly
-([ADR-0025](docs/adr/0025-public-repository-merges-and-releases.md),
-[ADR-0052](docs/adr/0052-a-change-is-gated-on-its-pull-request.md)).
+The admin's own change arrives by pull request too and, while there is one
+maintainer, has no second reviewer on any path: the admin merges it once its
+checks are green
+([ADR-0025](docs/adr/0025-public-repository-merges-and-releases.md)). The
+bypass that allows this would waive a red check as well; not merging past one
+is a rule the admin keeps. Only a release commit is pushed to `main` directly
+([ADR-0052](docs/adr/0052-a-change-is-gated-on-its-pull-request.md)).
 
 ## Roles on GitHub
 
