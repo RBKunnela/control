@@ -1773,7 +1773,8 @@ is refused with an error body, never ignored. Argument bytes travel as
 <code>bytes</code> so that no JSON library reorders or reformats them, and a client
 compares the decoded bytes, never a digest and never the base64 text.</p>
 <p>A client may rely on the form a receiver writes: each member under its JSON
-name, once; an enum as its value's name; a 64-bit integer as a decimal string;
+name, once; an enum as a declared name or an integer in int32 range; a 64-bit
+integer as a decimal string;
 <code>bytes</code> as padded standard base64; a <code>Timestamp</code> as RFC 3339 with <code>Z</code> and up
 to nine fractional digits; a <code>Duration</code> as decimal seconds with <code>s</code>; no
 <code>null</code>. A client that refuses an answer in any other form conforms. One that

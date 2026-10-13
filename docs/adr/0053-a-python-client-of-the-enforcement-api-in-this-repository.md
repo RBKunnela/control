@@ -40,8 +40,9 @@ what it may depend on and how the gate runs it.
   contract does not declare, is completed `UNKNOWN`. It raises one named
   exception, matched by type and never through a chain, to say its bytes never
   left. Any other exception, `BaseException` included, is completed `UNKNOWN`
-  and raised again unchanged. A coroutine, a generator or an awaitable is
-  refused before admit.
+  and raised again unchanged. A coroutine function or a generator function is
+  refused before admit. A tool that returns anything but a result or nothing
+  was entered: it is completed `UNKNOWN`, and the call raises.
 - **A held handle gets exactly one closing request**: an abort if the tool was
   not entered, a complete if it was, the mark set before the tool is called.
   Nothing is retried. A killed process leaves the handle to the receiver's
@@ -55,7 +56,8 @@ what it may depend on and how the gate runs it.
   record landed, not that the tool succeeded. A blocked, pending, refused,
   aborted, unrecorded or unanswered call raises, and every exception of the
   module says whether the tool ran and carries the decision, the ending and
-  the tool's result.
+  the tool's result. A call that was misused raises a plain `TypeError` or
+  `ValueError` before the tool can run.
 - **It cooperates and is never a boundary.** It runs inside the process it
   constrains. A plane it talks to reports every path `decided, not enforced`,
   as ADR-0051 says, and no page calls this module an enforcement point. It
@@ -101,8 +103,9 @@ what it may depend on and how the gate runs it.
   run it. It runs `uv` in an emptied environment with no user configuration,
   managed interpreters only and the lock enforced, downloads no interpreter
   (`make bootstrap` installs both and its check verifies them) and runs
-  Python isolated from the environment. It fails on zero tests, on any skip
-  and on a case of `cases.json` that did not run on each interpreter. It
+  Python isolated from the environment. It fails on zero tests, on any skip,
+  on a case or a vector that did not run on each interpreter, and when a test
+  this record or a page rests on did not run. It
   builds the wheel and checks that it declares no requirement, carries the
   licence and has the release's version. It writes nothing into the tree.
 - **Releases.** The module's version equals the newest dated section of
@@ -114,8 +117,9 @@ what it may depend on and how the gate runs it.
   That step is added in a change of its own, before the first release that
   carries the module. Between releases the tree names the last release.
 - **Review.** `clients/` is not a two-approval path, since nothing in it
-  decides, except its `pyproject.toml`, its lock and its build constraints,
-  which are gate inputs. `testdata/enforce`, which it is judged by, stays one.
+  decides, except the files at the top of the client's project: its project
+  file, lock and build constraints and the two programs the gate runs, which
+  are gate inputs. `testdata/enforce`, which it is judged by, stays one.
 
 ## Security / compatibility impact
 
@@ -191,6 +195,7 @@ files. A second client language has a place and a pattern.
   allowed one closed in the trail.
 - The gate's runner fails on an empty or a skipped run; the wheel check fails
   on a declared requirement, a missing licence or a version that is not the
-  release's.
+  release's. Tests of the two programs hold both, and the runner requires
+  those tests to have run.
 - The release workflow's dry run builds both files, checks them and uploads a
   snapshot version to the test index.

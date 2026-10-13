@@ -45,6 +45,8 @@ have="$(uv --version 2>&1)" || die "uv --version exited non-zero"
 work="$(mktemp -d)"
 trap 'rm -rf "${work}"' EXIT
 mkdir "${work}/bin" "${work}/dist"
+# Whatever under the project is newer than this at the end was written by a check.
+: >"${work}/before"
 
 # The plane the end-to-end test drives, built from this tree.
 (cd "${root}" && go build -o "${work}/bin/" ./cmd/...) || die "building the commands failed"
@@ -88,8 +90,8 @@ venv="${work}/venv-${newer}"
 "${clean[@]}" "${work}/venv-wheel/bin/python" -I -B "${project}/check_wheel.py" import ||
   die "the installed wheel does not import"
 
-dirty="$(cd "${root}" && find clients/python \( -name __pycache__ -o -name .venv -o -name dist \
-  -o -name '*.egg-info' -o -name .mypy_cache -o -name .ruff_cache \) -print)" || die "listing the tree failed"
-[[ -z "${dirty}" ]] || die "the checks wrote into the tree: ${dirty//$'\n'/ }"
+written="$(cd "${root}" && find clients/python -newer "${work}/before" -print)" ||
+  die "listing the project failed"
+[[ -z "${written}" ]] || die "something was written into the tree during the checks: ${written//$'\n'/ }"
 
 printf 'check-python: green on python %s and %s\n' "${floor}" "${newer}"

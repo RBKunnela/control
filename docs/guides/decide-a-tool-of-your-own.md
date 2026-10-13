@@ -114,8 +114,10 @@ The fields, error codes and the strict JSON mapping are in
 Python 3.11 or later. Use the client of your plane's release.
 
 ```
-pip install guardana-control
+pip install "guardana-control @ git+https://github.com/guardana/control@<tag>#subdirectory=clients/python"
 ```
+
+`<tag>` is the tag of your plane's release.
 
 ```python
 from guardana_control.enforce import CallBlocked, CallPending, Client, Result, Status
@@ -137,7 +139,9 @@ except CallPending as held:
 `call` runs your function only with the authorized bytes and sends one
 `complete` or one `abort`. A function that raises is reported `UNKNOWN`; raise
 `NotSent` only when the bytes never left. `call` returns when the tool ran
-and the record landed; everything else raises and says whether the tool ran.
+and the record landed. Everything else raises: an `EnforceError` says in
+`answer.ran` whether the tool was entered, and a plain `TypeError` or
+`ValueError` says the call was misused before the tool could run.
 
 ## Verify
 

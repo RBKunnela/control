@@ -9,8 +9,10 @@ Use the client of the plane's own release. Python 3.11 or later, no
 dependencies.
 
 ```
-pip install guardana-control
+pip install "guardana-control @ git+https://github.com/guardana/control@<tag>#subdirectory=clients/python"
 ```
+
+`<tag>` is the tag of your plane's release.
 
 ```python
 from guardana_control.enforce import (
@@ -45,7 +47,9 @@ What `call` does for you:
 - reports `UNKNOWN` when the tool raised, since it cannot tell whether the
   effect happened; raise `NotSent` only when the bytes never left;
 - returns only when the tool ran and the closing record landed. Anything else
-  raises, and the exception says whether the tool ran.
+  raises: an `EnforceError` carries an `answer` whose `ran` says whether the
+  tool was entered, and a plain `TypeError` or `ValueError` says the call was
+  misused before the tool could run.
 
 It cooperates and is not a security boundary. It runs inside the process it
 constrains, so a plane reports its calls as `decided, not enforced`.

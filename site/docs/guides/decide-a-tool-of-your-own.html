@@ -192,8 +192,9 @@ handle was issued; a new attempt is a new admit, decided anew.</p>
 <h3 id="5-or-let-the-python-client-do-steps-3-and-4">5. Or let the Python client do steps 3 and 4</h3>
 <p><code>guardana_control.enforce</code> is <code>experimental</code> and has no dependencies; it needs
 Python 3.11 or later. Use the client of your plane's release.</p>
-<pre><code>pip install guardana-control
+<pre><code>pip install &#34;guardana-control @ git+https://github.com/guardana/control@&lt;tag&gt;#subdirectory=clients/python&#34;
 </code></pre>
+<p><code>&lt;tag&gt;</code> is the tag of your plane's release.</p>
 <pre><code class="language-python">from guardana_control.enforce import CallBlocked, CallPending, Client, Result, Status
 
 client = Client(socket=&#34;/run/guardana/enforce.sock&#34;, token=token, timeout=5.0)
@@ -212,7 +213,9 @@ except CallPending as held:
 <p><code>call</code> runs your function only with the authorized bytes and sends one
 <code>complete</code> or one <code>abort</code>. A function that raises is reported <code>UNKNOWN</code>; raise
 <code>NotSent</code> only when the bytes never left. <code>call</code> returns when the tool ran
-and the record landed; everything else raises and says whether the tool ran.</p>
+and the record landed. Everything else raises: an <code>EnforceError</code> says in
+<code>answer.ran</code> whether the tool was entered, and a plain <code>TypeError</code> or
+<code>ValueError</code> says the call was misused before the tool could run.</p>
 <h2 id="verify">Verify</h2>
 <ul>
 <li><code>/healthz</code> has an <code>enforce</code> object: <code>open_handles</code>, the answers by outcome,

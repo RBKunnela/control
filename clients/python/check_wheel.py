@@ -27,6 +27,8 @@ MODULE = PROJECT["tool"]["flit"]["module"]["name"]
 _DATED = re.compile(r"^## \[([^\]]+)\] - \d{4}-\d{2}-\d{2}$", re.MULTILINE)
 _RELEASE = re.compile(r"^(\d+\.\d+\.\d+)(?:-(alpha|beta|rc)(?:\.(\d+))?)?$")
 _PREVIEW = {"alpha": "a", "beta": "b", "rc": "rc"}
+# What a wheel's own directory holds; an entry point or a script would be more.
+_DESCRIBED = {"METADATA", "WHEEL", "RECORD", "licenses/LICENSE"}
 
 
 def release_version(changelog: str) -> str:
@@ -77,6 +79,9 @@ def check_files(dist: Path, licence: Path, changelog: Path) -> list[str]:
         held = {n for n in names if not n.startswith(info + "/")}
         if held != _own_files():
             problems.append(f"the wheel's files differ from src/: {sorted(held ^ _own_files())}")
+        described = {n.removeprefix(info + "/") for n in names if n.startswith(info + "/")}
+        if described != _DESCRIBED:
+            problems.append(f"the wheel describes itself with other files: {sorted(described)}")
 
     with tarfile.open(_one(dist, "*.tar.gz")) as sdist:
         members = {m.name.split("/", 1)[1] for m in sdist.getmembers() if "/" in m.name}

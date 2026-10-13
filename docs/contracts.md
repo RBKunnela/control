@@ -1386,7 +1386,8 @@ is refused with an error body, never ignored. Argument bytes travel as
 compares the decoded bytes, never a digest and never the base64 text.
 
 A client may rely on the form a receiver writes: each member under its JSON
-name, once; an enum as its value's name; a 64-bit integer as a decimal string;
+name, once; an enum as a declared name or an integer in int32 range; a 64-bit
+integer as a decimal string;
 `bytes` as padded standard base64; a `Timestamp` as RFC 3339 with `Z` and up
 to nine fractional digits; a `Duration` as decimal seconds with `s`; no
 `null`. A client that refuses an answer in any other form conforms. One that
