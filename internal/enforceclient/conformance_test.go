@@ -154,7 +154,7 @@ func TestTheCaseFilesAgreeWithTheirIndex(t *testing.T) {
 	for _, id := range []string{
 		"block", "unspecified-outcome", "unknown-outcome", "execute-plain", "execute-rewritten",
 		"unknown-obligation", "pending", "timeout-before-send", "timeout-after-send", "cancellation",
-		"completion", "unauthenticated", "malformed-answer", "handle-spent",
+		"completion", "unauthenticated", "malformed-answer", "handle-spent", "tool-reports-nothing",
 	} {
 		if !slices.Contains(listed, id) {
 			t.Errorf("no case %s", id)

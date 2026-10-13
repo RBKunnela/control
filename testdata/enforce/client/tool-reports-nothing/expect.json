@@ -1,0 +1,28 @@
+{
+  "tool_reached": true,
+  "tool_received": "{\"amount\":10,\"to\":\"acct-7\"}",
+  "requests": [
+    {
+      "path": "/enforce/v1alpha1/admit",
+      "body": {
+        "tool": "refund",
+        "arguments": "eyJhbW91bnQiOjEwLCJ0byI6ImFjY3QtNyJ9"
+      }
+    },
+    {
+      "path": "/enforce/v1alpha1/complete",
+      "body": {
+        "handle": "h-1",
+        "sentArguments": "eyJhbW91bnQiOjEwLCJ0byI6ImFjY3QtNyJ9",
+        "status": "COMPLETION_STATUS_UNKNOWN",
+        "startedAt": "*",
+        "endedAt": "*"
+      }
+    }
+  ],
+  "completion_status": "COMPLETION_STATUS_UNKNOWN",
+  "returns": {
+    "error": "none",
+    "ending": "ENDING_RECORDED"
+  }
+}

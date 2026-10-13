@@ -12,6 +12,27 @@ import (
 	enforcev1alpha1 "github.com/guardana/control/api/gen/go/guardana/control/enforce/v1alpha1"
 )
 
+// seedVectors adds every answer vector that spells its body out. One written
+// as repeated parts is large by construction and has its own test.
+func seedVectors(f *testing.F) {
+	data, err := os.ReadFile("../../testdata/enforce/answers/vectors.jsonl")
+	if err != nil {
+		f.Fatalf("no seed vectors: %v", err)
+	}
+	for _, line := range bytes.Split(bytes.TrimRight(data, "\n"), []byte("\n")) {
+		var v struct {
+			Status int     `json:"status"`
+			Raw    *string `json:"raw"`
+		}
+		if err := json.Unmarshal(line, &v); err != nil {
+			f.Fatal(err)
+		}
+		if v.Raw != nil {
+			f.Add(v.Status, []byte(*v.Raw))
+		}
+	}
+}
+
 // seedAnswers adds every scripted answer of the client cases.
 func seedAnswers(f *testing.F) {
 	names, err := filepath.Glob("../../testdata/enforce/client/*/answers.jsonl")
@@ -43,6 +64,7 @@ func seedAnswers(f *testing.F) {
 // bound is read.
 func FuzzDecodeAnswer(f *testing.F) {
 	seedAnswers(f)
+	seedVectors(f)
 	f.Fuzz(func(t *testing.T, status int, body []byte) {
 		var resp enforcev1alpha1.AdmitResponse
 		err := decodeAnswer(status, body, &resp)
