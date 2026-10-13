@@ -356,6 +356,7 @@ assert_brand OTelNamespace "${new_otel}" || post_failures=$((post_failures + 1))
 assert_brand ProtoPackage "${new_proto_pkg}" || post_failures=$((post_failures + 1))
 assert_brand ModulePath "${new_module}" || post_failures=$((post_failures + 1))
 assert_brand Image "${new_image}" || post_failures=$((post_failures + 1))
+assert_brand PythonPackage "${new_python}" || post_failures=$((post_failures + 1))
 # brand.go agreeing with the arguments says nothing about go.mod, which is the
 # file the toolchain reads, so the module directive is compared as well.
 renamed_module="$(gomod_module)"
@@ -438,6 +439,7 @@ printf 'go package    %s -> %s\n' "${old_go_pkg}" "${new_go_pkg}"
 printf 'image         %s -> %s\n' "${old_image}" "${new_image}"
 printf 'env prefix    %s -> %s\n' "${old_env_prefix}" "${new_env_prefix}"
 printf 'otel          %s -> %s\n' "${old_otel}" "${new_otel}"
+printf 'python        %s -> %s\n' "${old_python}" "${new_python}"
 printf '\nbrand.go and go.mod re-read after the pass: every constant and the module directive match the above\n'
 printf '\n%d of %d scanned files rewritten:\n' "${#changed[@]}" "${scanned}"
 if [[ ${#changed[@]} -gt 0 ]]; then
