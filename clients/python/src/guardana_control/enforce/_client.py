@@ -7,7 +7,7 @@ import inspect
 import math
 import re
 from collections.abc import Callable
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import NoReturn
 
@@ -19,6 +19,7 @@ from ._types import (
     PENDING,
     RECORDED,
     Answer,
+    BadResult,
     CallAborted,
     CallBlocked,
     CallerGone,
@@ -93,11 +94,14 @@ def _refuse_before_admit(tool: object, arguments: object, run: object) -> None:
 
 
 def _aware(at: object) -> bool:
-    if not isinstance(at, datetime) or at.utcoffset() is None:
+    """Whether at is a time that can be told in UTC; a zone may fail to say its offset."""
+    if not isinstance(at, datetime):
         return False
     try:
+        if at.utcoffset() is None:
+            return False
         at.astimezone(UTC)
-    except (OverflowError, ValueError):
+    except Exception:
         return False
     return True
 
@@ -115,11 +119,61 @@ def _misreported(returned: object) -> str:
     return ""
 
 
+def _report(told: Result, started: datetime, ended: datetime) -> tuple[_ops.Report, Result]:
+    """What a complete says of the tool's result, and that result with its times filled in."""
+    started, ended = told.started_at or started, told.ended_at or ended
+    declared = isinstance(told.status, str) and told.status in _DECLARED
+    report = _ops.Report(
+        told.status if declared else Status.UNKNOWN,
+        started,
+        ended,
+        told.result_hash,
+        told.side_effect_confirmation,
+    )
+    return report, replace(told, started_at=started, ended_at=ended)
+
+
 def _close(returned: object) -> None:
     """Closes what a tool wrongly returned, so that nothing warns of it later."""
     if inspect.iscoroutine(returned) or inspect.isgenerator(returned):
         with contextlib.suppress(Exception):
             returned.close()
+
+
+@dataclass
+class _Run:
+    """How far one run of the tool got.
+
+    It is filled as the run goes, so that whatever is raised on the way
+    leaves a complete that can be sent: request is written before the tool
+    is entered and written again as more is known. fault is what the tool
+    raised; problem says why what it returned cannot be reported.
+    """
+
+    request: bytes = b""
+    entered: bool = False
+    returned: object = None
+    result: Result | None = None
+    fault: BaseException | None = None
+    problem: str = ""
+
+
+def _leaving(ran: _Run, raised: BaseException | None, answer: Answer) -> BaseException | None:
+    """What leaves a call whose tool was entered, or None.
+
+    An interrupt comes before the tool's own exception, and that before a
+    BadResult for what the tool returned.
+    """
+    if raised is not None and not isinstance(raised, Exception):
+        return raised
+    if ran.fault is not None:
+        return ran.fault
+    if raised is None and not ran.problem:
+        return None
+    text = ran.problem or f"what the tool returned cannot be reported: {raised!r}"
+    bad = BadResult(text, answer)
+    bad.__cause__ = raised
+    return bad
 
 
 def _failure(exc: Exception, answer: Answer) -> EnforceError:
@@ -180,8 +234,10 @@ class Client:
         run gets exactly the authorized bytes, which differ from arguments
         when a rule rewrote them. It raises NotSent only when it knows the
         bytes never left; any other exception is reported as UNKNOWN and
-        raised again. gone is read before admit and before the tool, and
-        anything but False ends the call there.
+        raised again. A return that is neither a Result nor None, or a Result
+        that cannot be reported, is reported as UNKNOWN and raises BadResult.
+        gone is read before admit and before the tool, and anything but False
+        ends the call there.
 
         Returns only when the tool ran and the closing record landed, which
         is not to say the tool succeeded: answer.result.status says that.
@@ -217,30 +273,49 @@ class Client:
     ) -> Answer:
         """Closes a held handle with exactly one request: abort before the tool, complete after."""
         cause = admitted.abort_cause
-        entered = False
-        returned: object = None
+        ran = _Run()
         raised: BaseException | None = None
-        started = None
-        if not cause:
-            try:
-                if _is_gone(gone):
-                    cause = _ops.NOT_SENT
-                else:
-                    started = self._instant()
-                    entered = True
-                    returned = run(admitted.authorized)
-            except BaseException as exc:
-                raised = exc
-        if started is None or not entered:
+        try:
+            if not cause and _is_gone(gone):
+                cause = _ops.NOT_SENT
+            if not cause:
+                self._run(admitted, run, ran)
+        except BaseException as exc:
+            raised = exc
+        if not ran.entered:
             self._abort(admitted.handle, cause or _ops.NOT_SENT, answer, interrupt=raised)
-        if isinstance(raised, NotSent):
-            self._abort(admitted.handle, _ops.NOT_SENT, answer, said=raised)
+        if isinstance(ran.fault, NotSent):
+            self._abort(admitted.handle, _ops.NOT_SENT, answer, interrupt=raised, said=ran.fault)
+        return self._complete(answer, ran, raised)
+
+    def _run(
+        self, admitted: _ops.Admitted, run: Callable[[bytes], Result | None], ran: _Run
+    ) -> None:
+        """Enters the tool; whatever is raised here, ran holds a complete that can be sent."""
+        handle, sent = admitted.handle, admitted.authorized
+        started = self._instant()
+        ran.request = _ops.completion(handle, sent, _ops.Report(Status.UNKNOWN, started, started))
+        ran.entered = True
+        try:
+            ran.returned = run(sent)
+        except BaseException as exc:
+            ran.fault = exc
+            if isinstance(exc, NotSent):
+                return
         try:
             ended = self._instant()
         except Exception:
             # The tool was entered, so its complete is owed whatever the clock does.
             ended = started
-        return self._complete(admitted, answer, (returned, raised), (started, ended))
+        ran.request = _ops.completion(handle, sent, _ops.Report(Status.UNKNOWN, started, ended))
+        if ran.fault is not None:
+            return
+        told = Result() if ran.returned is None else ran.returned
+        ran.problem = _misreported(told)
+        if isinstance(told, Result) and not ran.problem:
+            report, result = _report(told, started, ended)
+            ran.request = _ops.completion(handle, sent, report)
+            ran.result = result
 
     def _abort(
         self,
@@ -267,38 +342,12 @@ class Client:
             raise interrupt
         raise aborted from (unanswered or said)
 
-    def _complete(
-        self,
-        admitted: _ops.Admitted,
-        answer: Answer,
-        ran: tuple[object, BaseException | None],
-        times: tuple[datetime, datetime],
-    ) -> Answer:
+    def _complete(self, answer: Answer, ran: _Run, raised: BaseException | None) -> Answer:
         """Sends the one complete of a tool that was entered, and says how the call ended."""
-        returned, fault = ran
-        report = _ops.Report(Status.UNKNOWN, *times)
-        result = None
-        problem = "" if fault is not None or returned is None else _misreported(returned)
-        if problem:
-            fault = TypeError(problem)
-        elif fault is None:
-            told = returned if isinstance(returned, Result) else Result()
-            started, ended = told.started_at or times[0], told.ended_at or times[1]
-            result = replace(told, started_at=started, ended_at=ended)
-            declared = isinstance(told.status, str) and told.status in _DECLARED
-            report = _ops.Report(
-                told.status if declared else Status.UNKNOWN,
-                started,
-                ended,
-                told.result_hash,
-                told.side_effect_confirmation,
-            )
-        answer = replace(answer, ran=True, result=result)
+        answer = replace(answer, ran=True, result=ran.result)
         failure: EnforceError | None = None
         try:
-            ending = _ops.complete(
-                self._transport.post, admitted.handle, admitted.authorized, report
-            )
+            ending = _ops.complete(self._transport.post, ran.request)
             if ending != RECORDED:
                 failure = NotRecorded(
                     f"the closing record did not land: {ending or 'no ending named'}",
@@ -307,10 +356,12 @@ class Client:
         except _FAILURES as exc:
             failure = _failure(exc, answer)
         finally:
-            _close(returned)
+            _close(ran.returned)
+        answer = replace(answer, ending=RECORDED) if failure is None else failure.answer
+        fault = _leaving(ran, raised, answer)
         if fault is None:
             if failure is None:
-                return replace(answer, ending=RECORDED)
+                return answer
             raise failure
         # The tool's own exception leaves only over a recorded complete; an
         # interrupt leaves whatever became of the record.

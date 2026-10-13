@@ -278,7 +278,11 @@ class VectorFile(unittest.TestCase):
             vector_of({**line, "raw": "{}", "body": {}})
 
     def test_raw_repeat_joins_its_parts_in_order(self) -> None:
-        parts = [{"text": "ab", "times": 2}, {"text": "c", "times": 3}, {"text": "é", "times": 1}]
+        parts = [
+            {"text": "ab", "times": 2},
+            {"text": "c", "times": 3},
+            {"text": "\u00e9", "times": 1},
+        ]
         self.assertEqual(expand(parts), b"ababccc\xc3\xa9")
 
     def test_raw_repeat_refuses_an_empty_text_and_no_repetition(self) -> None:

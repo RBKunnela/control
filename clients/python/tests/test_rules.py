@@ -11,11 +11,12 @@ import threading
 import unittest
 import warnings
 from collections.abc import AsyncIterator, Callable, Iterator
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone, tzinfo
 
 from guardana_control import enforce
 from guardana_control.enforce import (
     Answer,
+    BadResult,
     CallAborted,
     CallBlocked,
     CallerGone,
@@ -88,14 +89,65 @@ def result_of(answer: Answer) -> Result:
     return answer.result
 
 
+class Zone(tzinfo):
+    """A zone that says UTC so many times, and from then on what it was given."""
+
+    def __init__(self, then: object, times: int = 0) -> None:
+        self.then = then
+        self.left = times
+
+    def utcoffset(self, _at: datetime | None) -> timedelta:
+        if self.left:
+            self.left -= 1
+            return timedelta(0)
+        if isinstance(self.then, BaseException):
+            raise self.then
+        return self.then  # type: ignore[return-value]
+
+    def dst(self, _at: datetime | None) -> timedelta:
+        return timedelta(0)
+
+    def tzname(self, _at: datetime | None) -> str:
+        return "a zone"
+
+
+def scripted(*readings: datetime | BaseException) -> Callable[[], datetime]:
+    """A clock that reads each of readings in turn; an exception among them is raised."""
+    left = iter(readings)
+
+    def clock() -> datetime:
+        reading = next(left)
+        if isinstance(reading, BaseException):
+            raise reading
+        return reading
+
+    return clock
+
+
+class Receipt(Result):
+    """A result with a constructor of its own, so no copy of it can be made by field."""
+
+    def __init__(self, number: str) -> None:
+        super().__init__(Status.SUCCESS, number)
+
+
+class Unsendable(Result):
+    """A result whose every copy says, as only a tool may, that the bytes never left."""
+
+    def __init__(self, **members: object) -> None:
+        if members:
+            raise NotSent("copying the result")
+        super().__init__(Status.SUCCESS)
+
+
 class Rules(unittest.TestCase):
     """A scripted receiver, one client, and the requests it was sent."""
 
-    def serve(self, *script: Scripted) -> Client:
+    def serve(self, *script: Scripted, clock: Callable[[], datetime] | None = None) -> Client:
         self.receiver = harness.Receiver(list(script))
         self.addCleanup(self.receiver.close)
         self.entered = False
-        return Client(self.receiver.socket, "tok", 5.0, clock=self.clock)
+        return Client(self.receiver.socket, "tok", 5.0, clock=clock or self.clock)
 
     def clock(self) -> datetime:
         return harness.AFTER if self.entered else harness.BEFORE
@@ -118,8 +170,8 @@ class Rules(unittest.TestCase):
             self.assertEqual(harness.request_misses(number, request, "tok"), [])
         return [(request.path, harness.strict_json(request.body)) for request in requests]
 
-    def completed(self, status: str) -> tuple[str, object]:
-        """The complete of a run that reported status and no times of its own."""
+    def completed(self, status: str, **times: str) -> tuple[str, object]:
+        """The complete of a run that reported status, at the clock's times but for those given."""
         return (
             COMPLETE,
             {
@@ -128,14 +180,24 @@ class Rules(unittest.TestCase):
                 "status": status,
                 "startedAt": harness.BEFORE_TEXT,
                 "endedAt": harness.AFTER_TEXT,
-            },
+            }
+            | times,
         )
 
     admitted = (ADMIT, {"tool": "t", "arguments": "eyJhIjoxfQ=="})
+    # What an exception carries when the tool ran, nothing of it could be told, and that landed.
+    ran_unreported = Answer(
+        outcome="OUTCOME_EXECUTE",
+        decision={"decisionId": "d-1", "verdict": 1},
+        held=None,
+        ran=True,
+        result=None,
+        ending="ENDING_RECORDED",
+    )
 
 
 class Construction(unittest.TestCase):
-    """Rule 1: a client needs a socket, a token and a finite positive timeout."""
+    """A client needs a socket, a token and a finite positive timeout."""
 
     def test_an_empty_or_missing_socket_or_token_is_refused(self) -> None:
         for socket, token in (
@@ -173,7 +235,15 @@ class Construction(unittest.TestCase):
                 self.assertIsInstance(Client("s", "t", timeout), Client)
 
     def test_a_token_a_header_cannot_carry_is_refused(self) -> None:
-        for token in ("a\nb", "a\rb", "a\r\nInjected: 1", "a\x00b", "zażółć", "a\x7fb", "\ttab"):
+        for token in (
+            "a\nb",
+            "a\rb",
+            "a\r\nInjected: 1",
+            "a\x00b",
+            "za\u017c\u00f3\u0142\u0107",
+            "a\x7fb",
+            "\ttab",
+        ):
             with self.subTest(token=token), self.assertRaisesRegex(ValueError, "run token"):
                 Client("s", token, 1.0)
         self.assertIsInstance(Client("s", "run-1.A b~!", 1.0), Client)
@@ -181,6 +251,7 @@ class Construction(unittest.TestCase):
     def test_the_module_exports_the_interface_and_nothing_else(self) -> None:
         names = [
             "Answer",
+            "BadResult",
             "CONTRACT",
             "CallAborted",
             "CallBlocked",
@@ -219,14 +290,16 @@ class Construction(unittest.TestCase):
             CallAborted,
             NotRecorded,
             NoAnswer,
+            BadResult,
         )
         for error in raised:
             self.assertTrue(issubclass(error, EnforceError), error)
+            self.assertEqual(issubclass(error, TypeError), error is BadResult, error)
         self.assertFalse(issubclass(NotSent, EnforceError))
 
 
 class Returning(Rules):
-    """Rules 2, 9 and 10: what a call returns, and what each exception carries."""
+    """What a call returns, and what each exception carries."""
 
     def test_a_recorded_run_returns_what_the_call_learned(self) -> None:
         client = self.serve(admit(EXECUTE), complete())
@@ -336,6 +409,22 @@ class Returning(Rules):
         )
         self.assertEqual(self.sent(), [self.admitted])
 
+    def test_a_held_call_keeps_its_times_to_the_microsecond(self) -> None:
+        for written, kept in (
+            ("0.000000001s", timedelta(0)),
+            ("1.999999999s", timedelta(seconds=1, microseconds=999999)),
+            ("-1.999999999s", timedelta(seconds=-1, microseconds=-999999)),
+        ):
+            with self.subTest(written=written):
+                body = (
+                    b'{"outcome":"OUTCOME_PENDING","pending":{"expiresAt":'
+                    b'"2026-10-11T13:00:00.999999999Z","retryAfter":"' + written.encode() + b'"}}'
+                )
+                with self.assertRaises(CallPending) as raised:
+                    self.serve(admit(body)).call("t", ARGUMENTS, self.untouched)
+                expires = datetime(2026, 10, 11, 13, 0, 0, 999999, tzinfo=UTC)
+                self.assertEqual(raised.exception.answer.held, Held("", "", expires, kept))
+
     def test_a_pending_answer_that_names_nothing_is_still_held(self) -> None:
         client = self.serve(admit(b'{"outcome":3}'))
         with self.assertRaises(CallPending) as raised:
@@ -441,7 +530,7 @@ class Returning(Rules):
 
 
 class Aborting(Rules):
-    """Rules 3, 4, 5 and 10: when a held handle is given up, and that it is given up once."""
+    """When a held handle is given up, and that it is given up once."""
 
     def test_an_obligation_outranks_missing_bytes_and_a_gone_caller(self) -> None:
         answers = iter((False, True))
@@ -660,7 +749,7 @@ class Aborting(Rules):
 
 
 class Running(Rules):
-    """Rules 3, 6, 7 and 8: what the tool gets, and what becomes of what it does."""
+    """What the tool gets, and what becomes of what it does."""
 
     def test_the_tool_cannot_change_what_complete_reports_as_sent(self) -> None:
         client = self.serve(admit(EXECUTE), complete())
@@ -722,7 +811,7 @@ class Running(Rules):
             started_at=datetime(2026, 10, 11, 14, 0, 1, tzinfo=PLUS_TWO),
             ended_at=datetime(2026, 10, 11, 12, 0, 3, 250, tzinfo=UTC),
             result_hash="sha256:77aa",
-            side_effect_confirmation="zażółć r-1",
+            side_effect_confirmation="za\u017c\u00f3\u0142\u0107 r-1",
         )
         answer = client.call("t", ARGUMENTS, lambda _: reported)
         self.assertEqual(answer.result, reported)
@@ -737,7 +826,7 @@ class Running(Rules):
                     "startedAt": "2026-10-11T12:00:01Z",
                     "endedAt": "2026-10-11T12:00:03.000250Z",
                     "resultHash": "sha256:77aa",
-                    "sideEffectConfirmation": "zażółć r-1",
+                    "sideEffectConfirmation": "za\u017c\u00f3\u0142\u0107 r-1",
                 },
             ),
         )
@@ -763,6 +852,26 @@ class Running(Rules):
                 self.assertEqual(aborted.answer.ending, "ENDING_RECORDED")
                 self.assertIs(aborted.__cause__, said)
                 self.assertEqual(self.sent(), [self.admitted, (ABORT, ABORT_NOT_SENT)])
+
+    def test_not_sent_aborts_without_reading_the_clock_again(self) -> None:
+        self.receiver = harness.Receiver([admit(EXECUTE), abort(), complete()])
+        self.addCleanup(self.receiver.close)
+        readings: list[datetime] = []
+        said = NotSent("dialling")
+
+        def clock() -> datetime:
+            readings.append(harness.BEFORE)
+            return harness.BEFORE
+
+        def tool(_authorized: bytes) -> Result:
+            raise said
+
+        client = Client(self.receiver.socket, "tok", 5.0, clock=clock)
+        with self.assertRaises(CallAborted) as raised:
+            client.call("t", ARGUMENTS, tool)
+        self.assertIs(raised.exception.__cause__, said)
+        self.assertEqual(readings, [harness.BEFORE])
+        self.assertEqual(self.sent(), [self.admitted, (ABORT, ABORT_NOT_SENT)])
 
     def test_not_sent_met_only_in_a_chain_completes(self) -> None:
         def from_cause(_authorized: bytes) -> Result:
@@ -886,8 +995,9 @@ class Running(Rules):
         ):
             with self.subTest(run=name):
                 client = self.serve(admit(EXECUTE), complete())
-                with self.assertRaisesRegex(TypeError, "run must"):
+                with self.assertRaisesRegex(TypeError, "run must") as raised:
                     client.call("t", ARGUMENTS, run)  # type: ignore[arg-type]
+                self.assertNotIsInstance(raised.exception, EnforceError)
                 self.assertEqual(self.sent(), [])
 
     def test_a_tool_or_arguments_of_another_type_are_refused_before_admit(self) -> None:
@@ -902,8 +1012,9 @@ class Running(Rules):
         ):
             with self.subTest(tool=tool, arguments=arguments):
                 client = self.serve(admit(EXECUTE), complete())
-                with self.assertRaisesRegex(TypeError, "must be"):
+                with self.assertRaisesRegex(TypeError, "must be") as raised:
                     client.call(tool, arguments, self.untouched)  # type: ignore[arg-type]
+                self.assertNotIsInstance(raised.exception, EnforceError)
                 self.assertEqual(self.sent(), [])
 
     def test_a_tool_that_returns_anything_but_a_result_is_completed_unknown(self) -> None:
@@ -936,8 +1047,8 @@ class Running(Rules):
                 with warnings.catch_warnings(record=True) as warned:
                     warnings.simplefilter("always")
                     with self.assertRaisesRegex(
-                        TypeError, f"the tool returned {named}, not a Result or None"
-                    ):
+                        BadResult, f"the tool returned {named}, not a Result or None"
+                    ) as raised:
                         client.call("t", ARGUMENTS, tool)
                     if inspect.iscoroutine(returned[0]):
                         self.assertEqual(
@@ -948,6 +1059,7 @@ class Running(Rules):
                     returned.clear()
                     gc.collect()
                 self.assertEqual([str(w.message) for w in warned], [])
+                self.assertEqual(raised.exception.answer, self.ran_unreported)
                 self.assertEqual(
                     self.sent(), [self.admitted, self.completed("COMPLETION_STATUS_UNKNOWN")]
                 )
@@ -963,20 +1075,112 @@ class Running(Rules):
         ):
             with self.subTest(names=names):
                 client = self.serve(admit(EXECUTE), complete(), abort())
-                with self.assertRaisesRegex(TypeError, names):
+                with self.assertRaisesRegex(BadResult, names) as raised:
                     client.call("t", ARGUMENTS, self.entering(returning(reported)))
+                self.assertEqual(raised.exception.answer, self.ran_unreported)
                 self.assertEqual(
                     self.sent(), [self.admitted, self.completed("COMPLETION_STATUS_UNKNOWN")]
                 )
 
+    def test_a_time_whose_zone_cannot_say_its_offset_is_completed_unknown(self) -> None:
+        for says in (NotImplementedError("no offset"), 7200, "+02:00", timedelta(hours=30)):
+            for member in ("started_at", "ended_at"):
+                with self.subTest(says=says, member=member):
+                    client = self.serve(admit(EXECUTE), complete(), abort())
+                    at = datetime(2026, 10, 11, 12, 0, 1, tzinfo=Zone(says))
+                    tool = self.entering(returning(misreporting(**{member: at})))
+                    with self.assertRaisesRegex(BadResult, f"Result.{member}") as raised:
+                        client.call("t", ARGUMENTS, tool)
+                    self.assertEqual(raised.exception.answer, self.ran_unreported)
+                    self.assertEqual(
+                        self.sent(), [self.admitted, self.completed("COMPLETION_STATUS_UNKNOWN")]
+                    )
+
+    def test_a_zone_that_stops_saying_its_offset_still_gets_the_one_complete(self) -> None:
+        reported: list[str] = []
+        for times in range(8):
+            with self.subTest(times=times):
+                client = self.serve(admit(EXECUTE), complete(), complete())
+                zone = Zone(RuntimeError("no offset any more"), times)
+                result = Result(
+                    Status.SUCCESS, started_at=datetime(2026, 10, 11, 12, 0, 1, 0, zone)
+                )
+                try:
+                    answer = client.call("t", ARGUMENTS, self.entering(returning(result)))
+                    want = self.completed(
+                        "COMPLETION_STATUS_SUCCESS", startedAt="2026-10-11T12:00:01Z"
+                    )
+                    reported.append("its own")
+                except BadResult as bad:
+                    answer = bad.answer
+                    want = self.completed("COMPLETION_STATUS_UNKNOWN")
+                    reported.append("unknown")
+                self.assertEqual(self.sent(), [self.admitted, want])
+                self.assertEqual((answer.ran, answer.ending), (True, "ENDING_RECORDED"))
+        self.assertEqual((reported[0], reported[-1]), ("unknown", "its own"))
+
+    def test_a_result_no_copy_can_be_made_of_is_completed_unknown(self) -> None:
+        for reported, cause in ((Receipt("r-1"), TypeError), (Unsendable(), NotSent)):
+            with self.subTest(reported=type(reported).__name__):
+                client = self.serve(admit(EXECUTE), complete(), abort())
+                with self.assertRaisesRegex(BadResult, "cannot be reported") as raised:
+                    client.call("t", ARGUMENTS, self.entering(returning(reported)))
+                self.assertIsInstance(raised.exception.__cause__, cause)
+                self.assertEqual(raised.exception.answer, self.ran_unreported)
+                self.assertEqual(
+                    self.sent(), [self.admitted, self.completed("COMPLETION_STATUS_UNKNOWN")]
+                )
+
+    def test_an_interrupt_after_the_tool_is_completed_unknown_and_raised_again(self) -> None:
+        def lose(_authorized: bytes) -> Result:
+            raise ValueError("lost")
+
+        for interrupt in (KeyboardInterrupt(), SystemExit(3), asyncio.CancelledError()):
+            unread = misreporting(started_at=datetime(2026, 10, 11, 12, 0, 1, 0, Zone(interrupt)))
+            for where, tool, landed in (
+                ("the clock", succeed, complete()),
+                ("the clock", lose, complete()),
+                ("the result", returning(unread), complete()),
+                ("the clock", succeed, complete(b'{"ending":"ENDING_UNRECORDED"}')),
+                ("the clock", succeed, complete(b'{"code":"ERROR_CODE_UNAVAILABLE"}', 503)),
+            ):
+                with self.subTest(interrupt=interrupt, where=where, tool=tool, landed=landed):
+                    # The clock reads the start; in it, the interrupt comes with the end.
+                    clock = scripted(harness.BEFORE, interrupt) if where == "the clock" else None
+                    client = self.serve(admit(EXECUTE), landed, complete(), clock=clock)
+                    with self.assertRaises(type(interrupt)) as raised:
+                        client.call("t", ARGUMENTS, self.entering(tool))
+                    self.assertIs(raised.exception, interrupt)
+                    self.assertEqual(self.entered, True)
+                    ended = harness.BEFORE_TEXT if clock else harness.AFTER_TEXT
+                    unknown = self.completed("COMPLETION_STATUS_UNKNOWN", endedAt=ended)
+                    self.assertEqual(self.sent(), [self.admitted, unknown])
+
     def test_a_wrong_return_over_a_complete_that_did_not_land_is_replaced(self) -> None:
-        client = self.serve(admit(EXECUTE), complete(b'{"ending":"ENDING_UNRECORDED"}'))
-        with self.assertRaises(NotRecorded) as raised:
-            client.call("t", ARGUMENTS, self.entering(returning({"a": 1})))
-        self.assertIsInstance(raised.exception.__cause__, TypeError)
-        self.assertEqual(
-            (raised.exception.answer.ran, raised.exception.answer.result), (True, None)
-        )
+        for answer, replaced, ending in (
+            (complete(b'{"ending":"ENDING_UNRECORDED"}'), NotRecorded, "ENDING_UNRECORDED"),
+            (
+                complete(b'{"code":"ERROR_CODE_HANDLE_SPENT","ending":"ENDING_ABANDONED"}', 409),
+                CallRefused,
+                "ENDING_ABANDONED",
+            ),
+            (complete(b"not json"), MalformedAnswer, ""),
+        ):
+            for returned in ({"a": 1}, Receipt("r-1")):
+                with self.subTest(replaced=replaced.__name__, returned=type(returned).__name__):
+                    client = self.serve(admit(EXECUTE), answer, complete())
+                    with self.assertRaises(replaced) as raised:
+                        client.call("t", ARGUMENTS, self.entering(returning(returned)))
+                    bad = raised.exception.__cause__
+                    if not isinstance(bad, BadResult):
+                        self.fail(f"the failure was raised from {bad!r}, not from a BadResult")
+                    for carried in (bad.answer, raised.exception.answer):
+                        self.assertEqual(
+                            (carried.ran, carried.result, carried.ending), (True, None, ending)
+                        )
+                    self.assertEqual(
+                        self.sent(), [self.admitted, self.completed("COMPLETION_STATUS_UNKNOWN")]
+                    )
 
     def test_the_end_of_a_run_is_its_start_when_the_clock_fails_after_the_tool(self) -> None:
         self.receiver = harness.Receiver([admit(EXECUTE), complete()])

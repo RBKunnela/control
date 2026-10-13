@@ -19,12 +19,14 @@ _INT64: Final = (-(2**63), 2**63 - 1)
 _DURATION_SECONDS: Final = 315576000000
 
 _SURROGATE = re.compile("[\\ud800-\\udfff]")
-_INTEGER = re.compile(r"-?(?:0|[1-9][0-9]*)")
 _BASE64 = re.compile(r"(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?")
 _TIMESTAMP = re.compile(
     r"([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]{1,9}))?Z"
 )
-_DURATION = re.compile(r"(-?)(0|[1-9][0-9]*)(?:\.([0-9]{1,9}))?s")
+# Digits are counted where they are matched: the interpreter refuses to
+# convert a string of thousands of them, and no value in range has more.
+_INTEGER = re.compile(r"-?(?:0|[1-9][0-9]{0,18})")
+_DURATION = re.compile(r"(-?)(0|[1-9][0-9]{0,11})(?:\.([0-9]{1,9}))?s")
 
 
 class WireError(Exception):
@@ -111,7 +113,7 @@ def _enum(value: object, at: str, type_name: str) -> str | int:
 
 def _int64(value: object, at: str, _type: str) -> int:
     if not isinstance(value, str) or not _INTEGER.fullmatch(value):
-        raise WireError(f"{at}: not an integer in a decimal string")
+        raise WireError(f"{at}: not an int64 in a decimal string")
     number = int(value)
     if not _INT64[0] <= number <= _INT64[1]:
         raise WireError(f"{at}: outside int64")
@@ -139,7 +141,7 @@ def _timestamp(value: object, at: str, _type: str) -> datetime:
 def _duration(value: object, at: str, _type: str) -> timedelta:
     found = _DURATION.fullmatch(value) if isinstance(value, str) else None
     if found is None:
-        raise WireError(f"{at}: not decimal seconds ending in s")
+        raise WireError(f"{at}: not a Duration in decimal seconds ending in s")
     seconds, nanos = int(found.group(2)), int((found.group(3) or "").ljust(9, "0"))
     if seconds > _DURATION_SECONDS or (seconds == _DURATION_SECONDS and nanos):
         raise WireError(f"{at}: outside a Duration's range")

@@ -142,9 +142,9 @@ def admit(post: Post, tool: str, arguments: bytes) -> Admitted:
     return Admitted(EXECUTE, decision, handle=handle, authorized=authorized, abort_cause=cause)
 
 
-def complete(post: Post, handle: str, sent: bytes, report: Report) -> str:
-    """Reports a run that was entered; returns the ending the receiver named."""
-    request = _wire.write(
+def completion(handle: str, sent: bytes, report: Report) -> bytes:
+    """The complete request that reports a run; writing it sends nothing."""
+    return _wire.write(
         _wire.COMPLETE_REQUEST,
         {
             "handle": handle,
@@ -156,6 +156,10 @@ def complete(post: Post, handle: str, sent: bytes, report: Report) -> str:
             "sideEffectConfirmation": report.side_effect_confirmation,
         },
     )
+
+
+def complete(post: Post, request: bytes) -> str:
+    """Sends a written complete of a run that was entered; returns the ending the receiver named."""
     _, answer = _ask(post, "complete", request, _wire.COMPLETE_RESPONSE)
     return _name(answer.get("ending"))
 

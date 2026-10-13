@@ -159,6 +159,7 @@ class Read(unittest.TestCase):
             ("1.500s", timedelta(seconds=1, milliseconds=500)),
             ("0.000001s", timedelta(microseconds=1)),
             ("0.000000001s", timedelta(0)),
+            ("1.999999999s", timedelta(seconds=1, microseconds=999999)),
             ("-1.5s", timedelta(seconds=-1, milliseconds=-500)),
             ("315576000000s", timedelta(seconds=315576000000)),
             ("-315576000000s", timedelta(seconds=-315576000000)),
@@ -179,7 +180,8 @@ class Read(unittest.TestCase):
             },
         )
         self.assertEqual(
-            admit('{"execution":{"handle":"zażółć"}}'.encode()), {"execution": {"handle": "zażółć"}}
+            admit('{"execution":{"handle":"za\u017c\u00f3\u0142\u0107"}}'.encode()),
+            {"execution": {"handle": "za\u017c\u00f3\u0142\u0107"}},
         )
 
     def test_an_answer_at_the_bound_is_read(self) -> None:
@@ -328,7 +330,7 @@ BODIES: tuple[tuple[str, bytes, str], ...] = (
     (
         "an int64 as a number",
         decision('"decisionLatencyUs":1234'),
-        "decisionLatencyUs: not an integer in a decimal string",
+        "decisionLatencyUs: not an int64 in a decimal string",
     ),
     ("an int64 as a float", decision('"decisionLatencyUs":1234.0'), "decisionLatencyUs"),
     ("an int64 as true", decision('"decisionLatencyUs":true'), "decisionLatencyUs"),
@@ -341,7 +343,11 @@ BODIES: tuple[tuple[str, bytes, str], ...] = (
     ("an int64 with a newline", decision('"decisionLatencyUs":"1\\n"'), "decisionLatencyUs"),
     ("a hexadecimal int64", decision('"decisionLatencyUs":"0x4d2"'), "decisionLatencyUs"),
     ("an int64 with a separator", decision('"decisionLatencyUs":"1_234"'), "decisionLatencyUs"),
-    ("an int64 in other digits", decision('"decisionLatencyUs":"١٢٣"'), "decisionLatencyUs"),
+    (
+        "an int64 in other digits",
+        decision('"decisionLatencyUs":"\u0661\u0662\u0663"'),
+        "decisionLatencyUs",
+    ),
     (
         "an int64 past its range",
         decision('"decisionLatencyUs":"9223372036854775808"'),
@@ -351,6 +357,21 @@ BODIES: tuple[tuple[str, bytes, str], ...] = (
         "an int64 below its range",
         decision('"decisionLatencyUs":"-9223372036854775809"'),
         "decisionLatencyUs: outside int64",
+    ),
+    (
+        "an int64 of twenty digits",
+        decision('"decisionLatencyUs":"10000000000000000000"'),
+        "decisionLatencyUs: not an int64 in a decimal string",
+    ),
+    (
+        "an int64 of more digits than the interpreter converts",
+        decision('"decisionLatencyUs":"' + "9" * 5000 + '"'),
+        "decisionLatencyUs: not an int64 in a decimal string",
+    ),
+    (
+        "a negative int64 of more digits than the interpreter converts",
+        decision('"decisionLatencyUs":"-' + "9" * 5000 + '"'),
+        "decisionLatencyUs: not an int64 in a decimal string",
     ),
     (
         "base64 without padding",
@@ -439,14 +460,18 @@ BODIES: tuple[tuple[str, bytes, str], ...] = (
     ("an empty time", execution('"expiresAt":""'), "expiresAt"),
     ("a space before a time", execution('"expiresAt":" 2026-10-11T12:05:00Z"'), "expiresAt"),
     ("a newline after a time", execution('"expiresAt":"2026-10-11T12:05:00Z\\n"'), "expiresAt"),
-    ("a time in other digits", execution('"expiresAt":"٢٠٢٦-10-11T12:05:00Z"'), "expiresAt"),
+    (
+        "a time in other digits",
+        execution('"expiresAt":"\u0662\u0660\u0662\u0666-10-11T12:05:00Z"'),
+        "expiresAt",
+    ),
     ("a time as a number", execution('"expiresAt":1791720300'), "expiresAt"),
     ("a time as an object", execution('"expiresAt":{"seconds":"1791720300"}'), "expiresAt"),
     ("a time in the decision", decision('"decidedAt":"2026-10-11"'), "decision.decidedAt"),
     (
         "a duration without its unit",
         pending('"retryAfter":"30"'),
-        "pending.retryAfter: not decimal seconds",
+        "pending.retryAfter: not a Duration in decimal seconds",
     ),
     ("an upper-case unit", pending('"retryAfter":"30S"'), "retryAfter"),
     ("a duration as a number", pending('"retryAfter":30'), "retryAfter"),
@@ -474,6 +499,21 @@ BODIES: tuple[tuple[str, bytes, str], ...] = (
         "a fraction below the range",
         pending('"retryAfter":"-315576000000.5s"'),
         "retryAfter: outside",
+    ),
+    (
+        "seconds of thirteen digits",
+        pending('"retryAfter":"1000000000000s"'),
+        "retryAfter: not a Duration in decimal seconds",
+    ),
+    (
+        "seconds of more digits than the interpreter converts",
+        pending('"retryAfter":"' + "9" * 5000 + 's"'),
+        "retryAfter: not a Duration in decimal seconds",
+    ),
+    (
+        "a fraction after more digits than the interpreter converts",
+        pending('"retryAfter":"-' + "9" * 5000 + '.5s"'),
+        "retryAfter: not a Duration in decimal seconds",
     ),
     (
         "a lone high surrogate",
@@ -636,8 +676,10 @@ class Written(unittest.TestCase):
             b'{"arguments":"QQ=="}',
         )
         self.assertEqual(
-            _wire.write(_wire.ADMIT_REQUEST, {"tool": "zażółć", "arguments": b"AB"}),
-            '{"tool":"zażółć","arguments":"QUI="}'.encode(),
+            _wire.write(
+                _wire.ADMIT_REQUEST, {"tool": "za\u017c\u00f3\u0142\u0107", "arguments": b"AB"}
+            ),
+            '{"tool":"za\u017c\u00f3\u0142\u0107","arguments":"QUI="}'.encode(),
         )
 
     def test_a_complete_request(self) -> None:

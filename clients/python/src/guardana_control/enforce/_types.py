@@ -44,7 +44,10 @@ class Result:
 
 @dataclass(frozen=True)
 class Held:
-    """A PENDING answer: who decides, and when to ask again."""
+    """A PENDING answer: who decides, and when to ask again.
+
+    Both times keep microseconds: digits the receiver wrote past them are dropped.
+    """
 
     approval_id: str
     action_digest: str
@@ -127,3 +130,7 @@ class NotRecorded(EnforceError):  # noqa: N818
 
 class NoAnswer(EnforceError):  # noqa: N818
     """A request got no answer in time."""
+
+
+class BadResult(EnforceError, TypeError):  # noqa: N818
+    """The tool ran and returned what cannot be reported; its complete said UNKNOWN."""

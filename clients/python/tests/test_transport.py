@@ -1,4 +1,4 @@
-"""Rule 13 and the bounds on reading: one bounded HTTP/1.1 request per connection."""
+"""The transport and its bounds on reading: one bounded HTTP/1.1 request per connection."""
 
 from __future__ import annotations
 
@@ -28,6 +28,7 @@ OBLIGED = (
     b'"authorizedArguments":"eyJhIjoxfQ==","obligations":[{"type":"x"}]}}'
 )
 BOUND = 262144
+CHUNKED = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n"
 
 Serve = Callable[[socket.socket, int, bytes], None]
 
@@ -297,10 +298,64 @@ class Transport(unittest.TestCase):
                 self.assertEqual((raised.exception.answer.ran, self.ran), (False, []))
                 self.assertEqual(len(self.receiver.requests), 1)
 
-    def test_a_long_head_within_the_bound_is_read(self) -> None:
-        answer = http_answer(200, EXECUTE, "X-Pad: " + "p" * 60000)
-        client = self.raw(writing(answer, http_answer(200, RECORDED)))
-        self.assertEqual(client.call("t", ARGUMENTS, self.tool).ending, "ENDING_RECORDED")
+    def test_a_long_head_and_a_long_chunk_line_within_their_bounds_are_read(self) -> None:
+        for name, answer in (
+            ("one long header", http_answer(200, EXECUTE, "X-Pad: " + "p" * 60000)),
+            (
+                "two headers within the head's budget",
+                http_answer(200, EXECUTE, "X-Pad-0: " + "p" * 30000, "X-Pad-1: " + "p" * 30000),
+            ),
+            (
+                "a chunk-size line within its limit",
+                CHUNKED + b"5f;pad=" + b"p" * 200 + b"\r\n" + EXECUTE + b"\r\n0\r\n\r\n",
+            ),
+        ):
+            with self.subTest(answer=name):
+                client = self.raw(writing(answer, http_answer(200, RECORDED)))
+                self.assertEqual(client.call("t", ARGUMENTS, self.tool).ending, "ENDING_RECORDED")
+
+    def test_a_bound_on_the_head_or_on_a_chunk_ends_the_read_at_once(self) -> None:
+        """Each answer is whole and well-formed but for the one bound it passes."""
+        self.assertEqual(len(EXECUTE), 0x5F)
+        pads = [b"X-Pad-%d: " % number + b"p" * 60000 + b"\r\n" for number in range(8)]
+        length = b"Content-Length: 95\r\n\r\n"
+        for name, answer in (
+            (
+                "two headers that together pass the head's budget",
+                b"HTTP/1.1 200 OK\r\n" + b"".join(pads[:2]) + length + EXECUTE,
+            ),
+            (
+                "eight headers that together pass the head's budget",
+                b"HTTP/1.1 200 OK\r\n" + b"".join(pads) + length + EXECUTE,
+            ),
+            (
+                "a chunk-size line past its limit",
+                CHUNKED + b"5f;pad=" + b"p" * 300 + b"\r\n" + EXECUTE + b"\r\n0\r\n\r\n",
+            ),
+            (
+                "a chunk followed by two bytes that are not its end",
+                CHUNKED + b"5f\r\n" + EXECUTE + b"XX0\r\n\r\n",
+            ),
+        ):
+            with self.subTest(answer=name):
+
+                def serve(
+                    connection: socket.socket,
+                    number: int,
+                    _request: bytes,
+                    answer: bytes = answer,
+                ) -> None:
+                    # Nothing but a bound ends the read: the answer is whole and nobody hangs up.
+                    connection.sendall(http_answer(200, RECORDED) if number else answer)
+                    self.receiver.released.wait(60)
+
+                client = self.raw(serve, timeout=60.0)
+                started = time.monotonic()
+                with self.assertRaises(NoAnswer) as raised:
+                    client.call("t", ARGUMENTS, self.tool)
+                self.assertLess(time.monotonic() - started, 20.0, "the deadline ended the read")
+                self.assertEqual((raised.exception.answer.ran, self.ran), (False, []))
+                self.assertEqual(len(self.receiver.requests), 1)
 
     def test_a_socket_nothing_listens_on_is_no_answer(self) -> None:
         receiver = harness.RawReceiver(writing())

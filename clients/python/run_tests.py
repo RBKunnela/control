@@ -39,15 +39,22 @@ PROMISED = (
 
 
 class Outcome(Protocol):
-    """What the runner reads of a finished run."""
+    """What the runner reads of a finished run; read-only, so a list of anything fits."""
 
-    testsRun: int  # noqa: N815
-    skipped: Sized
-    expectedFailures: Sized  # noqa: N815
-    unexpectedSuccesses: Sized  # noqa: N815
-    failures: Sized
-    errors: Sized
-    started: Collection[str]
+    @property
+    def testsRun(self) -> int: ...  # noqa: N802
+    @property
+    def skipped(self) -> Sized: ...
+    @property
+    def expectedFailures(self) -> Sized: ...  # noqa: N802
+    @property
+    def unexpectedSuccesses(self) -> Sized: ...  # noqa: N802
+    @property
+    def failures(self) -> Sized: ...
+    @property
+    def errors(self) -> Sized: ...
+    @property
+    def started(self) -> Collection[str]: ...
 
 
 class _Recording(unittest.TextTestResult):

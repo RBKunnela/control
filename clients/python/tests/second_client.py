@@ -55,6 +55,9 @@ LIMIT = 262144
 INT32_MIN, INT32_MAX = -2147483648, 2147483647
 INT64_MIN, INT64_MAX = -9223372036854775808, 9223372036854775807
 LONGEST_SPAN = 315576000000
+# No value in range has more digits, and the interpreter converts no string of thousands.
+INT64_DIGITS = 19
+SPAN_DIGITS = 12
 NANO_DIGITS = 9
 MOST_PADDING = 2
 BASE64 = frozenset(string.ascii_letters + string.digits + "+/")
@@ -144,10 +147,9 @@ def integer_of(value: object, _lenient: bool) -> int:
     unsigned = value.removeprefix("-")
     if not digits(unsigned) or (unsigned != "0" and unsigned.startswith("0")):
         raise UnreadError("no decimal integer")
-    number = int(value)
-    if number < INT64_MIN or number > INT64_MAX:
+    if len(unsigned) > INT64_DIGITS or not INT64_MIN <= int(value) <= INT64_MAX:
         raise UnreadError("past int64")
-    return number
+    return int(value)
 
 
 def octets_of(value: object, _lenient: bool) -> bytes:
@@ -188,7 +190,8 @@ def span_of(value: object, _lenient: bool) -> timedelta:
     if point and not (digits(fraction) and len(fraction) <= NANO_DIGITS):
         raise UnreadError("a fraction of no or too many digits")
     nanos = int(fraction.ljust(NANO_DIGITS, "0"))
-    if int(whole) > LONGEST_SPAN or (int(whole) == LONGEST_SPAN and nanos):
+    past = len(whole) > SPAN_DIGITS or int(whole) > LONGEST_SPAN
+    if past or (int(whole) == LONGEST_SPAN and nanos):
         raise UnreadError("past a Duration")
     span = timedelta(seconds=int(whole), microseconds=nanos // 1000)
     return -span if value.startswith("-") else span
@@ -308,7 +311,7 @@ def decode(body: bytes, reader: Reader, lenient: bool) -> dict[str, object]:
         raise UnreadError("past the bound")
     try:
         text = str(body, "utf-8", "strict")
-        if text.startswith("﻿"):
+        if text.startswith("\ufeff"):
             raise UnreadError("a byte order mark")
         value = json.loads(
             text, object_pairs_hook=once, parse_float=no_number, parse_constant=no_number

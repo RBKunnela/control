@@ -113,6 +113,15 @@ class Imports(unittest.TestCase):
             used |= modules
         self.assertEqual(ALLOWED - used, set(), "a module is allowed that nothing imports")
 
+    def test_every_source_file_is_ascii(self) -> None:
+        """A character a reader cannot see, or tell from its twin, is written as an escape."""
+        files = sorted([*SRC.rglob("*.py"), *Path(__file__).parent.rglob("*.py")])
+        self.assertLessEqual({"_wire.py", "second_client.py"}, {path.name for path in files})
+        for path in files:
+            lines = path.read_bytes().splitlines()
+            odd = [number for number, line in enumerate(lines, start=1) if not line.isascii()]
+            self.assertEqual(odd, [], f"{path.name} holds a character outside ASCII on these lines")
+
     def test_the_reading_of_what_a_test_takes_sees_each_form(self) -> None:
         source = (
             f"import {PACKAGE}.enforce._wire\n"

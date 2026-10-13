@@ -4,6 +4,7 @@ from ._client import Client
 from ._types import (
     CONTRACT,
     Answer,
+    BadResult,
     CallAborted,
     CallBlocked,
     CallerGone,
@@ -22,6 +23,7 @@ from ._types import (
 __all__ = [
     "CONTRACT",
     "Answer",
+    "BadResult",
     "CallAborted",
     "CallBlocked",
     "CallPending",
