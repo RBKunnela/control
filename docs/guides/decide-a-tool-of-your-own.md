@@ -2,7 +2,7 @@
 title: Decide a tool of your own
 summary: Serve the enforcement API, classify your tools by name, and have a client ask before each call and report how it ended, under one policy and trail.
 type: how-to
-covers: [cmd/guardana-gateway/enforce.go, adapters/enforce/**, internal/enforceclient/**, internal/gatewayconfig/enforce.go]
+covers: [cmd/guardana-gateway/enforce.go, adapters/enforce/**, internal/enforceclient/**, internal/gatewayconfig/enforce.go, clients/python/**]
 ---
 
 # Decide a tool of your own
@@ -26,9 +26,9 @@ is `experimental`; [status.md](../status.md) is the inventory.
 - A runs directory and one opened run per task
   ([keep-two-tasks-apart.md](keep-two-tasks-apart.md)): every request
   presents a run token.
-- A client that keeps the client rules: the Go reference in
-  `internal/enforceclient`, or one in another language that passes the cases in
-  [testdata/enforce/](../../testdata/enforce/README.md).
+- A client that keeps the client rules: the Python client below, the Go
+  reference in `internal/enforceclient`, or one in another language that
+  passes the cases in [testdata/enforce/](../../testdata/enforce/README.md).
 
 ## Steps
 
@@ -107,6 +107,37 @@ handle was issued; a new attempt is a new admit, decided anew.
 
 The fields, error codes and the strict JSON mapping are in
 [contracts.md](../contracts.md#the-enforcement-api).
+
+### 5. Or let the Python client do steps 3 and 4
+
+`guardana_control.enforce` is `experimental` and has no dependencies; it needs
+Python 3.11 or later. Use the client of your plane's release.
+
+```
+pip install guardana-control
+```
+
+```python
+from guardana_control.enforce import CallBlocked, CallPending, Client, Result, Status
+
+client = Client(socket="/run/guardana/enforce.sock", token=token, timeout=5.0)
+
+def refund(authorized: bytes) -> Result:
+    receipt = payments.refund(authorized)
+    return Result(Status.SUCCESS, value=receipt)
+
+try:
+    answer = client.call("refund", b'{"order_id":"ord-1"}', refund)
+except CallBlocked:
+    ...  # the tool did not run
+except CallPending as held:
+    ...  # ask again after held.answer.held.retry_after
+```
+
+`call` runs your function only with the authorized bytes and sends one
+`complete` or one `abort`. A function that raises is reported `UNKNOWN`; raise
+`NotSent` only when the bytes never left. `call` returns when the tool ran
+and the record landed; everything else raises and says whether the tool ran.
 
 ## Verify
 

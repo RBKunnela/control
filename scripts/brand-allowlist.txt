@@ -60,3 +60,8 @@ site/docs/
 # The demo archive's check names the archive and the binaries as .goreleaser.yaml
 # builds them; the rename rewrites both files in one pass.
 scripts/check-demo-archive.sh
+
+# The Python client. Its project file, lock and README spell the slug and the
+# name, and every import line spells the package; the rename rewrites all
+# three and moves the package directory.
+clients/python/

@@ -23,7 +23,7 @@ GO_MOD="${ROOT}/go.mod"
 
 # Every tool below must reach one of these two counters, so an early `exit 0`
 # after a skipped comparison is impossible.
-readonly TOOL_COUNT=10
+readonly TOOL_COUNT=13
 checked=0
 failures=0
 
@@ -150,6 +150,35 @@ check_tool() {
   checked=$((checked + 1))
 }
 
+# check_python <pin key in tool-versions.env>
+# The interpreter must be one uv manages: a system Python of the same version
+# is another build. Installing puts no executable on PATH.
+check_python() {
+  local key="$1" want
+  want="${!key-}"
+  if [[ -z "${want}" ]]; then
+    fail "python: ${key} is empty or missing in tool-versions.env"
+    return
+  fi
+  if ! command -v uv >/dev/null 2>&1; then
+    fail "python ${want}: uv is missing"
+    return
+  fi
+  if ! uv python find --no-config --managed-python --no-python-downloads "${want}" >/dev/null 2>&1; then
+    if ((check_only)); then
+      fail "python ${want}: not installed by uv; --check installs nothing"
+      return
+    fi
+    printf 'installing python %s\n' "${want}"
+    if ! uv python install --no-config --no-bin "${want}"; then
+      fail "python ${want}: uv python install failed"
+      return
+    fi
+  fi
+  printf 'ok   python %s\n' "${want}"
+  checked=$((checked + 1))
+}
+
 require_go
 
 if ((!check_only)) && ! (cd "${ROOT}" && go mod download); then
@@ -166,6 +195,9 @@ check_tool syft syft SYFT_VERSION
 check_tool shellcheck shellcheck SHELLCHECK_VERSION 'version:'
 check_tool goreleaser goreleaser GORELEASER_VERSION 'GitVersion:'
 check_tool cosign cosign COSIGN_VERSION 'GitVersion:' version
+check_tool uv uv UV_VERSION
+check_python CLIENT_PYTHON_FLOOR_VERSION
+check_python CLIENT_PYTHON_VERSION
 
 if [[ ${failures} -ne 0 ]]; then
   printf '%d of %d tools failed the version check\n' "${failures}" "${TOOL_COUNT}" >&2

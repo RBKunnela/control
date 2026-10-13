@@ -22,6 +22,18 @@ func TestBrandConstantsAreConsistent(t *testing.T) {
 	if OTelNamespace != "guardana.control" || ProtoPackage != "guardana.control.v1" {
 		t.Fatalf("namespaces drifted: %q %q", OTelNamespace, ProtoPackage)
 	}
+	if PythonPackage != "guardana_control" {
+		t.Fatalf("the Python package must be the slug with underscores: %q", PythonPackage)
+	}
+}
+
+// The package directory is a path no compiler reads; a renamed constant
+// beside an unmoved directory would leave the client unimportable.
+func TestThePythonPackageDirectoryIsNamedAsTheConstant(t *testing.T) {
+	info, err := fs.Stat(repo(), path.Join("clients", "python", "src", PythonPackage))
+	if err != nil || !info.IsDir() {
+		t.Fatalf("clients/python/src holds no directory %s: %v", PythonPackage, err)
+	}
 }
 
 // repo is the repository root. go test runs in the package directory, and

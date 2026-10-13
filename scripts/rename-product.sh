@@ -118,6 +118,7 @@ new_image="$5"
 old_name="$(brand_const Name)"
 old_slug="$(brand_const Slug)"
 old_cli="$(brand_const CLI)"
+old_python="$(brand_const PythonPackage)"
 old_gateway="$(brand_const Gateway)"
 old_env_prefix="$(brand_const EnvPrefix)"
 old_otel="$(brand_const OTelNamespace)"
@@ -132,6 +133,7 @@ new_proto_path="$(printf '%s' "${new_proto_pkg}" | tr '.' '/')"
 old_proto_path="$(printf '%s' "${old_proto_pkg}" | tr '.' '/')"
 new_gateway="$(gateway_of "${new_slug}")"
 new_cli="${new_slug}"
+new_python="$(printf '%s' "${new_slug}" | tr '-' '_')"
 old_go_pkg="$(go_pkg_of "${old_proto_pkg}")"
 new_go_pkg="$(go_pkg_of "${new_proto_pkg}")"
 
@@ -142,6 +144,8 @@ new_go_pkg="$(go_pkg_of "${new_proto_pkg}")"
   die "Gateway is ${old_gateway}, not $(gateway_of "${old_slug}"); rename it by hand first"
 [[ "${old_cli}" == "${old_slug}" ]] ||
   die "CLI is ${old_cli} and Slug is ${old_slug}; rename CLI by hand first"
+[[ "${old_python}" == "$(printf '%s' "${old_slug}" | tr '-' '_')" ]] ||
+  die "PythonPackage is ${old_python}, not ${old_slug} with underscores; rename it by hand first"
 
 # gomod_module
 # Prints the path of go.mod's one module directive. go.mod is what the
@@ -202,6 +206,7 @@ add_pair "${old_otel}" "${new_otel}"
 add_pair "${old_gateway}" "${new_gateway}"
 add_pair "${old_name}" "${new_name}"
 add_pair "${old_slug}" "${new_slug}"
+add_pair "${old_python}" "${new_python}"
 
 [[ ${#pair_from[@]} -gt 0 ]] || die "new values match the current brand, nothing to do"
 
@@ -274,6 +279,12 @@ if [[ "${old_proto_path}" != "${new_proto_path}" ]]; then
   if [[ -d "${ROOT}/api/proto/${old_proto_path}" && -e "${ROOT}/api/proto/${new_proto_path}" ]]; then
     die "api/proto/${new_proto_path} already exists; move it aside first"
   fi
+fi
+
+python_src="${ROOT}/clients/python/src"
+if [[ "${old_python}" != "${new_python}" && -d "${python_src}/${old_python}" &&
+  -e "${python_src}/${new_python}" ]]; then
+  die "clients/python/src/${new_python} already exists; move it aside first"
 fi
 
 cmd_renames=()
@@ -383,6 +394,12 @@ for entry in ${cmd_renames[@]+"${cmd_renames[@]}"}; do
     die "cannot move cmd/${entry%%|*} to cmd/${entry##*|}"
   moves+=("cmd/${entry%%|*} -> cmd/${entry##*|}")
 done
+
+if [[ "${old_python}" != "${new_python}" && -d "${python_src}/${old_python}" ]]; then
+  mv "${python_src}/${old_python}" "${python_src}/${new_python}" ||
+    die "cannot move clients/python/src/${old_python} to clients/python/src/${new_python}"
+  moves+=("clients/python/src/${old_python} -> clients/python/src/${new_python}")
+fi
 
 if [[ -f "${ROOT}/buf.gen.yaml" ]]; then
   command -v buf >/dev/null 2>&1 || die "buf.gen.yaml exists but buf is not on PATH"

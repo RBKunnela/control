@@ -50,6 +50,11 @@ const (
 	// Image is the container image reference without a tag. Release tooling
 	// appends the version.
 	Image = "ghcr.io/guardana/control"
+
+	// PythonPackage is the import name of the Python client under clients/:
+	// the slug spelled as a Python identifier. scripts/rename-product.sh
+	// refuses to start while the two differ.
+	PythonPackage = "guardana_control"
 )
 
 // Env returns the environment variable name for key under the product prefix.

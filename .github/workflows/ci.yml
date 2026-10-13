@@ -60,7 +60,7 @@ jobs:
         run: |
           pins="$(grep -E '^[A-Z][A-Z0-9_]*_VERSION=v?[0-9][A-Za-z0-9._+-]*$|^[A-Z][A-Z0-9_]*_SHA256=[0-9a-f]{64}$' \
             scripts/tool-versions.env)"
-          for name in GOLANGCI_LINT_VERSION BUF_SHA256; do
+          for name in GOLANGCI_LINT_VERSION BUF_SHA256 UV_VERSION UV_SHA256 CLIENT_PYTHON_FLOOR_VERSION CLIENT_PYTHON_VERSION; do
             grep -q "^${name}=" <<<"${pins}" || { echo "scripts/tool-versions.env has no ${name} line in the pinned shape" >&2; exit 1; }
           done
           printf '%s\n' "${pins}" >>"$GITHUB_ENV"
@@ -94,7 +94,11 @@ jobs:
         # Each download is checked against the digest pinned beside its version.
         # A release asset can be replaced by its maintainer without the tag
         # moving, and eight SHA-pinned actions in this job would be worth little
-        # standing next to five unverified downloads.
+        # standing next to six unverified downloads.
+        #
+        # uv installs the Python client's two interpreters from its own list of
+        # builds, each with a digest that version of uv carries, so the pinned
+        # uv is what pins them. No interpreter is put on PATH.
         run: |
           bin="${RUNNER_TEMP}/bin"
           dl="${RUNNER_TEMP}/dl"
@@ -108,12 +112,15 @@ jobs:
           fetch zizmor.tar.gz "https://github.com/zizmorcore/zizmor/releases/download/${ZIZMOR_VERSION}/zizmor-x86_64-unknown-linux-gnu.tar.gz" "${ZIZMOR_SHA256}"
           fetch osv-scanner "https://github.com/google/osv-scanner/releases/download/${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64" "${OSV_SCANNER_SHA256}"
           fetch shellcheck.tar.xz "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" "${SHELLCHECK_SHA256}"
+          fetch uv.tar.gz "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-x86_64-unknown-linux-gnu.tar.gz" "${UV_SHA256}"
           tar -xzf "${dl}/gitleaks.tar.gz" -C "${bin}" gitleaks
           tar -xzf "${dl}/actionlint.tar.gz" -C "${bin}" actionlint
           tar -xzf "${dl}/zizmor.tar.gz" -C "${bin}" zizmor
           tar -xJf "${dl}/shellcheck.tar.xz" -C "${bin}" --strip-components=1 "shellcheck-${SHELLCHECK_VERSION}/shellcheck"
+          tar -xzf "${dl}/uv.tar.gz" -C "${bin}" --strip-components=1 uv-x86_64-unknown-linux-gnu/uv
           install -m 0755 "${dl}/osv-scanner" "${bin}/osv-scanner"
           echo "${bin}" >>"$GITHUB_PATH"
+          "${bin}/uv" python install --no-config --no-bin "${CLIENT_PYTHON_FLOOR_VERSION}" "${CLIENT_PYTHON_VERSION}"
 
       - name: Run the quality gate
         # make takes options from these variables, so an earlier step that

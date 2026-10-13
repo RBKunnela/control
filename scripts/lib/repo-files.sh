@@ -79,6 +79,7 @@ _repo_files_find() {
           ! -name '.DS_Store' \
           ! -name '*.out' \
           ! -name '*.test' \
+          ! -name '*.pyc' \
           ! -name '.env' \
           ! \( -name '.env.*' ! -name '.env.example' \) \
           ! -name 'go.work' \

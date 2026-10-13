@@ -16,7 +16,7 @@ functions inside agent frameworks. Each of them would otherwise write its own
 client and get the hard parts wrong one at a time: running the proposed bytes
 where the authorized ones differ, treating an unknown outcome as a go-ahead,
 aborting where the effect may have happened, sending a call twice.
-`testdata/enforce/client` states sixteen of those rules as files any language
+`testdata/enforce/client` states some of those rules as files any language
 can run; the Go reference keeps more of them in Go tests alone. The repository
 has no Python, so the first module also decides where a second language lives,
 what it may depend on and how the gate runs it.
@@ -130,11 +130,13 @@ broken one is followed by the next version, as a release is. The contract is
 is tested with the plane of its own release. With a newer plane it may refuse
 every answer, because a strict reader does not know a member or an enum name
 added since; the error names what it did not know. The import name is a new
-spelling of the product name: `scripts/check-brand.sh` learns it, the module's
-directory joins the allowlist, and `scripts/rename-product.sh` rewrites and
-moves it. CodeQL analyses Go only; the module is read by the linter's security
-rules and its lock by the vulnerability scan until a second language is added
-there in a change of its own.
+spelling of the product name: it is a constant of `internal/brand`, a test
+holds the package's directory to it, and `scripts/rename-product.sh` rewrites
+and moves it. The brand check does not forbid that spelling outside the
+module, since generated Go identifiers already carry it. CodeQL analyses Go
+only; the module is read by the linter's security rules and its lock by the
+vulnerability scan until a second language is added there in a change of its
+own.
 
 ## Alternatives considered
 

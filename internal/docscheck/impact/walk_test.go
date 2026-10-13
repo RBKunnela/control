@@ -72,14 +72,15 @@ func walkKept() []string {
 	return []string{
 		"Makefile", "cmd/gw/main.go", ".github/workflows/ci.yml", ".env.example",
 		"bench/results/.keep", "bench/results/20260927T010203Z-darwin-arm64.txt",
-		"docs/design/other.md", "go.work.example",
+		"docs/design/other.md", "go.work.example", "clients/python/src/m/__init__.py",
 	}
 }
 
 func walkDropped() []string {
 	return []string{
 		".git/HEAD", ".tooling/x", "bin/gw", "dist/gw", "coverage/c.out", "node_modules/m/i.js",
-		"cmd/.DS_Store", "cmd/gw.test",
+		"cmd/.DS_Store", "cmd/gw.test", "clients/python/src/m/__pycache__/x.cpython-314.pyc",
+		"clients/python/.venv/bin/python", "clients/python/.mypy_cache/x.json",
 		"cmd/cover.out", ".env", ".env.local", "go.work", "go.work.sum", "AGENTS.local.md",
 		"bench/results/run.txt", "bench/results/deep/run.txt", "bench/results/local/20260927T010203Z.txt",
 		"bench/results/local/a-b-c.txt", "bench/results/local/.keep", "bench/results/my-bench-notes.txt",

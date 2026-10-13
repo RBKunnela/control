@@ -11,6 +11,27 @@ verify one.
 
 ## [Unreleased]
 
+### Added
+
+- A Python client of the `experimental` enforcement API, under
+  `clients/python/` and imported as `guardana_control.enforce`
+  ([ADR-0053](docs/adr/0053-a-python-client-of-the-enforcement-api-in-this-repository.md)).
+  One synchronous call asks the plane, runs your tool only with the bytes it
+  authorized, and closes with one `complete` or one `abort`. It imports the
+  standard library alone and needs Python 3.11 or later. It cooperates and is
+  not a boundary: its calls are `decided, not enforced`.
+- Answer vectors in `testdata/enforce/answers/vectors.jsonl`: a status and a
+  body with what a client must do with it. Each is `read`, `refused`, or
+  `may_refuse`, where the Go reference reads a form outside the one the
+  receiver writes and another client may refuse it. The Go reference, a second
+  Go client and the Python client run them, and they seed the decoder's fuzz
+  target. `docs/contracts.md` says which form a client may rely on.
+- One more client case, `tool-reports-nothing`: a tool that returns without a
+  status is completed `UNKNOWN`.
+- `make check-python`, part of `make quality`: the client's tests on two
+  pinned CPython versions, its linter and type checker, and a build of its
+  wheel. `make bootstrap` installs `uv` and both interpreters.
+
 ### Changed
 
 - A change reaches `main` as one squash-merged pull request whose gate is
