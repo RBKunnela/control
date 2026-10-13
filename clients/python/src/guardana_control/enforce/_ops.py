@@ -9,7 +9,7 @@ from types import MappingProxyType
 from typing import Final
 
 from . import _wire
-from ._types import BLOCK, CONTRACT, EXECUTE, PENDING, Held
+from ._types import BLOCK, CONTRACT, EXECUTE, PENDING, Held, cut
 
 # Posts a body to a path and returns the status and at most so many bytes of the answer.
 Post = Callable[[str, bytes, int], tuple[int, bytes]]
@@ -25,7 +25,7 @@ class RefusalError(Exception):
     """A receiver's Error body under a status other than 200."""
 
     def __init__(self, status: int, code: str, message: str, ending: str) -> None:
-        super().__init__(f"{status} {code or 'no code'}: {message!r}")
+        super().__init__(f"{status} {code or 'no code'}: {cut(message)!r}")
         self.status = status
         self.code = code
         self.message = message

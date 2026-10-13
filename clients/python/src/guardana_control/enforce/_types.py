@@ -14,6 +14,8 @@ BLOCK: Final = "OUTCOME_BLOCK"
 PENDING: Final = "OUTCOME_PENDING"
 RECORDED: Final = "ENDING_RECORDED"
 
+_QUOTED: Final = 120
+
 
 class Status:
     """The completion statuses a tool may report."""
@@ -74,6 +76,13 @@ class Answer:
     ending: str
 
 
+def cut(text: str) -> str:
+    """text as a message may quote it: a receiver's own words can be as long as its answer."""
+    if len(text) <= _QUOTED:
+        return text
+    return f"{text[:_QUOTED]}... (cut from {len(text)} characters)"
+
+
 # The interface names these after what happened to the call, so none of them
 # carries the Error suffix the linter asks of an exception.
 class NotSent(Exception):  # noqa: N818
@@ -101,11 +110,12 @@ class CallPending(EnforceError):  # noqa: N818
 
 
 class CallRefused(EnforceError):  # noqa: N818
-    """A receiver's Error body under a status other than 200."""
+    """A receiver's Error body under a status other than 200; message is its message, whole."""
 
     def __init__(self, answer: Answer, *, status: int, code: str, message: str) -> None:
         super().__init__(
-            f"the receiver refused the request: {status} {code or 'no code'}: {message!r}", answer
+            f"the receiver refused the request: {status} {code or 'no code'}: {cut(message)!r}",
+            answer,
         )
         self.status = status
         self.code = code
@@ -134,3 +144,10 @@ class NoAnswer(EnforceError):  # noqa: N818
 
 class BadResult(EnforceError, TypeError):  # noqa: N818
     """The tool ran and returned what cannot be reported; its complete said UNKNOWN."""
+
+
+class ToolRaised(EnforceError):  # noqa: N818
+    """The tool ran and raised an exception of this module, kept as __cause__.
+
+    answer is this call's own, so it says the tool ran whatever the cause's says.
+    """

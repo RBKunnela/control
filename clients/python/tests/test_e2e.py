@@ -79,13 +79,35 @@ def values(output: str) -> dict[str, str]:
     return {name: value for name, colon, value in pairs if colon}
 
 
+def built_commands(directory: Path) -> tuple[Path, Path]:
+    """The plane and the command: the two executables directory holds.
+
+    The plane is the one named *-gateway and the command is the other, so
+    that neither is found by the product's name. Any other holding is a
+    ValueError that names the executables.
+    """
+    found = sorted(
+        entry for entry in directory.iterdir() if entry.is_file() and os.access(entry, os.X_OK)
+    )
+    planes = [entry for entry in found if entry.name.endswith("-gateway")]
+    others = [entry for entry in found if entry not in planes]
+    if len(planes) != 1 or len(others) != 1:
+        names = ", ".join(entry.name for entry in found) or "none"
+        raise ValueError(
+            f"{directory} holds the executables {names}; want two, one of them named *-gateway"
+        )
+    return planes[0], others[0]
+
+
 class Plane(unittest.TestCase):
     def setUp(self) -> None:
         named = os.environ.get("ENFORCE_E2E_BIN", "")
         if not named or not Path(named).is_dir():
             self.fail("ENFORCE_E2E_BIN names no directory holding the built commands")
-        self.gateway = self.command(Path(named), "*-gateway")
-        self.control = self.command(Path(named), "*-control")
+        try:
+            self.gateway, self.control = built_commands(Path(named))
+        except ValueError as exc:
+            self.fail(f"ENFORCE_E2E_BIN: {exc}")
         # The plane's own variables would override the configuration written here.
         prefix = self.control.name.upper().replace("-", "_") + "_"
         self.env = {
@@ -95,12 +117,6 @@ class Plane(unittest.TestCase):
         self.dir = Path(tempfile.mkdtemp(prefix="enfe", dir="/tmp"))
         self.addCleanup(shutil.rmtree, self.dir)
         self.processes: list[tuple[subprocess.Popen[bytes], Path]] = []
-
-    def command(self, directory: Path, pattern: str) -> Path:
-        found = sorted(directory.glob(pattern))
-        if len(found) != 1:
-            self.fail(f"ENFORCE_E2E_BIN holds {len(found)} commands named {pattern}, want one")
-        return found[0]
 
     def run_to_end(self, command: Path, *arguments: str) -> str:
         """What a command printed; anything but a clean exit fails the test."""
@@ -371,3 +387,69 @@ class Plane(unittest.TestCase):
                 "EVENT_KIND_ACTION_BLOCKED",
             ],
         )
+
+
+class Commands(unittest.TestCase):
+    """Which of the built files is the plane and which the command, whatever the product's name."""
+
+    def holding(
+        self, *commands: str, files: tuple[str, ...] = (), directories: tuple[str, ...] = ()
+    ) -> Path:
+        """A directory of executables named commands, plain files and directories."""
+        directory = Path(tempfile.mkdtemp(prefix="enfb"))
+        self.addCleanup(shutil.rmtree, directory)
+        for name in (*commands, *files):
+            (directory / name).write_bytes(b"")
+            (directory / name).chmod(0o755 if name in commands else 0o644)
+        for name in directories:
+            (directory / name).mkdir()
+        return directory
+
+    def test_the_plane_is_named_gateway_and_the_command_is_the_other(self) -> None:
+        for commands, plane, command in (
+            (("acme-gateway", "acme-control"), "acme-gateway", "acme-control"),
+            (("acme-gateway", "acme-plane"), "acme-gateway", "acme-plane"),
+            (("z-gateway", "a"), "z-gateway", "a"),
+            (("a-gateway", "z"), "a-gateway", "z"),
+        ):
+            with self.subTest(commands=commands):
+                directory = self.holding(*commands)
+                self.assertEqual(
+                    built_commands(directory), (directory / plane, directory / command)
+                )
+
+    def test_what_cannot_be_run_is_no_command(self) -> None:
+        directory = self.holding(
+            "acme-gateway", "acme", files=("notes-gateway", "notes"), directories=("old-gateway",)
+        )
+        self.assertEqual(
+            built_commands(directory), (directory / "acme-gateway", directory / "acme")
+        )
+
+    def test_any_other_holding_is_refused_and_named(self) -> None:
+        for commands, files, said in (
+            ((), (), "the executables none"),
+            (("acme-gateway",), (), "the executables acme-gateway"),
+            (("acme",), (), "the executables acme"),
+            (("acme-gateway",), ("acme",), "the executables acme-gateway"),
+            (
+                ("acme-gateway", "acme", "acme-more"),
+                (),
+                "the executables acme, acme-gateway, acme-more",
+            ),
+            (("acme", "acme-control"), (), "the executables acme, acme-control"),
+            (("a-gateway", "b-gateway"), (), "the executables a-gateway, b-gateway"),
+            (
+                ("a-gateway", "b-gateway", "c"),
+                (),
+                "the executables a-gateway, b-gateway, c",
+            ),
+        ):
+            with self.subTest(commands=commands, files=files):
+                directory = self.holding(*commands, files=files)
+                with self.assertRaises(ValueError) as raised:
+                    built_commands(directory)
+                self.assertEqual(
+                    str(raised.exception),
+                    f"{directory} holds {said}; want two, one of them named *-gateway",
+                )

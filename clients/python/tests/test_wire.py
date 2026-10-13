@@ -644,6 +644,57 @@ class Refused(unittest.TestCase):
             with self.subTest(body=body), self.assertRaisesRegex(WireError, names):
                 _wire.read(message, body)
 
+    def test_a_message_quotes_a_bounded_part_of_what_the_answer_wrote(self) -> None:
+        long = "g" * 100000
+        cut = "g" * 120 + "... (cut from 100000 characters)"
+        for what, body, message in (
+            ("an undeclared member", '{"' + long + '":1}', f"{cut}: no member of AdmitResponse"),
+            (
+                "an undeclared member at depth",
+                '{"execution":{"' + long + '":1}}',
+                f"execution.{cut}: no member of Execution",
+            ),
+            (
+                "a repeated member",
+                '{"' + long + '":1,"' + long + '":2}',
+                f"member '{cut}' is repeated",
+            ),
+            (
+                "an enum name",
+                '{"outcome":"' + long + '"}',
+                f"outcome: '{cut}' is no name of Outcome",
+            ),
+            (
+                "a map key over null",
+                '{"decision":{"obligations":[{"params":{"' + long + '":null}}]}}',
+                f"decision.obligations[0].params.{cut}: null",
+            ),
+            (
+                "a map key over a number",
+                '{"decision":{"obligations":[{"params":{"' + long + '":5}}]}}',
+                f"decision.obligations[0].params.{cut}: not a string",
+            ),
+            (
+                "an enum integer",
+                '{"outcome":' + "9" * 4000 + "}",
+                "outcome: " + "9" * 120 + "... (cut from 4000 characters) is outside int32",
+            ),
+        ):
+            with self.subTest(what=what):
+                with self.assertRaises(WireError) as raised:
+                    admit(body.encode())
+                self.assertEqual(str(raised.exception), message)
+
+    def test_a_message_quotes_whole_what_is_no_longer_than_the_bound(self) -> None:
+        for length, quoted in (
+            (120, "g" * 120),
+            (121, "g" * 120 + "... (cut from 121 characters)"),
+        ):
+            with self.subTest(length=length):
+                with self.assertRaises(WireError) as raised:
+                    admit(('{"' + "g" * length + '":1}').encode())
+                self.assertEqual(str(raised.exception), f"{quoted}: no member of AdmitResponse")
+
     def test_a_member_of_a_kind_the_reader_has_no_rule_for_is_refused(self) -> None:
         table = {
             "M": {

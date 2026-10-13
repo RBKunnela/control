@@ -11,6 +11,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Final
 
 from ._schema import ENUMS, MESSAGES
+from ._types import cut
 
 MAX_ANSWER_BYTES: Final = 262144
 
@@ -52,7 +53,7 @@ def _members(pairs: list[tuple[str, object]]) -> dict[str, object]:
     members: dict[str, object] = {}
     for name, value in pairs:
         if name in members:
-            raise WireError(f"member {name!r} is repeated")
+            raise WireError(f"member {cut(name)!r} is repeated")
         members[name] = value
     return members
 
@@ -102,12 +103,12 @@ def _enum(value: object, at: str, type_name: str) -> str | int:
     short = type_name.rpartition(".")[2]
     if isinstance(value, str):
         if value not in names:
-            raise WireError(f"{at}: {value!r} is no name of {short}")
+            raise WireError(f"{at}: {cut(value)!r} is no name of {short}")
         return value
     if isinstance(value, bool) or not isinstance(value, int):
         raise WireError(f"{at}: neither a name of {short} nor an integer")
     if not _INT32[0] <= value <= _INT32[1]:
-        raise WireError(f"{at}: {value} is outside int32")
+        raise WireError(f"{at}: {cut(str(value))} is outside int32")
     return next((name for name, number in names.items() if number == value), value)
 
 
@@ -181,7 +182,8 @@ def _member(value: object, at: str, declared: tuple[str, str, str]) -> object:
     if not isinstance(value, dict):
         raise WireError(f"{at}: not an object")
     return {
-        _string(key, at): _item(item, f"{at}.{key}", one, type_name) for key, item in value.items()
+        _string(key, at): _item(item, f"{at}.{cut(key)}", one, type_name)
+        for key, item in value.items()
     }
 
 
@@ -202,7 +204,7 @@ def check(message: str, value: object, at: str = "") -> dict[str, object]:
     for name, held in value.items():
         if name not in declared:
             short = message.rpartition(".")[2]
-            raise WireError(f"{at}{name}: no member of {short}")
+            raise WireError(f"{at}{cut(name)}: no member of {short}")
         read[name] = _member(held, at + name, declared[name])
     return read
 

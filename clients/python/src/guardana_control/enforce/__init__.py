@@ -18,6 +18,7 @@ from ._types import (
     NotSent,
     Result,
     Status,
+    ToolRaised,
 )
 
 __all__ = [
@@ -38,4 +39,5 @@ __all__ = [
     "NotSent",
     "Result",
     "Status",
+    "ToolRaised",
 ]

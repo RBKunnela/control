@@ -8,6 +8,7 @@ import gc
 import inspect
 import math
 import threading
+import traceback
 import unittest
 import warnings
 from collections.abc import AsyncIterator, Callable, Iterator
@@ -31,6 +32,7 @@ from guardana_control.enforce import (
     NotSent,
     Result,
     Status,
+    ToolRaised,
 )
 from tests import harness
 from tests.harness import ABORT, ADMIT, COMPLETE, RECORDED, Scripted
@@ -45,6 +47,12 @@ OBLIGED = (
     b'"authorizedArguments":"eyJhIjoxfQ==","obligations":[{"type":"x"}]}}'
 )
 ABORT_NOT_SENT = {"handle": "h-1", "cause": "ABORT_CAUSE_NOT_SENT"}
+INNER_EXECUTE = (
+    b'{"outcome":"OUTCOME_EXECUTE","execution":{"handle":"h-2",'
+    b'"authorizedArguments":"eyJhIjoxfQ=="}}'
+)
+INNER_BLOCK = b'{"outcome":"OUTCOME_BLOCK","decision":{"verdict":"VERDICT_DENY"}}'
+INNER_PENDING = b'{"outcome":"OUTCOME_PENDING","pending":{"approvalId":"ap-1"}}'
 PLUS_TWO = timezone(timedelta(hours=2))
 
 
@@ -267,6 +275,7 @@ class Construction(unittest.TestCase):
             "NotSent",
             "Result",
             "Status",
+            "ToolRaised",
         ]
         self.assertEqual(sorted(enforce.__all__), names)
         self.assertEqual(sorted(n for n in vars(enforce) if not n.startswith("_")), names)
@@ -291,6 +300,7 @@ class Construction(unittest.TestCase):
             NotRecorded,
             NoAnswer,
             BadResult,
+            ToolRaised,
         )
         for error in raised:
             self.assertTrue(issubclass(error, EnforceError), error)
@@ -459,6 +469,33 @@ class Returning(Rules):
             refused.answer.result, Result(Status.SUCCESS, None, harness.BEFORE, harness.AFTER)
         )
         self.assertEqual(len(self.sent()), 2)
+
+    def test_a_long_refusal_keeps_its_message_and_quotes_a_bounded_part(self) -> None:
+        written = b'{"code":"ERROR_CODE_UNAVAILABLE","message":"' + b"m" * 100000 + b'"}'
+        client = self.serve(admit(written, 503))
+        with self.assertRaises(CallRefused) as raised:
+            client.call("t", ARGUMENTS, self.untouched)
+        refused = raised.exception
+        self.assertEqual(refused.message, "m" * 100000)
+        quoted = "503 ERROR_CODE_UNAVAILABLE: '" + "m" * 120 + "... (cut from 100000 characters)'"
+        self.assertEqual(str(refused), "the receiver refused the request: " + quoted)
+        self.assertEqual(str(refused.__cause__), quoted)
+        self.assertLess(len("".join(traceback.format_exception(refused))), 10000)
+
+    def test_a_long_malformed_answer_is_quoted_in_a_bounded_part(self) -> None:
+        cut = "g" * 120 + "... (cut from 100000 characters)"
+        for status, said in (
+            (200, f"{cut}: no member of AdmitResponse"),
+            (500, f"status 500 with no readable error body: {cut}: no member of Error"),
+        ):
+            with self.subTest(status=status):
+                client = self.serve(admit(b'{"' + b"g" * 100000 + b'":1}', status))
+                with self.assertRaises(MalformedAnswer) as raised:
+                    client.call("t", ARGUMENTS, self.untouched)
+                self.assertEqual(
+                    str(raised.exception), "the receiver's answer is malformed: " + said
+                )
+                self.assertLess(len("".join(traceback.format_exception(raised.exception))), 10000)
 
     def test_a_refusal_with_no_code_or_an_undeclared_one(self) -> None:
         for written, code in ((b"{}", ""), (b'{"code":0}', ""), (b'{"code":42}', "42")):
@@ -1234,3 +1271,106 @@ class Running(Rules):
             thread.join()
         self.assertEqual(problems, [])
         self.assertEqual(len(receiver.requests()), 48)
+
+
+def dialling(_authorized: bytes) -> Result:
+    raise NotSent("dialling")
+
+
+class Nested(Rules):
+    """A tool that makes a governed call of its own, and what then leaves the outer call."""
+
+    inner_admitted = (ADMIT, {"tool": "inner", "arguments": "eyJhIjoxfQ=="})
+    inner_aborted = (ABORT, {"handle": "h-2", "cause": "ABORT_CAUSE_NOT_SENT"})
+    # The inner tool is entered after the outer one, so the clock reads the later time twice.
+    inner_completed = (
+        COMPLETE,
+        {
+            "handle": "h-2",
+            "sentArguments": "eyJhIjoxfQ==",
+            "status": "COMPLETION_STATUS_UNKNOWN",
+            "startedAt": harness.AFTER_TEXT,
+            "endedAt": harness.AFTER_TEXT,
+        },
+    )
+
+    def calling(
+        self, client: Client, inner: Callable[[bytes], Result | None]
+    ) -> Callable[[bytes], Result | None]:
+        """A tool that is entered and then calls inner through the same client."""
+
+        def tool(_authorized: bytes) -> Result:
+            self.entered = True
+            client.call("inner", ARGUMENTS, inner)
+            return Result(Status.SUCCESS)
+
+        return tool
+
+    def test_an_exception_of_a_call_the_tool_made_leaves_as_the_outer_calls_own(self) -> None:
+        for name, script, inner, cause, inner_ran, between in (
+            ("blocked", (admit(INNER_BLOCK),), None, CallBlocked, False, ()),
+            ("pending", (admit(INNER_PENDING),), None, CallPending, False, ()),
+            (
+                "aborted as not sent",
+                (admit(INNER_EXECUTE), abort()),
+                dialling,
+                CallAborted,
+                False,
+                (self.inner_aborted,),
+            ),
+            (
+                "a wrong return",
+                (admit(INNER_EXECUTE), complete()),
+                returning({"a": 1}),
+                BadResult,
+                True,
+                (self.inner_completed,),
+            ),
+        ):
+            with self.subTest(inner=name):
+                client = self.serve(admit(EXECUTE), *script, complete())
+                reached: list[bytes] = []
+                with self.assertRaises(EnforceError) as raised:
+                    client.call("t", ARGUMENTS, self.calling(client, inner or reached.append))
+                left, made = raised.exception, raised.exception.__cause__
+                self.assertIs(type(left), ToolRaised)
+                self.assertEqual(left.answer, self.ran_unreported)
+                if not isinstance(made, EnforceError):
+                    self.fail(f"the outer call's exception was raised from {made!r}")
+                self.assertIs(type(made), cause)
+                self.assertEqual(made.answer.ran, inner_ran)
+                self.assertEqual((self.entered, reached), (True, []))
+                self.assertEqual(
+                    self.sent(),
+                    [
+                        self.admitted,
+                        self.inner_admitted,
+                        *between,
+                        self.completed("COMPLETION_STATUS_UNKNOWN"),
+                    ],
+                )
+
+    def test_an_outer_complete_that_did_not_land_is_raised_from_the_outer_calls_own(self) -> None:
+        client = self.serve(
+            admit(EXECUTE),
+            admit(INNER_BLOCK),
+            complete(b'{"ending":"ENDING_RECORD_FAILED"}'),
+            complete(),
+        )
+        reached: list[bytes] = []
+        with self.assertRaises(NotRecorded) as raised:
+            client.call("t", ARGUMENTS, self.calling(client, reached.append))
+        failure, own = raised.exception, raised.exception.__cause__
+        if not isinstance(own, EnforceError):
+            self.fail(f"the failure was raised from {own!r}")
+        self.assertIs(type(own), ToolRaised)
+        for carried in (failure.answer, own.answer):
+            self.assertEqual(
+                (carried.ran, carried.result, carried.ending), (True, None, "ENDING_RECORD_FAILED")
+            )
+        self.assertIs(type(own.__cause__), CallBlocked)
+        self.assertEqual(reached, [])
+        self.assertEqual(
+            self.sent(),
+            [self.admitted, self.inner_admitted, self.completed("COMPLETION_STATUS_UNKNOWN")],
+        )

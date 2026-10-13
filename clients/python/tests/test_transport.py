@@ -10,6 +10,7 @@ from collections.abc import Callable
 from guardana_control.enforce import (
     CallAborted,
     Client,
+    EnforceError,
     MalformedAnswer,
     NoAnswer,
     Result,
@@ -297,6 +298,92 @@ class Transport(unittest.TestCase):
                     client.call("t", ARGUMENTS, self.tool)
                 self.assertEqual((raised.exception.answer.ran, self.ran), (False, []))
                 self.assertEqual(len(self.receiver.requests), 1)
+
+    def test_a_framing_a_stricter_reader_refuses_is_no_answer(self) -> None:
+        """Each answer holds the whole body, so a looser reading of its framing runs the tool."""
+        self.assertEqual(len(EXECUTE), 95)
+        ok = b"HTTP/1.1 200 OK\r\n"
+        length = b"Content-Length: 95\r\n\r\n" + EXECUTE
+        chunk = b"5f\r\n" + EXECUTE + b"\r\n0\r\n\r\n"
+        for name, answer in (
+            ("a length after a vertical tab", ok + b"Content-Length:\x0b95\r\n\r\n" + EXECUTE),
+            ("a length before a form feed", ok + b"Content-Length: 95\x0c\r\n\r\n" + EXECUTE),
+            ("a length after a no-break space", ok + b"Content-Length: \xa095\r\n\r\n" + EXECUTE),
+            ("a length before a no-break space", ok + b"Content-Length: 95\xa0\r\n\r\n" + EXECUTE),
+            (
+                "another coding before chunked",
+                ok + b"Transfer-Encoding: gzip, chunked\r\n\r\n" + chunk,
+            ),
+            (
+                "a coding that only holds the word",
+                ok + b"Transfer-Encoding: xchunkedx\r\n\r\n" + chunk,
+            ),
+            ("identity beside a length", ok + b"Transfer-Encoding: identity\r\n" + length),
+            (
+                "chunked and then another coding",
+                ok + b"Transfer-Encoding: chunked\r\nTransfer-Encoding: identity\r\n\r\n" + chunk,
+            ),
+            (
+                "chunked twice",
+                ok + b"Transfer-Encoding: chunked\r\nTransfer-Encoding: chunked\r\n\r\n" + chunk,
+            ),
+            ("a chunk size after a space", CHUNKED + b" 5f\r\n" + EXECUTE + b"\r\n0\r\n\r\n"),
+            (
+                "a chunk size after a vertical tab",
+                CHUNKED + b"\x0b5f\r\n" + EXECUTE + b"\r\n0\r\n\r\n",
+            ),
+            (
+                "a chunk size before a vertical tab",
+                CHUNKED + b"5f\x0b\r\n" + EXECUTE + b"\r\n0\r\n\r\n",
+            ),
+            (
+                "a space before a chunk extension",
+                CHUNKED + b"5f ;x\r\n" + EXECUTE + b"\r\n0\r\n\r\n",
+            ),
+            ("a NUL in a header value", ok + b"X-A: a\x00b\r\n" + length),
+            ("a bare CR in a header value", ok + b"X-A: a\rContent-Length: 2\r\n" + length),
+            ("a bare LF in a header value", ok + b"X-A: a\nContent-Length: 2\r\n" + length),
+            ("a unit separator in a header value", ok + b"X-A: a\x1fb\r\n" + length),
+            ("a DEL in a header value", ok + b"X-A: a\x7fb\r\n" + length),
+            ("a 204 with a body", b"HTTP/1.1 204 No Content\r\n" + length),
+            ("a 304 with a body", b"HTTP/1.1 304 Not Modified\r\n" + length),
+            ("a 100 before the answer", b"HTTP/1.1 100 Continue\r\n\r\n" + ok + length),
+            ("a 103 before the answer", b"HTTP/1.1 103 Early Hints\r\n\r\n" + ok + length),
+            ("a 199 with a body", b"HTTP/1.1 199 Odd\r\n" + length),
+        ):
+            with self.subTest(answer=name):
+                client = self.raw(writing(answer, http_answer(200, RECORDED)))
+                with self.assertRaises(EnforceError) as raised:
+                    client.call("t", ARGUMENTS, self.tool)
+                self.assertIs(type(raised.exception), NoAnswer, raised.exception)
+                self.assertEqual((raised.exception.answer.ran, self.ran), (False, []))
+                self.assertEqual(len(self.receiver.requests), 1)
+
+    def test_the_framings_a_receiver_may_write_are_still_read(self) -> None:
+        ok = b"HTTP/1.1 200 OK\r\n"
+        chunk = b"5f\r\n" + EXECUTE + b"\r\n0\r\n\r\n"
+        for name, answer in (
+            ("a length", ok + b"Content-Length: 95\r\n\r\n" + EXECUTE),
+            ("chunked", ok + b"Transfer-Encoding: chunked\r\n\r\n" + chunk),
+            ("chunked in another case", ok + b"Transfer-Encoding: Chunked\r\n\r\n" + chunk),
+            (
+                "a length padded with spaces and tabs",
+                ok + b"Content-Length: \t 95\t \r\n\r\n" + EXECUTE,
+            ),
+            (
+                "chunked padded with spaces and tabs",
+                ok + b"Transfer-Encoding:\t chunked \t\r\n\r\n" + chunk,
+            ),
+            ("a tab in a header value", ok + b"X-A: a\tb\r\nContent-Length: 95\r\n\r\n" + EXECUTE),
+            (
+                "a chunk size before a space and a tab",
+                CHUNKED + b"5f \t\r\n" + EXECUTE + b"\r\n0\r\n\r\n",
+            ),
+        ):
+            with self.subTest(answer=name):
+                client = self.raw(writing(answer, http_answer(200, RECORDED)))
+                self.assertEqual(client.call("t", ARGUMENTS, self.tool).ending, "ENDING_RECORDED")
+                self.assertEqual(self.ran, [ARGUMENTS])
 
     def test_a_long_head_and_a_long_chunk_line_within_their_bounds_are_read(self) -> None:
         for name, answer in (

@@ -10,9 +10,12 @@ from typing import Final
 _HEAD_LIMIT: Final = 65536
 _CHUNK_LINE_LIMIT: Final = 256
 _LONGEST_WAIT: Final = 1e9
+_FIRST_FINAL_STATUS: Final = 200
+_NO_BODY: Final = (204, 304)
 _STATUS = re.compile(rb"HTTP/1\.[01] ([0-9]{3})(?: .*)?")
 _NUMBER = re.compile(rb"[0-9]{1,18}")
 _CHUNK_SIZE = re.compile(rb"[0-9A-Fa-f]{1,15}")
+_CONTROL = re.compile(rb"[\x00-\x08\x0a-\x1f\x7f]")
 
 
 class TransportError(Exception):
@@ -77,11 +80,15 @@ def _headers(stream: _Stream) -> dict[str, str]:
     left = _HEAD_LIMIT
     while line := stream.line(left):
         left -= len(line) + 2
+        if _CONTROL.search(line):
+            raise ValueError("a control byte in a header line")
         name, colon, value = line.partition(b":")
         key = name.decode("latin-1").lower()
         if not colon or key != key.strip() or not key:
             raise ValueError("a header line without a name")
-        text = value.decode("latin-1").strip()
+        text = value.decode("latin-1").strip(" \t")
+        if key == "transfer-encoding" and key in headers:
+            raise ValueError("two transfer codings for one answer")
         if headers.setdefault(key, text) != text and key == "content-length":
             raise ValueError("two lengths for one answer")
     return headers
@@ -90,7 +97,7 @@ def _headers(stream: _Stream) -> dict[str, str]:
 def _chunked(stream: _Stream, limit: int) -> bytes:
     body = bytearray()
     while len(body) < limit:
-        size_text = stream.line(_CHUNK_LINE_LIMIT).partition(b";")[0].strip()
+        size_text = stream.line(_CHUNK_LINE_LIMIT).rstrip(b" \t").partition(b";")[0]
         if not _CHUNK_SIZE.fullmatch(size_text):
             raise ValueError("a chunk without a size")
         size = int(size_text, 16)
@@ -107,15 +114,21 @@ def _answer(stream: _Stream, limit: int) -> tuple[int, bytes]:
     status = _STATUS.fullmatch(stream.line(_HEAD_LIMIT))
     if status is None:
         raise ValueError("no HTTP/1 status line")
+    code = int(status.group(1))
+    if code < _FIRST_FINAL_STATUS or code in _NO_BODY:
+        raise ValueError(f"status {code} carries no answer")
     headers = _headers(stream)
-    if "chunked" in headers.get("transfer-encoding", "").lower():
-        return int(status.group(1)), _chunked(stream, limit)
+    coding = headers.get("transfer-encoding")
+    if coding is not None:
+        if coding.lower() != "chunked":
+            raise ValueError("a transfer coding other than chunked")
+        return code, _chunked(stream, limit)
     length = headers.get("content-length")
     if length is None:
-        return int(status.group(1)), stream.rest(limit)
+        return code, stream.rest(limit)
     if not _NUMBER.fullmatch(length.encode("latin-1")):
         raise ValueError("a length that is no number")
-    return int(status.group(1)), stream.exactly(min(int(length), limit))
+    return code, stream.exactly(min(int(length), limit))
 
 
 class Transport:
@@ -130,7 +143,9 @@ class Transport:
         """The status of the answer and at most limit bytes of its body.
 
         A redirect is an answer like any other: nothing is followed, since
-        following one would present the run token somewhere else.
+        following one would present the run token somewhere else. A framing
+        that readers of HTTP do not agree on is no answer, and neither is a
+        status that comes before the answer or cannot carry a body.
         """
         deadline = time.monotonic() + self._timeout
         head = (

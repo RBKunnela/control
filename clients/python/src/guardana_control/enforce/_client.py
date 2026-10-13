@@ -32,6 +32,7 @@ from ._types import (
     NotSent,
     Result,
     Status,
+    ToolRaised,
 )
 from ._wire import WireError
 
@@ -162,10 +163,16 @@ def _leaving(ran: _Run, raised: BaseException | None, answer: Answer) -> BaseExc
     """What leaves a call whose tool was entered, or None.
 
     An interrupt comes before the tool's own exception, and that before a
-    BadResult for what the tool returned.
+    BadResult for what the tool returned. An exception of this module carries
+    the answer of the call that raised it, so one the tool raised leaves as a
+    ToolRaised with this call's.
     """
     if raised is not None and not isinstance(raised, Exception):
         return raised
+    if isinstance(ran.fault, EnforceError):
+        own = ToolRaised(f"the tool ran and raised {type(ran.fault).__name__}", answer)
+        own.__cause__ = ran.fault
+        return own
     if ran.fault is not None:
         return ran.fault
     if raised is None and not ran.problem:
@@ -234,8 +241,9 @@ class Client:
         run gets exactly the authorized bytes, which differ from arguments
         when a rule rewrote them. It raises NotSent only when it knows the
         bytes never left; any other exception is reported as UNKNOWN and
-        raised again. A return that is neither a Result nor None, or a Result
-        that cannot be reported, is reported as UNKNOWN and raises BadResult.
+        raised again, one of this module's as the cause of a ToolRaised. A
+        return that is neither a Result nor None, or a Result that cannot be
+        reported, is reported as UNKNOWN and raises BadResult.
         gone is read before admit and before the tool, and anything but False
         ends the call there.
 

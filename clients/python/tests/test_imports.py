@@ -46,17 +46,54 @@ PUBLIC = {
 }
 
 
+# The standard library's modules the list does not hold.
+UNLISTED = set(sys.stdlib_module_names) - ALLOWED
+# Names that load or build code, and the two refused as an attribute of anything.
+LOADERS = {"__import__", "importlib", "eval", "exec", "compile"}
+LOADERS_ANYWHERE = {"__import__", "importlib"}
+
+
+def _reached(node: ast.Attribute, bound: set[str]) -> set[str]:
+    """The chain node ends, as written, when it reaches a module the list does not hold."""
+    names = [node.attr]
+    value = node.value
+    while isinstance(value, ast.Attribute):
+        names.append(value.attr)
+        value = value.value
+    start = value.id if isinstance(value, ast.Name) else ""
+    if node.attr in LOADERS_ANYWHERE or (start in bound and node.attr in UNLISTED):
+        return {".".join([start, *reversed(names)]) if start else node.attr}
+    return set()
+
+
 def imports_of(source: str) -> tuple[set[str], set[str]]:
-    """The top-level modules source imports absolutely, and the ways it imports by other means."""
+    """The top-level modules source imports absolutely, and each other way it reaches a module.
+
+    Only what is written is read: an import, a name that loads or builds
+    code, a module taken from another by a from-import, and an attribute
+    chain that starts at a name an import bound. A module reached through
+    getattr, vars, a __dict__ or __builtins__, or under a name an assignment
+    gave it, is not seen.
+    """
+    tree = ast.parse(source)
     modules: set[str] = set()
     other: set[str] = set()
-    for node in ast.walk(ast.parse(source)):
+    bound: set[str] = set()
+    for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             modules |= {alias.name.split(".")[0] for alias in node.names}
-        elif isinstance(node, ast.ImportFrom) and node.level == 0:
-            modules.add((node.module or "").split(".")[0])
-        elif isinstance(node, ast.Name) and node.id in ("__import__", "importlib", "exec", "eval"):
+            bound |= {alias.asname or alias.name.split(".")[0] for alias in node.names}
+        elif isinstance(node, ast.ImportFrom):
+            if node.level == 0:
+                modules.add((node.module or "").split(".")[0])
+            origin = "." * node.level + (node.module or "")
+            bound |= {alias.asname or alias.name for alias in node.names}
+            other |= {f"{origin}.{alias.name}" for alias in node.names if alias.name in UNLISTED}
+        elif isinstance(node, ast.Name) and node.id in LOADERS:
             other.add(node.id)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Attribute):
+            other |= _reached(node, bound)
     return modules, other
 
 
@@ -86,6 +123,43 @@ class Imports(unittest.TestCase):
             "    return __import__('yaml')\n"
         )
         self.assertEqual(imports_of(source), ({"os", "json", "urllib", "requests"}, {"__import__"}))
+
+    def test_the_reading_sees_a_module_reached_without_an_import_of_it(self) -> None:
+        for source, ways in (
+            ("import inspect\ninspect.importlib.import_module('os')\n", {"inspect.importlib"}),
+            ("import socket\nsocket.os.system('id')\n", {"socket.os"}),
+            ("import socket as s\ns.os.system('id')\n", {"s.os"}),
+            ("import inspect\ninspect.types.sys.modules['os']\n", {"inspect.types.sys"}),
+            ("from . import _wire\n_wire.json.os.getcwd()\n", {"_wire.json.os"}),
+            ("from socket import os\n", {"socket.os"}),
+            ("from inspect import importlib as loader\n", {"inspect.importlib"}),
+            ("from ._transport import os\n", {"._transport.os"}),
+            ("__import__('os')\n", {"__import__"}),
+            ("def f(x):\n    return x.__import__('os')\n", {"x.__import__"}),
+            ("importlib.import_module('os')\n", {"importlib"}),
+            ("def f(x):\n    return x().importlib\n", {"importlib"}),
+            ("eval('1')\n", {"eval"}),
+            ("exec('x = 1')\n", {"exec"}),
+            ("compile('1', 'f', 'eval')\n", {"compile"}),
+            ("def late():\n    return socket.os\nimport socket\n", {"socket.os"}),
+        ):
+            with self.subTest(source=source):
+                self.assertEqual(imports_of(source)[1], ways)
+
+    def test_the_reading_passes_what_reaches_no_other_module(self) -> None:
+        source = (
+            "import re, socket, inspect\n"
+            "from datetime import datetime\n"
+            "from . import _ops\n"
+            "pattern = re.compile('a')\n"
+            "sock = socket.socket(socket.AF_UNIX)\n"
+            "now = datetime.now()\n"
+            "proxy = inspect.types.MappingProxyType\n"
+            "done = _ops.complete\n"
+            "def f(exc):\n"
+            "    return exc.code, exc.os, exc.sys.modules\n"
+        )
+        self.assertEqual(imports_of(source), ({"re", "socket", "inspect", "datetime"}, set()))
 
     def test_every_allowed_module_is_of_the_standard_library(self) -> None:
         self.assertEqual(ALLOWED - set(sys.stdlib_module_names), set())
