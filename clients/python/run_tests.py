@@ -46,7 +46,9 @@ def required_tests() -> list[str]:
     cases = [c["id"] for c in listed if c["side"] == "client"]
     vectors = [
         json.loads(line)["id"]
-        for line in (TESTDATA / "answers" / "vectors.jsonl").read_text(encoding="utf-8").splitlines()
+        for line in (TESTDATA / "answers" / "vectors.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
         if line.strip()
     ]
     if not cases or not vectors:
@@ -67,7 +69,8 @@ def main() -> int:
     suite = unittest.defaultTestLoader.discover(str(HERE / "tests"), top_level_dir=str(HERE))
     runner = unittest.TextTestRunner(resultclass=_Recording, verbosity=1)
     result = runner.run(suite)
-    assert isinstance(result, _Recording)
+    if not isinstance(result, _Recording):
+        raise SystemExit("run_tests: the runner did not use the recording result")
 
     problems = []
     if result.testsRun == 0:
@@ -80,13 +83,16 @@ def main() -> int:
         problems.append(f"{len(result.failures)} failure(s), {len(result.errors)} error(s)")
     missing = [name for name in required_tests() if name not in result.started]
     if missing:
-        problems.append(f"{len(missing)} case or vector test(s) did not run, the first: {missing[0]}")
+        problems.append(
+            f"{len(missing)} case or vector test(s) did not run, the first: {missing[0]}"
+        )
 
     version = platform.python_version()
     if problems:
         print(f"run_tests: python {version}: " + "; ".join(problems), file=sys.stderr)
         return 1
-    print(f"run_tests: python {version}: {result.testsRun} tests, 0 skipped, every case and vector ran")
+    ran = f"{result.testsRun} tests, 0 skipped, every case and vector ran"
+    print(f"run_tests: python {version}: {ran}")
     return 0
 
 

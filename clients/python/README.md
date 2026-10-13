@@ -14,14 +14,20 @@ pip install guardana-control
 
 ```python
 from guardana_control.enforce import (
-    CallBlocked, CallPending, Client, Result, Status,
+    CallBlocked,
+    CallPending,
+    Client,
+    Result,
+    Status,
 )
 
 client = Client(socket="/run/guardana/enforce.sock", token=run_token, timeout=5.0)
 
+
 def refund(authorized: bytes) -> Result:
     receipt = payments.refund(authorized)  # send exactly these bytes
     return Result(Status.SUCCESS, value=receipt)
+
 
 try:
     answer = client.call("refund", b'{"order_id":"ord-1"}', refund)
