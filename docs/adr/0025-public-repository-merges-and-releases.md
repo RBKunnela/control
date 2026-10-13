@@ -25,6 +25,10 @@ under its plain number, such as `v1.0.0-rc.1`. Once a plain release exists,
 `go install ...@latest` and GitHub's latest release skip any later
 pre-release, so a preview is installed by naming it.
 
+Amended by [ADR-0052](0052-a-change-is-gated-on-its-pull-request.md): the
+admin's changes arrive by pull request as well, merged once the checks pass,
+and only a release commit is pushed to `main` directly.
+
 ## Context
 
 ADR-0008 set the rules before the repository existed. Every change would reach

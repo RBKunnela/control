@@ -128,6 +128,9 @@ GitHub. A suffix is kept for a preview of a version that will be released
 under its plain number, such as <code>v1.0.0-rc.1</code>. Once a plain release exists,
 <code>go install ...@latest</code> and GitHub's latest release skip any later
 pre-release, so a preview is installed by naming it.</p>
+<p>Amended by <a href="/docs/adr/0052-a-change-is-gated-on-its-pull-request">ADR-0052</a>: the
+admin's changes arrive by pull request as well, merged once the checks pass,
+and only a release commit is pushed to <code>main</code> directly.</p>
 <h2 id="context">Context</h2>
 <p>ADR-0008 set the rules before the repository existed. Every change would reach
 <code>main</code> through a pull request with one approving review, code-owner review on

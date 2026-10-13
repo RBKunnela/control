@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# A git pre-push hook: refuses a push unless every commit it would send has a
-# green stamp from scripts/gate-commit.sh, which ran the whole gate on that
-# commit's own archive. CI runs the same gate after the push; this makes a red
-# run there a surprise about the platform, never about a commit nobody gated.
+# A git pre-push hook: refuses a push to main unless every commit it would
+# send has a green stamp from scripts/gate-commit.sh, which ran the whole gate
+# on that commit's own archive. A push to any other ref needs no stamp: what
+# it sends reaches main only through a pull request, whose checks run the gate.
+# The destination decides, so a branch pushed under the name main is a push to
+# main.
 #
 # A commit counts as sent unless the destination remote already holds it: on
 # an existing branch, what lies past the remote's tip; on a new one, what no
@@ -37,11 +39,18 @@ green() {
 }
 missing=0
 checked=0
+to_main=0
 
 # git hands the hook one line per ref: <local ref> <local sha> <remote ref> <remote sha>.
-while read -r local_ref local_sha _ remote_sha; do
+while read -r local_ref local_sha remote_ref remote_sha; do
   [[ -n "${local_ref}" ]] || continue
+  if [[ -z "${remote_ref}" || -z "${remote_sha}" ]]; then
+    printf 'pre-push: a line that names no destination ref and commit: %q; nothing pushed\n' "${local_ref} ${local_sha}" >&2
+    exit 1
+  fi
+  [[ "${remote_ref}" == "refs/heads/main" ]] || continue
   [[ "${local_sha}" != "${zero}" ]] || continue # a deletion sends no commit
+  to_main=1
   if [[ "${remote_sha}" == "${zero}" ]]; then
     range=("${local_sha}" --not "--remotes=${remote}")
   else
@@ -66,6 +75,10 @@ while read -r local_ref local_sha _ remote_sha; do
   done <<<"${sent}"
 done
 
+if [[ ${to_main} -eq 0 ]]; then
+  printf 'pre-push: nothing sent to main; no stamp required\n' >&2
+  exit 0
+fi
 if [[ ${missing} -ne 0 ]]; then
   printf 'pre-push: %d of %d commit(s) ungated; nothing pushed\n' "${missing}" "${checked}" >&2
   exit 1

@@ -129,7 +129,7 @@ GO_SRC := . $(REPO_FILES); repo_files '*.go' | { grep -v '^api/gen/' || true; }
         proto proto-check proto-breaking docs-check docs-gen docs-impact tidy-check check-brand \
         release-snapshot check-demo-archive scan-binaries scan-binaries-probe \
         check-imports check-imports-probe check-modules-probe check-sizes check-actions \
-        check-shell quality-quick quality
+        check-shell pre-push-probe quality-quick quality
 
 bootstrap:
 	$(CD) scripts/bootstrap.sh
@@ -328,6 +328,11 @@ check-imports-probe:
 check-modules-probe:
 	$(CD) scripts/check-modules-probe.sh
 
+# The negative control of the pre-push hook: a throwaway repository in which
+# the hook must refuse an ungated commit sent to main and pass a branch push.
+pre-push-probe:
+	$(CD) scripts/pre-push-probe.sh
+
 # go.mod and go.sum exactly as `go mod tidy` would write them, so a module a
 # change starts importing, or stops needing, shows up here and not in review.
 # The pass line is part of the command it reports on, so a recipe that ignored
@@ -359,5 +364,5 @@ quality:
 	@MAKEFLAGS= GNUMAKEFLAGS= MFLAGS= $(MAKE) --no-print-directory -f "$$REPO_ROOT/$(notdir $(firstword $(MAKEFILE_LIST)))" \
 	  fmt-check vet lint test test-race fuzz-smoke security proto-check \
 	  docs-check tidy-check check-imports check-imports-probe check-modules-probe check-brand \
-	  check-sizes check-actions check-shell scan-binaries-probe
+	  check-sizes check-actions check-shell scan-binaries-probe pre-push-probe
 	@echo "quality: green"

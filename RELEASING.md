@@ -1,7 +1,9 @@
 # Releasing
 
 `.github/workflows/release.yml` builds, signs and publishes every release;
-no asset is uploaded from a laptop.
+no asset is uploaded from a laptop. Until 1.0 a release follows every one to
+three changes; from 1.0 one is cut every Monday, and an urgent fix gets its
+own ([ADR-0052](docs/adr/0052-a-change-is-gated-on-its-pull-request.md)).
 
 ## Cutting a release
 
@@ -15,7 +17,8 @@ no asset is uploaded from a laptop.
 3. Add the dated `## [X.Y.Z] - YYYY-MM-DD` section to `CHANGELOG.md`.
    `scripts/release-notes.sh vX.Y.Z` prints it; the workflow publishes it
    and refuses missing, undated or empty notes.
-4. Commit on `main`; wait for CI and Security to finish green.
+4. Commit, gate the commit cold with `scripts/gate-commit.sh`, push it to
+   `main`, and wait for CI and Security to finish green.
 5. Tag the commit and push:
 
    ```sh

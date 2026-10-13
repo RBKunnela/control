@@ -115,6 +115,8 @@ repository admin pushes to <code>main</code> directly, only the maintain role me
 a release is an immutable tag that CI builds, signs and attests. The sentences
 below about a repository that does not exist describe the state before it was
 published.</p>
+<p>Amended by <a href="/docs/adr/0052-a-change-is-gated-on-its-pull-request">ADR-0052</a>: a change
+is gated by CI on its pull request, and releases keep a rhythm.</p>
 <h2 id="context">Context</h2>
 <p>This repository carries authorization logic. What lands on <code>main</code> and what ships
 in a release both have to be provable later by someone who was not in the room.

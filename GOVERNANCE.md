@@ -51,9 +51,10 @@ the two happened is written in the pull request, and a change that has not met
 it does not merge. A dependency update to the workflows is the exception: the
 admin merges it once its checks pass, and says so in the pull request.
 
-The repository admin can push to `main` directly
-([ADR-0025](docs/adr/0025-public-repository-merges-and-releases.md)); such a
-change has no second reviewer, and CI runs the same gate on it.
+The repository admin merges their own pull requests once checks pass, with
+no second reviewer, and pushes only a release commit directly
+([ADR-0025](docs/adr/0025-public-repository-merges-and-releases.md),
+[ADR-0052](docs/adr/0052-a-change-is-gated-on-its-pull-request.md)).
 
 ## Roles on GitHub
 

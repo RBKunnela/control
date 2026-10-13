@@ -9,6 +9,9 @@ a release is an immutable tag that CI builds, signs and attests. The sentences
 below about a repository that does not exist describe the state before it was
 published.
 
+Amended by [ADR-0052](0052-a-change-is-gated-on-its-pull-request.md): a change
+is gated by CI on its pull request, and releases keep a rhythm.
+
 ## Context
 
 This repository carries authorization logic. What lands on `main` and what ships
