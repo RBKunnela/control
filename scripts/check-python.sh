@@ -9,9 +9,11 @@
 # managed interpreters only, the lock enforced and no interpreter download, so
 # the caller's environment, a user's uv.toml or a system Python cannot change
 # what is examined. A missing uv, interpreter or locked tool fails; nothing is
-# skipped. Virtual environments, caches and built files go to a scratch
-# directory: nothing is written into the tree, and no bytecode the tree
-# already holds is read, so the sources of the commit are what runs.
+# skipped. Virtual environments, bytecode and built files go to a scratch
+# directory (uv's download cache stays in the user's home): nothing is written
+# into the tree. A project file or a lock above the project, a nested tool
+# configuration and any bytecode in the project are refused, since uv, the
+# linter or Python would obey or run them in place of what the commit holds.
 #
 #   scripts/check-python.sh
 set -euo pipefail
@@ -36,6 +38,25 @@ done
 floor="${CLIENT_PYTHON_FLOOR_VERSION}"
 newer="${CLIENT_PYTHON_VERSION}"
 [[ "${floor}" != "${newer}" ]] || die "the two interpreter pins are one version: ${floor}"
+
+# A project file, a lock or a uv configuration above the project makes it a
+# member of that workspace, whose lock uv then reads in place of the one
+# beside the project.
+for above in pyproject.toml uv.lock uv.toml clients/pyproject.toml clients/uv.lock clients/uv.toml; do
+  [[ ! -e "${root}/${above}" && ! -L "${root}/${above}" ]] ||
+    die "${above} would stand in for the client's own project file and lock; remove it"
+done
+# Inside the project, outside its dot-directories, nothing may reconfigure a
+# tool or stand in for a source: Python runs bytecode that has no source
+# beside it, and loads a path file or a start-up hook it finds.
+strays="$(cd "${project}" && find . -mindepth 1 -name '.*' -prune -o \( \
+  -name __pycache__ -o -name '*.pyc' -o -name '*.pyo' -o -name '*.pth' \
+  -o -name sitecustomize.py -o -name usercustomize.py \
+  -o -name ruff.toml -o -name mypy.ini -o -name setup.cfg -o -name tox.ini -o -name uv.toml \
+  -o \( -name pyproject.toml ! -path ./pyproject.toml \) -o \( -name uv.lock ! -path ./uv.lock \) \
+  \) -print)" || die "listing ${project} failed"
+[[ -z "${strays}" ]] ||
+  die "clients/python holds what a check would obey or run in place of the sources; remove: ${strays//$'\n'/ }"
 
 command -v go >/dev/null 2>&1 || die "go is not on PATH"
 command -v uv >/dev/null 2>&1 || die "uv is not on PATH; make bootstrap installs it"
@@ -69,20 +90,33 @@ isolated=(-I -B -X "pycache_prefix=${work}/pycache")
 
 for version in "${floor}" "${newer}"; do
   venv="${work}/venv-${version}"
+  # --no-build: a locked tool comes as a wheel or not at all, since building
+  # one would run a build backend nothing here pins.
   "${clean[@]}" "UV_PROJECT_ENVIRONMENT=${venv}" uv sync --quiet --project "${project}" \
-    --python "${version}" --locked --no-install-project --group dev ||
+    --python "${version}" --locked --no-build --no-install-project --group dev ||
     die "python ${version}: the locked tools could not be installed; is the interpreter there (make bootstrap)?"
   ran="$("${clean[@]}" "${venv}/bin/python" "${isolated[@]}" -c 'import platform; print(platform.python_version())')" ||
     die "python ${version}: the interpreter does not run"
   [[ "${ran}" == "${version}" ]] || die "python ${version}: the environment runs ${ran}"
-  "${clean[@]}" "${venv}/bin/python" "${isolated[@]}" "${project}/run_tests.py" --bin "${work}/bin" ||
-    die "python ${version}: the tests failed"
+  log="${work}/tests-${version}.log"
+  "${clean[@]}" "${venv}/bin/python" "${isolated[@]}" "${project}/run_tests.py" --bin "${work}/bin" 2>&1 |
+    tee "${log}" || die "python ${version}: the tests failed"
+  # An exit status of 0 is what a run that left early also has; the verdict
+  # is the runner's last line.
+  last="$(tail -n 1 "${log}")"
+  verdict="^run_tests: python ${version//./\\.}: [1-9][0-9]* tests, 0 skipped, every required test ran\$"
+  [[ "${last}" =~ ${verdict} ]] || die "python ${version}: the runner's last line is not its verdict: ${last}"
 done
 
+# Each tool is given the project file by name, which is then its only
+# configuration: found by itself, it would also obey one nearer a file.
 venv="${work}/venv-${newer}"
-"${clean[@]}" "${venv}/bin/ruff" check --no-cache "${project}" || die "ruff check found problems"
-"${clean[@]}" "${venv}/bin/ruff" format --check --no-cache "${project}" || die "ruff format would change files"
-(cd "${project}" && "${clean[@]}" "${venv}/bin/mypy" --cache-dir=/dev/null) || die "mypy found problems"
+(cd "${project}" && "${clean[@]}" "${venv}/bin/ruff" check --no-cache --config pyproject.toml .) ||
+  die "ruff check found problems"
+(cd "${project}" && "${clean[@]}" "${venv}/bin/ruff" format --check --no-cache --config pyproject.toml .) ||
+  die "ruff format would change files"
+(cd "${project}" && "${clean[@]}" "${venv}/bin/mypy" --cache-dir=/dev/null --config-file pyproject.toml) ||
+  die "mypy found problems"
 
 "${clean[@]}" uv build --quiet "${project}" --python "${newer}" \
   --build-constraints "${project}/build-constraints.txt" --require-hashes -o "${work}/dist" ||
@@ -92,7 +126,7 @@ venv="${work}/venv-${newer}"
   die "the built files are not what a release may hold"
 "${clean[@]}" uv venv --quiet --python "${floor}" "${work}/venv-wheel" || die "no environment for the wheel"
 "${clean[@]}" uv pip install --quiet --python "${work}/venv-wheel/bin/python" --no-deps --no-index \
-  "${work}"/dist/*.whl || die "the wheel does not install"
+  --no-build "${work}"/dist/*.whl || die "the wheel does not install"
 "${clean[@]}" "${work}/venv-wheel/bin/python" "${isolated[@]}" "${project}/check_wheel.py" import ||
   die "the installed wheel does not import"
 

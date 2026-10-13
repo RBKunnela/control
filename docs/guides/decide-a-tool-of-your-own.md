@@ -113,11 +113,11 @@ The fields, error codes and the strict JSON mapping are in
 `guardana_control.enforce` is `experimental` and has no dependencies; it needs
 Python 3.11 or later. Use the client of your plane's release.
 
-```
-pip install "guardana-control @ git+https://github.com/guardana/control@<tag>#subdirectory=clients/python"
-```
+No release carries it yet. From a checkout of the repository:
 
-`<tag>` is the tag of your plane's release.
+```
+pip install ./clients/python
+```
 
 ```python
 from guardana_control.enforce import CallBlocked, CallPending, Client, Result, Status
@@ -139,9 +139,10 @@ except CallPending as held:
 `call` runs your function only with the authorized bytes and sends one
 `complete` or one `abort`. A function that raises is reported `UNKNOWN`; raise
 `NotSent` only when the bytes never left. `call` returns when the tool ran
-and the record landed. Everything else raises: an `EnforceError` says in
-`answer.ran` whether the tool was entered, and a plain `TypeError` or
-`ValueError` says the call was misused before the tool could run.
+and the record landed. Everything else raises. Only an `EnforceError` says,
+in `answer.ran`, whether the tool was entered; any other exception is the
+tool's own, raised again after its run was reported `UNKNOWN`, or a
+`TypeError` or `ValueError` for a call misused before anything was sent.
 
 ## Verify
 

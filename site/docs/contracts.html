@@ -1778,7 +1778,8 @@ integer as a decimal string;
 <code>bytes</code> as padded standard base64; a <code>Timestamp</code> as RFC 3339 with <code>Z</code> and up
 to nine fractional digits; a <code>Duration</code> as decimal seconds with <code>s</code>; no
 <code>null</code>. A client that refuses an answer in any other form conforms. One that
-reads another form reads it as the reference client does, never differently.
+reads another form acts on it as the reference client does: the same outcome,
+the same bytes to the tool, the same closing request.
 <a href="https://github.com/guardana/control/blob/main/testdata/enforce/README.md">The answer vectors</a> hold both.</p>
 <h3 id="zero-values">Zero values</h3>
 <p>Every enum's zero value is <code>*_UNSPECIFIED</code>. In a request, <code>CompletionStatus</code>

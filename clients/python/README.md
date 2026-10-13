@@ -8,11 +8,13 @@ approvals and the evidence trail that cover an MCP call cover it too.
 Use the client of the plane's own release. Python 3.11 or later, no
 dependencies.
 
+No release carries it yet. From a checkout of the repository:
+
 ```
-pip install "guardana-control @ git+https://github.com/guardana/control@<tag>#subdirectory=clients/python"
+pip install ./clients/python
 ```
 
-`<tag>` is the tag of your plane's release.
+That builds the package on your machine with `flit_core`.
 
 ```python
 from guardana_control.enforce import (
@@ -47,9 +49,10 @@ What `call` does for you:
 - reports `UNKNOWN` when the tool raised, since it cannot tell whether the
   effect happened; raise `NotSent` only when the bytes never left;
 - returns only when the tool ran and the closing record landed. Anything else
-  raises: an `EnforceError` carries an `answer` whose `ran` says whether the
-  tool was entered, and a plain `TypeError` or `ValueError` says the call was
-  misused before the tool could run.
+  raises. Only an `EnforceError` tells you, in `answer.ran`, whether the tool
+  was entered. Any other exception is the tool's own, raised again after its
+  run was reported `UNKNOWN`, or a `TypeError` or `ValueError` for a call
+  misused before anything was sent.
 
 It cooperates and is not a security boundary. It runs inside the process it
 constrains, so a plane reports its calls as `decided, not enforced`.

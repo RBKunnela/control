@@ -79,6 +79,11 @@ def check_files(dist: Path, licence: Path, changelog: Path) -> list[str]:
         held = {n for n in names if not n.startswith(info + "/")}
         if held != _own_files():
             problems.append(f"the wheel's files differ from src/: {sorted(held ^ _own_files())}")
+        changed = sorted(
+            n for n in held & _own_files() if wheel.read(n) != (HERE / "src" / n).read_bytes()
+        )
+        if changed:
+            problems.append(f"the wheel's files do not hold what src/ holds: {changed}")
         described = {n.removeprefix(info + "/") for n in names if n.startswith(info + "/")}
         if described != _DESCRIBED:
             problems.append(f"the wheel describes itself with other files: {sorted(described)}")

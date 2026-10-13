@@ -57,7 +57,10 @@ what it may depend on and how the gate runs it.
   aborted, unrecorded or unanswered call raises, and every exception of the
   module says whether the tool ran and carries the decision, the ending and
   the tool's result. A call that was misused raises a plain `TypeError` or
-  `ValueError` before the tool can run.
+  `ValueError` before anything is sent. A tool's own exception leaves as it
+  was raised, after its run was reported; when it is an exception of this
+  module, because the tool made a call of its own, it leaves inside one that
+  carries the outer call's answer.
 - **It cooperates and is never a boundary.** It runs inside the process it
   constrains. A plane it talks to reports every path `decided, not enforced`,
   as ADR-0051 says, and no page calls this module an enforcement point. It
@@ -102,8 +105,11 @@ what it may depend on and how the gate runs it.
   `quality-quick`, so CI's quality job and a release commit's cold gate both
   run it. It runs `uv` in an emptied environment with no user configuration,
   managed interpreters only and the lock enforced, downloads no interpreter
-  (`make bootstrap` installs both and its check verifies them) and runs
-  Python isolated from the environment. It fails on zero tests, on any skip,
+  (`make bootstrap` installs both and its check verifies them), builds no
+  locked tool from source and runs Python isolated from the environment. It
+  refuses a project file or a lock above the project, a nested tool
+  configuration and bytecode in the project, each of which uv, the linter or
+  Python would obey or run in place of what the commit holds. It fails on zero tests, on any skip,
   on a case or a vector that did not run on each interpreter, and when a test
   this record or a page rests on did not run. It
   builds the wheel and checks that it declares no requirement, carries the
@@ -119,7 +125,10 @@ what it may depend on and how the gate runs it.
 - **Review.** `clients/` is not a two-approval path, since nothing in it
   decides, except the files at the top of the client's project: its project
   file, lock and build constraints and the two programs the gate runs, which
-  are gate inputs. `testdata/enforce`, which it is judged by, stays one.
+  are gate inputs. `testdata/enforce`, which it is judged by, stays one. The
+  client's sources and tests are reviewed like any source: a test runs inside
+  the runner's process and can defeat it, as a Go test can defeat its report,
+  and review is the defence there.
 
 ## Security / compatibility impact
 
@@ -197,5 +206,7 @@ files. A second client language has a place and a pattern.
   on a declared requirement, a missing licence or a version that is not the
   release's. Tests of the two programs hold both, and the runner requires
   those tests to have run.
-- The release workflow's dry run builds both files, checks them and uploads a
-  snapshot version to the test index.
+
+Planned, with the change that adds the upload: the release workflow's dry run
+builds both files, checks them and uploads a snapshot version to the test
+index.

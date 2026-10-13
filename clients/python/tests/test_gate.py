@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import io
 import tarfile
 import tempfile
@@ -34,12 +35,15 @@ class Shape:
     licence: bytes | None = b""
     extra: tuple[str, ...] = ()
     without: tuple[str, ...] = ()
+    altered: tuple[str, ...] = ()
 
 
 def _wheel(directory: Path, shape: Shape = Shape()) -> None:  # noqa: B008
     info = f"{DIST}-{shape.version}.dist-info"
     head = f"Metadata-Version: 2.4\nName: {DIST}\nVersion: {shape.version}\n{shape.requires}"
-    members = {name: b"" for name in _module_files() if name not in shape.without}
+    src = PROJECT / "src"
+    members = {n: (src / n).read_bytes() for n in _module_files() if n not in shape.without}
+    members |= {name: b"something else\n" for name in shape.altered}
     members |= {
         f"{info}/METADATA": f"{head}\ntext\n".encode(),
         f"{info}/WHEEL": b"",
@@ -98,6 +102,39 @@ class Runner(unittest.TestCase):
                 problems = run_tests.judge(self._run(**changed), self.REQUIRED)
                 self.assertTrue(any(want in p for p in problems), problems)
 
+    def test_a_run_cut_short_is_no_pass(self) -> None:
+        test = "class T(unittest.TestCase):\n    def test_x(self):\n        {act}\n"
+        sources = {
+            "cut_by_a_fixture": "def setUpModule():\n    raise SystemExit(0)\n\n\n"
+            + test.format(act="pass"),
+            "cut_by_a_test": test.format(act="raise SystemExit(0)"),
+            "cut_on_import": "raise SystemExit(0)\n",
+            "whole": test.format(act="pass"),
+        }
+        finished = {}
+        for package, source in sources.items():
+            with tempfile.TemporaryDirectory() as top:
+                tests = Path(top) / package
+                tests.mkdir()
+                (tests / "__init__.py").write_text("")
+                (tests / "test_it.py").write_text("import unittest\n\n\n" + source)
+                with contextlib.redirect_stderr(io.StringIO()):
+                    finished[package] = run_tests.run(str(tests), top)
+        # unittest lets an exit from a module fixture end the run; one from a
+        # test or from an import it records as an error.
+        self.assertIsNone(finished["cut_by_a_fixture"])
+        for package in ("cut_by_a_test", "cut_on_import"):
+            with self.subTest(package):
+                recorded = finished[package]
+                if recorded is None:
+                    self.fail("an exit unittest records came back as a run cut short")
+                problems = run_tests.judge(recorded, [])
+                self.assertTrue(any("error(s)" in p for p in problems), problems)
+        whole = finished["whole"]
+        if whole is None:
+            self.fail("a run nothing cut short came back as cut short")
+        self.assertEqual(run_tests.judge(whole, ["whole.test_it.T.test_x"]), [])
+
     def test_the_required_tests_hold_every_case_every_vector_and_the_promised_ones(self) -> None:
         required = run_tests.required_tests()
         for name in (
@@ -143,6 +180,7 @@ class Wheel(unittest.TestCase):
             "another version": (Shape(version="1.2.4"), "its version is not 1.2.3"),
             "a file src/ lacks": (Shape(extra=(f"{DIST}/stowaway.py",)), "differ from src/"),
             "a file of src/ missing": (Shape(without=(first,)), "differ from src/"),
+            "a file of src/ altered": (Shape(altered=(first,)), "do not hold what src/ holds"),
             "an entry point": (Shape(extra=("INFO/entry_points.txt",)), "describes itself with"),
         }
         for name, (shape, want) in wheels.items():

@@ -77,7 +77,8 @@
 /.goreleaser.yaml      @guardana/security-maintainers
 # The Python client's project file, lock, build constraints and the two
 # programs its gate target runs: what the client is tested with and built
-# from. Its sources and tests below src/ and tests/ decide nothing.
+# from. Its sources and tests below src/ and tests/ are reviewed like any
+# source.
 /clients/python/*      @guardana/security-maintainers
 
 # The normative pages. A spec change is a contract change: the wire contract

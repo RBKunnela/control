@@ -1391,7 +1391,8 @@ integer as a decimal string;
 `bytes` as padded standard base64; a `Timestamp` as RFC 3339 with `Z` and up
 to nine fractional digits; a `Duration` as decimal seconds with `s`; no
 `null`. A client that refuses an answer in any other form conforms. One that
-reads another form reads it as the reference client does, never differently.
+reads another form acts on it as the reference client does: the same outcome,
+the same bytes to the tool, the same closing request.
 [The answer vectors](../testdata/enforce/README.md) hold both.
 
 ### Zero values

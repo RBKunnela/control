@@ -134,6 +134,8 @@ old_proto_path="$(printf '%s' "${old_proto_pkg}" | tr '.' '/')"
 new_gateway="$(gateway_of "${new_slug}")"
 new_cli="${new_slug}"
 new_python="$(printf '%s' "${new_slug}" | tr '-' '_')"
+[[ "${new_python}" =~ ^[a-z][a-z0-9_]*$ ]] ||
+  die "the slug gives the Python package name ${new_python}, which must start with a letter"
 old_go_pkg="$(go_pkg_of "${old_proto_pkg}")"
 new_go_pkg="$(go_pkg_of "${new_proto_pkg}")"
 

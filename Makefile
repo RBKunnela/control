@@ -129,7 +129,7 @@ GO_SRC := . $(REPO_FILES); repo_files '*.go' | { grep -v '^api/gen/' || true; }
         proto proto-check proto-breaking docs-check docs-gen docs-impact tidy-check check-brand \
         release-snapshot check-demo-archive scan-binaries scan-binaries-probe \
         check-imports check-imports-probe check-modules-probe check-sizes check-actions \
-        check-shell pre-push-probe check-python quality-quick quality
+        check-shell pre-push-probe check-python check-python-probe quality-quick quality
 
 bootstrap:
 	$(CD) scripts/bootstrap.sh
@@ -335,6 +335,12 @@ check-modules-probe:
 check-python:
 	$(CD) scripts/check-python.sh
 
+# The negative control of check-python: the script, staged with one thing
+# planted that would make it examine something other than the commit, must
+# refuse each.
+check-python-probe:
+	$(CD) scripts/check-python-probe.sh
+
 # The negative control of the pre-push hook: a throwaway repository in which
 # the hook must refuse an ungated commit sent to main and pass a branch push.
 pre-push-probe:
@@ -371,5 +377,6 @@ quality:
 	@MAKEFLAGS= GNUMAKEFLAGS= MFLAGS= $(MAKE) --no-print-directory -f "$$REPO_ROOT/$(notdir $(firstword $(MAKEFILE_LIST)))" \
 	  fmt-check vet lint test test-race fuzz-smoke security proto-check \
 	  docs-check tidy-check check-imports check-imports-probe check-modules-probe check-brand \
-	  check-sizes check-actions check-shell scan-binaries-probe pre-push-probe check-python
+	  check-sizes check-actions check-shell scan-binaries-probe pre-push-probe check-python \
+	  check-python-probe
 	@echo "quality: green"

@@ -1,9 +1,14 @@
 """Runs the test suite for the gate and refuses a run that examined nothing.
 
-A plain ``unittest`` run exits 0 with every test skipped, and on some versions
-with no test at all. This runner fails on either, on a conformance case or an
-answer vector of ``testdata/enforce`` that no test ran, and when one of the
-tests a public claim rests on did not run.
+A plain ``unittest`` run exits 0 with every test skipped, with a module
+fixture that exits, and on some versions with no test at all. This runner
+fails on each, on a conformance case or an answer vector of
+``testdata/enforce`` that no test ran, and when one of the tests a public
+claim rests on did not run.
+
+It cannot defend against a test that reaches into this process and rewrites
+the judgement, any more than a compiled test can be kept from printing its
+own pass: the tests run where the runner does. Review is the defence there.
 
     python -I -B run_tests.py --bin DIR
 """
@@ -23,18 +28,44 @@ from typing import Protocol
 HERE = Path(__file__).resolve().parent
 TESTDATA = HERE.parent.parent / "testdata" / "enforce"
 
-# Isolated mode leaves the script's directory off the path.
-sys.path[:0] = [str(HERE / "src"), str(HERE)]
+# Isolated mode leaves the script's directory off the path. The tree goes
+# after the standard library, so nothing in it can stand in for a module of it.
+sys.path += [str(HERE / "src"), str(HERE)]
 
 # Tests a page or the record names: the run against a real plane, the reading
-# of the module's imports, the harness's independence, and this gate's own
-# controls. A renamed or uncollected one fails the run.
+# of the module's imports, the harness's independence, the rules no case file
+# holds, the reader's refusals, the transport's bounds, and this gate's own
+# controls. A renamed, deleted or uncollected one fails the run.
+_RULES = "tests.test_rules"
+_TRANSPORT = "tests.test_transport.Transport"
 PROMISED = (
     "tests.test_e2e.Plane.test_an_allowed_call_runs_and_a_denied_one_never_reaches_the_tool",
     "tests.test_imports.Imports.test_the_module_imports_only_the_allowed_modules_and_itself",
     "tests.test_imports.Imports.test_the_second_client_and_the_harness_take_only_public_types",
     "tests.test_gate.Runner.test_each_way_a_run_examines_nothing_is_a_problem",
+    "tests.test_gate.Runner.test_a_run_cut_short_is_no_pass",
     "tests.test_gate.Wheel.test_each_defect_of_the_built_files_is_refused",
+    "tests.test_conformance.CaseFiles.test_the_index_lists_the_directories",
+    "tests.test_vectors.VectorFile.test_the_pinned_refusals_are_the_files_may_refuse_vectors",
+    "tests.test_wire.Refused.test_every_refusal",
+    "tests.test_wire.Refused.test_the_other_answers_are_read_as_strictly",
+    f"{_RULES}.Construction.test_a_timeout_that_is_no_finite_positive_number_is_refused",
+    f"{_RULES}.Returning.test_only_recorded_says_the_record_landed",
+    f"{_RULES}.Returning.test_an_answer_the_client_cannot_act_on_sends_nothing",
+    f"{_RULES}.Aborting.test_an_obligation_outranks_missing_bytes_and_a_gone_caller",
+    f"{_RULES}.Aborting.test_a_refused_abort_is_still_an_abort",
+    f"{_RULES}.Aborting.test_a_caller_gone_before_admit_sends_nothing",
+    f"{_RULES}.Aborting.test_an_interrupt_between_admit_and_the_tool_aborts_and_is_raised_again",
+    f"{_RULES}.Running.test_the_tool_cannot_change_what_complete_reports_as_sent",
+    f"{_RULES}.Running.test_not_sent_met_only_in_a_chain_completes",
+    f"{_RULES}.Running.test_any_exception_of_the_tool_is_completed_unknown_and_raised_again",
+    f"{_RULES}.Running.test_an_interrupt_after_the_tool_is_completed_unknown_and_raised_again",
+    f"{_RULES}.Running.test_a_tool_that_cannot_return_a_result_is_refused_before_admit",
+    f"{_RULES}.Running.test_one_client_serves_concurrent_calls_from_threads",
+    f"{_TRANSPORT}.test_the_timeout_bounds_a_whole_request_not_each_read",
+    f"{_TRANSPORT}.test_an_answer_at_the_bound_is_read_and_one_byte_past_it_is_not",
+    f"{_TRANSPORT}.test_a_redirect_is_not_followed",
+    f"{_TRANSPORT}.test_a_bound_on_the_head_or_on_a_chunk_ends_the_read_at_once",
 )
 
 
@@ -109,6 +140,21 @@ def judge(outcome: Outcome, required: Collection[str]) -> list[str]:
     return problems
 
 
+def run(tests: str, top: str) -> _Recording | None:
+    """The finished run, or nothing when anything cut it short.
+
+    unittest lets a SystemExit or an interrupt from a test or a module fixture
+    end the process, and an exit with status 0 would then read as a pass.
+    """
+    try:
+        suite = unittest.defaultTestLoader.discover(tests, top_level_dir=top)
+        result = unittest.TextTestRunner(resultclass=_Recording, verbosity=1).run(suite)
+    except BaseException as exc:
+        print(f"run_tests: {type(exc).__name__} left the run: {exc}", file=sys.stderr)
+        return None
+    return result if isinstance(result, _Recording) else None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--bin", required=True, help="the directory holding the built commands")
@@ -116,14 +162,12 @@ def main() -> int:
     # The end-to-end test starts a real plane from these; it fails without them.
     os.environ["ENFORCE_E2E_BIN"] = str(Path(args.bin).resolve())
 
-    suite = unittest.defaultTestLoader.discover(str(HERE / "tests"), top_level_dir=str(HERE))
-    runner = unittest.TextTestRunner(resultclass=_Recording, verbosity=1)
-    result = runner.run(suite)
-    if not isinstance(result, _Recording):
-        raise SystemExit("run_tests: the runner did not use the recording result")
-
-    problems = judge(result, required_tests())
     version = platform.python_version()
+    result = run(str(HERE / "tests"), str(HERE))
+    if result is None:
+        print(f"run_tests: python {version}: the run was cut short", file=sys.stderr)
+        return 1
+    problems = judge(result, required_tests())
     if problems:
         print(f"run_tests: python {version}: " + "; ".join(problems), file=sys.stderr)
         return 1
