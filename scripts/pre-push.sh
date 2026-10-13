@@ -10,10 +10,13 @@
 # remote does not hold yet it is every commit, since what the remote holds on
 # other branches was never gated. For a v* tag it is the commit the tag names:
 # a release is cut from a commit that was gated cold. A line git did not write,
-# or a commit list git cannot give, refuses the push.
+# a source that names no commit, or a commit list git cannot give, refuses the
+# push. Replace refs are ignored: a push sends the commits' own objects, so the
+# hook lists those.
 #
 #   ln -s ../../scripts/pre-push.sh .git/hooks/pre-push
 set -euo pipefail
+export GIT_NO_REPLACE_OBJECTS=1
 
 refuse() {
   printf 'pre-push: %s; nothing pushed\n' "$*" >&2
@@ -23,9 +26,7 @@ refuse() {
 # git names the destination remote in $1, or repeats its URL there when the
 # push names no remote.
 remote="${1:-}"
-if [[ -z "${remote}" || "${remote}" == *[\*\?\[]* ]]; then
-  refuse "no destination remote named, or one git would read as a pattern: $(printf '%q' "${remote}")"
-fi
+[[ -n "${remote}" ]] || refuse "no destination remote named"
 
 stamps="$(git rev-parse --git-common-dir)/gate-green"
 sha_shape='^([0-9a-f]{40}|[0-9a-f]{64})$'
@@ -70,16 +71,19 @@ while IFS= read -r line || [[ -n "${line}" ]]; do
   [[ ! "${local_sha}" =~ ${zero_shape} ]] || continue # a deletion sends no commit
   judged=$((judged + 1))
 
+  # An annotated tag is peeled; a tree or a blob is no commit to judge, and
+  # rev-list would list nothing for one and exit 0.
+  tip="$(git rev-parse --verify --quiet "${local_sha}^{commit}")" ||
+    refuse "${local_ref} names no commit for ${remote_ref}"
   # The exit status, not an empty list, tells "nothing to send" from a list
   # git could not give.
   if [[ "${remote_ref}" == refs/tags/* ]]; then
-    sent="$(git rev-parse --verify --quiet "${local_sha}^{commit}")" ||
-      refuse "${local_ref} names no commit for ${remote_ref}"
+    sent="${tip}"
   elif [[ "${remote_sha}" =~ ${zero_shape} ]]; then
-    sent="$(git rev-list "${local_sha}")" ||
+    sent="$(git rev-list "${tip}")" ||
       refuse "the commits ${local_ref} would send to ${remote} could not be listed"
   else
-    sent="$(git rev-list "${remote_sha}..${local_sha}")" ||
+    sent="$(git rev-list "${remote_sha}..${tip}")" ||
       refuse "the commits ${local_ref} would send to ${remote} could not be listed"
   fi
   while read -r sha; do

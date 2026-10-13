@@ -2,8 +2,9 @@
 
 `.github/workflows/release.yml` builds, signs and publishes every release;
 no asset is uploaded from a laptop. Until 1.0 a release follows every one to
-three changes; from 1.0 one is cut every Monday, and an urgent fix gets its
-own ([ADR-0052](docs/adr/0052-a-change-is-gated-on-its-pull-request.md)).
+three changes, from 1.0 every Monday, an urgent fix out of turn, each after an
+audit of the whole tree
+([ADR-0052](docs/adr/0052-a-change-is-gated-on-its-pull-request.md)).
 
 ## Cutting a release
 

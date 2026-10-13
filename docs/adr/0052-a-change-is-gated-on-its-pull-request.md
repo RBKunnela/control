@@ -45,8 +45,8 @@ gates, on the release path, where a failure costs the most.
 - **A scheduled run finds clock-dependent tests.** Every night the race tests
   run under processor load on Linux and macOS. A red night opens an issue.
   `test-race` stays in `make quality`.
-- **The whole tree is audited regularly**: at least every third release, and
-  before 1.0, by a reviewer who did not write the changes,
+- **The whole tree is audited before every release**, by a reviewer who did
+  not write the changes,
   against the invariants, the roadmap and what the pages claim. A finding is
   verified at its source before it is acted on, and its fix is an ordinary
   change.
@@ -88,8 +88,9 @@ night is fixed like any defect, never rerun until it passes.
 `make pre-push-probe`, part of `make quality`, runs the hook in a throwaway
 repository, on lines written by hand and on real pushes. The hook must pass a
 branch push of commits nobody gated, and refuse them sent to `main` under any
-source spelling, sent to a remote that has no `main`, or tagged as a release,
-and refuse a stamp that is missing or is not the one line the gate writes.
+source spelling, sent to a remote that has no `main`, hidden behind a merge or
+a replace ref, or tagged as a release, and refuse a stamp that is missing or
+is not the one line the gate writes.
 `ci.yml` runs `make quality` on every pull request, and the ruleset requires
 that check.
 

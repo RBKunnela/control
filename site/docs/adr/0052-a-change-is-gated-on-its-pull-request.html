@@ -149,8 +149,8 @@ own.</li>
 <li><strong>A scheduled run finds clock-dependent tests.</strong> Every night the race tests
 run under processor load on Linux and macOS. A red night opens an issue.
 <code>test-race</code> stays in <code>make quality</code>.</li>
-<li><strong>The whole tree is audited regularly</strong>: at least every third release, and
-before 1.0, by a reviewer who did not write the changes,
+<li><strong>The whole tree is audited before every release</strong>, by a reviewer who did
+not write the changes,
 against the invariants, the roadmap and what the pages claim. A finding is
 verified at its source before it is acted on, and its fix is an ordinary
 change.</li>
@@ -187,8 +187,9 @@ night is fixed like any defect, never rerun until it passes.</p>
 <p><code>make pre-push-probe</code>, part of <code>make quality</code>, runs the hook in a throwaway
 repository, on lines written by hand and on real pushes. The hook must pass a
 branch push of commits nobody gated, and refuse them sent to <code>main</code> under any
-source spelling, sent to a remote that has no <code>main</code>, or tagged as a release,
-and refuse a stamp that is missing or is not the one line the gate writes.
+source spelling, sent to a remote that has no <code>main</code>, hidden behind a merge or
+a replace ref, or tagged as a release, and refuse a stamp that is missing or
+is not the one line the gate writes.
 <code>ci.yml</code> runs <code>make quality</code> on every pull request, and the ruleset requires
 that check.</p>
 <p>Planned: the nightly workflow, added in a change of its own, whose runs show
