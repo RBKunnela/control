@@ -10,7 +10,8 @@
 # the caller's environment, a user's uv.toml or a system Python cannot change
 # what is examined. A missing uv, interpreter or locked tool fails; nothing is
 # skipped. Virtual environments, caches and built files go to a scratch
-# directory: nothing is written into the tree.
+# directory: nothing is written into the tree, and no bytecode the tree
+# already holds is read, so the sources of the commit are what runs.
 #
 #   scripts/check-python.sh
 set -euo pipefail
@@ -60,16 +61,21 @@ for v in HOME PATH TMPDIR USER LOGNAME \
 done
 clean+=(UV_NO_CONFIG=1 UV_MANAGED_PYTHON=1 UV_PYTHON_DOWNLOADS=never UV_NO_PROGRESS=1
   PYTHONDONTWRITEBYTECODE=1)
+# Isolated, writing no bytecode, and looking for bytecode in an empty scratch
+# directory instead of beside the sources: a stale or planted __pycache__ in
+# the tree would otherwise run in place of the file the commit holds.
+mkdir "${work}/pycache"
+isolated=(-I -B -X "pycache_prefix=${work}/pycache")
 
 for version in "${floor}" "${newer}"; do
   venv="${work}/venv-${version}"
   "${clean[@]}" "UV_PROJECT_ENVIRONMENT=${venv}" uv sync --quiet --project "${project}" \
     --python "${version}" --locked --no-install-project --group dev ||
     die "python ${version}: the locked tools could not be installed; is the interpreter there (make bootstrap)?"
-  ran="$("${clean[@]}" "${venv}/bin/python" -I -B -c 'import platform; print(platform.python_version())')" ||
+  ran="$("${clean[@]}" "${venv}/bin/python" "${isolated[@]}" -c 'import platform; print(platform.python_version())')" ||
     die "python ${version}: the interpreter does not run"
   [[ "${ran}" == "${version}" ]] || die "python ${version}: the environment runs ${ran}"
-  "${clean[@]}" "${venv}/bin/python" -I -B "${project}/run_tests.py" --bin "${work}/bin" ||
+  "${clean[@]}" "${venv}/bin/python" "${isolated[@]}" "${project}/run_tests.py" --bin "${work}/bin" ||
     die "python ${version}: the tests failed"
 done
 
@@ -81,17 +87,18 @@ venv="${work}/venv-${newer}"
 "${clean[@]}" uv build --quiet "${project}" --python "${newer}" \
   --build-constraints "${project}/build-constraints.txt" --require-hashes -o "${work}/dist" ||
   die "building the wheel failed"
-"${clean[@]}" "${venv}/bin/python" -I -B "${project}/check_wheel.py" files \
+"${clean[@]}" "${venv}/bin/python" "${isolated[@]}" "${project}/check_wheel.py" files \
   --dist "${work}/dist" --licence "${root}/LICENSE" --changelog "${root}/CHANGELOG.md" ||
   die "the built files are not what a release may hold"
 "${clean[@]}" uv venv --quiet --python "${floor}" "${work}/venv-wheel" || die "no environment for the wheel"
 "${clean[@]}" uv pip install --quiet --python "${work}/venv-wheel/bin/python" --no-deps --no-index \
   "${work}"/dist/*.whl || die "the wheel does not install"
-"${clean[@]}" "${work}/venv-wheel/bin/python" -I -B "${project}/check_wheel.py" import ||
+"${clean[@]}" "${work}/venv-wheel/bin/python" "${isolated[@]}" "${project}/check_wheel.py" import ||
   die "the installed wheel does not import"
 
 written="$(cd "${root}" && find clients/python -newer "${work}/before" -print)" ||
   die "listing the project failed"
 [[ -z "${written}" ]] || die "something was written into the tree during the checks: ${written//$'\n'/ }"
+[[ -z "$(ls -A "${work}/pycache")" ]] || die "bytecode was written although none should be"
 
 printf 'check-python: green on python %s and %s\n' "${floor}" "${newer}"
