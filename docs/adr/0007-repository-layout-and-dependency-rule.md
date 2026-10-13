@@ -12,6 +12,10 @@ Amended by [ADR-0039](0039-many-channels-into-one-core.md): detectors run
 over exports, outside the plane, so `detectors/builtin/` is withdrawn; new
 supervision logic goes to `internal/supervise`, a guarded tree.
 
+Amended by [ADR-0053](0053-a-python-client-of-the-enforcement-api-in-this-repository.md):
+a client of a contract in another language lives under `clients/`, a project
+of its own outside the Go module.
+
 Amended by [ADR-0037](0037-an-evidence-consumer-in-a-module-of-its-own.md):
 `examples/evidence-report` is a module of its own, and the gate runs over every
 module.

@@ -55,6 +55,7 @@
   <url><loc>https://control.guardana.dev/docs/adr/0050-adoption-workflows-preserve-authority-and-evidence</loc></url>
   <url><loc>https://control.guardana.dev/docs/adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api</loc></url>
   <url><loc>https://control.guardana.dev/docs/adr/0052-a-change-is-gated-on-its-pull-request</loc></url>
+  <url><loc>https://control.guardana.dev/docs/adr/0053-a-python-client-of-the-enforcement-api-in-this-repository</loc></url>
   <url><loc>https://control.guardana.dev/docs/backlog</loc></url>
   <url><loc>https://control.guardana.dev/docs/changelog</loc></url>
   <url><loc>https://control.guardana.dev/docs/concepts/approvals-and-the-held-call</loc></url>
