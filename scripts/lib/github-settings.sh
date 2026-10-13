@@ -17,7 +17,7 @@ DEFAULT_BRANCH="main"
 ADMIN_LOGIN="${ADMIN_LOGIN:-karauda}"
 HOMEPAGE="https://control.guardana.dev"
 
-DESCRIPTION="Observe AI agent runs and control consequential actions. Signed policies, exact-action approvals, AuthZEN API vetoes and evidence. MCP gateway today; connected-channel supervision and scoped reactions toward 1.0. Experimental alpha."
+DESCRIPTION="Open-source AI agent supervision framework: MCP policy decisions, approvals and procedure checks. Experimental alpha."
 TOPICS=(
   ai-agents
   agentic-ai
@@ -38,7 +38,7 @@ TOPICS=(
   ai-governance
   security-tools
   agent-observability
-  runtime-security
+  agent-supervision
 )
 
 # Status checks the main ruleset requires. A check-run context is a workflow
