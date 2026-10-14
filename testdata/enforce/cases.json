@@ -131,6 +131,16 @@
       }
     },
     {
+      "id": "tool-reports-nothing",
+      "side": "client",
+      "contract": "v1alpha1",
+      "rule": "a tool that returns without reporting a status is completed UNKNOWN",
+      "negative_control": {
+        "defect": "reports-success",
+        "breaks": "completes SUCCESS whenever the tool returned no error"
+      }
+    },
+    {
       "id": "unauthenticated",
       "side": "client",
       "contract": "v1alpha1",

@@ -1,0 +1,71 @@
+[build-system]
+requires = ["flit_core>=4.1,<5"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "guardana-control"
+version = "0.11.0"
+description = "Ask a Guardana Control plane before a tool acts, and report how the call ended."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Guardana Control contributors" }]
+keywords = ["ai-agents", "agent-supervision", "authorization", "policy", "approvals"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Security",
+    "Typing :: Typed",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://control.guardana.dev"
+Documentation = "https://control.guardana.dev/docs/guides/decide-a-tool-of-your-own/"
+Source = "https://github.com/guardana/control"
+Changelog = "https://github.com/guardana/control/blob/main/CHANGELOG.md"
+
+[dependency-groups]
+dev = ["mypy==2.4.0", "ruff==0.17.0"]
+
+[tool.flit.module]
+name = "guardana_control"
+
+[tool.flit.sdist]
+exclude = ["tests/", "uv.lock", "build-constraints.txt"]
+
+[tool.uv]
+required-version = "==0.12.9"
+
+# This project is its own workspace root, so uv reads the lock beside it and
+# never one that a project file in a directory above would name.
+[tool.uv.workspace]
+members = []
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+# Only a dot-name is left out and no ignore file is obeyed, so the linter
+# reads every file a test can import. The one file named is generated data,
+# whose lines are as long as the enums they hold.
+exclude = [".*", "src/guardana_control/enforce/_schema.py"]
+respect-gitignore = false
+
+[tool.ruff.lint]
+select = ["B", "C90", "E", "F", "I", "N", "PL", "RUF", "S", "SIM", "UP", "W"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
+
+[tool.mypy]
+strict = true
+python_version = "3.11"
+files = ["src", "tests", "run_tests.py", "check_wheel.py"]
+mypy_path = ["src", "."]

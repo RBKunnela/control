@@ -19,6 +19,7 @@ var gateTargets = []string{
 	"proto-check", "docs-check", "tidy-check", "check-imports",
 	"check-imports-probe", "check-modules-probe", "check-brand", "check-sizes",
 	"check-actions", "check-shell", "scan-binaries-probe", "pre-push-probe",
+	"check-python", "check-python-probe",
 }
 
 func TestQualityRunsTheWholeGate(t *testing.T) {

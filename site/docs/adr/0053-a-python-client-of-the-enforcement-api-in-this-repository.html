@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ADR-0053: A Python client of the enforcement API lives in this repository · Guardana Control</title>
+<meta name="description" content="Decision record, accepted."/>
+<link rel="canonical" href="https://control.guardana.dev/docs/adr/0053-a-python-client-of-the-enforcement-api-in-this-repository"/>
+<meta name="theme-color" content="#0B8F80"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="stylesheet" href="/assets/brand/v1/tokens.css"/>
+<link rel="stylesheet" href="/assets/control/control.css"/>
+<link rel="stylesheet" href="/assets/control/docs.css"/>
+</head>
+<body class="doc">
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap bar">
+  <a class="mark" href="/"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 4.5 5.6v6.1c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V5.6z"/><path d="M10.2 8.4v7.8M10.2 12.3h5.3"/></svg><span>Guardana <b>Control</b></span></a>
+  <a class="vlink" href="https://github.com/guardana/control/releases/tag/v0.11.0"><span class="ver">v0.11.0</span></a>
+  <nav aria-label="Primary">
+    <a href="/docs/">Docs</a>
+    <a href="/docs/status">Status</a>
+    <a class="hide-s" href="/docs/roadmap">Roadmap</a>
+    <a class="gh" href="https://github.com/guardana/control" aria-label="GitHub"><svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span class="hide-s">GitHub</span></a>
+  </nav>
+</div></header>
+<div class="wrap shell">
+<details class="mnav">
+<summary>Menu · <b>ADR-0053: A Python client of the enforcement API lives in this repository</b></summary>
+<nav class="inner" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</details>
+<main id="main" class="prose">
+<h1 id="adr-0053-a-python-client-of-the-enforcement-api-lives-in-this-repository">ADR-0053: A Python client of the enforcement API lives in this repository</h1>
+<p>Status: accepted
+Date: 2026-10-13</p>
+<p>Builds on <a href="/docs/adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api">ADR-0051</a>,
+whose conformance files it is held to. Amends
+<a href="/docs/adr/0007-repository-layout-and-dependency-rule">ADR-0007</a>: the layout gains
+<code>clients/</code>.</p>
+<h2 id="context">Context</h2>
+<p>The enforcement API has one client, the Go reference in
+<code>internal/enforceclient</code>, and the tools it was written for are Python
+functions inside agent frameworks. Each of them would otherwise write its own
+client and get the hard parts wrong one at a time: running the proposed bytes
+where the authorized ones differ, treating an unknown outcome as a go-ahead,
+aborting where the effect may have happened, sending a call twice.
+<code>testdata/enforce/client</code> states some of those rules as files any language
+can run; the Go reference keeps more of them in Go tests alone. The repository
+has no Python, so the first module also decides where a second language lives,
+what it may depend on and how the gate runs it.</p>
+<h2 id="decision">Decision</h2>
+<ul>
+<li><strong>Where.</strong> <code>clients/python/</code>, a project of its own with a <code>src/</code> layout,
+beside the Go module and outside it. The distribution is named after the
+product's slug and imported as <code>guardana_control</code>; the client is
+<code>guardana_control.enforce</code>. <code>clients/</code> is where a client in another language
+goes.</li>
+<li><strong>What it is.</strong> One synchronous call that owns an execution, with the Go
+reference's rules. Arguments are bytes in and bytes out; the module never
+parses or serialises them. Beneath the call sits one layer of three
+single-request operations that reads each answer and applies every rule
+that needs no tool, and returns a plain value. That layer is not public
+until a consumer that splits the lifecycle across processes has a record and
+cases of its own. An <code>asyncio</code> entry point comes with the first framework
+integration, wraps the same layer and is held to the same cases.</li>
+<li><strong>The tool.</strong> It returns a result naming its status; none, or one the
+contract does not declare, is completed <code>UNKNOWN</code>. It raises one named
+exception, matched by type and never through a chain, to say its bytes never
+left. Any other exception, <code>BaseException</code> included, is completed <code>UNKNOWN</code>
+and raised again unchanged. A coroutine function or a generator function is
+refused before admit. A tool that returns anything but a result or nothing
+was entered: it is completed <code>UNKNOWN</code>, and the call raises.</li>
+<li><strong>A held handle gets exactly one closing request</strong>: an abort if the tool was
+not entered, a complete if it was, the mark set before the tool is called.
+Nothing is retried. A killed process leaves the handle to the receiver's
+sweep.</li>
+<li><strong>The caller.</strong> An optional &quot;the caller is gone&quot; check, read before admit
+and before the tool, after the obligation and byte checks; anything but
+<code>False</code> reads as gone. No request is tied to it, so a closing request is
+sent whatever it says. Socket, run token and a finite positive timeout are
+required, and the timeout bounds a whole request, not each read.</li>
+<li><strong>What it returns.</strong> Returning normally means the tool ran and the closing
+record landed, not that the tool succeeded. A blocked, pending, refused,
+aborted, unrecorded or unanswered call raises, and every exception of the
+module says whether the tool ran and carries the decision, the ending and
+the tool's result. A call that was misused raises a plain <code>TypeError</code> or
+<code>ValueError</code> before anything is sent. A tool's own exception leaves as it
+was raised, after its run was reported; when it is an exception of this
+module, because the tool made a call of its own, it leaves inside one that
+carries the outer call's answer.</li>
+<li><strong>It cooperates and is never a boundary.</strong> It runs inside the process it
+constrains. A plane it talks to reports every path <code>decided, not enforced</code>,
+as ADR-0051 says, and no page calls this module an enforcement point. It
+computes no digest and verifies no signature.</li>
+<li><strong>No runtime dependency.</strong> The standard library alone, held by a test that
+reads the module's imports. An agent's process already carries its
+framework's pins, and a client that adds its own cannot be installed beside
+some of them.</li>
+<li><strong>Answers are read in the form the receiver writes</strong>: the JSON name of each
+member, once; an enum as a declared name or an integer in int32 range; an
+int64 as a decimal string; bytes as padded standard base64; a Timestamp as
+RFC 3339 with <code>Z</code> and up to nine fractional digits; a Duration as decimal
+seconds with <code>s</code>. Anything else, <code>null</code> and a repeated member included, is a
+malformed answer. This is narrower than the protobuf JSON mapping on
+purpose: nothing the Go reference refuses is read. A generator in this
+repository writes the messages' members, types and enums from the compiled
+descriptors into a Python table and refuses a field kind the reader has no
+rule for; a pinned test fails when the table and <code>api/proto</code> differ.
+<code>docs/contracts.md</code> says this form is what a client may rely on.</li>
+<li><strong>Conformance from the shared files.</strong> The tests read <code>testdata/enforce</code>
+where it is, never a copy. The client, and a second client written apart
+from it, pass every client case; the second, told to break one rule, fails
+that rule's case. Requests are compared with <code>expect.json</code> as JSON values,
+member for member, with no table between. <code>testdata/enforce</code> gains answer
+vectors, a status and a raw body with the reading or the refusal expected,
+which the Go reference and the Python client both run; one is a fully
+populated answer as the receiver marshals it. It gains one client case, a
+tool that reports nothing. One Python test drives a real plane through
+built binaries the make target hands it: an allowed call whose answer is
+larger than one chunk, a blocked one, and the trail read back.
+<code>go test ./...</code> needs no Python.</li>
+<li><strong>Pins.</strong> Python 3.11 is the floor. The gate runs the tests on two exact
+interpreter versions, the floor and one named newer line, and the linter and
+the type checker on the newer. <code>uv</code> installs the interpreters and the
+development tools; its version and digest sit in
+<code>scripts/tool-versions.env</code> like every other binary tool, and moving it is
+an interpreter change. <code>uv.lock</code> pins <code>ruff</code> and <code>mypy</code> with hashes. Tests
+use <code>unittest</code>. The build backend is <code>flit_core</code>, pinned by hash in a
+build-constraints file. Each gets its row in <code>docs/dependencies.md</code> as
+tooling.</li>
+<li><strong>The gate.</strong> One make target, part of <code>make quality</code> and not of
+<code>quality-quick</code>, so CI's quality job and a release commit's cold gate both
+run it. It runs <code>uv</code> in an emptied environment with no user configuration,
+managed interpreters only and the lock enforced, downloads no interpreter
+(<code>make bootstrap</code> installs both and its check verifies them), builds no
+locked tool from source and runs Python isolated from the environment.
+What it examines is what the commit holds: the project file declares the
+project its own workspace root, so no project file above it names another
+lock; the linter and the type checker are given that file as their only
+configuration, and the linter obeys no ignore file; and the target refuses,
+inside the project, a symbolic link, bytecode, a stub, an extension module
+and a directory a checker skips by its name. <code>scripts/check-python-probe.sh</code>
+plants each. It fails on zero tests, on any skip, on a test whose body
+never runs, on a case or a vector that did not run on each interpreter, and
+when a test this record or a page rests on did not run. It
+builds the wheel and checks that it declares no requirement, carries the
+licence and has the release's version. It writes nothing into the tree.</li>
+<li><strong>Releases.</strong> The module's version equals the newest dated section of
+<code>CHANGELOG.md</code>, a preview suffix written as Python spells it; the release
+commit sets it and refreshes the lock. The release workflow builds the wheel
+and the source archive from the tag and, once the release is published,
+uploads them to the public package index through trusted publishing, with
+no stored token; its dry run rehearses the upload against the test index.
+That step is added in a change of its own, before the first release that
+carries the module. Between releases the tree names the last release.</li>
+<li><strong>Review.</strong> <code>clients/</code> is not a two-approval path, since nothing in it
+decides, except the files at the top of the client's project: its project
+file, lock and build constraints and the two programs the gate runs, which
+are gate inputs. <code>testdata/enforce</code>, which it is judged by, stays one. The
+client's sources and tests are reviewed like any source: a test runs inside
+the runner's process and can defeat it, as a Go test can defeat its report,
+and review is the defence there.</li>
+</ul>
+<h2 id="security--compatibility-impact">Security / compatibility impact</h2>
+<p>No authorization path changes and the plane gains no code. The module adds
+tools to the gate, not to any request path. A user of the module runs no
+third-party code at run time; a wheel installs without building anything. The
+first upload claims the distribution name on the public package index; until
+it exists, an install by that name would fetch whatever a stranger put there,
+into a process that holds a run token. An upload cannot be replaced, so a
+broken one is followed by the next version, as a release is. The contract is
+<code>v1alpha1</code>, so the module's interface may change with any release. A client
+is tested with the plane of its own release. With a newer plane it may refuse
+every answer, because a strict reader does not know a member or an enum name
+added since; the error names what it did not know. The import name is a new
+spelling of the product name: it is a constant of <code>internal/brand</code>, a test
+holds the package's directory to it, and <code>scripts/rename-product.sh</code> rewrites
+and moves it. The brand check does not forbid that spelling outside the
+module, since generated Go identifiers already carry it. CodeQL analyses Go
+only; the module is read by the linter's security rules and its lock by the
+vulnerability scan until a second language is added there in a change of its
+own.</p>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>A repository of its own: its own releases and issue tracker, and a
+conformance suite that reaches the client only as a copy or a submodule,
+which is how a client drifts from the contract it is held to.</li>
+<li>The <code>protobuf</code> package with generated messages: less code, a pinned
+dependency inside every agent process where its version range collides with
+the frameworks' own, and still no reading equal to the Go reference's.</li>
+<li>The whole protobuf JSON mapping by hand: unbounded, and it would copy the
+reference's quirks.</li>
+<li>Lenient decoding with the standard <code>json</code> module alone: no table, and the
+client would run a tool on an answer it only partly understood. Read
+naively, a repeated <code>outcome</code> member takes the last value and <code>true</code> reads
+as the number 1.</li>
+<li>One judge in Go driving every client as a subprocess: the best independence
+and no harness per language, at the cost of a cancel signal across
+processes. Taken up when a third language arrives.</li>
+<li>Keeping the module off the package index for now: no new release step, and
+a free name on the index that anyone could take and fill, for a module
+imported into processes that hold run tokens.</li>
+<li>A CI job of its own for Python: the required check, the release gate and the
+cold gate all hang on <code>make quality</code>.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<p>A Python tool gets the client rules by importing one module. The gate grows a
+second toolchain that must be installed, pinned and kept current. A proto
+change now has a generated Python table to refresh, and an additive change to
+a message a client reads stops an older client. <code>testdata/enforce</code> grows
+vectors both clients run, so rules the Go reference kept to itself become
+files. A second client language has a place and a pattern.</p>
+<h2 id="validation">Validation</h2>
+<ul>
+<li>Every client case passes on both interpreters for the client and for the
+second client without a defect, and every negative control fails its case.</li>
+<li>The answer vectors: both clients read alike, both refuse, or the Go
+reference reads and a client refuses; never a different reading. A Go test
+runs them through the reference's decoder and seeds its fuzz target.</li>
+<li>Python tests for the rules no case file holds: an <code>EXECUTE</code> with no handle
+or no execution; an error body under status 200; only <code>RECORDED</code> saying the
+record landed; a refused abort still reported as an abort; an ended caller
+sending nothing; the bound on an answer's size; the timeout over a receiver
+that trickles; no redirect followed; an interrupt between admit and the
+tool (abort) and inside the tool (complete <code>UNKNOWN</code>, the same exception
+raised again); a not-sent exception met only in a chain (complete, not
+abort); a coroutine tool refused.</li>
+<li>The generated table's pin fails when a member or an enum value is added to
+a message the client reads.</li>
+<li>The end-to-end test shows a blocked call that never reaches the tool and an
+allowed one closed in the trail.</li>
+<li>The gate's runner fails on an empty or a skipped run; the wheel check fails
+on a declared requirement, a missing licence or a version that is not the
+release's. Tests of the two programs hold both, and the runner requires
+those tests to have run.</li>
+</ul>
+<p>Planned, with the change that adds the upload: the release workflow's dry run
+builds both files, checks them and uploads a snapshot version to the test
+index.</p>
+<p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/adr/0053-a-python-client-of-the-enforcement-api-in-this-repository.md">docs/adr/0053-a-python-client-of-the-enforcement-api-in-this-repository.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.11.0, and <a href="https://github.com/guardana/control/tree/v0.11.0/docs">its documentation</a> is in its tag.</p>
+</main>
+<nav class="side" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</div>
+<footer class="foot"><div class="wrap row">
+  <p>Guardana Control · Apache-2.0</p>
+  <ul>
+    <li><a href="https://github.com/guardana/control">GitHub</a></li>
+    <li><a href="https://github.com/guardana/control/releases">Releases</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/SECURITY.md">Security</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/LICENSE">Licence Apache-2.0</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/TRADEMARKS.md">Trademarks</a></li>
+  </ul>
+</div></footer>
+</body>
+</html>

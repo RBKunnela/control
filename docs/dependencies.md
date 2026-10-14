@@ -2,7 +2,7 @@
 title: Dependencies
 summary: Every direct dependency and pinned tool of the module, why the standard library will not do, its licence and whether it sits in the request path.
 type: project
-covers: [go.mod, go.sum, scripts/tool-versions.env]
+covers: [go.mod, go.sum, scripts/tool-versions.env, clients/python/pyproject.toml, clients/python/uv.lock, clients/python/build-constraints.txt]
 ---
 
 # Dependencies
@@ -165,7 +165,7 @@ gateway with it. No code in this repository imports them.
 ## Tools that are not Go modules
 
 `golangci-lint`, `buf`, `actionlint`, `zizmor`, `gitleaks`, `osv-scanner`,
-`shellcheck`, `syft`, `goreleaser` and `cosign` are pinned in
+`shellcheck`, `syft`, `goreleaser`, `cosign` and `uv` are pinned in
 `scripts/tool-versions.env` and checked by `make bootstrap`, which fails on a
 version mismatch rather than continuing. The Go compiler is pinned separately,
 by the `go` directive in `go.mod`, see
@@ -190,6 +190,26 @@ beside its version:
 
 None of these is a dependency of the product, and nothing in the tree imports
 any of them.
+
+## The Python client
+
+The client under `clients/python/` has no dependency at run time: it imports
+the standard library alone, and a test reads its imports
+([ADR-0053](adr/0053-a-python-client-of-the-enforcement-api-in-this-repository.md)).
+Its checks and its build use these, none of them in a request path:
+
+- `uv` (Apache-2.0 or MIT), pinned by version and digest in
+  `scripts/tool-versions.env`, installs the two CPython builds the tests run
+  on and the tools below from `clients/python/uv.lock`. The standard library's
+  `venv` and `pip` pin neither an interpreter build nor every hash in one
+  file. Maintained by Astral, with frequent releases.
+- `ruff` (MIT) lints and checks formatting, and `mypy` (MIT) checks types.
+  Both are locked with hashes and run only in `make check-python`.
+- `flit_core` (BSD-3-Clause) builds the wheel and the source archive. It has no
+  dependencies of its own and is pinned by hash in
+  `clients/python/build-constraints.txt`. A wheel installs without it.
+- CPython (PSF licence), the two versions named in
+  `scripts/tool-versions.env`, as uv installs them.
 
 ## The website
 

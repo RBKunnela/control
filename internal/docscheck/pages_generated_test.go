@@ -196,10 +196,11 @@ func makeRecipe(lines []string, target string) ([]string, error) {
 }
 
 // renderedFiles registers the docs-gen runs that write a file which is not a
-// docs page, each with the one script that writes it. The site test pins
-// what such a file holds.
+// docs page, each with the one script that writes it. The site test and the
+// Python table's own test pin what such a file holds.
 var renderedFiles = []genRun{
 	{"scripts/gen-site.go", "site/index.html"},
+	{"scripts/gen-pyschema.go", "clients/python/src/guardana_control/enforce/_schema.py"},
 }
 
 // recipeProblems is the other direction: every docs-gen run lands on a page

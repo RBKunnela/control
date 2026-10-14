@@ -129,7 +129,7 @@ GO_SRC := . $(REPO_FILES); repo_files '*.go' | { grep -v '^api/gen/' || true; }
         proto proto-check proto-breaking docs-check docs-gen docs-impact tidy-check check-brand \
         release-snapshot check-demo-archive scan-binaries scan-binaries-probe \
         check-imports check-imports-probe check-modules-probe check-sizes check-actions \
-        check-shell pre-push-probe quality-quick quality
+        check-shell pre-push-probe check-python check-python-probe quality-quick quality
 
 bootstrap:
 	$(CD) scripts/bootstrap.sh
@@ -280,6 +280,7 @@ docs-gen:
 	$(CD) $(GO) run scripts/gen-wire.go -o docs/reference/wire/event.md event.proto
 	$(CD) $(GO) run scripts/gen-wire.go -o docs/reference/wire/finding.md finding.proto
 	$(CD) $(GO) run scripts/gen-wire.go -o docs/reference/wire/result.md result.proto
+	$(CD) $(GO) run scripts/gen-pyschema.go -o clients/python/src/guardana_control/enforce/_schema.py
 	$(CD) $(GO) run scripts/gen-site.go -o site/index.html
 
 check-brand:
@@ -328,6 +329,18 @@ check-imports-probe:
 check-modules-probe:
 	$(CD) scripts/check-modules-probe.sh
 
+# The Python client: its tests on both pinned interpreters, the linter, the
+# type checker and a build of the wheel, each in an emptied environment. A
+# missing uv or interpreter fails; make bootstrap installs them.
+check-python:
+	$(CD) scripts/check-python.sh
+
+# The negative control of check-python: the script, staged with one thing
+# planted that would make it examine something other than the commit, must
+# refuse each.
+check-python-probe:
+	$(CD) scripts/check-python-probe.sh
+
 # The negative control of the pre-push hook: a throwaway repository in which
 # the hook must refuse an ungated commit sent to main and pass a branch push.
 pre-push-probe:
@@ -364,5 +377,6 @@ quality:
 	@MAKEFLAGS= GNUMAKEFLAGS= MFLAGS= $(MAKE) --no-print-directory -f "$$REPO_ROOT/$(notdir $(firstword $(MAKEFILE_LIST)))" \
 	  fmt-check vet lint test test-race fuzz-smoke security proto-check \
 	  docs-check tidy-check check-imports check-imports-probe check-modules-probe check-brand \
-	  check-sizes check-actions check-shell scan-binaries-probe pre-push-probe
+	  check-sizes check-actions check-shell scan-binaries-probe pre-push-probe check-python \
+	  check-python-probe
 	@echo "quality: green"

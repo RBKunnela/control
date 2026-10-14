@@ -16,11 +16,11 @@ audit of the whole tree
    references to that inventory. Remove delivered roadmap/backlog tasks;
    keep incomplete ones `planned`. Regenerate pages with `make docs-gen`.
 3. Add the dated `## [X.Y.Z] - YYYY-MM-DD` section to `CHANGELOG.md`.
-   `scripts/release-notes.sh vX.Y.Z` prints it; the workflow publishes it
-   and refuses missing, undated or empty notes.
-4. Commit: this is the release commit. Gate it cold with
-   `scripts/gate-commit.sh`; the admin pushes it to `main`. Wait for CI and
-   Security to finish green.
+   `scripts/release-notes.sh vX.Y.Z` prints it; the workflow refuses
+   missing, undated or empty notes. Set that version in
+   `clients/python/pyproject.toml` and run `uv lock` there.
+4. Gate the release commit cold with `scripts/gate-commit.sh`; the admin
+   pushes it to `main`. Wait for green CI and Security.
 5. Tag the commit and push:
 
    ```sh

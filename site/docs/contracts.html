@@ -1772,6 +1772,15 @@ declare, a body or a value past its bound, or a path naming another version
 is refused with an error body, never ignored. Argument bytes travel as
 <code>bytes</code> so that no JSON library reorders or reformats them, and a client
 compares the decoded bytes, never a digest and never the base64 text.</p>
+<p>A client may rely on the form a receiver writes: each member under its JSON
+name, once; an enum as a declared name or an integer in int32 range; a 64-bit
+integer as a decimal string;
+<code>bytes</code> as padded standard base64; a <code>Timestamp</code> as RFC 3339 with <code>Z</code> and up
+to nine fractional digits; a <code>Duration</code> as decimal seconds with <code>s</code>; no
+<code>null</code>. A client that refuses an answer in any other form conforms. One that
+reads another form acts on it as the reference client does: the same outcome,
+the same bytes to the tool, the same closing request.
+<a href="https://github.com/guardana/control/blob/main/testdata/enforce/README.md">The answer vectors</a> hold both.</p>
 <h3 id="zero-values">Zero values</h3>
 <p>Every enum's zero value is <code>*_UNSPECIFIED</code>. In a request, <code>CompletionStatus</code>
 and <code>AbortCause</code> unspecified, or a number the receiver does not declare, is
@@ -1781,7 +1790,7 @@ most restrictive meaning:</p>
 <thead>
 <tr>
 <th>Enum</th>
-<th>Unspecified, or a value the client does not know, reads as</th>
+<th>Unspecified, or a number the client does not know, reads as</th>
 </tr>
 </thead>
 <tbody>
@@ -1799,6 +1808,8 @@ most restrictive meaning:</p>
 </tr>
 </tbody>
 </table>
+<p>A name the contract does not declare is not such a value: the answer is
+malformed, and nothing is run on it.</p>
 <h3 id="admit-complete-and-abort">Admit, complete and abort</h3>
 <p>An admit names a tool, the proposed argument bytes, an optional request key of
 at most 64 characters from <code>[A-Za-z0-9._-]</code> and an optional W3C

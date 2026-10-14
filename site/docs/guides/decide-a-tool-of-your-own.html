@@ -124,9 +124,9 @@ is <code>experimental</code>; <a href="/docs/status">status.md</a> is the invent
 <li>A runs directory and one opened run per task
 (<a href="/docs/guides/keep-two-tasks-apart">keep-two-tasks-apart.md</a>): every request
 presents a run token.</li>
-<li>A client that keeps the client rules: the Go reference in
-<code>internal/enforceclient</code>, or one in another language that passes the cases in
-<a href="https://github.com/guardana/control/blob/main/testdata/enforce/README.md">testdata/enforce/</a>.</li>
+<li>A client that keeps the client rules: the Python client below, the Go
+reference in <code>internal/enforceclient</code>, or one in another language that
+passes the cases in <a href="https://github.com/guardana/control/blob/main/testdata/enforce/README.md">testdata/enforce/</a>.</li>
 </ul>
 <h2 id="steps">Steps</h2>
 <h3 id="1-classify-each-tool">1. Classify each tool</h3>
@@ -189,6 +189,36 @@ up before sending (<code>ABORT_CAUSE_NOT_SENT</code>). Never send an action agai
 handle was issued; a new attempt is a new admit, decided anew.</p>
 <p>The fields, error codes and the strict JSON mapping are in
 <a href="/docs/contracts#the-enforcement-api">contracts.md</a>.</p>
+<h3 id="5-or-let-the-python-client-do-steps-3-and-4">5. Or let the Python client do steps 3 and 4</h3>
+<p><code>guardana_control.enforce</code> is <code>experimental</code> and has no dependencies; it needs
+Python 3.11 or later. Use the client of your plane's release.</p>
+<p>No release carries it yet. From a checkout of the repository:</p>
+<pre><code>pip install ./clients/python
+</code></pre>
+<pre><code class="language-python">from guardana_control.enforce import CallBlocked, CallPending, Client, Result, Status
+
+client = Client(socket=&#34;/run/guardana/enforce.sock&#34;, token=token, timeout=5.0)
+
+def refund(authorized: bytes) -&gt; Result:
+    receipt = payments.refund(authorized)
+    return Result(Status.SUCCESS, value=receipt)
+
+try:
+    answer = client.call(&#34;refund&#34;, b&#39;{&#34;order_id&#34;:&#34;ord-1&#34;}&#39;, refund)
+except CallBlocked:
+    ...  # the tool did not run
+except CallPending as held:
+    ...  # ask again after held.answer.held.retry_after
+</code></pre>
+<p><code>call</code> runs your function only with the authorized bytes and sends one
+<code>complete</code> or one <code>abort</code>. A function that raises is reported <code>UNKNOWN</code>; raise
+<code>NotSent</code> only when the bytes never left. <code>call</code> returns when the tool ran
+and the record landed. Everything else raises. Only an <code>EnforceError</code> says,
+in <code>answer.ran</code>, whether the tool was entered; any other exception is the
+tool's own, raised again after its run was reported <code>UNKNOWN</code>, or a
+<code>TypeError</code> or <code>ValueError</code> for a call misused before anything was sent. When
+your function makes a call of its own and lets that call's exception out,
+<code>call</code> raises a <code>ToolRaised</code> from it, whose answer is the outer call's.</p>
 <h2 id="verify">Verify</h2>
 <ul>
 <li><code>/healthz</code> has an <code>enforce</code> object: <code>open_handles</code>, the answers by outcome,

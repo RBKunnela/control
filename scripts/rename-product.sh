@@ -118,6 +118,7 @@ new_image="$5"
 old_name="$(brand_const Name)"
 old_slug="$(brand_const Slug)"
 old_cli="$(brand_const CLI)"
+old_python="$(brand_const PythonPackage)"
 old_gateway="$(brand_const Gateway)"
 old_env_prefix="$(brand_const EnvPrefix)"
 old_otel="$(brand_const OTelNamespace)"
@@ -132,6 +133,9 @@ new_proto_path="$(printf '%s' "${new_proto_pkg}" | tr '.' '/')"
 old_proto_path="$(printf '%s' "${old_proto_pkg}" | tr '.' '/')"
 new_gateway="$(gateway_of "${new_slug}")"
 new_cli="${new_slug}"
+new_python="$(printf '%s' "${new_slug}" | tr '-' '_')"
+[[ "${new_python}" =~ ^[a-z][a-z0-9_]*$ ]] ||
+  die "the slug gives the Python package name ${new_python}, which must start with a letter"
 old_go_pkg="$(go_pkg_of "${old_proto_pkg}")"
 new_go_pkg="$(go_pkg_of "${new_proto_pkg}")"
 
@@ -142,6 +146,8 @@ new_go_pkg="$(go_pkg_of "${new_proto_pkg}")"
   die "Gateway is ${old_gateway}, not $(gateway_of "${old_slug}"); rename it by hand first"
 [[ "${old_cli}" == "${old_slug}" ]] ||
   die "CLI is ${old_cli} and Slug is ${old_slug}; rename CLI by hand first"
+[[ "${old_python}" == "$(printf '%s' "${old_slug}" | tr '-' '_')" ]] ||
+  die "PythonPackage is ${old_python}, not ${old_slug} with underscores; rename it by hand first"
 
 # gomod_module
 # Prints the path of go.mod's one module directive. go.mod is what the
@@ -202,6 +208,7 @@ add_pair "${old_otel}" "${new_otel}"
 add_pair "${old_gateway}" "${new_gateway}"
 add_pair "${old_name}" "${new_name}"
 add_pair "${old_slug}" "${new_slug}"
+add_pair "${old_python}" "${new_python}"
 
 [[ ${#pair_from[@]} -gt 0 ]] || die "new values match the current brand, nothing to do"
 
@@ -276,6 +283,12 @@ if [[ "${old_proto_path}" != "${new_proto_path}" ]]; then
   fi
 fi
 
+python_src="${ROOT}/clients/python/src"
+if [[ "${old_python}" != "${new_python}" && -d "${python_src}/${old_python}" &&
+  -e "${python_src}/${new_python}" ]]; then
+  die "clients/python/src/${new_python} already exists; move it aside first"
+fi
+
 cmd_renames=()
 if [[ -d "${ROOT}/cmd" ]]; then
   for dir in "${ROOT}"/cmd/*; do
@@ -345,6 +358,7 @@ assert_brand OTelNamespace "${new_otel}" || post_failures=$((post_failures + 1))
 assert_brand ProtoPackage "${new_proto_pkg}" || post_failures=$((post_failures + 1))
 assert_brand ModulePath "${new_module}" || post_failures=$((post_failures + 1))
 assert_brand Image "${new_image}" || post_failures=$((post_failures + 1))
+assert_brand PythonPackage "${new_python}" || post_failures=$((post_failures + 1))
 # brand.go agreeing with the arguments says nothing about go.mod, which is the
 # file the toolchain reads, so the module directive is compared as well.
 renamed_module="$(gomod_module)"
@@ -384,6 +398,12 @@ for entry in ${cmd_renames[@]+"${cmd_renames[@]}"}; do
   moves+=("cmd/${entry%%|*} -> cmd/${entry##*|}")
 done
 
+if [[ "${old_python}" != "${new_python}" && -d "${python_src}/${old_python}" ]]; then
+  mv "${python_src}/${old_python}" "${python_src}/${new_python}" ||
+    die "cannot move clients/python/src/${old_python} to clients/python/src/${new_python}"
+  moves+=("clients/python/src/${old_python} -> clients/python/src/${new_python}")
+fi
+
 if [[ -f "${ROOT}/buf.gen.yaml" ]]; then
   command -v buf >/dev/null 2>&1 || die "buf.gen.yaml exists but buf is not on PATH"
   # Generated into a scratch directory first. Deleting api/gen before knowing
@@ -421,6 +441,7 @@ printf 'go package    %s -> %s\n' "${old_go_pkg}" "${new_go_pkg}"
 printf 'image         %s -> %s\n' "${old_image}" "${new_image}"
 printf 'env prefix    %s -> %s\n' "${old_env_prefix}" "${new_env_prefix}"
 printf 'otel          %s -> %s\n' "${old_otel}" "${new_otel}"
+printf 'python        %s -> %s\n' "${old_python}" "${new_python}"
 printf '\nbrand.go and go.mod re-read after the pass: every constant and the module directive match the above\n'
 printf '\n%d of %d scanned files rewritten:\n' "${#changed[@]}" "${scanned}"
 if [[ ${#changed[@]} -gt 0 ]]; then

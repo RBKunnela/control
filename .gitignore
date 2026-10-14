@@ -12,8 +12,12 @@ dist/
 /coverage/
 *.out
 *.test
+*.pyc
 .idea/
 .vscode/
+.venv/
+.mypy_cache/
+.ruff_cache/
 node_modules/
 
 # Go workspace files are per-developer

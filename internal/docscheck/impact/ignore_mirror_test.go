@@ -74,6 +74,7 @@ func TestIgnoreMirrorsAgreeWithGit(t *testing.T) {
 	gitKeeps := []string{
 		".env.example", ".github/workflows/ci.yml", ".gitignore", ".tooling/x",
 		"Makefile", "bench/README.md", "bench/results/20260927T010203Z-darwin-arm64.txt",
+		"clients/python/src/m/__init__.py",
 		"cmd/gw/main.go", "docs/design/other.md", "go.work.example",
 		"notes/20260927T010203Z-darwin-arm64.txt",
 	}

@@ -133,6 +133,7 @@ TWO_APPROVAL_PATHS=(
   "buf.gen.yaml"
   "go.mod"
   "go.sum"
+  "clients/python/*"
 )
 
 # GitHub refuses a required reviewer with more than 15 file patterns, and the

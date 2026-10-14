@@ -279,7 +279,7 @@ those three or through the MCP module: <code>golang.org/x/mod</code>, <code>gola
 gateway with it. No code in this repository imports them.</p>
 <h2 id="tools-that-are-not-go-modules">Tools that are not Go modules</h2>
 <p><code>golangci-lint</code>, <code>buf</code>, <code>actionlint</code>, <code>zizmor</code>, <code>gitleaks</code>, <code>osv-scanner</code>,
-<code>shellcheck</code>, <code>syft</code>, <code>goreleaser</code> and <code>cosign</code> are pinned in
+<code>shellcheck</code>, <code>syft</code>, <code>goreleaser</code>, <code>cosign</code> and <code>uv</code> are pinned in
 <code>scripts/tool-versions.env</code> and checked by <code>make bootstrap</code>, which fails on a
 version mismatch rather than continuing. The Go compiler is pinned separately,
 by the <code>go</code> directive in <code>go.mod</code>, see
@@ -303,6 +303,25 @@ both signatures before the release is published.</li>
 </ul>
 <p>None of these is a dependency of the product, and nothing in the tree imports
 any of them.</p>
+<h2 id="the-python-client">The Python client</h2>
+<p>The client under <code>clients/python/</code> has no dependency at run time: it imports
+the standard library alone, and a test reads its imports
+(<a href="/docs/adr/0053-a-python-client-of-the-enforcement-api-in-this-repository">ADR-0053</a>).
+Its checks and its build use these, none of them in a request path:</p>
+<ul>
+<li><code>uv</code> (Apache-2.0 or MIT), pinned by version and digest in
+<code>scripts/tool-versions.env</code>, installs the two CPython builds the tests run
+on and the tools below from <code>clients/python/uv.lock</code>. The standard library's
+<code>venv</code> and <code>pip</code> pin neither an interpreter build nor every hash in one
+file. Maintained by Astral, with frequent releases.</li>
+<li><code>ruff</code> (MIT) lints and checks formatting, and <code>mypy</code> (MIT) checks types.
+Both are locked with hashes and run only in <code>make check-python</code>.</li>
+<li><code>flit_core</code> (BSD-3-Clause) builds the wheel and the source archive. It has no
+dependencies of its own and is pinned by hash in
+<code>clients/python/build-constraints.txt</code>. A wheel installs without it.</li>
+<li>CPython (PSF licence), the two versions named in
+<code>scripts/tool-versions.env</code>, as uv installs them.</li>
+</ul>
 <h2 id="the-website">The website</h2>
 <p><code>site/</code> holds the website's static files (<a href="/docs/adr/0030-a-static-website-drawn-from-the-repository">ADR-0030</a>),
 and one Go module renders its documentation pages. No binary or image of the

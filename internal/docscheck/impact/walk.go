@@ -71,7 +71,7 @@ func describe(broken []Unparsed) string {
 // directories, and the files .gitignore names.
 var (
 	prunedDirs   = []string{"bin", "dist", "coverage", "node_modules"}
-	ignoredNames = []string{".DS_Store", "*.out", "*.test", ".env", "go.work", "go.work.sum"}
+	ignoredNames = []string{".DS_Store", "*.out", "*.test", "*.pyc", ".env", "go.work", "go.work.sum"}
 	ignoredPaths = []string{"AGENTS.local.md"}
 )
 

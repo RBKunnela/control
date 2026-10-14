@@ -50,11 +50,14 @@ type mutant struct {
 
 func newMutant(defect string) newCaller {
 	return func(_ *testing.T, socket, token string) caller {
-		m := &mutant{defect: defect, token: token, http: &http.Client{Transport: &http.Transport{
-			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-				return (&net.Dialer{}).DialContext(ctx, "unix", socket)
+		m := &mutant{defect: defect, token: token, http: &http.Client{
+			Transport: &http.Transport{
+				DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+					return (&net.Dialer{}).DialContext(ctx, "unix", socket)
+				},
 			},
-		}}}
+			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+		}}
 		return m.call
 	}
 }
@@ -81,9 +84,12 @@ func (m *mutant) post(ctx context.Context, path string, req, resp proto.Message)
 		return fmt.Errorf("%w: %w", enforceclient.ErrTransport, err)
 	}
 	defer func() { _ = hresp.Body.Close() }()
-	data, err := io.ReadAll(hresp.Body)
+	data, err := io.ReadAll(io.LimitReader(hresp.Body, enforceclient.MaxAnswerBytes+1))
 	if err != nil {
 		return fmt.Errorf("%w: %w", enforceclient.ErrTransport, err)
+	}
+	if len(data) > enforceclient.MaxAnswerBytes {
+		return fmt.Errorf("%w: past the bound", enforceclient.ErrMalformedAnswer)
 	}
 	opts := protojson.UnmarshalOptions{DiscardUnknown: m.is("lenient-decoding")}
 	if hresp.StatusCode != http.StatusOK {
@@ -143,6 +149,8 @@ func (m *mutant) call(ctx context.Context, tool string, args []byte, exec enforc
 		return ans, enforceclient.ErrPending
 	case !m.executes(resp):
 		return ans, enforceclient.ErrBlocked
+	case resp.GetExecution().GetHandle() == "":
+		return ans, fmt.Errorf("%w: nothing to execute under", enforceclient.ErrMalformedAnswer)
 	}
 	ans.Outcome = enforcev1alpha1.Outcome_OUTCOME_EXECUTE
 	return m.execute(ctx, ans, resp.GetExecution(), args, exec)
@@ -233,6 +241,10 @@ func (m *mutant) complete(ctx context.Context, ans enforceclient.Answer, handle 
 func (m *mutant) abort(ctx context.Context, ans enforceclient.Answer, handle string, cause enforcev1alpha1.AbortCause) (enforceclient.Answer, error) {
 	resp := &enforcev1alpha1.AbortResponse{}
 	if err := m.post(ctx, enforceclient.PathAbort, &enforcev1alpha1.AbortRequest{Handle: handle, Cause: cause}, resp); err != nil {
+		var refusal *enforceclient.RefusalError
+		if errors.As(err, &refusal) {
+			ans.Ending = refusal.Ending
+		}
 		return ans, errors.Join(enforceclient.ErrAborted, err)
 	}
 	ans.Ending = resp.GetEnding()

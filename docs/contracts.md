@@ -1385,6 +1385,16 @@ is refused with an error body, never ignored. Argument bytes travel as
 `bytes` so that no JSON library reorders or reformats them, and a client
 compares the decoded bytes, never a digest and never the base64 text.
 
+A client may rely on the form a receiver writes: each member under its JSON
+name, once; an enum as a declared name or an integer in int32 range; a 64-bit
+integer as a decimal string;
+`bytes` as padded standard base64; a `Timestamp` as RFC 3339 with `Z` and up
+to nine fractional digits; a `Duration` as decimal seconds with `s`; no
+`null`. A client that refuses an answer in any other form conforms. One that
+reads another form acts on it as the reference client does: the same outcome,
+the same bytes to the tool, the same closing request.
+[The answer vectors](../testdata/enforce/README.md) hold both.
+
 ### Zero values
 
 Every enum's zero value is `*_UNSPECIFIED`. In a request, `CompletionStatus`
@@ -1392,11 +1402,14 @@ and `AbortCause` unspecified, or a number the receiver does not declare, is
 refused with `ERROR_CODE_MALFORMED`. In an answer, a client reads each as its
 most restrictive meaning:
 
-| Enum | Unspecified, or a value the client does not know, reads as |
+| Enum | Unspecified, or a number the client does not know, reads as |
 | --- | --- |
 | `Outcome` | `OUTCOME_BLOCK`: the client sends nothing |
 | `Ending` | not recorded; only `ENDING_RECORDED` says the closing record landed |
 | `ErrorCode` | a refusal of the request |
+
+A name the contract does not declare is not such a value: the answer is
+malformed, and nothing is run on it.
 
 ### Admit, complete and abort
 
