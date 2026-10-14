@@ -21,9 +21,9 @@ make quality
 a mismatch. `go.mod` pins Go and the Go tools. A tool that
 cannot be installed is a failure, never a skipped step.
 
-`make quality` is the whole gate, and `ci.yml` runs exactly that target. Use
-`make quality-quick` while you work and the full gate before you open a pull
-request.
+`make quality` is the whole gate, and `ci.yml` runs exactly that target on
+your pull request. Use `make quality-quick` while you work; running the whole
+gate yourself first saves a round trip.
 
 ## Before you write code
 

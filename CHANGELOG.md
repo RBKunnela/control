@@ -11,6 +11,18 @@ verify one.
 
 ## [Unreleased]
 
+### Changed
+
+- A change reaches `main` as one squash-merged pull request whose gate is
+  CI's `make quality`, a maintainer's own included; only a release commit is
+  still gated cold on a maintainer's machine and pushed directly. Until 1.0 a
+  release follows every one to three changes
+  ([ADR-0052](docs/adr/0052-a-change-is-gated-on-its-pull-request.md)).
+- `scripts/pre-push.sh` asks for a gate stamp for commits sent to `main` and
+  for the commit a `v*` tag names, and for nothing else: a branch push needs
+  none. A `main` the remote does not hold yet counts every commit. The hook
+  has a negative control, `make pre-push-probe`, in `make quality`.
+
 ## [0.11.0] - 2026-10-12
 
 A tool outside MCP can now ask for a decision before it acts and report how

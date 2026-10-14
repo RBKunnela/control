@@ -511,8 +511,8 @@ checks.</p>
 <ul>
 <li>A user who does not run those commands gets none of it.</li>
 <li>The checks prove which workflow built the archive from which commit, not
-that the commit was reviewed. The repository admin may push to <code>main</code>
-directly (<a href="/docs/adr/0025-public-repository-merges-and-releases">ADR-0025</a>).</li>
+that the commit was reviewed. The repository admin's own pull requests merge
+unreviewed (<a href="/docs/adr/0052-a-change-is-gated-on-its-pull-request">ADR-0052</a>).</li>
 <li>A binary built from source with <code>go install</code> carries no signature.</li>
 </ul>
 <h2 id="evidence-what-a-trail-proves">Evidence: what a trail proves</h2>

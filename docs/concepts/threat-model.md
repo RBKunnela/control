@@ -403,8 +403,8 @@ What it does not do:
 
 - A user who does not run those commands gets none of it.
 - The checks prove which workflow built the archive from which commit, not
-  that the commit was reviewed. The repository admin may push to `main`
-  directly ([ADR-0025](../adr/0025-public-repository-merges-and-releases.md)).
+  that the commit was reviewed. The repository admin's own pull requests merge
+  unreviewed ([ADR-0052](../adr/0052-a-change-is-gated-on-its-pull-request.md)).
 - A binary built from source with `go install` carries no signature.
 
 ## Evidence: what a trail proves

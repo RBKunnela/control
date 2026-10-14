@@ -64,10 +64,10 @@ request.
   calls; read the exact set there rather than from a list in prose that can
   drift.
 
-`ci.yml` runs `make quality` itself. Local and CI runs must both be green.
-The security and workflow-lint workflows do not call the gate; they run
-some tools directly over a wider scope. A change is unfinished until
-`make quality` is green.
+`ci.yml` runs `make quality` on every pull request and on `main`; a change
+is unfinished until that run is green. A release commit is also gated cold
+locally. The security and workflow-lint workflows do not call the gate; they
+run some tools directly over a wider scope.
 
 ## Layout
 
@@ -124,12 +124,14 @@ because it becomes part of what has to be audited.
 
 ## Version control
 
-`main` is protected: changes arrive by squash-merged pull request, with
+`main` is protected: a change arrives as one squash-merged pull request, with
 required checks, linear history and code-owner review on the authorization
-paths. Only maintainers merge; only the repository admin pushes directly.
+paths. Only maintainers merge, one at a time; the admin pushes only a release
+commit.
 Commits follow Conventional Commits and carry a DCO `Signed-off-by` line;
 there is no contributor licence agreement. A release is a `v*` tag that CI builds, signs and attests, and a tag
 never moves.
 See [ADR-0008](docs/adr/0008-branching-and-release-policy.md),
 [ADR-0025](docs/adr/0025-public-repository-merges-and-releases.md),
+[ADR-0052](docs/adr/0052-a-change-is-gated-on-its-pull-request.md),
 [CONTRIBUTING.md](CONTRIBUTING.md) and [RELEASING.md](RELEASING.md).
