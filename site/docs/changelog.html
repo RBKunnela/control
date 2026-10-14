@@ -123,6 +123,9 @@ CI's <code>make quality</code>, a maintainer's own included; only a release comm
 still gated cold on a maintainer's machine and pushed directly. Until 1.0 a
 release follows every one to three changes
 (<a href="/docs/adr/0052-a-change-is-gated-on-its-pull-request">ADR-0052</a>).</li>
+<li>The race tests run every night with every processor busy, on Linux and on
+macOS, so a test that depends on the clock fails there and not in a release
+gate. A red night opens an issue.</li>
 <li><code>scripts/pre-push.sh</code> asks for a gate stamp for commits sent to <code>main</code> and
 for the commit a <code>v*</code> tag names, and for nothing else: a branch push needs
 none. A <code>main</code> the remote does not hold yet counts every commit. The hook

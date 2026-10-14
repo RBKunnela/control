@@ -194,7 +194,7 @@ already holds a package doc and a test holds nothing that decides.</li>
 <tr>
 <td>Continuous integration</td>
 <td><code>implemented</code></td>
-<td><code>.github/workflows/</code>: <code>ci.yml</code> runs <code>make quality</code> on Linux for every push to <code>main</code> and every pull request; <code>security.yml</code> runs CodeQL and the vulnerability, advisory and secret scans, <code>pull-request.yml</code> checks a pull request's title and sign-offs, <code>workflow-lint.yml</code> checks the workflows, and <code>scorecard.yml</code> scores the repository's supply chain</td>
+<td><code>.github/workflows/</code>: <code>ci.yml</code> runs <code>make quality</code> on Linux for every push to <code>main</code> and every pull request; <code>security.yml</code> runs CodeQL and the vulnerability, advisory and secret scans, <code>pull-request.yml</code> checks a pull request's title and sign-offs, <code>workflow-lint.yml</code> checks the workflows, <code>scorecard.yml</code> scores the repository's supply chain, and <code>nightly.yml</code> runs the race tests with every processor busy on Linux and macOS each night (<code>scripts/test-race-loaded.sh</code>), opening an issue when a night is red</td>
 </tr>
 <tr>
 <td>Wire contracts, frozen at <code>1.0</code></td>

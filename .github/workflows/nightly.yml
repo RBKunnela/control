@@ -1,0 +1,80 @@
+name: Nightly
+
+on:
+  schedule:
+    # Off the hour, when scheduled runs queue least.
+    - cron: "23 2 * * *"
+  workflow_dispatch:
+  # A change to this workflow or to its script is done when its own run has
+  # been read, so the pull request that makes one runs it.
+  pull_request:
+    paths:
+      - .github/workflows/nightly.yml
+      - scripts/test-race-loaded.sh
+
+# Read-only by default. The one job that writes says so at job level.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    # GitHub's "bash" adds -o pipefail, which the bare default shell does not.
+    shell: bash
+
+jobs:
+  race:
+    name: Race tests under load
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      # One platform's failure says nothing about the other's.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Run the race tests with every processor busy
+        run: env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS scripts/test-race-loaded.sh
+
+  report:
+    name: Report a red night
+    needs: race
+    # Only a scheduled run speaks for main; a pull request's or a manual run's
+    # failure is read where it was started.
+    if: ${{ failure() && github.event_name == 'schedule' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      issues: write # the step below opens the issue or comments on the open one
+    steps:
+      - name: Open the issue, or add this night to the open one
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          title="The nightly race run under load is red"
+          body="The race tests failed under processor load on ${HEAD_SHA}: ${RUN_URL}
+
+          A failure here is reproduced and fixed like any defect; it is not rerun until it passes."
+          open="$(gh issue list --state open --search "in:title \"${title}\"" --json number,title \
+            --jq "[.[] | select(.title == \"${title}\")][0].number // empty")"
+          if [[ -n "${open}" ]]; then
+            gh issue comment "${open}" --body "${body}"
+          else
+            gh issue create --title "${title}" --label "kind:bug" --body "${body}"
+          fi

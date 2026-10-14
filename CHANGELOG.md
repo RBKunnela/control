@@ -18,6 +18,9 @@ verify one.
   still gated cold on a maintainer's machine and pushed directly. Until 1.0 a
   release follows every one to three changes
   ([ADR-0052](docs/adr/0052-a-change-is-gated-on-its-pull-request.md)).
+- The race tests run every night with every processor busy, on Linux and on
+  macOS, so a test that depends on the clock fails there and not in a release
+  gate. A red night opens an issue.
 - `scripts/pre-push.sh` asks for a gate stamp for commits sent to `main` and
   for the commit a `v*` tag names, and for nothing else: a branch push needs
   none. A `main` the remote does not hold yet counts every commit. The hook
