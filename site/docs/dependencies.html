@@ -311,9 +311,11 @@ Its checks and its build use these, none of them in a request path:</p>
 <ul>
 <li><code>uv</code> (Apache-2.0 or MIT), pinned by version and digest in
 <code>scripts/tool-versions.env</code>, installs the two CPython builds the tests run
-on and the tools below from <code>clients/python/uv.lock</code>. The standard library's
-<code>venv</code> and <code>pip</code> pin neither an interpreter build nor every hash in one
-file. Maintained by Astral, with frequent releases.</li>
+on and the tools below from <code>clients/python/uv.lock</code>, builds the wheel and
+the source archive, and uploads them to the package index in the release
+workflow. The standard library's <code>venv</code> and <code>pip</code> pin neither an
+interpreter build nor every hash in one file. Maintained by Astral, with
+frequent releases.</li>
 <li><code>ruff</code> (MIT) lints and checks formatting, and <code>mypy</code> (MIT) checks types.
 Both are locked with hashes and run only in <code>make check-python</code>.</li>
 <li><code>flit_core</code> (BSD-3-Clause) builds the wheel and the source archive. It has no
@@ -424,12 +426,17 @@ Each is pinned to a commit SHA with the version in a trailing comment;
 </tr>
 <tr>
 <td><code>actions/upload-artifact</code></td>
-<td>Keeps the raw supply-chain result that code scanning would trim, and the dry run's release build</td>
+<td>Keeps the raw supply-chain result that code scanning would trim, the dry run's release build, and the Python client's files for the job that uploads them</td>
+<td>MIT</td>
+</tr>
+<tr>
+<td><code>actions/download-artifact</code></td>
+<td>Hands the Python client's files to the job that uploads them to the package index, which verifies their provenance first</td>
 <td>MIT</td>
 </tr>
 <tr>
 <td><code>actions/attest-build-provenance</code></td>
-<td>Records signed build provenance for every release asset and for the image before the release is published</td>
+<td>Records signed build provenance for every release asset, the Python client's files and the image before the release is published</td>
 <td>MIT</td>
 </tr>
 </tbody>

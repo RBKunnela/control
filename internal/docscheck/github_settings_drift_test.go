@@ -106,6 +106,14 @@ func TestSettingsCheckReportsWhoElseHoldsAuthority(t *testing.T) {
 			env := a.object("repos/acme/demo/environments/release/deployment-branch-policies")
 			env["branch_policies"] = append(env["branch_policies"].([]any), map[string]any{"id": 6, "name": "main", "type": "branch"})
 		}, "environment release deployment policies", "not declared"},
+		"the upload environment without its reviewers": {func(_ *testing.T, a answers) {
+			env := a.object("repos/acme/demo/environments/pypi")
+			env["protection_rules"] = env["protection_rules"].([]any)[:1]
+		}, "environment pypi", "reviewers"},
+		"the upload environment open to a branch": {func(_ *testing.T, a answers) {
+			env := a.object("repos/acme/demo/environments/pypi/deployment-branch-policies")
+			env["branch_policies"] = append(env["branch_policies"].([]any), map[string]any{"id": 7, "name": "main", "type": "branch"})
+		}, "environment pypi deployment policies", "not declared"},
 		"a configuration attached but not enforced": {func(_ *testing.T, a answers) {
 			a.object("repos/acme/demo/code-security-configuration")["status"] = "attached"
 		}, "code security configuration", `attached.status: declared "enforced", live "attached"`},

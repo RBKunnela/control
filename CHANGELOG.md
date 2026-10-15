@@ -31,6 +31,11 @@ verify one.
 - `make check-python`, part of `make quality`: the client's tests on two
   pinned CPython versions, its linter and type checker, and a build of its
   wheel. `make bootstrap` installs `uv` and both interpreters.
+- The release workflow builds the Python client's wheel and source archive
+  before anything is drafted, attests them, and once the release is
+  published uploads them to PyPI by trusted publishing, with no stored token,
+  in a job of its own that a maintainer approves. The dry run uploads a
+  development release to TestPyPI the same way. Both read the index back.
 
 ### Changed
 

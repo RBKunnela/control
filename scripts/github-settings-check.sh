@@ -5,7 +5,7 @@
 # scripts/lib/github-settings.sh declares and scripts/github-bootstrap.sh
 # applies: the repository settings, topics, immutable releases, the Actions
 # permissions, the two teams with their members, who else holds maintain or
-# admin, the release environment, the rulesets, the labels, the milestones
+# admin, the release environments, the rulesets, the labels, the milestones
 # and the code security configuration. It only reads: every call is a GET
 # through `gh api`, and the bodies it compares against are the ones the
 # bootstrap sends.
@@ -355,25 +355,27 @@ else
   report unknown "repository admins" "${WHY}"
 fi
 
-item="environment ${ENVIRONMENT}"
-if fetch "repos/${REPO}/environments/${ENVIRONMENT}"; then
-  if [[ -n "${MAINTAINERS_TEAM_ID}" ]]; then
-    compare "${item}" "$(environment_json "${MAINTAINERS_TEAM_ID}")" "${LIVE}" environment
+for environment in "${ENVIRONMENTS[@]}"; do
+  item="environment ${environment}"
+  if fetch "repos/${REPO}/environments/${environment}"; then
+    if [[ -n "${MAINTAINERS_TEAM_ID}" ]]; then
+      compare "${item}" "$(environment_json "${MAINTAINERS_TEAM_ID}")" "${LIVE}" environment
+    else
+      compare "${item}" "$(environment_json 0)" "${LIVE}" environment \
+        "the maintainers team's id could not be read, so the reviewer's id was not compared"
+    fi
   else
-    compare "${item}" "$(environment_json 0)" "${LIVE}" environment \
-      "the maintainers team's id could not be read, so the reviewer's id was not compared"
+    report unknown "${item}" "${WHY}"
   fi
-else
-  report unknown "${item}" "${WHY}"
-fi
 
-item="environment ${ENVIRONMENT} deployment policies"
-if fetch "repos/${REPO}/environments/${ENVIRONMENT}/deployment-branch-policies" pages; then
-  compare "${item}" "[$(environment_tag_policy_json)]" \
-    "$(jq -c '[.[].branch_policies[] | {name, type}]' <<<"${LIVE}")"
-else
-  report unknown "${item}" "${WHY}"
-fi
+  item="environment ${environment} deployment policies"
+  if fetch "repos/${REPO}/environments/${environment}/deployment-branch-policies" pages; then
+    compare "${item}" "[$(environment_tag_policy_json)]" \
+      "$(jq -c '[.[].branch_policies[] | {name, type}]' <<<"${LIVE}")"
+  else
+    report unknown "${item}" "${WHY}"
+  fi
+done
 
 rulesets=""
 rulesets_why=""

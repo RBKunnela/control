@@ -82,6 +82,9 @@ PROMISED = (
     "tests.test_harness.Receivers.test_a_request_the_script_does_not_hold_is_refused",
     "tests.test_gate.Runner.test_a_test_whose_body_never_runs_is_a_problem",
     "tests.test_gate.Runner.test_the_report_follows_the_judgement",
+    "tests.test_gate.Wheel.test_a_version_given_is_the_one_the_files_must_carry",
+    "tests.test_gate.Wheel.test_a_release_tag_is_spelled_as_python_spells_it",
+    "tests.test_gate.Wheel.test_a_source_archive_of_another_version_is_refused",
 )
 
 

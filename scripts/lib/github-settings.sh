@@ -242,8 +242,11 @@ RETIRED_MILESTONES=(
   "Procedures and a supervisor"
 )
 
-ENVIRONMENT="release"
-# The only ref pattern, as a tag policy, that may deploy to the environment.
+# The release job deploys to release, and the job that uploads the Python
+# client to the package index to pypi, whose publisher trusts that
+# environment alone: a token the release job's tools could mint is refused.
+ENVIRONMENTS=(release pypi)
+# The only ref pattern, as a tag policy, that may deploy to either.
 ENVIRONMENT_TAG_POLICY='v*'
 
 # emit <text>; prints text and a newline through cat. Callers read these
@@ -561,9 +564,9 @@ reviewer_limit_problems() {
         else [] end))[]' <<<"${bodies}"
 }
 
-# environment_json <maintainers team id>; the release job deploys to this
-# environment, only from a v* tag, and waits for a maintainer to approve it. One
-# maintainer may approve their own tag, and the admin may bypass the wait.
+# environment_json <maintainers team id>; a job deploys to either environment
+# only from a v* tag and waits for a maintainer to approve it. One maintainer
+# may approve their own tag, and the admin may bypass the wait.
 environment_json() {
   require_id "the maintainers team" "$1" || return 1
   cat <<JSON

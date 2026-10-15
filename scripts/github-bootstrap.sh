@@ -3,7 +3,7 @@
 #
 # Applies the GitHub configuration of guardana/control that ADR-0025 and
 # GOVERNANCE.md describe: repository settings, security features, Actions
-# permissions, the two teams, labels, milestones, the release environment and
+# permissions, the two teams, labels, milestones, the release environments and
 # the rulesets. What it sets is declared in scripts/lib/github-settings.sh,
 # which scripts/github-settings-check.sh compares with GitHub without changing
 # anything. Every step is idempotent: a run sets what that file names, and
@@ -315,28 +315,30 @@ while IFS=$'\t' read -r ruleset_id ruleset_name; do
 done <<<"${existing_rulesets}"
 
 ENVIRONMENT_BODY="$(environment_json "${MAINTAINERS_TEAM_ID}")"
-run_json PUT "repos/${REPO}/environments/${ENVIRONMENT}" <<<"${ENVIRONMENT_BODY}"
-# Any other policy on the environment would let another ref deploy to it, so
-# every policy but the one for v* tags is removed.
-# Read by assignment, so a failed listing stops the run instead of leaving a
-# stray policy in place behind a report of success.
-policies="$(gh api "repos/${REPO}/environments/${ENVIRONMENT}/deployment-branch-policies" --paginate \
-  --jq '.branch_policies[] | "\(.id) \(.type) \(.name)"' </dev/null)"
-have_tag_policy=0
-while read -r policy_id policy_type policy_name; do
-  [[ -n "${policy_id}" ]] || continue
-  if [[ "${policy_type}" == "tag" && "${policy_name}" == "${ENVIRONMENT_TAG_POLICY}" ]]; then
-    have_tag_policy=1
+for environment in "${ENVIRONMENTS[@]}"; do
+  run_json PUT "repos/${REPO}/environments/${environment}" <<<"${ENVIRONMENT_BODY}"
+  # Any other policy on the environment would let another ref deploy to it, so
+  # every policy but the one for v* tags is removed.
+  # Read by assignment, so a failed listing stops the run instead of leaving a
+  # stray policy in place behind a report of success.
+  policies="$(gh api "repos/${REPO}/environments/${environment}/deployment-branch-policies" --paginate \
+    --jq '.branch_policies[] | "\(.id) \(.type) \(.name)"' </dev/null)"
+  have_tag_policy=0
+  while read -r policy_id policy_type policy_name; do
+    [[ -n "${policy_id}" ]] || continue
+    if [[ "${policy_type}" == "tag" && "${policy_name}" == "${ENVIRONMENT_TAG_POLICY}" ]]; then
+      have_tag_policy=1
+    else
+      run_quiet gh api --method DELETE \
+        "repos/${REPO}/environments/${environment}/deployment-branch-policies/${policy_id}" </dev/null
+    fi
+  done <<<"${policies}"
+  if ((have_tag_policy == 1)); then
+    printf 'environment %s already takes %s tags\n' "${environment}" "${ENVIRONMENT_TAG_POLICY}"
   else
-    run_quiet gh api --method DELETE \
-      "repos/${REPO}/environments/${ENVIRONMENT}/deployment-branch-policies/${policy_id}" </dev/null
+    run_json POST "repos/${REPO}/environments/${environment}/deployment-branch-policies" <<<"${TAG_POLICY_BODY}"
   fi
-done <<<"${policies}"
-if ((have_tag_policy == 1)); then
-  printf 'environment %s already takes %s tags\n' "${ENVIRONMENT}" "${ENVIRONMENT_TAG_POLICY}"
-else
-  run_json POST "repos/${REPO}/environments/${ENVIRONMENT}/deployment-branch-policies" <<<"${TAG_POLICY_BODY}"
-fi
+done
 
 run_json PATCH "repos/${REPO}" <<<"${REPOSITORY_BODY}"
 

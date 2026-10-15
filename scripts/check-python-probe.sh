@@ -59,7 +59,8 @@ chmod +x "${tmp}/standin/go"
 stage() {
   rm -rf "${tmp}/tree"
   mkdir -p "${tmp}/tree/scripts" "${tmp}/tree/clients"
-  cp "${root}/scripts/check-python.sh" "${root}/scripts/tool-versions.env" "${tmp}/tree/scripts/"
+  cp "${root}/scripts/check-python.sh" "${root}/scripts/build-python-dist.sh" \
+    "${root}/scripts/tool-versions.env" "${tmp}/tree/scripts/"
   cp -R "${root}/scripts/lib" "${tmp}/tree/scripts/lib"
   cp -R "${root}/clients/python" "${tmp}/tree/clients/python"
   find "${tmp}/tree/clients/python" -mindepth 1 \( -name '.*' -o -name __pycache__ \) -prune \

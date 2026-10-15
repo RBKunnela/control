@@ -200,9 +200,11 @@ Its checks and its build use these, none of them in a request path:
 
 - `uv` (Apache-2.0 or MIT), pinned by version and digest in
   `scripts/tool-versions.env`, installs the two CPython builds the tests run
-  on and the tools below from `clients/python/uv.lock`. The standard library's
-  `venv` and `pip` pin neither an interpreter build nor every hash in one
-  file. Maintained by Astral, with frequent releases.
+  on and the tools below from `clients/python/uv.lock`, builds the wheel and
+  the source archive, and uploads them to the package index in the release
+  workflow. The standard library's `venv` and `pip` pin neither an
+  interpreter build nor every hash in one file. Maintained by Astral, with
+  frequent releases.
 - `ruff` (MIT) lints and checks formatting, and `mypy` (MIT) checks types.
   Both are locked with hashes and run only in `make check-python`.
 - `flit_core` (BSD-3-Clause) builds the wheel and the source archive. It has no
@@ -280,7 +282,8 @@ Each is pinned to a commit SHA with the version in a trailing comment;
 | `github/codeql-action` | CodeQL static analysis, and the SARIF upload that publishes the supply-chain score to code scanning | MIT |
 | `actions/dependency-review-action` | Blocks a pull request that adds a vulnerable dependency | MIT |
 | `ossf/scorecard-action` | Scores the repository's own supply-chain settings | Apache-2.0 |
-| `actions/upload-artifact` | Keeps the raw supply-chain result that code scanning would trim, and the dry run's release build | MIT |
-| `actions/attest-build-provenance` | Records signed build provenance for every release asset and for the image before the release is published | MIT |
+| `actions/upload-artifact` | Keeps the raw supply-chain result that code scanning would trim, the dry run's release build, and the Python client's files for the job that uploads them | MIT |
+| `actions/download-artifact` | Hands the Python client's files to the job that uploads them to the package index, which verifies their provenance first | MIT |
+| `actions/attest-build-provenance` | Records signed build provenance for every release asset, the Python client's files and the image before the release is published | MIT |
 
 Licences were read from each action's repository metadata, not from a scanner.

@@ -131,6 +131,19 @@ func matchingAnswers(t *testing.T) answers {
 		"repos/acme/demo/environments/release/deployment-branch-policies": map[string]any{
 			"total_count": 1, "branch_policies": []any{map[string]any{"id": 5, "name": "v*", "type": "tag"}},
 		},
+		"repos/acme/demo/environments/pypi": map[string]any{
+			"id": 4, "name": "pypi", "can_admins_bypass": true,
+			"deployment_branch_policy": map[string]any{"protected_branches": false, "custom_branch_policies": true},
+			"protection_rules": []any{
+				map[string]any{"id": 1, "type": "branch_policy"},
+				map[string]any{"id": 2, "type": "required_reviewers", "prevent_self_review": false, "reviewers": []any{
+					map[string]any{"type": "Team", "reviewer": map[string]any{"id": 41, "slug": "maintainers"}},
+				}},
+			},
+		},
+		"repos/acme/demo/environments/pypi/deployment-branch-policies": map[string]any{
+			"total_count": 1, "branch_policies": []any{map[string]any{"id": 5, "name": "v*", "type": "tag"}},
+		},
 		"orgs/acme/code-security/configurations": []any{
 			map[string]any{"id": 8, "name": "GitHub recommended", "enforcement": "unenforced"},
 			map[string]any{

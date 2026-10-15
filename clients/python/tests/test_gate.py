@@ -60,10 +60,16 @@ def _wheel(directory: Path, shape: Shape = Shape()) -> None:  # noqa: B008
             archive.writestr(name, data)
 
 
-def _sdist(directory: Path, *, names: tuple[str, ...] = ("LICENSE", "pyproject.toml")) -> None:
-    with tarfile.open(directory / f"{DIST}-{VERSION}.tar.gz", "w:gz") as archive:
+def _sdist(
+    directory: Path,
+    *,
+    version: str = VERSION,
+    top: str = "",
+    names: tuple[str, ...] = ("LICENSE", "pyproject.toml"),
+) -> None:
+    with tarfile.open(directory / f"{DIST}-{version}.tar.gz", "w:gz") as archive:
         for name in names:
-            member = tarfile.TarInfo(f"{DIST}-{VERSION}/{name}")
+            member = tarfile.TarInfo(f"{top or f'{DIST}-{version}'}/{name}")
             archive.addfile(member, io.BytesIO(b""))
 
 
@@ -184,8 +190,8 @@ class Runner(unittest.TestCase):
         self.assertIn("the run was cut short", err.getvalue())
 
     def test_the_promised_tests_are_all_there(self) -> None:
-        self.assertEqual(len(run_tests.PROMISED), 42)
-        self.assertEqual(len(set(run_tests.PROMISED)), 42)
+        self.assertEqual(len(run_tests.PROMISED), 45)
+        self.assertEqual(len(set(run_tests.PROMISED)), 45)
 
     def test_the_required_tests_hold_every_case_every_vector_and_the_promised_ones(self) -> None:
         required = run_tests.required_tests()
@@ -267,6 +273,42 @@ class Wheel(unittest.TestCase):
         _sdist(self.dist)
         problems = check_wheel.check_files(self.dist, other, self.changelog)
         self.assertEqual(problems, ["clients/python/LICENSE is not the repository's LICENSE"])
+
+    def test_a_version_given_is_the_one_the_files_must_carry(self) -> None:
+        snapshot = "1.2.3.dev42"
+        _wheel(self.dist, Shape(version=snapshot))
+        _sdist(self.dist, version=snapshot)
+        given = check_wheel.check_files(self.dist, LICENCE, self.changelog, snapshot)
+        self.assertEqual(given, [])
+        self.assertTrue(any("its version is not 1.2.3" in p for p in self._problems()))
+        other = check_wheel.check_files(self.dist, LICENCE, self.changelog, "1.2.3.dev43")
+        self.assertTrue(any("its version is not 1.2.3.dev43" in p for p in other), other)
+
+    def test_a_source_archive_of_another_version_is_refused(self) -> None:
+        archives = {
+            "named so": ("1.2.4", f"{DIST}-{VERSION}", "is not named"),
+            "holding it": (VERSION, f"{DIST}-1.2.4", "not all under"),
+        }
+        for name, (version, top, want) in archives.items():
+            with self.subTest(name):
+                for old in self.dist.iterdir():
+                    old.unlink()
+                _wheel(self.dist)
+                _sdist(self.dist, version=version, top=top)
+                problems = self._problems()
+                self.assertTrue(any(want in p for p in problems), problems)
+
+    def test_a_release_tag_is_spelled_as_python_spells_it(self) -> None:
+        for tag, want in (
+            ("v2.0.0", "2.0.0"),
+            ("v2.0.0-rc.1", "2.0.0rc1"),
+            ("v0.3.0-alpha", "0.3.0a0"),
+        ):
+            with self.subTest(tag):
+                self.assertEqual(check_wheel.tag_version(tag), want)
+        for tag in ("2.0.0", "v2.0.0+build", "v2.0", "release-2.0.0", "v", "v2.0.0\n"):
+            with self.subTest(tag), self.assertRaises(SystemExit):
+                check_wheel.tag_version(tag)
 
     def test_two_wheels_are_refused(self) -> None:
         _wheel(self.dist)

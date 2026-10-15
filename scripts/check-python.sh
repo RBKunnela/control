@@ -28,6 +28,8 @@ _CHECK_PYTHON_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)
 . "${_CHECK_PYTHON_DIR}/lib/repo-files.sh"
 # shellcheck source=tool-versions.env
 . "${_CHECK_PYTHON_DIR}/tool-versions.env"
+# shellcheck source=lib/python-env.sh
+. "${_CHECK_PYTHON_DIR}/lib/python-env.sh"
 
 die() {
   printf 'check-python: %s\n' "$*" >&2
@@ -58,34 +60,18 @@ strays="$(cd "${project}" && find . -mindepth 1 -path './.*' -prune -o \( \
   die "clients/python holds what would stand in for a source or hide from a check; remove: ${strays//$'\n'/ }"
 
 command -v go >/dev/null 2>&1 || die "go is not on PATH"
-command -v uv >/dev/null 2>&1 || die "uv is not on PATH; make bootstrap installs it"
-have="$(uv --version 2>&1)" || die "uv --version exited non-zero"
-[[ "${have}" =~ ^uv\ ([0-9]+\.[0-9]+\.[0-9]+) ]] || die "no version in the output of uv --version: ${have}"
-[[ "${BASH_REMATCH[1]}" == "${UV_VERSION#v}" ]] || die "uv: want ${UV_VERSION#v}, have ${BASH_REMATCH[1]}"
+python_uv_pinned || die "uv is not the pinned one"
 
 work="$(mktemp -d)"
 trap 'rm -rf "${work}"' EXIT
-mkdir "${work}/bin" "${work}/dist"
+mkdir "${work}/bin"
 # Whatever under the project is newer than this at the end was written by a check.
 : >"${work}/before"
 
 # The plane the end-to-end test drives, built from this tree.
 (cd "${root}" && go build -o "${work}/bin/" ./cmd/...) || die "building the commands failed"
 
-clean=(env -i)
-for v in HOME PATH TMPDIR USER LOGNAME \
-  HTTP_PROXY HTTPS_PROXY NO_PROXY http_proxy https_proxy no_proxy SSL_CERT_FILE SSL_CERT_DIR; do
-  if [[ -n "${!v+x}" ]]; then
-    clean+=("${v}=${!v}")
-  fi
-done
-clean+=(UV_NO_CONFIG=1 UV_MANAGED_PYTHON=1 UV_PYTHON_DOWNLOADS=never UV_NO_PROGRESS=1
-  PYTHONDONTWRITEBYTECODE=1)
-# Isolated, writing no bytecode, and looking for bytecode in an empty scratch
-# directory instead of beside the sources: a stale or planted __pycache__ in
-# the tree would otherwise run in place of the file the commit holds.
-mkdir "${work}/pycache"
-isolated=(-I -B -X "pycache_prefix=${work}/pycache")
+python_env "${work}" || die "no scratch directory for bytecode"
 
 for version in "${floor}" "${newer}"; do
   venv="${work}/venv-${version}"
@@ -121,17 +107,7 @@ for version in "${floor}" "${newer}"; do
   [[ "${last}" =~ ${verdict} ]] || die "python ${version}: the runner's last line is not its verdict: ${last}"
 done
 
-"${clean[@]}" uv build --quiet "${project}" --python "${newer}" \
-  --build-constraints "${project}/build-constraints.txt" --require-hashes -o "${work}/dist" ||
-  die "building the wheel failed"
-"${clean[@]}" "${venv}/bin/python" "${isolated[@]}" "${project}/check_wheel.py" files \
-  --dist "${work}/dist" --licence "${root}/LICENSE" --changelog "${root}/CHANGELOG.md" ||
-  die "the built files are not what a release may hold"
-"${clean[@]}" uv venv --quiet --python "${floor}" "${work}/venv-wheel" || die "no environment for the wheel"
-"${clean[@]}" uv pip install --quiet --python "${work}/venv-wheel/bin/python" --no-deps --no-index \
-  --no-build "${work}"/dist/*.whl || die "the wheel does not install"
-"${clean[@]}" "${work}/venv-wheel/bin/python" "${isolated[@]}" "${project}/check_wheel.py" import ||
-  die "the installed wheel does not import"
+"${root}/scripts/build-python-dist.sh" "${work}/dist" || die "the client's release files do not build as they must"
 
 written="$(cd "${root}" && find clients/python -newer "${work}/before" -print)" ||
   die "listing the project failed"

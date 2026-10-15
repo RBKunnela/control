@@ -136,6 +136,11 @@ status is completed <code>UNKNOWN</code>.</li>
 <li><code>make check-python</code>, part of <code>make quality</code>: the client's tests on two
 pinned CPython versions, its linter and type checker, and a build of its
 wheel. <code>make bootstrap</code> installs <code>uv</code> and both interpreters.</li>
+<li>The release workflow builds the Python client's wheel and source archive
+before anything is drafted, attests them, and once the release is
+published uploads them to PyPI by trusted publishing, with no stored token,
+in a job of its own that a maintainer approves. The dry run uploads a
+development release to TestPyPI the same way. Both read the index back.</li>
 </ul>
 <h3 id="changed">Changed</h3>
 <ul>

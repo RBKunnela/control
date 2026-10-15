@@ -29,6 +29,8 @@ var settingsBaseItems = []string{
 	"repository admins",
 	"environment release",
 	"environment release deployment policies",
+	"environment pypi",
+	"environment pypi deployment policies",
 	"ruleset main: history",
 	"ruleset release tags: create",
 	"ruleset other tags: create",
@@ -120,7 +122,7 @@ func TestSettingsCheckNeverPassesWhatItCouldNotRead(t *testing.T) {
 		"the reviewing team unreadable": {settingsRun{fail: "orgs/acme/teams/security-maintainers"}, nil,
 			append([]string{"team security-maintainers"}, approvals...), "HTTP 403|id could not be read"},
 		"the approving team unreadable": {settingsRun{fail: "orgs/acme/teams/maintainers"}, nil,
-			[]string{"team maintainers", "environment release"}, "HTTP 403|id could not be read"},
+			[]string{"team maintainers", "environment release", "environment pypi"}, "HTTP 403|id could not be read"},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
