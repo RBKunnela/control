@@ -88,7 +88,7 @@ flowchart LR
 Decisions do not wait for evidence export. A full spool blocks calls unless
 the operator explicitly let a read run unrecorded.
 
-| Verdict | In an enforcing mode |
+| Verdict | Under `ENFORCE` |
 | --- | --- |
 | `ALLOW` | Proceed. |
 | `DENY` | Block. |

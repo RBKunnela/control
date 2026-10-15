@@ -258,7 +258,7 @@ class Client:
         Returns only when the tool ran and the closing record landed, which
         is not to say the tool succeeded: answer.result.status says that.
         Everything else raises, and an EnforceError's answer.ran says whether
-        the tool was entered.
+        the tool ran.
         """
         _refuse_before_admit(tool, arguments, run)
         if _is_gone(gone):

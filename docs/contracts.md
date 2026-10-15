@@ -971,7 +971,9 @@ Three sequences are refused whatever state the walk is in:
 - One in which nothing proposes an action. A trail of nothing but
   `POLICY_RELOADED` is the shape a read that dropped the request has, and a
   prefix of a trail whose `ACTION_PROPOSED` has not arrived is not distinguishable
-  from it, so it is refused rather than read as well formed.
+  from it, so it is refused rather than read as well formed. Holding a kind this
+  version cannot place, it is indeterminate instead, since that kind may propose
+  one.
 - One carrying `EVENT_KIND_UNSPECIFIED`, which is declared and says nothing
   about the event carrying it, or a second `ACTION_PROPOSED`, which is two
   requests in one file rather than a step in either.
@@ -1424,7 +1426,8 @@ the run and the operator's table of tools. The answer's `outcome` is one of:
   the client honours. An obligation type the client does not know is a
   reason to abort.
 - `OUTCOME_BLOCK`: the client sends nothing. `INDETERMINATE` is answered as a
-  block.
+  block, unless the plane's mode is `OBSERVE` or `policy.fail_open_read` lets
+  a read run.
 - `OUTCOME_PENDING`, with `pending`: the `approval_id`, the `action_digest`,
   the approval's `expires_at` and a `retry_after`. The client resumes by
   admitting the same tool and bytes in the same run; it never presents the

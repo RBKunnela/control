@@ -207,7 +207,8 @@ client, not the plane, keeps it from its effect.</li>
 with result unknown and the new reason code <code>EXECUTION_ABANDONED</code>. It never
 closes one as a success and does not halt the plane for it. A byte mismatch
 a client reports through a cooperating adapter blocks only that run's
-material calls; one reported through an inline adapter halts the plane.
+material calls until <code>flow.max_runs</code> runs are halted; past that, and
+through an inline adapter, a mismatch halts the plane's material calls.
 Metrics count them:
 <code>pipeline_runs_halted</code>, <code>pipeline_abandoned_total</code>,
 <code>pipeline_sink_failures_abandoned_total</code>, <code>pipeline_halted_mismatch</code> and

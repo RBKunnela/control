@@ -75,8 +75,8 @@ run some tools directly over a wider scope.
 - The public Go surface is `pkg/contract`; `pkg/adapter`, `pkg/detector` and
   `pkg/policyprovider` are reserved. Adding to it is a compatibility decision
   and needs its own record.
-- Protocol and framework code lives in `adapters/`, demos in `examples/`,
-  clients in other languages in `clients/`, each outside the Go module.
+- Protocol and framework code lives in `adapters/`, demos in `examples/`;
+  clients in other languages live in `clients/`, outside the Go module.
 - Contracts live in `api/proto`, generated Go in `api/gen/go`.
 - `internal/core`, `internal/policy`, `internal/canon`, `internal/evidence`,
   `pkg/contract` and `internal/supervise` import only packages of this module

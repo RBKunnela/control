@@ -59,7 +59,7 @@ take between an `EXECUTE` and its report. `listener.max_open_per_run`, 16 by
 default, bounds the executions one run holds open and stays below
 `approvals.max_open`. The table takes the keys an MCP override takes but the
 fingerprint: nothing binds a name to what the tool does. A tool it does not
-name is blocked with `ACTION_UNCLASSIFIED`
+name is blocked with `ACTION_UNCLASSIFIED`, except under `OBSERVE`
 ([reference/configuration.md](../reference/configuration.md)).
 
 ### 2. Check and start
@@ -140,7 +140,8 @@ except CallPending as held:
 `complete` or one `abort`. A function that raises is reported `UNKNOWN`; raise
 `NotSent` only when the bytes never left. `call` returns when the tool ran
 and the record landed. Everything else raises. Only an `EnforceError` says,
-in `answer.ran`, whether the tool was entered; any other exception is the
+in `answer.ran`, whether the tool ran: entered, and not ended by `NotSent`;
+any other exception is the
 tool's own, raised again after its run was reported `UNKNOWN`, or a
 `TypeError` or `ValueError` for a call misused before anything was sent. When
 your function makes a call of its own and lets that call's exception out,
@@ -163,7 +164,8 @@ your function makes a call of its own and lets that call's exception out,
 - It is not a security boundary. A client can ignore `BLOCK`, send other bytes
   and report the authorized ones; the plane records what it is told.
 - Bytes a client reports that differ from the authorized ones halt that run's
-  material calls until restart, and no other run's.
+  material calls until restart, and no other run's until `flow.max_runs` runs
+  are halted; past that, a mismatch halts material calls across the plane.
 - The socket checks read mode bits, not macOS access control lists, and do not
   cover the directories above the socket's.
 - A stop closes every open execution as unknown; a crash leaves them at

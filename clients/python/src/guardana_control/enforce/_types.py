@@ -63,9 +63,9 @@ class Answer:
 
     outcome is the admit outcome as the client read it, so anything but
     EXECUTE or PENDING reads as BLOCK. decision is the receiver's decision
-    as it wrote it, by JSON name. ran says the tool was entered, so an effect
-    may have happened. ending is the receiver's word on the closing record,
-    empty when it named none.
+    as it wrote it, by JSON name. ran says the tool was entered and did not
+    raise NotSent, so an effect may have happened. ending is the receiver's
+    word on the closing record, empty when it named none.
     """
 
     outcome: str

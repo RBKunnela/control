@@ -101,9 +101,9 @@ except one Dependabot wrote in a pull request it opened.
 A change that touches any of authorization semantics, identity and delegation,
 approval binding, cryptography, a wire schema with security meaning, redaction,
 release signing or workflow security needs two independent approvals. With one
-maintainer the project cannot supply them on its own, so such a change waits
-for a second maintainer or for an invited reviewer. See
-[GOVERNANCE.md](GOVERNANCE.md).
+maintainer the project cannot supply them on its own, so your change waits
+for a second maintainer or an invited reviewer, except as
+[GOVERNANCE.md](GOVERNANCE.md) says.
 
 Only maintainers merge, once the review and the required checks pass.
 

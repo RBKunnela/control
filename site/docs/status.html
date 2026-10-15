@@ -284,7 +284,7 @@ already holds a package doc and a test holds nothing that decides.</li>
 <tr>
 <td>Enforcement API reference client and client conformance cases</td>
 <td><code>experimental</code></td>
-<td><code>internal/enforceclient/</code> (a Go client of <code>admit</code>, <code>complete</code> and <code>abort</code> over a Unix socket, and the one call that holds every client rule of <a href="/docs/adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api">ADR-0051</a>), <code>testdata/enforce/</code> (the client cases, each with a negative control: a client that breaks its rule must fail it, and the answer vectors: a status and a body with the reading or the refusal every client must give). <code>go test ./internal/enforceclient/</code> runs every case and vector against a receiver that answers from the files; the receiver in <code>adapters/enforce/</code> (row below) runs the same contract</td>
+<td><code>internal/enforceclient/</code> (a Go client of <code>admit</code>, <code>complete</code> and <code>abort</code> over a Unix socket, and the one call that holds every client rule of <a href="/docs/adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api">ADR-0051</a>), <code>testdata/enforce/</code> (the client cases, each with a negative control: a client that breaks its rule must fail it, and the answer vectors: a status and a body with the reading or the refusal a client must give, where a <code>may_refuse</code> vector lets a client other than the Go reference refuse what the reference reads). <code>go test ./internal/enforceclient/</code> runs every case and vector against a receiver that answers from the files; the receiver in <code>adapters/enforce/</code> (row below) runs the same contract</td>
 </tr>
 <tr>
 <td>Python client of the enforcement API</td>
@@ -337,9 +337,9 @@ already holds a package doc and a test holds nothing that decides.</li>
 <td><code>adapters/</code></td>
 </tr>
 <tr>
-<td>Framework SDKs and thin clients</td>
+<td>Framework SDKs and clients in more languages</td>
 <td><code>planned</code></td>
-<td>separate repositories, <a href="/docs/roadmap">ROADMAP.md</a></td>
+<td>a client in another language under <code>clients/</code>, as <a href="/docs/adr/0053-a-python-client-of-the-enforcement-api-in-this-repository">ADR-0053</a> lays out; framework SDKs: none chosen, <a href="/docs/roadmap">ROADMAP.md</a></td>
 </tr>
 <tr>
 <td>Control plane API</td>

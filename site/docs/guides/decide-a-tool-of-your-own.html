@@ -153,7 +153,7 @@ take between an <code>EXECUTE</code> and its report. <code>listener.max_open_per
 default, bounds the executions one run holds open and stays below
 <code>approvals.max_open</code>. The table takes the keys an MCP override takes but the
 fingerprint: nothing binds a name to what the tool does. A tool it does not
-name is blocked with <code>ACTION_UNCLASSIFIED</code>
+name is blocked with <code>ACTION_UNCLASSIFIED</code>, except under <code>OBSERVE</code>
 (<a href="/docs/reference/configuration">reference/configuration.md</a>).</p>
 <h3 id="2-check-and-start">2. Check and start</h3>
 <pre><code>guardana-gateway doctor --config gateway.yaml
@@ -214,7 +214,8 @@ except CallPending as held:
 <code>complete</code> or one <code>abort</code>. A function that raises is reported <code>UNKNOWN</code>; raise
 <code>NotSent</code> only when the bytes never left. <code>call</code> returns when the tool ran
 and the record landed. Everything else raises. Only an <code>EnforceError</code> says,
-in <code>answer.ran</code>, whether the tool was entered; any other exception is the
+in <code>answer.ran</code>, whether the tool ran: entered, and not ended by <code>NotSent</code>;
+any other exception is the
 tool's own, raised again after its run was reported <code>UNKNOWN</code>, or a
 <code>TypeError</code> or <code>ValueError</code> for a call misused before anything was sent. When
 your function makes a call of its own and lets that call's exception out,
@@ -236,7 +237,8 @@ prints it <code>decided, not enforced</code>, naming the cooperating client
 <li>It is not a security boundary. A client can ignore <code>BLOCK</code>, send other bytes
 and report the authorized ones; the plane records what it is told.</li>
 <li>Bytes a client reports that differ from the authorized ones halt that run's
-material calls until restart, and no other run's.</li>
+material calls until restart, and no other run's until <code>flow.max_runs</code> runs
+are halted; past that, a mismatch halts material calls across the plane.</li>
 <li>The socket checks read mode bits, not macOS access control lists, and do not
 cover the directories above the socket's.</li>
 <li>A stop closes every open execution as unknown; a crash leaves them at

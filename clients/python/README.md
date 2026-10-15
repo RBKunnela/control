@@ -50,7 +50,7 @@ What `call` does for you:
   effect happened; raise `NotSent` only when the bytes never left;
 - returns only when the tool ran and the closing record landed. Anything else
   raises. Only an `EnforceError` tells you, in `answer.ran`, whether the tool
-  was entered. Any other exception is the tool's own, raised again after its
+  ran: entered, and not ended by `NotSent`. Any other exception is the tool's own, raised again after its
   run was reported `UNKNOWN`, or a `TypeError` or `ValueError` for a call
   misused before anything was sent;
 - raises `ToolRaised`, an `EnforceError` with the outer call's answer, when

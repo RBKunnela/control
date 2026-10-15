@@ -237,8 +237,8 @@ differ halt material calls until the plane restarts (<code>internal/gateway/clos
 before it expires (<code>internal/gateway/resume.go</code>;
 <code>TestConcurrentIdenticalRetriesExecuteOnce</code>).</li>
 <li>The agent cannot name itself. The principal and the agent are the
-listener's configuration; the client's <code>_meta.clientInfo</code> becomes a tag the
-digest leaves out (<code>adapters/mcp/translate.go</code>;
+listener's configuration; the client's <code>initialize</code> <code>clientInfo</code> is a tag
+the digest leaves out (<code>adapters/mcp/translate.go</code>;
 <code>TestClientInfoNeverReachesTheDigest</code>). A tag under the plane's flow prefix
 is refused (<code>internal/gateway/flow.go</code>; <code>TestAProducersFlowTagIsRefused</code>).</li>
 <li>After a run took in untrusted content, a policy's <code>flow</code> rule blocks calls to

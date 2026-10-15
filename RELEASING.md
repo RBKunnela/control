@@ -14,10 +14,10 @@ audit of the whole tree
    proof and remaining limits.
 2. Update `README.md`, `site/index.html` and affected pages to that
    inventory. Remove delivered roadmap/backlog tasks; keep incomplete ones
-   `planned`. Regenerate pages with `make docs-gen`.
+   `planned`. Regenerate with `make docs-gen`.
 3. Add the dated `## [X.Y.Z] - YYYY-MM-DD` section to `CHANGELOG.md`.
    `scripts/release-notes.sh vX.Y.Z` prints it; the workflow refuses
-   missing, undated or empty notes. Set that version in
+   missing, undated or empty notes. Set its Python spelling (`1.2.3rc1`) in
    `clients/python/pyproject.toml` and run `uv lock` there.
 4. Gate the release commit cold with `scripts/gate-commit.sh`; the admin
    pushes it to `main`. Wait for green CI and Security.
@@ -34,7 +34,7 @@ audit of the whole tree
    approve.
 7. After publication, set `"released"` in `docs/docs.json`, regenerate and
    open a pull request; verify the live version, labels and links. Until
-   then the website must not name the release.
+   then the website must not name it.
 
 A version is `X.Y.Z`; a suffix such as `-rc.1` marks a preview.
 

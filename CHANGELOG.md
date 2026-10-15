@@ -104,7 +104,8 @@ promise between minor versions.
   with result unknown and the new reason code `EXECUTION_ABANDONED`. It never
   closes one as a success and does not halt the plane for it. A byte mismatch
   a client reports through a cooperating adapter blocks only that run's
-  material calls; one reported through an inline adapter halts the plane.
+  material calls until `flow.max_runs` runs are halted; past that, and
+  through an inline adapter, a mismatch halts the plane's material calls.
   Metrics count them:
   `pipeline_runs_halted`, `pipeline_abandoned_total`,
   `pipeline_sink_failures_abandoned_total`, `pipeline_halted_mismatch` and

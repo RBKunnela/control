@@ -119,8 +119,8 @@ What the plane does today:
   before it expires (`internal/gateway/resume.go`;
   `TestConcurrentIdenticalRetriesExecuteOnce`).
 - The agent cannot name itself. The principal and the agent are the
-  listener's configuration; the client's `_meta.clientInfo` becomes a tag the
-  digest leaves out (`adapters/mcp/translate.go`;
+  listener's configuration; the client's `initialize` `clientInfo` is a tag
+  the digest leaves out (`adapters/mcp/translate.go`;
   `TestClientInfoNeverReachesTheDigest`). A tag under the plane's flow prefix
   is refused (`internal/gateway/flow.go`; `TestAProducersFlowTagIsRefused`).
 - After a run took in untrusted content, a policy's `flow` rule blocks calls to

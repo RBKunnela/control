@@ -1181,7 +1181,9 @@ not a broken one; what it may not do is take a step the diagram does not have.</
 <li>One in which nothing proposes an action. A trail of nothing but
 <code>POLICY_RELOADED</code> is the shape a read that dropped the request has, and a
 prefix of a trail whose <code>ACTION_PROPOSED</code> has not arrived is not distinguishable
-from it, so it is refused rather than read as well formed.</li>
+from it, so it is refused rather than read as well formed. Holding a kind this
+version cannot place, it is indeterminate instead, since that kind may propose
+one.</li>
 <li>One carrying <code>EVENT_KIND_UNSPECIFIED</code>, which is declared and says nothing
 about the event carrying it, or a second <code>ACTION_PROPOSED</code>, which is two
 requests in one file rather than a step in either.</li>
@@ -1822,7 +1824,8 @@ proposed bytes when a rewriting obligation applied, and the <code>obligations</c
 the client honours. An obligation type the client does not know is a
 reason to abort.</li>
 <li><code>OUTCOME_BLOCK</code>: the client sends nothing. <code>INDETERMINATE</code> is answered as a
-block.</li>
+block, unless the plane's mode is <code>OBSERVE</code> or <code>policy.fail_open_read</code> lets
+a read run.</li>
 <li><code>OUTCOME_PENDING</code>, with <code>pending</code>: the <code>approval_id</code>, the <code>action_digest</code>,
 the approval's <code>expires_at</code> and a <code>retry_after</code>. The client resumes by
 admitting the same tool and bytes in the same run; it never presents the
