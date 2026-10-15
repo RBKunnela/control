@@ -31,6 +31,8 @@ var settingsBaseItems = []string{
 	"environment release deployment policies",
 	"environment pypi",
 	"environment pypi deployment policies",
+	"environment testpypi",
+	"environment testpypi deployment policies",
 	"ruleset main: history",
 	"ruleset release tags: create",
 	"ruleset other tags: create",

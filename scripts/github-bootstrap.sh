@@ -7,7 +7,7 @@
 # the rulesets. What it sets is declared in scripts/lib/github-settings.sh,
 # which scripts/github-settings-check.sh compares with GitHub without changing
 # anything. Every step is idempotent: a run sets what that file names, and
-# replaces a ruleset or the environment's tag policy of the same name, but it
+# replaces a ruleset of the same name and an environment's other policies, but it
 # leaves a label, a ruleset or a team it does not name as it found it, apart
 # from the retired labels it deletes, the retired milestones it closes and a
 # two-approval part the declarations no longer need, which it deletes. A
@@ -178,6 +178,8 @@ REPOSITORY_BODY="$(repository_json)"
 TOPICS_BODY="$(topics_json)"
 SECURITY_CONFIGURATION="$(security_configuration_json)"
 TAG_POLICY_BODY="$(environment_tag_policy_json)"
+TEST_ENVIRONMENT_BODY="$(test_environment_json)"
+TEST_POLICY_BODY="$(test_environment_branch_policy_json)"
 LABEL_LINES="$(labels)"
 TEAM_LINES="$(teams)"
 MEMBER_LINES="$(team_members)"
@@ -314,31 +316,39 @@ while IFS=$'\t' read -r ruleset_id ruleset_name; do
   run_quiet gh api --method DELETE "repos/${REPO}/rulesets/${ruleset_id}" </dev/null
 done <<<"${existing_rulesets}"
 
-ENVIRONMENT_BODY="$(environment_json "${MAINTAINERS_TEAM_ID}")"
-for environment in "${ENVIRONMENTS[@]}"; do
-  run_json PUT "repos/${REPO}/environments/${environment}" <<<"${ENVIRONMENT_BODY}"
+# apply_environment <name> <body> <policy body> <policy type> <policy name>
+apply_environment() {
+  local environment="$1" body="$2" policy_body="$3" want_type="$4" want_name="$5"
+  local policies policy_id policy_type policy_name have_policy=0
+  run_json PUT "repos/${REPO}/environments/${environment}" <<<"${body}"
   # Any other policy on the environment would let another ref deploy to it, so
-  # every policy but the one for v* tags is removed.
+  # every policy but the declared one is removed.
   # Read by assignment, so a failed listing stops the run instead of leaving a
   # stray policy in place behind a report of success.
   policies="$(gh api "repos/${REPO}/environments/${environment}/deployment-branch-policies" --paginate \
     --jq '.branch_policies[] | "\(.id) \(.type) \(.name)"' </dev/null)"
-  have_tag_policy=0
   while read -r policy_id policy_type policy_name; do
     [[ -n "${policy_id}" ]] || continue
-    if [[ "${policy_type}" == "tag" && "${policy_name}" == "${ENVIRONMENT_TAG_POLICY}" ]]; then
-      have_tag_policy=1
+    if [[ "${policy_type}" == "${want_type}" && "${policy_name}" == "${want_name}" ]]; then
+      have_policy=1
     else
       run_quiet gh api --method DELETE \
         "repos/${REPO}/environments/${environment}/deployment-branch-policies/${policy_id}" </dev/null
     fi
   done <<<"${policies}"
-  if ((have_tag_policy == 1)); then
-    printf 'environment %s already takes %s tags\n' "${environment}" "${ENVIRONMENT_TAG_POLICY}"
+  if ((have_policy == 1)); then
+    printf 'environment %s already takes the %s %s\n' "${environment}" "${want_type}" "${want_name}"
   else
-    run_json POST "repos/${REPO}/environments/${environment}/deployment-branch-policies" <<<"${TAG_POLICY_BODY}"
+    run_json POST "repos/${REPO}/environments/${environment}/deployment-branch-policies" <<<"${policy_body}"
   fi
+}
+
+ENVIRONMENT_BODY="$(environment_json "${MAINTAINERS_TEAM_ID}")"
+for environment in "${ENVIRONMENTS[@]}"; do
+  apply_environment "${environment}" "${ENVIRONMENT_BODY}" "${TAG_POLICY_BODY}" tag "${ENVIRONMENT_TAG_POLICY}"
 done
+apply_environment "${TEST_ENVIRONMENT}" "${TEST_ENVIRONMENT_BODY}" "${TEST_POLICY_BODY}" \
+  branch "${TEST_ENVIRONMENT_BRANCH_POLICY}"
 
 run_json PATCH "repos/${REPO}" <<<"${REPOSITORY_BODY}"
 

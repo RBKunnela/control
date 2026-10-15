@@ -248,6 +248,11 @@ RETIRED_MILESTONES=(
 ENVIRONMENTS=(release pypi)
 # The only ref pattern, as a tag policy, that may deploy to either.
 ENVIRONMENT_TAG_POLICY='v*'
+# The dry run's upload to the test index deploys to testpypi, whose publisher
+# trusts that environment alone, so only a run on main reaches the test index.
+# Nobody approves it: a maintainer starts a dry run by hand.
+TEST_ENVIRONMENT=testpypi
+TEST_ENVIRONMENT_BRANCH_POLICY=main
 
 # emit <text>; prints text and a newline through cat. Callers read these
 # functions through pipes, and bash 3.2 fails a builtin's write to a pipe that
@@ -583,6 +588,24 @@ environment_tag_policy_json() {
   local policy
   policy="$(json_string "${ENVIRONMENT_TAG_POLICY}")" || return 1
   emit "{ \"name\": ${policy}, \"type\": \"tag\" }"
+}
+
+# test_environment_json; the test index's environment: a job deploys to it
+# from its one branch policy only, the admin's too, and waits for nobody.
+test_environment_json() {
+  cat <<JSON
+{
+  "deployment_branch_policy": { "protected_branches": false, "custom_branch_policies": true },
+  "reviewers": [],
+  "can_admins_bypass": false
+}
+JSON
+}
+
+test_environment_branch_policy_json() {
+  local policy
+  policy="$(json_string "${TEST_ENVIRONMENT_BRANCH_POLICY}")" || return 1
+  emit "{ \"name\": ${policy}, \"type\": \"branch\" }"
 }
 
 repository_json() {

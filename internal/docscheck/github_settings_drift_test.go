@@ -114,6 +114,28 @@ func TestSettingsCheckReportsWhoElseHoldsAuthority(t *testing.T) {
 			env := a.object("repos/acme/demo/environments/pypi/deployment-branch-policies")
 			env["branch_policies"] = append(env["branch_policies"].([]any), map[string]any{"id": 7, "name": "main", "type": "branch"})
 		}, "environment pypi deployment policies", "not declared"},
+		"the test environment with a reviewer": {func(_ *testing.T, a answers) {
+			env := a.object("repos/acme/demo/environments/testpypi")
+			env["protection_rules"] = append(env["protection_rules"].([]any), map[string]any{
+				"id": 2, "type": "required_reviewers", "prevent_self_review": false, "reviewers": []any{
+					map[string]any{"type": "Team", "reviewer": map[string]any{"id": 41, "slug": "maintainers"}},
+				},
+			})
+		}, "environment testpypi", "reviewers"},
+		"the test environment open to a tag": {func(_ *testing.T, a answers) {
+			env := a.object("repos/acme/demo/environments/testpypi/deployment-branch-policies")
+			env["branch_policies"] = append(env["branch_policies"].([]any), map[string]any{"id": 9, "name": "v*", "type": "tag"})
+		}, "environment testpypi deployment policies", "not declared"},
+		"the test environment open to every branch": {func(_ *testing.T, a answers) {
+			a.object("repos/acme/demo/environments/testpypi")["deployment_branch_policy"] = nil
+		}, "environment testpypi", "deployment_branch_policy"},
+		"the test environment an admin bypasses": {func(_ *testing.T, a answers) {
+			a.object("repos/acme/demo/environments/testpypi")["can_admins_bypass"] = true
+		}, "environment testpypi", "can_admins_bypass"},
+		"the test environment on another branch": {func(_ *testing.T, a answers) {
+			env := a.object("repos/acme/demo/environments/testpypi/deployment-branch-policies")
+			env["branch_policies"].([]any)[0].(map[string]any)["name"] = "release/*"
+		}, "environment testpypi deployment policies", "lacks"},
 		"a configuration attached but not enforced": {func(_ *testing.T, a answers) {
 			a.object("repos/acme/demo/code-security-configuration")["status"] = "attached"
 		}, "code security configuration", `attached.status: declared "enforced", live "attached"`},

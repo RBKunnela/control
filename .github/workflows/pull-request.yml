@@ -104,9 +104,16 @@ jobs:
               continue
             fi
             if [[ -n "$(git rev-parse --verify --quiet "${sha}^2")" ]]; then
-              own="$(git diff-tree --cc --no-commit-id -r "${sha}")" || { echo "cannot read merge ${sha}" >&2; exit 1; }
-              if [[ -z "${own}" ]]; then
-                printf 'exempt  %s  a merge with no change of its own\n' "${sha}"
+              # A merge with no content of its own is the tree git builds from
+              # its two parents with no conflict. One that resolves a conflict,
+              # by taking one side whole too, has an empty combined diff all
+              # the same, so that diff is no proof.
+              joined=""
+              if [[ -z "$(git rev-parse --verify --quiet "${sha}^3")" ]]; then
+                joined="$(git merge-tree --write-tree "${sha}^1" "${sha}^2" 2>/dev/null)" || joined=""
+              fi
+              if [[ -n "${joined}" && "${joined%%$'\n'*}" == "$(git rev-parse "${sha}^{tree}")" ]]; then
+                printf 'exempt  %s  a merge git makes from its parents alone\n' "${sha}"
                 exempt=$((exempt + 1))
                 continue
               fi

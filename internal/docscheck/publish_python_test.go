@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -30,7 +31,7 @@ cat "${FAKE_DIR}/answer"
 	fakePublishSleep = "#!/usr/bin/env bash\nexit 0\n"
 )
 
-var publishTools = []string{"bash", "env", "cat", "dirname", "find", "wc", "tr", "basename", "sha256sum", "cut", "sort", "jq"}
+var publishTools = []string{"bash", "env", "cat", "dirname", "find", "wc", "tr", "basename", "sha256sum", "cut", "sort", "paste", "jq"}
 
 type publishRun struct {
 	files   map[string]string // name -> content of the directory handed over
@@ -39,6 +40,7 @@ type publishRun struct {
 	answer  *string // nil: every read of the index fails
 	uvRC    string
 	uv      string // the version the fake uv reports; the pinned one when empty
+	built   string // the building job's listing; that of files when empty
 }
 
 // runPublish runs the script with the fakes and returns its output, exit
@@ -49,7 +51,11 @@ func runPublish(t *testing.T, run publishRun) (string, int, []string, []string) 
 	bin, dist := publishFakes(t, dir, run)
 	args := []string{filepath.Join(repoRoot(t), "scripts", "publish-python-dist.sh"), dist, run.index}
 	if run.version != "" {
-		args = append(args, run.version)
+		built := run.built
+		if built == "" {
+			built = listingOf(run.files)
+		}
+		args = append(args, run.version, built)
 	}
 	cmd := exec.Command(settingsTool(t, "bash"), args...) //nolint:gosec // G204: bash from PATH running this repository's own script
 	uv := run.uv
@@ -128,6 +134,21 @@ const (
 
 var pubFiles = map[string]string{pubWheel: "wheel bytes", pubArchive: "archive bytes"}
 
+// listingOf is the line --list prints for a directory of these files,
+// computed here independently of the script.
+func listingOf(files map[string]string) string {
+	names := make([]string, 0, len(files))
+	for name := range files {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	parts := make([]string, len(names))
+	for i, name := range names {
+		parts[i] = name + " " + digest(files[name])
+	}
+	return strings.Join(parts, ",")
+}
+
 func digest(s string) string {
 	sum := sha256.Sum256([]byte(s))
 	return hex.EncodeToString(sum[:])
@@ -176,17 +197,20 @@ func TestPublishReadsBackExactlyTheUploadedFiles(t *testing.T) {
 
 func TestPublishRefusesBeforeUploading(t *testing.T) {
 	cases := map[string]publishRun{
-		"no version given":       {files: pubFiles, index: "pypi"},
-		"another version given":  {files: pubFiles, index: "pypi", version: "1.2.4"},
-		"a version with a tail":  {files: pubFiles, index: "pypi", version: "1.2.3+local"},
-		"an index of no name":    {files: pubFiles, index: "elsewhere", version: "1.2.3"},
-		"another uv":             {files: pubFiles, index: "pypi", version: "1.2.3", uv: "0.0.1"},
-		"a post release":         {files: map[string]string{"guardana_control-1.2.3.post1-py3-none-any.whl": "w", "guardana_control-1.2.3.post1.tar.gz": "a"}, index: "pypi", version: "1.2.3.post1"},
-		"a wheel of another":     {files: map[string]string{"guardana_control-1.2.4-py3-none-any.whl": "w", pubArchive: "a"}, index: "pypi", version: "1.2.3"},
-		"an archive of another":  {files: map[string]string{pubWheel: "w", "guardana_control-1.2.4.tar.gz": "a"}, index: "pypi", version: "1.2.3"},
-		"a third file":           {files: map[string]string{pubWheel: "w", pubArchive: "a", "notes.txt": "n"}, index: "pypi", version: "1.2.3"},
-		"no archive":             {files: map[string]string{pubWheel: "w"}, index: "pypi", version: "1.2.3"},
-		"a wheel for a platform": {files: map[string]string{"guardana_control-1.2.3-cp311-cp311-linux_x86_64.whl": "w", pubArchive: "a"}, index: "pypi", version: "1.2.3"},
+		"no version given":      {files: pubFiles, index: "pypi"},
+		"another version given": {files: pubFiles, index: "pypi", version: "1.2.4"},
+		"a version with a tail": {files: pubFiles, index: "pypi", version: "1.2.3+local"},
+		"an index of no name":   {files: pubFiles, index: "elsewhere", version: "1.2.3"},
+		"another uv":            {files: pubFiles, index: "pypi", version: "1.2.3", uv: "0.0.1"},
+		"a post release":        {files: map[string]string{"guardana_control-1.2.3.post1-py3-none-any.whl": "w", "guardana_control-1.2.3.post1.tar.gz": "a"}, index: "pypi", version: "1.2.3.post1"},
+		"files the build did not list": {files: pubFiles, index: "pypi", version: "1.2.3",
+			built: listingOf(map[string]string{pubWheel: "other bytes", pubArchive: "archive bytes"})},
+		"a listing that is empty": {files: pubFiles, index: "pypi", version: "1.2.3", built: " "},
+		"a wheel of another":      {files: map[string]string{"guardana_control-1.2.4-py3-none-any.whl": "w", pubArchive: "a"}, index: "pypi", version: "1.2.3"},
+		"an archive of another":   {files: map[string]string{pubWheel: "w", "guardana_control-1.2.4.tar.gz": "a"}, index: "pypi", version: "1.2.3"},
+		"a third file":            {files: map[string]string{pubWheel: "w", pubArchive: "a", "notes.txt": "n"}, index: "pypi", version: "1.2.3"},
+		"no archive":              {files: map[string]string{pubWheel: "w"}, index: "pypi", version: "1.2.3"},
+		"a wheel for a platform":  {files: map[string]string{"guardana_control-1.2.3-cp311-cp311-linux_x86_64.whl": "w", pubArchive: "a"}, index: "pypi", version: "1.2.3"},
 	}
 	for name, run := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -228,5 +252,34 @@ func TestPublishFailsUnlessTheIndexListsExactlyTheFiles(t *testing.T) {
 				t.Fatalf("exit 0, want a failure:\n%s", out)
 			}
 		})
+	}
+}
+
+func TestPublishListsTheFilesOfADirectory(t *testing.T) {
+	list := func(t *testing.T, files map[string]string, extra ...string) (string, int) {
+		t.Helper()
+		dir := t.TempDir()
+		bin, dist := publishFakes(t, dir, publishRun{files: files})
+		args := append([]string{filepath.Join(repoRoot(t), "scripts", "publish-python-dist.sh"), "--list", dist}, extra...)
+		cmd := exec.Command(settingsTool(t, "bash"), args...) //nolint:gosec // G204: bash from PATH running this repository's own script
+		cmd.Env = []string{"PATH=" + bin, "HOME=" + dir, "TMPDIR=" + dir}
+		out, err := fileOutput(t, cmd, false)
+		return out, exitCode(t, err)
+	}
+	if out, code := list(t, pubFiles); code != 0 || out != listingOf(pubFiles)+"\n" {
+		t.Fatalf("--list: exit %d, printed %q, want %q", code, out, listingOf(pubFiles)+"\n")
+	}
+	for name, files := range map[string]map[string]string{
+		"a third file": {pubWheel: "w", pubArchive: "a", "notes.txt": "n"},
+		"no archive":   {pubWheel: "w"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if out, code := list(t, files); code == 0 {
+				t.Fatalf("--list passed: %q", out)
+			}
+		})
+	}
+	if out, code := list(t, pubFiles, "more"); code == 0 {
+		t.Fatalf("--list with a second operand passed: %q", out)
 	}
 }

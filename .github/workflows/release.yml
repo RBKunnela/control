@@ -42,6 +42,7 @@ jobs:
       attestations: write # Attest the client's snapshot: stores the provenance
     outputs:
       client-version: ${{ steps.client.outputs.version }}
+      client-files: ${{ steps.client.outputs.files }}
     steps:
       - name: Check that the dry run is on a branch
         # The client's snapshot is attested under the ref the run is on; on a
@@ -137,7 +138,9 @@ jobs:
           # The attempt in two digits, so that no run and attempt spell another's.
           version="${base}.dev${GITHUB_RUN_ID}$(printf '%02d' "${GITHUB_RUN_ATTEMPT}")"
           scripts/build-python-dist.sh "${RUNNER_TEMP}/python" "${version}"
+          files="$(scripts/publish-python-dist.sh --list "${RUNNER_TEMP}/python")"
           echo "version=${version}" >>"${GITHUB_OUTPUT}"
+          echo "files=${files}" >>"${GITHUB_OUTPUT}"
 
       - name: Attest the client's snapshot
         # So that the upload job verifies its files as the release's does.
@@ -228,6 +231,7 @@ jobs:
       security-events: read # Check the gate: reads the open code scanning alerts on main
     outputs:
       client-version: ${{ steps.client.outputs.version }}
+      client-files: ${{ steps.client.outputs.files }}
     env:
       # The repository .goreleaser.yaml's kos section pushes to.
       IMAGE: ghcr.io/guardana/control-gateway
@@ -349,7 +353,9 @@ jobs:
             exit 1
           fi
           scripts/build-python-dist.sh "${RUNNER_TEMP}/python"
+          files="$(scripts/publish-python-dist.sh --list "${RUNNER_TEMP}/python")"
           echo "version=${version}" >>"${GITHUB_OUTPUT}"
+          echo "files=${files}" >>"${GITHUB_OUTPUT}"
 
       - name: Attest the client's release files
         # Straight after the build, before any other tool of this job runs and
@@ -592,6 +598,10 @@ jobs:
     needs: snapshot
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    # The test index's publisher names this workflow and the testpypi
+    # environment, which admits main alone: no other job, the snapshot's
+    # among them, can mint a token it takes.
+    environment: testpypi
     permissions:
       contents: read
       attestations: read # Verify the files: reads their provenance
@@ -639,17 +649,20 @@ jobs:
           done
 
       - name: Upload
-        # The version comes from the job that built the files, not from them.
+        # The version and the digests come from the step that built the files,
+        # which no later tool of that job could change: an attestation that
+        # job's identity made afterwards would vouch for a substitute too.
         env:
           VERSION: ${{ needs.snapshot.outputs.client-version }}
-        run: scripts/publish-python-dist.sh "${RUNNER_TEMP}/python" testpypi "${VERSION}"
+          FILES: ${{ needs.snapshot.outputs.client-files }}
+        run: scripts/publish-python-dist.sh "${RUNNER_TEMP}/python" testpypi "${VERSION}" "${FILES}"
 
   index:
     name: Upload the client to the package index
     needs: release
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    # The package index trusts an upload only from this workflow in the pypi
+    # The package index's publisher names this workflow and the pypi
     # environment, which admits v* tags and waits for a maintainer again;
     # nothing the release job runs can mint a token the index takes. It runs
     # once the release is published; failed, it can be run again alone.
@@ -701,7 +714,10 @@ jobs:
           done
 
       - name: Upload
-        # The version comes from the job that built the files, not from them.
+        # The version and the digests come from the step that built the files,
+        # which no later tool of that job could change: an attestation that
+        # job's identity made afterwards would vouch for a substitute too.
         env:
           VERSION: ${{ needs.release.outputs.client-version }}
-        run: scripts/publish-python-dist.sh "${RUNNER_TEMP}/python" pypi "${VERSION}"
+          FILES: ${{ needs.release.outputs.client-files }}
+        run: scripts/publish-python-dist.sh "${RUNNER_TEMP}/python" pypi "${VERSION}" "${FILES}"

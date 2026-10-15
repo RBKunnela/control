@@ -5,12 +5,15 @@
 # files, digest for digest. Run by the release workflow only: the index
 # accepts the job's identity in place of a token, and nothing else holds one.
 #
-#   scripts/publish-python-dist.sh <directory> pypi|testpypi <version>
+#   scripts/publish-python-dist.sh --list <directory>
+#   scripts/publish-python-dist.sh <directory> pypi|testpypi <version> <files>
 #
-# The version is the one the job that built the files gave them; files of
-# any other are refused. A file the index already holds with the same digest
-# is skipped, so a job that failed after an upload can be run again. An
-# uploaded file is never replaced.
+# --list prints the two files with their digests. The job that builds them
+# runs it straight after the build and hands its line to the upload as
+# <files>, with the version it gave them: files that differ from that line,
+# or of any other version, are refused. A file the index already holds with
+# the same digest is skipped, so a job that failed after an upload can be run
+# again. An uploaded file is never replaced.
 set -euo pipefail
 
 _PUBLISH_PYTHON_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
@@ -24,9 +27,30 @@ die() {
   exit 1
 }
 
-[[ $# -eq 3 ]] || die "usage: scripts/publish-python-dist.sh <directory> pypi|testpypi <version>"
+# files_of <directory>; its one wheel and one source archive, and nothing
+# else, as "<name> <sha256>" in byte order, joined by commas.
+files_of() {
+  local wheels archives
+  wheels=("$1"/*.whl)
+  archives=("$1"/*.tar.gz)
+  [[ ${#wheels[@]} -eq 1 && -f "${wheels[0]}" && ${#archives[@]} -eq 1 && -f "${archives[0]}" ]] ||
+    die "$1 holds no single wheel and source archive"
+  [[ "$(find "$1" -mindepth 1 | wc -l | tr -d ' ')" == 2 ]] || die "$1 holds more than the two files"
+  (cd "$1" && for f in *.whl *.tar.gz; do
+    printf '%s %s\n' "${f}" "$(sha256sum "${f}" | cut -d' ' -f1)"
+  done) | LC_ALL=C sort | paste -sd, -
+}
+
+if [[ "${1:-}" == --list ]]; then
+  [[ $# -eq 2 ]] || die "usage: scripts/publish-python-dist.sh --list <directory>"
+  files_of "$2"
+  exit 0
+fi
+
+[[ $# -eq 4 ]] || die "usage: scripts/publish-python-dist.sh <directory> pypi|testpypi <version> <files>"
 dir="$1"
 want="$3"
+built="$4"
 [[ "${want}" =~ ^[0-9]+\.[0-9]+\.[0-9]+((a|b|rc)[0-9]+)?(\.dev[0-9]+)?$ ]] ||
   die "${want} is not a version the build gives"
 case "$2" in
@@ -37,11 +61,10 @@ esac
 python_uv_pinned || die "uv is not the pinned one"
 command -v jq >/dev/null 2>&1 || die "jq is not on PATH"
 
+files="$(files_of "${dir}")"
+[[ "${files}" == "${built}" ]] || die "${dir} holds ${files}, not the files the build listed: ${built}"
 wheels=("${dir}"/*.whl)
 archives=("${dir}"/*.tar.gz)
-[[ ${#wheels[@]} -eq 1 && -f "${wheels[0]}" && ${#archives[@]} -eq 1 && -f "${archives[0]}" ]] ||
-  die "${dir} holds no single wheel and source archive"
-[[ "$(find "${dir}" -mindepth 1 | wc -l | tr -d ' ')" == 2 ]] || die "${dir} holds more than the two files"
 wheel="$(basename "${wheels[0]}")"
 # A wheel's name is <name>-<version>-<tags>.whl, the name's dashes written
 # as underscores; the index answers for either spelling.
@@ -53,9 +76,7 @@ version="${BASH_REMATCH[2]}"
 [[ "$(basename "${archives[0]}")" == "${name}-${want}.tar.gz" ]] ||
   die "$(basename "${archives[0]}") is not the source archive of ${name} ${want}"
 
-expected="$(cd "${dir}" && for f in "${wheel}" "$(basename "${archives[0]}")"; do
-  printf '%s %s\n' "${f}" "$(sha256sum "${f}" | cut -d' ' -f1)"
-done | sort)"
+expected="$(tr ',' '\n' <<<"${files}")"
 
 UV_NO_CONFIG=1 uv publish --trusted-publishing always --publish-url "${upload}" \
   --check-url "https://${host}/simple/" "${wheels[0]}" "${archives[0]}" ||
@@ -64,7 +85,7 @@ UV_NO_CONFIG=1 uv publish --trusted-publishing always --publish-url "${upload}" 
 # The index serves what it accepted after a short delay.
 for attempt in 1 2 3 4 5 6 7 8 9 10; do
   listed="$(curl -fsSL --retry 3 "https://${host}/pypi/${name}/${version}/json" |
-    jq -r '.urls[] | "\(.filename) \(.digests.sha256)"' | sort)" || listed=""
+    jq -r '.urls[] | "\(.filename) \(.digests.sha256)"' | LC_ALL=C sort)" || listed=""
   if [[ "${listed}" == "${expected}" ]]; then
     printf 'publish-python-dist: %s lists %s %s with the uploaded digests\n' "${host}" "${name}" "${version}"
     exit 0

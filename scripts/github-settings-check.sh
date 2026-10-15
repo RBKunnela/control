@@ -213,8 +213,8 @@ def environment:
   .l |= ((.protection_rules // []) as $rules
     | ([$rules[] | select(.type == "required_reviewers")] | first) as $r
     | {deployment_branch_policy, can_admins_bypass,
-       reviewers: (if $r == null then [] else [$r.reviewers[] | {type, id: .reviewer.id}] end),
-       prevent_self_review: (if $r == null then null else $r.prevent_self_review end)})
+       reviewers: (if $r == null then [] else [$r.reviewers[] | {type, id: .reviewer.id}] end)}
+    + (if $r == null then {} else {prevent_self_review: $r.prevent_self_review} end))
   | if $blind then .d.reviewers |= map(.id = null) | .l.reviewers |= map(.id = null) else . end;
 JQ
 
@@ -355,27 +355,32 @@ else
   report unknown "repository admins" "${WHY}"
 fi
 
-for environment in "${ENVIRONMENTS[@]}"; do
-  item="environment ${environment}"
-  if fetch "repos/${REPO}/environments/${environment}"; then
-    if [[ -n "${MAINTAINERS_TEAM_ID}" ]]; then
-      compare "${item}" "$(environment_json "${MAINTAINERS_TEAM_ID}")" "${LIVE}" environment
-    else
-      compare "${item}" "$(environment_json 0)" "${LIVE}" environment \
-        "the maintainers team's id could not be read, so the reviewer's id was not compared"
-    fi
+# check_environment <name> <declared body> <declared policy> [what was not compared]
+check_environment() {
+  local item="environment $1"
+  if fetch "repos/${REPO}/environments/$1"; then
+    compare "${item}" "$2" "${LIVE}" environment "${4:-}"
   else
     report unknown "${item}" "${WHY}"
   fi
 
-  item="environment ${environment} deployment policies"
-  if fetch "repos/${REPO}/environments/${environment}/deployment-branch-policies" pages; then
-    compare "${item}" "[$(environment_tag_policy_json)]" \
-      "$(jq -c '[.[].branch_policies[] | {name, type}]' <<<"${LIVE}")"
+  item="environment $1 deployment policies"
+  if fetch "repos/${REPO}/environments/$1/deployment-branch-policies" pages; then
+    compare "${item}" "[$3]" "$(jq -c '[.[].branch_policies[] | {name, type}]' <<<"${LIVE}")"
   else
     report unknown "${item}" "${WHY}"
   fi
+}
+
+for environment in "${ENVIRONMENTS[@]}"; do
+  if [[ -n "${MAINTAINERS_TEAM_ID}" ]]; then
+    check_environment "${environment}" "$(environment_json "${MAINTAINERS_TEAM_ID}")" "$(environment_tag_policy_json)"
+  else
+    check_environment "${environment}" "$(environment_json 0)" "$(environment_tag_policy_json)" \
+      "the maintainers team's id could not be read, so the reviewer's id was not compared"
+  fi
 done
+check_environment "${TEST_ENVIRONMENT}" "$(test_environment_json)" "$(test_environment_branch_policy_json)"
 
 rulesets=""
 rulesets_why=""
