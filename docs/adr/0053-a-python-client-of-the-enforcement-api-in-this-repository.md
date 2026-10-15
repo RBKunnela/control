@@ -46,7 +46,9 @@ what it may depend on and how the gate runs it.
 - **A held handle gets exactly one closing request**: an abort if the tool was
   not entered, a complete if it was, the mark set before the tool is called.
   Nothing is retried. A killed process leaves the handle to the receiver's
-  sweep.
+  sweep, and so can an interrupt that lands between two of the client's own
+  statements after admit and outside the tool's call, which Python delivers
+  wherever it likes; the tests interrupt before the tool and inside it.
 - **The caller.** An optional "the caller is gone" check, read before admit
   and before the tool, after the obligation and byte checks; anything but
   `False` reads as gone. No request is tied to it, so a closing request is

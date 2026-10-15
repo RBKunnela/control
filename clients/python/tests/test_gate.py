@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import contextlib
+import gzip
 import io
 import tarfile
 import tempfile
+import tomllib
 import unittest
 import warnings
 import zipfile
@@ -19,6 +21,7 @@ import run_tests
 PROJECT = Path(__file__).resolve().parent.parent
 LICENCE = PROJECT / "LICENSE"
 DIST = check_wheel.MODULE
+NAME = tomllib.loads((PROJECT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["name"]
 VERSION = "1.2.3"
 
 
@@ -43,7 +46,7 @@ class Shape:
 def _wheel(directory: Path, shape: Shape = Shape()) -> None:  # noqa: B008
     info = f"{DIST}-{shape.version}.dist-info"
     stated = shape.stated or shape.version
-    head = f"Metadata-Version: 2.4\nName: {DIST}\nVersion: {stated}\n{shape.requires}"
+    head = f"Metadata-Version: 2.4\nName: {NAME}\nVersion: {stated}\n{shape.requires}"
     src = PROJECT / "src"
     members = {n: (src / n).read_bytes() for n in _module_files() if n not in shape.without}
     members |= {name: b"something else\n" for name in shape.altered}
@@ -60,17 +63,69 @@ def _wheel(directory: Path, shape: Shape = Shape()) -> None:  # noqa: B008
             archive.writestr(name, data)
 
 
-def _sdist(
-    directory: Path,
-    *,
-    version: str = VERSION,
-    top: str = "",
-    names: tuple[str, ...] = ("LICENSE", "pyproject.toml"),
-) -> None:
-    with tarfile.open(directory / f"{DIST}-{version}.tar.gz", "w:gz") as archive:
-        for name in names:
-            member = tarfile.TarInfo(f"{top or f'{DIST}-{version}'}/{name}")
-            archive.addfile(member, io.BytesIO(b""))
+@dataclass(frozen=True)
+class Archive:
+    """One hand-made source archive, as a build of the project writes it unless told otherwise."""
+
+    version: str = VERSION
+    top: str = ""
+    licence: bytes = b""
+    without: tuple[str, ...] = ()
+    altered: tuple[str, ...] = ()
+    raw: tuple[str, ...] = ()
+    link: str = ""
+    twice: str = ""
+    metadata: str = ""
+    tail: bytes = b""
+
+
+def _archived(shape: Archive) -> dict[str, bytes]:
+    project = (PROJECT / "pyproject.toml").read_text(encoding="utf-8").split("\n")
+    versioned = [
+        f'version = "{shape.version}"' if line.startswith('version = "') else line
+        for line in project
+    ]
+    head = f"Metadata-Version: 2.5\nName: {NAME}\nVersion: {shape.version}\n"
+    members = {
+        "LICENSE": shape.licence or LICENCE.read_bytes(),
+        "README.md": (PROJECT / "README.md").read_bytes(),
+        "pyproject.toml": "\n".join(versioned).encode(),
+        "PKG-INFO": f"{head}{shape.metadata}\n\ntext\n".encode(),
+    }
+    src = PROJECT / "src"
+    members |= {f"src/{n}": (src / n).read_bytes() for n in _module_files()}
+    members = {n: data for n, data in members.items() if n not in shape.without}
+    members |= {name: b"something else\n" for name in shape.altered}
+    members |= {name: b"x\n" for name in shape.raw}
+    return members
+
+
+def _hidden(stem_name: str) -> bytes:
+    """A block no reader takes for a header, then a project file another extractor finds."""
+    data = b"[build-system]\nbuild-backend = 'elsewhere'\n"
+    member = tarfile.TarInfo(f"{stem_name}-{VERSION}/pyproject.toml")
+    member.size = len(data)
+    return b"x" * 512 + member.tobuf() + data + bytes(-len(data) % 512)
+
+
+def _sdist(directory: Path, shape: Archive = Archive()) -> None:  # noqa: B008
+    members = _archived(shape)
+    stem = shape.top or f"{DIST}-{shape.version}"
+    raw = io.BytesIO()
+    with tarfile.open(fileobj=raw, mode="w") as archive:
+        for name in [*members, *([shape.twice] if shape.twice else [])]:
+            member = tarfile.TarInfo(f"{stem}/{name}")
+            member.size = len(members[name])
+            archive.addfile(member, io.BytesIO(members[name]))
+        if shape.link:
+            member = tarfile.TarInfo(f"{stem}/{shape.link}")
+            member.type, member.linkname = tarfile.SYMTYPE, "/etc/passwd"
+            archive.addfile(member)
+        end = archive.offset
+    data = raw.getvalue()
+    if shape.tail:
+        data = data[:end] + shape.tail + bytes(1024)
+    (directory / f"{DIST}-{shape.version}.tar.gz").write_bytes(gzip.compress(data))
 
 
 class Runner(unittest.TestCase):
@@ -152,9 +207,19 @@ class Runner(unittest.TestCase):
     def test_a_test_whose_body_never_runs_is_a_problem(self) -> None:
         source = (
             "import unittest\n\n\n"
+            "def wrapped(f):\n"
+            "    def call(self):\n        return f(self)\n\n"
+            "    return call\n\n\n"
+            "def dropped(f):\n"
+            "    def call(self):\n        f(self)\n\n"
+            "    return call\n\n\n"
             "class T(unittest.TestCase):\n"
             "    async def test_awaited(self):\n        self.fail('never reached')\n\n"
             "    def test_yielded(self):\n        yield\n        self.fail('never reached')\n\n"
+            "    @wrapped\n"
+            "    async def test_wrapped(self):\n        self.fail('never reached')\n\n"
+            "    @dropped\n"
+            "    async def test_dropped(self):\n        self.fail('never reached')\n\n"
             "    def test_plain(self):\n        pass\n"
         )
         with tempfile.TemporaryDirectory() as top:
@@ -169,10 +234,33 @@ class Runner(unittest.TestCase):
             self.fail("the run came back as cut short")
         self.assertEqual(
             sorted(finished.bodiless),
-            ["bodiless.test_it.T.test_awaited", "bodiless.test_it.T.test_yielded"],
+            [
+                "bodiless.test_it.T.test_awaited",
+                "bodiless.test_it.T.test_dropped",
+                "bodiless.test_it.T.test_wrapped",
+                "bodiless.test_it.T.test_yielded",
+            ],
         )
         problems = run_tests.judge(finished, [])
-        self.assertTrue(any("2 test(s) whose body never runs" in p for p in problems), problems)
+        self.assertTrue(any("4 test(s) whose body never runs" in p for p in problems), problems)
+
+    def test_a_warning_a_test_raises_meets_the_runs_filters(self) -> None:
+        source = (
+            "import unittest\nimport warnings\n\n\n"
+            "class T(unittest.TestCase):\n"
+            "    def test_loud(self):\n        warnings.warn('loud', UserWarning)\n"
+        )
+        with tempfile.TemporaryDirectory() as top:
+            tests = Path(top) / "loud"
+            tests.mkdir()
+            (tests / "__init__.py").write_text("")
+            (tests / "test_it.py").write_text(source)
+            with contextlib.redirect_stderr(io.StringIO()), warnings.catch_warnings():
+                warnings.simplefilter("error")
+                finished = run_tests.run(str(tests), top)
+        if finished is None:
+            self.fail("the run came back as cut short")
+        self.assertEqual((len(finished.errors), sorted(finished.bodiless)), (1, []))
 
     def test_the_report_follows_the_judgement(self) -> None:
         out, err = io.StringIO(), io.StringIO()
@@ -237,6 +325,10 @@ class Wheel(unittest.TestCase):
                 Shape(requires="Requires-Dist: other-thing>=2"),
                 "declares a requirement",
             ),
+            "a requirement in lower case": (
+                Shape(requires="requires-dist: anything"),
+                "declares a requirement",
+            ),
             "a version stated otherwise inside": (Shape(stated="9.9.9"), "version is not 1.2.3"),
             "no licence": (Shape(licence=None), "carries no licence"),
             "another licence": (Shape(licence=b"other terms"), "licence is not the repository's"),
@@ -254,30 +346,53 @@ class Wheel(unittest.TestCase):
                 _wheel(self.dist, shape)
                 _sdist(self.dist)
                 self.assertTrue(any(want in p for p in self._problems()), self._problems())
-        archives: dict[str, tuple[tuple[str, ...], str]] = {
-            "the tests": (("LICENSE", "tests/test_x.py"), "carries the tests"),
-            "no licence": (("pyproject.toml",), "source archive carries no licence"),
+        first_src = f"src/{first}"
+        archives: dict[str, tuple[Archive, str]] = {
+            "the tests": (Archive(raw=("tests/test_x.py",)), "carries the tests"),
+            "no licence": (Archive(without=("LICENSE",)), "source archive carries no licence"),
+            "another licence": (Archive(licence=b"other terms\n"), "do not hold what the project"),
+            "no project file": (Archive(without=("pyproject.toml",)), "differ from the project's"),
+            "another project file": (Archive(altered=("pyproject.toml",)), "do not hold what"),
+            "another readme": (Archive(altered=("README.md",)), "do not hold what the project"),
+            "a source missing": (Archive(without=(first_src,)), "differ from the project's"),
+            "a source more": (Archive(raw=("src/extra.py",)), "differ from the project's"),
+            "a file more": (Archive(raw=("setup.py",)), "differ from the project's"),
+            "a source altered": (Archive(altered=(first_src,)), "do not hold what the project"),
+            "a file named twice": (Archive(twice="LICENSE"), "names a file twice"),
+            "a source in another case": (Archive(raw=(f"SRC/{first}",)), "names a file twice"),
+            "a dotted name": (Archive(raw=(f"./{first_src}",)), "not plain"),
+            "a name above the top": (Archive(raw=("../outside.txt",)), "not plain"),
+            "a doubled slash": (Archive(raw=(f"src//{first}",)), "not plain"),
+            "a link": (Archive(link="src/link.py"), "holds a link"),
+            "metadata of another version": (Archive(altered=("PKG-INFO",)), "version is not 1.2.3"),
+            "a second version": (Archive(metadata="Version: 9.9.9"), "version is not 1.2.3"),
+            "another name": (Archive(metadata="name: other"), "names another project"),
+            "a requirement": (
+                Archive(metadata="requires-dist: anything"),
+                "declares a requirement",
+            ),
+            "a file behind a broken header": (Archive(tail=_hidden(DIST)), "bytes after its last"),
         }
-        for name, (names, want) in archives.items():
+        for name, (archive, want) in archives.items():
             with self.subTest(f"a source archive with {name}"):
                 for old in self.dist.iterdir():
                     old.unlink()
                 _wheel(self.dist)
-                _sdist(self.dist, names=names)
+                _sdist(self.dist, archive)
                 self.assertTrue(any(want in p for p in self._problems()), self._problems())
 
     def test_a_project_licence_that_is_not_the_repositorys_is_refused(self) -> None:
         other = self.dist.parent / "LICENSE"
         other.write_bytes(b"other terms\n")
         _wheel(self.dist, Shape(licence=b"other terms\n"))
-        _sdist(self.dist)
+        _sdist(self.dist, Archive(licence=b"other terms\n"))
         problems = check_wheel.check_files(self.dist, other, self.changelog)
         self.assertEqual(problems, ["clients/python/LICENSE is not the repository's LICENSE"])
 
     def test_a_version_given_is_the_one_the_files_must_carry(self) -> None:
         snapshot = "1.2.3.dev42"
         _wheel(self.dist, Shape(version=snapshot))
-        _sdist(self.dist, version=snapshot)
+        _sdist(self.dist, Archive(version=snapshot))
         given = check_wheel.check_files(self.dist, LICENCE, self.changelog, snapshot)
         self.assertEqual(given, [])
         self.assertTrue(any("its version is not 1.2.3" in p for p in self._problems()))
@@ -294,7 +409,7 @@ class Wheel(unittest.TestCase):
                 for old in self.dist.iterdir():
                     old.unlink()
                 _wheel(self.dist)
-                _sdist(self.dist, version=version, top=top)
+                _sdist(self.dist, Archive(version=version, top=top))
                 problems = self._problems()
                 self.assertTrue(any(want in p for p in problems), problems)
 

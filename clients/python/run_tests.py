@@ -16,13 +16,17 @@ own pass: the tests run where the runner does. Review is the defence there.
 from __future__ import annotations
 
 import argparse
+import functools
+import gc
 import inspect
 import json
 import os
 import platform
+import re
 import sys
 import unittest
-from collections.abc import Collection, Sized
+import warnings
+from collections.abc import Callable, Collection, Sized
 from pathlib import Path
 from typing import Protocol
 
@@ -129,9 +133,42 @@ class _Recording(unittest.TextTestResult):
     def startTest(self, test: unittest.TestCase) -> None:  # noqa: N802
         super().startTest(test)
         self.started.add(test.id())
-        method = getattr(test, getattr(test, "_testMethodName", ""), None)
+        name = getattr(test, "_testMethodName", "")
+        method = getattr(test, name, None)
         if any(is_bodiless(method) for is_bodiless in _BODILESS):
             self.bodiless.add(test.id())
+        elif callable(method):
+            # A wrapper can hide a coroutine function from the check above;
+            # what it hands back, or the coroutine it drops, gives it away.
+            # unittest reads the method from the instance after this call.
+            setattr(test, name, self._returning_nothing(method, name, test.id()))
+
+    def _returning_nothing(
+        self, method: Callable[[], object], name: str, test_id: str
+    ) -> Callable[[], None]:
+        dropped = re.compile(rf"coroutine '(?:.*\.)?{re.escape(name)}' was never awaited")
+
+        @functools.wraps(method)
+        def call() -> None:
+            with warnings.catch_warnings(record=True) as heard:
+                warnings.simplefilter("always")
+                returned = method()
+                gc.collect()
+            for warning in heard:
+                if dropped.fullmatch(str(warning.message)):
+                    self.bodiless.add(test_id)
+                else:
+                    # Again, through the filters the run was started with.
+                    warnings.warn_explicit(
+                        warning.message, warning.category, warning.filename, warning.lineno
+                    )
+            if returned is not None:
+                self.bodiless.add(test_id)
+                close = getattr(returned, "close", None)
+                if callable(close):
+                    close()
+
+        return call
 
 
 def _method(case_id: str) -> str:

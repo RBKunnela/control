@@ -7,7 +7,7 @@
 ``files`` inspects one wheel and one source archive: no declared requirement,
 the licence the repository holds, the version given or else that of the
 newest dated section of the changelog, in the wheel and in the source
-archive's name, and exactly the module's own files.
+archive's name, and exactly the module's own files in both.
 ``import`` runs under an interpreter the wheel was installed for and imports
 the client from there. ``spell`` prints a release tag's version as Python
 spells it.
@@ -16,7 +16,11 @@ spells it.
 from __future__ import annotations
 
 import argparse
+import email.parser
+import email.policy
+import gzip
 import importlib
+import posixpath
 import re
 import sys
 import tarfile
@@ -33,6 +37,9 @@ _RELEASE = re.compile(r"^(\d+\.\d+\.\d+)(?:-(alpha|beta|rc)(?:\.(\d+))?)?$")
 _PREVIEW = {"alpha": "a", "beta": "b", "rc": "rc"}
 # What a wheel's own directory holds; an entry point or a script would be more.
 _DESCRIBED = {"METADATA", "WHEEL", "RECORD", "licenses/LICENSE"}
+# What a source archive holds beside src/.
+_ARCHIVED = {"LICENSE", "README.md", "pyproject.toml", "PKG-INFO"}
+_VERSION_LINE = re.compile(r'^version = "[^"]*"$', re.MULTILINE)
 
 
 def spelled(version: str) -> str:
@@ -83,13 +90,7 @@ def check_files(
         names = set(wheel.namelist())
         if f"{info}/METADATA" not in names:
             return [f"the wheel holds no {info}/METADATA: its version is not {want}"]
-        metadata = wheel.read(f"{info}/METADATA").decode("utf-8")
-        head = metadata.split("\n\n", 1)[0].splitlines()
-        if f"Version: {want}" not in head:
-            problems.append(f"the wheel's version is not {want}")
-        required = [line for line in head if line.startswith("Requires-Dist:")]
-        if required:
-            problems.append(f"the wheel declares a requirement: {required[0]}")
+        problems += _metadata_problems("the wheel", wheel.read(f"{info}/METADATA"), want)
         if f"{info}/licenses/LICENSE" not in names:
             problems.append("the wheel carries no licence")
         elif wheel.read(f"{info}/licenses/LICENSE") != licence.read_bytes():
@@ -106,27 +107,107 @@ def check_files(
         if described != _DESCRIBED:
             problems.append(f"the wheel describes itself with other files: {sorted(described)}")
 
-    problems += _archive_problems(dist, f"{name}-{want}")
+    problems += _archive_problems(dist, f"{name}-{want}", want, licence.read_bytes())
     if (HERE / "LICENSE").read_bytes() != licence.read_bytes():
         problems.append("clients/python/LICENSE is not the repository's LICENSE")
     return problems
 
 
-def _archive_problems(dist: Path, stem: str) -> list[str]:
-    problems: list[str] = []
+def _archive_problems(dist: Path, stem: str, want: str, licence: bytes) -> list[str]:
     archive = _one(dist, "*.tar.gz")
-    if archive.name != f"{stem}.tar.gz":
-        problems.append(f"the source archive is not named {stem}.tar.gz")
+    problems = (
+        []
+        if archive.name == f"{stem}.tar.gz"
+        else [f"the source archive is not named {stem}.tar.gz"]
+    )
     with tarfile.open(archive) as sdist:
-        entries = [m.name for m in sdist.getmembers()]
-    if {e.split("/", 1)[0] for e in entries} != {stem}:
-        problems.append(f"the source archive's files are not all under {stem}/")
-    members = {e.split("/", 1)[1] for e in entries if "/" in e}
-    if "LICENSE" not in members:
-        problems.append("the source archive carries no licence")
-    if any(m.startswith("tests/") for m in members):
+        files, found = _archive_files(sdist, stem)
+        end = sdist.offset
+    # tarfile stops at a header it cannot read, where another extractor skips
+    # on to the files behind it.
+    try:
+        with gzip.open(archive) as raw:
+            raw.seek(end)
+            if raw.read().strip(b"\0"):
+                found.append("the source archive holds bytes after its last file")
+    except OSError as exc:
+        found.append(f"the source archive is no gzip stream: {exc}")
+    problems += found
+    if any(n.startswith("tests/") for n in files):
         problems.append("the source archive carries the tests")
+    if "LICENSE" not in files:
+        problems.append("the source archive carries no licence")
+    own = {"src/" + n for n in _own_files()} | _ARCHIVED
+    if set(files) != own:
+        problems.append(
+            f"the source archive's files differ from the project's: {sorted(set(files) ^ own)}"
+        )
+    expected = {n: (HERE / n).read_bytes() for n in own - {"LICENSE", "PKG-INFO"}}
+    expected["LICENSE"] = licence
+    expected["pyproject.toml"] = _project_as(want)
+    changed = sorted(n for n in set(files) & set(expected) if files[n] != expected[n])
+    if changed:
+        problems.append(f"the source archive's files do not hold what the project holds: {changed}")
+    problems += _metadata_problems("the source archive", files.get("PKG-INFO", b""), want)
     return problems
+
+
+def _metadata_problems(what: str, metadata: bytes, want: str) -> list[str]:
+    """Read as installers read it: header names without case, the first of a repeated one."""
+    headers = email.parser.BytesParser(policy=email.policy.compat32).parsebytes(
+        metadata, headersonly=True
+    )
+    problems = []
+    if headers.get_all("Version") != [want]:
+        problems.append(f"{what}'s version is not {want}: {headers.get_all('Version')}")
+    if headers.get_all("Name") != [PROJECT["project"]["name"]]:
+        problems.append(f"{what} names another project: {headers.get_all('Name')}")
+    required = headers.get_all("Requires-Dist")
+    if required:
+        problems.append(f"{what} declares a requirement: {required[0]}")
+    return problems
+
+
+def _archive_files(archive: tarfile.TarFile, stem: str) -> tuple[dict[str, bytes], list[str]]:
+    """The regular files under stem/ by their plain names, and what else the archive holds."""
+    files: dict[str, bytes] = {}
+    problems: set[str] = set()
+    names: list[str] = []
+    for entry in archive.getmembers():
+        top, _, name = entry.name.partition("/")
+        if top != stem or not name:
+            problems.add(f"the source archive's files are not all under {stem}/")
+            continue
+        names.append(name)
+        if not _plain(name):
+            problems.add(f"the source archive names a path that is not plain: {entry.name}")
+        elif not entry.isfile():
+            problems.add("the source archive holds a link, a directory or a special file")
+        else:
+            files[name] = _read(archive, entry)
+    if len({n.casefold() for n in names}) != len(names):
+        problems.add("the source archive names a file twice")
+    return files, sorted(problems)
+
+
+def _plain(name: str) -> bool:
+    segments = name.split("/")
+    return (
+        name == posixpath.normpath(name)
+        and "\\" not in name
+        and all(s not in ("", ".", "..") for s in segments)
+    )
+
+
+def _project_as(version: str) -> bytes:
+    """The project file as a build under that version writes it."""
+    text = (HERE / "pyproject.toml").read_text(encoding="utf-8")
+    return _VERSION_LINE.sub(f'version = "{version}"', text, count=1).encode("utf-8")
+
+
+def _read(archive: tarfile.TarFile, entry: tarfile.TarInfo) -> bytes:
+    data = archive.extractfile(entry)
+    return data.read() if data is not None else b""
 
 
 def check_import() -> list[str]:

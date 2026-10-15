@@ -38,6 +38,19 @@ def padded(length: int) -> bytes:
     return EXECUTE + b" " * (length - len(EXECUTE))
 
 
+def forty_byte_chunks(line: int) -> bytes:
+    """EXECUTE padded to 640 chunks of 40 bytes, each size line line bytes long.
+
+    Go's client allows a chunk 16 bytes and twice its data besides the data, and
+    refuses past 16 KiB more: a 120-byte line keeps 26 bytes a chunk, a 90-byte
+    line none.
+    """
+    body = EXECUTE + b" " * (40 * 640 - len(EXECUTE))
+    size = b"28;" + b"e" * (line - 3)
+    pieces = (size + b"\r\n" + body[i : i + 40] + b"\r\n" for i in range(0, len(body), 40))
+    return CHUNKED + b"".join(pieces) + b"0\r\n\r\n"
+
+
 def chunked(*chunks: bytes) -> bytes:
     """An HTTP/1.1 answer whose body is chunks, each sent as a chunk of its own."""
     parts = [b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n"]
@@ -101,6 +114,10 @@ class Transport(unittest.TestCase):
             ("one chunk", chunked(EXECUTE)),
             ("a chunk a byte", chunked(*(bytes([byte]) for byte in EXECUTE))),
             ("an extension, upper-case digits and a trailer", extended),
+            (
+                "beside a length that chunked overrides",
+                chunked(EXECUTE).replace(b"\r\n\r\n", b"\r\nContent-Length: 3\r\n\r\n", 1),
+            ),
         ):
             with self.subTest(answer=name):
                 client = self.raw(writing(answer, chunked(RECORDED[:5], RECORDED[5:])))
@@ -305,6 +322,43 @@ class Transport(unittest.TestCase):
                 "a chunk with no size",
                 b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\nzz\r\n" + EXECUTE,
             ),
+            (
+                "a status line and headers past 60 KiB together",
+                b"HTTP/1.1 200 OK " + b"r" * 30000 + b"\r\nX-Pad: " + b"p" * 32000 + b"\r\n"
+                b"Content-Length: 95\r\n\r\n" + EXECUTE,
+            ),
+            (
+                "a trailer past 4 KiB",
+                chunked(EXECUTE)[:-2] + b"X-Pad: " + b"p" * 5000 + b"\r\n\r\n",
+            ),
+            (
+                "chunk extensions past 16 KiB besides the data",
+                CHUNKED
+                + b"".join(b"1;" + b"e" * 200 + b"\r\n" + bytes([c]) + b"\r\n" for c in EXECUTE)
+                + b"0\r\n\r\n",
+            ),
+            (
+                "chunk extensions that outweigh 40-byte chunks of data",
+                forty_byte_chunks(line=120),
+            ),
+            (
+                "a trailer named to carry the length",
+                chunked(EXECUTE).replace(b"\r\n\r\n", b"\r\nTrailer: Content-Length\r\n\r\n", 1),
+            ),
+            (
+                "a second trailer line naming the coding",
+                chunked(EXECUTE).replace(
+                    b"\r\n\r\n", b"\r\nTrailer: X-A\r\nTrailer: x-b, transfer-encoding\r\n\r\n", 1
+                ),
+            ),
+            (
+                "a chunked answer beside a length that is no number",
+                chunked(EXECUTE).replace(b"\r\n\r\n", b"\r\nContent-Length: nonsense\r\n\r\n", 1),
+            ),
+            (
+                "a chunked answer beside a negative length",
+                chunked(EXECUTE).replace(b"\r\n\r\n", b"\r\nContent-Length: -1\r\n\r\n", 1),
+            ),
         ):
             with self.subTest(answer=name):
                 client = self.raw(writing(answer, http_answer(200, RECORDED)))
@@ -458,9 +512,14 @@ class Transport(unittest.TestCase):
                 "a chunk-size line within its limit",
                 CHUNKED + b"5f;pad=" + b"p" * 200 + b"\r\n" + EXECUTE + b"\r\n0\r\n\r\n",
             ),
+            ("chunk extensions that 40-byte chunks of data outweigh", forty_byte_chunks(line=90)),
             (
-                "a long trailer",
-                CHUNKED + b"5f\r\n" + EXECUTE + b"\r\n0\r\nX-Pad: " + b"p" * 60000 + b"\r\n\r\n",
+                "a trailer named for another header",
+                chunked(EXECUTE).replace(b"\r\n\r\n", b"\r\nTrailer: X-Checksum\r\n\r\n", 1),
+            ),
+            (
+                "a trailer within 4 KiB",
+                CHUNKED + b"5f\r\n" + EXECUTE + b"\r\n0\r\nX-Pad: " + b"p" * 4000 + b"\r\n\r\n",
             ),
         ):
             with self.subTest(answer=name):

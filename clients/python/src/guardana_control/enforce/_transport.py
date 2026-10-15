@@ -7,8 +7,14 @@ import socket
 import time
 from typing import Final
 
-_HEAD_LIMIT: Final = 65536
+# Go's client counts what it reads ahead past the head, up to one 4 KiB
+# buffer, into its 64 KiB for the status line, the headers and the blank line,
+# and finds the end of a trailer only within one such buffer.
+_HEAD_LIMIT: Final = 65536 - 4096
+_TRAILER_LIMIT: Final = 4096
 _CHUNK_LINE_LIMIT: Final = 256
+# Go's bound on what a chunked body carries besides data, counted its way.
+_EXCESS_LIMIT: Final = 16384
 _LONGEST_WAIT: Final = 1e9
 _FIRST_FINAL_STATUS: Final = 200
 _NO_BODY: Final = (204, 304)
@@ -76,11 +82,11 @@ class _Stream:
         return bytes(self._buffer[:limit])
 
 
-def _headers(stream: _Stream) -> dict[str, str]:
-    """The header lines up to the empty one, which a trailer section is read as too."""
+def _headers(stream: _Stream, budget: int) -> dict[str, str]:
+    """The header lines up to the empty one, all within budget bytes; a trailer is read so too."""
     headers: dict[str, str] = {}
-    left = _HEAD_LIMIT
-    while line := stream.line(left):
+    left = budget - 2
+    while line := stream.line(max(left - 2, 0)):
         left -= len(line) + 2
         if _CONTROL.search(line):
             raise ValueError("a control byte in a header line")
@@ -91,6 +97,9 @@ def _headers(stream: _Stream) -> dict[str, str]:
         text = value.decode("latin-1").strip(" \t")
         if key == "transfer-encoding" and key in headers:
             raise ValueError("two transfer codings for one answer")
+        if key == "trailer" and key in headers:
+            headers[key] += "," + text
+            continue
         if headers.setdefault(key, text) != text and key == "content-length":
             raise ValueError("two lengths for one answer")
     return headers
@@ -98,6 +107,7 @@ def _headers(stream: _Stream) -> dict[str, str]:
 
 def _chunked(stream: _Stream, limit: int) -> bytes:
     body = bytearray()
+    excess = 0
     while len(body) < limit:
         line = stream.line(_CHUNK_LINE_LIMIT)
         if _CONTROL.search(line):
@@ -106,8 +116,11 @@ def _chunked(stream: _Stream, limit: int) -> bytes:
         if not _CHUNK_SIZE.fullmatch(size_text):
             raise ValueError("a chunk without a size")
         size = int(size_text, 16)
+        excess = max(excess + len(line) + 2 - 16 - 2 * size, 0)
+        if excess > _EXCESS_LIMIT:
+            raise ValueError("a chunked answer with too much besides data")
         if size == 0:
-            _headers(stream)
+            _headers(stream, _TRAILER_LIMIT)
             break
         take = min(size, limit - len(body))
         body += stream.exactly(take)
@@ -117,25 +130,31 @@ def _chunked(stream: _Stream, limit: int) -> bytes:
 
 
 def _answer(stream: _Stream, limit: int) -> tuple[int, bytes]:
-    status = _STATUS.fullmatch(stream.line(_HEAD_LIMIT))
+    first = stream.line(_HEAD_LIMIT - 4)
+    status = _STATUS.fullmatch(first)
     if status is None:
         raise ValueError("no HTTP/1 status line")
     code = int(status.group(2))
     if code < _FIRST_FINAL_STATUS or code in _NO_BODY:
         raise ValueError(f"status {code} carries no answer")
-    headers = _headers(stream)
+    headers = _headers(stream, _HEAD_LIMIT - len(first) - 2)
+    # Go's client refuses a malformed length even beside chunked, which then
+    # decides the framing.
+    length = headers.get("content-length")
+    if length is not None and not _NUMBER.fullmatch(length.encode("latin-1")):
+        raise ValueError("a length that is no number")
     coding = headers.get("transfer-encoding")
     if coding is not None:
         if status.group(1) == b"0":
             raise ValueError("a transfer coding under HTTP/1.0")
         if coding.lower() != "chunked":
             raise ValueError("a transfer coding other than chunked")
+        named = {f.strip(" \t").lower() for f in headers.get("trailer", "").split(",")}
+        if named & {"transfer-encoding", "trailer", "content-length"}:
+            raise ValueError("a trailer named to carry the answer's own framing")
         return code, _chunked(stream, limit)
-    length = headers.get("content-length")
     if length is None:
         return code, stream.rest(limit)
-    if not _NUMBER.fullmatch(length.encode("latin-1")):
-        raise ValueError("a length that is no number")
     return code, stream.exactly(min(int(length), limit))
 
 
