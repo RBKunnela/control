@@ -2,9 +2,9 @@
 
 # <img src="site/assets/control/mark.svg" height="30" alt=""> Guardana Control
 
-**Observe your AI agents. Control how they act.**
+**Supervise your AI agents. Decide what runs.**
 
-See what an agent did, check its procedure, and react within your authority.
+An open-source AI agent supervision framework that checks recorded runs against procedures and uses policy to decide connected actions.
 
 [![CI](https://github.com/guardana/control/actions/workflows/ci.yml/badge.svg)](https://github.com/guardana/control/actions/workflows/ci.yml)
 [![Security](https://github.com/guardana/control/actions/workflows/security.yml/badge.svg)](https://github.com/guardana/control/actions/workflows/security.yml)
@@ -18,23 +18,6 @@ See what an agent did, check its procedure, and react within your authority.
 [Website](https://control.guardana.dev) · [Try the demo](docs/get-started/try-the-demo.md) · [Docs](docs/index.md) · [Status](docs/status.md) · [Roadmap](ROADMAP.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
 
 </div>
-
-## The 1.0 goal: observe, supervise, react
-
-Guardana Control is a control and supervision layer for AI agents. Its 1.0
-goal is `planned` ([roadmap](ROADMAP.md)):
-
-- **Observe** actions and outcomes across connected tools, APIs, runtimes,
-  network and process sources. State each path's coverage, source trust and gaps.
-- **Supervise** runs against procedures and permissions. Report deviations,
-  denied actions tried another way, skipped work and uncertain outcomes.
-- **React** within scoped authority: inform, alert, request review, hold an
-  exact action for approval, pause calls or stop further actions.
-
-Full observation means coverage of connected paths with unknowns visible.
-It does not mean every action is visible or controllable. Sensors report;
-enforcement points decide before effects. Read
-[the product model](docs/concepts/control-and-supervision.md).
 
 ## Try the alpha
 
@@ -62,6 +45,23 @@ boundary. [Status](docs/status.md) is the inventory of what exists.
 
 Supervision and reaction run when you invoke them. A stop does not interrupt
 an operation already running. Paths around the gateway stay outside its control.
+
+## The 1.0 goal: observe, supervise, react
+
+Guardana Control is a control and supervision layer for AI agents. Its 1.0
+goal is `planned` ([roadmap](ROADMAP.md)):
+
+- **Observe** actions and outcomes across connected tools, APIs, runtimes,
+  network and process sources. State each path's coverage, source trust and gaps.
+- **Supervise** runs against procedures and permissions. Report deviations,
+  denied actions tried another way, skipped work and uncertain outcomes.
+- **React** within scoped authority: inform, alert, request review, hold an
+  exact action for approval, pause calls or stop further actions.
+
+Full observation means coverage of connected paths with unknowns visible.
+It does not mean every action is visible or controllable. Sensors report;
+enforcement points decide before effects. Read
+[the product model](docs/concepts/control-and-supervision.md).
 
 ## How a call is decided
 
