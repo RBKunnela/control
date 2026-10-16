@@ -11,6 +11,23 @@ verify one.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-16
+
+The `experimental` enforcement API gets an `experimental` Python client,
+`guardana_control.enforce`. Once this release is published, the release
+workflow uploads it to PyPI as `guardana-control` by trusted publishing
+([ADR-0053](docs/adr/0053-a-python-client-of-the-enforcement-api-in-this-repository.md)).
+It asks a plane for a decision before your tool acts and reports how the call
+ended. It cooperates and is not a security boundary, and it passes the same
+conformance cases and answer vectors as the Go reference. Each change now
+reaches `main` through a pull request that must pass CI's `make quality`
+([ADR-0052](docs/adr/0052-a-change-is-gated-on-its-pull-request.md)). Among
+the fixes from a code audit: on Linux the enforcement receiver no longer
+removes a socket a live receiver may hold, supervision reports a deadline not
+checked when an event of the run has no timestamp, and `react` reads the clock
+for each stop as it writes it. The project is still alpha, and the `0.x`
+series makes no compatibility promise between minor versions.
+
 ### Added
 
 - A Python client of the `experimental` enforcement API, under
@@ -32,10 +49,12 @@ verify one.
   pinned CPython versions, its linter and type checker, and a build of its
   wheel. `make bootstrap` installs `uv` and both interpreters.
 - The release workflow builds the Python client's wheel and source archive
-  before anything is drafted, attests them, and once the release is
-  published uploads them to PyPI by trusted publishing, with no stored token,
-  in a job of its own that a maintainer approves. The dry run uploads a
-  development release to TestPyPI the same way. Both read the index back.
+  and attests them before any other tool of the release job runs. After the
+  GitHub release is published, a separate job in the `pypi` environment waits
+  for a maintainer's approval, then uploads exactly the files the build listed
+  to PyPI by trusted publishing, with no stored token, and reads the index
+  back. The dry run uploads a development release to TestPyPI the same way,
+  from `main`.
 
 ### Changed
 
@@ -47,6 +66,9 @@ verify one.
 - The race tests run every night with every processor busy, on Linux and on
   macOS, so a test that depends on the clock fails there and not in a release
   gate. A red night opens an issue.
+- The README, the site's title and the repository's description call the
+  project an AI agent supervision framework; the README opens with what runs
+  today and puts the 1.0 goal after it.
 - `scripts/pre-push.sh` asks for a gate stamp for commits sent to `main` and
   for the commit a `v*` tag names, and for nothing else: a branch push needs
   none. A `main` the remote does not hold yet counts every commit. The hook
@@ -1321,7 +1343,8 @@ yet.
   independence of this project from Guardana
   ([ADR-0024](docs/adr/0024-control-and-guardana-are-independent.md)).
 
-[Unreleased]: https://github.com/guardana/control/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/guardana/control/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/guardana/control/releases/tag/v0.12.0
 [0.11.0]: https://github.com/guardana/control/releases/tag/v0.11.0
 [0.10.2-alpha]: https://github.com/guardana/control/releases/tag/v0.10.2-alpha
 [0.10.1-alpha]: https://github.com/guardana/control/releases/tag/v0.10.1-alpha

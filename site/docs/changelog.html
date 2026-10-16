@@ -115,7 +115,22 @@
 <a href="/docs/adr/0008-branching-and-release-policy">ADR-0008</a>. Each release is built,
 signed and attested from its tag; <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a> shows how to
 verify one.</p>
-<h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.11.0...HEAD">Unreleased</a></h2>
+<h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.12.0...HEAD">Unreleased</a></h2>
+<h2 id="0120---2026-10-16"><a href="https://github.com/guardana/control/releases/tag/v0.12.0">0.12.0</a> - 2026-10-16</h2>
+<p>The <code>experimental</code> enforcement API gets an <code>experimental</code> Python client,
+<code>guardana_control.enforce</code>. Once this release is published, the release
+workflow uploads it to PyPI as <code>guardana-control</code> by trusted publishing
+(<a href="/docs/adr/0053-a-python-client-of-the-enforcement-api-in-this-repository">ADR-0053</a>).
+It asks a plane for a decision before your tool acts and reports how the call
+ended. It cooperates and is not a security boundary, and it passes the same
+conformance cases and answer vectors as the Go reference. Each change now
+reaches <code>main</code> through a pull request that must pass CI's <code>make quality</code>
+(<a href="/docs/adr/0052-a-change-is-gated-on-its-pull-request">ADR-0052</a>). Among
+the fixes from a code audit: on Linux the enforcement receiver no longer
+removes a socket a live receiver may hold, supervision reports a deadline not
+checked when an event of the run has no timestamp, and <code>react</code> reads the clock
+for each stop as it writes it. The project is still alpha, and the <code>0.x</code>
+series makes no compatibility promise between minor versions.</p>
 <h3 id="added">Added</h3>
 <ul>
 <li>A Python client of the <code>experimental</code> enforcement API, under
@@ -137,10 +152,12 @@ status is completed <code>UNKNOWN</code>.</li>
 pinned CPython versions, its linter and type checker, and a build of its
 wheel. <code>make bootstrap</code> installs <code>uv</code> and both interpreters.</li>
 <li>The release workflow builds the Python client's wheel and source archive
-before anything is drafted, attests them, and once the release is
-published uploads them to PyPI by trusted publishing, with no stored token,
-in a job of its own that a maintainer approves. The dry run uploads a
-development release to TestPyPI the same way. Both read the index back.</li>
+and attests them before any other tool of the release job runs. After the
+GitHub release is published, a separate job in the <code>pypi</code> environment waits
+for a maintainer's approval, then uploads exactly the files the build listed
+to PyPI by trusted publishing, with no stored token, and reads the index
+back. The dry run uploads a development release to TestPyPI the same way,
+from <code>main</code>.</li>
 </ul>
 <h3 id="changed">Changed</h3>
 <ul>
@@ -152,6 +169,9 @@ release follows every one to three changes
 <li>The race tests run every night with every processor busy, on Linux and on
 macOS, so a test that depends on the clock fails there and not in a release
 gate. A red night opens an issue.</li>
+<li>The README, the site's title and the repository's description call the
+project an AI agent supervision framework; the README opens with what runs
+today and puts the 1.0 goal after it.</li>
 <li><code>scripts/pre-push.sh</code> asks for a gate stamp for commits sent to <code>main</code> and
 for the commit a <code>v*</code> tag names, and for nothing else: a branch push needs
 none. A <code>main</code> the remote does not hold yet counts every commit. The hook
