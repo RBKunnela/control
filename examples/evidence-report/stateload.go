@@ -35,9 +35,14 @@ func addTags(t reflect.Type) {
 }
 
 // decodeState reads state.json strictly: a member it does not name, one
-// missing, one held twice or in another case, or another major is refused.
+// missing, one held twice or in another case, or another major is refused. A
+// 1.0 state lacks the members added in 1.1 and is read without them.
 func decodeState(b []byte) (*stateFile, error) {
-	if err := exactMembers(b, reflect.TypeFor[stateFile](), "state"); err != nil {
+	var v struct {
+		SchemaVersion string `json:"schema_version"`
+	}
+	legacy := json.Unmarshal(b, &v) == nil && v.SchemaVersion == legacyStateVersion
+	if err := exactMembers(b, reflect.TypeFor[stateFile](), "state", legacy); err != nil {
 		return nil, err
 	}
 	dec := json.NewDecoder(bytes.NewReader(b))
@@ -56,32 +61,33 @@ func decodeState(b []byte) (*stateFile, error) {
 }
 
 // exactMembers holds the JSON value b to the members of type t's json tags,
-// every one of them and no other, through nested objects and arrays.
-func exactMembers(b []byte, t reflect.Type, at string) error {
+// every one of them and no other, through nested objects and arrays. In a
+// legacy state a member tagged as added later may be missing.
+func exactMembers(b []byte, t reflect.Type, at string, legacy bool) error {
 	switch t.Kind() {
 	case reflect.Pointer:
 		if string(bytes.TrimSpace(b)) == "null" {
 			return nil
 		}
-		return exactMembers(b, t.Elem(), at)
+		return exactMembers(b, t.Elem(), at, legacy)
 	case reflect.Slice:
 		var items []json.RawMessage
 		if err := json.Unmarshal(b, &items); err != nil {
 			return fmt.Errorf("%s: not an array", at)
 		}
 		for i, item := range items {
-			if err := exactMembers(item, t.Elem(), fmt.Sprintf("%s[%d]", at, i)); err != nil {
+			if err := exactMembers(item, t.Elem(), fmt.Sprintf("%s[%d]", at, i), legacy); err != nil {
 				return err
 			}
 		}
 		return nil
 	case reflect.Struct:
-		return exactObject(b, t, at)
+		return exactObject(b, t, at, legacy)
 	}
 	return nil
 }
 
-func exactObject(b []byte, t reflect.Type, at string) error {
+func exactObject(b []byte, t reflect.Type, at string, legacy bool) error {
 	ms, err := object(b)
 	if err != nil {
 		return fmt.Errorf("%s: %w", at, err)
@@ -95,10 +101,13 @@ func exactObject(b []byte, t reflect.Type, at string) error {
 	}
 	for i, n := range names {
 		v, ok := valueOf(ms, n)
+		if !ok && legacy && t.Field(i).Tag.Get("added") != "" {
+			continue
+		}
 		if !ok {
 			return fmt.Errorf("%s: member %q is missing", at, n)
 		}
-		if err := exactMembers(v, t.Field(i).Type, at+"."+n); err != nil {
+		if err := exactMembers(v, t.Field(i).Type, at+"."+n, legacy); err != nil {
 			return err
 		}
 	}
@@ -236,7 +245,15 @@ func (s *followState) loadClosed(c closedJSON, inWindow map[eventKey]string) err
 	case inWindow[eventKey{k.tenant, k.project, c.Tail}] != k.request:
 		return fmt.Errorf("its tail %s is not in the window", safe(c.Tail))
 	}
-	s.closed[k] = &closedRequest{tail: c.Tail, kernel: c.Kernel, unknown: c.Unknown}
+	r := &closedRequest{tail: c.Tail, kernel: c.Kernel, unknown: c.Unknown}
+	if c.Mode != "" {
+		mode, ok := controlv1.EnforcementMode_value[c.Mode]
+		if !ok || mode == 0 {
+			return errors.New("a mode this program does not write")
+		}
+		r.mode = controlv1.EnforcementMode(mode)
+	}
+	s.closed[k] = r
 	return nil
 }
 

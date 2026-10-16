@@ -153,3 +153,25 @@ func TestTheBoundsAdmitTheirLimit(t *testing.T) {
 		}
 	}
 }
+
+// TestStepsCannotChangeAProcedure: what Steps returns is a copy, its
+// slices too, so changing it leaves the procedure, a later Steps and an
+// evaluation under the procedure's digest as they were.
+func TestStepsCannotChangeAProcedure(t *testing.T) {
+	p := procWith(t)
+	steps := p.Steps()
+	steps[0].ObservedAs[0] = "wipe_disk"
+	steps[1].Required = false
+	steps[2].Tool = "wipe_disk"
+	read := []supervise.Step{
+		{ID: "lookup", Tool: "get_order", Upstream: "shop", ObservedAs: []string{"get_order"}, Required: true},
+		{ID: "refund", Tool: "issue_refund", Upstream: "pay", ObservedAs: []string{"issue_refund"}, Required: true},
+		{ID: "notify", Tool: "send_mail", Upstream: "mail", ObservedAs: []string{"send_mail"}},
+	}
+	if got := p.Steps(); !reflect.DeepEqual(got, read) {
+		t.Fatalf("Steps after a change to its copy = %+v", got)
+	}
+	res := closedRun(t, p, export(call{req: "r1", tool: "get_order", upstream: "shop"}))
+	sameFindings(t, res.Findings,
+		want(p, "REQUIRED_STEP_SKIPPED", high, alert, suspected, id("REQUIRED_STEP_SKIPPED", "refund")))
+}

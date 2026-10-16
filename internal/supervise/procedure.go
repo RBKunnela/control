@@ -72,8 +72,15 @@ func (p *Procedure) Version() string { return p.version }
 // form: member order and white space do not change it, an edit does.
 func (p *Procedure) Digest() string { return p.digest }
 
-// Steps are the procedure's steps in document order.
-func (p *Procedure) Steps() []Step { return p.steps }
+// Steps are the procedure's steps in document order. The slice and each
+// step's ObservedAs are copies.
+func (p *Procedure) Steps() []Step {
+	out := slices.Clone(p.steps)
+	for i := range out {
+		out[i].ObservedAs = slices.Clone(out[i].ObservedAs)
+	}
+	return out
+}
 
 // Schema is the document's schema_version.
 func (p *Procedure) Schema() string { return p.schema }

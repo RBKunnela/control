@@ -17,9 +17,14 @@ import (
 // staleDial bounds the dial that tells a stale socket from a live one.
 const staleDial = time.Second
 
+// dialSocket is the probe clearStale runs against an existing socket.
+var dialSocket = func(path string) (net.Conn, error) {
+	return (&net.Dialer{Timeout: staleDial}).DialContext(context.Background(), "unix", path)
+}
+
 // Listen binds the configured socket with mode 0600 in a directory this
 // process owns and nobody else may enter, and checks both once bound. A stale
-// socket of this user that nothing answers on is replaced; anything else at
+// socket of this user that refuses a connection is replaced; anything else at
 // the path is refused with ErrSocketInUse, a directory that is not the
 // plane's alone with ErrSocketDir, and a bound socket that is not this
 // process's with mode 0600 with ErrSocketMode.
@@ -92,9 +97,12 @@ func ownSocket(path string) error {
 	return nil
 }
 
-// clearStale removes a socket of this user that nothing answers on, which a
-// plane that ended without closing its listener leaves behind. Anything else
-// at the path stays where it is.
+// clearStale removes a socket of this user that refuses a connection, which a
+// plane that ended without closing its listener leaves behind. A timeout, a
+// full backlog on Linux, a permission error or exhausted resources can come
+// from a live receiver, so any other dial error leaves the path and refuses
+// with ErrSocketInUse, as does anything else at the path. On macOS a live
+// receiver whose backlog is full refuses too, so there a refusal is no proof.
 func clearStale(path string) error {
 	info, err := os.Lstat(path)
 	if errors.Is(err, fs.ErrNotExist) {
@@ -106,9 +114,12 @@ func clearStale(path string) error {
 	if info.Mode().Type() != fs.ModeSocket || !ownedByMe(info) {
 		return fmt.Errorf("%w: %v", ErrSocketInUse, info.Mode())
 	}
-	conn, err := (&net.Dialer{Timeout: staleDial}).DialContext(context.Background(), "unix", path)
+	conn, err := dialSocket(path)
 	if err == nil {
 		return errors.Join(fmt.Errorf("%w: something answers on it", ErrSocketInUse), conn.Close())
+	}
+	if !errors.Is(err, syscall.ECONNREFUSED) {
+		return fmt.Errorf("%w: %w", ErrSocketInUse, err)
 	}
 	if err := os.Remove(path); err != nil {
 		return fmt.Errorf("%w: %w", ErrSocketInUse, err)

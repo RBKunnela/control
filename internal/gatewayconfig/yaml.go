@@ -72,11 +72,14 @@ func split(text string) ([]line, error) {
 }
 
 // stripComment cuts a comment: a '#' that starts the line or follows a space,
-// and is outside a double-quoted scalar.
+// and is outside a double-quoted scalar, in which a backslash escapes the
+// next byte.
 func stripComment(raw string) string {
 	quoted := false
 	for i := 0; i < len(raw); i++ {
 		switch {
+		case quoted && raw[i] == '\\':
+			i++
 		case raw[i] == '"':
 			quoted = !quoted
 		case quoted:

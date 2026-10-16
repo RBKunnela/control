@@ -3,12 +3,16 @@ package main
 import (
 	"cmp"
 	"slices"
+
+	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 )
 
 const (
-	stateVersion = "1.0"
-	stateMajor   = 1
-	dedupScope   = "consumer-window"
+	stateVersion = "1.1"
+	// legacyStateVersion is the state before closed requests held their mode.
+	legacyStateVersion = "1.0"
+	stateMajor         = 1
+	dedupScope         = "consumer-window"
 	// maxOpen is the most requests followed at once; past it the oldest is
 	// dropped with an alert.
 	maxOpen = 10_000
@@ -59,6 +63,10 @@ type closedJSON struct {
 	// Kernel is the decision_id of the kernel's decision, which tells a
 	// later block of the plane's own from the kernel's.
 	Kernel string `json:"kernel"`
+	// Mode is the request's enforcement mode, which a finding or a reload
+	// after its end has to name; empty when not known. A 1.0 state has no
+	// such member.
+	Mode string `json:"mode" added:"1.1"`
 }
 
 type tailGapJSON struct {
@@ -144,6 +152,8 @@ type seenEvent struct {
 type closedRequest struct {
 	tail, kernel string
 	unknown      bool
+	// mode is the request's enforcement mode, unspecified when not known.
+	mode controlv1.EnforcementMode
 }
 
 type queued struct {
@@ -179,7 +189,7 @@ func (s *followState) file(alertsBytes int64) stateFile {
 		f.Window = append(f.Window, seenJSON{e.key.tenant, e.key.project, e.request, e.key.id, e.hash})
 		k := requestKey{e.key.tenant, e.key.project, e.request}
 		if c := s.closed[k]; c != nil && c.tail == e.key.id {
-			f.Closed = append(f.Closed, closedJSON{k.tenant, k.project, k.request, c.tail, c.unknown, c.kernel})
+			f.Closed = append(f.Closed, closedJSON{k.tenant, k.project, k.request, c.tail, c.unknown, c.kernel, modeFile(c.mode)})
 		}
 	}
 	return f
@@ -191,6 +201,14 @@ func (o *openRequest) file() openJSON {
 		Block: decisionFile(o.desc.block), Held: o.desc.held, Approval: o.desc.approval,
 		Walk: walkJSON{Stage: stageNames[o.walk.at], Previous: o.walk.prevKind, Mode: o.walk.mode.String(), Verdict: o.walk.verdict.String(),
 			Answer: o.walk.answer, Running: o.walk.running, Note: o.walk.note}}
+}
+
+// modeFile spells a closed request's mode, empty when it is not known.
+func modeFile(m controlv1.EnforcementMode) string {
+	if m == controlv1.EnforcementMode_ENFORCEMENT_MODE_UNSPECIFIED {
+		return ""
+	}
+	return m.String()
 }
 
 func decisionFile(d *decisionFacts) *decisionJSON {

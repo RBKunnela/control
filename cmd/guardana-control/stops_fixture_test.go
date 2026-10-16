@@ -133,11 +133,14 @@ func (tr stopTree) reactArgs(findings string) reactArgs {
 		findings: findings, runs: tr.runs, stops: tr.stops, lockWait: stopsLockWait}
 }
 
+// clockAt is a clock that always reads now.
+func clockAt(now time.Time) func() time.Time { return func() time.Time { return now } }
+
 // react runs react over the log in findings at now.
 func (tr stopTree) react(t *testing.T, findings string, now time.Time) (int, string, string) {
 	t.Helper()
 	var out, errOut bytes.Buffer
-	code := react(context.Background(), tr.reactArgs(findings), now, &out, &errOut)
+	code := react(context.Background(), tr.reactArgs(findings), clockAt(now), &out, &errOut)
 	return code, out.String(), errOut.String()
 }
 

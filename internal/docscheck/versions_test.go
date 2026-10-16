@@ -67,7 +67,8 @@ var (
 // versionsNotFormats are version constants the scan finds that name no
 // format of the product, each with the reason.
 var versionsNotFormats = map[string]string{
-	"examples/evidence-report/state.go#stateVersion": "an example program's own state",
+	"examples/evidence-report/state.go#stateVersion":       "an example program's own state",
+	"examples/evidence-report/state.go#legacyStateVersion": "the earlier version of an example program's own state",
 }
 
 // The page's table, held to the constants and the readers the code holds.

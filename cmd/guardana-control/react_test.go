@@ -206,7 +206,7 @@ func TestReactRefusesARouteNamingARuleThatMayNotStop(t *testing.T) {
 			a.findings = findings
 			before := readList(t, a.stops)
 			var out, errOut bytes.Buffer
-			code := react(context.Background(), a, time.Now(), &out, &errOut)
+			code := react(context.Background(), a, time.Now, &out, &errOut)
 			want := "react: --route " + a.route + ": " + mayNotStopRefusal(1, c.id, c.version)
 			if code != exitFail || out.Len() != 0 || !strings.Contains(errOut.String(), want) {
 				t.Errorf("%s %s over %s: react answered %d: %q %q, want 1 and %q", c.id, c.version, findings, code, out.String(), errOut.String(), want)
@@ -218,7 +218,7 @@ func TestReactRefusesARouteNamingARuleThatMayNotStop(t *testing.T) {
 	}
 	a := setUp("control", doc(rule(outside, "1"), rule(denial, "2")))
 	var out, errOut bytes.Buffer
-	if code := react(context.Background(), a, time.Now(), &out, &errOut); code != exitOK || !strings.HasPrefix(out.String(), "stop line 3 run "+tr.open+" ") {
+	if code := react(context.Background(), a, time.Now, &out, &errOut); code != exitOK || !strings.HasPrefix(out.String(), "stop line 3 run "+tr.open+" ") {
 		t.Fatalf("the control route: react answered %d: %q %q", code, out.String(), errOut.String())
 	}
 }
@@ -247,7 +247,7 @@ func TestAModelsOrAnUnknownFindingStopsNothing(t *testing.T) {
 	pass := func(change func(*controlv1.Finding)) *reactor {
 		f := finding(1, tr.open, denial, confirmed)
 		change(f.Finding)
-		r := newReactor(context.Background(), tr.parsed, tr.judged(t, now), plane.Lookup, tr.stops, now)
+		r := newReactor(context.Background(), tr.parsed, tr.judged(t, now), plane.Lookup, tr.stops, clockAt(now))
 		if err := r.each([]*findingv1alpha1.Record{{Record: &findingv1alpha1.Record_FindingRecord{FindingRecord: f}}}); err != nil {
 			t.Fatal(err)
 		}
@@ -326,7 +326,7 @@ func TestReactRefusesARouteItCannotTrust(t *testing.T) {
 		a := tr.reactArgs(log)
 		a.route = route
 		var out, errOut bytes.Buffer
-		if code := react(context.Background(), a, time.Now(), &out, &errOut); code != exitFail || out.Len() != 0 || !strings.Contains(errOut.String(), want) {
+		if code := react(context.Background(), a, time.Now, &out, &errOut); code != exitFail || out.Len() != 0 || !strings.Contains(errOut.String(), want) {
 			t.Errorf("react with %s answered %d: %q %q, want 1 and %q", route, code, out.String(), errOut.String(), want)
 		}
 	}
@@ -342,7 +342,7 @@ func TestAPassStopsAtARunItCannotLookUp(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	broken := errors.New("unreadable")
 	r := newReactor(context.Background(), tr.parsed, tr.judged(t, now),
-		func(context.Context, string) (runs.Record, error) { return runs.Record{}, broken }, tr.stops, now)
+		func(context.Context, string) (runs.Record, error) { return runs.Record{}, broken }, tr.stops, clockAt(now))
 	f := finding(1, tr.open, denial, confirmed)
 	if err := r.each([]*findingv1alpha1.Record{{Record: &findingv1alpha1.Record_FindingRecord{FindingRecord: f}}}); !errors.Is(err, broken) {
 		t.Fatalf("each = %v, want the lookup's error", err)
@@ -422,7 +422,7 @@ func TestAFindingAnotherReactNamedIsAlreadyNamed(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = plane.Close() }()
-	r := newReactor(context.Background(), tr.parsed, stale, plane.Lookup, tr.stops, now)
+	r := newReactor(context.Background(), tr.parsed, stale, plane.Lookup, tr.stops, clockAt(now))
 	if err := r.each(records); err != nil || r.alreadyNamed != 1 || r.stops+r.covered != 0 || len(r.unwritten) != 0 {
 		t.Errorf("the late react: %v, %d already named, %d stops, %d covered, unwritten %q; want the finding already named",
 			err, r.alreadyNamed, r.stops, r.covered, r.unwritten)

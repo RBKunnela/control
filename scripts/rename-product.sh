@@ -16,6 +16,8 @@ set -euo pipefail
 _RENAME_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 # shellcheck source=lib/repo-files.sh
 . "${_RENAME_DIR}/lib/repo-files.sh"
+# shellcheck source=lib/cmd-names.sh
+. "${_RENAME_DIR}/lib/cmd-names.sh"
 
 ROOT="$(repo_root)"
 BRAND_GO="${ROOT}/internal/brand/brand.go"
@@ -294,13 +296,7 @@ if [[ -d "${ROOT}/cmd" ]]; then
   for dir in "${ROOT}"/cmd/*; do
     [[ -d "${dir}" ]] || continue
     base="${dir##*/}"
-    renamed="${base}"
-    case "${renamed}" in
-      *"${old_slug}"*) renamed="${renamed//${old_slug}/${new_slug}}" ;;
-    esac
-    case "${renamed}" in
-      *"${old_gateway}"*) renamed="${renamed//${old_gateway}/${new_gateway}}" ;;
-    esac
+    renamed="$(renamed_cmd "${base}" "${old_slug}" "${new_slug}" "${old_gateway}" "${new_gateway}")"
     if [[ "${renamed}" == "${base}" ]]; then
       continue
     fi

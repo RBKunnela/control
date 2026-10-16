@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-const freshState = `{"schema_version":"1.0","dedup_scope":"consumer-window","cursor":"","source":"","alerts_bytes":0,` +
+const freshState = `{"schema_version":"1.1","dedup_scope":"consumer-window","cursor":"","source":"","alerts_bytes":0,` +
 	`"tail_gap":null,"pending":[],"open":[],"window":[],"closed":[]}` + "\n"
 
 // TestStateInit: -init makes the directory 0700 with a state that has read
@@ -123,6 +123,16 @@ func edited(export, old, with string) func(*testing.T) string {
 	}
 }
 
+// inTurn prepares a state with each of prepares in turn.
+func inTurn(prepares ...func(*testing.T, string)) func(*testing.T, string) {
+	return func(t *testing.T, dir string) {
+		t.Helper()
+		for _, p := range prepares {
+			p(t, dir)
+		}
+	}
+}
+
 func editState(old, with string) func(*testing.T, string) {
 	return func(t *testing.T, dir string) {
 		t.Helper()
@@ -194,8 +204,13 @@ func exportRefusals() []refusal {
 
 func stateRefusals() []refusal {
 	return []refusal{
-		{name: "a state of another major", prepare: editState(`"schema_version":"1.0"`, `"schema_version":"2.0"`), in: input("outage-1.jsonl"),
+		{name: "a state of another major", prepare: editState(`"schema_version":"1.1"`, `"schema_version":"2.0"`), in: input("outage-1.jsonl"),
 			stderr: "schema_version"},
+		{name: "a 1.1 state with a closed request of no mode member", prepare: inTurn(consumed("repeat.jsonl"),
+			editState(`,"mode":"ENFORCEMENT_MODE_ENFORCE"`, ``)), in: input("outage-1.jsonl"), stderr: `member "mode" is missing`},
+		{name: "a closed request of a mode this program does not write", prepare: inTurn(consumed("repeat.jsonl"),
+			editState(`"mode":"ENFORCEMENT_MODE_ENFORCE"`, `"mode":"ENFORCEMENT_MODE_BOGUS"`)), in: input("outage-1.jsonl"),
+			stderr: "a mode this program does not write"},
 		{name: "a state with a member it does not name", prepare: editState(`"cursor":`, `"extra":1,"cursor":`), in: input("outage-1.jsonl"),
 			stderr: "does not name"},
 		{name: "a state without a member", prepare: editState(`"dedup_scope":"consumer-window",`, ``), in: input("outage-1.jsonl"),

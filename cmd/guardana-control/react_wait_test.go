@@ -24,7 +24,7 @@ func TestAPassSpendsNoLockWaitOutsideALock(t *testing.T) {
 	a := tr.reactArgs(log)
 	a.lockWait = 0
 	var out, errOut bytes.Buffer
-	code := react(context.Background(), a, time.Now(), &out, &errOut)
+	code := react(context.Background(), a, time.Now, &out, &errOut)
 	if code != exitOK || !strings.HasSuffix(out.String(), "\nstops 2, covered 0, already named 0, not stopping 0, not written 0\n") {
 		t.Fatalf("react answered %d: %q\n%s", code, errOut.String(), out.String())
 	}
@@ -44,7 +44,7 @@ func readyReactor(ctx context.Context, t *testing.T, tr stopTree, findings strin
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = plane.Close() })
-	return newReactor(ctx, tr.parsed, tr.judged(t, now), lookup(plane.Lookup), tr.stops, now), records
+	return newReactor(ctx, tr.parsed, tr.judged(t, now), lookup(plane.Lookup), tr.stops, clockAt(now)), records
 }
 
 // TestAnInterruptedPassStopsAfterTheLinesItWrote: a pass whose context ends

@@ -215,7 +215,7 @@ the export being the plane's, and nothing else protects that.</p>
 </tr>
 <tr>
 <td><code>DEADLINE_EXCEEDED</code></td>
-<td>events span over <code>deadline_seconds</code>; <code>0.2</code>: one per run with an event past it, timed from the tree's first event</td>
+<td>events span over <code>deadline_seconds</code> (per run under <code>0.2</code>, from the tree's first); unchecked within it if one is untimed</td>
 </tr>
 <tr>
 <td><code>REQUIRED_STEP_SKIPPED</code></td>

@@ -50,8 +50,10 @@ type evaluation struct {
 	reported map[int][]string
 	// stepIndex maps a step's id to its place in the procedure.
 	stepIndex map[string]int
-	// first and last are the run's earliest and latest events with a time.
+	// first and last are the run's earliest and latest events with a time,
+	// and untimed says whether an event of the run has none.
 	first, last *controlv1.Event
+	untimed     bool
 	silent      map[string]bool
 	anySilent   bool
 	neverHeard  []string
@@ -104,10 +106,11 @@ func newEvaluation(in Input, rd *read) *evaluation {
 }
 
 // spanEvents finds the run's earliest and latest events with a time, the
-// first read winning a tie.
+// first read winning a tie, and whether an event has no time.
 func (e *evaluation) spanEvents() {
 	for _, ev := range e.rd.events {
 		if !ev.GetOccurredAt().IsValid() {
+			e.untimed = true
 			continue
 		}
 		t := ev.GetOccurredAt().AsTime()

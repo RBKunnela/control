@@ -30,8 +30,7 @@ var notApplied = notChecked("this build does not apply the rule")
 // states says which rules apply. With no event of the run none does. A rule
 // that rests on something not seen applies only once nothing more can arrive
 // and nothing was left out of what did: on a closed run, from exports that
-// are all whole. With no event that has a time, no time and no order can be
-// told.
+// are all whole.
 func (e *evaluation) states() map[string]ruleState {
 	out := make(map[string]ruleState, len(ruleTable))
 	for _, id := range RuleIDsOf(e.p.schema) {
@@ -49,14 +48,8 @@ func (e *evaluation) states() map[string]ruleState {
 		out[id] = base
 	}
 	out[RuleRequiredStepSkipped], out[RuleStepOutOfOrder], out[RuleContinuedAfterFailure] = absence, absence, absence
-	if base.state == checked.state && e.first == nil {
-		untimed := notChecked("no event of the run has a time")
-		out[RuleDeadlineExceeded] = untimed
-		for _, id := range []string{RuleStepOutOfOrder, RuleContinuedAfterFailure} {
-			if out[id].state == checked.state {
-				out[id] = untimed
-			}
-		}
+	if base.state == checked.state {
+		e.untimedStates(out)
 	}
 	if e.p.maxDenials == 0 {
 		out[RuleRepeatedDenial] = off("max_denials")
@@ -66,6 +59,25 @@ func (e *evaluation) states() map[string]ruleState {
 	}
 	e.states02(out, base)
 	return out
+}
+
+// untimedStates leaves unchecked what events without a time cannot tell.
+// With no event that has a time, no time and no order can be told; with one
+// event that has none, the run may have lasted longer than its timed events
+// span, so only a breach on that span is told.
+func (e *evaluation) untimedStates(out map[string]ruleState) {
+	switch {
+	case e.first == nil:
+		untimed := notChecked("no event of the run has a time")
+		out[RuleDeadlineExceeded] = untimed
+		for _, id := range []string{RuleStepOutOfOrder, RuleContinuedAfterFailure} {
+			if out[id].state == checked.state {
+				out[id] = untimed
+			}
+		}
+	case e.untimed && !e.pastDeadline():
+		out[RuleDeadlineExceeded] = notChecked("an event of the run has no time")
+	}
 }
 
 func (e *evaluation) absenceState() ruleState {

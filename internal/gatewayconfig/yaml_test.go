@@ -162,6 +162,26 @@ func TestACommentCannotHideInAValue(t *testing.T) {
 	}
 }
 
+// TestAnEscapedQuoteKeepsTheValueQuoted: inside a double-quoted scalar a
+// backslash escapes the next byte, so an escaped quote does not end the value
+// and a '#' after it is the value's own; an escaped backslash before the
+// closing quote does end it, and a comment after a closed value is still cut.
+func TestAnEscapedQuoteKeepsTheValueQuoted(t *testing.T) {
+	got, err := parseYAML("list:\n  - \"a\\\" #b\"\nb: \"x\\\"y\" # a comment\nc: \"x\\\\\" # a comment\n")
+	if err != nil {
+		t.Fatalf("the reader refused a document this test builds as valid: %v", err)
+	}
+	want := []entry{{path: "list.0", value: `a" #b`}, {path: "b", value: `x"y`}, {path: "c", value: `x\`}}
+	if len(got) != len(want) {
+		t.Fatalf("read %d entries, want %d: %+v", len(got), len(want), got)
+	}
+	for i, w := range want {
+		if got[i].path != w.path || got[i].value != w.value {
+			t.Errorf("entry %d is %s=%q, want %s=%q", i, got[i].path, got[i].value, w.path, w.value)
+		}
+	}
+}
+
 // TestBytesAreReadAtTheirSuffix is the bound helper's own table: a suffix
 // silently ignored would set a budget a thousand times smaller than the
 // operator wrote.

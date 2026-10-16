@@ -5,8 +5,10 @@ package enforce
 import (
 	"context"
 	"errors"
+	"net"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 
@@ -65,6 +67,60 @@ func TestListenChecksTheSocketAndItsDirectoryAfterTheBind(t *testing.T) {
 			}
 			if _, err := os.Lstat(socket); !errors.Is(err, os.ErrNotExist) {
 				t.Fatalf("a socket was left at the path: %v", err)
+			}
+		})
+	}
+}
+
+// Only a refused connection proves a socket stale: a timeout, a full backlog
+// or a permission error leaves the path in place and refuses the bind.
+func TestClearStaleRemovesOnlyARefusedSocket(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		dialErr error
+		removed bool
+	}{
+		{"connection refused", &net.OpError{Op: "dial", Net: "unix", Err: os.NewSyscallError("connect", syscall.ECONNREFUSED)}, true},
+		{"a timeout", &net.OpError{Op: "dial", Net: "unix", Err: os.ErrDeadlineExceeded}, false},
+		{"a full backlog", &net.OpError{Op: "dial", Net: "unix", Err: os.NewSyscallError("connect", syscall.EAGAIN)}, false},
+		{"permission denied", &net.OpError{Op: "dial", Net: "unix", Err: os.NewSyscallError("connect", syscall.EACCES)}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir, err := os.MkdirTemp("", "enf")
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = os.RemoveAll(dir) })
+			socket := filepath.Join(dir, "s")
+			ln, err := (&net.ListenConfig{}).Listen(context.Background(), "unix", socket)
+			if err != nil {
+				t.Fatal(err)
+			}
+			ul, ok := ln.(*net.UnixListener)
+			if !ok {
+				t.Fatal("not a unix listener")
+			}
+			ul.SetUnlinkOnClose(false)
+			if err := ln.Close(); err != nil {
+				t.Fatal(err)
+			}
+			prev := dialSocket
+			dialSocket = func(string) (net.Conn, error) { return nil, tc.dialErr }
+			t.Cleanup(func() { dialSocket = prev })
+
+			err = clearStale(socket)
+			_, statErr := os.Lstat(socket)
+			if tc.removed {
+				if err != nil || !errors.Is(statErr, os.ErrNotExist) {
+					t.Fatalf("clearStale = %v, path: %v; want nil and the path removed", err, statErr)
+				}
+				return
+			}
+			if !errors.Is(err, ErrSocketInUse) || !errors.Is(err, tc.dialErr) {
+				t.Fatalf("clearStale = %v, want ErrSocketInUse naming %v", err, tc.dialErr)
+			}
+			if statErr != nil {
+				t.Fatalf("the socket was removed: %v", statErr)
 			}
 		})
 	}

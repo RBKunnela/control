@@ -52,6 +52,32 @@ verify one.
   none. A `main` the remote does not hold yet counts every commit. The hook
   has a negative control, `make pre-push-probe`, in `make quality`.
 
+### Fixed
+
+- The enforcement receiver removes a socket left at its path only when a
+  connection to it is refused. A timeout, a full backlog on Linux or a
+  permission error refuses the start with `ErrSocketInUse` and leaves the
+  socket of a receiver that may still be live. On macOS a live receiver
+  whose backlog is full refuses connections too, so a second plane started
+  then can still take its path.
+- `supervise` reports `DEADLINE_EXCEEDED` not checked when an event of the
+  run has no time and the timed events stay within `deadline_seconds`; it
+  was reported checked on a span that may have been longer. A breach on the
+  timed events still fires; under a 0.2 procedure the rule is then checked
+  for the tree, and a run whose events have no time gets no finding.
+- `react` reads the clock for each stop it writes. A pass that ran longer
+  than a rule's lifetime wrote a stop that had already expired, counted the
+  finding as stopped, and never stopped the run for it again.
+- `examples/evidence-report -state` holds a finding or a policy reload linked
+  after a request's end to the request's enforcement mode, as the one-shot
+  report does: an undeclared or other mode is `lifecycle_unknown`. Its
+  `state.json` is now `1.1` and keeps each ended request's mode; a `1.0`
+  state is still read, and an annotation after the end of a request it holds
+  is unknown, since its mode was not kept.
+- The gateway's configuration reader keeps a double-quoted value whole when
+  it holds an escaped quote: `"a\" #b"` was cut at the `#` as a comment and
+  the file refused.
+
 ## [0.11.0] - 2026-10-12
 
 A tool outside MCP can now ask for a decision before it acts and report how

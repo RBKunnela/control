@@ -72,7 +72,7 @@ the export being the plane's, and nothing else protects that.
 | --- | --- |
 | `REPEATED_DENIAL` | one tool on one upstream is denied by policy `max_denials` times, plane blocks apart; doubtful denials dropped when others suffice |
 | `STEP_OUTSIDE_PROCEDURE` | a tool neither a step nor allowed is called, or reported and not joined to a plane call |
-| `DEADLINE_EXCEEDED` | events span over `deadline_seconds`; `0.2`: one per run with an event past it, timed from the tree's first event |
+| `DEADLINE_EXCEEDED` | events span over `deadline_seconds` (per run under `0.2`, from the tree's first); unchecked within it if one is untimed |
 | `REQUIRED_STEP_SKIPPED` | a required step has no instance |
 | `STEP_OUT_OF_ORDER` | a step comes before one it must follow |
 | `CONTINUED_AFTER_FAILURE` | another step proposed after a step's failure, before its retry, unless it is a step's first instance out of order |

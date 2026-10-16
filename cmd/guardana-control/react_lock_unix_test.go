@@ -71,7 +71,7 @@ func TestALockHeldPastTheWaitStopsThePassAfterItsLines(t *testing.T) {
 	release()
 	release = func() {}
 	var out, errOut bytes.Buffer
-	code := react(context.Background(), tr.reactArgs(log), now, &out, &errOut)
+	code := react(context.Background(), tr.reactArgs(log), clockAt(now), &out, &errOut)
 	if want := "already named 1, not stopping 0, not written 0\n"; code != exitOK || !bytes.HasSuffix(out.Bytes(), []byte("stops 1, covered 0, "+want)) {
 		t.Fatalf("the pass after the lock: react answered %d: %q\n%s", code, errOut.String(), out.String())
 	}
@@ -88,7 +88,7 @@ func TestReactPrintsItsCountWhenTheLockIsNeverFree(t *testing.T) {
 	a := tr.reactArgs(log)
 	a.lockWait = 50 * time.Millisecond
 	var out, errOut bytes.Buffer
-	code := react(context.Background(), a, time.Now(), &out, &errOut)
+	code := react(context.Background(), a, time.Now, &out, &errOut)
 	if code != exitFail || out.String() != "stops 0, covered 0, already named 0, not stopping 0, not written 0\n" ||
 		!bytes.Contains(errOut.Bytes(), []byte(string(stopwrite.ErrLocked))) {
 		t.Fatalf("react answered %d: %q\n%s", code, errOut.String(), out.String())

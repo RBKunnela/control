@@ -29,16 +29,23 @@ func Of(text string) string {
 }
 
 // Numbering gives the headings of one page their anchors in page order, a
-// repeated one numbered "-1", "-2" and on, as GitHub numbers them.
+// repeated one numbered "-1", "-2" and on, as GitHub numbers them. It holds
+// every anchor it gave with the last number tried after it, so a numbered
+// anchor is never given twice.
 type Numbering map[string]int
 
-// Next is the anchor of the page's next heading.
+// Next is the anchor of the page's next heading: its own anchor, or the
+// first numbered one after it that no earlier heading took.
 func (n Numbering) Next(text string) string {
-	a := Of(text)
-	seen := n[a]
-	n[a]++
-	if seen > 0 {
-		return a + "-" + strconv.Itoa(seen)
+	base := Of(text)
+	a := base
+	for {
+		if _, taken := n[a]; !taken {
+			break
+		}
+		n[base]++
+		a = base + "-" + strconv.Itoa(n[base])
 	}
+	n[a] = 0
 	return a
 }

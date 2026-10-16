@@ -1,6 +1,9 @@
 package anchor
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // The expected anchors are written out as GitHub renders them, not computed.
 func TestOf(t *testing.T) {
@@ -36,6 +39,27 @@ func TestNumberingNumbersRepeatsInPageOrder(t *testing.T) {
 	for i := range want {
 		if got[i] != want[i] {
 			t.Fatalf("anchors = %q, want %q", got, want)
+		}
+	}
+}
+
+// TestNumberingReservesTheAnchorsItGives: a heading whose own anchor is one
+// already given to a repeat is numbered past it, as GitHub's slugger
+// registers every anchor it gives; so is a repeat whose number a heading has
+// already taken.
+func TestNumberingReservesTheAnchorsItGives(t *testing.T) {
+	for _, c := range []struct{ headings, want []string }{
+		{[]string{"Part", "Part", "Part-1"}, []string{"part", "part-1", "part-1-1"}},
+		{[]string{"Part-1", "Part", "Part"}, []string{"part-1", "part", "part-2"}},
+		{[]string{"Part", "Part", "Part 1", "Part-1", "Part"}, []string{"part", "part-1", "part-1-1", "part-1-2", "part-2"}},
+	} {
+		n := Numbering{}
+		var got []string
+		for _, h := range c.headings {
+			got = append(got, n.Next(h))
+		}
+		if strings.Join(got, " ") != strings.Join(c.want, " ") {
+			t.Errorf("anchors of %q = %q, want %q", c.headings, got, c.want)
 		}
 	}
 }

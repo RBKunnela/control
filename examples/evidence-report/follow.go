@@ -242,7 +242,8 @@ func (f *follower) start(k requestKey, e *event) {
 }
 
 // afterEnd takes an event of a request that ended: only a finding or a
-// reload that follows its last event leaves it as it ended.
+// reload that follows its last event, under the request's mode, leaves it as
+// it ended.
 func (f *follower) afterEnd(c *closedRequest, k requestKey, e *event) {
 	ev := e.ev
 	id, prev := ev.GetEventId(), ev.GetPrevEventId()
@@ -250,7 +251,13 @@ func (f *follower) afterEnd(c *closedRequest, k requestKey, e *event) {
 	case c.unknown:
 		return
 	case prev == c.tail && annotates(ev.GetKind()):
-		c.tail = id
+		note := c.modeDefect(safe(id), ev.GetEnforcementMode())
+		if note == "" {
+			c.tail = id
+			return
+		}
+		c.unknown = true
+		f.raise(noted(eventAlert(codeUnknown, e), note))
 		return
 	}
 	c.unknown = true
@@ -259,6 +266,17 @@ func (f *follower) afterEnd(c *closedRequest, k requestKey, e *event) {
 		note = fmt.Sprintf("event %s starts request %s again after it ended", safe(id), safe(k.request))
 	}
 	f.raise(noted(eventAlert(codeUnknown, e), note))
+}
+
+// modeDefect holds an event after the end to the request's mode, as the walk
+// holds every event of a request. A mode the state does not hold cannot be
+// compared, so the event is not taken.
+func (c *closedRequest) modeDefect(id string, mode controlv1.EnforcementMode) string {
+	if c.mode == controlv1.EnforcementMode_ENFORCEMENT_MODE_UNSPECIFIED {
+		return fmt.Sprintf("event %s follows the end of a request whose enforcement mode the state does not hold", id)
+	}
+	w := walker{mode: c.mode}
+	return w.modeDefect(id, mode)
 }
 
 func annotates(kind controlv1.EventKind) bool {
@@ -318,6 +336,9 @@ func (f *follower) close(o *openRequest, end, note string, e *event) {
 	f.rows = append(f.rows, r)
 	if f.s.seen[eventKey{o.key.tenant, o.key.project, o.tail}] != "" {
 		c := &closedRequest{tail: o.tail, unknown: end == endUnknown}
+		if !c.unknown {
+			c.mode = o.walk.mode
+		}
 		if o.desc.kernel != nil {
 			c.kernel = o.desc.kernel.id
 		}

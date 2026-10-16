@@ -62,7 +62,7 @@ func reactCommand(args []string, stdout, stderr io.Writer) int {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	return react(ctx, *a, time.Now(), stdout, stderr)
+	return react(ctx, *a, time.Now, stdout, stderr)
 }
 
 // beforeStopsLock runs as a pass is about to wait for the lock on --stops.
@@ -75,8 +75,8 @@ var beforeStopsLock = func() {}
 // before the list or a finding is read. It holds no key and never lifts.
 // When ctx ends, or a lock wait runs out, the pass stops with the lines it
 // wrote and its summary.
-func react(ctx context.Context, a reactArgs, now time.Time, stdout, stderr io.Writer) int {
-	now = now.UTC().Truncate(time.Second)
+func react(ctx context.Context, a reactArgs, clock func() time.Time, stdout, stderr io.Writer) int {
+	now := clock().UTC().Truncate(time.Second)
 	route, err := a.verified()
 	if err != nil {
 		return fail(stderr, reactName, err)
@@ -93,7 +93,7 @@ func react(ctx context.Context, a reactArgs, now time.Time, stdout, stderr io.Wr
 	if err != nil {
 		return fail(stderr, reactName, fmt.Errorf("--runs %s: %w", a.runs, err))
 	}
-	r := newReactor(ctx, route, list, plane.Lookup, a.stops, now)
+	r := newReactor(ctx, route, list, plane.Lookup, a.stops, clock)
 	r.lockWait = a.lockWait
 	err = r.each(records)
 	if cerr := plane.Close(); cerr != nil {
@@ -125,7 +125,10 @@ type reactor struct {
 	list     reaction.List
 	lookup   lookupRun
 	dir      string
-	now      time.Time
+	// clock is read once for each finding about to be written, so a stop is
+	// created and expires by the time it reaches the list, however long the
+	// pass has run.
+	clock func() time.Time
 
 	runFacts map[string]reaction.RunFacts
 	// named is the finding ids this pass wrote.
@@ -139,8 +142,8 @@ type reactor struct {
 	stops, covered, alreadyNamed, skipped int
 }
 
-func newReactor(ctx context.Context, route reaction.Route, list reaction.List, lookup lookupRun, dir string, now time.Time) *reactor {
-	return &reactor{ctx: ctx, lockWait: stopsLockWait, route: route, list: list, lookup: lookup, dir: dir, now: now,
+func newReactor(ctx context.Context, route reaction.Route, list reaction.List, lookup lookupRun, dir string, clock func() time.Time) *reactor {
+	return &reactor{ctx: ctx, lockWait: stopsLockWait, route: route, list: list, lookup: lookup, dir: dir, clock: clock,
 		runFacts: map[string]reaction.RunFacts{}, named: map[string]bool{}}
 }
 
@@ -180,23 +183,24 @@ func (r *reactor) finding(fr *findingv1alpha1.FindingRecord) error {
 	if err != nil {
 		return err
 	}
-	claim, ok := r.stopping(fr, run)
+	now := r.clock().UTC().Truncate(time.Second)
+	claim, ok := r.stopping(fr, run, now)
 	if !ok {
 		r.skipped++
 		return nil
 	}
-	return r.write(id, claim, f.GetRunId())
+	return r.write(id, claim, f.GetRunId(), now)
 }
 
-// stopping is the stop fr would be, when Eligible takes it with run's facts
-// and the route permits it.
-func (r *reactor) stopping(fr *findingv1alpha1.FindingRecord, run reaction.RunFacts) (reaction.StopClaim, bool) {
+// stopping is the stop fr would be at now, when Eligible takes it with run's
+// facts and the route permits it.
+func (r *reactor) stopping(fr *findingv1alpha1.FindingRecord, run reaction.RunFacts, now time.Time) (reaction.StopClaim, bool) {
 	f := fr.GetFinding()
 	facts := reaction.FindingFacts{Source: f.GetSource(), Verdict: f.GetVerdict(), TenantID: fr.GetTenantId(), RunID: f.GetRunId()}
-	if reaction.Eligible(facts, run, r.now) != nil {
+	if reaction.Eligible(facts, run, now) != nil {
 		return reaction.StopClaim{}, false
 	}
-	claim, ok := r.claim(fr, run)
+	claim, ok := r.claim(fr, run, now)
 	return claim, ok && r.route.Permits(claim) == nil
 }
 
@@ -225,11 +229,11 @@ func (r *reactor) run(id string) (reaction.RunFacts, error) {
 // expiry is rounded up to one: rounded down, the run's last fraction of a
 // second would run unstopped. A finding no rule of the route names makes no
 // claim.
-func (r *reactor) claim(fr *findingv1alpha1.FindingRecord, run reaction.RunFacts) (reaction.StopClaim, bool) {
+func (r *reactor) claim(fr *findingv1alpha1.FindingRecord, run reaction.RunFacts, now time.Time) (reaction.StopClaim, bool) {
 	proc, f := fr.GetProcedure(), fr.GetFinding()
 	c := reaction.StopClaim{
 		TenantID: fr.GetTenantId(), ProcedureID: proc.GetProcedureId(), ProcedureVersion: proc.GetVersion(),
-		ProcedureDigest: proc.GetDigest(), RuleID: f.GetRuleId(), RuleVersion: f.GetRuleVersion(), CreatedAt: r.now,
+		ProcedureDigest: proc.GetDigest(), RuleID: f.GetRuleId(), RuleVersion: f.GetRuleVersion(), CreatedAt: now,
 	}
 	for _, rule := range r.route.Rules() {
 		if rule.ProcedureID == c.ProcedureID && rule.ProcedureVersion == c.ProcedureVersion &&
@@ -239,7 +243,7 @@ func (r *reactor) claim(fr *findingv1alpha1.FindingRecord, run reaction.RunFacts
 			if limit == 0 {
 				limit = reaction.MaxLifetime
 			}
-			if end := r.now.Add(limit); end.Before(c.ExpiresAt) {
+			if end := now.Add(limit); end.Before(c.ExpiresAt) {
 				c.ExpiresAt = end
 			}
 			return c, true
@@ -253,7 +257,7 @@ func (r *reactor) claim(fr *findingv1alpha1.FindingRecord, run reaction.RunFacts
 // so a react running beside this one cannot give the run a second stop. A
 // write the list's bound or the judge refuses is named and the pass goes on;
 // any other refusal stops it.
-func (r *reactor) write(id string, c reaction.StopClaim, runID string) error {
+func (r *reactor) write(id string, c reaction.StopClaim, runID string, now time.Time) error {
 	s := reaction.Stop{EntryID: reaction.EntryID(id), TenantID: c.TenantID, RunID: runID, FindingID: id,
 		ProcedureID: c.ProcedureID, ProcedureVersion: c.ProcedureVersion, ProcedureDigest: c.ProcedureDigest,
 		RuleID: c.RuleID, RuleVersion: c.RuleVersion, CreatedAt: c.CreatedAt, ExpiresAt: c.ExpiresAt}
@@ -265,7 +269,7 @@ func (r *reactor) write(id string, c reaction.StopClaim, runID string) error {
 	// is work, and a pass over many findings must not spend one budget on it.
 	ctx, cancel := context.WithTimeout(r.ctx, r.lockWait)
 	beforeStopsLock()
-	n, covered, err := stopwrite.AppendFinding(ctx, r.dir, r.route, s, r.now)
+	n, covered, err := stopwrite.AppendFinding(ctx, r.dir, r.route, s, now)
 	cancel()
 	switch {
 	case errors.Is(err, stopwrite.ErrNamed):

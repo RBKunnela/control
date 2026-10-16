@@ -192,13 +192,13 @@ func TestStopsCarryBringsNoOldFindingBack(t *testing.T) {
 	a := tr.reactArgs(log)
 	a.route, a.stops = next, carried
 	var out, errOut bytes.Buffer
-	if code := react(context.Background(), a, now, &out, &errOut); code != exitOK ||
+	if code := react(context.Background(), a, clockAt(now), &out, &errOut); code != exitOK ||
 		out.String() != "stops 0, covered 0, already named 3, not stopping 0, not written 0\n" {
 		t.Fatalf("react over the carried list answered %d: %q %q", code, out.String(), errOut.String())
 	}
 	appendLog(t, log, finding(4, tr.open, denial, confirmed), finding(5, tr.second, denial, confirmed))
 	out.Reset()
-	if code := react(context.Background(), a, now, &out, &errOut); code != exitOK || out.String() != fmt.Sprintf(
+	if code := react(context.Background(), a, clockAt(now), &out, &errOut); code != exitOK || out.String() != fmt.Sprintf(
 		"stop line 5 run %s finding %s rule REPEATED_DENIAL expires_at %s\ncovered line 6 run %s finding %s\n"+
 			"stops 1, covered 1, already named 3, not stopping 0, not written 0\n",
 		tr.open, fid(4), lineTime(now.Add(600*time.Second)), tr.second, fid(5)) {

@@ -105,12 +105,14 @@ jobs:
             fi
             if [[ -n "$(git rev-parse --verify --quiet "${sha}^2")" ]]; then
               # A merge with no content of its own is the tree git builds from
-              # its two parents with no conflict. One that resolves a conflict,
-              # by taking one side whole too, has an empty combined diff all
-              # the same, so that diff is no proof.
+              # its two parents with no conflict; an empty combined diff is no
+              # proof, since a conflict resolved by taking one side whole
+              # leaves one too. The attributes come from the base: the
+              # branch's own could name a merge driver that hides a conflict.
               joined=""
               if [[ -z "$(git rev-parse --verify --quiet "${sha}^3")" ]]; then
-                joined="$(git merge-tree --write-tree "${sha}^1" "${sha}^2" 2>/dev/null)" || joined=""
+                joined="$(git --attr-source="${BASE_SHA}" merge-tree --write-tree "${sha}^1" "${sha}^2" 2>/dev/null)" ||
+                  joined=""
               fi
               if [[ -n "${joined}" && "${joined%%$'\n'*}" == "$(git rev-parse "${sha}^{tree}")" ]]; then
                 printf 'exempt  %s  a merge git makes from its parents alone\n' "${sha}"

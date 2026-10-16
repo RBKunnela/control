@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"reflect"
 	"regexp"
 	"slices"
 	"strings"
@@ -82,11 +83,11 @@ var version = regexp.MustCompile(`^` + VersionPattern + `$`)
 var ErrInvalid = errors.New("docs.json")
 
 // Parse reads the file. It refuses an unknown or repeated key anywhere in
-// the document, a missing required section and every value the checks could
-// not act on.
+// the document, a member not spelled exactly as the schema names it, a
+// missing required section and every value the checks could not act on.
 func Parse(data []byte) (Config, error) {
 	var c Config
-	if err := checkKeysOnce(data); err != nil {
+	if err := checkKeysOnce(data, reflect.TypeFor[Config]()); err != nil {
 		return Config{}, fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 	dec := json.NewDecoder(bytes.NewReader(data))
@@ -108,11 +109,16 @@ type frame struct {
 	object bool
 	seen   map[string]bool
 	key    bool // an object frame awaits a key
+	// typ is the type the collection decodes into, nil when the schema does
+	// not reach it, and value the type of the value after the last key read.
+	typ, value reflect.Type
 }
 
-// checkKeysOnce walks the token stream and refuses an object that names a key
-// twice, which encoding/json would otherwise read as the last one.
-func checkKeysOnce(data []byte) error {
+// checkKeysOnce walks the token stream from root, the document's type, and
+// refuses a key given twice in one object, which encoding/json would read as
+// the last, and a struct member spelled other than its json name, which it
+// reads case-insensitively. A map's keys are paths, read as written.
+func checkKeysOnce(data []byte, root reflect.Type) error {
 	dec := json.NewDecoder(bytes.NewReader(data))
 	var stack []*frame
 	for {
@@ -129,7 +135,7 @@ func checkKeysOnce(data []byte) error {
 			}
 			continue
 		}
-		stack, err = step(stack, tok)
+		stack, err = step(stack, tok, root)
 		if err != nil {
 			return err
 		}
@@ -146,19 +152,50 @@ func (f *frame) readKey(tok json.Token) error {
 	}
 	f.seen[key] = true
 	f.key = false
+	f.value = nil
+	switch {
+	case f.typ == nil:
+	case f.typ.Kind() == reflect.Map:
+		f.value = f.typ.Elem()
+	case f.typ.Kind() == reflect.Struct:
+		for i := range f.typ.NumField() {
+			name, _, _ := strings.Cut(f.typ.Field(i).Tag.Get("json"), ",")
+			if name == key {
+				f.value = f.typ.Field(i).Type
+				return nil
+			}
+			if strings.EqualFold(name, key) {
+				return fmt.Errorf("key %q is not spelled as member %q", key, name)
+			}
+		}
+	}
+	return nil
+}
+
+// valueType is the type the next value decodes into, nil past the schema.
+func valueType(stack []*frame, root reflect.Type) reflect.Type {
+	top := last(stack)
+	switch {
+	case top == nil:
+		return root
+	case top.object:
+		return top.value
+	case top.typ != nil && top.typ.Kind() == reflect.Slice:
+		return top.typ.Elem()
+	}
 	return nil
 }
 
 // step consumes one value token: it opens a frame for a delimiter that
 // starts a collection, closes one for a delimiter that ends it, and after
 // any value tells an enclosing object that a key comes next.
-func step(stack []*frame, tok json.Token) ([]*frame, error) {
+func step(stack []*frame, tok json.Token, root reflect.Type) ([]*frame, error) {
 	if d, ok := tok.(json.Delim); ok {
 		switch d {
 		case '{':
-			return append(stack, &frame{object: true, seen: map[string]bool{}, key: true}), nil
+			return append(stack, &frame{object: true, seen: map[string]bool{}, key: true, typ: valueType(stack, root)}), nil
 		case '[':
-			return append(stack, &frame{}), nil
+			return append(stack, &frame{typ: valueType(stack, root)}), nil
 		default:
 			if len(stack) == 0 {
 				return nil, fmt.Errorf("unexpected %v", d)

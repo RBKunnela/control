@@ -109,7 +109,7 @@ func (e *evaluation) outsideProcedure() []draft {
 // first event and the last; under 0.2 deadlineByRun gives each run its own.
 func (e *evaluation) deadline() []draft {
 	limit := time.Duration(e.p.deadlineSeconds) * time.Second
-	if e.first == nil || e.last.GetOccurredAt().AsTime().Sub(e.first.GetOccurredAt().AsTime()) <= limit {
+	if !e.pastDeadline() {
 		return nil
 	}
 	most := confirmed
@@ -124,6 +124,13 @@ func (e *evaluation) deadline() []draft {
 		d.refs = append(d.refs, e.byRequest[ev.GetRequestId()].ref(ev))
 	}
 	return []draft{d}
+}
+
+// pastDeadline reports whether the run's events with a time span more than
+// deadline_seconds.
+func (e *evaluation) pastDeadline() bool {
+	limit := time.Duration(e.p.deadlineSeconds) * time.Second
+	return e.first != nil && e.last.GetOccurredAt().AsTime().Sub(e.first.GetOccurredAt().AsTime()) > limit
 }
 
 // absenceCap is the most a finding that rests on something not seen can

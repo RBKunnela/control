@@ -1,6 +1,7 @@
 package supervise_test
 
 import (
+	"slices"
 	"testing"
 	"time"
 
@@ -139,4 +140,61 @@ func TestAFailureProposedAfterItEndedIsNoRetryOfItself(t *testing.T) {
 	sameFindings(t, closedRun(t, p, x).Findings,
 		want(p, "CONTINUED_AFTER_FAILURE", critical, alert, suspected, id("CONTINUED_AFTER_FAILURE", "r1"),
 			evRef("r1-e4", "r1"), evRef("r2-e1", "r2")))
+}
+
+// TestAnUntimedEventLeavesADeadlineWithinTheKnownSpanUnchecked: with a
+// deadline of 60 s, a run whose timed events lie within it but one of whose
+// events has no time may have lasted longer, so the deadline is not checked;
+// a known span over 60 s is a breach whatever the untimed events say.
+func TestAnUntimedEventLeavesADeadlineWithinTheKnownSpanUnchecked(t *testing.T) {
+	p := procWith(t, `"deadline_seconds":600`, `"deadline_seconds":60`,
+		`"observed_as":["issue_refund"],"required":true`, `"observed_as":["issue_refund"],"required":false`)
+	notTold := "RULE_STATE_NOT_CHECKED:an event of the run has no time"
+
+	lookup := call{req: "r1", tool: "get_order", upstream: "shop"}
+	res := closedRun(t, p, untimed(untimed(export(lookup), "r1", 1), "r1", 4))
+	sameFindings(t, res.Findings)
+	got := rules(res)
+	if got["DEADLINE_EXCEEDED"] != notTold {
+		t.Errorf("DEADLINE_EXCEEDED is %s, want %s", got["DEADLINE_EXCEEDED"], notTold)
+	}
+	if got["STEP_OUT_OF_ORDER"] != checked || got["REPEATED_DENIAL"] != checked {
+		t.Errorf("an untimed event changed another rule: %v", got)
+	}
+
+	if got := rules(closedRun(t, p, export(lookup)))["DEADLINE_EXCEEDED"]; got != checked {
+		t.Errorf("every event timed: DEADLINE_EXCEEDED is %s, want checked", got)
+	}
+
+	long := export(lookup,
+		call{req: "r2", tool: "issue_refund", upstream: "pay", at: 100 * time.Second})
+	res = closedRun(t, p, untimed(untimed(long, "r1", 4), "r2", 4))
+	sameFindings(t, res.Findings, want(p, "DEADLINE_EXCEEDED", low, inform, confirmed,
+		handID(tenant, proj, runID, "refund", "1", "DEADLINE_EXCEEDED", "1"), evRef("r1-e1", "r1"), evRef("r2-e3", "r2")))
+	if got := rules(res)["DEADLINE_EXCEEDED"]; got != checked {
+		t.Errorf("a breach on the known span: DEADLINE_EXCEEDED is %s, want checked", got)
+	}
+}
+
+// TestAnUntimedEventOfAnyRunOfTheTreeLeavesTheDeadlineUnchecked: under 0.2 a
+// child's event with no time may lie past the tree's deadline; a run past it
+// on the known span still gets its finding.
+func TestAnUntimedEventOfAnyRunOfTheTreeLeavesTheDeadlineUnchecked(t *testing.T) {
+	lookup := call{req: "r1", tool: "get_order", upstream: "shop"}
+	child := call{req: "c1", tool: "search_docs", upstream: "docs", at: 10 * time.Second, run: childRun}
+	res := treeEvaluate(t, supervise.Input{Procedure: inheritProc(t), Tree: family(),
+		Exports: []supervise.Export{export(lookup), untimedBy(child)}})
+	if got := rules(res)["DEADLINE_EXCEEDED"]; got != "RULE_STATE_NOT_CHECKED:an event of the run has no time" {
+		t.Errorf("DEADLINE_EXCEEDED is %s, want not checked", got)
+	}
+	if fs := only(res, supervise.RuleDeadlineExceeded); len(fs) != 0 {
+		t.Errorf("findings:\n%s", dump(fs))
+	}
+
+	late := call{req: "r2", tool: "search_docs", upstream: "docs", at: 700 * time.Second}
+	res = treeEvaluate(t, supervise.Input{Procedure: inheritProc(t), Tree: family(),
+		Exports: []supervise.Export{export(lookup, late), untimedBy(child)}})
+	if got := verdicts(res, supervise.RuleDeadlineExceeded); !slices.Equal(got, []string{rootS}) {
+		t.Fatalf("findings %q, want %q:\n%s", got, []string{rootS}, dump(res.Findings))
+	}
 }

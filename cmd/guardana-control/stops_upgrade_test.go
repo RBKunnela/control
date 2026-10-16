@@ -133,7 +133,7 @@ func TestAListUnderTheOldRepeatedDenialIsCarriedToVersionTwo(t *testing.T) {
 	a := tr.reactArgs(tr.findingsDir(t, "stale", stale))
 	a.route, a.stops = newRoute, carried
 	var out, errOut strings.Builder
-	if code := react(context.Background(), a, now, &out, &errOut); code != exitOK ||
+	if code := react(context.Background(), a, clockAt(now), &out, &errOut); code != exitOK ||
 		out.String() != "stops 0, covered 0, already named 0, not stopping 1, not written 0\n" {
 		t.Errorf("react of a version 1 finding over the carried list answered %d: %q %q", code, out.String(), errOut.String())
 	}
