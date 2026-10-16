@@ -16,7 +16,7 @@
 <a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap bar">
   <a class="mark" href="/"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 4.5 5.6v6.1c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V5.6z"/><path d="M10.2 8.4v7.8M10.2 12.3h5.3"/></svg><span>Guardana <b>Control</b></span></a>
-  <a class="vlink" href="https://github.com/guardana/control/releases/tag/v0.11.0"><span class="ver">v0.11.0</span></a>
+  <a class="vlink" href="https://github.com/guardana/control/releases/tag/v0.12.0"><span class="ver">v0.12.0</span></a>
   <nav aria-label="Primary">
     <a href="/docs/">Docs</a>
     <a href="/docs/status">Status</a>
@@ -289,7 +289,7 @@ already holds a package doc and a test holds nothing that decides.</li>
 <tr>
 <td>Python client of the enforcement API</td>
 <td><code>experimental</code></td>
-<td><code>clients/python/</code> (<code>guardana_control.enforce</code>, a project of its own outside the Go module: one synchronous call that admits, runs the tool only with the authorized bytes and closes with one <code>complete</code> or one <code>abort</code>; the standard library alone; answers read in the form the receiver writes, from a field table <code>scripts/gen-pyschema.go</code> generates from the descriptors), <a href="/docs/adr/0053-a-python-client-of-the-enforcement-api-in-this-repository">ADR-0053</a>, <a href="/docs/guides/decide-a-tool-of-your-own">guides/decide-a-tool-of-your-own.md</a>. <code>make check-python</code> runs every client case, every negative control and every answer vector of <code>testdata/enforce/</code> on the two CPython versions pinned in <code>scripts/tool-versions.env</code>, drives a real plane once, and builds and imports the wheel. It cooperates: a plane reports its calls <code>decided, not enforced</code>. No <code>asyncio</code> entry point. The release workflow uploads the wheel and source archive to the package index by trusted publishing, and its dry run to the test index; until a release has, installing by name is <code>planned</code></td>
+<td><code>clients/python/</code> (<code>guardana_control.enforce</code>, a project of its own outside the Go module: one synchronous call that admits, runs the tool only with the authorized bytes and closes with one <code>complete</code> or one <code>abort</code>; the standard library alone; answers read in the form the receiver writes, from a field table <code>scripts/gen-pyschema.go</code> generates from the descriptors), <a href="/docs/adr/0053-a-python-client-of-the-enforcement-api-in-this-repository">ADR-0053</a>, <a href="/docs/guides/decide-a-tool-of-your-own">guides/decide-a-tool-of-your-own.md</a>. <code>make check-python</code> runs every client case, every negative control and every answer vector of <code>testdata/enforce/</code> on the two CPython versions pinned in <code>scripts/tool-versions.env</code>, drives a real plane once, and builds and imports the wheel. It cooperates: a plane reports its calls <code>decided, not enforced</code>. No <code>asyncio</code> entry point. The release workflow uploads the wheel and source archive to PyPI by trusted publishing, and its dry run to TestPyPI; from 0.12.0, <code>pip install guardana-control</code> installs it</td>
 </tr>
 <tr>
 <td>Enforcement API receiver</td>
@@ -530,7 +530,7 @@ never withheld from the open build, whatever its status above.</p>
 </tbody>
 </table>
 <p>This page is updated in the same change as the work it describes.</p>
-<p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/status.md">docs/status.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.11.0, and <a href="https://github.com/guardana/control/tree/v0.11.0/docs">its documentation</a> is in its tag.</p>
+<p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/status.md">docs/status.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.12.0, and <a href="https://github.com/guardana/control/tree/v0.12.0/docs">its documentation</a> is in its tag.</p>
 </main>
 <nav class="side" aria-label="Documentation">
 <ul class="home"><li><a href="/docs/">Overview</a></li></ul>

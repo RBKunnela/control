@@ -113,10 +113,8 @@ The fields, error codes and the strict JSON mapping are in
 `guardana_control.enforce` is `experimental` and has no dependencies; it needs
 Python 3.11 or later. Use the client of your plane's release.
 
-No release carries it yet. From a checkout of the repository:
-
 ```
-pip install ./clients/python
+pip install guardana-control
 ```
 
 ```python

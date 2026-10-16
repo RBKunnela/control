@@ -8,13 +8,12 @@ approvals and the evidence trail that cover an MCP call cover it too.
 Use the client of the plane's own release. Python 3.11 or later, no
 dependencies.
 
-No release carries it yet. From a checkout of the repository:
-
 ```
-pip install ./clients/python
+pip install guardana-control
 ```
 
-That builds the package on your machine with `flit_core`.
+From a checkout of the repository, `pip install ./clients/python` builds it
+on your machine with `flit_core`.
 
 ```python
 from guardana_control.enforce import (
