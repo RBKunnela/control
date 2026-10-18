@@ -9,6 +9,9 @@ Amends [ADR-0012](0012-policy-kernel-semantics.md) and
 [ADR-0032](0032-the-enforcement-mode-has-no-default.md) and
 [ADR-0034](0034-a-run-the-operator-opens-has-an-identity-of-its-own.md).
 
+Amended by [ADR-0055](0055-a-call-is-handed-out-only-while-its-policy-stands.md): a newer bundle, or a statement
+that lapses, also withholds a call decided before it and not yet handed out.
+
 ## Context
 
 A plane reads its bundle once, at start. Installing the same bundle again

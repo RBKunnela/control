@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ADR-0055: A call is handed out only while the policy it was decided under stands · Guardana Control</title>
+<meta name="description" content="Decision record, accepted."/>
+<link rel="canonical" href="https://control.guardana.dev/docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands"/>
+<meta name="theme-color" content="#0B8F80"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="stylesheet" href="/assets/brand/v1/tokens.css"/>
+<link rel="stylesheet" href="/assets/control/control.css"/>
+<link rel="stylesheet" href="/assets/control/docs.css"/>
+</head>
+<body class="doc">
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap bar">
+  <a class="mark" href="/"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 4.5 5.6v6.1c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V5.6z"/><path d="M10.2 8.4v7.8M10.2 12.3h5.3"/></svg><span>Guardana <b>Control</b></span></a>
+  <a class="vlink" href="https://github.com/guardana/control/releases/tag/v0.12.0"><span class="ver">v0.12.0</span></a>
+  <nav aria-label="Primary">
+    <a href="/docs/">Docs</a>
+    <a href="/docs/status">Status</a>
+    <a class="hide-s" href="/docs/roadmap">Roadmap</a>
+    <a class="gh" href="https://github.com/guardana/control" aria-label="GitHub"><svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span class="hide-s">GitHub</span></a>
+  </nav>
+</div></header>
+<div class="wrap shell">
+<details class="mnav">
+<summary>Menu · <b>ADR-0055: A call is handed out only while the policy it was decided under stands</b></summary>
+<nav class="inner" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</details>
+<main id="main" class="prose">
+<h1 id="adr-0055-a-call-is-handed-out-only-while-the-policy-it-was-decided-under-stands">ADR-0055: A call is handed out only while the policy it was decided under stands</h1>
+<p>Status: accepted
+Date: 2026-10-18</p>
+<p>Amends <a href="/docs/adr/0012-policy-kernel-semantics">ADR-0012</a> on when freshness is
+judged, <a href="/docs/adr/0013-mcp-interception-approvals-and-modes">ADR-0013</a> and
+<a href="/docs/adr/0027-expiry-at-hand-out-and-an-unreadable-lost-hold">ADR-0027</a> on what is
+judged again before a call is handed out, and
+<a href="/docs/adr/0038-a-signed-freshness-statement-and-a-serial-floor">ADR-0038</a> on what a
+newer bundle does to a call already decided.</p>
+<h2 id="context">Context</h2>
+<p>The kernel judges a bundle's freshness when it decides. The gateway then does
+more before it hands the call out: it may ask the decision point, look up and
+consume an approval, flip a journal entry, append POLICY_DECIDED and
+APPROVAL_DECIDED, and raise a run's state. Each step can wait on a store or a
+disk. Until now only a pause, a stop, an approval's expiry and an opened run's
+expiry were judged again at hand-out, so a call decided under a fresh bundle
+ran even when its bundle had passed its staleness budget, or another bundle had
+replaced it, by the time it was sent. A retry of a held call decided after a
+replacement was already held anew, because the approval binding carries the
+bundle digest; the gap was the window inside one admission.</p>
+<h2 id="decision">Decision</h2>
+<p>A call is handed out only while the policy its decision stood on still stands
+at the hand-out reading. The kernel judges this, so the gateway holds no rule
+of its own:</p>
+<ul>
+<li>Every outcome carries a <code>Basis</code>: the bundle's digest, none where there was no
+bundle, whether that bundle was fresh then, and whether the fail-closed
+table let a read run under fail-open reads. Only the kernel makes one; the zero value stands on nothing.</li>
+<li><code>Kernel.Recheck(basis, installed, now, floor)</code> answers <code>Current</code>, <code>Stale</code>,
+<code>Replaced</code> or <code>Unknown</code>, and only <code>Current</code> lets the call go:
+<ul>
+<li>another digest than the decision's, or a bundle where there was none, is
+<code>Replaced</code>;</li>
+<li>the same digest is <code>Current</code> while it is fresh under the kernel's own rule
+and budget, judged on the installed snapshot, so a renewal of the bundle
+keeps the call current;</li>
+<li>a read the table let run stays <code>Current</code> while the bundle is the same one,
+or there is still none, since it is the same row of the table and its
+record already says so; a call decided fresh that is stale at hand-out is
+<code>Stale</code> even where the table would open a read, since its record does not
+say the setting let it run;</li>
+<li>a reading the clock step refuses, one earlier than the time the plane
+verified for the installed bundle, or one earlier than an instant the call
+already relied on is <code>Unknown</code>.</li>
+</ul>
+</li>
+<li>The freshness rule itself lives once, as <code>Snapshot.FreshAt</code> in
+<code>internal/policy</code>, which the kernel and the policy watcher behind <code>/healthz</code>
+and the metrics read; the development signer's renewal schedule reads its
+budget, <code>policy.Budget</code>.</li>
+<li>The gateway asks at three points, each after its pause, stop, approval and
+run checks there and before it asks whether the agent left: before a resume
+consumes its approval, so a moment of staleness
+spends nothing and the hold stands; before ACTION_STARTED; and after it, for
+every call, not only a held one or one in an opened run. The installed
+snapshot is taken before the clock, as the pause and stop states are.</li>
+<li>A call that does not stand is blocked <code>INDETERMINATE</code> with <code>POLICY_STALE</code>
+and freshness <code>STALE</code> on the plane's own decision: on its own trail before a
+consume, as ACTION_BLOCKED before ACTION_STARTED, and as ACTION_FAILED with a
+BLOCKED result after it, as an expired approval is (ADR-0027).</li>
+<li><code>OBSERVE</code> enforces no policy (ADR-0013 applies a mode to the action), so
+there the call runs, and <code>/healthz</code> and <code>/metrics</code> count it
+(<code>pipeline_stale_handed_out_total</code>) when its policy let it run when decided,
+which is what <code>ENFORCE</code> would have withheld at hand-out. A pause, a stop and a run's expiry
+still block it in every mode.</li>
+</ul>
+<p>An approval granted under a bundle since replaced is never consumed for an
+execution under another bundle: a retry decided under the new bundle has
+another binding and is held anew, and one that reaches the hand-out under the
+old bundle is withheld.</p>
+<h2 id="security--compatibility-impact">Security / compatibility impact</h2>
+<p>The check can only withhold a call the decision let run; it never lets one run
+that the decision did not. A basis nobody made, a kernel nobody built and a
+missing snapshot all fail closed. No wire field, reason code number or verdict
+changes; <code>POLICY_STALE</code>'s summary now names a replaced bundle and a reading
+behind one the call relied on. A replaced bundle now also withholds calls
+already decided but not yet handed out, which ADR-0038 left running.</p>
+<p>Only the policy is judged again: a delegation hop that expires between the
+decision and the hand-out is not, as before; a resumed hold's retry is decided
+afresh, which judges the chain at that time.</p>
+<p>Holds under a replaced bundle can no longer be resumed, but they count toward
+the bounds on held requests until they expire and the sweep closes them; a
+busy run can meet that bound sooner after a replacement. Hand-out blocks and
+decision-time ones share the <code>POLICY_STALE</code> count in <code>pipeline_blocks_total</code>.</p>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>The gateway compares the digest itself and asks the kernel only for
+freshness: it would hold the &quot;replaced&quot; rule outside the core, refuse every
+read the table opened, and add a fourth copy of the freshness rule.</li>
+<li>Deciding the call again at hand-out: it honours the table exactly, but the
+trail has room for one POLICY_DECIDED, and it could ask the decision point a
+second time.</li>
+<li>Comparing snapshot objects or a holder generation instead of digests: the
+holder publishes a new snapshot at every confirmation, so every renewal
+would withhold the calls in flight.</li>
+<li>Closing holds under a replaced bundle at once in the sweep: it frees their
+capacity and tells the approver sooner, but adds a policy read and a new
+close path to the sweep; deferred.</li>
+<li>Rechecking material calls only: a read would then run where a decision at
+that instant would block it.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<p>An operator who replaces a bundle, or whose renewal stops, sees calls
+decided just before withheld with <code>POLICY_STALE</code> instead of running; the
+agent retries and is decided under the bundle installed then. A momentary
+staleness before a consume costs nothing; after a consume it costs the
+approval, as a late pause already does (ADR-0019, ADR-0027). Each admission
+takes the installed snapshot and reads the clock once more, after
+ACTION_STARTED.</p>
+<h2 id="validation">Validation</h2>
+<ul>
+<li><code>internal/core/recheck_test.go</code> holds <code>Recheck</code> to an independent
+computation: over the setting, a read and a write, a decision fresh and
+stale, hand-out readings at, inside and past the budget, and a renewal or
+none, with the same envelope and bundle, a call is <code>Current</code> exactly when
+deciding it again at that reading lets it run and either the table opened it
+the first time or the second decision is fresh. It also covers each standing, a zero basis and a kernel nobody
+built.</li>
+<li><code>internal/gateway/handout_test.go</code>: a call stale at hand-out, stale while
+ACTION_STARTED is appended, replaced before or while ACTION_STARTED is
+appended (and a renewal that is not), a reading behind the decision or the verified time, each row of the
+fail-closed table, <code>OBSERVE</code>, a hold stale before the consume (nothing
+spent, one run after re-confirmation) and one replaced after it (held anew,
+not refused as used). Removing any of the three checks, the <code>OBSERVE</code>
+exemption, the opened-read row or the STALE freshness fails a named test.</li>
+</ul>
+<p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands.md">docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.12.0, and <a href="https://github.com/guardana/control/tree/v0.12.0/docs">its documentation</a> is in its tag.</p>
+</main>
+<nav class="side" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</div>
+<footer class="foot"><div class="wrap row">
+  <p>Guardana Control · Apache-2.0</p>
+  <ul>
+    <li><a href="https://github.com/guardana/control">GitHub</a></li>
+    <li><a href="https://github.com/guardana/control/releases">Releases</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/SECURITY.md">Security</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/LICENSE">Licence Apache-2.0</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/TRADEMARKS.md">Trademarks</a></li>
+  </ul>
+</div></footer>
+</body>
+</html>

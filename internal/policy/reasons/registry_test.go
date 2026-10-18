@@ -214,9 +214,10 @@ func TestTheExpiryCodesDescribeTheCheckNotItsMoment(t *testing.T) {
 }
 
 // POLICY_STALE is also what a decision says when the receiver's clock cannot
-// be judged by, so its summary names the clock beside the bundle.
+// be judged by, and what a call is blocked with when its bundle was replaced
+// before the hand-out, so its summary names both beside the budget.
 func TestPolicyStaleNamesTheClock(t *testing.T) {
-	const want = "The policy bundle is not known to be current: it is past the staleness budget in force for this call, no freshness statement confirms it, or this receiver's clock reads before 1970, after 9999, or earlier than a time it verified for the bundle."
+	const want = "The policy bundle is not known to be current: it is past the staleness budget in force for this call, no freshness statement confirms it, another bundle replaced it before the call was handed out, or this receiver's clock reads before 1970, after 9999, or earlier than a time it verified for the bundle or already relied on for the call."
 	for _, code := range registry(t) {
 		if code.ID == "POLICY_STALE" {
 			if code.Summary != want {

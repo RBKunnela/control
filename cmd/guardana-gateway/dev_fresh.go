@@ -82,7 +82,7 @@ func renewalEvery(budget, poll time.Duration) (time.Duration, error) {
 // schedule sets how often the statement is renewed for a plane configured as
 // cfg, or refuses a poll interval no renewal period holds against.
 func (s *devSigner) schedule(cfg *gatewayconfig.Config) (string, error) {
-	budget := min(s.maxStale, cfg.Policy.MaxStale)
+	budget := policy.Budget(s.maxStale, cfg.Policy.MaxStale)
 	every, err := renewalEvery(budget, cfg.Policy.PollInterval)
 	if err != nil {
 		return "", err

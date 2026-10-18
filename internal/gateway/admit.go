@@ -32,6 +32,12 @@ type call struct {
 	// stops is the stop state as this call took it, each time it took the
 	// pause state.
 	stops reaction.Snapshot
+	// installed is the policy the plane held when the call took its states
+	// last, the one its decision is judged against again at hand-out.
+	installed *policy.Snapshot
+	// staleSeen: OBSERVE found the policy this call's decision stood on no
+	// longer current at a hand-out check, and let it through.
+	staleSeen bool
 	// causes are the plane's own causes to block this call, named once
 	// before any ask and, after one, once more. Whatever the mode does is
 	// done under these; nothing names them again.
@@ -44,8 +50,9 @@ type call struct {
 
 	// kernel is the decision POLICY_DECIDED records: the kernel's about the
 	// proposed envelope, or about the authorized one when a rewrite changed
-	// the arguments.
+	// the arguments. basis is what it stood on, judged again at hand-out.
 	kernel   *controlv1.Decision
+	basis    core.Basis
 	action   core.EnforcementAction
 	decision *controlv1.Decision
 	material bool
@@ -147,27 +154,9 @@ func (c *call) decideProposed(snap *policy.Snapshot, ask bool) {
 		req.External = c.external
 		out = c.p.kernel.Decide(c.ctx, req, snap)
 	}
-	c.kernel, c.decision, c.action = out.Decision, out.Decision, out.Action
+	c.kernel, c.decision, c.action, c.basis = out.Decision, out.Decision, out.Action, out.Basis
 	c.reliedOnDecision(out.Decision, snap)
 	c.material = contract.IsMaterial(c.in.Envelope.GetAction().GetEffect())
-}
-
-// newTrail builds the trail from the envelope's identifiers, timed at this
-// call's clock reading.
-func (c *call) newTrail() (*evidence.Builder, error) {
-	return evidence.NewBuilder(c.trailIDs(), c.p.cfg.Mode, func() time.Time { return c.now }, c.p.cfg.NewID)
-}
-
-// trailIDs names this call's trail from the envelope's identifiers and the
-// run the pipeline minted, never the run id the producer sent.
-func (c *call) trailIDs() evidence.IDs {
-	env := c.in.Envelope
-	return evidence.IDs{
-		RequestID: env.GetRequestId(),
-		RunID:     c.flow.runID(),
-		ProjectID: env.GetProjectId(),
-		TenantID:  env.GetTenantId(),
-	}
 }
 
 // applyMode applies the plane's causes and mode to the action and never to
@@ -297,14 +286,14 @@ func (c *call) close() {
 // execution for Close and hands out what to send. An execution a pause taken
 // just now covers or cannot vouch for, a resumed one whose approval has
 // expired by the clock read with that pause, one whose opened run expired by
-// that clock, one that resumes nothing and whose agent gave up on it, or one
-// the pipeline cannot name, cannot keep under its own name, cannot keep
-// within MaxOpen, or whose opened run's state it cannot raise, is blocked
-// before it is recorded as started, and so is one those checks refuse when
-// they are made again after a raise that wrote; that block closes the trail,
-// so a resumed hold's entry is forgotten there, as Close would. A resumed one
-// whose approval expired while ACTION_STARTED was appended is aborted instead
-// of handed out.
+// that clock or whose decision's policy no longer stands, one that resumes
+// nothing and whose agent gave up on it, or one the pipeline cannot name,
+// cannot keep under its own name, cannot keep within MaxOpen, or whose opened
+// run's state it cannot raise, is blocked before it is recorded as started,
+// and so is one those checks refuse when they are made again after a raise
+// that wrote; that block closes the trail, so a resumed hold's entry is
+// forgotten there, as Close would. One whose approval, run or policy lapsed
+// while ACTION_STARTED was appended is aborted instead of handed out.
 func (c *call) start(trail *evidence.Builder) Disposition {
 	requestID := c.requestID
 	if c.refusedBeforeStart() {
@@ -343,6 +332,9 @@ func (c *call) start(trail *evidence.Builder) Disposition {
 	c.p.took(c.flow, c.in.ResultTrust, c.in.ResultSensitivity)
 	c.requestID = ""
 	c.p.counts.add(func(s *Stats) *uint64 { return &s.Executed })
+	if c.staleSeen {
+		c.p.counts.add(func(s *Stats) *uint64 { return &s.StaleHandedOut })
+	}
 	return Disposition{
 		Action:           c.action,
 		Decision:         c.decision,

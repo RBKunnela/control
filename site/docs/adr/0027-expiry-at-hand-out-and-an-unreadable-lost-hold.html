@@ -118,6 +118,9 @@ an approval's expiry is judged and on the decision id of one block's answer,
 and
 <a href="/docs/adr/0016-approval-providers-and-the-lost-hold">ADR-0016</a> on the code a lost
 hold is closed with when the plane cannot read or trust the answer.</p>
+<p>Amended by <a href="/docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands">ADR-0055</a>: the policy a call was decided under is
+judged at hand-out beside its approval's and its run's expiry, before and after
+ACTION_STARTED.</p>
 <h2 id="context">Context</h2>
 <p>A resume consumes its approval, checks the store's answer field by field, its
 expiry included, and only then writes the journal flip, <code>APPROVAL_DECIDED</code>

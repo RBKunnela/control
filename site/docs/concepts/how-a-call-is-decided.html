@@ -190,7 +190,7 @@ listed in the decision, in order, once each.</p>
 </tr>
 <tr>
 <td>Freshness</td>
-<td>the snapshot's age is over the smaller of the author's and the operator's budget, which an unconfirmed snapshot's zero time always is: a cause in availability; evaluation continues, so a stale <code>DENY</code> is still a <code>DENY</code>. A negative age never reaches this step: the clock step stops it</td>
+<td>the snapshot's age is over the smaller of the author's and the operator's budget, which an unconfirmed snapshot's zero time always is: a cause in availability; evaluation continues, so a stale <code>DENY</code> is still a <code>DENY</code>. A negative age never reaches this step: the clock step stops it. The kernel judges the bundle again before the call is handed out, and one replaced or stale by then blocks it, but for a read the table opened under that same bundle (<a href="/docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands">ADR-0055</a>)</td>
 <td><code>POLICY_STALE</code></td>
 </tr>
 <tr>

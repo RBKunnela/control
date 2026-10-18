@@ -84,14 +84,15 @@ func (p *Pipeline) newCall(ctx context.Context, a Admission) *call {
 	return c
 }
 
-// takeStates takes the pause and stop states and then reads the clock the
-// call judges their age by. The other order would let a poll published
-// between the two date a state ahead of the call and block it as unreadable.
-// A disabled stop state served by a source other than StopsDisabled is one
-// the plane cannot vouch for.
+// takeStates takes the pause and stop states and the installed policy, and
+// then reads the clock the call judges their age by. The other order would
+// let a poll or a confirmation published between the two date a state ahead
+// of the call and block it as unreadable. A disabled stop state served by a
+// source other than StopsDisabled is one the plane cannot vouch for.
 func (c *call) takeStates() {
 	snap := c.p.cfg.Pause.Current()
 	stops := c.p.cfg.Stops.Current()
+	c.installed = c.p.cfg.Policy.Current()
 	c.now = c.p.cfg.Clock()
 	c.reliedOn(c.now)
 	c.pause = snap.At(c.now)

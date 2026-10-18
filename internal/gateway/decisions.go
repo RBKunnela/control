@@ -38,6 +38,7 @@ const (
 	codeObligationNotApplied   = "OBLIGATION_NOT_UNDERSTOOD"
 	codeInvalidFieldValue      = "INVALID_FIELD_VALUE"
 	codeExecutionAbandoned     = "EXECUTION_ABANDONED"
+	codePolicyStale            = "POLICY_STALE"
 	decisionSchemaVersion      = "1.0"
 	approvalSchemaVersion      = "1.0"
 	resultSchemaVersion        = "1.0"
@@ -65,7 +66,7 @@ const (
 // decision stays untouched in POLICY_DECIDED; this one goes on ACTION_BLOCKED.
 func (p *Pipeline) mint(from *controlv1.Decision, now time.Time, verdict controlv1.Verdict, codes ...string) *controlv1.Decision {
 	freshness := from.GetPolicyFreshness()
-	if freshness == controlv1.PolicyFreshness_POLICY_FRESHNESS_UNSPECIFIED {
+	if freshness == controlv1.PolicyFreshness_POLICY_FRESHNESS_UNSPECIFIED || slices.Contains(codes, codePolicyStale) {
 		freshness = freshnessStale
 	}
 	return &controlv1.Decision{

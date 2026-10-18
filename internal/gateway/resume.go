@@ -64,21 +64,7 @@ type resumption struct {
 // The approval id the plane minted goes with the request id, so a record some
 // other writer filed under the same binding is never the one spent (ADR-0016).
 func (c *call) try(own *heldRequest, binding approval.Binding, r *resumption) (Disposition, bool) {
-	if c.blockedNow() {
-		// Blocked on this call's own trail with nothing consumed, so the hold
-		// stands for a retry after the pause or the stop ends.
-		return c.freshBlock(), true
-	}
-	if requested := own.approval.GetRequestedAt().AsTime(); unvouched(c.now, c.floor) || c.now.Before(requested) {
-		// A clock that cannot vouch for the approval spends nothing either:
-		// the hold stands for a retry at a reading that can.
-		c.decide(verdictDeny, codeApprovalExpired)
-		return c.freshBlock(), true
-	}
-	if c.agentGone() {
-		// Nothing is spent for an agent that left: the hold stands for a
-		// retry it may still send.
-		c.decide(verdictIndeterminate, codeEvidenceUnavailable)
+	if c.refusedBeforeConsume(own) {
 		return c.freshBlock(), true
 	}
 	a, err := c.p.cfg.Approvals.Consume(c.ctx, binding,
@@ -109,6 +95,29 @@ func (c *call) try(own *heldRequest, binding approval.Binding, r *resumption) (D
 		r.concluded = &d
 	}
 	return d, false
+}
+
+// refusedBeforeConsume decides the block of a resume that may not consume its
+// approval, on this call's own trail: nothing is spent, so the hold stands for
+// a retry.
+func (c *call) refusedBeforeConsume(own *heldRequest) bool {
+	switch requested := own.approval.GetRequestedAt().AsTime(); {
+	case c.blockedNow():
+		// A pause or a stop: the retry comes after it ends.
+	case unvouched(c.now, c.floor) || c.now.Before(requested):
+		// A clock that cannot vouch for the approval: the retry comes at a
+		// reading that can.
+		c.decide(verdictDeny, codeApprovalExpired)
+	case c.policyWithheld(own.basis):
+		// The retry comes once the bundle is current again; a bundle
+		// replaced since never is, and the hold expires.
+	case c.agentGone():
+		// The agent left; it may still send the retry.
+		c.decide(verdictIndeterminate, codeEvidenceUnavailable)
+	default:
+		return false
+	}
+	return true
 }
 
 func firstOf(first, next *heldRequest) *heldRequest {
@@ -164,7 +173,7 @@ func (c *call) resumeApproved(own *heldRequest, a *controlv1.Approval) Dispositi
 	}
 	c.requestID, c.trail, c.held = own.ids.RequestID, trail, true
 	c.approvalExpires = a.GetExpiresAt().AsTime()
-	c.kernel, c.decision = own.decision, own.decision
+	c.kernel, c.decision, c.basis = own.decision, own.decision, own.basis
 	if !c.record(trail.ApprovalDecided(a)) {
 		return c.blockUnrecorded()
 	}

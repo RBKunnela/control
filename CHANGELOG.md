@@ -31,6 +31,16 @@ verify one.
   Built for Solaris, illumos or AIX, which have no `flock`, the receiver now
   refuses to listen, and `doctor` checks the lock file as `run` would.
 
+### Changed
+
+- A call is handed out only while the policy bundle it was decided under is
+  still installed and fresh. A bundle replaced, or past its staleness budget,
+  between the decision and the hand-out now blocks the call with
+  `POLICY_STALE` outside `OBSERVE`, which counts it as `stale_handed_out`; a
+  read `policy.fail_open_read` opened still runs while its bundle is the same.
+  A resume judges this before it consumes its approval, so nothing is spent
+  ([ADR-0055](docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands.md)).
+
 ## [0.12.0] - 2026-10-16
 
 The `experimental` enforcement API gets an `experimental` Python client,

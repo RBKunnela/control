@@ -123,6 +123,9 @@ latest <code>issuedAt</code> the plane verified from a freshness statement or it
 is provably wrong and is the same cause; the stale bundle below is then never
 reached. A delegation hop's <code>issued_at</code> is the producer's unsigned claim and
 is not compared with the clock.</p>
+<p>Amended by <a href="/docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands">ADR-0055</a>: the kernel judges a decision's
+bundle again when the call is handed out, and a read the fail-closed table
+opened stays open there only while its bundle is the same one.</p>
 <h2 id="context">Context</h2>
 <p>ADR-0003 chose structured predicates and deny-overrides, and left the exact
 fail-closed mapping open. ADR-0011 settled what the wire says. What is

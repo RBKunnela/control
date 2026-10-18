@@ -146,3 +146,4 @@ with `make docs-gen`; an edit made here does not survive the next run.
 - [ADR-0052: A change is gated on its pull request, and releases keep a rhythm](adr/0052-a-change-is-gated-on-its-pull-request.md): accepted
 - [ADR-0053: A Python client of the enforcement API lives in this repository](adr/0053-a-python-client-of-the-enforcement-api-in-this-repository.md): accepted
 - [ADR-0054: The enforcement receiver holds a lock beside its socket](adr/0054-the-enforcement-receiver-holds-a-lock-beside-its-socket.md): accepted
+- [ADR-0055: A call is handed out only while the policy it was decided under stands](adr/0055-a-call-is-handed-out-only-while-its-policy-stands.md): accepted

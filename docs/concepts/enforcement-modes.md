@@ -67,7 +67,11 @@ classifies; it is how an operator learns which tools exist before classifying
 them. What the enforcement point refuses on its own account, in the table
 below, it refuses in `OBSERVE` too: it writes the trail first, and an event the
 sink will not take blocks the call, unless the read is let through unrecorded
-under the explicit evidence setting.
+under the explicit evidence setting. A bundle replaced or stale by the time a
+call is handed out blocks it in every other mode, but for a read the
+fail-closed table opened under that same bundle; `OBSERVE` lets a call its
+policy let run when decided go on, and counts it as `stale_handed_out`
+([ADR-0055](../adr/0055-a-call-is-handed-out-only-while-its-policy-stands.md)).
 
 ## What the enforcement point blocks in every mode
 

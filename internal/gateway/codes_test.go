@@ -43,6 +43,7 @@ var minted = map[string]controlv1.Verdict{
 	codeApprovalDigestMismatch:  verdictDeny,
 	codeApprovalBundleMismatch:  verdictDeny,
 	codeExecutionAbandoned:      verdictIndeterminate,
+	codePolicyStale:             verdictIndeterminate,
 }
 
 // abortCodes is the code each abort cause is recorded as, typed from the

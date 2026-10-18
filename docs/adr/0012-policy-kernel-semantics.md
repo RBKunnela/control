@@ -19,6 +19,10 @@ is provably wrong and is the same cause; the stale bundle below is then never
 reached. A delegation hop's `issued_at` is the producer's unsigned claim and
 is not compared with the clock.
 
+Amended by [ADR-0055](0055-a-call-is-handed-out-only-while-its-policy-stands.md): the kernel judges a decision's
+bundle again when the call is handed out, and a read the fail-closed table
+opened stays open there only while its bundle is the same one.
+
 ## Context
 
 ADR-0003 chose structured predicates and deny-overrides, and left the exact

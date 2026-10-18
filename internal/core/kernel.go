@@ -154,6 +154,9 @@ type Outcome struct {
 	// the same whatever answer the request carried, and when it is false no
 	// answer changes the decision.
 	NeedsExternal bool
+	// Basis is what the decision stood on, for Recheck at hand-out; the zero
+	// value on a kernel nobody built.
+	Basis Basis
 }
 
 // Decide returns a decision for req against snap, and what to enforce

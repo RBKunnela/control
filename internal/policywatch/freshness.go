@@ -41,7 +41,7 @@ func (s State) String() string {
 // Budget is the staleness budget the kernel holds snap to: the smaller of the
 // author's and the operator's.
 func Budget(snap *policy.Snapshot, operator time.Duration) time.Duration {
-	return min(snap.MaxStale(), operator)
+	return policy.Budget(snap.MaxStale(), operator)
 }
 
 // ExpiresAt is when a confirmation issued at issued runs out for snap under
@@ -51,17 +51,15 @@ func ExpiresAt(issued time.Time, snap *policy.Snapshot, operator time.Duration) 
 }
 
 // Freshness is how snap stands at now under the operator's budget, and when
-// its confirmation expires, the zero time where there is none. It judges as
-// the kernel does: a confirmation older than the budget is stale, and so is
-// any at a reading outside 1970 to 9999 or earlier than NotBefore, which is
-// never earlier than the confirmation.
+// its confirmation expires, the zero time where there is none. It judges by
+// the kernel's rule, policy's FreshAt.
 func Freshness(snap *policy.Snapshot, operator time.Duration, now time.Time) (State, time.Time) {
 	confirmed := snap.ConfirmedAt()
 	if snap == nil || confirmed.IsZero() {
 		return Unconfirmed, time.Time{}
 	}
 	expires := ExpiresAt(confirmed, snap, operator)
-	if !policy.UsableTime(now) || now.Before(snap.NotBefore()) || now.Sub(confirmed) > Budget(snap, operator) {
+	if !snap.FreshAt(now, operator) {
 		return Expired, expires
 	}
 	return Confirmed, expires

@@ -70,6 +70,23 @@ func (s *Snapshot) MaxStale() time.Duration {
 	return s.maxStale
 }
 
+// Budget is the staleness budget a snapshot is held to: the smaller of its
+// author's and the operator's.
+func Budget(author, operator time.Duration) time.Duration {
+	return min(author, operator)
+}
+
+// FreshAt is the freshness rule of ADR-0012: s is fresh at now under the
+// operator's budget when now is a usable reading no earlier than NotBefore,
+// and s was confirmed no longer than the budget before it. No snapshot, and
+// one no statement confirmed, is never fresh.
+func (s *Snapshot) FreshAt(now time.Time, operator time.Duration) bool {
+	if s == nil || s.confirmedAt.IsZero() || !UsableTime(now) || now.Before(s.NotBefore()) {
+		return false
+	}
+	return now.Sub(s.confirmedAt) <= Budget(s.maxStale, operator)
+}
+
 // Serial is the bundle's serial, the rollback check's input.
 func (s *Snapshot) Serial() int64 {
 	if s == nil {

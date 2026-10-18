@@ -297,7 +297,7 @@ func pipelineOnly(s gateway.Stats) map[string]any {
 		"sink_failures_after_effect":  s.SinkFailuresAfterEffect,
 		"sink_failures_abandoned":     s.SinkFailuresAbandoned,
 		"reads_unrecorded":            s.ReadsUnrecorded, "mismatches": s.Mismatches,
-		"multi_use_refused": s.MultiUseRefused, "open": s.Open, "held": s.Held,
+		"multi_use_refused": s.MultiUseRefused, "stale_handed_out": s.StaleHandedOut, "open": s.Open, "held": s.Held,
 		"abandoned": s.Abandoned, "runs_halted": s.RunsHalted,
 		"runs": s.Runs, "flow_uncomputed": s.FlowUncomputed,
 		"asks": askCounters(s.Asks),

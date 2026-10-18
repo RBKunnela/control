@@ -113,7 +113,7 @@ and undecided answers carry neither.
 ## Reason codes in the gateway's answers
 
 A kernel decision comes back as written;
-[reference/reason-codes](reason-codes.md) lists every code and its number. The codes below are the enforcement
+[reference/reason-codes](reason-codes.md) lists every code. The codes below are the enforcement
 point's own.
 
 | Code | When |
@@ -131,5 +131,6 @@ point's own.
 | `EXECUTION_ABANDONED` | never in an MCP answer |
 | `OBLIGATION_NOT_UNDERSTOOD` | an obligation the plane cannot apply, or whose parameters it cannot read, or a rewrite changed the member `resource_from` reads |
 | `INVALID_FIELD_VALUE`, `MALFORMED_INPUT` | the call, classified or not, could not be translated into a valid envelope; `INVALID_FIELD_VALUE` also when its request id names a trail still open in the gateway |
-| `POLICY_UNAVAILABLE` | a block reached the adapter with a decision naming no cause; it answers with the kernel's code for an absent policy rather than invent a second fail-closed answer |
+| `POLICY_STALE` | the decision's bundle was replaced or stale at hand-out |
+| `POLICY_UNAVAILABLE` | a block reached the adapter with a decision naming no cause; it answers with the kernel's code for an absent policy |
 | `REQUIRED_FIELD_ABSENT` | any list on a listener whose authenticator established no end user |

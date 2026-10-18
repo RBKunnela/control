@@ -40,7 +40,7 @@ with `make docs-gen`; an edit made here does not survive the next run.
 | `APPROVAL_DIGEST_MISMATCH` | 12 | `DENY` | The approval presented names a different canonical action digest than the call it accompanies. |
 | `APPROVAL_EXPIRED` | 13 | `DENY` | The approval presented had expired, by this receiver's clock, when it was checked. |
 | `APPROVAL_PENDING` | 14 | `REQUIRE_APPROVAL` | An approval for this exact action digest is open and no approver has answered it yet. |
-| `POLICY_STALE` | 15 | `INDETERMINATE` | The policy bundle is not known to be current: it is past the staleness budget in force for this call, no freshness statement confirms it, or this receiver's clock reads before 1970, after 9999, or earlier than a time it verified for the bundle. |
+| `POLICY_STALE` | 15 | `INDETERMINATE` | The policy bundle is not known to be current: it is past the staleness budget in force for this call, no freshness statement confirms it, another bundle replaced it before the call was handed out, or this receiver's clock reads before 1970, after 9999, or earlier than a time it verified for the bundle or already relied on for the call. |
 | `POLICY_UNAVAILABLE` | 16 | `INDETERMINATE` | No policy bundle is available for this call, so nothing evaluated it. |
 | `PDP_TIMEOUT` | 17 | `INDETERMINATE` | The external policy decision point does not answer within the deadline set for this call. |
 | `MALFORMED_INPUT` | 18 | `INDETERMINATE` | The request could not be read as this contract at all, which is answered with a decision rather than a transport error. |

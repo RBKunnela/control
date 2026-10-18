@@ -397,6 +397,11 @@ one the retry equals, oldest first.</p>
 <td><code>DENY</code>, <code>APPROVAL_EXPIRED</code>, and nothing is sent</td>
 </tr>
 <tr>
+<td>an approved retry whose bundle went stale, or was replaced, before the call is handed out</td>
+<td>before the consume, this call's own trail: <code>ACTION_PROPOSED</code>, <code>POLICY_DECIDED</code>, <code>ACTION_BLOCKED</code>, nothing spent and the hold kept; after it, <code>APPROVAL_DECIDED</code> then <code>ACTION_BLOCKED</code>, or <code>ACTION_STARTED</code> and <code>ACTION_FAILED</code>, and the approval stays spent</td>
+<td><code>INDETERMINATE</code>, <code>POLICY_STALE</code>, and nothing is sent; a retry under a newer bundle is held anew</td>
+</tr>
+<tr>
 <td>the next identical call after the held one ran</td>
 <td>its own trail: <code>ACTION_PROPOSED</code>, <code>POLICY_DECIDED</code>, <code>ACTION_BLOCKED</code></td>
 <td><code>DENY</code>, <code>APPROVAL_ALREADY_USED</code>: the approval was spent, which is not by itself a statement that the earlier call ran (<a href="/docs/reference/reason-codes">reference/reason-codes</a>); once the spent approval has expired, the same call is held anew</td>
@@ -493,7 +498,10 @@ send the call: before <code>ACTION_STARTED</code> it is blocked with <code>DENY<
 naming <code>APPROVAL_EXPIRED</code>. The approval stays spent. A pause read at the first
 of those moments is named instead, because the plane's own causes come first.
 The adapter's time after the hand-out is not covered
-(<a href="/docs/adr/0027-expiry-at-hand-out-and-an-unreadable-lost-hold">ADR-0027</a>).</p>
+(<a href="/docs/adr/0027-expiry-at-hand-out-and-an-unreadable-lost-hold">ADR-0027</a>).
+The bundle the decision stood on is judged at those two moments too, and once
+before the consume, where a stale or replaced bundle spends nothing
+(<a href="/docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands">ADR-0055</a>).</p>
 <p>An approval marked multi-use is left pending and counted: this enforcement
 point consumes once, and the store's <code>Consume</code> is one compare-and-swap that
 only an approved, unconsumed record passes.</p>

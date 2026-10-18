@@ -55,6 +55,10 @@ type Stats struct {
 	// MultiUseRefused counts approvals the store held as multi-use, which
 	// this plane left pending.
 	MultiUseRefused uint64
+	// StaleHandedOut counts calls OBSERVE let through whose decision's
+	// policy was no longer current at hand-out, where ENFORCE would have
+	// withheld them with POLICY_STALE.
+	StaleHandedOut uint64
 	// UnheldRecords counts records a store still keeps for a request this
 	// plane does not hold and cannot prove was spent. Each one was held anew:
 	// a store that cannot say an execution used a record never makes the

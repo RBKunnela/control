@@ -191,11 +191,11 @@ security boundary (<a href="/docs/status">status</a>).</p>
 <td><code>TestAnUnknownStopStateBlocksEveryCall</code>, <code>TestHealthAnswersTheStopStateAnd503WhenTheListIsRewritten</code></td>
 </tr>
 <tr>
-<td>Freshness statement missing, expired or refused, at start or later</td>
-<td>blocked, a read too unless <code>policy.fail_open_read</code></td>
+<td>Freshness statement missing, expired or refused, at any time</td>
+<td>blocked, a read too unless <code>policy.fail_open_read</code> opened it</td>
 <td><code>POLICY_STALE</code></td>
 <td><code>isError</code> and the code</td>
-<td>yes, at the first poll that takes a statement bound to the bundle</td>
+<td>yes, at the first poll taking a statement bound to the bundle</td>
 <td><code>TestAnUnconfirmedPlaneBlocksMaterialCalls</code>, <code>TestARenewalConfirmsAgain</code></td>
 </tr>
 <tr>

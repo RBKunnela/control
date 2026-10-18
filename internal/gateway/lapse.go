@@ -11,10 +11,10 @@ import (
 
 // refusedBeforeStart decides the block of an execution that may not start: a
 // pause or stop state taken just now covers it or cannot vouch for it, its
-// approval expired,
-// its opened run did, or the agent of a call that resumes nothing gave up on
-// it. A spent approval stays spent: it was consumed, and a
-// spent approval is never handed back to be used again.
+// approval expired, its opened run did, the policy its decision stood on is
+// no longer current, or the agent of a call that resumes nothing gave up on
+// it. A spent approval stays spent: it was consumed, and a spent approval
+// is never handed back to be used again.
 func (c *call) refusedBeforeStart() bool {
 	switch {
 	case c.blockedNow():
@@ -22,6 +22,7 @@ func (c *call) refusedBeforeStart() bool {
 		c.decide(verdictDeny, codeApprovalExpired)
 	case c.runLapsed():
 		c.decide(verdictIndeterminate, codeEvidenceUnavailable)
+	case c.policyWithheld(c.basis):
 	case !c.held && c.agentGone():
 		// A resumed call spent its approval already; it is handed out, and
 		// the adapter aborts what it cannot send.
@@ -32,13 +33,12 @@ func (c *call) refusedBeforeStart() bool {
 	return true
 }
 
-// lapsedWhileStarting reads the clock once more after ACTION_STARTED, whose
-// append can outlast the approval or the run, and names the block of one that
+// lapsedWhileStarting takes the installed policy and reads the clock once
+// more after ACTION_STARTED, whose append can outlast the approval, the run
+// or the policy, stale or replaced meanwhile, and names the block of one that
 // lapsed.
 func (c *call) lapsedWhileStarting() (controlv1.Verdict, string, bool) {
-	if !c.held && c.flow.kind != flowOpened {
-		return 0, "", false
-	}
+	installed := c.p.cfg.Policy.Current()
 	now := c.p.cfg.Clock()
 	switch {
 	case c.held && lapsedBy(now, c.floor, c.approvalExpires):
@@ -47,14 +47,45 @@ func (c *call) lapsedWhileStarting() (controlv1.Verdict, string, bool) {
 	case c.flow.kind == flowOpened && lapsedBy(now, c.floor, c.flow.opened.Expires):
 		c.now = now
 		return verdictIndeterminate, codeEvidenceUnavailable, true
+	case c.withholds(c.basis, installed, now):
+		c.now = now
+		return verdictIndeterminate, codePolicyStale, true
 	}
 	return 0, "", false
 }
 
+// policyWithheld blocks the call, INDETERMINATE with POLICY_STALE, when the
+// policy its decision stood on, judged again at the call's last reading
+// against the policy it took then, no longer stands (ADR-0055), and reports
+// so.
+func (c *call) policyWithheld(b core.Basis) bool {
+	if !c.withholds(b, c.installed, c.now) {
+		return false
+	}
+	c.decide(verdictIndeterminate, codePolicyStale)
+	return true
+}
+
+// withholds reports whether the kernel finds basis b no longer current at
+// now against installed. OBSERVE enforces no policy (ADR-0013), so there it
+// only notes a call whose policy let it run when decided and no longer does,
+// which start counts if it hands the call out.
+func (c *call) withholds(b core.Basis, installed *policy.Snapshot, now time.Time) bool {
+	if c.p.kernel.Recheck(b, installed, now, c.floor) == core.StandingCurrent {
+		return false
+	}
+	if c.p.cfg.Mode == modeObserve {
+		c.staleSeen = c.staleSeen || b.Stood()
+		return false
+	}
+	return true
+}
+
 // lapsedAfterStart closes the trail of an execution whose approval or opened
-// run expired while its ACTION_STARTED was appended, the way an adapter aborts
-// what it did not send: ACTION_FAILED with a BLOCKED result naming code, which
-// is APPROVAL_EXPIRED or EVIDENCE_UNAVAILABLE, and no executed digest. The call is blocked with a decision of the plane's own,
+// run expired, or whose policy stopped standing, while its ACTION_STARTED was
+// appended, the way an adapter aborts what it did not send: ACTION_FAILED with
+// a BLOCKED result naming code, which is APPROVAL_EXPIRED, EVIDENCE_UNAVAILABLE
+// or POLICY_STALE, and no executed digest. The call is blocked with a decision of the plane's own,
 // which no record carries, because the chain has no place for a decision
 // after ACTION_STARTED. A record the sink refuses leaves the trail open with
 // its request id and its journal entry, as blockUnrecorded does.

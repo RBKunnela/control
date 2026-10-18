@@ -242,6 +242,19 @@ func TestApprovalCountersReadEachKeyFromItsOwnField(t *testing.T) {
 	}
 }
 
+// TestPipelineCountersReadEachKeyFromItsOwnField: the counters only the
+// pipeline keeps each read their own field.
+func TestPipelineCountersReadEachKeyFromItsOwnField(t *testing.T) {
+	out := pipelineOnly(gateway.Stats{MultiUseRefused: 3, StaleHandedOut: 5, Abandoned: 7, ReadsUnrecorded: 11})
+	for key, want := range map[string]uint64{
+		"multi_use_refused": 3, "stale_handed_out": 5, "abandoned": 7, "reads_unrecorded": 11,
+	} {
+		if got, ok := out[key].(uint64); !ok || got != want {
+			t.Errorf("%s is %v, want %d", key, out[key], want)
+		}
+	}
+}
+
 // ask puts one request through the health mux and decodes the answer.
 func ask(t *testing.T, p *plane, path string) (int, map[string]any) {
 	t.Helper()

@@ -60,6 +60,7 @@ edit made here does not survive the next run.
 | `guardana_control_pipeline_abandoned_total` | counter |  | `Pipeline.Abandoned` | Executions nobody completed or aborted before they expired, closed with the outcome unknown. |
 | `guardana_control_pipeline_sink_failures_abandoned_total` | counter |  | `Pipeline.SinkFailuresAbandoned` | Closing records of abandoned executions that could not be written; none halts material calls. |
 | `guardana_control_pipeline_multi_use_refused_total` | counter |  | `Pipeline.MultiUseRefused` | Approvals a store held as multi-use, which the plane left pending. |
+| `guardana_control_pipeline_stale_handed_out_total` | counter |  | `Pipeline.StaleHandedOut` | Calls OBSERVE let through whose decision's policy was no longer current at hand-out, which ENFORCE would withhold. |
 | `guardana_control_pipeline_unheld_records_total` | counter |  | `Pipeline.UnheldRecords` | Approval records for a request the plane did not hold, each held anew. |
 | `guardana_control_pipeline_journal_refusals_total` | counter |  | `Pipeline.JournalRefusals` | Hold journal writes that failed. |
 | `guardana_control_pipeline_holds_closed_total` | counter |  | `Pipeline.HoldsClosed` | Trails of holds lost to a restart that a reconciliation closed. |

@@ -200,6 +200,7 @@ Sources: `internal/gateway/approve.go`, `internal/gateway/resume.go`,
 | --- | --- | --- |
 | an approved retry | `APPROVAL_DECIDED`, `ACTION_STARTED`, then the closing event; the approval is consumed before the event is written, so two retries cannot both write it | the upstream's result, sent with exactly the authorized bytes |
 | an approved retry whose approval expires before the call is handed out | `APPROVAL_DECIDED`, then `ACTION_BLOCKED` with `DENY`, `APPROVAL_EXPIRED`, or `ACTION_STARTED` and `ACTION_FAILED` naming it when the expiry passed during that append; the approval stays spent | `DENY`, `APPROVAL_EXPIRED`, and nothing is sent |
+| an approved retry whose bundle went stale, or was replaced, before the call is handed out | before the consume, this call's own trail: `ACTION_PROPOSED`, `POLICY_DECIDED`, `ACTION_BLOCKED`, nothing spent and the hold kept; after it, `APPROVAL_DECIDED` then `ACTION_BLOCKED`, or `ACTION_STARTED` and `ACTION_FAILED`, and the approval stays spent | `INDETERMINATE`, `POLICY_STALE`, and nothing is sent; a retry under a newer bundle is held anew |
 | the next identical call after the held one ran | its own trail: `ACTION_PROPOSED`, `POLICY_DECIDED`, `ACTION_BLOCKED` | `DENY`, `APPROVAL_ALREADY_USED`: the approval was spent, which is not by itself a statement that the earlier call ran ([reference/reason-codes](../reference/reason-codes.md)); once the spent approval has expired, the same call is held anew |
 | nobody answered before `expires_at` | `APPROVAL_EXPIRED`, `ACTION_BLOCKED` with `DENY`, `APPROVAL_EXPIRED`; written by the next call that opens a trail, at most `maxSweep` holds per call, before the request id is freed | a retry after the expiry is a new request with a new hold |
 | a retry finds the approver rejected it | `APPROVAL_DECIDED` with the answer, `ACTION_BLOCKED` with `DENY`, `APPROVAL_REJECTED`; a rejection that fails a check below is recorded as the enforcement point's own approval, `APPROVAL_EXPIRED`; a rejection nobody retries after is closed at the expiry like an unanswered hold | that block |
@@ -240,6 +241,9 @@ naming `APPROVAL_EXPIRED`. The approval stays spent. A pause read at the first
 of those moments is named instead, because the plane's own causes come first.
 The adapter's time after the hand-out is not covered
 ([ADR-0027](../adr/0027-expiry-at-hand-out-and-an-unreadable-lost-hold.md)).
+The bundle the decision stood on is judged at those two moments too, and once
+before the consume, where a stale or replaced bundle spends nothing
+([ADR-0055](../adr/0055-a-call-is-handed-out-only-while-its-policy-stands.md)).
 
 An approval marked multi-use is left pending and counted: this enforcement
 point consumes once, and the store's `Consume` is one compare-and-swap that

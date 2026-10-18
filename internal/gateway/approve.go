@@ -154,6 +154,7 @@ func (c *call) hold(binding approval.Binding) Disposition {
 		approval:    proto.CloneOf(a),
 		envelope:    proto.CloneOf(c.in.Envelope),
 		decision:    proto.CloneOf(c.kernel),
+		basis:       c.basis,
 		binding:     binding,
 		lastEventID: position,
 		expires:     a.GetExpiresAt().AsTime(),

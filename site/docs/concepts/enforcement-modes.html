@@ -200,7 +200,11 @@ classifies; it is how an operator learns which tools exist before classifying
 them. What the enforcement point refuses on its own account, in the table
 below, it refuses in <code>OBSERVE</code> too: it writes the trail first, and an event the
 sink will not take blocks the call, unless the read is let through unrecorded
-under the explicit evidence setting.</p>
+under the explicit evidence setting. A bundle replaced or stale by the time a
+call is handed out blocks it in every other mode, but for a read the
+fail-closed table opened under that same bundle; <code>OBSERVE</code> lets a call its
+policy let run when decided go on, and counts it as <code>stale_handed_out</code>
+(<a href="/docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands">ADR-0055</a>).</p>
 <h2 id="what-the-enforcement-point-blocks-in-every-mode">What the enforcement point blocks in every mode</h2>
 <p>These come before the mode, after it, or from the trail, and no mode relieves
 them:</p>

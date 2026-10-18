@@ -348,7 +348,7 @@ so the closing record's <code>result_hash</code> is the upstream's. Reads, promp
 and undecided answers carry neither.</p>
 <h2 id="reason-codes-in-the-gateways-answers">Reason codes in the gateway's answers</h2>
 <p>A kernel decision comes back as written;
-<a href="/docs/reference/reason-codes">reference/reason-codes</a> lists every code and its number. The codes below are the enforcement
+<a href="/docs/reference/reason-codes">reference/reason-codes</a> lists every code. The codes below are the enforcement
 point's own.</p>
 <table>
 <thead>
@@ -411,8 +411,12 @@ point's own.</p>
 <td>the call, classified or not, could not be translated into a valid envelope; <code>INVALID_FIELD_VALUE</code> also when its request id names a trail still open in the gateway</td>
 </tr>
 <tr>
+<td><code>POLICY_STALE</code></td>
+<td>the decision's bundle was replaced or stale at hand-out</td>
+</tr>
+<tr>
 <td><code>POLICY_UNAVAILABLE</code></td>
-<td>a block reached the adapter with a decision naming no cause; it answers with the kernel's code for an absent policy rather than invent a second fail-closed answer</td>
+<td>a block reached the adapter with a decision naming no cause; it answers with the kernel's code for an absent policy</td>
 </tr>
 <tr>
 <td><code>REQUIRED_FIELD_ABSENT</code></td>

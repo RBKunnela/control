@@ -49,6 +49,7 @@ const (
 	codeApprovalDigestMismatch  = "APPROVAL_DIGEST_MISMATCH"
 	codeApprovalBundleMismatch  = "APPROVAL_BUNDLE_MISMATCH"
 	codeMalformedInput          = "MALFORMED_INPUT"
+	codePolicyStale             = "POLICY_STALE"
 )
 
 const (
@@ -89,13 +90,23 @@ var enforcing = gateway.Capabilities{ObserveRequest: true, ObserveResult: true, 
 
 // snapshotSource serves one snapshot and counts how often it was asked.
 type snapshotSource struct {
+	mu    sync.Mutex
 	snap  *policy.Snapshot
 	calls atomic.Int64
 }
 
 func (s *snapshotSource) Current() *policy.Snapshot {
 	s.calls.Add(1)
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.snap
+}
+
+// set installs snap, as a holder publishes a renewal or a newer bundle.
+func (s *snapshotSource) set(snap *policy.Snapshot) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.snap = snap
 }
 
 // pauseSource serves a settable pause snapshot and counts how often it was

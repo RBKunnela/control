@@ -199,10 +199,7 @@ func (d *decision) checkTenant() {
 // refuses, whether or not that step ran, or an age over the smaller of the
 // author's and the operator's budget.
 func (d *decision) stale() bool {
-	if d.snap == nil || d.clockState() != ClockUsable {
-		return true
-	}
-	return d.now.Sub(d.snap.ConfirmedAt()) > min(d.snap.MaxStale(), d.operator)
+	return !d.snap.FreshAt(d.now, d.operator)
 }
 
 // checkFreshness is step 6: a stale snapshot is a cause, and evaluation
@@ -314,6 +311,7 @@ func (d *decision) outcome(k *Kernel) Outcome {
 		},
 		Action:        action,
 		NeedsExternal: d.needsExternal,
+		Basis:         Basis{set: true, digest: d.snap.Ref().GetDigest(), fresh: !d.stale(), opened: opened},
 	}
 }
 

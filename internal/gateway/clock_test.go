@@ -276,7 +276,12 @@ func TestARunUnderObserveBehindTheVerifiedTimeStartsNothing(t *testing.T) {
 func TestAClockSetBackWhileTheStartIsAppendedHandsOutNothing(t *testing.T) {
 	t.Run("an opened run", func(t *testing.T) {
 		h := build(t, modeEnforce, snapshot(t, allowReads), withRuns(newRuns("root-1")))
-		h.sink.hook(kindDecided, func() { h.clock.set(base().Add(50 * time.Minute)) })
+		h.sink.hook(kindDecided, func() {
+			// The bundle is renewed at the reading it jumps to, so the policy
+			// is current at hand-out and the run's floor is what is judged.
+			h.clock.set(base().Add(50 * time.Minute))
+			h.policy.set(snapshotAt(t, base().Add(50*time.Minute), allowReads))
+		})
 		h.sink.hook(kindStarted, func() { h.clock.set(base().Add(30 * time.Minute)) })
 		d := h.admitA(under(returning(readOf("r-1", "user-1"), 0, 0), opened("run-a", "root-1")))
 		expectBlock(t, d, verdictIndeterminate, codeEvidenceUnavailable, gateway.PDPType)

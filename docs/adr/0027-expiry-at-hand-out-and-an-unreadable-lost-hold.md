@@ -12,6 +12,10 @@ and
 [ADR-0016](0016-approval-providers-and-the-lost-hold.md) on the code a lost
 hold is closed with when the plane cannot read or trust the answer.
 
+Amended by [ADR-0055](0055-a-call-is-handed-out-only-while-its-policy-stands.md): the policy a call was decided under is
+judged at hand-out beside its approval's and its run's expiry, before and after
+ACTION_STARTED.
+
 ## Context
 
 A resume consumes its approval, checks the store's answer field by field, its
