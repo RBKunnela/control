@@ -141,10 +141,10 @@ func TestAFullListStillSaysAFindingIsNamed(t *testing.T) {
 	}
 	setContent(t, dir, list.Bytes())
 	before := content(t, dir)
-	if _, _, err := stopwrite.AppendFinding(bg, dir, r, stopOf(t, "f-9", "run-1", clock0), clock0); !errors.Is(err, stopwrite.ErrNamed) {
+	if _, _, err := appendFinding(bg, dir, r, stopOf(t, "f-9", "run-1", clock0), clock0); !errors.Is(err, stopwrite.ErrNamed) {
 		t.Errorf("a named finding on a full list = %v, want ErrNamed", err)
 	}
-	if _, _, err := stopwrite.AppendFinding(bg, dir, r, stopOf(t, "f-new", "run-1", clock0), clock0); !errors.Is(err, stopwrite.ErrFull) {
+	if _, _, err := appendFinding(bg, dir, r, stopOf(t, "f-new", "run-1", clock0), clock0); !errors.Is(err, stopwrite.ErrFull) {
 		t.Errorf("a new finding on a full list = %v, want ErrFull", err)
 	}
 	if !bytes.Equal(content(t, dir), before) {
@@ -162,7 +162,7 @@ func TestAListThatNamesAnotherFindingTwiceIsNoNamedFinding(t *testing.T) {
 	list.Write(coveredLine(t, "f-0"))
 	list.WriteByte('\n')
 	setContent(t, dir, list.Bytes())
-	_, _, err := stopwrite.AppendFinding(bg, dir, r, stopOf(t, "f-new", "run-2", clock0), clock0)
+	_, _, err := appendFinding(bg, dir, r, stopOf(t, "f-new", "run-2", clock0), clock0)
 	if !errors.Is(err, stopwrite.ErrRefused) || !errors.Is(err, reaction.ErrFindingAgain) || errors.Is(err, stopwrite.ErrNamed) {
 		t.Errorf("an append to a list naming f-0 twice = %v, want ErrRefused wrapping ErrFindingAgain and not ErrNamed", err)
 	}

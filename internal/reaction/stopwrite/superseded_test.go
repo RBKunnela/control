@@ -80,12 +80,12 @@ func TestNoWriterAppendsAStopOfASupersededVersion(t *testing.T) {
 	if !errors.Is(err, stopwrite.ErrRefused) || !errors.Is(err, reaction.ErrStopSuperseded) {
 		t.Errorf("AppendStop of a version 1 stop: %v", err)
 	}
-	_, _, err = stopwrite.AppendFinding(bg, dir, to, stale, clock0)
+	_, _, err = appendFinding(bg, dir, to, stale, clock0)
 	if !errors.Is(err, stopwrite.ErrRefused) || !errors.Is(err, reaction.ErrStopSuperseded) {
 		t.Errorf("AppendFinding of a version 1 stop: %v", err)
 	}
 	stale.RunID = "run-1"
-	_, _, err = stopwrite.AppendFinding(bg, dir, to, stale, clock0)
+	_, _, err = appendFinding(bg, dir, to, stale, clock0)
 	if !errors.Is(err, stopwrite.ErrRefused) || !errors.Is(err, reaction.ErrStopSuperseded) {
 		t.Errorf("AppendFinding of a version 1 stop of a stopped run: %v", err)
 	}

@@ -150,8 +150,8 @@ takes a carried list and a restart.</p>
 <code>stop</code>, <code>covered</code> and <code>lift</code> lines, appended and never rewritten, at most
 4 MiB and 20 000 lines. Only the <code>stops</code> commands and <code>react</code> write it, each
 line under the list's lock, waiting up to ten seconds for another writer; a
-plane takes no lock. A writer cuts a torn last line before it appends, and refuses a write past the bound rather than cut a line it did
-not read.</p>
+plane takes no lock. A writer cuts a torn last line before it appends, and refuses a write past the bound rather than cut an unread
+line.</p>
 <p><code>stops init</code> starts a list in an existing directory holding none. With
 <code>--carry</code> it copies the old list's unlifted stops, expired or not, and names every other finding of it as covered, judging the
 old list by <code>--carry-route</code> under the same route key and holding its lock
@@ -173,7 +173,7 @@ clock would judge it.</p>
 header names another route, reads the findings log and looks each finding's run up in the runs directory,
 which it never writes. It holds no key and never lifts. For each finding the
 list does not name yet, it writes a <code>covered</code> line when the run has an active
-stop lasting at least as long as the new one would, and a <code>stop</code> otherwise,
+stop lasting at least as long as the new one, and a <code>stop</code> otherwise,
 as the list stands under its lock, if:</p>
 <ul>
 <li>the finding is <code>DETERMINISTIC</code> and <code>CONFIRMED</code>; a suspected, indeterminate
@@ -182,8 +182,8 @@ or model's finding stops nothing, and no setting changes that;</li>
 <li>the route permits it: its tenant, procedure and rule are a rule's.</li>
 </ul>
 <p>A finding the list names in any line writes nothing again, so a lift holds:
-what a run did while stopped is covered; only a finding not yet listed, of any age, stops it again. A stop expires at <code>react</code>'s clock plus the rule's lifetime,
-never after the run's expiry rounded up to the second. <code>react</code> prints each line it wrote and one
+what a run did while stopped is covered; only a finding not yet listed, of any age, stops it again. A stop expires at <code>react</code>'s clock, read under the lock,
+plus the rule's lifetime, never after the run's expiry rounded up to the second. <code>react</code> prints each line it wrote and one
 count line, and exits 0 when every finding the route allows is on the list,
 and 1 on any refusal, naming each finding it could not write. An interrupt, or
 a lock wait that runs out, ends the pass after the lines it wrote.

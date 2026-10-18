@@ -218,15 +218,7 @@ func checkKey(key, shown string) error {
 // refusal gives the reason alone; shown names the value for the caller.
 func scalar(raw string) (string, error) {
 	if !strings.HasPrefix(raw, `"`) {
-		switch {
-		case strings.ContainsAny(raw, "&*{}[]|>"):
-			return "", fmt.Errorf("anchors, tags and flow collections are not read here")
-		case strings.HasPrefix(raw, "!"), strings.HasPrefix(raw, "'"):
-			// Kept as text, a tag or a single-quoted value would reach the
-			// configuration with its marks, as a tenant id no run matches.
-			return "", fmt.Errorf("tags and single quotes are not read here; quote a value with double quotes")
-		}
-		return raw, nil
+		return plain(raw)
 	}
 	var out strings.Builder
 	for i := 1; i < len(raw); i++ {
@@ -256,6 +248,23 @@ func scalar(raw string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("the value ends without a closing quote")
+}
+
+// plain reads a value that does not start with a double quote.
+func plain(raw string) (string, error) {
+	switch {
+	case strings.ContainsAny(raw, "&*{}[]|>"):
+		return "", fmt.Errorf("anchors, tags and flow collections are not read here")
+	case strings.HasPrefix(raw, "!"), strings.HasPrefix(raw, "'"):
+		// Kept as text, a tag or a single-quoted value would reach the
+		// configuration with its marks, as a tenant id no run matches.
+		return "", fmt.Errorf("tags and single quotes are not read here; quote a value with double quotes")
+	case strings.Contains(raw, `"`):
+		// stripComment took the quote for one that opens a scalar, so what
+		// follows a '#' may still be on the value.
+		return "", fmt.Errorf(`a double quote inside a plain value is not read here; quote the whole value and write the quote as \"`)
+	}
+	return raw, nil
 }
 
 // shown is a value as a refusal names it: under a header map or a credential

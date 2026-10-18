@@ -125,9 +125,10 @@ type reactor struct {
 	list     reaction.List
 	lookup   lookupRun
 	dir      string
-	// clock is read once for each finding about to be written, so a stop is
-	// created and expires by the time it reaches the list, however long the
-	// pass has run.
+	// clock is read for each finding before the lock, to skip one that may
+	// not stop, and again once the lock is held, so a stop is created and
+	// expires by the time it reaches the list, however long the pass has run
+	// and the lock was waited for.
 	clock func() time.Time
 
 	runFacts map[string]reaction.RunFacts
@@ -183,14 +184,19 @@ func (r *reactor) finding(fr *findingv1alpha1.FindingRecord) error {
 	if err != nil {
 		return err
 	}
-	now := r.clock().UTC().Truncate(time.Second)
-	claim, ok := r.stopping(fr, run, now)
-	if !ok {
+	if _, ok := r.stopping(fr, run, r.now()); !ok {
 		r.skipped++
 		return nil
 	}
-	return r.write(id, claim, f.GetRunId(), now)
+	return r.write(fr, run)
 }
+
+// now is the clock in whole seconds, which is what a line spells.
+func (r *reactor) now() time.Time { return r.clock().UTC().Truncate(time.Second) }
+
+// errNotStopping is a finding that no longer stops at the reading taken
+// under the lock, such as one whose run expired while the pass waited.
+var errNotStopping = errors.New("the finding does not stop at the clock read under the lock")
 
 // stopping is the stop fr would be at now, when Eligible takes it with run's
 // facts and the route permits it.
@@ -254,13 +260,21 @@ func (r *reactor) claim(fr *findingv1alpha1.FindingRecord, run reaction.RunFacts
 
 // write appends a stop for a run with no active stop and a covered line for
 // one with, the writer choosing under its lock over the list as it stands,
-// so a react running beside this one cannot give the run a second stop. A
-// write the list's bound or the judge refuses is named and the pass goes on;
-// any other refusal stops it.
-func (r *reactor) write(id string, c reaction.StopClaim, runID string, now time.Time) error {
-	s := reaction.Stop{EntryID: reaction.EntryID(id), TenantID: c.TenantID, RunID: runID, FindingID: id,
-		ProcedureID: c.ProcedureID, ProcedureVersion: c.ProcedureVersion, ProcedureDigest: c.ProcedureDigest,
-		RuleID: c.RuleID, RuleVersion: c.RuleVersion, CreatedAt: c.CreatedAt, ExpiresAt: c.ExpiresAt}
+// so a react running beside this one cannot give the run a second stop. The
+// stop is the finding's claim at the clock read under the lock. A write the
+// list's bound or the judge refuses is named and the pass goes on; any other
+// refusal stops it.
+func (r *reactor) write(fr *findingv1alpha1.FindingRecord, run reaction.RunFacts) error {
+	id, runID := fr.GetFinding().GetFindingId(), fr.GetFinding().GetRunId()
+	stopAt := func(now time.Time) (reaction.Stop, error) {
+		c, ok := r.stopping(fr, run, now)
+		if !ok {
+			return reaction.Stop{}, errNotStopping
+		}
+		return reaction.Stop{EntryID: reaction.EntryID(id), TenantID: c.TenantID, RunID: runID, FindingID: id,
+			ProcedureID: c.ProcedureID, ProcedureVersion: c.ProcedureVersion, ProcedureDigest: c.ProcedureDigest,
+			RuleID: c.RuleID, RuleVersion: c.RuleVersion, CreatedAt: c.CreatedAt, ExpiresAt: c.ExpiresAt}, nil
+	}
 	if r.full != "" {
 		r.unwritten = append(r.unwritten, fmt.Sprintf("not written: finding %s run %s: %s", oneLine(id), oneLine(runID), r.full))
 		return nil
@@ -269,9 +283,12 @@ func (r *reactor) write(id string, c reaction.StopClaim, runID string, now time.
 	// is work, and a pass over many findings must not spend one budget on it.
 	ctx, cancel := context.WithTimeout(r.ctx, r.lockWait)
 	beforeStopsLock()
-	n, covered, err := stopwrite.AppendFinding(ctx, r.dir, r.route, s, now)
+	n, s, covered, err := stopwrite.AppendFinding(ctx, r.dir, r.route, r.now, stopAt)
 	cancel()
 	switch {
+	case errors.Is(err, errNotStopping):
+		r.skipped++
+		return nil
 	case errors.Is(err, stopwrite.ErrNamed):
 		// Another writer named it after this pass read the list.
 		r.alreadyNamed++
@@ -293,7 +310,7 @@ func (r *reactor) write(id string, c reaction.StopClaim, runID string, now time.
 	}
 	r.stops++
 	r.written = append(r.written, fmt.Sprintf("stop line %d run %s finding %s rule %s expires_at %s",
-		n, oneLine(runID), oneLine(id), oneLine(c.RuleID), policy.FormatIssuedAt(c.ExpiresAt)))
+		n, oneLine(runID), oneLine(id), oneLine(s.RuleID), policy.FormatIssuedAt(s.ExpiresAt)))
 	return nil
 }
 

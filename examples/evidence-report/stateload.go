@@ -36,13 +36,17 @@ func addTags(t reflect.Type) {
 
 // decodeState reads state.json strictly: a member it does not name, one
 // missing, one held twice or in another case, or another major is refused. A
-// 1.0 state lacks the members added in 1.1 and is read without them.
+// state of an earlier minor lacks the members added since and is read without
+// them.
 func decodeState(b []byte) (*stateFile, error) {
 	var v struct {
 		SchemaVersion string `json:"schema_version"`
 	}
-	legacy := json.Unmarshal(b, &v) == nil && v.SchemaVersion == legacyStateVersion
-	if err := exactMembers(b, reflect.TypeFor[stateFile](), "state", legacy); err != nil {
+	written := ""
+	if json.Unmarshal(b, &v) == nil {
+		written = v.SchemaVersion
+	}
+	if err := exactMembers(b, reflect.TypeFor[stateFile](), "state", written); err != nil {
 		return nil, err
 	}
 	dec := json.NewDecoder(bytes.NewReader(b))
@@ -61,33 +65,33 @@ func decodeState(b []byte) (*stateFile, error) {
 }
 
 // exactMembers holds the JSON value b to the members of type t's json tags,
-// every one of them and no other, through nested objects and arrays. In a
-// legacy state a member tagged as added later may be missing.
-func exactMembers(b []byte, t reflect.Type, at string, legacy bool) error {
+// every one of them and no other, through nested objects and arrays. A state
+// written at an earlier version may lack a member tagged as added after it.
+func exactMembers(b []byte, t reflect.Type, at string, written string) error {
 	switch t.Kind() {
 	case reflect.Pointer:
 		if string(bytes.TrimSpace(b)) == "null" {
 			return nil
 		}
-		return exactMembers(b, t.Elem(), at, legacy)
+		return exactMembers(b, t.Elem(), at, written)
 	case reflect.Slice:
 		var items []json.RawMessage
 		if err := json.Unmarshal(b, &items); err != nil {
 			return fmt.Errorf("%s: not an array", at)
 		}
 		for i, item := range items {
-			if err := exactMembers(item, t.Elem(), fmt.Sprintf("%s[%d]", at, i), legacy); err != nil {
+			if err := exactMembers(item, t.Elem(), fmt.Sprintf("%s[%d]", at, i), written); err != nil {
 				return err
 			}
 		}
 		return nil
 	case reflect.Struct:
-		return exactObject(b, t, at, legacy)
+		return exactObject(b, t, at, written)
 	}
 	return nil
 }
 
-func exactObject(b []byte, t reflect.Type, at string, legacy bool) error {
+func exactObject(b []byte, t reflect.Type, at string, written string) error {
 	ms, err := object(b)
 	if err != nil {
 		return fmt.Errorf("%s: %w", at, err)
@@ -101,17 +105,26 @@ func exactObject(b []byte, t reflect.Type, at string, legacy bool) error {
 	}
 	for i, n := range names {
 		v, ok := valueOf(ms, n)
-		if !ok && legacy && t.Field(i).Tag.Get("added") != "" {
+		if !ok && mayLack(t.Field(i).Tag.Get("added"), written) {
 			continue
 		}
 		if !ok {
 			return fmt.Errorf("%s: member %q is missing", at, n)
 		}
-		if err := exactMembers(v, t.Field(i).Type, at+"."+n, legacy); err != nil {
+		if err := exactMembers(v, t.Field(i).Type, at+"."+n, written); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// mayLack reports whether a state written at version written may lack a
+// member tagged as added at version added. A version either side cannot read
+// lets the state lack nothing.
+func mayLack(added, written string) bool {
+	addedMajor, addedMinor, okAdded := versionOf(added)
+	writtenMajor, writtenMinor, okWritten := versionOf(written)
+	return okAdded && okWritten && (writtenMajor < addedMajor || writtenMajor == addedMajor && writtenMinor < addedMinor)
 }
 
 // load builds the state in memory from the file, refusing one whose parts

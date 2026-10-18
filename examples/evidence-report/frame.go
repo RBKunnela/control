@@ -93,10 +93,16 @@ func (q *headerQuery) facts(source string) header {
 // majorOf reads MAJOR.MINOR as the wire contracts spell a version: two
 // unsigned decimals. A higher minor is read like its major.
 func majorOf(version string) (uint64, bool) {
-	major, minor, ok := strings.Cut(version, ".")
-	m, errMajor := strconv.ParseUint(major, 10, 32)
-	_, errMinor := strconv.ParseUint(minor, 10, 32)
-	return m, ok && errMajor == nil && errMinor == nil
+	major, _, ok := versionOf(version)
+	return major, ok
+}
+
+// versionOf reads a "major.minor" version as two numbers.
+func versionOf(version string) (major, minor uint64, ok bool) {
+	a, b, ok := strings.Cut(version, ".")
+	major, errMajor := strconv.ParseUint(a, 10, 32)
+	minor, errMinor := strconv.ParseUint(b, 10, 32)
+	return major, minor, ok && errMajor == nil && errMinor == nil
 }
 
 type trailerRecord struct {

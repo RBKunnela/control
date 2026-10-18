@@ -76,7 +76,7 @@ func TestNoWriterTakesARouteNamingARuleThatMayNotStop(t *testing.T) {
 		before := content(t, list)
 		_, err = stopwrite.AppendStop(bg, list, bad, stopOf(t, "f-1", "run-1", clock0), clock0)
 		refusedForTheRule(t, name+": AppendStop", err)
-		_, _, err = stopwrite.AppendFinding(bg, list, bad, stopOf(t, "f-1", "run-1", clock0), clock0)
+		_, _, err = appendFinding(bg, list, bad, stopOf(t, "f-1", "run-1", clock0), clock0)
 		refusedForTheRule(t, name+": AppendFinding", err)
 		_, err = stopwrite.AppendCovered(bg, list, bad, coveredOf("f-2", "run-1", clock0), clock0)
 		refusedForTheRule(t, name+": AppendCovered", err)

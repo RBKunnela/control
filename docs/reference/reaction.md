@@ -70,8 +70,8 @@ takes a carried list and a restart.
 `stop`, `covered` and `lift` lines, appended and never rewritten, at most
 4 MiB and 20 000 lines. Only the `stops` commands and `react` write it, each
 line under the list's lock, waiting up to ten seconds for another writer; a
-plane takes no lock. A writer cuts a torn last line before it appends, and refuses a write past the bound rather than cut a line it did
-not read.
+plane takes no lock. A writer cuts a torn last line before it appends, and refuses a write past the bound rather than cut an unread
+line.
 
 `stops init` starts a list in an existing directory holding none. With
 `--carry` it copies the old list's unlifted stops, expired or not, and names every other finding of it as covered, judging the
@@ -96,7 +96,7 @@ clock would judge it.
 header names another route, reads the findings log and looks each finding's run up in the runs directory,
 which it never writes. It holds no key and never lifts. For each finding the
 list does not name yet, it writes a `covered` line when the run has an active
-stop lasting at least as long as the new one would, and a `stop` otherwise,
+stop lasting at least as long as the new one, and a `stop` otherwise,
 as the list stands under its lock, if:
 
 - the finding is `DETERMINISTIC` and `CONFIRMED`; a suspected, indeterminate
@@ -105,8 +105,8 @@ as the list stands under its lock, if:
 - the route permits it: its tenant, procedure and rule are a rule's.
 
 A finding the list names in any line writes nothing again, so a lift holds:
-what a run did while stopped is covered; only a finding not yet listed, of any age, stops it again. A stop expires at `react`'s clock plus the rule's lifetime,
-never after the run's expiry rounded up to the second. `react` prints each line it wrote and one
+what a run did while stopped is covered; only a finding not yet listed, of any age, stops it again. A stop expires at `react`'s clock, read under the lock,
+plus the rule's lifetime, never after the run's expiry rounded up to the second. `react` prints each line it wrote and one
 count line, and exits 0 when every finding the route allows is on the list,
 and 1 on any refusal, naming each finding it could not write. An interrupt, or
 a lock wait that runs out, ends the pass after the lines it wrote.

@@ -186,7 +186,7 @@ func TestWritersRacingForOneRunStopItOnce(t *testing.T) {
 	var stops atomic.Int32
 	for i := range writers {
 		wg.Go(func() {
-			_, covered, err := stopwrite.AppendFinding(bg, dir, r, stopOf(t, fmt.Sprintf("f-%d", i), "run-1", clock0), clock0)
+			_, covered, err := appendFinding(bg, dir, r, stopOf(t, fmt.Sprintf("f-%d", i), "run-1", clock0), clock0)
 			if err != nil {
 				t.Errorf("writer %d: %v", i, err)
 			}
@@ -202,5 +202,37 @@ func TestWritersRacingForOneRunStopItOnce(t *testing.T) {
 	}
 	if got := len(list.Entries()); stops.Load() != 1 || got != 1 || list.Usage().Lines != writers+1 {
 		t.Errorf("%d writers said stop, the list holds %d stop(s) in %d lines; want 1 stop and %d lines", stops.Load(), got, list.Usage().Lines, writers+1)
+	}
+}
+
+// TestAFindingIsStoppedAtTheClockReadUnderTheLock: the writer reads its clock
+// only while it holds the lock, which another opener of the directory cannot
+// take then, and the stop is the one made from that reading.
+func TestAFindingIsStoppedAtTheClockReadUnderTheLock(t *testing.T) {
+	r := testRoute(t)
+	dir, _ := initDir(t, r)
+	reading := clock0.Add(time.Minute)
+	clock := func() time.Time {
+		d, err := os.Open(dir) //nolint:gosec // G304: the test's own temporary directory
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = d.Close() }()
+		if err := syscall.Flock(int(d.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); !errors.Is(err, syscall.EWOULDBLOCK) {
+			t.Errorf("taking the lock while the clock is read = %v, want EWOULDBLOCK", err)
+		}
+		return reading
+	}
+	var made time.Time
+	_, s, covered, err := stopwrite.AppendFinding(bg, dir, r, clock, func(now time.Time) (reaction.Stop, error) {
+		made = now
+		return stopOf(t, "f-1", "run-1", now), nil
+	})
+	if err != nil || covered || !made.Equal(reading) || !s.CreatedAt.Equal(reading) {
+		t.Fatalf("AppendFinding = %+v, covered %v, %v; made at %s, want a stop created at %s", s, covered, err, made, reading)
+	}
+	list, err := reaction.Judge(r, reaction.Prefix{}, content(t, dir), reading, 0)
+	if err != nil || len(list.Entries()) != 1 || !list.Entries()[0].CreatedAt.Equal(reading) {
+		t.Fatalf("the list holds %+v (%v), want one stop created at %s", list.Entries(), err, reading)
 	}
 }

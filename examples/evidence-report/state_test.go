@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -349,4 +350,60 @@ func TestStateDirectoryOwner(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "owned by") {
 		t.Fatalf("a directory of another uid: %v, want refused as owned by another", err)
 	}
+}
+
+// TestAStateLacksOnlyTheMembersAddedAfterIt: a member tagged as added at a
+// version may be missing from a state written before that version, compared
+// as numbers, and from no other; a state whose version cannot be read lacks
+// nothing.
+func TestAStateLacksOnlyTheMembersAddedAfterIt(t *testing.T) {
+	type later struct {
+		Base  string `json:"base"`
+		Mode  string `json:"mode" added:"1.1"`
+		Scope string `json:"scope" added:"1.2"`
+	}
+	for _, c := range []struct {
+		written, doc string
+		read         bool
+	}{
+		{"1.0", `{"base":""}`, true},
+		{"1.0", `{"base":"","mode":""}`, true},
+		{"1.1", `{"base":"","mode":""}`, true},
+		{"1.1", `{"base":""}`, false},
+		{"1.2", `{"base":"","mode":"","scope":""}`, true},
+		{"1.2", `{"base":"","mode":""}`, false},
+		{"1.10", `{"base":"","mode":""}`, false},
+		{"2.0", `{"base":"","mode":""}`, false},
+		{"1", `{"base":""}`, false},
+		{"", `{"base":""}`, false},
+	} {
+		err := exactMembers([]byte(c.doc), reflect.TypeFor[later](), "state", c.written)
+		if (err == nil) != c.read {
+			t.Errorf("a %q state %s: error %v, want read=%v", c.written, c.doc, err, c.read)
+		}
+	}
+}
+
+// TestEveryAddedTagNamesAVersionNoLaterThanTheState: a tag that cannot be
+// read would make its member required in every state, and one later than
+// the version this program writes would let its own state lack the member.
+func TestEveryAddedTagNamesAVersionNoLaterThanTheState(t *testing.T) {
+	var walk func(reflect.Type, string)
+	walk = func(rt reflect.Type, at string) {
+		switch rt.Kind() {
+		case reflect.Pointer, reflect.Slice:
+			walk(rt.Elem(), at)
+		case reflect.Struct:
+			for i := range rt.NumField() {
+				f := rt.Field(i)
+				if added, ok := f.Tag.Lookup("added"); ok {
+					if _, _, readable := versionOf(added); !readable || mayLack(added, stateVersion) {
+						t.Errorf("%s.%s: added %q is not a version at or before %s", at, f.Name, added, stateVersion)
+					}
+				}
+				walk(f.Type, at+"."+f.Name)
+			}
+		}
+	}
+	walk(reflect.TypeFor[stateFile](), "stateFile")
 }

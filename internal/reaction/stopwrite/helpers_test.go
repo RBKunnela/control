@@ -101,6 +101,14 @@ func stopOf(t testing.TB, finding, run string, created time.Time) reaction.Stop 
 	}
 }
 
+// appendFinding appends the finding of s, a stop made before the lock, at a
+// clock that reads now.
+func appendFinding(ctx context.Context, dir string, r reaction.Route, s reaction.Stop, now time.Time) (int64, bool, error) {
+	n, _, covered, err := stopwrite.AppendFinding(ctx, dir, r, func() time.Time { return now },
+		func(time.Time) (reaction.Stop, error) { return s, nil })
+	return n, covered, err
+}
+
 func coveredOf(finding, run string, created time.Time) reaction.Covered {
 	return reaction.Covered{FindingID: finding, TenantID: "acme", RunID: run, CreatedAt: created}
 }

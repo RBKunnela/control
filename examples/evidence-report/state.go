@@ -9,10 +9,8 @@ import (
 
 const (
 	stateVersion = "1.1"
-	// legacyStateVersion is the state before closed requests held their mode.
-	legacyStateVersion = "1.0"
-	stateMajor         = 1
-	dedupScope         = "consumer-window"
+	stateMajor   = 1
+	dedupScope   = "consumer-window"
 	// maxOpen is the most requests followed at once; past it the oldest is
 	// dropped with an alert.
 	maxOpen = 10_000

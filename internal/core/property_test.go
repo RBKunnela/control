@@ -18,15 +18,17 @@ import (
 // The determinism property ADR-0012 asks for: the same request against a
 // separately loaded snapshot of the same bundle, loaded at the same instant,
 // decides the same, byte for byte, after a shuffled batch of other requests
-// has run through both. Each check draws one kernel configuration, one
-// document or none, one load time and a batch of batchSize requests; the
-// batch is decided in order against the first snapshot and in a drawn
+// has run through both. Each check draws a set of rules, one load time and a
+// batch of batchSize requests, each with its own kernel configuration; the
+// batch is decided in order against the first snapshots and in a drawn
 // permutation against the second. With rapid's default of 100 checks that is
 // 10 000 cases, which TestDecideIsDeterministic holds the run to.
 //
 // The generator reaches every branch of Decide, and the run fails when one
 // was never drawn: a property over a generator that stopped reaching the
-// digest step would still pass on equality alone.
+// digest step would still pass on equality alone. What a check draws once
+// would miss a branch by chance in some run, so the cases take turns at no
+// bundle, the drawn rules and the rest of the pool.
 
 const batchSize = 100
 
@@ -130,14 +132,35 @@ func sentinels() []sentinel {
 const errNotThisContract = core.Error("decode: not this contract")
 
 // scenario is one check: a kernel configuration per case is drawn later, so
-// the snapshot's age meets more than one operator budget.
+// the snapshot's age meets more than one operator budget. Case i is decided
+// against bundles[i%len(bundles)].
 type scenario struct {
 	now      time.Time
-	doc      []byte // nil: no bundle
-	rules    []poolRule
+	bundles  []drawnBundle
 	maxStale int
 	loadedAt time.Time
 	batch    []drawnCase
+}
+
+// drawnBundle is one document of a check and its rules; doc is nil for no
+// bundle.
+type drawnBundle struct {
+	doc   []byte
+	rules []poolRule
+}
+
+func (s scenario) bundleOf(i int) int { return i % len(s.bundles) }
+
+// markBundle counts a case decided against b.
+func markBundle(cov coverage, b drawnBundle) {
+	if b.doc == nil {
+		cov.mark("bundle:none")
+		return
+	}
+	cov.mark("bundle:present")
+	for _, r := range b.rules {
+		cov.mark("rule:" + r.id)
+	}
 }
 
 // drawnCase is one request with the options it is decided under.
@@ -153,17 +176,12 @@ type drawnCase struct {
 
 func drawScenario(rt *rapid.T, cov coverage) scenario {
 	s := scenario{now: base()}
-	if rapid.IntRange(0, 2).Draw(rt, "bundle") == 0 {
-		cov.mark("bundle:none")
-	} else {
-		cov.mark("bundle:present")
-		s.rules = rapid.SliceOfNDistinct(rapid.SampledFrom(rulePool()), 2, 8, func(r poolRule) string { return r.id }).Draw(rt, "rules")
-		for _, r := range s.rules {
-			cov.mark("rule:" + r.id)
-		}
-		s.maxStale = rapid.SampledFrom([]int{1, 300, 900}).Draw(rt, "bundleMaxStale")
-		s.doc = documentOf(s.maxStale, s.rules)
-	}
+	drawn := rapid.SliceOfNDistinct(rapid.SampledFrom(rulePool()), 2, 8, func(r poolRule) string { return r.id }).Draw(rt, "rules")
+	rest := slices.DeleteFunc(rulePool(), func(r poolRule) bool {
+		return slices.ContainsFunc(drawn, func(d poolRule) bool { return d.id == r.id })
+	})
+	s.maxStale = rapid.SampledFrom([]int{1, 300, 900}).Draw(rt, "bundleMaxStale")
+	s.bundles = []drawnBundle{{}, {doc: documentOf(s.maxStale, drawn), rules: drawn}, {doc: documentOf(s.maxStale, rest), rules: rest}}
 	age := rapid.SampledFrom([]time.Duration{-time.Second, 0, time.Second, 299 * time.Second, 300 * time.Second, 301 * time.Second, time.Hour}).Draw(rt, "age")
 	s.loadedAt = s.now.Add(-age)
 	s.batch = make([]drawnCase, batchSize)
@@ -361,11 +379,11 @@ func drawFault(rt *rapid.T, cov coverage, env *controlv1.ActionEnvelope) (*contr
 	return env, nil
 }
 
-// decideBatch decides the batch against snap, in the order given, with a
-// fixed clock reading now and a constant id source. Kernels are built per
-// case because the options are drawn per case; New is not on the path
-// measured.
-func decideBatch(rt *rapid.T, s scenario, order []int, snap *policy.Snapshot, now time.Time) []core.Outcome {
+// decideBatch decides the batch against snaps, one per bundle, in the order
+// given, with a fixed clock reading now and a constant id source. Kernels are
+// built per case because the options are drawn per case; New is not on the
+// path measured.
+func decideBatch(rt *rapid.T, s scenario, order []int, snaps []*policy.Snapshot, now time.Time) []core.Outcome {
 	out := make([]core.Outcome, len(s.batch))
 	for _, i := range order {
 		c := s.batch[i]
@@ -373,7 +391,7 @@ func decideBatch(rt *rapid.T, s scenario, order []int, snap *policy.Snapshot, no
 		if err != nil {
 			rt.Fatalf("New refused drawn options: %v", err)
 		}
-		out[i] = decide(k, c.req, snap)
+		out[i] = decide(k, c.req, snaps[s.bundleOf(i)])
 	}
 	return out
 }
@@ -386,23 +404,25 @@ func inOrder(n int) []int {
 	return order
 }
 
-// loadTwice signs the document once and loads the bundle twice at loadedAt,
-// so the second snapshot shares nothing with the first but the bytes.
-func loadTwice(rt *rapid.T, s scenario, secondAt time.Time) (first, second *policy.Snapshot) {
-	if s.doc == nil {
-		return nil, nil
-	}
-	b, err := policy.Sign(s.doc, key(), "k1")
-	if err != nil {
-		rt.Fatalf("Sign refused a drawn document: %v", err)
-	}
-	first, err = policy.Load(b, pinned(), s.loadedAt)
-	if err != nil {
-		rt.Fatalf("Load refused a drawn document: %v", err)
-	}
-	second, err = policy.Load(proto.CloneOf(b), pinned(), secondAt)
-	if err != nil {
-		rt.Fatalf("the second Load refused what the first accepted: %v", err)
+// loadTwice signs each document once and loads its bundle twice at
+// loadedAt, so a second snapshot shares nothing with the first but the bytes.
+// No document is a nil snapshot in both.
+func loadTwice(rt *rapid.T, s scenario, secondAt time.Time) (first, second []*policy.Snapshot) {
+	first, second = make([]*policy.Snapshot, len(s.bundles)), make([]*policy.Snapshot, len(s.bundles))
+	for j, d := range s.bundles {
+		if d.doc == nil {
+			continue
+		}
+		b, err := policy.Sign(d.doc, key(), "k1")
+		if err != nil {
+			rt.Fatalf("Sign refused a drawn document: %v", err)
+		}
+		if first[j], err = policy.Load(b, pinned(), s.loadedAt); err != nil {
+			rt.Fatalf("Load refused a drawn document: %v", err)
+		}
+		if second[j], err = policy.Load(proto.CloneOf(b), pinned(), secondAt); err != nil {
+			rt.Fatalf("the second Load refused what the first accepted: %v", err)
+		}
 	}
 	return first, second
 }
@@ -422,9 +442,11 @@ func determinism(cov coverage, decided *int, zone *time.Location) func(rt *rapid
 		again := decideBatch(rt, s, shuffled, second, s.now.In(zone))
 		for i := range s.batch {
 			*decided++
-			stale := staleAt(s, s.batch[i].opts)
+			b := s.bundleOf(i)
+			markBundle(cov, s.bundles[b])
+			stale := staleAt(s, s.bundles[b].doc, s.batch[i].opts)
 			cov.mark(map[bool]string{true: "stale", false: "fresh"}[stale])
-			checkOutcomeShape(rt, s.batch[i], got[i], first != nil, stale)
+			checkOutcomeShape(rt, s.batch[i], got[i], first[b] != nil, stale)
 			checkAnswerShape(rt, cov, s.batch[i], got[i])
 			if got[i].Action != again[i].Action || !proto.Equal(got[i].Decision, again[i].Decision) {
 				rt.Fatalf("case %d decided differently: %v then %v", i, got[i], again[i])
@@ -435,12 +457,12 @@ func determinism(cov coverage, decided *int, zone *time.Location) func(rt *rapid
 
 // staleAt is the freshness rule as ADR-0012 states it, computed here from
 // the drawn ages and budgets rather than read back from the decision.
-func staleAt(s scenario, opts core.Options) bool {
-	if s.doc == nil {
+func staleAt(s scenario, doc []byte, opts core.Options) bool {
+	if doc == nil {
 		return true
 	}
 	age := s.now.Sub(s.loadedAt)
-	bundleBudget := time.Duration(bundleMaxStaleSeconds(s.doc)) * time.Second
+	bundleBudget := time.Duration(bundleMaxStaleSeconds(doc)) * time.Second
 	return age < 0 || age > min(bundleBudget, opts.MaxStale)
 }
 

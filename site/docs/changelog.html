@@ -116,6 +116,19 @@
 signed and attested from its tag; <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a> shows how to
 verify one.</p>
 <h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.12.0...HEAD">Unreleased</a></h2>
+<h3 id="fixed">Fixed</h3>
+<ul>
+<li><code>guardana-control react</code> reads the clock for a stop once it holds the lock
+on the stop list. A stop no longer loses the time spent waiting for the lock,
+and a finding is no longer refused as &quot;not written&quot; because another <code>react</code>
+wrote a line with a later clock while this one waited.</li>
+<li>The gateway configuration refuses a double quote inside a plain value, with
+its line, instead of reading a <code>#</code> after it as part of the value. A
+configuration that holds one, such as an upstream argument <code>--name=&quot;x&quot;</code>, no
+longer loads: quote the whole value and write the quote as <code>\&quot;</code>.</li>
+<li>The evidence-report example reads a state of any earlier minor version and
+requires only the members that version had, comparing versions as numbers.</li>
+</ul>
 <h2 id="0120---2026-10-16"><a href="https://github.com/guardana/control/releases/tag/v0.12.0">0.12.0</a> - 2026-10-16</h2>
 <p>The <code>experimental</code> enforcement API gets an <code>experimental</code> Python client,
 <code>guardana_control.enforce</code>. Once this release is published, the release
@@ -177,7 +190,7 @@ for the commit a <code>v*</code> tag names, and for nothing else: a branch push 
 none. A <code>main</code> the remote does not hold yet counts every commit. The hook
 has a negative control, <code>make pre-push-probe</code>, in <code>make quality</code>.</li>
 </ul>
-<h3 id="fixed">Fixed</h3>
+<h3 id="fixed-1">Fixed</h3>
 <ul>
 <li>The enforcement receiver removes a socket left at its path only when a
 connection to it is refused. A timeout, a full backlog on Linux or a
@@ -314,7 +327,7 @@ and links to the policies and runnable example.</li>
 controlling how they act. The 1.0 goal is marked <code>planned</code> beside what the
 alpha does, and the declared repository description says the same.</li>
 </ul>
-<h3 id="fixed-1">Fixed</h3>
+<h3 id="fixed-2">Fixed</h3>
 <ul>
 <li><code>scripts/github-settings-check.sh</code> and the bootstrap, run by macOS's bash
 3.2 on a loaded machine, could build a declared ruleset as nothing and
@@ -440,7 +453,7 @@ GitHub's <code>good first issue</code> and <code>help wanted</code>.</li>
 <li>CI's quality job may run 45 minutes; its fuzz smoke alone took 14 of the 30
 it had.</li>
 </ul>
-<h3 id="fixed-2">Fixed</h3>
+<h3 id="fixed-3">Fixed</h3>
 <ul>
 <li>A plane reading the pause file while a writer replaced it, as
 <code>guardana-control pause add</code> and <code>remove</code> and most editors do, turned the
@@ -552,7 +565,7 @@ finding's id, so supervising a run again writes their findings as new
 records and alerts again. Neither may stop a run; the six that may stay at
 version <code>1</code>, so a route signed before still holds.</li>
 </ul>
-<h3 id="fixed-3">Fixed</h3>
+<h3 id="fixed-4">Fixed</h3>
 <ul>
 <li>A finding that rests on many events, such as ten thousand denials, was past
 the log's line bound and refused the whole write. It now cites ten
@@ -646,7 +659,7 @@ the answer bound measures a slow client's progress in steps of that size.
 Linux grows a connection's buffer to megabytes, which cut off a client
 reading steadily but slowly.</li>
 </ul>
-<h3 id="fixed-4">Fixed</h3>
+<h3 id="fixed-5">Fixed</h3>
 <ul>
 <li>A plane whose policy floor is read back below the statement it confirmed,
 a copy restored from before its raise, counts the poll as refused under
@@ -781,7 +794,7 @@ closing record keeps the upstream's outcome and hash, with <code>withheld:</code
 its protocol status. <code>doctor</code> names the values too short to scan, and
 <code>/metrics</code> counts withheld answers.</li>
 </ul>
-<h3 id="fixed-5">Fixed</h3>
+<h3 id="fixed-6">Fixed</h3>
 <ul>
 <li>A call that needs an approval, under a run an operator opened, was blocked
 with <code>EVIDENCE_UNAVAILABLE</code> on a live plane instead of held: the run's expiry
@@ -851,7 +864,7 @@ release, which <code>make docs-gen</code> takes from this file. Documentation pa
 a menu above the content on narrow screens, and a wide table scrolls inside
 itself instead of breaking words.</li>
 </ul>
-<h3 id="fixed-6">Fixed</h3>
+<h3 id="fixed-7">Fixed</h3>
 <ul>
 <li>A stateful listener near its <code>listener.max_sessions</code> cap no longer refuses
 an open while the previous open's answer is still being written: a session
@@ -1076,7 +1089,7 @@ seconds, which <code>doctor</code> now prints.</p>
 <code>policy.fail_open_read</code> lets a read run while the policy is unavailable.</p>
 </li>
 </ul>
-<h3 id="fixed-7">Fixed</h3>
+<h3 id="fixed-8">Fixed</h3>
 <ul>
 <li><code>runs list</code> and <code>runs close</code> no longer make an empty directory a runs
 directory; they refuse it, and only <code>runs open</code> makes one. A temporary file
@@ -1170,7 +1183,7 @@ use, and a profile for the MCP project's reference filesystem server that
 classifies its 14 tools and holds every write for approval
 (<a href="/docs/guides/connect-an-existing-mcp-setup">guides/connect-an-existing-mcp-setup.md</a>).</li>
 </ul>
-<h3 id="fixed-8">Fixed</h3>
+<h3 id="fixed-9">Fixed</h3>
 <ul>
 <li>A <code>tools/call</code> the plane blocked or held for a tool that declares an output
 schema reached the agent as a schema error from any client that checks
@@ -1228,7 +1241,7 @@ counted by cause. A plane without <code>runs.dir</code> is unchanged.</li>
 <li>The release job waits for a maintainer to approve it in the <code>release</code>
 environment before it builds; <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a> has the step.</li>
 </ul>
-<h3 id="fixed-9">Fixed</h3>
+<h3 id="fixed-10">Fixed</h3>
 <ul>
 <li>A plane with a stdio listener wrote its start lines, the mode and the count
 of held calls lost to a restart among them, to standard output, which is the agent's protocol stream,
@@ -1281,7 +1294,7 @@ cannot read, and a trailer; <code>examples/evidence-report</code> rebuilds each 
 lifecycle from it without importing the project's internals
 (<a href="/docs/adr/0035-a-versioned-evidence-export-and-a-bounded-query">ADR-0035</a>).</li>
 </ul>
-<h3 id="fixed-10">Fixed</h3>
+<h3 id="fixed-11">Fixed</h3>
 <ul>
 <li>A <code>restrict_resources</code> obligation with a <code>prefix</code> let a resource id such
 as <code>/srv/data/../../etc/passwd</code>, <code>/srv/data/%2e%2e/etc</code> or
@@ -1360,7 +1373,7 @@ literal only, as <code>pdp.allow_plaintext</code> already did and as
 states. A plaintext endpoint on any other host, a name such as <code>localhost</code>
 included, is refused at start.</li>
 </ul>
-<h3 id="fixed-11">Fixed</h3>
+<h3 id="fixed-12">Fixed</h3>
 <ul>
 <li>A tool whose definition holds a fractional number, such as
 <code>&quot;default&quot;: 0.7</code>, is fingerprinted and can be classified, and a call

@@ -55,36 +55,48 @@ func AppendStop(ctx context.Context, dir string, route reaction.Route, s reactio
 	if err := reaction.CheckCurrent(s); err != nil {
 		return 0, fmt.Errorf("%w: %w", ErrRefused, err)
 	}
-	return appendLine(ctx, dir, route, now, fixed(s.Marshal()))
+	return appendLine(ctx, dir, route, at(now), fixed(s.Marshal()))
 }
 
 // AppendCovered appends c to the list in dir, judged against route at the
 // writer's clock now, and returns its line number.
 func AppendCovered(ctx context.Context, dir string, route reaction.Route, c reaction.Covered, now time.Time) (int64, error) {
-	return appendLine(ctx, dir, route, now, fixed(c.Marshal()))
+	return appendLine(ctx, dir, route, at(now), fixed(c.Marshal()))
 }
 
 // AppendLift appends l, signed elsewhere, to the list in dir, judged against
 // route at the writer's clock now, and returns its line number. The writer
 // holds no key: a lift the route's lift key did not sign is refused.
 func AppendLift(ctx context.Context, dir string, route reaction.Route, l reaction.LiftLine, now time.Time) (int64, error) {
-	return appendLine(ctx, dir, route, now, fixed(l.Marshal()))
+	return appendLine(ctx, dir, route, at(now), fixed(l.Marshal()))
 }
 
-// AppendFinding appends, for the finding s names, a covered line of that
-// finding when the list holds a stop of its run and tenant active at the
-// writer's clock now that lasts at least as long as s, and s itself when it
-// holds none: a stop with a longer lifetime is never cut short by covering
-// it under a shorter one. The choice is made under the lock, over the list as
-// it stands, so two writers never stop one run twice for one lifetime. It
-// refuses s as AppendStop does, and returns the line number and whether the
-// line is covered.
-func AppendFinding(ctx context.Context, dir string, route reaction.Route, s reaction.Stop, now time.Time) (int64, bool, error) {
-	if err := reaction.CheckCurrent(s); err != nil {
-		return 0, false, fmt.Errorf("%w: %w", ErrRefused, err)
-	}
+// AppendFinding appends, for the finding of the stop stopAt makes, a covered
+// line of that finding when the list holds a stop of its run and tenant
+// active at the writer's clock that lasts at least as long as the stop, and
+// the stop itself when it holds none: a stop with a longer lifetime is never
+// cut short by covering it under a shorter one. The clock is read once the
+// lock is held and stopAt makes the stop from that reading, so the wait for
+// the lock shortens no stop and a line another writer added during it is not
+// ahead of the reading. The choice is made under the lock, over the list as
+// it stands, so two writers never stop one run twice for one lifetime.
+// stopAt runs before the list is searched for the finding, so its refusal
+// stands even for a finding another writer named meanwhile. It refuses the
+// stop as AppendStop does, and returns the line number, the stop and whether
+// the line is covered.
+func AppendFinding(ctx context.Context, dir string, route reaction.Route, clock func() time.Time,
+	stopAt func(now time.Time) (reaction.Stop, error),
+) (int64, reaction.Stop, bool, error) {
+	var s reaction.Stop
 	covered := false
-	n, err := appendLine(ctx, dir, route, now, func(list reaction.List) ([]byte, error) {
+	n, err := appendLine(ctx, dir, route, clock, func(list reaction.List, now time.Time) ([]byte, error) {
+		var err error
+		if s, err = stopAt(now); err != nil {
+			return nil, err
+		}
+		if err := reaction.CheckCurrent(s); err != nil {
+			return nil, err
+		}
 		// Named before the bound is judged, so a finding another writer
 		// named reads as named even on a full list.
 		if list.Names(s.FindingID) {
@@ -99,27 +111,31 @@ func AppendFinding(ctx context.Context, dir string, route reaction.Route, s reac
 		return s.Marshal()
 	})
 	if err != nil {
-		return 0, false, err
+		return 0, reaction.Stop{}, false, err
 	}
-	return n, covered, nil
+	return n, s, covered, nil
 }
 
 // lineFor builds the line to append from the list as it stands under the
-// lock.
-type lineFor func(list reaction.List) ([]byte, error)
+// lock and the writer's clock read there.
+type lineFor func(list reaction.List, now time.Time) ([]byte, error)
 
-// fixed is a line that does not depend on the list.
+// fixed is a line that does not depend on the list or the clock.
 func fixed(line []byte, err error) lineFor {
-	return func(reaction.List) ([]byte, error) { return line, err }
+	return func(reaction.List, time.Time) ([]byte, error) { return line, err }
 }
 
-// appendLine appends the line build makes under the lock. The list is read
-// with every check a plane's read makes and judged, the line is built from
-// it, and the list with the line after its last complete line is judged
-// again, with no tolerance past now; only a list the judge accepts is
-// written. Bytes after the last newline are a line a writer did not finish,
-// and are cut before the append. A refused write changes nothing.
-func appendLine(ctx context.Context, dir string, route reaction.Route, now time.Time, build lineFor) (int64, error) {
+// at is a clock that reads now.
+func at(now time.Time) func() time.Time { return func() time.Time { return now } }
+
+// appendLine appends the line build makes under the lock. The clock is read
+// once the lock is held; the list is read with every check a plane's read
+// makes and judged, the line is built from it, and the list with the line
+// after its last complete line is judged again, with no tolerance past the
+// reading; only a list the judge accepts is written. Bytes after the last
+// newline are a line a writer did not finish, and are cut before the append.
+// A refused write changes nothing.
+func appendLine(ctx context.Context, dir string, route reaction.Route, clock func() time.Time, build lineFor) (int64, error) {
 	if err := stopping(route); err != nil {
 		return 0, err
 	}
@@ -133,7 +149,7 @@ func appendLine(ctx context.Context, dir string, route reaction.Route, now time.
 		if err != nil {
 			return err
 		}
-		n, err = appendTo(f, named, route, now, build)
+		n, err = appendTo(f, named, route, clock(), build)
 		return errors.Join(err, f.Close())
 	})
 	if err != nil {
@@ -160,7 +176,7 @@ func appendTo(f *os.File, named fs.FileInfo, route reaction.Route, now time.Time
 	if err != nil {
 		return 0, refusal(err)
 	}
-	line, err := build(before)
+	line, err := build(before, now)
 	if err != nil {
 		return 0, fmt.Errorf("%w: %w", ErrRefused, err)
 	}

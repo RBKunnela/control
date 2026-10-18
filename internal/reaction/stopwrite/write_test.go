@@ -273,7 +273,7 @@ func TestAppendFindingStopsARunOnce(t *testing.T) {
 			}
 			continue
 		}
-		n, covered, err := stopwrite.AppendFinding(bg, dir, r, stopOf(t, c.finding, c.run, clock0), clock0)
+		n, covered, err := appendFinding(bg, dir, r, stopOf(t, c.finding, c.run, clock0), clock0)
 		if err != nil || n != c.line || covered != c.covered {
 			t.Errorf("step %d, %s of %s: line %d, covered %v, %v; want line %d, covered %v", i, c.finding, c.run, n, covered, err, c.line, c.covered)
 		}
@@ -296,7 +296,7 @@ func TestAppendFindingNeverCutsALongerStopShort(t *testing.T) {
 		s       reaction.Stop
 		covered bool
 	}{{short, false}, {long, false}, {shorter, true}} {
-		if _, covered, err := stopwrite.AppendFinding(bg, dir, r, c.s, clock0); err != nil || covered != c.covered {
+		if _, covered, err := appendFinding(bg, dir, r, c.s, clock0); err != nil || covered != c.covered {
 			t.Errorf("finding %d, %s: covered %v, %v; want covered %v", i, c.s.FindingID, covered, err, c.covered)
 		}
 	}

@@ -81,6 +81,9 @@ func TestTheReaderRefusesWhatItDoesNotUnderstand(t *testing.T) {
 		{"a tag", "tenant_id: !!str acme\n", "tags and single quotes"},
 		{"a single-quoted value", "tenant_id: 'acme'\n", "tags and single quotes"},
 		{"a single-quoted sequence item", "origins:\n  - 'http://localhost:5173'\n", "tags and single quotes"},
+		{"a quote inside a plain value", "tenant_id: a\"b # c\n", "a double quote inside a plain value"},
+		{"a quote closed inside a plain value", "tenant_id: a\"b\" # c\n", "a double quote inside a plain value"},
+		{"a quote inside a plain sequence item", "origins:\n  - a\"b # c\n", "a double quote inside a plain value"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			_, err := parseYAML(c.document)
