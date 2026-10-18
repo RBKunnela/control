@@ -9,4 +9,6 @@ key's, and the directory the server may touch; sign the bundle, renew its
 freshness statement and make the `floors` directory, as
 [docs/guides/connect-an-existing-mcp-setup.md](../../docs/guides/connect-an-existing-mcp-setup.md)
 says. Another version of the server lists other definitions, and its tools
-are unclassified until you take their fingerprints again.
+are unclassified until you take their fingerprints again; `package-lock.json`
+pins this one. `client/` is the MCP client `make check-mcp-client` drives the
+plane with.

@@ -194,7 +194,7 @@ already holds a package doc and a test holds nothing that decides.</li>
 <tr>
 <td>Continuous integration</td>
 <td><code>implemented</code></td>
-<td><code>.github/workflows/</code>: <code>ci.yml</code> runs <code>make quality</code> on Linux for every push to <code>main</code> and every pull request; <code>security.yml</code> runs CodeQL and the vulnerability, advisory and secret scans, <code>pull-request.yml</code> checks a pull request's title and sign-offs, <code>workflow-lint.yml</code> checks the workflows, <code>scorecard.yml</code> scores the repository's supply chain, and <code>nightly.yml</code> runs the race tests with every processor busy on Linux and macOS each night (<code>scripts/test-race-loaded.sh</code>), opening an issue when a night is red</td>
+<td><code>.github/workflows/</code>: <code>ci.yml</code> runs <code>make quality</code> on Linux for every push to <code>main</code> and every pull request, and <code>make check-mcp-client</code> beside it (<a href="/docs/adr/0057-an-external-mcp-client-runs-the-guide-on-every-pull-request">ADR-0057</a>); <code>security.yml</code> runs CodeQL and the vulnerability, advisory and secret scans, <code>pull-request.yml</code> checks a pull request's title and sign-offs, <code>workflow-lint.yml</code> checks the workflows, <code>scorecard.yml</code> scores the repository's supply chain, and <code>nightly.yml</code> runs the race tests with every processor busy on Linux and macOS each night (<code>scripts/test-race-loaded.sh</code>), opening an issue when a night is red</td>
 </tr>
 <tr>
 <td>Wire contracts, frozen at <code>1.0</code></td>
@@ -324,7 +324,7 @@ already holds a package doc and a test holds nothing that decides.</li>
 <tr>
 <td>Connect an existing MCP setup: a guide and a profile for the reference filesystem server</td>
 <td><code>experimental</code></td>
-<td><code>examples/connect-a-filesystem-server/</code>, <a href="/docs/guides/connect-an-existing-mcp-setup">guides/connect-an-existing-mcp-setup.md</a>. The profile classifies the 14 tools of <code>@modelcontextprotocol/server-filesystem</code> 2026.8.31 under the approval-for-writes pack; it was tried end to end, over HTTP and over stdio, with the MCP inspector's command line as the client. A test loads it; its fingerprints match only that server version, which no test starts. The three-user trial <code>docs/backlog.md</code> asks of B06 has not run</td>
+<td><code>examples/connect-a-filesystem-server/</code>, <a href="/docs/guides/connect-an-existing-mcp-setup">guides/connect-an-existing-mcp-setup.md</a>. The profile classifies the 14 tools of <code>@modelcontextprotocol/server-filesystem</code> 2026.8.31 under the approval-for-writes pack; it was tried end to end, over HTTP and over stdio, with the MCP inspector's command line as the client. A test loads it; its fingerprints match only that server version. <code>make check-mcp-client</code>, the CI job &quot;External MCP client&quot; (<a href="/docs/adr/0057-an-external-mcp-client-runs-the-guide-on-every-pull-request">ADR-0057</a>), runs the guide with that version from the example's lockfile and the MCP project's Python SDK 1.30.0 over HTTP: 14 tools classified, a read, a write held, approved and run once, a reuse and a rejection refused, the report read; over stdio it runs in no test. The three-user trial <code>docs/backlog.md</code> asks of B06 has not run</td>
 </tr>
 <tr>
 <td>Runs an operator opens, each with its own durable flow state</td>

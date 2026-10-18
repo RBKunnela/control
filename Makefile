@@ -129,7 +129,8 @@ GO_SRC := . $(REPO_FILES); repo_files '*.go' | { grep -v '^api/gen/' || true; }
         proto proto-check proto-breaking docs-check docs-gen docs-impact tidy-check check-brand \
         release-snapshot check-demo-archive scan-binaries scan-binaries-probe \
         check-imports check-imports-probe check-modules-probe check-sizes check-actions \
-        check-shell pre-push-probe check-python check-python-probe quality-quick quality
+        check-shell pre-push-probe check-python check-python-probe check-mcp-client \
+        quality-quick quality
 
 bootstrap:
 	$(CD) scripts/bootstrap.sh
@@ -328,6 +329,12 @@ check-imports-probe:
 # refuses it, and unless each passes once the module is clean.
 check-modules-probe:
 	$(CD) scripts/check-modules-probe.sh
+
+# The guide for an existing MCP setup run end to end with an MCP client
+# outside the Go SDK and the reference filesystem server. Not part of quality:
+# it needs Node.js and the network, and CI runs it as its own job (ADR-0057).
+check-mcp-client:
+	$(CD) scripts/check-mcp-client.sh
 
 # The Python client: its tests on both pinned interpreters, the linter, the
 # type checker and a build of the wheel, each in an emptied environment. A

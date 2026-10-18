@@ -55,8 +55,8 @@ request.
 
 ## Commands
 
-- `make bootstrap` checks Go and the Go tools against `go.mod` and every
-  binary tool against `scripts/tool-versions.env`, installs a missing one
+- `make bootstrap` checks Go and the Go tools against `go.mod` and each
+  gate binary against `scripts/tool-versions.env`, installs a missing one
   where it can, and fails on a mismatch.
 - `make quality-quick` runs formatting, `go vet`, the tests and the import
   check. Use it while working.

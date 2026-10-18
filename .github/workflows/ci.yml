@@ -161,3 +161,57 @@ jobs:
         # main is the tree being checked, so the release tag is what to compare
         # to. The script refuses rather than passes when there is none.
         run: scripts/proto-breaking.sh
+
+  mcp-client:
+    name: External MCP client
+    # The guide for an existing MCP setup, run end to end with the MCP
+    # project's Python SDK against the reference filesystem server (ADR-0057).
+    # No condition and no path filter: a required check must report on every
+    # pull request.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          # This job runs third-party packages; it must not write the module
+          # and build cache the quality job restores.
+          cache: false
+
+      - name: Load pinned tool versions
+        # The same name allowlist as the quality job's, for the same reason.
+        run: |
+          pins="$(grep -E '^[A-Z][A-Z0-9_]*_VERSION=v?[0-9][A-Za-z0-9._+-]*$|^[A-Z][A-Z0-9_]*_SHA256=[0-9a-f]{64}$' \
+            scripts/tool-versions.env)"
+          for name in UV_VERSION UV_SHA256 CLIENT_PYTHON_VERSION NODE_VERSION NODE_SHA256; do
+            grep -q "^${name}=" <<<"${pins}" || { echo "scripts/tool-versions.env has no ${name} line in the pinned shape" >&2; exit 1; }
+          done
+          printf '%s\n' "${pins}" >>"$GITHUB_ENV"
+
+      - name: Install uv and Node.js
+        # Each download is checked against the digest pinned beside its version.
+        run: |
+          bin="${RUNNER_TEMP}/bin"
+          node="${RUNNER_TEMP}/node"
+          dl="${RUNNER_TEMP}/dl"
+          mkdir -p "${bin}" "${node}" "${dl}"
+          fetch() {
+            curl -fsSL --retry 3 --retry-connrefused -o "${dl}/$1" "$2"
+            printf '%s  %s\n' "$3" "${dl}/$1" | sha256sum -c -
+          }
+          fetch uv.tar.gz "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-x86_64-unknown-linux-gnu.tar.gz" "${UV_SHA256}"
+          fetch node.tar.xz "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz" "${NODE_SHA256}"
+          tar -xzf "${dl}/uv.tar.gz" -C "${bin}" --strip-components=1 uv-x86_64-unknown-linux-gnu/uv
+          tar -xJf "${dl}/node.tar.xz" -C "${node}" --strip-components=1
+          echo "${bin}" >>"$GITHUB_PATH"
+          echo "${node}/bin" >>"$GITHUB_PATH"
+          "${bin}/uv" python install --no-config --no-bin "${CLIENT_PYTHON_VERSION}"
+
+      - name: Run the guide with an external MCP client
+        run: env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS make check-mcp-client GO=go

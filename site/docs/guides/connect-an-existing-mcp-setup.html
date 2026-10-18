@@ -136,11 +136,13 @@ start the plane instead (step 7).</li>
 cp examples/starter-packs/approval-for-writes/policy.json ~/files-plane/
 go -C examples/evidence-report build -o ~/files-plane/bin/ .
 cd ~/files-plane
-npm install @modelcontextprotocol/server-filesystem@2026.8.31
+npm ci --ignore-scripts
 mkdir -m 700 spool approvals holds
 </code></pre>
-<p>The configuration starts <code>node_modules/.bin/mcp-server-filesystem</code>, a path it
-resolves against its own directory. The plane gives the server only <code>PATH</code>,
+<p><code>npm ci</code> installs the server at 2026.8.31 from the profile's lockfile, every
+package checked against its hash. The configuration starts
+<code>node_modules/.bin/mcp-server-filesystem</code>, a path it resolves against its own
+directory. The plane gives the server only <code>PATH</code>,
 <code>HOME</code>, <code>LANG</code>, <code>LC_ALL</code>, <code>TMPDIR</code>, <code>USER</code> and what <code>env</code> names.</p>
 <h3 id="2-make-the-keys-sign-a-policy-and-vouch-for-it">2. Make the keys, sign a policy and vouch for it</h3>
 <pre><code>guardana-control policy keygen --out keys
@@ -255,6 +257,8 @@ content, which a client would check against the tool's output schema.</li>
 <li>The read returns the file; the write is <code>pending</code> until approved and runs
 once after; the report lists both, the write <code>approved</code> and <code>completed</code>, and
 exits 0 once nothing is open.</li>
+<li><code>make check-mcp-client</code> runs these steps from a checkout with the MCP
+project's Python SDK as the client, and CI runs it on every pull request.</li>
 </ul>
 <h2 id="roll-back">Roll back</h2>
 <p>Point the client's entry back at the server and stop the plane. The spool,

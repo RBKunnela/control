@@ -1,4 +1,5 @@
-# Weekly updates for Go modules and for the actions the workflows use.
+# Weekly updates for Go modules, the actions the workflows use, and the
+# Python lockfile of the external MCP client check.
 #
 # Minor and patch updates are grouped, because a batch of routine version
 # bumps is one review rather than five.
@@ -40,6 +41,21 @@ updates:
       prefix: "chore(ci)"
     groups:
       ci:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: uv
+    directory: "/examples/connect-a-filesystem-server/client"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      python:
         patterns:
           - "*"
         update-types:

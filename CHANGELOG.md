@@ -11,6 +11,15 @@ verify one.
 
 ## [Unreleased]
 
+### Added
+
+- A CI job runs the guide for connecting an existing MCP setup end to end with
+  an MCP client outside the Go SDK, the MCP project's Python SDK, against the
+  reference filesystem server, on every pull request
+  ([ADR-0057](docs/adr/0057-an-external-mcp-client-runs-the-guide-on-every-pull-request.md)).
+  The example now pins the server and its packages in a lockfile, and the
+  guide installs it with `npm ci --ignore-scripts`.
+
 ### Fixed
 
 - `guardana-control react` reads the clock for a stop once it holds the lock

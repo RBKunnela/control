@@ -1,0 +1,15 @@
+[project]
+name = "connect-a-filesystem-server-client"
+version = "0"
+description = "An MCP client outside the Go SDK, driving a plane in front of the reference filesystem server."
+requires-python = ">=3.11"
+dependencies = ["mcp==1.30.0"]
+
+[tool.uv]
+required-version = "==0.12.9"
+package = false
+
+# This project is its own workspace root, so uv reads the lock beside it and
+# never one that a project file in a directory above would name.
+[tool.uv.workspace]
+members = []

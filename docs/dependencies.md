@@ -2,7 +2,7 @@
 title: Dependencies
 summary: Every direct dependency and pinned tool of the module, why the standard library will not do, its licence and whether it sits in the request path.
 type: project
-covers: [go.mod, go.sum, scripts/tool-versions.env, clients/python/pyproject.toml, clients/python/uv.lock, clients/python/build-constraints.txt]
+covers: [go.mod, go.sum, scripts/tool-versions.env, clients/python/pyproject.toml, clients/python/uv.lock, clients/python/build-constraints.txt, examples/connect-a-filesystem-server/package.json, examples/connect-a-filesystem-server/package-lock.json, examples/connect-a-filesystem-server/client/pyproject.toml, examples/connect-a-filesystem-server/client/uv.lock]
 ---
 
 # Dependencies
@@ -212,6 +212,34 @@ Its checks and its build use these, none of them in a request path:
   `clients/python/build-constraints.txt`. A wheel installs without it.
 - CPython (PSF licence), the two versions named in
   `scripts/tool-versions.env`, as uv installs them.
+
+## The external MCP client check
+
+`make check-mcp-client` runs the guide for an existing MCP setup end to end
+with a client this module does not contain. Nothing here is in a request path,
+and none of it is in the release archives.
+
+- Node.js 24.19.0 (MIT), the long-term-support line, runs the reference
+  filesystem server; CI downloads it by version and digest from
+  `scripts/tool-versions.env`, and on a developer machine the check takes the
+  `node` on PATH at that version.
+  Bumped by hand.
+- `@modelcontextprotocol/server-filesystem` 2026.8.31 (MIT and Apache-2.0: the
+  upstream repository is moving from the first to the second, and the package
+  ships no licence file), the server the profile's fingerprints were taken
+  from. It and its 103 transitive packages are pinned with integrity hashes in
+  `examples/connect-a-filesystem-server/package-lock.json` and installed with
+  `npm ci --ignore-scripts`. The package resumed semantic versioning at 1.0.0
+  and marks its date-based versions deprecated; 1.0.0's 14 tool definitions
+  all fingerprint differently, so moving to it is a classification of the
+  profile anew, not a bump. Dependabot cannot propose a version for it, since
+  the 1.x line sorts below 2026.8.31; the advisory scan over the lockfile is
+  its alarm, and Dependabot's security updates cover the packages below it.
+- `mcp` 1.30.0 (MIT), the MCP project's Python SDK, is the client. Its 1.x line
+  speaks protocol 2025-11-25, the newest the gateway serves. It and its
+  dependencies are locked with hashes in
+  `examples/connect-a-filesystem-server/client/uv.lock`. Maintained by the MCP
+  project, with frequent releases.
 
 ## The website
 

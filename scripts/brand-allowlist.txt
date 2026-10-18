@@ -60,6 +60,9 @@ site/docs/
 # The demo archive's check names the archive and the binaries as .goreleaser.yaml
 # builds them; the rename rewrites both files in one pass.
 scripts/check-demo-archive.sh
+# The external MCP client check runs both binaries by name and reads the meta
+# namespace the plane writes.
+scripts/check-mcp-client.sh
 
 # The Python client. Its project file, lock and README spell the slug and the
 # name, and the generated field table the dotted proto package; the rename

@@ -2,7 +2,7 @@
 title: Connect an existing MCP setup
 summary: Put the plane between an MCP client and a server you already use, classify the server's tools, hold its writes for approval, and end in a local report.
 type: how-to
-covers: [examples/connect-a-filesystem-server/**, cmd/guardana-gateway/profile_test.go, adapters/mcp/answer.go]
+covers: [examples/connect-a-filesystem-server/**, cmd/guardana-gateway/profile_test.go, adapters/mcp/answer.go, scripts/check-mcp-client.sh]
 ---
 
 # Connect an existing MCP setup
@@ -41,12 +41,14 @@ cp -R examples/connect-a-filesystem-server ~/files-plane
 cp examples/starter-packs/approval-for-writes/policy.json ~/files-plane/
 go -C examples/evidence-report build -o ~/files-plane/bin/ .
 cd ~/files-plane
-npm install @modelcontextprotocol/server-filesystem@2026.8.31
+npm ci --ignore-scripts
 mkdir -m 700 spool approvals holds
 ```
 
-The configuration starts `node_modules/.bin/mcp-server-filesystem`, a path it
-resolves against its own directory. The plane gives the server only `PATH`,
+`npm ci` installs the server at 2026.8.31 from the profile's lockfile, every
+package checked against its hash. The configuration starts
+`node_modules/.bin/mcp-server-filesystem`, a path it resolves against its own
+directory. The plane gives the server only `PATH`,
 `HOME`, `LANG`, `LC_ALL`, `TMPDIR`, `USER` and what `env` names.
 
 ### 2. Make the keys, sign a policy and vouch for it
@@ -200,6 +202,8 @@ the approval ended, and how the call ended
 - The read returns the file; the write is `pending` until approved and runs
   once after; the report lists both, the write `approved` and `completed`, and
   exits 0 once nothing is open.
+- `make check-mcp-client` runs these steps from a checkout with the MCP
+  project's Python SDK as the client, and CI runs it on every pull request.
 
 ## Roll back
 
