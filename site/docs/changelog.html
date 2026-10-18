@@ -128,6 +128,13 @@ configuration that holds one, such as an upstream argument <code>--name=&quot;x&
 longer loads: quote the whole value and write the quote as <code>\&quot;</code>.</li>
 <li>The evidence-report example reads a state of any earlier minor version and
 requires only the members that version had, comparing versions as numbers.</li>
+<li>The enforcement receiver holds a lock on <code>&lt;socket&gt;.lock</code> beside its socket
+for as long as it listens, and a second plane on the same socket is refused
+while the lock is held. On macOS a live receiver with a full backlog refuses
+connections, so a second plane could remove its socket and take its clients
+(<a href="/docs/adr/0054-the-enforcement-receiver-holds-a-lock-beside-its-socket">ADR-0054</a>).
+Built for Solaris, illumos or AIX, which have no <code>flock</code>, the receiver now
+refuses to listen, and <code>doctor</code> checks the lock file as <code>run</code> would.</li>
 </ul>
 <h2 id="0120---2026-10-16"><a href="https://github.com/guardana/control/releases/tag/v0.12.0">0.12.0</a> - 2026-10-16</h2>
 <p>The <code>experimental</code> enforcement API gets an <code>experimental</code> Python client,

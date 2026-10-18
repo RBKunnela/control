@@ -10,7 +10,9 @@ Builds on [ADR-0013](0013-mcp-interception-approvals-and-modes.md),
 [ADR-0039](0039-many-channels-into-one-core.md). It is the record
 [ADR-0026](0026-first-value-and-external-extension-paths.md) asks for before an
 enforcement API is built. Amends ADR-0013's adapter capabilities and
-[ADR-0041](0041-coverage-per-declared-path.md)'s coverage table.
+[ADR-0041](0041-coverage-per-declared-path.md)'s coverage table. Amended by
+[ADR-0054](0054-the-enforcement-receiver-holds-a-lock-beside-its-socket.md):
+the receiver holds a lock beside its socket for as long as it listens.
 
 ## Context
 

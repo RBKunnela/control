@@ -54,7 +54,10 @@ tools:
 ```
 
 The socket's directory must be yours with no permission for group or others,
-and its path at most 103 bytes. `execution_lifetime` is how long a client may
+and its path at most 103 bytes. A running plane holds a lock on
+`enforce.sock.lock` beside the socket, so a second plane on the same socket is
+refused. The file stays after the plane stops; never remove it while a plane
+runs. `execution_lifetime` is how long a client may
 take between an `EXECUTE` and its report. `listener.max_open_per_run`, 16 by
 default, bounds the executions one run holds open and stays below
 `approvals.max_open`. The table takes the keys an MCP override takes but the

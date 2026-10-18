@@ -23,20 +23,26 @@ var dialSocket = func(path string) (net.Conn, error) {
 }
 
 // Listen binds the configured socket with mode 0600 in a directory this
-// process owns and nobody else may enter, and checks both once bound. A stale
-// socket of this user that refuses a connection is replaced; anything else at
-// the path is refused with ErrSocketInUse, a directory that is not the
-// plane's alone with ErrSocketDir, and a bound socket that is not this
-// process's with mode 0600 with ErrSocketMode.
+// process owns and nobody else may enter, and checks both once bound. It
+// first takes the lock beside the socket, which the listener holds until it
+// is closed; a lock another receiver holds is refused with ErrSocketInUse. A
+// stale socket of this user that refuses a connection is then replaced;
+// anything else at the path is refused with ErrSocketInUse, a directory that
+// is not the plane's alone with ErrSocketDir, and a bound socket that is not
+// this process's with mode 0600 with ErrSocketMode.
 func (a *Adapter) Listen() (net.Listener, error) {
 	return a.listen(nil)
 }
 
-// CheckSocketDir refuses, as Listen does and binding nothing, a socket
-// directory that is not a directory this process's user owns with no
-// permission for group or others.
+// CheckSocketDir refuses, as Listen does and binding and locking nothing, a
+// socket directory that is not a directory this process's user owns with no
+// permission for group or others, and a lock file beside the socket that
+// Listen would refuse to lock.
 func (a *Adapter) CheckSocketDir() error {
-	return ownDir(filepath.Dir(a.cfg.Socket))
+	if err := ownDir(filepath.Dir(a.cfg.Socket)); err != nil {
+		return err
+	}
+	return checkLock(a.cfg.Socket)
 }
 
 // listen is Listen with chmodded, when set, run between the chmod and the
@@ -47,12 +53,16 @@ func (a *Adapter) listen(chmodded func()) (net.Listener, error) {
 	if err := ownDir(dir); err != nil {
 		return nil, err
 	}
-	if err := clearStale(path); err != nil {
+	release, err := lockSocket(path)
+	if err != nil {
 		return nil, err
+	}
+	if err := clearStale(path); err != nil {
+		return nil, errors.Join(err, release())
 	}
 	ln, err := (&net.ListenConfig{}).Listen(context.Background(), "unix", path)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrSocketInUse, err)
+		return nil, errors.Join(fmt.Errorf("%w: %w", ErrSocketInUse, err), release())
 	}
 	// Until the chmod the socket has the umask's mode; nobody else can reach
 	// it meanwhile, because nobody else may enter its directory.
@@ -67,9 +77,29 @@ func (a *Adapter) listen(chmodded func()) (net.Listener, error) {
 		err = ownDir(dir)
 	}
 	if err != nil {
-		return nil, errors.Join(err, ln.Close())
+		return nil, errors.Join(err, ln.Close(), release())
 	}
-	return ln, nil
+	return &lockedListener{Listener: ln, release: release}, nil
+}
+
+// lockedListener releases the socket's lock once the listener is closed.
+type lockedListener struct {
+	net.Listener
+	release func() error
+}
+
+func (l *lockedListener) Close() error {
+	return errors.Join(l.Listener.Close(), l.release())
+}
+
+// unixSocket reports whether ln listens on a Unix socket: one Listen
+// returned, or one bound elsewhere.
+func unixSocket(ln net.Listener) bool {
+	if l, ok := ln.(*lockedListener); ok {
+		ln = l.Listener
+	}
+	_, ok := ln.(*net.UnixListener)
+	return ok
 }
 
 // ownDir refuses anything but a directory, not a link to one, that this
@@ -98,11 +128,12 @@ func ownSocket(path string) error {
 }
 
 // clearStale removes a socket of this user that refuses a connection, which a
-// plane that ended without closing its listener leaves behind. A timeout, a
-// full backlog on Linux, a permission error or exhausted resources can come
-// from a live receiver, so any other dial error leaves the path and refuses
-// with ErrSocketInUse, as does anything else at the path. On macOS a live
-// receiver whose backlog is full refuses too, so there a refusal is no proof.
+// plane that ended without closing its listener leaves behind. It runs under
+// the socket's lock, which proves no receiver that takes it is alive; the
+// dial still guards against one that holds no lock. A timeout, a full backlog
+// on Linux, a permission error or exhausted resources can come from a live
+// receiver, so any other dial error leaves the path and refuses with
+// ErrSocketInUse, as does anything else at the path.
 func clearStale(path string) error {
 	info, err := os.Lstat(path)
 	if errors.Is(err, fs.ErrNotExist) {

@@ -150,7 +150,7 @@ func (a *Adapter) started() Pipeline {
 // nothing, a listener that is not a Unix socket's: the socket's owner and
 // mode are what limit who can present a run token.
 func (a *Adapter) Serve(ctx context.Context, ln net.Listener) error {
-	if _, ok := ln.(*net.UnixListener); !ok {
+	if !unixSocket(ln) {
 		return ErrListener
 	}
 	srv := &http.Server{

@@ -117,7 +117,9 @@ Date: 2026-10-10</p>
 <a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a>. It is the record
 <a href="/docs/adr/0026-first-value-and-external-extension-paths">ADR-0026</a> asks for before an
 enforcement API is built. Amends ADR-0013's adapter capabilities and
-<a href="/docs/adr/0041-coverage-per-declared-path">ADR-0041</a>'s coverage table.</p>
+<a href="/docs/adr/0041-coverage-per-declared-path">ADR-0041</a>'s coverage table. Amended by
+<a href="/docs/adr/0054-the-enforcement-receiver-holds-a-lock-beside-its-socket">ADR-0054</a>:
+the receiver holds a lock beside its socket for as long as it listens.</p>
 <h2 id="context">Context</h2>
 <p>The pipeline in <code>internal/gateway</code> is protocol-neutral. <code>Admit</code> decides an
 envelope with its argument bytes and answers with a disposition: block, hold

@@ -51,7 +51,9 @@ const (
 	// owns with no access for group or others.
 	ErrSocketDir Error = "enforce: the socket's directory is not the plane's own"
 	// ErrSocketInUse is a path something other than a stale socket of this
-	// user holds, or a socket something still answers on.
+	// user holds, a socket something still answers on, a lock beside the
+	// socket another receiver holds, or a lock file that is not this user's
+	// one-named file with mode 0600.
 	ErrSocketInUse Error = "enforce: the socket path is in use"
 	// ErrSocketMode is a socket that is not this process's with mode 0600
 	// once bound.

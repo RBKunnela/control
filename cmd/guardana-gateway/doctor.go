@@ -343,7 +343,8 @@ func (d *examination) seams(context.Context) (string, string, string) {
 // reads its tools into the manifest and says which of them the operator's
 // overrides classify. An unclassified tool is blocked in every mode but
 // OBSERVE, so outside OBSERVE it is not a pass. An enforce_api plane has no
-// upstream; there it checks the socket's directory as run's Listen does.
+// upstream; there it checks the socket's directory and lock file as run's
+// Listen does.
 func (d *examination) upstreams(ctx context.Context) (string, string, string) {
 	if d.plane == nil {
 		return verdictUnknown, "upstreams", "the plane was not built, so nothing connected"
