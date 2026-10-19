@@ -58,6 +58,7 @@
   <url><loc>https://control.guardana.dev/docs/adr/0053-a-python-client-of-the-enforcement-api-in-this-repository</loc></url>
   <url><loc>https://control.guardana.dev/docs/adr/0054-the-enforcement-receiver-holds-a-lock-beside-its-socket</loc></url>
   <url><loc>https://control.guardana.dev/docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands</loc></url>
+  <url><loc>https://control.guardana.dev/docs/adr/0056-a-coding-runtimes-hooks-reach-the-plane-through-one-bridge</loc></url>
   <url><loc>https://control.guardana.dev/docs/adr/0057-an-external-mcp-client-runs-the-guide-on-every-pull-request</loc></url>
   <url><loc>https://control.guardana.dev/docs/backlog</loc></url>
   <url><loc>https://control.guardana.dev/docs/changelog</loc></url>
@@ -75,6 +76,7 @@
   <url><loc>https://control.guardana.dev/docs/contracts</loc></url>
   <url><loc>https://control.guardana.dev/docs/dependencies</loc></url>
   <url><loc>https://control.guardana.dev/docs/extending/adapters</loc></url>
+  <url><loc>https://control.guardana.dev/docs/extending/runtime-profiles</loc></url>
   <url><loc>https://control.guardana.dev/docs/get-started/try-the-demo</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/connect-an-existing-mcp-setup</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/decide-a-tool-of-your-own</loc></url>
@@ -88,6 +90,7 @@
   <url><loc>https://control.guardana.dev/docs/guides/watch-a-plane-without-a-collector</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/write-and-test-a-policy</loc></url>
   <url><loc>https://control.guardana.dev/docs/reference/benchmarks</loc></url>
+  <url><loc>https://control.guardana.dev/docs/reference/claude-code-hooks</loc></url>
   <url><loc>https://control.guardana.dev/docs/reference/cli</loc></url>
   <url><loc>https://control.guardana.dev/docs/reference/configuration</loc></url>
   <url><loc>https://control.guardana.dev/docs/reference/console</loc></url>

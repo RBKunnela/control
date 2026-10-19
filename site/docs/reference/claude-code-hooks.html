@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Claude Code hooks · Guardana Control</title>
+<meta name="description" content="What the claude-code hook profile covers, the hook settings it needs, what the bridge reads and answers per event, and the gaps it leaves."/>
+<link rel="canonical" href="https://control.guardana.dev/docs/reference/claude-code-hooks"/>
+<meta name="theme-color" content="#0B8F80"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="stylesheet" href="/assets/brand/v1/tokens.css"/>
+<link rel="stylesheet" href="/assets/control/control.css"/>
+<link rel="stylesheet" href="/assets/control/docs.css"/>
+</head>
+<body class="doc">
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap bar">
+  <a class="mark" href="/"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 4.5 5.6v6.1c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V5.6z"/><path d="M10.2 8.4v7.8M10.2 12.3h5.3"/></svg><span>Guardana <b>Control</b></span></a>
+  <a class="vlink" href="https://github.com/guardana/control/releases/tag/v0.12.0"><span class="ver">v0.12.0</span></a>
+  <nav aria-label="Primary">
+    <a href="/docs/">Docs</a>
+    <a href="/docs/status">Status</a>
+    <a class="hide-s" href="/docs/roadmap">Roadmap</a>
+    <a class="gh" href="https://github.com/guardana/control" aria-label="GitHub"><svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span class="hide-s">GitHub</span></a>
+  </nav>
+</div></header>
+<div class="wrap shell">
+<details class="mnav">
+<summary>Menu · <b>Claude Code hooks</b></summary>
+<nav class="inner" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks" aria-current="page">Claude Code hooks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</details>
+<main id="main" class="prose">
+<h1 id="claude-code-hooks">Claude Code hooks</h1>
+<p>The <code>claude-code</code> profile lets Claude Code's tool hooks send each tool call
+to a plane's enforcement API through <code>guardana-control hook</code>. How a profile
+works is on <a href="/docs/extending/runtime-profiles">Adding a coding runtime's hooks</a>;
+which profiles exist and how far each is qualified is on
+<a href="/docs/status">status.md</a>.</p>
+<p>This page is maintained in this repository. It is not affiliated with or
+endorsed by the publisher of Claude Code.</p>
+<h2 id="what-the-profile-covers">What the profile covers</h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Label</td>
+<td>decided, with failure gaps</td>
+</tr>
+<tr>
+<td>Qualified on the real runtime</td>
+<td>no: no version has been run against it yet</td>
+</tr>
+<tr>
+<td>Events</td>
+<td><code>PreToolUse</code>, <code>PostToolUse</code>, <code>PostToolUseFailure</code></td>
+</tr>
+<tr>
+<td>Fail-closed setting</td>
+<td><code>onFailure: &quot;block&quot;</code>, from Claude Code 2.1.295</td>
+</tr>
+<tr>
+<td>Hook timeout the profile assumes</td>
+<td>30 seconds</td>
+</tr>
+<tr>
+<td>Largest event read</td>
+<td>16 MiB</td>
+</tr>
+<tr>
+<td>Profile and fixtures</td>
+<td><code>internal/hookbridge/profiles/claude-code/</code></td>
+</tr>
+</tbody>
+</table>
+<p>The fixtures are written from Claude Code's published hook documentation, not
+recorded from a release, and every CI run passes them through the bridge
+against a plane. Until a qualification against a pinned release is recorded
+beside the profile, nothing on this page has been observed on the runtime
+itself, and the label stays &quot;decided, with failure gaps&quot;. It cannot become
+&quot;decided, not enforced&quot; until the fail-closed setting is in managed settings,
+the hook command is an absolute path to a binary the agent cannot replace and
+names this built-in profile, and the runtime's shell sandbox keeps the agent
+out of the plane's directories; it is never &quot;enforced&quot;, because Claude Code,
+not the plane, runs the call.</p>
+<h2 id="settings">Settings</h2>
+<pre><code class="language-json">{
+  &#34;hooks&#34;: {
+    &#34;PreToolUse&#34;: [
+      {
+        &#34;matcher&#34;: &#34;^(?!mcp__)&#34;,
+        &#34;hooks&#34;: [
+          {
+            &#34;type&#34;: &#34;command&#34;,
+            &#34;command&#34;: &#34;/path/to/guardana-control hook --profile claude-code --socket /path/to/enforce.sock --state-dir /path/to/hook-state&#34;,
+            &#34;timeout&#34;: 30,
+            &#34;onFailure&#34;: &#34;block&#34;
+          }
+        ]
+      }
+    ],
+    &#34;PostToolUse&#34;: [
+      {
+        &#34;matcher&#34;: &#34;^(?!mcp__)&#34;,
+        &#34;hooks&#34;: [
+          {
+            &#34;type&#34;: &#34;command&#34;,
+            &#34;command&#34;: &#34;/path/to/guardana-control hook --profile claude-code --socket /path/to/enforce.sock --state-dir /path/to/hook-state&#34;,
+            &#34;timeout&#34;: 30
+          }
+        ]
+      }
+    ],
+    &#34;PostToolUseFailure&#34;: [
+      {
+        &#34;matcher&#34;: &#34;^(?!mcp__)&#34;,
+        &#34;hooks&#34;: [
+          {
+            &#34;type&#34;: &#34;command&#34;,
+            &#34;command&#34;: &#34;/path/to/guardana-control hook --profile claude-code --socket /path/to/enforce.sock --state-dir /path/to/hook-state&#34;,
+            &#34;timeout&#34;: 30
+          }
+        ]
+      }
+    ]
+  }
+}
+</code></pre>
+<ul>
+<li>
+<p><code>timeout</code> is 30 because the profile says so: the bridge gives up on each
+request to the plane after 12 seconds and on the whole hook after 27,
+inside the runtime's limit.</p>
+</li>
+<li>
+<p><code>onFailure: &quot;block&quot;</code> sits on <code>PreToolUse</code> only. Without it, a hook that times
+out, crashes or cannot start lets the call run. On the two completion
+events the call has already run, so there is nothing left to block.</p>
+</li>
+<li>
+<p>The matcher leaves out tools named <code>mcp__&lt;server&gt;__&lt;tool&gt;</code>, which reach the
+plane through the gateway. A matcher with characters other than letters,
+digits, <code>_</code>, <code>-</code>, spaces, <code>,</code> and <code>|</code> is a JavaScript regular expression;
+Claude Code's documentation does not show a negative lookahead, so the
+qualification has to confirm that this one matches every other tool. An MCP
+server that is not behind the gateway is then seen by neither.</p>
+</li>
+<li>
+<p>Put these hooks in managed settings. A user can turn off any hook outside
+them with <code>disableAllHooks</code> or by editing their own settings files, and
+<code>allowManagedHooksOnly</code> keeps user, project and plugin hooks out.</p>
+</li>
+<li>
+<p>The command is an absolute path to a binary the agent cannot replace, and
+names the built-in profile: a binary found through <code>PATH</code>, or a
+<code>--profile-file</code> the agent can write, is one the agent can swap for one
+that allows every call.</p>
+</li>
+<li>
+<p><code>--state-dir</code> must exist and belong to the account the hook runs as, with
+no access for group or others; there is no default.</p>
+</li>
+<li>
+<p>The run token is read from <code>GUARDANA_CONTROL_RUN_TOKEN</code> in the hook's
+environment, never from a flag or the event. Start Claude Code with it set.</p>
+</li>
+<li>
+<p>The plane's <code>tools</code> table must name every tool these hooks send, each with
+its effect class; a tool it does not name is refused, and the call blocked,
+except on a plane in <code>OBSERVE</code>. For example:</p>
+<pre><code class="language-yaml">tools:
+  - name: Bash
+    effect: EXECUTE
+    provider: runtime
+    resource_type: command
+  - name: Write
+    effect: WRITE
+    provider: runtime
+    resource_type: file
+    resource_from: /file_path
+  - name: Edit
+    effect: WRITE
+    provider: runtime
+    resource_type: file
+    resource_from: /file_path
+</code></pre>
+</li>
+</ul>
+<h2 id="per-event">Per event</h2>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Phase</th>
+<th>What the bridge reads</th>
+<th>Reply</th>
+<th>When the hook fails</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PreToolUse</code></td>
+<td>admit</td>
+<td><code>hook_event_name</code>, <code>tool_name</code>, <code>session_id</code>, <code>tool_use_id</code>, and <code>tool_input</code> as the exact text the event wrote</td>
+<td>exit 0 and nothing on standard output when the plane answers <code>EXECUTE</code> of exactly that text; otherwise exit 2 and one line on standard error</td>
+<td>with <code>onFailure: &quot;block&quot;</code> the call is blocked; without it the call runs</td>
+</tr>
+<tr>
+<td><code>PostToolUse</code></td>
+<td>complete</td>
+<td>the same, and <code>tool_input</code> as the input that ran; <code>tool_response</code> is read past and kept nowhere</td>
+<td>exit 0 once the plane recorded the completion, otherwise the profile's problem status, 1; a refused event exits 2</td>
+<td>the call ran; the plane's sweep closes its handle as abandoned, outcome unknown</td>
+</tr>
+<tr>
+<td><code>PostToolUseFailure</code></td>
+<td>complete-failure</td>
+<td>the same, and <code>is_interrupt</code>: <code>false</code> reports a failure, <code>true</code> or absent reports an unknown outcome</td>
+<td>as <code>PostToolUse</code></td>
+<td>as <code>PostToolUse</code></td>
+</tr>
+</tbody>
+</table>
+<p>An event that is over 16 MiB, is not one JSON object of valid UTF-8, names a
+member twice, lacks the tool name, the call id or the session id, carries a
+<code>tool_input</code> that is not an object, or is a <code>PreToolUse</code> without one is
+refused before anything is sent, with the profile's block status, 2, and so
+is any event when the hook has no run token. A member spelled in another case
+is not read, so it counts as absent.</p>
+<p>The plane compares the completion's <code>tool_input</code> with the authorized one by
+<code>digest_v1</code>: key order, white space, string escapes and a number written
+<code>120000.0</code> for <code>120000</code> do not make it another call; a member added, removed
+or set to <code>null</code>, a number written as a string, or array items in another
+order do, and the plane records <code>EXECUTED_ARGS_MISMATCH</code> and halts the run's
+material calls. A decision that wants the input rewritten, or attaches an
+obligation, is denied, because a hook cannot hand Claude Code the authorized
+bytes. A call held for approval is denied with a line naming the approval;
+once it is approved, the agent's identical retry is a new admit that resumes
+the hold. The bridge's tests show that against a plane; neither the resume
+nor the completion that follows it has been seen on Claude Code. A
+completion's start and end, as the plane records them, are both the moment
+the completion hook ran; the event's <code>duration_ms</code> is not read. A tool input over 64 KiB, an integer beyond 2^53-1 or
+more than 32 nested containers is refused by the plane and denied.</p>
+<h2 id="gaps-and-bypasses">Gaps and bypasses</h2>
+<p>None of these is closed by the profile.</p>
+<ul>
+<li>A file referenced with <code>@</code> enters the context with no tool call.</li>
+<li><code>EndConversation</code> starts no hook.</li>
+<li>A process a shell command starts, or a shell command that writes a file, is
+not seen beyond the shell call itself.</li>
+<li>A hook with <code>async: true</code> cannot decide.</li>
+<li>A mod handling <code>tool.check</code> can approve a call this hook blocked, unless
+the hook is in managed settings.</li>
+<li><code>--bare</code> skips the discovery of hooks, and <code>disableAllHooks</code> turns off every
+hook that is not managed.</li>
+<li>A cancelled running tool starts no completion hook; the plane's sweep
+closes its handle as abandoned.</li>
+<li>Another hook can replace the input after the bridge let the call run. Only
+the completion shows it, as <code>EXECUTED_ARGS_MISMATCH</code>, after the call ran.</li>
+<li>When Claude Code refuses a call after the bridge let it run, for
+instance at its own permission prompt, no completion hook follows. The
+handle stays open until <code>listener.execution_lifetime</code> ends and holds one of
+the run's open executions, 16 by default, meanwhile; once all are held, the
+plane denies every call of the run until they expire.</li>
+<li>A completion that carries no <code>tool_input</code> sends nothing; the sweep closes
+the call as abandoned, its outcome unknown.</li>
+<li>The hook runs as the agent's account. Unless Claude Code's shell sandbox
+denies the agent the plane's directories (approvals, the bridge's state
+directory, the socket's directory), the agent can read the run token,
+reach the socket and the state directory itself, and approve its own held
+calls. The run token in Claude Code's environment can also reach the
+agent's shell commands.</li>
+</ul>
+<p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/reference/claude-code-hooks.md">docs/reference/claude-code-hooks.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.12.0, and <a href="https://github.com/guardana/control/tree/v0.12.0/docs">its documentation</a> is in its tag.</p>
+</main>
+<nav class="side" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks" aria-current="page">Claude Code hooks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</div>
+<footer class="foot"><div class="wrap row">
+  <p>Guardana Control · Apache-2.0</p>
+  <ul>
+    <li><a href="https://github.com/guardana/control">GitHub</a></li>
+    <li><a href="https://github.com/guardana/control/releases">Releases</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/SECURITY.md">Security</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/LICENSE">Licence Apache-2.0</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/TRADEMARKS.md">Trademarks</a></li>
+  </ul>
+</div></footer>
+</body>
+</html>

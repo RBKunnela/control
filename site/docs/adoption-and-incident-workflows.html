@@ -60,6 +60,7 @@
 </ul>
 <h2>Reference</h2><ul>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
 <li><a href="/docs/reference/cli">Command line</a></li>
 <li><a href="/docs/reference/configuration">Configuration</a></li>
 <li><a href="/docs/reference/console">The approvals page</a></li>
@@ -94,6 +95,7 @@
 </ul>
 <h2>Extending</h2><ul>
 <li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
 </ul>
 <h2>Project</h2><ul>
 <li><a href="/docs/adoption-and-incident-workflows" aria-current="page">Adoption and incident workflows</a></li>
@@ -159,8 +161,10 @@ plugins are prerequisites. Pin the runtime and hook protocol versions and
 publish a table for each event: proposed or already completed, enforcement
 or observation, identity source, rewritten-argument support, approval/resume
 support, deadlines, failure behavior and known bypasses.</p>
-<p>A pre-action hook is an enforcement point only where conformance proves that
-the runtime waits for admission and sends exactly the authorized bytes.
+<p>A pre-action hook decides a call and is never an enforcement point: the
+runtime, not the plane, runs it, and no hook hands over bytes, so what it can
+show is that the value that ran is the one authorized
+(<a href="/docs/adr/0056-a-coding-runtimes-hooks-reach-the-plane-through-one-bridge">ADR-0056</a>).
 Calling an evaluation endpoint and discarding its answer is not enforcement.
 If a hook cannot apply a required obligation, it refuses the action in an
 enforcing mode. If it cannot resume an approval safely, it declares that
@@ -339,6 +343,7 @@ capture or a model to default authorization.</p>
 </ul>
 <h2>Reference</h2><ul>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
 <li><a href="/docs/reference/cli">Command line</a></li>
 <li><a href="/docs/reference/configuration">Configuration</a></li>
 <li><a href="/docs/reference/console">The approvals page</a></li>
@@ -373,6 +378,7 @@ capture or a model to default authorization.</p>
 </ul>
 <h2>Extending</h2><ul>
 <li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
 </ul>
 <h2>Project</h2><ul>
 <li><a href="/docs/adoption-and-incident-workflows" aria-current="page">Adoption and incident workflows</a></li>

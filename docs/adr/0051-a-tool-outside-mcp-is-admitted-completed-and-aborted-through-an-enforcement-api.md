@@ -14,6 +14,9 @@ enforcement API is built. Amends ADR-0013's adapter capabilities and
 [ADR-0054](0054-the-enforcement-receiver-holds-a-lock-beside-its-socket.md):
 the receiver holds a lock beside its socket for as long as it listens.
 
+Amended by [ADR-0056](0056-a-coding-runtimes-hooks-reach-the-plane-through-one-bridge.md): a client that cannot carry a
+rewrite, such as a coding runtime's hook, aborts it and denies the call.
+
 ## Context
 
 The pipeline in `internal/gateway` is protocol-neutral. `Admit` decides an

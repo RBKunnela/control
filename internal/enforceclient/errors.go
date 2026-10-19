@@ -25,7 +25,8 @@ const (
 	ErrNoTimeout Error = "enforceclient: the request timeout must be positive"
 )
 
-// Call's outcomes other than a recorded execution.
+// The outcomes of Call and of Admit, Complete and Abort other than a
+// recorded execution.
 const (
 	// ErrBlocked is an admit answered BLOCK, UNSPECIFIED or an outcome this
 	// client does not know; the tool was not run.
@@ -41,6 +42,9 @@ const (
 	ErrMalformedAnswer Error = "enforceclient: the receiver's answer is malformed"
 	// ErrAborted is an execution the client aborted; the tool was not run.
 	ErrAborted Error = "enforceclient: the execution was aborted"
+	// ErrAbortOwed is an admission the tool must not run on: Admit sent no
+	// abort, so the caller sends one with the cause Admit returned.
+	ErrAbortOwed Error = "enforceclient: the execution is owed an abort"
 	// ErrNotRecorded is a completion the receiver did not answer with
 	// ENDING_RECORDED: the tool ran, but no closing record is known to have
 	// landed.

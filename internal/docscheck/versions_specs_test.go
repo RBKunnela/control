@@ -18,6 +18,7 @@ import (
 	"github.com/guardana/control/internal/coverage"
 	"github.com/guardana/control/internal/evidence"
 	"github.com/guardana/control/internal/findinglog"
+	"github.com/guardana/control/internal/hookbridge"
 	"github.com/guardana/control/internal/observe"
 	"github.com/guardana/control/internal/observelog"
 	"github.com/guardana/control/internal/pause"
@@ -97,6 +98,19 @@ func versionSpecs() map[string]versionSpec {
 				{"internal/holdjournal/entry.go#SchemaVersion", writes},
 				{"internal/gateway/journal.go#holdEntrySchemaVersion", writes},
 				{"internal/holdjournal/codec.go#checkSchemaVersion/major", readsMajor},
+			},
+		},
+		"Hook profile": {
+			cites: []versionCite{{"internal/hookbridge/profile.go#Kind", reads}},
+			refuses: func(v string) (bool, error) {
+				_, err := hookbridge.ParseProfile([]byte(`{"kind":` + strconv.Quote(v) + `}`))
+				return errors.Is(err, hookbridge.ErrProfileVersion), nil
+			},
+		},
+		"Hook bridge handles": {
+			cites: []versionCite{
+				{"internal/hookbridge/store.go#entryVersion", writes},
+				{"internal/hookbridge/store.go#parseEntry/major", readsMajor},
 			},
 		},
 		"Runs directory": {

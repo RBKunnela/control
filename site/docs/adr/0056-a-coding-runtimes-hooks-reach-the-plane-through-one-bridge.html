@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ADR-0056: A coding runtime&#39;s hooks reach the plane through one bridge, by value · Guardana Control</title>
+<meta name="description" content="Decision record, accepted."/>
+<link rel="canonical" href="https://control.guardana.dev/docs/adr/0056-a-coding-runtimes-hooks-reach-the-plane-through-one-bridge"/>
+<meta name="theme-color" content="#0B8F80"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="stylesheet" href="/assets/brand/v1/tokens.css"/>
+<link rel="stylesheet" href="/assets/control/control.css"/>
+<link rel="stylesheet" href="/assets/control/docs.css"/>
+</head>
+<body class="doc">
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap bar">
+  <a class="mark" href="/"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 4.5 5.6v6.1c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V5.6z"/><path d="M10.2 8.4v7.8M10.2 12.3h5.3"/></svg><span>Guardana <b>Control</b></span></a>
+  <a class="vlink" href="https://github.com/guardana/control/releases/tag/v0.12.0"><span class="ver">v0.12.0</span></a>
+  <nav aria-label="Primary">
+    <a href="/docs/">Docs</a>
+    <a href="/docs/status">Status</a>
+    <a class="hide-s" href="/docs/roadmap">Roadmap</a>
+    <a class="gh" href="https://github.com/guardana/control" aria-label="GitHub"><svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span class="hide-s">GitHub</span></a>
+  </nav>
+</div></header>
+<div class="wrap shell">
+<details class="mnav">
+<summary>Menu · <b>ADR-0056: A coding runtime&#39;s hooks reach the plane through one bridge, by value</b></summary>
+<nav class="inner" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</details>
+<main id="main" class="prose">
+<h1 id="adr-0056-a-coding-runtimes-hooks-reach-the-plane-through-one-bridge-by-value">ADR-0056: A coding runtime's hooks reach the plane through one bridge, by value</h1>
+<p>Status: accepted
+Date: 2026-10-18</p>
+<p>Builds on <a href="/docs/adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api">ADR-0051</a>,
+whose enforcement API the bridge speaks, and
+<a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a>, whose ports it is one of.
+Amends ADR-0051 on the client that cannot carry a rewrite.</p>
+<h2 id="context">Context</h2>
+<p>A coding runtime runs a tool on the agent's machine and, before and after,
+starts a hook command per event: the event as JSON on standard input, the
+answer in the exit status or on standard output. No two runtimes agree on the
+words, most let the tool run when a hook times out, crashes or prints
+something unreadable, and none hands a hook the bytes the tool will receive:
+each passes a JSON object it serialises again itself. The admit and the
+report of one call happen in two processes. ADR-0051's client runs exactly
+the authorized bytes and reports them, which a hook can do only for a JSON
+value.</p>
+<h2 id="decision">Decision</h2>
+<p><strong>One bridge, many profiles.</strong> <code>guardana-control hook</code> answers one event. A
+runtime surface is described by a profile, data of kind
+<code>hook-profile/v1alpha1</code> read strictly: which event is an admit, a completion
+or a failed completion; where the event name, tool, input, call id, session id
+and interrupt flag sit; how a reply is written; the hook timeout and the bound
+on an event. Its claims (the runtime and versions tested, the fail-closed
+setting, how pending is answered, the tools seen, the bypasses) each name the
+cases that back them. A profile holds no script; behaviour data cannot express
+is a reviewed change to the bridge. The bridge and its package
+(<code>internal/hookbridge</code>) name no runtime; a runtime's name appears only in its
+profile's files and page and in the paths of links to that page.</p>
+<p><strong>The admit only restricts.</strong> The bridge admits the call with the input's raw
+text as the proposed bytes and the call's own request key. Only a full
+<code>EXECUTE</code> of exactly those bytes lets it run, and then the reply is silence:
+exit 0 and nothing on standard output. Every other answer, every failure and
+every refusal before the event is read exits with the profile's block status
+and one line on standard error; a refusal before any profile is read, a usage
+error or a profile that cannot be read, exits 2. The bridge never replies allow, ask or defer,
+and never hands the runtime a changed input: allow would skip the runtime's
+own permission prompts, ask hands the decision to the local user, and a
+deferred call can run through the runtime's own flow. A decision that wants a
+rewrite or carries an obligation is aborted with its cause and denied, since
+this client cannot carry it. <code>PENDING</code> is a deny that names the approval; the
+agent's retry is a new admit that resumes the hold.</p>
+<p><strong>The completion reports what ran, by value.</strong> Between the two processes the
+bridge keeps only the handle and its expiry, in an owner-only directory, under
+a name hashed from the run token, session and call id, published with an
+exclusive create. The completion takes the entry with one atomic rename, so a
+duplicate completion sends nothing, and sends one <code>complete</code> with the input
+the runtime reported as the bytes sent. The receiver compares them with the
+authorized bytes by <code>digest_v1</code>: two inputs are the same call when their
+canonical forms are equal, so key order, whitespace, escapes and one number's
+spelling do not distinguish them, and anything else does. A difference is
+recorded as <code>EXECUTED_ARGS_MISMATCH</code> and halts the run. A completion that
+carries no input sends nothing; the receiver's sweep closes the call as
+abandoned, its outcome unknown. An absent interrupt flag reads as unknown,
+never as a clean failure.</p>
+<p><strong>The run token is the operator's</strong>, read from the hook's environment, never
+from a flag or the event. The session and call ids from the event name the
+handle and the request key and grant nothing; the plane's evidence does not
+carry them.</p>
+<p><strong>What a profile may claim.</strong> Nothing over this API is <code>enforced</code>
+(ADR-0051): the runtime, not the plane, runs the call. A profile is
+&quot;decided, not enforced&quot; only where the runtime's setting that blocks a call
+on a failed hook is on in settings a user cannot override, the hook command
+is an absolute path to a binary the agent's account cannot replace and names
+a built-in profile, and the runtime's shell sandbox denies the agent the
+plane's directories (approvals, the bridge's store, the socket's directory),
+because the hook runs as the agent's account. Otherwise it is &quot;decided, with failure gaps&quot;, and its page names
+them. Each claim is backed by a case of the profile's fixtures, which run in
+every CI without the runtime, or of a qualification against the real runtime
+at a pinned version, run before a release and recorded beside the profile;
+the page states a claim no case backs as unverified.</p>
+<h2 id="security--compatibility-impact">Security / compatibility impact</h2>
+<p>A hook is a cooperating client: the agent's account runs it and can disable
+it, edit its settings where they are not managed, replace a binary or a
+profile file it can write, or reach the plane's socket and the bridge's store
+itself. Another hook can replace the input after the bridge let the call run;
+only the completion shows it, as a mismatch that halts the run. A runtime
+refusing a call after the bridge let it run fires no completion; the
+handle holds one of the run's open executions until it expires, and a run
+whose open executions are all held that way denies every later call until
+they do. Tools that do not pass through hooks, a
+process a tool starts, and content a runtime loads without a tool call are
+not seen. Each is a gap the profile's page states. The wire contract gains
+nothing: <code>request_key</code> and the three operations exist in v1alpha1.</p>
+<p>ADR-0051's client cases assume a client that can run the authorized bytes;
+the bridge cannot, and its own tests hold the abort with <code>ARGUMENTS_DIFFER</code>
+and the deny in their place.</p>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li><strong>Byte identity, hooks refused.</strong> Only an owned wrapper, such as the Python
+client around a tool in the agent's own process, would be integrated; a
+coding runtime would get nothing.</li>
+<li><strong>Value identity with rewrites handed back</strong> as the runtime's replacement
+input: another hook can replace the input after ours, which only the
+completion would show.</li>
+<li><strong>Numbers as written.</strong> A runtime that serialises numbers its own way would
+record false mismatches, each halting the run.</li>
+<li><strong>The plane keeps the handle</strong>, addressed by the request key: the key would
+become a bearer capability, and a lost admit answer would hold its handle,
+against ADR-0051.</li>
+<li><strong>A bridge daemon or an HTTP hook</strong> holding handles in memory: a listener
+on loopback, which ADR-0051 refuses, and a crash loses every handle anyway.</li>
+<li><strong>A script per runtime</strong> in place of data: the profile would become a
+language of its own.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<p>Adding a runtime is a profile, its fixtures, a qualification on a pinned
+version and a page, with no core change; behaviour data cannot express is a
+reviewed change to the bridge. A runtime's hook protocol that changes needs a
+new profile version. The first profile's page states its runtime's gaps,
+including what the shared account allows.</p>
+<h2 id="validation">Validation</h2>
+<p><code>internal/hookbridge</code> runs every phase against the enforcement receiver in
+front of a plane: an allow publishes its entry and stays silent; a block, a
+pending answer, a wanted rewrite, an obligation, an unreachable receiver and
+a store others may enter each deny, with the abort owed; a matching
+completion is recorded, a mismatching one recorded as a mismatch; two
+concurrent completions send one; an absent flag is unknown. Five mutant
+bridges (a dropped deny, a carried rewrite, the authorized bytes reported as
+sent, an abort in a completion, lenient decoding) each fail the suite.
+<code>cmd/guardana-control</code> holds every refusal of the command to the block status
+and an empty standard output, an allowed admit and a recorded completion to
+exit 0, and a receiver that never answers to a block inside the hook timeout.
+Each built-in profile's cases state its statuses and timeout apart from it.</p>
+<p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/adr/0056-a-coding-runtimes-hooks-reach-the-plane-through-one-bridge.md">docs/adr/0056-a-coding-runtimes-hooks-reach-the-plane-through-one-bridge.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.12.0, and <a href="https://github.com/guardana/control/tree/v0.12.0/docs">its documentation</a> is in its tag.</p>
+</main>
+<nav class="side" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</div>
+<footer class="foot"><div class="wrap row">
+  <p>Guardana Control · Apache-2.0</p>
+  <ul>
+    <li><a href="https://github.com/guardana/control">GitHub</a></li>
+    <li><a href="https://github.com/guardana/control/releases">Releases</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/SECURITY.md">Security</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/LICENSE">Licence Apache-2.0</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/TRADEMARKS.md">Trademarks</a></li>
+  </ul>
+</div></footer>
+</body>
+</html>

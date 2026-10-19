@@ -60,6 +60,7 @@
 </ul>
 <h2>Reference</h2><ul>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
 <li><a href="/docs/reference/cli" aria-current="page">Command line</a></li>
 <li><a href="/docs/reference/configuration">Configuration</a></li>
 <li><a href="/docs/reference/console">The approvals page</a></li>
@@ -94,6 +95,7 @@
 </ul>
 <h2>Extending</h2><ul>
 <li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
 </ul>
 <h2>Project</h2><ul>
 <li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
@@ -111,7 +113,7 @@
 <p>Two binaries, built from the repository root with <code>go build ./cmd/&lt;name&gt;</code>;
 <a href="/docs/status">status.md</a> says what each does today. Each fenced block below
 is the help its binary prints on a usage error, byte for byte; the test its
-marker names diffs it against the binary, so a flag or a command that changes
+marker names diffs it against the binary, so a flag or command changed
 without this page fails the gate.</p>
 <table>
 <thead>
@@ -176,7 +178,7 @@ one that exists and is not a policy bundle, so no other file, another key
 included, is replaced; and a bundle the loader would refuse. <code>--out</code> is
 cleaned as text before anything reads it, so <code>a/link/../x</code> names <code>a/x</code>
 whatever <code>a/link</code> points at. When syncing the directory fails after the
-rename, <code>sign</code> reports the failure although the new bundle may be in
+rename, <code>sign</code> reports it, though the new bundle may be in
 place.</p>
 <p>The key reaches the command only as a path, and no refusal quotes it. Both
 refuse on a platform without permission bits
@@ -194,7 +196,7 @@ plane runs, and exit 0 either way: the record waits for the next
 plane. Where no plane holds the directory they say so on stderr: no held
 call waits for the answer, since a hold does not outlive its plane, and a
 plane that keeps a hold journal records it on that call's trail as too late.</p>
-<p>Both commands refuse, writing nothing, an approval id that is not there, one
+<p>Both commands refuse, writing nothing, an approval id that is absent, one
 an approver answered already, one the plane consumed, one the plane closed
 without resuming, one past its expiry, and an approver id or a reason over
 its bound — each on its own line, naming what to do about it.</p>
@@ -208,7 +210,7 @@ name; or <code>--action &lt;k&gt;</code> with <code>--provider &lt;p&gt;</code>,
 or <code>resource</code> and a tool also takes <code>--name &lt;n&gt;</code>, the name the plane routes
 by. A prompt or a resource takes no name. <code>&lt;f&gt;</code> is the pause file, relative to the working directory. It prints
 only the id it drew for the entry, and <code>pause remove &lt;file&gt; &lt;id&gt;</code>
-takes that id; removing the last entry leaves a file that pauses nothing,
+takes that id; removing the last entry leaves a file pausing nothing,
 because a missing file blocks every call. <code>pause list</code> prints one line per
 entry, its reason included, or <code>no entries</code>.</p>
 <p>Write access to the pause file is the authority to pause and to lift a pause:
@@ -227,8 +229,9 @@ serves: <a href="/docs/reference/runs">runs.md</a>.</p>
 observation log and export it: <a href="/docs/reference/observations">observations.md</a>. <code>coverage</code>
 is <a href="/docs/reference/coverage">coverage.md</a>, <code>supervise</code>, <code>notify</code> and <code>findings export</code>
 <a href="/docs/reference/supervision">supervision.md</a>, <code>--view</code> <a href="/docs/reference/run-view">run-view.md</a>, <code>procedure</code>
-<a href="/docs/guides/test-a-procedure">guides/test-a-procedure.md</a>, and <code>route</code>, <code>stops</code>
-and <code>react</code> <a href="/docs/reference/reaction">reaction.md</a>.</p>
+<a href="/docs/guides/test-a-procedure">guides/test-a-procedure.md</a>, <code>route</code>, <code>stops</code>
+and <code>react</code> <a href="/docs/reference/reaction">reaction.md</a>, and <code>hook</code>, exiting with its
+profile's statuses, <a href="/docs/extending/runtime-profiles">extending/runtime-profiles.md</a>.</p>
 <p><code>console</code> serves a page that answers approvals and writes pauses:
 <a href="/docs/reference/console">console.md</a>.</p>
 <pre><code>usage:
@@ -273,6 +276,8 @@ and <code>react</code> <a href="/docs/reference/reaction">reaction.md</a>.</p>
   guardana-control stops list --route &lt;file&gt; --public-key &lt;file&gt; &lt;dir&gt;
   guardana-control react --findings &lt;dir&gt; --runs &lt;dir&gt; --route &lt;file&gt; --public-key &lt;file&gt;
       --stops &lt;dir&gt;
+  guardana-control hook (--profile &lt;id&gt; | --profile-file &lt;file&gt;) --socket &lt;path&gt;
+      --state-dir &lt;dir&gt;
   guardana-control console --approvals &lt;dir&gt; [--pause &lt;f&gt;] --approver-id &lt;id&gt; [--until-stdin-closes]
 
 Write access to the approvals directory is the approval authority:
@@ -403,6 +408,7 @@ dev
 </ul>
 <h2>Reference</h2><ul>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
 <li><a href="/docs/reference/cli" aria-current="page">Command line</a></li>
 <li><a href="/docs/reference/configuration">Configuration</a></li>
 <li><a href="/docs/reference/console">The approvals page</a></li>
@@ -437,6 +443,7 @@ dev
 </ul>
 <h2>Extending</h2><ul>
 <li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
 </ul>
 <h2>Project</h2><ul>
 <li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>

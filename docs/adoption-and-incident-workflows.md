@@ -68,8 +68,10 @@ publish a table for each event: proposed or already completed, enforcement
 or observation, identity source, rewritten-argument support, approval/resume
 support, deadlines, failure behavior and known bypasses.
 
-A pre-action hook is an enforcement point only where conformance proves that
-the runtime waits for admission and sends exactly the authorized bytes.
+A pre-action hook decides a call and is never an enforcement point: the
+runtime, not the plane, runs it, and no hook hands over bytes, so what it can
+show is that the value that ran is the one authorized
+([ADR-0056](adr/0056-a-coding-runtimes-hooks-reach-the-plane-through-one-bridge.md)).
 Calling an evaluation endpoint and discarding its answer is not enforcement.
 If a hook cannot apply a required obligation, it refuses the action in an
 enforcing mode. If it cannot resume an approval safely, it declares that

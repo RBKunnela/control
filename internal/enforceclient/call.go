@@ -9,7 +9,6 @@ import (
 
 	enforcev1alpha1 "github.com/guardana/control/api/gen/go/guardana/control/enforce/v1alpha1"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Result is what the tool reports of one run. A Status that is UNSPECIFIED,
@@ -54,38 +53,14 @@ type Answer struct {
 // answered ENDING_RECORDED. Answer.Ran says whether an effect may have
 // happened whatever the error.
 func (c *Client) Call(ctx context.Context, tool string, args []byte, exec Exec) (Answer, error) {
-	ans := Answer{Outcome: enforcev1alpha1.Outcome_OUTCOME_BLOCK}
-	if err := ctx.Err(); err != nil {
+	ans, adm, cause, err := c.Admit(ctx, tool, args, "", CarryAuthorized)
+	if cause != enforcev1alpha1.AbortCause_ABORT_CAUSE_UNSPECIFIED {
+		return c.abort(ctx, ans, adm.Handle, cause)
+	}
+	if err != nil {
 		return ans, err
 	}
-	resp := &enforcev1alpha1.AdmitResponse{}
-	if err := c.post(ctx, PathAdmit, &enforcev1alpha1.AdmitRequest{Tool: tool, Arguments: args}, resp); err != nil {
-		return ans, err
-	}
-	ans.Decision = resp.GetDecision()
-	switch resp.GetOutcome() {
-	case enforcev1alpha1.Outcome_OUTCOME_EXECUTE:
-	case enforcev1alpha1.Outcome_OUTCOME_PENDING:
-		ans.Outcome, ans.Pending = enforcev1alpha1.Outcome_OUTCOME_PENDING, resp.GetPending()
-		return ans, ErrPending
-	default:
-		return ans, ErrBlocked
-	}
-	ex := resp.GetExecution()
-	if ex.GetHandle() == "" {
-		return ans, fmt.Errorf("%w: an EXECUTE answer with no handle", ErrMalformedAnswer)
-	}
-	ans.Outcome = enforcev1alpha1.Outcome_OUTCOME_EXECUTE
-	authorized := ex.GetAuthorizedArguments()
-	switch {
-	case len(ex.GetObligations()) > 0:
-		return c.abort(ctx, ans, ex.GetHandle(), enforcev1alpha1.AbortCause_ABORT_CAUSE_OBLIGATION)
-	case len(authorized) == 0 && len(args) > 0:
-		return c.abort(ctx, ans, ex.GetHandle(), enforcev1alpha1.AbortCause_ABORT_CAUSE_ARGUMENTS_DIFFER)
-	case ctx.Err() != nil:
-		return c.abort(ctx, ans, ex.GetHandle(), enforcev1alpha1.AbortCause_ABORT_CAUSE_NOT_SENT)
-	}
-	return c.run(ctx, ans, ex.GetHandle(), authorized, exec)
+	return c.run(ctx, ans, adm.Handle, adm.Authorized, exec)
 }
 
 // run hands exec its own copy of the authorized bytes, so nothing exec does
@@ -104,58 +79,19 @@ func (c *Client) run(ctx context.Context, ans Answer, handle string, authorized 
 		res.EndedAt = ended
 	}
 	ans.Ran, ans.Result = true, res
-	req := &enforcev1alpha1.CompleteRequest{
-		Handle:                 handle,
-		SentArguments:          authorized,
-		Status:                 completionStatus(res.Status, err),
-		StartedAt:              timestamppb.New(res.StartedAt),
-		EndedAt:                timestamppb.New(res.EndedAt),
-		ResultHash:             res.ResultHash,
-		SideEffectConfirmation: res.SideEffectConfirmation,
-	}
-	resp := &enforcev1alpha1.CompleteResponse{}
-	if cerr := c.post(ctx, PathComplete, req, resp); cerr != nil {
-		if r, ok := refusal(cerr); ok {
-			ans.Ending = r.Ending
-		}
+	ending, cerr := c.Complete(ctx, handle, authorized, res, err)
+	ans.Ending = ending
+	if cerr != nil {
 		return ans, errors.Join(err, cerr)
-	}
-	ans.Ending = resp.GetEnding()
-	if ans.Ending != enforcev1alpha1.Ending_ENDING_RECORDED {
-		return ans, errors.Join(err, fmt.Errorf("%w: %s", ErrNotRecorded, ans.Ending))
 	}
 	return ans, err
 }
 
-// completionStatus is what a complete reports. An exec that returned an
-// error could not tell whether the effect happened, so only TIMEOUT or
-// UNKNOWN goes with one; a status this contract does not declare is UNKNOWN.
-func completionStatus(s enforcev1alpha1.CompletionStatus, err error) enforcev1alpha1.CompletionStatus {
-	if err != nil {
-		if s == enforcev1alpha1.CompletionStatus_COMPLETION_STATUS_TIMEOUT {
-			return s
-		}
-		return enforcev1alpha1.CompletionStatus_COMPLETION_STATUS_UNKNOWN
-	}
-	switch s {
-	case enforcev1alpha1.CompletionStatus_COMPLETION_STATUS_SUCCESS,
-		enforcev1alpha1.CompletionStatus_COMPLETION_STATUS_FAILURE,
-		enforcev1alpha1.CompletionStatus_COMPLETION_STATUS_TIMEOUT,
-		enforcev1alpha1.CompletionStatus_COMPLETION_STATUS_CANCELLED,
-		enforcev1alpha1.CompletionStatus_COMPLETION_STATUS_UNKNOWN:
-		return s
-	}
-	return enforcev1alpha1.CompletionStatus_COMPLETION_STATUS_UNKNOWN
-}
-
 func (c *Client) abort(ctx context.Context, ans Answer, handle string, cause enforcev1alpha1.AbortCause) (Answer, error) {
-	resp := &enforcev1alpha1.AbortResponse{}
-	if err := c.post(ctx, PathAbort, &enforcev1alpha1.AbortRequest{Handle: handle, Cause: cause}, resp); err != nil {
-		if r, ok := refusal(err); ok {
-			ans.Ending = r.Ending
-		}
+	ending, err := c.Abort(ctx, handle, cause)
+	ans.Ending = ending
+	if err != nil {
 		return ans, errors.Join(fmt.Errorf("%w: %s", ErrAborted, cause), err)
 	}
-	ans.Ending = resp.GetEnding()
 	return ans, fmt.Errorf("%w: %s", ErrAborted, cause)
 }

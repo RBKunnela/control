@@ -60,6 +60,7 @@
 </ul>
 <h2>Reference</h2><ul>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
 <li><a href="/docs/reference/cli">Command line</a></li>
 <li><a href="/docs/reference/configuration">Configuration</a></li>
 <li><a href="/docs/reference/console">The approvals page</a></li>
@@ -94,6 +95,7 @@
 </ul>
 <h2>Extending</h2><ul>
 <li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
 </ul>
 <h2>Project</h2><ul>
 <li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
@@ -145,6 +147,7 @@ with <code>make docs-gen</code>; an edit made here does not survive the next run
 <h2 id="reference">Reference</h2>
 <ul>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a>: What three calls on the authorization path and one tool call through the gateway cost on one machine, how they are measured, and what the numbers are not.</li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a>: What the claude-code hook profile covers, the hook settings it needs, what the bridge reads and answers per event, and the gaps it leaves.</li>
 <li><a href="/docs/reference/cli">Command line</a>: The two binaries, what each prints as its help, and the exit statuses they share.</li>
 <li><a href="/docs/reference/configuration">Configuration</a>: Every key the gateway reads, with its environment variable, kind, default, whether it is required and the spellings it takes.</li>
 <li><a href="/docs/reference/console">The approvals page</a>: What guardana-control console serves, what it prints, what it refuses and what it cannot tell you.</li>
@@ -181,6 +184,7 @@ with <code>make docs-gen</code>; an edit made here does not survive the next run
 <h2 id="extending">Extending</h2>
 <ul>
 <li><a href="/docs/extending/adapters">Writing an adapter</a>: The internal seam a protocol adapter implements, the capabilities it declares, and the conformance each one owes.</li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime's hooks</a>: The profile a coding runtime's hook protocol is described by, what the hook bridge does with it, and what a profile needs before its page may claim anything.</li>
 </ul>
 <h2 id="project">Project</h2>
 <ul>
@@ -246,6 +250,7 @@ with <code>make docs-gen</code>; an edit made here does not survive the next run
 <li><a href="/docs/adr/0053-a-python-client-of-the-enforcement-api-in-this-repository">ADR-0053: A Python client of the enforcement API lives in this repository</a>: accepted</li>
 <li><a href="/docs/adr/0054-the-enforcement-receiver-holds-a-lock-beside-its-socket">ADR-0054: The enforcement receiver holds a lock beside its socket</a>: accepted</li>
 <li><a href="/docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands">ADR-0055: A call is handed out only while the policy it was decided under stands</a>: accepted</li>
+<li><a href="/docs/adr/0056-a-coding-runtimes-hooks-reach-the-plane-through-one-bridge">ADR-0056: A coding runtime's hooks reach the plane through one bridge, by value</a>: accepted</li>
 <li><a href="/docs/adr/0057-an-external-mcp-client-runs-the-guide-on-every-pull-request">ADR-0057: An MCP client outside the Go SDK runs the guide on every pull request</a>: accepted</li>
 </ul>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/index.md">docs/index.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.12.0, and <a href="https://github.com/guardana/control/tree/v0.12.0/docs">its documentation</a> is in its tag.</p>
@@ -283,6 +288,7 @@ with <code>make docs-gen</code>; an edit made here does not survive the next run
 </ul>
 <h2>Reference</h2><ul>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
 <li><a href="/docs/reference/cli">Command line</a></li>
 <li><a href="/docs/reference/configuration">Configuration</a></li>
 <li><a href="/docs/reference/console">The approvals page</a></li>
@@ -317,6 +323,7 @@ with <code>make docs-gen</code>; an edit made here does not survive the next run
 </ul>
 <h2>Extending</h2><ul>
 <li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
 </ul>
 <h2>Project</h2><ul>
 <li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>

@@ -164,6 +164,7 @@ var ownRefusal = map[string]func(missing string) []string{
 	"react": func(m string) []string {
 		return []string{"--findings", m, "--runs", m, "--route", m, "--public-key", m, "--stops", m}
 	},
+	"hook": func(m string) []string { return []string{"--profile-file", m, "--socket", m, "--state-dir", m} },
 }
 
 // refusalStatus is the status a command refuses a missing path with where it
@@ -174,10 +175,12 @@ var ownRefusal = map[string]func(missing string) []string{
 // is not a pass, notify's 2 says no program ran and 1 is a delivery that
 // failed, findings export's 2 says nothing was exported and 1 is a whole
 // export with a gap, and the procedure commands' 2 says nothing was judged
-// and 1 is a case that failed.
+// and 1 is a case that failed, and hook's 2 is what a runtime blocks a call
+// on.
 var refusalStatus = map[string]int{
 	"observe import": exitUsage, "observe export": exitUsage, "coverage": exitUsage, "supervise": exitUsage,
 	"notify": exitUsage, "findings export": exitUsage, "procedure lint": exitUsage, "procedure test": exitUsage,
+	"hook": exitUsage,
 }
 
 // TestEveryListedCommandDispatches: the list the help prints is the list run

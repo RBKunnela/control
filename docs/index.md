@@ -46,6 +46,7 @@ with `make docs-gen`; an edit made here does not survive the next run.
 ## Reference
 
 - [Benchmarks](reference/benchmarks.md): What three calls on the authorization path and one tool call through the gateway cost on one machine, how they are measured, and what the numbers are not.
+- [Claude Code hooks](reference/claude-code-hooks.md): What the claude-code hook profile covers, the hook settings it needs, what the bridge reads and answers per event, and the gaps it leaves.
 - [Command line](reference/cli.md): The two binaries, what each prints as its help, and the exit statuses they share.
 - [Configuration](reference/configuration.md): Every key the gateway reads, with its environment variable, kind, default, whether it is required and the spellings it takes.
 - [The approvals page](reference/console.md): What guardana-control console serves, what it prints, what it refuses and what it cannot tell you.
@@ -82,6 +83,7 @@ with `make docs-gen`; an edit made here does not survive the next run.
 ## Extending
 
 - [Writing an adapter](extending/adapters.md): The internal seam a protocol adapter implements, the capabilities it declares, and the conformance each one owes.
+- [Adding a coding runtime's hooks](extending/runtime-profiles.md): The profile a coding runtime's hook protocol is described by, what the hook bridge does with it, and what a profile needs before its page may claim anything.
 
 ## Project
 
@@ -147,4 +149,5 @@ with `make docs-gen`; an edit made here does not survive the next run.
 - [ADR-0053: A Python client of the enforcement API lives in this repository](adr/0053-a-python-client-of-the-enforcement-api-in-this-repository.md): accepted
 - [ADR-0054: The enforcement receiver holds a lock beside its socket](adr/0054-the-enforcement-receiver-holds-a-lock-beside-its-socket.md): accepted
 - [ADR-0055: A call is handed out only while the policy it was decided under stands](adr/0055-a-call-is-handed-out-only-while-its-policy-stands.md): accepted
+- [ADR-0056: A coding runtime's hooks reach the plane through one bridge, by value](adr/0056-a-coding-runtimes-hooks-reach-the-plane-through-one-bridge.md): accepted
 - [ADR-0057: An MCP client outside the Go SDK runs the guide on every pull request](adr/0057-an-external-mcp-client-runs-the-guide-on-every-pull-request.md): accepted

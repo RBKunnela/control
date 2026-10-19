@@ -60,6 +60,7 @@
 </ul>
 <h2>Reference</h2><ul>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
 <li><a href="/docs/reference/cli">Command line</a></li>
 <li><a href="/docs/reference/configuration">Configuration</a></li>
 <li><a href="/docs/reference/console">The approvals page</a></li>
@@ -94,6 +95,7 @@
 </ul>
 <h2>Extending</h2><ul>
 <li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
 </ul>
 <h2>Project</h2><ul>
 <li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
@@ -118,6 +120,14 @@ verify one.</p>
 <h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.12.0...HEAD">Unreleased</a></h2>
 <h3 id="added">Added</h3>
 <ul>
+<li><code>guardana-control hook</code> takes a coding runtime's tool events to a plane's
+enforcement API: a call runs only when the plane answers <code>EXECUTE</code> of
+exactly the input the runtime proposed, and its completion is reported with
+the input that ran, compared by value
+(<a href="/docs/adr/0056-a-coding-runtimes-hooks-reach-the-plane-through-one-bridge">ADR-0056</a>).
+The hook only restricts: it never replies allow, ask or defer. The first
+built-in profile, <a href="/docs/reference/claude-code-hooks">for one coding runtime</a>,
+is decided with failure gaps and not yet qualified on the real runtime.</li>
 <li>A CI job runs the guide for connecting an existing MCP setup end to end with
 an MCP client outside the Go SDK, the MCP project's Python SDK, against the
 reference filesystem server, on every pull request
@@ -1513,6 +1523,7 @@ independence of this project from Guardana
 </ul>
 <h2>Reference</h2><ul>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
 <li><a href="/docs/reference/cli">Command line</a></li>
 <li><a href="/docs/reference/configuration">Configuration</a></li>
 <li><a href="/docs/reference/console">The approvals page</a></li>
@@ -1547,6 +1558,7 @@ independence of this project from Guardana
 </ul>
 <h2>Extending</h2><ul>
 <li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
 </ul>
 <h2>Project</h2><ul>
 <li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>

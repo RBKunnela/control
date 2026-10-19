@@ -2,7 +2,7 @@
 title: Format versions
 summary: Every versioned file and message a user writes or reads, the version this tree writes, the versions it reads, and how stable each is.
 type: reference
-covers: [internal/evidence/event.go, internal/evidence/version.go, internal/core/codes.go, adapters/mcp/translate.go, adapters/enforce/translate.go, internal/gateway/decisions.go, internal/gateway/journal.go, internal/trailfile/export.go, internal/coverage/export.go, internal/coverage/inventory.go, internal/policy/rules/rules.go, internal/policy/statement.go, internal/scenario/scenario.go, internal/supervise/ruletable.go, internal/supervise/evaluate.go, internal/supervise/record.go, internal/supervise/report.go, cmd/guardana-control/procedure_cases.go, internal/findinglog/check.go, internal/findinglog/export.go, internal/observe/version.go, internal/observe/descriptor.go, internal/observelog/export.go, internal/runs/strict.go, internal/reaction/route.go, internal/reaction/line.go, internal/reaction/lift.go, internal/pause/document.go, internal/approvals/record.go, internal/holdjournal/entry.go, internal/holdjournal/codec.go, internal/policystate/format.go]
+covers: [internal/evidence/event.go, internal/evidence/version.go, internal/core/codes.go, adapters/mcp/translate.go, adapters/enforce/translate.go, internal/gateway/decisions.go, internal/gateway/journal.go, internal/trailfile/export.go, internal/coverage/export.go, internal/coverage/inventory.go, internal/policy/rules/rules.go, internal/policy/statement.go, internal/scenario/scenario.go, internal/supervise/ruletable.go, internal/supervise/evaluate.go, internal/supervise/record.go, internal/supervise/report.go, cmd/guardana-control/procedure_cases.go, internal/findinglog/check.go, internal/findinglog/export.go, internal/observe/version.go, internal/observe/descriptor.go, internal/observelog/export.go, internal/runs/strict.go, internal/reaction/route.go, internal/reaction/line.go, internal/reaction/lift.go, internal/pause/document.go, internal/approvals/record.go, internal/holdjournal/**, internal/policystate/format.go, internal/hookbridge/**]
 generated: go test ./internal/docscheck -run TestVersionsPageIsTheCode
 ---
 
@@ -33,6 +33,8 @@ version. [status.md](../status.md) is the inventory.
 | Pause file (`schema_version`) | `1` | `1` | `experimental` | [cli.md](cli.md#guardana-control) |
 | Approvals directory (`schema_version`) | `1.0` | `1.x` | `experimental` | [approvals](../concepts/approvals-and-the-held-call.md#what-is-held-and-by-whom) |
 | Hold journal (`schema_version`) | `1.0` | `1.x` | `experimental` | [approvals](../concepts/approvals-and-the-held-call.md#a-hold-the-plane-loses) |
+| Hook profile (`kind`) | — | `hook-profile/v1alpha1` | `experimental` | [runtime-profiles](../extending/runtime-profiles.md#the-profile) |
+| Hook bridge handles (`version`) | `1.0` | `1.x` | `experimental` | [runtime-profiles](../extending/runtime-profiles.md#what-the-bridge-does) |
 | Runs directory (`schema_version`) | `1.0` | `1.x` | `experimental` | [contracts.md](../contracts.md#the-runs-directory) |
 | Observation records and log (`guardana.control.observe.v1alpha1`) | `0.1` | `0.1` | `experimental` | [observations.md](observations.md#the-log) |
 | Source descriptor (`schema_version`) | — | `0.1` | `experimental` | [observations.md](observations.md#the-source-descriptor) |

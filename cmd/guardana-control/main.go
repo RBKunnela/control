@@ -130,6 +130,7 @@ var commands = []subcommand{
 	{"stops", "lift", stopsLiftForm, stopsLiftFlagSet, stopsLiftCommand},
 	{"stops", "list", stopsListForm, stopsListFlagSet, stopsListCommand},
 	{"react", "", reactForm, reactFlagSet, reactCommand},
+	{"hook", "", hookForm, hookFlagSet, hookCommand},
 	{"console", "", consoleForm, consoleFlagSet, consoleCommand},
 }
 

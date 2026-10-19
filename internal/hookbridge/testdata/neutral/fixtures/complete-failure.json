@@ -1,0 +1,1 @@
+{"event":"AfterToolFailed","session":"s-1","call":"c-1","tool":"refund","input":{"account":"acct-1", "amount":5},"error":"refused","interrupted":false}

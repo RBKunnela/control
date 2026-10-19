@@ -1,0 +1,29 @@
+{
+  "kind": "hook-profile/v1alpha1",
+  "id": "neutral",
+  "events": {
+    "BeforeTool": "admit",
+    "AfterTool": "complete",
+    "AfterToolFailed": "complete-failure"
+  },
+  "members": {
+    "event": "event",
+    "tool": "tool",
+    "input": "input",
+    "call_id": "call",
+    "session_id": "session",
+    "interrupt": "interrupted"
+  },
+  "reply": {"strategy": "exit-code", "block_exit_code": 2, "problem_exit_code": 1},
+  "hook_timeout_seconds": 30,
+  "max_event_bytes": 4096,
+  "claims": {
+    "runtime": {"name": "Neutral Runner", "tested_versions": ["1.0.0"], "backed_by": ["admit-plain"]},
+    "fail_closed": {"setting": "on_hook_failure=block", "min_version": "1.0.0", "backed_by": []},
+    "pending": {"value": "deny-with-reason", "backed_by": ["pending"]},
+    "call_id": {"value": true, "backed_by": ["admit-plain", "complete-plain"]},
+    "tools_seen": {"value": ["refund", "read_file"], "backed_by": []},
+    "bypasses": [{"text": "a process the tool starts is not seen", "backed_by": []}],
+    "page": "docs/reference/neutral.md"
+  }
+}

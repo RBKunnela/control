@@ -13,6 +13,14 @@ verify one.
 
 ### Added
 
+- `guardana-control hook` takes a coding runtime's tool events to a plane's
+  enforcement API: a call runs only when the plane answers `EXECUTE` of
+  exactly the input the runtime proposed, and its completion is reported with
+  the input that ran, compared by value
+  ([ADR-0056](docs/adr/0056-a-coding-runtimes-hooks-reach-the-plane-through-one-bridge.md)).
+  The hook only restricts: it never replies allow, ask or defer. The first
+  built-in profile, [for one coding runtime](docs/reference/claude-code-hooks.md),
+  is decided with failure gaps and not yet qualified on the real runtime.
 - A CI job runs the guide for connecting an existing MCP setup end to end with
   an MCP client outside the Go SDK, the MCP project's Python SDK, against the
   reference filesystem server, on every pull request

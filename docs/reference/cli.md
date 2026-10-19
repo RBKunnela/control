@@ -10,7 +10,7 @@ covers: [cmd/guardana-control/**, cmd/guardana-gateway/**, internal/policykey/**
 Two binaries, built from the repository root with `go build ./cmd/<name>`;
 [status.md](../status.md) says what each does today. Each fenced block below
 is the help its binary prints on a usage error, byte for byte; the test its
-marker names diffs it against the binary, so a flag or a command that changes
+marker names diffs it against the binary, so a flag or command changed
 without this page fails the gate.
 
 | Exit status | Means |
@@ -67,7 +67,7 @@ one that exists and is not a policy bundle, so no other file, another key
 included, is replaced; and a bundle the loader would refuse. `--out` is
 cleaned as text before anything reads it, so `a/link/../x` names `a/x`
 whatever `a/link` points at. When syncing the directory fails after the
-rename, `sign` reports the failure although the new bundle may be in
+rename, `sign` reports it, though the new bundle may be in
 place.
 
 The key reaches the command only as a path, and no refusal quotes it. Both
@@ -90,7 +90,7 @@ plane. Where no plane holds the directory they say so on stderr: no held
 call waits for the answer, since a hold does not outlive its plane, and a
 plane that keeps a hold journal records it on that call's trail as too late.
 
-Both commands refuse, writing nothing, an approval id that is not there, one
+Both commands refuse, writing nothing, an approval id that is absent, one
 an approver answered already, one the plane consumed, one the plane closed
 without resuming, one past its expiry, and an approver id or a reason over
 its bound — each on its own line, naming what to do about it.
@@ -105,7 +105,7 @@ name; or `--action <k>` with `--provider <p>`, where `<k>` is `tool`, `prompt`
 or `resource` and a tool also takes `--name <n>`, the name the plane routes
 by. A prompt or a resource takes no name. `<f>` is the pause file, relative to the working directory. It prints
 only the id it drew for the entry, and `pause remove <file> <id>`
-takes that id; removing the last entry leaves a file that pauses nothing,
+takes that id; removing the last entry leaves a file pausing nothing,
 because a missing file blocks every call. `pause list` prints one line per
 entry, its reason included, or `no entries`.
 
@@ -127,8 +127,9 @@ The `observe` commands import an agent runtime's OpenTelemetry spans into an
 observation log and export it: [observations.md](observations.md). `coverage`
 is [coverage.md](coverage.md), `supervise`, `notify` and `findings export`
 [supervision.md](supervision.md), `--view` [run-view.md](run-view.md), `procedure`
-[guides/test-a-procedure.md](../guides/test-a-procedure.md), and `route`, `stops`
-and `react` [reaction.md](reaction.md).
+[guides/test-a-procedure.md](../guides/test-a-procedure.md), `route`, `stops`
+and `react` [reaction.md](reaction.md), and `hook`, exiting with its
+profile's statuses, [extending/runtime-profiles.md](../extending/runtime-profiles.md).
 
 `console` serves a page that answers approvals and writes pauses:
 [console.md](console.md).
@@ -177,6 +178,8 @@ usage:
   guardana-control stops list --route <file> --public-key <file> <dir>
   guardana-control react --findings <dir> --runs <dir> --route <file> --public-key <file>
       --stops <dir>
+  guardana-control hook (--profile <id> | --profile-file <file>) --socket <path>
+      --state-dir <dir>
   guardana-control console --approvals <dir> [--pause <f>] --approver-id <id> [--until-stdin-closes]
 
 Write access to the approvals directory is the approval authority:

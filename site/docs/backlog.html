@@ -60,6 +60,7 @@
 </ul>
 <h2>Reference</h2><ul>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
 <li><a href="/docs/reference/cli">Command line</a></li>
 <li><a href="/docs/reference/configuration">Configuration</a></li>
 <li><a href="/docs/reference/console">The approvals page</a></li>
@@ -94,6 +95,7 @@
 </ul>
 <h2>Extending</h2><ul>
 <li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
 </ul>
 <h2>Project</h2><ul>
 <li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
@@ -175,13 +177,13 @@ issue. Completion requires code, documentation and the applicable checks.</p>
 <td>B11</td>
 <td>Ship Python and one runtime integration</td>
 <td>none</td>
-<td>A Python custom-tool wrapper and one adopter-selected framework or coding-runtime integration run externally. One copyable example shows an allow, a refusal and an exact-action approval, then follows the call's policy version and known or uncertain result into evidence. Conformance covers block-before-send, rewritten bytes, pending approval, concurrent resume, unknown obligation, timeout, cancellation and completion. Publish covered and bypassing tool paths; digest parity precedes client-side hashes</td>
+<td>The Python client and the hook bridge with one built-in profile run externally (<a href="/docs/adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api">ADR-0051</a>, <a href="/docs/adr/0056-a-coding-runtimes-hooks-reach-the-plane-through-one-bridge">ADR-0056</a>); the profile's qualification is B24. What remains is one framework integration an adopter selects, passing the client conformance cases, with its covered and bypassing tool paths published</td>
 </tr>
 <tr>
 <td>B24</td>
 <td>Qualify one coding-agent hook integration</td>
 <td>none</td>
-<td>Choose one runtime with adopters and publish a per-event coverage and failure table. A pre-action hook earns enforcement coverage only by proving block-before-effect and authorized-byte handling; post-action hooks remain observations. Missing identity, disabled hooks, timeouts, malformed answers, unsupported obligations, cancellation and concurrent approval resumes never silently become authorization. The runtime's cooperation and bypasses are tested and stated</td>
+<td>The built-in profile runs against a pinned release of its runtime: a call blocked with no effect, a pending approval resumed, a wanted rewrite denied, the input that ran compared, the plane down, the hook timing out, crashing and printing garbage, hooks disabled, two concurrent resumes, and two mutant bridges caught. The results are recorded beside the profile and back its page's claims. A hook decides a call and is never an enforcement point (<a href="/docs/adr/0056-a-coding-runtimes-hooks-reach-the-plane-through-one-bridge">ADR-0056</a>); missing identity, disabled hooks, timeouts, malformed answers, unsupported obligations, cancellation and concurrent resumes never silently become authorization</td>
 </tr>
 <tr>
 <td>B25</td>
@@ -209,10 +211,9 @@ issue. Completion requires code, documentation and the applicable checks.</p>
 </tr>
 </tbody>
 </table>
-<p>LangGraph and the OpenAI Agents SDK are framework candidates. B24 is an
-alternative entry point to test with adopters, not a requirement to build a
-second runtime integration at once. Select one first integration and test its
-resume behavior. Transport retries may not replay a material tool execution.
+<p>LangGraph and the OpenAI Agents SDK are framework candidates for what remains
+of B11. A second coding runtime waits until adopters name one. Transport
+retries may not replay a material tool execution.
 Custom policy-provider work preserves ADR-0017's veto-only semantics.</p>
 <p>The <a href="/docs/adoption-and-incident-workflows">adoption and incident requirements</a>
 define B23–B27. They extend these milestones without changing their order;
@@ -325,6 +326,7 @@ sessions and feedback, consistent with the no-phone-home decision.</p>
 </ul>
 <h2>Reference</h2><ul>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
 <li><a href="/docs/reference/cli">Command line</a></li>
 <li><a href="/docs/reference/configuration">Configuration</a></li>
 <li><a href="/docs/reference/console">The approvals page</a></li>
@@ -359,6 +361,7 @@ sessions and feedback, consistent with the no-phone-home decision.</p>
 </ul>
 <h2>Extending</h2><ul>
 <li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
 </ul>
 <h2>Project</h2><ul>
 <li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
