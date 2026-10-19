@@ -8,8 +8,8 @@ Amends [ADR-0008](0008-branching-and-release-policy.md) and
 changes reach `main`, where the gate runs, and when a release is cut.
 
 Amended by [ADR-0057](0057-an-external-mcp-client-runs-the-guide-on-every-pull-request.md):
-a pull request is also to be gated on the external MCP client job, outside
-`make quality`, once it is a required check.
+a pull request is also gated on the external MCP client job, outside
+`make quality`, once the bootstrap applies the required checks.
 
 ## Context
 

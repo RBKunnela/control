@@ -49,10 +49,10 @@ TOPICS=(
 # for that reason: `Supply-chain score`, whose workflow has no pull_request
 # trigger; `actionlint, zizmor, pins`, whose pull_request trigger is filtered to
 # .github/workflows/**; and the release workflow's jobs, which run on a tag.
-# `External MCP client` joins once its job is green on main (ADR-0057).
 REQUIRED_CHECKS=(
   "Quality gate"
   "Wire contract compatibility"
+  "External MCP client"
   "CodeQL"
   "Known Go vulnerabilities"
   "Dependency advisories"
