@@ -75,8 +75,9 @@ the bridge gets a new strategy, under review, and every profile can use it.
    the plane down, the hook timing out, crashing and printing garbage, hooks
    disabled, two concurrent resumes, and two mutant bridges caught, one that
    allows every call and one that reports the authorized input as the one
-   that ran. The results go in the profile's `qualification/` directory, one
-   file per runtime version, with the date each was run.
+   that ran. The results go in the profile's `qualification/` directory, in
+   files named for the runtime version, each with the date and the commit it
+   ran at.
 4. Write the profile's page under `docs/reference/`, with the tested
    versions, the settings, a table per event, the bypasses and a line saying
    the page is maintained here and not by the runtime's publisher.

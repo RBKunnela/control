@@ -18,23 +18,25 @@
   "hook_timeout_seconds": 30,
   "max_event_bytes": 16777216,
   "claims": {
-    "runtime": {"name": "Claude Code", "tested_versions": [], "backed_by": []},
-    "fail_closed": {"setting": "onFailure: \"block\"", "min_version": "2.1.295", "backed_by": []},
-    "pending": {"value": "deny-with-reason", "backed_by": ["pre-write"]},
-    "call_id": {"value": true, "backed_by": ["pre-bash", "post-success", "pre-no-call-id"]},
-    "tools_seen": {"value": ["Bash", "PowerShell", "Edit", "Write", "Read", "Glob", "Grep", "Agent", "Workflow", "WebFetch", "WebSearch", "AskUserQuestion", "ExitPlanMode"], "backed_by": []},
+    "runtime": {"name": "Claude Code", "tested_versions": ["2.1.303"], "backed_by": ["qualification/allow", "qualification/block"]},
+    "fail_closed": {"setting": "onFailure: \"block\"", "min_version": "2.1.295", "backed_by": ["qualification/timeout-block", "qualification/crash-block", "qualification/timeout-open", "qualification/crash-open"]},
+    "pending": {"value": "deny-with-reason", "backed_by": ["pre-write", "qualification/pending-held", "qualification/pending-resumed", "qualification/pending-used", "qualification/concurrent"]},
+    "call_id": {"value": true, "backed_by": ["pre-bash", "post-success", "pre-no-call-id", "qualification/allow"]},
+    "tools_seen": {"value": ["Bash", "PowerShell", "Edit", "Write", "Read", "Glob", "Grep", "Agent", "Workflow", "WebFetch", "WebSearch", "AskUserQuestion", "ExitPlanMode", "ToolSearch"], "backed_by": []},
     "bypasses": [
       {"text": "a file referenced with @ enters the context with no tool call", "backed_by": []},
       {"text": "EndConversation starts no hook", "backed_by": []},
       {"text": "a process a shell command starts, or a shell command that writes a file, is not seen beyond the shell call itself", "backed_by": []},
       {"text": "a hook with async: true cannot decide", "backed_by": []},
       {"text": "a mod handling tool.check can approve a call this hook blocked, unless the hook is in managed settings", "backed_by": []},
-      {"text": "--bare skips the discovery of hooks, and disableAllHooks turns off every hook that is not managed", "backed_by": []},
+      {"text": "--bare skips the discovery of hooks", "backed_by": []},
+      {"text": "disableAllHooks turns off every hook that is not managed", "backed_by": []},
+      {"text": "disableAllHooks turns off the hooks of settings passed with --settings", "backed_by": ["qualification/disabled"]},
       {"text": "a cancelled running tool starts no completion hook; the plane's sweep closes its handle as abandoned", "backed_by": []},
       {"text": "a call the runtime refuses after this hook let it run starts no completion hook; its handle holds one of the run's open executions until the execution lifetime ends", "backed_by": []},
       {"text": "the hook runs as the agent's account: without the runtime's shell sandbox denying the plane's directories, the agent can read the run token and the bridge's store and approve its own held calls", "backed_by": []},
-      {"text": "another hook can replace the input after the bridge let the call run; only the completion shows it, as EXECUTED_ARGS_MISMATCH", "backed_by": []},
-      {"text": "MCP tools are left out by the matcher and reach the plane through the gateway", "backed_by": []}
+      {"text": "another hook can replace the input after the bridge let the call run; only the completion shows it, as EXECUTED_ARGS_MISMATCH", "backed_by": ["qualification/rewrite"]},
+      {"text": "the matcher leaves MCP tools out, so only the gateway brings them to the plane", "backed_by": ["qualification/mcp-matcher"]}
     ],
     "page": "docs/reference/claude-code-hooks.md"
   }

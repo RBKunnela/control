@@ -21,18 +21,19 @@ endorsed by the publisher of Claude Code.
 | | |
 | --- | --- |
 | Label | decided, with failure gaps |
-| Qualified on the real runtime | no: no version has been run against it yet |
+| Qualified on the real runtime | 2.1.303: all 20 cases passed, two of them on a rerun once the tools table named `ToolSearch` and classed `Agent` as `EXECUTE` |
 | Events | `PreToolUse`, `PostToolUse`, `PostToolUseFailure` |
 | Fail-closed setting | `onFailure: "block"`, from Claude Code 2.1.295 |
 | Hook timeout the profile assumes | 30 seconds |
 | Largest event read | 16 MiB |
 | Profile and fixtures | `internal/hookbridge/profiles/claude-code/` |
 
-The fixtures are written from Claude Code's published hook documentation, not
-recorded from a release, and every CI run passes them through the bridge
-against a plane. Until a qualification against a pinned release is recorded
-beside the profile, nothing on this page has been observed on the runtime
-itself, and the label stays "decided, with failure gaps". It cannot become
+The fixtures are written from Claude Code's published hook documentation, and
+every CI run passes them through the bridge against a plane. The
+qualification ran Claude Code 2.1.303 headless against a plane, case by case,
+and its results are in the profile's `qualification/` directory. What it
+observed is marked *(seen on 2.1.303)* below; the rest is from the
+documentation and unverified. The label stays "decided, with failure gaps". It cannot become
 "decided, not enforced" until the fail-closed setting is in managed settings,
 the hook command is an absolute path to a binary the agent cannot replace and
 names this built-in profile, and the runtime's shell sandbox keeps the agent
@@ -88,15 +89,15 @@ not the plane, runs the call.
 - `timeout` is 30 because the profile says so: the bridge gives up on each
   request to the plane after 12 seconds and on the whole hook after 27,
   inside the runtime's limit.
-- `onFailure: "block"` sits on `PreToolUse` only. Without it, a hook that times
-  out, crashes or cannot start lets the call run. On the two completion
-  events the call has already run, so there is nothing left to block.
+- `onFailure: "block"` sits on `PreToolUse` only. With it, a hook that times
+  out or crashes blocks the call; without it, the call runs, and so it does
+  after a hook that prints unreadable output and exits 0 *(seen on 2.1.303)*.
+  On the two completion events the call has already run, so there is nothing
+  left to block.
 - The matcher leaves out tools named `mcp__<server>__<tool>`, which reach the
-  plane through the gateway. A matcher with characters other than letters,
-  digits, `_`, `-`, spaces, `,` and `|` is a JavaScript regular expression;
-  Claude Code's documentation does not show a negative lookahead, so the
-  qualification has to confirm that this one matches every other tool. An MCP
-  server that is not behind the gateway is then seen by neither.
+  plane through the gateway; it matched every other tool the qualification
+  used *(seen on 2.1.303)*. An MCP server that is not behind the gateway is
+  then seen by neither.
 - Put these hooks in managed settings. A user can turn off any hook outside
   them with `disableAllHooks` or by editing their own settings files, and
   `allowManagedHooksOnly` keeps user, project and plugin hooks out.
@@ -110,7 +111,11 @@ not the plane, runs the call.
   environment, never from a flag or the event. Start Claude Code with it set.
 - The plane's `tools` table must name every tool these hooks send, each with
   its effect class; a tool it does not name is refused, and the call blocked,
-  except on a plane in `OBSERVE`. For example:
+  except on a plane in `OBSERVE`. Name `ToolSearch` too: Claude Code calls it
+  to load a deferred tool, an MCP tool among them, so a table without it
+  blocks every deferred tool. Class `Agent` as `EXECUTE`: `SPAWN_OR_DELEGATE`
+  needs a delegation the enforcement API does not carry, so such a call is
+  refused with `REQUIRED_FIELD_ABSENT` *(both seen on 2.1.303)*. For example:
 
   ```yaml
   tools:
@@ -123,11 +128,14 @@ not the plane, runs the call.
       provider: runtime
       resource_type: file
       resource_from: /file_path
-    - name: Edit
-      effect: WRITE
+    - name: Agent
+      effect: EXECUTE
       provider: runtime
-      resource_type: file
-      resource_from: /file_path
+      resource_type: agent
+    - name: ToolSearch
+      effect: READ
+      provider: runtime
+      resource_type: tool
   ```
 
 ## Per event
@@ -152,10 +160,10 @@ or set to `null`, a number written as a string, or array items in another
 order do, and the plane records `EXECUTED_ARGS_MISMATCH` and halts the run's
 material calls. A decision that wants the input rewritten, or attaches an
 obligation, is denied, because a hook cannot hand Claude Code the authorized
-bytes. A call held for approval is denied with a line naming the approval;
-once it is approved, the agent's identical retry is a new admit that resumes
-the hold. The bridge's tests show that against a plane; neither the resume
-nor the completion that follows it has been seen on Claude Code. A
+bytes *(seen on 2.1.303)*. A call held for approval is denied with a line
+naming the approval; once it is approved, the agent's identical retry runs
+once and its completion is recorded, a third identical call is refused as
+used, and of two approved retries made at once one runs *(seen on 2.1.303)*. A
 completion's start and end, as the plane records them, are both the moment
 the completion hook ran; the event's `duration_ms` is not read. A tool input over 64 KiB, an integer beyond 2^53-1 or
 more than 32 nested containers is refused by the plane and denied.
@@ -171,12 +179,15 @@ None of these is closed by the profile.
 - A hook with `async: true` cannot decide.
 - A mod handling `tool.check` can approve a call this hook blocked, unless
   the hook is in managed settings.
-- `--bare` skips the discovery of hooks, and `disableAllHooks` turns off every
-  hook that is not managed.
+- `--bare` skips the discovery of hooks.
+- `disableAllHooks` turns off every hook that is not managed; the
+  qualification saw it turn off hooks passed with `--settings` *(seen on
+  2.1.303)*.
 - A cancelled running tool starts no completion hook; the plane's sweep
   closes its handle as abandoned.
 - Another hook can replace the input after the bridge let the call run. Only
-  the completion shows it, as `EXECUTED_ARGS_MISMATCH`, after the call ran.
+  the completion shows it, as `EXECUTED_ARGS_MISMATCH` that halts the run,
+  after the call ran *(seen on 2.1.303)*.
 - When Claude Code refuses a call after the bridge let it run, for
   instance at its own permission prompt, no completion hook follows. The
   handle stays open until `listener.execution_lifetime` ends and holds one of

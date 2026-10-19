@@ -127,7 +127,8 @@ the input that ran, compared by value
 (<a href="/docs/adr/0056-a-coding-runtimes-hooks-reach-the-plane-through-one-bridge">ADR-0056</a>).
 The hook only restricts: it never replies allow, ask or defer. The first
 built-in profile, <a href="/docs/reference/claude-code-hooks">for one coding runtime</a>,
-is decided with failure gaps and not yet qualified on the real runtime.</li>
+is decided with failure gaps and qualified on one release of that runtime:
+20 cases run headless against a plane, with the results beside the profile.</li>
 <li>A CI job runs the guide for connecting an existing MCP setup end to end with
 an MCP client outside the Go SDK, the MCP project's Python SDK, against the
 reference filesystem server, on every pull request

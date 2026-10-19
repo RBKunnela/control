@@ -173,6 +173,8 @@ your function makes a call of its own and lets that call's exception out,
   `ACTION_STARTED`.
 - An admit answer lost on the way can spend an approval: the retry is held
   anew.
+- A tool classed `SPAWN_OR_DELEGATE` is refused with `REQUIRED_FIELD_ABSENT`:
+  that class needs a delegation, which the enforcement API does not carry.
 
 ## Roll back
 

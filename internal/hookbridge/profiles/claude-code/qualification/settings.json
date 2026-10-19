@@ -1,0 +1,41 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^(?!mcp__)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "@HOOK@",
+            "timeout": 30,
+            "onFailure": "block"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "^(?!mcp__)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "@HOOK@",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "^(?!mcp__)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "@HOOK@",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

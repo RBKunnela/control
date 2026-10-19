@@ -1,0 +1,226 @@
+#!/usr/bin/env python3
+"""A stand-in for the runtime, for the qualification's dry runs.
+
+It models the hook protocol as docs/reference/claude-code-hooks.md and the
+profile's fixtures describe it. Nothing it does is evidence about the
+runtime: a case that passes here shows only that the harness and the bridge
+agree with this model.
+
+It makes the one tool call it is given. It builds the PreToolUse event in the
+fixtures' shape and runs every matching hook of the settings: exit 2 blocks,
+a failure (another status, a signal, a timeout, a command that cannot start)
+blocks only under onFailure "block", and a JSON reply's updatedInput replaces
+the input. Each hook is handed the input the call was proposed with. An
+allowed call has its effect here (Write, Edit, Read, Bash, or an MCP tool
+through the server --mcp-config names), and PostToolUse or PostToolUseFailure
+hooks then get the input that ran. It writes one stream-json line per step,
+in the runtime's shape, so the harness reads both alike.
+
+    stub-runtime --settings <file> --project <dir> --tool <name> --input <json>
+                 [--mcp-config <file>]
+    stub-runtime --version
+"""
+
+import argparse
+import json
+import os
+import re
+import signal
+import subprocess
+import sys
+import uuid
+
+VERSION = "stub-runtime 1 (a model of the hook protocol, not the runtime)"
+DEFAULT_TIMEOUT = 60
+
+
+def emit(line: dict) -> None:
+    sys.stdout.write(json.dumps(line) + "\n")
+    sys.stdout.flush()
+
+
+def matches(matcher, tool: str) -> bool:
+    if matcher in (None, "", "*"):
+        return True
+    if re.fullmatch(r"[A-Za-z0-9_\-, |]+", matcher):
+        return tool in [m.strip() for m in re.split(r"[|,]", matcher)]
+    return re.search(matcher, tool) is not None
+
+
+def hooks_for(settings: dict, event: str, tool: str) -> list:
+    if settings.get("disableAllHooks") is True:
+        return []
+    out = []
+    for group in settings.get("hooks", {}).get(event, []):
+        if matches(group.get("matcher"), tool):
+            out.extend(h for h in group.get("hooks", []) if h.get("type") == "command")
+    return out
+
+
+def run_hook(hook: dict, event: dict, cwd: str):
+    """Runs one hook; returns (status, stdout, stderr), status None when it did not finish."""
+    timeout = hook.get("timeout", DEFAULT_TIMEOUT)
+    try:
+        proc = subprocess.Popen(
+            ["/bin/sh", "-c", hook["command"]],
+            cwd=cwd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=True,
+        )
+    except OSError as e:
+        return None, b"", str(e).encode()
+    try:
+        out, err = proc.communicate(json.dumps(event).encode(), timeout=timeout)
+    except subprocess.TimeoutExpired:
+        os.killpg(proc.pid, signal.SIGKILL)
+        proc.communicate()
+        return None, b"", b"hook timed out"
+    if proc.returncode < 0 or proc.returncode > 128:
+        return None, out, err
+    return proc.returncode, out, err
+
+
+def admit(settings: dict, event: dict, cwd: str):
+    """Runs the PreToolUse hooks; returns (allowed, input, reason)."""
+    tool_input, reasons = event["tool_input"], []
+    allowed = True
+    for hook in hooks_for(settings, "PreToolUse", event["tool_name"]):
+        status, out, err = run_hook(hook, event, cwd)
+        if status == 2:
+            allowed = False
+            reasons.append(err.decode("utf-8", "replace").strip())
+            continue
+        if status != 0:
+            if hook.get("onFailure") == "block":
+                allowed = False
+                reasons.append("a hook failed: " + err.decode("utf-8", "replace").strip())
+            continue
+        if not out.strip().startswith(b"{"):
+            continue
+        try:
+            reply = json.loads(out).get("hookSpecificOutput", {})
+        except (ValueError, AttributeError):
+            continue
+        if reply.get("permissionDecision") == "deny":
+            allowed = False
+            reasons.append(str(reply.get("permissionDecisionReason", "denied by a hook")))
+        if isinstance(reply.get("updatedInput"), dict):
+            tool_input = reply["updatedInput"]
+    return allowed, tool_input, "; ".join(reasons)
+
+
+def mcp_call(config: str, tool: str, arguments: dict) -> str:
+    _, server, name = tool.split("__", 2)
+    with open(config, encoding="utf-8") as f:
+        spec = json.load(f)["mcpServers"][server]
+    proc = subprocess.Popen(
+        [spec["command"], *spec.get("args", [])], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True
+    )
+
+    def send(msg: dict) -> None:
+        proc.stdin.write(json.dumps(msg) + "\n")
+        proc.stdin.flush()
+
+    def answer(want: int) -> dict:
+        for line in proc.stdout:
+            msg = json.loads(line)
+            if msg.get("id") == want:
+                return msg
+        raise RuntimeError("the MCP server closed before answering")
+
+    try:
+        info = {"name": "stub-runtime", "version": "1"}
+        send({"jsonrpc": "2.0", "id": 1, "method": "initialize",
+              "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": info}})
+        answer(1)
+        send({"jsonrpc": "2.0", "method": "notifications/initialized"})
+        send({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": name, "arguments": arguments}})
+        result = answer(2)
+    finally:
+        proc.stdin.close()
+        proc.wait(timeout=10)
+    if "error" in result or result.get("result", {}).get("isError"):
+        raise RuntimeError(json.dumps(result))
+    return json.dumps(result["result"].get("content", []))
+
+
+def effect(tool: str, tool_input: dict, cwd: str, mcp_config) -> str:
+    """Has the call's effect; raises on a failed call."""
+    if tool.startswith("mcp__"):
+        if not mcp_config:
+            raise RuntimeError("no --mcp-config for an MCP tool")
+        return mcp_call(mcp_config, tool, tool_input)
+    if tool == "Write":
+        with open(tool_input["file_path"], "w", encoding="utf-8") as f:
+            f.write(tool_input["content"])
+        return "File created successfully at: " + tool_input["file_path"]
+    if tool == "Edit":
+        with open(tool_input["file_path"], encoding="utf-8") as f:
+            text = f.read()
+        if tool_input["old_string"] not in text:
+            raise RuntimeError("String to replace not found in file.")
+        with open(tool_input["file_path"], "w", encoding="utf-8") as f:
+            f.write(text.replace(tool_input["old_string"], tool_input["new_string"], 1))
+        return "The file has been updated."
+    if tool == "Read":
+        with open(tool_input["file_path"], encoding="utf-8") as f:
+            return f.read()
+    if tool == "Bash":
+        ran = subprocess.run(["/bin/sh", "-c", tool_input["command"]], cwd=cwd, capture_output=True, text=True, check=False)
+        if ran.returncode != 0:
+            raise RuntimeError("Exit code %d\n%s" % (ran.returncode, ran.stderr))
+        return ran.stdout
+    raise RuntimeError("the stub runs no " + tool)
+
+
+def main() -> int:
+    if sys.argv[1:] == ["--version"]:
+        print(VERSION)
+        return 0
+    parser = argparse.ArgumentParser(prog="stub-runtime")
+    parser.add_argument("--settings", required=True)
+    parser.add_argument("--project", required=True)
+    parser.add_argument("--tool", required=True)
+    parser.add_argument("--input", required=True)
+    parser.add_argument("--mcp-config")
+    args = parser.parse_args()
+    with open(args.settings, encoding="utf-8") as f:
+        settings = json.load(f)
+    cwd = os.path.realpath(args.project)
+    session = str(uuid.uuid4())
+    call_id = "toolu_stub_" + uuid.uuid4().hex[:24]
+    base = {
+        "session_id": session,
+        "transcript_path": os.path.join(cwd, ".stub-transcript.jsonl"),
+        "cwd": cwd,
+        "permission_mode": "default",
+    }
+    proposed = json.loads(args.input)
+    emit({"type": "system", "subtype": "init", "session_id": session, "cwd": cwd, "model": VERSION})
+    emit({"type": "assistant", "session_id": session,
+          "message": {"content": [{"type": "tool_use", "id": call_id, "name": args.tool, "input": proposed}]}})
+
+    pre = dict(base, hook_event_name="PreToolUse", tool_name=args.tool, tool_input=proposed, tool_use_id=call_id)
+    allowed, ran_input, reason = admit(settings, pre, cwd)
+    if not allowed:
+        result, failed = "PreToolUse hook blocked the call: " + reason, True
+    else:
+        post = dict(base, tool_name=args.tool, tool_input=ran_input, tool_use_id=call_id)
+        try:
+            result, failed = effect(args.tool, ran_input, cwd, args.mcp_config), False
+            post.update(hook_event_name="PostToolUse", tool_response={"output": result[:1000]})
+        except (OSError, RuntimeError, KeyError, ValueError) as e:
+            result, failed = str(e), True
+            post.update(hook_event_name="PostToolUseFailure", error=str(e), is_interrupt=False)
+        for hook in hooks_for(settings, post["hook_event_name"], args.tool):
+            run_hook(hook, post, cwd)
+    emit({"type": "user", "session_id": session,
+          "message": {"content": [{"type": "tool_result", "tool_use_id": call_id, "content": result, "is_error": failed}]}})
+    emit({"type": "result", "subtype": "success", "session_id": session, "num_turns": 1})
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -249,6 +249,8 @@ cover the directories above the socket's.</li>
 <code>ACTION_STARTED</code>.</li>
 <li>An admit answer lost on the way can spend an approval: the retry is held
 anew.</li>
+<li>A tool classed <code>SPAWN_OR_DELEGATE</code> is refused with <code>REQUIRED_FIELD_ABSENT</code>:
+that class needs a delegation, which the enforcement API does not carry.</li>
 </ul>
 <h2 id="roll-back">Roll back</h2>
 <p>Stop the plane: it closes every open execution before its spool drains. Then

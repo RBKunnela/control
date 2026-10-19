@@ -2,6 +2,7 @@ package hookbridge_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -65,9 +66,123 @@ func (s *profileSuite) boundMisses(t *testing.T) []string {
 	return miss
 }
 
-// unbacked returns every case id the claims name that is not a fixture of
-// the profile's directory.
-func unbacked(dir string, c hookbridge.Claims) []string {
+// qualificationPrefix marks a claim's case as one of the profile's
+// qualification against the real runtime rather than a fixture.
+const qualificationPrefix = "qualification/"
+
+// qualificationResults is what a results file of a profile's qualification
+// holds that the claims are judged by.
+type qualificationResults struct {
+	Runtime        string `json:"runtime"`
+	RuntimeVersion string `json:"runtime_version"`
+	Cases          []struct {
+		ID      string `json:"id"`
+		Verdict string `json:"verdict"`
+	} `json:"cases"`
+}
+
+// passedOn reads the results files in dir's qualification directory, named
+// for the runtime's version, and returns every case one of them records as
+// passed and none as failed. A file from the stub runtime, or for a version
+// tested does not list, is refused.
+func passedOn(dir string, tested []string) (map[string]bool, error) {
+	paths, err := filepath.Glob(filepath.Join(dir, "qualification", "[0-9]*.json"))
+	if err != nil {
+		return nil, err
+	}
+	passed, failed := map[string]bool{}, map[string]bool{}
+	for _, path := range paths {
+		r, err := readResults(path, tested)
+		if err != nil {
+			return nil, err
+		}
+		for _, c := range r.Cases {
+			switch c.Verdict {
+			case "pass":
+				passed[c.ID] = true
+			case "fail":
+				failed[c.ID] = true
+			}
+		}
+	}
+	for id := range failed {
+		delete(passed, id)
+	}
+	return passed, nil
+}
+
+// readResults reads one results file, refusing one that holds no case, comes
+// from the stub runtime or is for a version tested does not list.
+func readResults(path string, tested []string) (qualificationResults, error) {
+	var r qualificationResults
+	raw, err := os.ReadFile(path) //nolint:gosec // G304: a results file this package keeps
+	if err != nil {
+		return r, err
+	}
+	if err := json.Unmarshal(raw, &r); err != nil {
+		return r, fmt.Errorf("%s: %w", path, err)
+	}
+	version, _, _ := strings.Cut(r.RuntimeVersion, " ")
+	switch {
+	case len(r.Cases) == 0:
+		return r, fmt.Errorf("%s holds no cases", path)
+	case r.Runtime == "" || r.Runtime == "stub":
+		return r, fmt.Errorf("%s is not a run on the runtime", path)
+	case !slices.Contains(tested, version):
+		return r, fmt.Errorf("%s is for version %q, which the profile does not list as tested", path, version)
+	}
+	return r, nil
+}
+
+func passedOnTheRuntime(t *testing.T, dir string, tested []string) map[string]bool {
+	t.Helper()
+	passed, err := passedOn(dir, tested)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return passed
+}
+
+// A case backs a claim only when a run on the runtime, for a version the
+// profile lists as tested, passed it and no such run failed it.
+func TestOnlyACasePassedOnATestedRuntimeBacksAClaim(t *testing.T) {
+	write := func(t *testing.T, dir, name, body string) {
+		t.Helper()
+		if err := os.MkdirAll(filepath.Join(dir, "qualification"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "qualification", name), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const head = `{"runtime":"rt","runtime_version":"1.2.3 (Runtime)","cases":`
+	dir := t.TempDir()
+	write(t, dir, "1.2.3.json", head+`[{"id":"a","verdict":"pass"},{"id":"b","verdict":"pass"},{"id":"c","verdict":"unknown"}]}`)
+	write(t, dir, "1.2.3-rerun.json", head+`[{"id":"b","verdict":"fail"},{"id":"c","verdict":"pass"}]}`)
+	write(t, dir, "settings.json", `{"hooks":{}}`)
+	passed, err := passedOn(dir, []string{"1.2.3"})
+	if err != nil || len(passed) != 2 || !passed["a"] || !passed["c"] {
+		t.Fatalf("passed %v, %v; want a and c: b failed on a rerun", passed, err)
+	}
+	for name, body := range map[string]string{
+		"a stub run":            `{"runtime":"stub","runtime_version":"1.2.3","cases":[{"id":"a","verdict":"pass"}]}`,
+		"an untested version":   `{"runtime":"rt","runtime_version":"9.9.9 (Runtime)","cases":[{"id":"a","verdict":"pass"}]}`,
+		"no runtime":            `{"runtime_version":"1.2.3","cases":[{"id":"a","verdict":"pass"}]}`,
+		"no cases":              head + `[]}`,
+		"a file that is not it": `not json`,
+	} {
+		dir := t.TempDir()
+		write(t, dir, "1.2.3.json", body)
+		if passed, err := passedOn(dir, []string{"1.2.3"}); err == nil {
+			t.Errorf("%s: passed %v, want a refusal", name, passed)
+		}
+	}
+}
+
+// unbacked returns every case id the claims name that is neither a fixture
+// of the profile's directory nor, after qualificationPrefix, a case its
+// qualification passed on the runtime.
+func unbacked(dir string, c hookbridge.Claims, passed map[string]bool) []string {
 	ids := append([]string{}, c.Runtime.BackedBy...)
 	ids = append(ids, c.FailClosed.BackedBy...)
 	ids = append(ids, c.Pending.BackedBy...)
@@ -78,6 +193,12 @@ func unbacked(dir string, c hookbridge.Claims) []string {
 	}
 	var missing []string
 	for _, id := range ids {
+		if q, ok := strings.CutPrefix(id, qualificationPrefix); ok {
+			if !passed[q] {
+				missing = append(missing, id)
+			}
+			continue
+		}
 		_, err := os.Stat(filepath.Join(dir, "fixtures", id+".json"))
 		if strings.ContainsAny(id, `/.`) || err != nil {
 			missing = append(missing, id)
@@ -86,7 +207,7 @@ func unbacked(dir string, c hookbridge.Claims) []string {
 	return missing
 }
 
-func TestEveryClaimOfABuiltInProfileNamesAFixture(t *testing.T) {
+func TestEveryClaimOfABuiltInProfileIsBackedByACase(t *testing.T) {
 	paths, err := filepath.Glob("profiles/*/profile.json")
 	if err != nil || len(paths) == 0 {
 		t.Fatalf("no built-in profile: %v", err)
@@ -97,19 +218,24 @@ func TestEveryClaimOfABuiltInProfileNamesAFixture(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", dir, err)
 		}
-		if missing := unbacked(dir, p.Claims); len(missing) != 0 {
-			t.Errorf("%s: claims name cases that do not exist: %v", dir, missing)
+		if missing := unbacked(dir, p.Claims, passedOnTheRuntime(t, dir, p.Claims.Runtime.TestedVersions)); len(missing) != 0 {
+			t.Errorf("%s: claims name cases that do not exist or did not pass: %v", dir, missing)
 		}
 	}
 }
 
 // The first case id of each built-in profile's claims is replaced by one
-// that names no fixture, and by a path to one that does.
+// that names no fixture, by a path to one that does, and by a qualification
+// case that no results file records as passed; a passed one is backed.
 func TestAClaimNamingNoFixtureIsCaught(t *testing.T) {
 	for _, s := range suites(t) {
+		passed := passedOnTheRuntime(t, s.dir, s.profile.Claims.Runtime.TestedVersions)
 		raw, err := os.ReadFile(filepath.Join(s.dir, "profile.json"))
 		if err != nil {
 			t.Fatal(err)
+		}
+		if bytes.Contains(raw, []byte(`"`+qualificationPrefix)) && len(passed) == 0 {
+			t.Fatalf("%s: claims cite the qualification, and no case of it passed", s.dir)
 		}
 		const member = `"backed_by": ["`
 		at := bytes.Index(raw, []byte(member))
@@ -118,15 +244,36 @@ func TestAClaimNamingNoFixtureIsCaught(t *testing.T) {
 		}
 		start := at + len(member)
 		end := start + bytes.IndexByte(raw[start:], '"')
-		for _, id := range []string{"absent-case", "../fixtures/" + string(raw[start:end])} {
-			doctored := append(append(bytes.Clone(raw[:start]), id...), raw[end:]...)
-			p, err := hookbridge.ParseProfile(doctored)
+		doctor := func(id string) hookbridge.Claims {
+			p, err := hookbridge.ParseProfile(append(append(bytes.Clone(raw[:start]), id...), raw[end:]...))
 			if err != nil {
 				t.Fatal(err)
 			}
-			if missing := unbacked(s.dir, p.Claims); len(missing) != 1 || missing[0] != id {
-				t.Errorf("%s: a claim backed by %q: unbacked %v", s.dir, id, missing)
-			}
+			return p.Claims
 		}
+		plantedClaims(t, s.dir, string(raw[start:end]), doctor, passed)
+	}
+}
+
+// plantedClaims checks unbacked against claims whose first case id doctor
+// replaces: an absent case, a path to a real fixture and an absent
+// qualification case are each reported alone; a passed qualification case is
+// backed, and unbacked when nothing passed.
+func plantedClaims(t *testing.T, dir, first string, doctor func(string) hookbridge.Claims, passed map[string]bool) {
+	t.Helper()
+	for _, id := range []string{"absent-case", "../fixtures/" + first, qualificationPrefix + "absent-case"} {
+		if missing := unbacked(dir, doctor(id), passed); len(missing) != 1 || missing[0] != id {
+			t.Errorf("%s: a claim backed by %q: unbacked %v", dir, id, missing)
+		}
+	}
+	for name := range passed {
+		id := qualificationPrefix + name
+		if missing := unbacked(dir, doctor(id), passed); len(missing) != 0 {
+			t.Errorf("%s: a claim backed by the passed %q: unbacked %v", dir, id, missing)
+		}
+		if missing := unbacked(dir, doctor(id), map[string]bool{}); !slices.Contains(missing, id) {
+			t.Errorf("%s: a claim backed by %q, which passed nowhere: unbacked %v", dir, id, missing)
+		}
+		break
 	}
 }

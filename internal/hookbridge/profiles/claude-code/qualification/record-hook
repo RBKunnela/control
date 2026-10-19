@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+"""A hook command that records the event it is given, then acts.
+
+It copies the event from standard input, byte for byte, into the events
+directory as NNN.json, and writes NNN.meta.json beside it with what it did.
+With --act pass it hands the event to the command after "--" and keeps that
+command's exit status, standard output and standard error as its own; the
+other acts stand in for a hook that fails: sleep past any timeout, die by a
+signal, print unreadable output and exit 0, or reply with an updatedInput
+whose content is --content.
+
+    record-hook --events <dir> --act pass -- <command> [<arg>...]
+    record-hook --events <dir> --act sleep|crash|garbage
+    record-hook --events <dir> --act rewrite --content <text>
+"""
+
+import argparse
+import json
+import os
+import signal
+import subprocess
+import sys
+import time
+
+KEEP = 4096
+
+
+def claim(events: str) -> str:
+    """The next free NNN in events, taken with an exclusive create."""
+    for n in range(1, 1000):
+        path = os.path.join(events, "%03d.json" % n)
+        try:
+            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        except FileExistsError:
+            continue
+        os.close(fd)
+        return path[: -len(".json")]
+    raise SystemExit("record-hook: no free event slot in " + events)
+
+
+def write_meta(stem: str, meta: dict) -> None:
+    with open(stem + ".meta.json", "w", encoding="utf-8") as f:
+        json.dump(meta, f)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="record-hook")
+    parser.add_argument("--events", required=True)
+    parser.add_argument("--act", required=True, choices=["pass", "sleep", "crash", "garbage", "rewrite"])
+    parser.add_argument("--content", default="")
+    parser.add_argument("command", nargs="*")
+    args = parser.parse_args()
+    if (args.act == "pass") != bool(args.command):
+        parser.error("--act pass takes a command after --, and only it does")
+
+    event = sys.stdin.buffer.read()
+    stem = claim(args.events)
+    with open(stem + ".json", "wb") as f:
+        f.write(event)
+    meta = {"act": args.act, "pid": os.getpid()}
+
+    if args.act == "pass":
+        ran = subprocess.run(args.command, input=event, capture_output=True, check=False)
+        meta.update(
+            exit=ran.returncode,
+            stdout=ran.stdout[:KEEP].decode("utf-8", "replace"),
+            stderr=ran.stderr[:KEEP].decode("utf-8", "replace"),
+        )
+        write_meta(stem, meta)
+        sys.stdout.buffer.write(ran.stdout)
+        sys.stderr.buffer.write(ran.stderr)
+        return ran.returncode if ran.returncode >= 0 else 128 - ran.returncode
+
+    write_meta(stem, meta)
+    if args.act == "sleep":
+        time.sleep(600)
+        return 0
+    if args.act == "crash":
+        sys.stdout.flush()
+        os.kill(os.getpid(), signal.SIGKILL)
+    if args.act == "garbage":
+        sys.stdout.buffer.write(b"\xff\xfe{not an answer\n")
+        return 0
+    try:
+        tool_input = json.loads(event)["tool_input"]
+    except (ValueError, KeyError, TypeError):
+        return 1
+    tool_input = dict(tool_input, content=args.content)
+    reply = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "updatedInput": tool_input}}
+    sys.stdout.write(json.dumps(reply))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

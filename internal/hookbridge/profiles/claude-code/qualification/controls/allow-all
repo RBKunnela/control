@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# A broken bridge, the qualification's first negative control: it reads the
+# event, asks no plane and lets every call run. A harness that judges a block
+# case passed through this hook examines nothing.
+set -euo pipefail
+cat >/dev/null
+exit 0
