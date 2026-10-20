@@ -360,6 +360,9 @@ func (r *rig) runScenarios(extra []string, files ...string) (int, string) {
 func lines(out string) []string {
 	var got []string
 	s := bufio.NewScanner(strings.NewReader(out))
+	// A process table can hold a command line past the scanner's default
+	// token size, which would end the scan there and hide every later line.
+	s.Buffer(nil, len(out)+1)
 	for s.Scan() {
 		got = append(got, s.Text())
 	}
@@ -387,4 +390,13 @@ func exitOf(t *testing.T, err error) int {
 	}
 	t.Fatalf("the command did not run: %v", err)
 	return -1
+}
+
+// TestLinesReadsALineLongerThanTheScannersDefault: a process table with one
+// command line of 200 KiB still yields every line after it.
+func TestLinesReadsALineLongerThanTheScannersDefault(t *testing.T) {
+	got := lines("1 0 a\n2 1 " + strings.Repeat("x", 200<<10) + "\n3 2 console\n")
+	if len(got) != 3 || got[2] != "3 2 console" {
+		t.Fatalf("read %d lines, want 3 ending in the console line", len(got))
+	}
 }
