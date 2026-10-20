@@ -18,9 +18,9 @@ type Basis struct {
 	opened bool
 }
 
-// Stood reports whether the decision's policy let its call run when it was
-// made: the bundle was fresh, or the table let the read run. A call whose
-// basis did not stand was not let run by its policy in the first place.
+// Stood reports whether the policy the decision stood on was in force when it
+// was made: the bundle was fresh, or the table let the read run. It says
+// nothing of the verdict, which the caller reads from the decision.
 func (b Basis) Stood() bool { return b.set && (b.fresh || b.opened) }
 
 // Standing is how a decision's basis stands at a later reading.

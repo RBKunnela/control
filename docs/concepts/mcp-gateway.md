@@ -165,7 +165,7 @@ each definition. Nothing else classifies: a tool's own annotations are hints
 ## What the modes do
 
 The kernel is `ENFORCE` only and decides every call the same way in every mode
-(ADR-0012). A mode changes what is done with the decision, and it never reaches
+but `LOCKDOWN`, which builds it with fail-open reads off (ADR-0012). A mode changes what is done with the decision, and it never reaches
 an extension: the adapter translates, the sink writes, the policy holder serves a
 bundle, and none of them knows the mode.
 
@@ -224,14 +224,17 @@ waiting on them; `decision_latency_us` stays the kernel's own time.
 | `resources/read`, `prompts/get` | JSON-RPC error `-31101`, because those results have no `isError` | the same structured data in the error's `data` |
 
 A retry that matches the binding, equals the held request on the data labels and
-on the run context without the plane's flow tags, and draws a fresh decision
+on the run context without the plane's flow tags, comes from the opened run that
+holds it, and draws a fresh decision
 equal to the held one resumes that request: no second `ACTION_PROPOSED`, the kernel
 decides again as a gate, and the approval satisfies the wait and nothing else. A
-retry that differs in one of those fields is a new request with a new hold. A
-consumed approval answers `APPROVAL_ALREADY_USED`, an expired one
-`APPROVAL_EXPIRED`, a rejected one `APPROVAL_REJECTED`. The plane holds at most
-`approvals.max_held` requests, 16 of one opened run, and keeps at most
-`approvals.max_open` executions open; past either bound a call blocks with `EVIDENCE_UNAVAILABLE`.
+retry that differs in one of those is a new request with a new hold. A
+consumed approval answers `APPROVAL_ALREADY_USED` until it expires, and a
+rejected one `APPROVAL_REJECTED`. A retry after the approval expired is held
+anew; one whose approval lapses while it resumes answers `APPROVAL_EXPIRED`.
+The plane holds at most `approvals.max_held` requests,
+`approvals.max_held_per_run` of one opened run, 16 unless set, and keeps at most
+`approvals.max_open` executions open; past any bound a call blocks with `EVIDENCE_UNAVAILABLE`.
 
 ## What the closing record carries
 

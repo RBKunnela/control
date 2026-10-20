@@ -325,7 +325,9 @@ Sources: `ROADMAP.md`, `internal/gateway/pause.go`, `adapters/authzen/client.go`
 - **Enforcement points** see a proposed action before its effect and may block
   it, hold it for an approval or attach obligations. The MCP gateway is one.
   A plane serving the enforcement API decides for a cooperating client, which
-  enforces the answer itself; a framework's hooks over it are planned.
+  enforces the answer itself. A coding runtime's tool hooks reach it through
+  `guardana-control hook`, which can only take a call away; a framework's
+  hooks over it are planned.
 - **Sensors** see an effect after it happened, or an indirect sign of it:
   the traces and logs an agent's runtime writes, a proxy's access log, process
   events. They report and never decide. An observation names its source and

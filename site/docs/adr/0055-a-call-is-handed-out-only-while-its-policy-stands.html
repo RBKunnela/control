@@ -172,7 +172,10 @@ BLOCKED result after it, as an expired approval is (ADR-0027).</li>
 <li><code>OBSERVE</code> enforces no policy (ADR-0013 applies a mode to the action), so
 there the call runs, and <code>/healthz</code> and <code>/metrics</code> count it
 (<code>pipeline_stale_handed_out_total</code>) when its policy let it run when decided,
-which is what <code>ENFORCE</code> would have withheld at hand-out. A pause, a stop and a run's expiry
+which is what <code>ENFORCE</code> would have withheld at hand-out: the kernel's action
+was to execute, a read the fail-closed table opened included. A call allowed
+with an obligation counts even when <code>ENFORCE</code> could not have applied the
+obligation and would have denied it instead. A pause, a stop and a run's expiry
 still block it in every mode.</li>
 </ul>
 <p>An approval granted under a bundle since replaced is never consumed for an

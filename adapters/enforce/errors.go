@@ -62,7 +62,8 @@ const (
 	ErrPlatform Error = "enforce: this platform serves no enforcement socket"
 )
 
-// ErrListener is Serve's refusal of a listener that is not a Unix socket's.
+// ErrListener is Serve's refusal of any listener but the one its adapter's
+// Listen returned, and of that one a second time.
 const ErrListener Error = "enforce: Serve takes the Unix socket listener Listen returns"
 
 // ErrDraining is Shutdown's answer when requests it waited for were still in

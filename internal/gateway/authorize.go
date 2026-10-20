@@ -68,6 +68,7 @@ func (c *call) decideAuthorized(snap *policy.Snapshot) bool {
 		Envelope: c.env, Refusal: c.in.Refusal, AuthorizedArgs: c.args, Flow: c.flow.state, External: c.external,
 	}, snap)
 	c.kernel, c.decision, c.action, c.basis = out.Decision, out.Decision, out.Action, out.Basis
+	c.kernelAction = out.Action
 	c.reliedOnDecision(out.Decision, snap)
 	c.applyMode()
 	if c.action == core.Block {

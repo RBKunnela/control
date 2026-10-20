@@ -18,6 +18,9 @@
         "admit_exits": [
           0
         ],
+        "admit_stdout": [
+          ""
+        ],
         "file": "hello",
         "proposed": "hello",
         "trail": [
@@ -251,6 +254,10 @@
         "file": null,
         "runtime_returned": true,
         "write_refused": true,
+        "refusal": [
+          "the receiver did not answer",
+          "the receiver did not answer"
+        ],
         "pre_tool_use": [
           [
             "Write",
@@ -284,6 +291,10 @@
         "file": null,
         "runtime_returned": true,
         "write_refused": true,
+        "refusal": [
+          "timed out; blocking because onFailure is \"block\"",
+          "timed out; blocking because onFailure is \"block\""
+        ],
         "pre_tool_use": []
       },
       "verdict": "pass"
@@ -302,6 +313,7 @@
         "file": "ran",
         "runtime_returned": true,
         "write_refused": false,
+        "refusal": [],
         "pre_tool_use": []
       },
       "verdict": "pass"
@@ -324,6 +336,10 @@
         "file": null,
         "runtime_returned": true,
         "write_refused": true,
+        "refusal": [
+          "failed; blocking because onFailure is \"block\"",
+          "failed; blocking because onFailure is \"block\""
+        ],
         "pre_tool_use": []
       },
       "verdict": "pass"
@@ -342,6 +358,7 @@
         "file": "ran",
         "runtime_returned": true,
         "write_refused": false,
+        "refusal": [],
         "pre_tool_use": []
       },
       "verdict": "pass"
@@ -360,9 +377,11 @@
         "file": "ran",
         "runtime_returned": true,
         "write_refused": false,
+        "refusal": [],
+        "unknown": "the hook's exit and output were not recorded as written and 0",
         "pre_tool_use": []
       },
-      "verdict": "pass"
+      "verdict": "unknown"
     },
     {
       "id": "disabled",
@@ -526,5 +545,5 @@
       "verdict": "pass"
     }
   ],
-  "judged_at": "9d00c8e8"
+  "judged_at": "5203d14a"
 }

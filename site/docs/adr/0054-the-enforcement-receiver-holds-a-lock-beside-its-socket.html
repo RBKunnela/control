@@ -157,8 +157,12 @@ live one dead after a PID namespace change; a kernel lock has neither
 failure.</li>
 </ul>
 <h2 id="consequences">Consequences</h2>
-<p><code>Listen</code> returns a listener whose <code>Close</code> releases the lock; <code>Serve</code> accepts
-it. <code>CheckSocketDir</code>, which <code>doctor</code> runs, refuses without locking a lock file
+<p><code>Listen</code> returns a listener whose <code>Close</code> releases the lock; <code>Serve</code> takes
+only a listener its own adapter's <code>Listen</code> returned, and that one once, so the
+plane never serves a socket whose lock it does not hold. <code>Handler</code> stays
+exported for tests and embedding; a caller that serves it on a listener of
+its own holds no lock, as one that removes the socket and binds it again
+does not. <code>CheckSocketDir</code>, which <code>doctor</code> runs, refuses without locking a lock file
 <code>Listen</code> would refuse. An operator who points two planes at one socket gets a refusal naming the
 lock file. The socket's directory holds <code>&lt;socket&gt;.lock</code> after the first start.</p>
 <h2 id="validation">Validation</h2>
@@ -168,7 +172,9 @@ replaced; a listener holds the lock until it is closed, and <code>Serve</code> r
 it when it ends; a link, a directory, a second name of another file or a file
 others may read at the lock's path is refused; a lock created under umask
 <code>0277</code> is still <code>0600</code>. The first case fails
-without the lock, on both systems.</p>
+without the lock, on both systems. <code>adapters/enforce/serve_unix_test.go</code>:
+<code>Serve</code> refuses a Unix listener bound elsewhere, another adapter's, and its
+own a second time.</p>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/adr/0054-the-enforcement-receiver-holds-a-lock-beside-its-socket.md">docs/adr/0054-the-enforcement-receiver-holds-a-lock-beside-its-socket.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.12.0, and <a href="https://github.com/guardana/control/tree/v0.12.0/docs">its documentation</a> is in its tag.</p>
 </main>
 <nav class="side" aria-label="Documentation">

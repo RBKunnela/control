@@ -284,7 +284,7 @@ each definition. Nothing else classifies: a tool's own annotations are hints
 </table>
 <h2 id="what-the-modes-do">What the modes do</h2>
 <p>The kernel is <code>ENFORCE</code> only and decides every call the same way in every mode
-(ADR-0012). A mode changes what is done with the decision, and it never reaches
+but <code>LOCKDOWN</code>, which builds it with fail-open reads off (ADR-0012). A mode changes what is done with the decision, and it never reaches
 an extension: the adapter translates, the sink writes, the policy holder serves a
 bundle, and none of them knows the mode.</p>
 <table>
@@ -411,14 +411,17 @@ waiting on them; <code>decision_latency_us</code> stays the kernel's own time.</
 </tbody>
 </table>
 <p>A retry that matches the binding, equals the held request on the data labels and
-on the run context without the plane's flow tags, and draws a fresh decision
+on the run context without the plane's flow tags, comes from the opened run that
+holds it, and draws a fresh decision
 equal to the held one resumes that request: no second <code>ACTION_PROPOSED</code>, the kernel
 decides again as a gate, and the approval satisfies the wait and nothing else. A
-retry that differs in one of those fields is a new request with a new hold. A
-consumed approval answers <code>APPROVAL_ALREADY_USED</code>, an expired one
-<code>APPROVAL_EXPIRED</code>, a rejected one <code>APPROVAL_REJECTED</code>. The plane holds at most
-<code>approvals.max_held</code> requests, 16 of one opened run, and keeps at most
-<code>approvals.max_open</code> executions open; past either bound a call blocks with <code>EVIDENCE_UNAVAILABLE</code>.</p>
+retry that differs in one of those is a new request with a new hold. A
+consumed approval answers <code>APPROVAL_ALREADY_USED</code> until it expires, and a
+rejected one <code>APPROVAL_REJECTED</code>. A retry after the approval expired is held
+anew; one whose approval lapses while it resumes answers <code>APPROVAL_EXPIRED</code>.
+The plane holds at most <code>approvals.max_held</code> requests,
+<code>approvals.max_held_per_run</code> of one opened run, 16 unless set, and keeps at most
+<code>approvals.max_open</code> executions open; past any bound a call blocks with <code>EVIDENCE_UNAVAILABLE</code>.</p>
 <h2 id="what-the-closing-record-carries">What the closing record carries</h2>
 <table>
 <thead>

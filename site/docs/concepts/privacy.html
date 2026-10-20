@@ -281,7 +281,7 @@ to the plane, no field of the contract holds it, and no adapter reads it.</p>
 <tr>
 <td>the stop list, <code>reaction.stops</code></td>
 <td>per stop the tenant, run id, finding id, procedure, rule and times; per covered finding its id, tenant and run; per lift the run, a line number and its signature</td>
-<td>the plane's account: the file is <code>0600</code>, and the list is refused when another account owns it or a group or others may write it</td>
+<td>the plane's account, and any account the file's and directory's modes let read it: a new list is <code>0600</code>, and the list is refused when another account owns it or its directory, or a group or others may write either</td>
 </tr>
 <tr>
 <td>the decision point at <code>pdp.identifier</code></td>

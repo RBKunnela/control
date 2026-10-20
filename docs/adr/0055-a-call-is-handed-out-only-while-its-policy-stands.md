@@ -64,7 +64,10 @@ of its own:
 - `OBSERVE` enforces no policy (ADR-0013 applies a mode to the action), so
   there the call runs, and `/healthz` and `/metrics` count it
   (`pipeline_stale_handed_out_total`) when its policy let it run when decided,
-  which is what `ENFORCE` would have withheld at hand-out. A pause, a stop and a run's expiry
+  which is what `ENFORCE` would have withheld at hand-out: the kernel's action
+  was to execute, a read the fail-closed table opened included. A call allowed
+  with an obligation counts even when `ENFORCE` could not have applied the
+  obligation and would have denied it instead. A pause, a stop and a run's expiry
   still block it in every mode.
 
 An approval granted under a bundle since replaced is never consumed for an

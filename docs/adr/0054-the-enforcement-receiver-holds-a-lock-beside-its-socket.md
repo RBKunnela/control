@@ -57,8 +57,12 @@ covered by the same owner-only check as the socket.
 
 ## Consequences
 
-`Listen` returns a listener whose `Close` releases the lock; `Serve` accepts
-it. `CheckSocketDir`, which `doctor` runs, refuses without locking a lock file
+`Listen` returns a listener whose `Close` releases the lock; `Serve` takes
+only a listener its own adapter's `Listen` returned, and that one once, so the
+plane never serves a socket whose lock it does not hold. `Handler` stays
+exported for tests and embedding; a caller that serves it on a listener of
+its own holds no lock, as one that removes the socket and binds it again
+does not. `CheckSocketDir`, which `doctor` runs, refuses without locking a lock file
 `Listen` would refuse. An operator who points two planes at one socket gets a refusal naming the
 lock file. The socket's directory holds `<socket>.lock` after the first start.
 
@@ -70,4 +74,6 @@ replaced; a listener holds the lock until it is closed, and `Serve` releases
 it when it ends; a link, a directory, a second name of another file or a file
 others may read at the lock's path is refused; a lock created under umask
 `0277` is still `0600`. The first case fails
-without the lock, on both systems.
+without the lock, on both systems. `adapters/enforce/serve_unix_test.go`:
+`Serve` refuses a Unix listener bound elsewhere, another adapter's, and its
+own a second time.

@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -79,27 +80,29 @@ func (a *Adapter) listen(chmodded func()) (net.Listener, error) {
 	if err != nil {
 		return nil, errors.Join(err, ln.Close(), release())
 	}
-	return &lockedListener{Listener: ln, release: release}, nil
+	return &lockedListener{Listener: ln, release: release, owner: a}, nil
 }
 
-// lockedListener releases the socket's lock once the listener is closed.
+// lockedListener is a listener Listen bound with the socket's lock held. It
+// releases the lock once it is closed, and Serve takes it once, for the
+// adapter that bound it.
 type lockedListener struct {
 	net.Listener
 	release func() error
+	owner   *Adapter
+	served  atomic.Bool
 }
 
 func (l *lockedListener) Close() error {
 	return errors.Join(l.Listener.Close(), l.release())
 }
 
-// unixSocket reports whether ln listens on a Unix socket: one Listen
-// returned, or one bound elsewhere.
-func unixSocket(ln net.Listener) bool {
-	if l, ok := ln.(*lockedListener); ok {
-		ln = l.Listener
-	}
-	_, ok := ln.(*net.UnixListener)
-	return ok
+// claim reports whether a may serve ln: a listener a's Listen returned that
+// no Serve has taken yet. A listener bound elsewhere holds no lock, so a
+// second plane could serve the same socket beside it.
+func (a *Adapter) claim(ln net.Listener) bool {
+	l, ok := ln.(*lockedListener)
+	return ok && l.owner == a && l.served.CompareAndSwap(false, true)
 }
 
 // ownDir refuses anything but a directory, not a link to one, that this

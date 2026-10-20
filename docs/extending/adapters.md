@@ -80,7 +80,9 @@ failing:
 | `Preview(ctx, Admission) *Decision` | what a call would be decided, recording and holding nothing. It is what shaping a listing asks |
 
 An adapter that has an execution open closes or aborts it. An execution left
-open holds one of the plane's `MaxOpen` slots until the process ends.
+open holds one of the plane's `MaxOpen` slots until the adapter abandons it or
+the process ends; the enforcement API abandons each execution whose handle
+expired.
 
 ## The capabilities, and what the plane does with each
 

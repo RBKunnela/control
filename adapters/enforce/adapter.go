@@ -147,10 +147,11 @@ func (a *Adapter) started() Pipeline {
 // Serve answers requests on ln until ctx ends, then closes ln and returns.
 // Each request is bounded by the configured request timeout over its
 // headers, its body and its answer. It refuses with ErrListener, serving
-// nothing, a listener that is not a Unix socket's: the socket's owner and
-// mode are what limit who can present a run token.
+// nothing, any listener but one this adapter's Listen returned, and that one
+// a second time: the socket's owner and mode limit who can present a run
+// token, and its lock keeps a second plane off it.
 func (a *Adapter) Serve(ctx context.Context, ln net.Listener) error {
-	if !unixSocket(ln) {
+	if !a.claim(ln) {
 		return ErrListener
 	}
 	srv := &http.Server{

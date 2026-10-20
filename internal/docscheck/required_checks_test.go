@@ -18,9 +18,12 @@ const requiredCheckIf = "github.event_name == 'pull_request'"
 // needs, continue-on-error, strategy, uses, or a quoted spelling of if.
 var requiredJobKeys = []string{"name", "runs-on", "timeout-minutes", "permissions", "steps", "if"}
 
-// maskingStepKeys are the step keys that let a required job report success
-// without the step's work: a condition that skips it, or a failure ignored.
-var maskingStepKeys = []string{"if", "continue-on-error"}
+// requiredStepKeys are the keys a required job's step may carry, written
+// plainly: the ones those steps use. Another, if, continue-on-error or shell
+// among them, can skip the step, ignore its failure or change what it runs,
+// and a quoted, escaped, anchored or tagged spelling is not recognised. What
+// a step's env or a workflow's defaults do to its command is not judged here.
+var requiredStepKeys = []string{"name", "run", "uses", "with", "env"}
 
 // workflowJob is one job of a workflow, keyed elsewhere by the check-run
 // context it reports: its name, or its id when it has none.
@@ -109,6 +112,9 @@ func requiredCheckProblems(checks []string, jobs map[string][]workflowJob) []str
 func requiredJobProblems(check string, job workflowJob) []string {
 	where := fmt.Sprintf("%s: the job of %q", job.file, check)
 	problems := keyProblems(job.node, requiredJobKeys, where)
+	if job.node.value != "" {
+		problems = append(problems, where+" is written in flow style, which this check cannot read")
+	}
 	if !job.everyPR {
 		problems = append(problems, where+" is in a workflow that does not run on every pull request")
 	}
@@ -120,11 +126,27 @@ func requiredJobProblems(check string, job workflowJob) []string {
 			problems = append(problems, fmt.Sprintf("%s runs only if %s", where, cond.value))
 		}
 	}
-	for _, steps := range job.node.children("steps") {
+	return append(problems, stepProblems(where, job.node)...)
+}
+
+// stepProblems names each step of a required job that carries a key outside
+// requiredStepKeys, and each this check cannot read: steps or a step written
+// in flow style, which the block parser keeps as text where a condition can
+// hide.
+func stepProblems(where string, job *yamlNode) []string {
+	var problems []string
+	for _, steps := range job.children("steps") {
+		if steps.value != "" {
+			problems = append(problems, fmt.Sprintf("line %d: %s lists its steps in flow style, which this check cannot read", steps.line, where))
+		}
 		for _, step := range steps.kids {
+			if step.key != "-" || step.value != "" || len(step.kids) == 0 {
+				problems = append(problems, fmt.Sprintf("line %d: %s has a step this check cannot read as a block mapping", step.line, where))
+				continue
+			}
 			for _, kid := range step.kids {
-				if slices.Contains(maskingStepKeys, unquote(kid.key)) {
-					problems = append(problems, fmt.Sprintf("line %d: %s has a step with %s", kid.line, where, kid.key))
+				if !slices.Contains(requiredStepKeys, kid.key) {
+					problems = append(problems, fmt.Sprintf("line %d: %s has a step with %s, which a required job's step may not carry", kid.line, where, kid.key))
 				}
 			}
 		}
@@ -199,11 +221,21 @@ func TestARequiredCheckAPullRequestCanMissIsCaught(t *testing.T) {
 		"an alias":                  strings.Replace(good, "runs-on: ubuntu-latest", "runs-on: *runner", 1),
 		"a skipped step":            strings.Replace(good, step, step+"        if: false\n", 1),
 		"a step whose failure goes": strings.Replace(good, step, step+"        \"continue-on-error\": true\n", 1),
+		"a skipped flow-style step": strings.Replace(good, step, "      - {run: make check, if: false}\n", 1),
+		"an escaped if on a step":   strings.Replace(good, step, step+"        \"i\\x66\": false\n", 1),
+		"an anchored if on a step":  strings.Replace(good, step, step+"        &k if: false\n", 1),
+		"a tagged if on a step":     strings.Replace(good, step, step+"        !!str if: false\n", 1),
+		"a shell that runs nothing": strings.Replace(good, step, step+"        shell: true {0}\n", 1),
+		"steps in flow style":       strings.Replace(good, "    steps:\n"+step, "    steps: [{run: make check, if: false}]\n", 1),
 		"two jobs of the name":      good + "  again:\n    name: Gate\n",
 	} {
 		if got := requiredCheckProblems([]string{"Gate"}, plantedJobs(t, doc)); len(got) != 1 {
 			t.Errorf("%s: %q, want one problem", name, got)
 		}
+	}
+	flowJob := "on:\n  pull_request:\njobs:\n  gate: {runs-on: ubuntu-latest, if: false, steps: [{run: make check}]}\n"
+	if got := requiredCheckProblems([]string{"gate"}, plantedJobs(t, flowJob)); len(got) != 1 {
+		t.Errorf("a job in flow style: %q, want one problem", got)
 	}
 	if got := requiredCheckProblems([]string{"Gate", "Gate"}, plantedJobs(t, good)); len(got) != 1 {
 		t.Errorf("a check listed twice: %q, want one problem", got)

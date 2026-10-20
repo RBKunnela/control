@@ -210,7 +210,7 @@ the journal
 | `evidence.max_bytes` | The bytes the spool may hold, its quarantine and the room kept for closing records included. Reached, a material call is blocked before its effect, and an oversized closing record fails after it |
 | `evidence.fsync: interval` | A power loss costs the records since the last sync, every `evidence.fsync_interval`, a duration such as `5s` |
 | `evidence.on_unwritable: allow_reads` | A read whose trail the spool will not take runs unrecorded and counted, unless it retries a held call. A material call never does |
-| `policy.fail_open_read: true` | A read undecided only because the policy is unavailable runs if the rules would otherwise allow it. Off by default, and forced off under `LOCKDOWN` |
+| `policy.fail_open_read: true` | A read undecided only because the policy is unavailable runs if the rules would allow it and, at hand-out, its bundle is still installed and the clock trusted. Off by default, and forced off under `LOCKDOWN` |
 
 ### 10. Pause a tool
 
@@ -253,9 +253,8 @@ object says which rule stopped it:
   sent.
 - `evidence_unwritable`: a closing record could not be written. It lifts when an
   append succeeds: give the spool room or let the collector drain it, and
-  watch the depth. While a mismatch halt stands it reads `false`, because the
-  pipeline reports one flag for both halts and a mismatch needs the restart
-  either way; `pipeline.sink_failures_after_effect` counts what happened.
+  watch the depth. The two flags are set apart, so both can read `true`;
+  `pipeline.sink_failures_after_effect` counts what happened.
 
 ## Roll back
 

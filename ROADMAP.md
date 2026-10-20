@@ -19,10 +19,10 @@ the complete product model and today's limits.
 
 | Area | Target for 1.0 | Delivery path |
 | --- | --- | --- |
-| Observe | Join tool and API evidence with runtime, proxy and process observations; show coverage, sampling and silence. | B11, B12, B21, B24 |
+| Observe | Join tool and API evidence with runtime, proxy and process observations; show coverage, sampling and silence. | B11, B12, B21 |
 | Supervise | Check procedures, permissions, resources, exceptions and child runs; report deviations and uncertain outcomes. | Existing supervision, B12, B26, B28 |
 | React | Inform, alert, request review, approve one exact action, pause calls or stop later actions within authenticated run, agent or principal scopes. | Existing controls, B12–B14, B26, B28 |
-| Integrate | MCP and custom tools share policy, approvals and evidence; publish each integration's enforcement and bypasses. | B11, B12, B24 |
+| Integrate | MCP and custom tools share policy, approvals and evidence; publish each integration's enforcement and bypasses. | Existing hook bridge, B11, B12 |
 
 B28 adds continuous supervision beside agents. Today's commands run when
 invoked. Sensors report after effects; enforcement points act before them.

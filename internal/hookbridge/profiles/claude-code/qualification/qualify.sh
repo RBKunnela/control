@@ -399,7 +399,8 @@ launch() {
       --tool "${tool}" --input "${input}")
   fi
   [[ -z "${mcp}" ]] || cmd+=(--mcp-config "${mcp}")
-  (cd "${proj}" && exec env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT "${token_var}=${token}" "${cmd[@]}") \
+  # The token is set by builtins, so it never sits in a process's arguments.
+  (cd "${proj}" && unset CLAUDECODE CLAUDE_CODE_ENTRYPOINT && export "${token_var}=${token}" && exec "${cmd[@]}") \
     >"${d}/stream-${key}.jsonl" 2>"${d}/runtime-${key}.err" &
   local pid=$! ticks=0 status=0
   pids+=("${pid}")

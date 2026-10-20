@@ -4,11 +4,8 @@ package enforce
 
 import "net"
 
-// unixSocket reports whether ln listens on a Unix socket.
-func unixSocket(ln net.Listener) bool {
-	_, ok := ln.(*net.UnixListener)
-	return ok
-}
+// claim refuses every listener: Listen binds none here.
+func (*Adapter) claim(net.Listener) bool { return false }
 
 // Listen refuses with ErrPlatform: nothing here can check who owns a socket.
 func (*Adapter) Listen() (net.Listener, error) {

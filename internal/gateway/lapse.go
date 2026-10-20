@@ -75,10 +75,18 @@ func (c *call) withholds(b core.Basis, installed *policy.Snapshot, now time.Time
 		return false
 	}
 	if c.p.cfg.Mode == modeObserve {
-		c.staleSeen = c.staleSeen || b.Stood()
+		c.staleSeen = c.staleSeen || b.Stood() && c.kernelLetRun()
 		return false
 	}
 	return true
+}
+
+// kernelLetRun reports whether the kernel's decision let the call run as
+// decided, as ENFORCE would have: executed, with or without obligations, a
+// read the fail-closed table opened among them. A call it blocked or held is
+// one ENFORCE never hands out, stale or not.
+func (c *call) kernelLetRun() bool {
+	return c.kernelAction == core.Execute || c.kernelAction == core.ExecuteWithObligations
 }
 
 // lapsedAfterStart closes the trail of an execution whose approval or opened

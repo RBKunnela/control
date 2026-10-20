@@ -8,7 +8,7 @@ person. Fill in the lines of the two keys, the bundle's and the freshness
 key's, and the directory the server may touch; sign the bundle, renew its
 freshness statement and make the `floors` directory, as
 [docs/guides/connect-an-existing-mcp-setup.md](../../docs/guides/connect-an-existing-mcp-setup.md)
-says. Another version of the server lists other definitions, and its tools
-are unclassified until you take their fingerprints again; `package-lock.json`
-pins this one. `client/` is the MCP client `make check-mcp-client` drives the
+says. A tool whose definition another version of the server changes is
+unclassified until you take its fingerprint again; `package-lock.json` pins
+this version. `client/` is the MCP client `make check-mcp-client` drives the
 plane with.

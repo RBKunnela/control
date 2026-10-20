@@ -132,7 +132,7 @@ endorsed by the publisher of Claude Code.</p>
 </tr>
 <tr>
 <td>Qualified on the real runtime</td>
-<td>2.1.303: all 20 cases passed, two of them on a rerun once the tools table named <code>ToolSearch</code> and classed <code>Agent</code> as <code>EXECUTE</code></td>
+<td>2.1.303: all 20 cases passed, two of them on a rerun once the tools table named <code>ToolSearch</code> and classed <code>Agent</code> as <code>EXECUTE</code>, and one on a rerun that recorded the hook's output</td>
 </tr>
 <tr>
 <td>Events</td>
@@ -213,8 +213,10 @@ not the plane, runs the call.</p>
 <ul>
 <li>
 <p><code>timeout</code> is 30 because the profile says so: the bridge gives up on each
-request to the plane after 12 seconds and on the whole hook after 27,
-inside the runtime's limit.</p>
+request to the plane after 12 seconds and on its requests together after
+27, counted once the event is read. That leaves three seconds of the
+runtime's limit for starting the command and reading the event; a hook
+that overruns the limit blocks the call under <code>onFailure: &quot;block&quot;</code>.</p>
 </li>
 <li>
 <p><code>onFailure: &quot;block&quot;</code> sits on <code>PreToolUse</code> only. With it, a hook that times
@@ -301,7 +303,7 @@ refused with <code>REQUIRED_FIELD_ABSENT</code> <em>(both seen on 2.1.303)</em>.
 <td>complete</td>
 <td>the same, and <code>tool_input</code> as the input that ran; <code>tool_response</code> is read past and kept nowhere</td>
 <td>exit 0 once the plane recorded the completion, otherwise the profile's problem status, 1; a refused event exits 2</td>
-<td>the call ran; the plane's sweep closes its handle as abandoned, outcome unknown</td>
+<td>the call ran, and the plane may have recorded it; a handle left open is closed by the sweep as abandoned, outcome unknown</td>
 </tr>
 <tr>
 <td><code>PostToolUseFailure</code></td>
@@ -323,9 +325,10 @@ is not read, so it counts as absent.</p>
 <code>120000.0</code> for <code>120000</code> do not make it another call; a member added, removed
 or set to <code>null</code>, a number written as a string, or array items in another
 order do, and the plane records <code>EXECUTED_ARGS_MISMATCH</code> and halts the run's
-material calls. A decision that wants the input rewritten, or attaches an
-obligation, is denied, because a hook cannot hand Claude Code the authorized
-bytes <em>(seen on 2.1.303)</em>. A call held for approval is denied with a line
+material calls. A decision whose authorized input is not the proposed text,
+a rewrite among them, or that leaves the hook an obligation to apply, is
+denied, because a hook cannot hand Claude Code the authorized bytes <em>(seen on
+2.1.303)</em>; the plane keeps advisory obligations off its answer. A call held for approval is denied with a line
 naming the approval; once it is approved, the agent's identical retry runs
 once and its completion is recorded, a third identical call is refused as
 used, and of two approved retries made at once one runs <em>(seen on 2.1.303)</em>. A

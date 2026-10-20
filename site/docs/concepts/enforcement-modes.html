@@ -251,7 +251,7 @@ them:</p>
 <td>the operator classifies it</td>
 </tr>
 <tr>
-<td>a material call after an execution ran with bytes that were not authorized</td>
+<td>a material call after an execution ran with bytes that were not authorized: of that execution's opened run when a cooperating client reported it and fewer than <code>flow.max_runs</code> runs are halted, otherwise every one</td>
 <td><code>DENY</code></td>
 <td><code>EXECUTED_ARGS_MISMATCH</code></td>
 <td>the enforcement point restarts</td>
@@ -313,10 +313,11 @@ point is not asked: the question would leave the plane for nothing, during
 the incident the pause or the halt stands for
 (<a href="/docs/adr/0019-an-operator-can-pause-calls">ADR-0019</a>). The plane names
 these causes once, before any question leaves it, and blocks on them whatever
-changes after. With none it asks, then takes the pause state and its clock
-again and names the causes once more, so a pause or a halt that comes while
-the ask waits blocks that call. The pause state alone is taken once more
-right before each step that cannot be undone, as the next section says.</p>
+changes after. With none it asks, then takes the pause and stop states, the
+installed policy and its clock again and names the causes once more, so a
+pause, a stop or a halt that comes while the ask waits blocks that call. The pause and stop states, the installed
+policy and the clock are taken once more, and the halts judged again, right
+before each step that cannot be undone, as the next section says.</p>
 <h2 id="pausing-calls">Pausing calls</h2>
 <p>An operator stops one tool, one upstream or everything without a restart by
 writing an entry into the pause file <code>pause.file</code> names, with

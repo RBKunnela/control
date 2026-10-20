@@ -50,8 +50,9 @@ What `call` does for you:
 - returns only when the tool ran and the closing record landed. Anything else
   raises. Only an `EnforceError` tells you, in `answer.ran`, whether the tool
   ran: entered, and not ended by `NotSent`. Any other exception is the tool's own, raised again after its
-  run was reported `UNKNOWN`, or a `TypeError` or `ValueError` for a call
-  misused before anything was sent;
+  run was reported `UNKNOWN`; one your clock or an interrupt raised between
+  the admit and the tool, raised again after the abort; or a `TypeError` or
+  `ValueError` for a call misused before anything was sent;
 - raises `ToolRaised`, an `EnforceError` with the outer call's answer, when
   your tool lets out the exception of a call of its own, alone or in a group
   of exceptions.

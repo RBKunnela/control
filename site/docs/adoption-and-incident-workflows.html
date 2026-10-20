@@ -110,8 +110,9 @@
 </details>
 <main id="main" class="prose">
 <h1 id="adoption-and-incident-workflows">Adoption and incident workflows</h1>
-<p>Status: <code>planned</code>. These requirements define backlog B23–B27; they do not
-describe commands or contracts available today. <a href="/docs/status">status.md</a>
+<p>Status: <code>planned</code>. These requirements define backlog B23 and B25–B27 and the
+bar for a further coding runtime's hooks; they do not describe commands or
+contracts available today. <a href="/docs/status">status.md</a>
 is the implementation inventory, <a href="/docs/backlog">the backlog</a> holds acceptance
 checks, and <a href="/docs/roadmap">ROADMAP.md</a> owns milestone order. The delivery
 decision is proposed in <a href="/docs/adr/0050-adoption-workflows-preserve-authority-and-evidence">ADR-0050</a>.
@@ -154,10 +155,10 @@ concurrent edits, repeated apply, interrupted writes, undo after user edits
 and credentials in failure text. Three voluntary onboarding sessions record
 time, assistance, failures and the first controlled action on the user's own
 setup. A successful install is not counted as that first action.</p>
-<h2 id="b24-qualify-one-coding-runtimes-hooks">B24 Qualify one coding runtime's hooks</h2>
-<p>Choose one runtime with adopters. It competes with the framework candidates
-for the first integration, so neither a fleet agent nor multiple coding
-plugins are prerequisites. Pin the runtime and hook protocol versions and
+<h2 id="qualify-a-coding-runtimes-hooks">Qualify a coding runtime's hooks</h2>
+<p>One runtime's hooks are built and qualified; <a href="/docs/status">status.md</a> says how
+far. A second runtime waits until adopters name one, and meets these
+requirements. Pin the runtime and hook protocol versions and
 publish a table for each event: proposed or already completed, enforcement
 or observation, identity source, rewritten-argument support, approval/resume
 support, deadlines, failure behavior and known bypasses.</p>
@@ -292,14 +293,14 @@ duplicate delivery, later occurrences after closure, reopening, conflicting
 review revisions, cross-project access, lost inputs, hostile text, bounds
 and a failed reaction that must not be displayed as a successful stop.</p>
 <h2 id="delivery-and-communication">Delivery and communication</h2>
-<p>B23 belongs to first value. B24, B25 and B27 belong to integrations; B26
+<p>B23 belongs to first value. B25 and B27 belong to integrations; B26
 belongs to a small team. Existing trust, API, identity and retention work
 remain prerequisites. No schedule or SLA is implied.</p>
 <p>Describe a capability with its consequence, covered path, enforcing mode,
 failure behavior and a runnable example. Use exact-action approval, a changed
 tool definition and a denied refund retried another way as current examples.
-Keep planned coding hooks and incident review out of claims about what runs
-today. Measure gateway overhead separately from end-to-end policy/evidence
+Describe the coding-runtime hooks only as far as their qualification and
+failure gaps go, and keep incident review out of claims about what runs today. Measure gateway overhead separately from end-to-end policy/evidence
 latency, with workload, platform, concurrency, percentile and failures named.
 Do not claim universal agent coverage, autonomous real-time supervision,
 tamper-evident evidence or regulatory compliance from these requirements.</p>

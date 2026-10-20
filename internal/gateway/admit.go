@@ -51,11 +51,15 @@ type call struct {
 	// kernel is the decision POLICY_DECIDED records: the kernel's about the
 	// proposed envelope, or about the authorized one when a rewrite changed
 	// the arguments. basis is what it stood on, judged again at hand-out.
-	kernel   *controlv1.Decision
-	basis    core.Basis
-	action   core.EnforcementAction
-	decision *controlv1.Decision
-	material bool
+	kernel *controlv1.Decision
+	basis  core.Basis
+	// kernelAction is what the kernel's decision about this call asked for,
+	// before the mode is applied to action. A resume leaves it as the retry's
+	// own; OBSERVE, its one reader, never holds a call to resume.
+	kernelAction core.EnforcementAction
+	action       core.EnforcementAction
+	decision     *controlv1.Decision
+	material     bool
 	// external is the decision point's answer about this call, asked at
 	// most once; the zero value when it was not asked.
 	external core.External
@@ -155,6 +159,7 @@ func (c *call) decideProposed(snap *policy.Snapshot, ask bool) {
 		out = c.p.kernel.Decide(c.ctx, req, snap)
 	}
 	c.kernel, c.decision, c.action, c.basis = out.Decision, out.Decision, out.Action, out.Basis
+	c.kernelAction = out.Action
 	c.reliedOnDecision(out.Decision, snap)
 	c.material = contract.IsMaterial(c.in.Envelope.GetAction().GetEffect())
 }

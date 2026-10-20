@@ -21,7 +21,7 @@ endorsed by the publisher of Claude Code.
 | | |
 | --- | --- |
 | Label | decided, with failure gaps |
-| Qualified on the real runtime | 2.1.303: all 20 cases passed, two of them on a rerun once the tools table named `ToolSearch` and classed `Agent` as `EXECUTE` |
+| Qualified on the real runtime | 2.1.303: all 20 cases passed, two of them on a rerun once the tools table named `ToolSearch` and classed `Agent` as `EXECUTE`, and one on a rerun that recorded the hook's output |
 | Events | `PreToolUse`, `PostToolUse`, `PostToolUseFailure` |
 | Fail-closed setting | `onFailure: "block"`, from Claude Code 2.1.295 |
 | Hook timeout the profile assumes | 30 seconds |
@@ -87,8 +87,10 @@ not the plane, runs the call.
 ```
 
 - `timeout` is 30 because the profile says so: the bridge gives up on each
-  request to the plane after 12 seconds and on the whole hook after 27,
-  inside the runtime's limit.
+  request to the plane after 12 seconds and on its requests together after
+  27, counted once the event is read. That leaves three seconds of the
+  runtime's limit for starting the command and reading the event; a hook
+  that overruns the limit blocks the call under `onFailure: "block"`.
 - `onFailure: "block"` sits on `PreToolUse` only. With it, a hook that times
   out or crashes blocks the call; without it, the call runs, and so it does
   after a hook that prints unreadable output and exits 0 *(seen on 2.1.303)*.
@@ -143,7 +145,7 @@ not the plane, runs the call.
 | Event | Phase | What the bridge reads | Reply | When the hook fails |
 | --- | --- | --- | --- | --- |
 | `PreToolUse` | admit | `hook_event_name`, `tool_name`, `session_id`, `tool_use_id`, and `tool_input` as the exact text the event wrote | exit 0 and nothing on standard output when the plane answers `EXECUTE` of exactly that text; otherwise exit 2 and one line on standard error | with `onFailure: "block"` the call is blocked; without it the call runs |
-| `PostToolUse` | complete | the same, and `tool_input` as the input that ran; `tool_response` is read past and kept nowhere | exit 0 once the plane recorded the completion, otherwise the profile's problem status, 1; a refused event exits 2 | the call ran; the plane's sweep closes its handle as abandoned, outcome unknown |
+| `PostToolUse` | complete | the same, and `tool_input` as the input that ran; `tool_response` is read past and kept nowhere | exit 0 once the plane recorded the completion, otherwise the profile's problem status, 1; a refused event exits 2 | the call ran, and the plane may have recorded it; a handle left open is closed by the sweep as abandoned, outcome unknown |
 | `PostToolUseFailure` | complete-failure | the same, and `is_interrupt`: `false` reports a failure, `true` or absent reports an unknown outcome | as `PostToolUse` | as `PostToolUse` |
 
 An event that is over 16 MiB, is not one JSON object of valid UTF-8, names a
@@ -158,9 +160,10 @@ The plane compares the completion's `tool_input` with the authorized one by
 `120000.0` for `120000` do not make it another call; a member added, removed
 or set to `null`, a number written as a string, or array items in another
 order do, and the plane records `EXECUTED_ARGS_MISMATCH` and halts the run's
-material calls. A decision that wants the input rewritten, or attaches an
-obligation, is denied, because a hook cannot hand Claude Code the authorized
-bytes *(seen on 2.1.303)*. A call held for approval is denied with a line
+material calls. A decision whose authorized input is not the proposed text,
+a rewrite among them, or that leaves the hook an obligation to apply, is
+denied, because a hook cannot hand Claude Code the authorized bytes *(seen on
+2.1.303)*; the plane keeps advisory obligations off its answer. A call held for approval is denied with a line
 naming the approval; once it is approved, the agent's identical retry runs
 once and its completion is recorded, a third identical call is refused as
 used, and of two approved retries made at once one runs *(seen on 2.1.303)*. A

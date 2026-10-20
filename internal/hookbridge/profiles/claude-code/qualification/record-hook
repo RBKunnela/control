@@ -79,7 +79,10 @@ def main() -> int:
         sys.stdout.flush()
         os.kill(os.getpid(), signal.SIGKILL)
     if args.act == "garbage":
-        sys.stdout.buffer.write(b"\xff\xfe{not an answer\n")
+        garbage = b"\xff\xfe{not an answer\n"
+        sys.stdout.buffer.write(garbage)
+        sys.stdout.flush()
+        write_meta(stem, dict(meta, exit=0, stdout=garbage.decode("utf-8", "replace")))
         return 0
     try:
         tool_input = json.loads(event)["tool_input"]

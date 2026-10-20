@@ -31,6 +31,13 @@ verify one.
 
 ### Fixed
 
+- An enforcement receiver's `Serve` refuses any listener but the one its own
+  `Listen` bound with the socket's lock held, and that one a second time, so
+  the plane never serves a socket whose lock it does not hold.
+- In `OBSERVE`, `pipeline_stale_handed_out_total` no longer counts a call the
+  kernel blocked or held: only one whose decision let it run, a read the
+  fail-closed table opened included
+  ([ADR-0055](docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands.md)).
 - `guardana-control react` reads the clock for a stop once it holds the lock
   on the stop list. A stop no longer loses the time spent waiting for the lock,
   and a finding is no longer refused as "not written" because another `react`
@@ -56,7 +63,9 @@ verify one.
   between the decision and the hand-out now blocks the call with
   `POLICY_STALE` outside `OBSERVE`, which counts it as `stale_handed_out`; a
   read `policy.fail_open_read` opened still runs while its bundle is the same.
-  A resume judges this before it consumes its approval, so nothing is spent
+  A resume judges this before it consumes its approval, and a change found
+  then spends nothing; one found after the consume still blocks the call, with
+  the approval spent
   ([ADR-0055](docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands.md)).
 
 ## [0.12.0] - 2026-10-16

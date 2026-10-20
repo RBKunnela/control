@@ -94,9 +94,10 @@ func hookCommand(args []string, _, stderr io.Writer) int {
 	return hookAnswer(stderr, p, ev, errors.Join(errors.New(postResultText(out.Result)), out.Err))
 }
 
-// hookDeadlines are the deadline of the whole command and the timeout of
-// each request for a runtime that gives the hook timeout: an admit and the
-// abort it may owe both fit in the whole, which ends inside timeout.
+// hookDeadlines are the deadline of the requests to the plane, counted from
+// once the event is read, and the timeout of each request, for a runtime that
+// gives the hook timeout: an admit and the abort it may owe both fit in the
+// whole, which ends inside timeout.
 func hookDeadlines(timeout time.Duration) (whole, each time.Duration) {
 	return timeout * 9 / 10, timeout * 4 / 10
 }

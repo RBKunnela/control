@@ -247,7 +247,9 @@ $ cut -c1-60 findings.export.jsonl
 
 ### 10. Stop the run
 
-`react` writes a stop for each confirmed finding the route allows:
+`react` writes a stop for each new confirmed finding the route allows whose
+run is open and unexpired, or a covered line when a stop of that run already
+lasts as long ([reaction](../reference/reaction.md) has every rule):
 
 ```
 $ guardana-control react --findings findings --runs state/runs --stops state/stops \

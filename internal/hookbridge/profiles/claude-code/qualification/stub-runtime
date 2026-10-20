@@ -95,7 +95,8 @@ def admit(settings: dict, event: dict, cwd: str):
         if status != 0:
             if hook.get("onFailure") == "block":
                 allowed = False
-                reasons.append("a hook failed: " + err.decode("utf-8", "replace").strip())
+                how = "timed out" if err == b"hook timed out" else "failed"
+                reasons.append('%s; blocking because onFailure is "block"' % how)
             continue
         if not out.strip().startswith(b"{"):
             continue

@@ -7,8 +7,9 @@ covers: [adapters/**, cmd/**, internal/gateway/**, internal/gatewayconfig/**, in
 
 # Adoption and incident workflows
 
-Status: `planned`. These requirements define backlog B23–B27; they do not
-describe commands or contracts available today. [status.md](status.md)
+Status: `planned`. These requirements define backlog B23 and B25–B27 and the
+bar for a further coding runtime's hooks; they do not describe commands or
+contracts available today. [status.md](status.md)
 is the implementation inventory, [the backlog](backlog.md) holds acceptance
 checks, and [ROADMAP.md](../ROADMAP.md) owns milestone order. The delivery
 decision is proposed in [ADR-0050](adr/0050-adoption-workflows-preserve-authority-and-evidence.md).
@@ -59,11 +60,11 @@ and credentials in failure text. Three voluntary onboarding sessions record
 time, assistance, failures and the first controlled action on the user's own
 setup. A successful install is not counted as that first action.
 
-## B24 Qualify one coding runtime's hooks
+## Qualify a coding runtime's hooks
 
-Choose one runtime with adopters. It competes with the framework candidates
-for the first integration, so neither a fleet agent nor multiple coding
-plugins are prerequisites. Pin the runtime and hook protocol versions and
+One runtime's hooks are built and qualified; [status.md](status.md) says how
+far. A second runtime waits until adopters name one, and meets these
+requirements. Pin the runtime and hook protocol versions and
 publish a table for each event: proposed or already completed, enforcement
 or observation, identity source, rewritten-argument support, approval/resume
 support, deadlines, failure behavior and known bypasses.
@@ -193,15 +194,15 @@ and a failed reaction that must not be displayed as a successful stop.
 
 ## Delivery and communication
 
-B23 belongs to first value. B24, B25 and B27 belong to integrations; B26
+B23 belongs to first value. B25 and B27 belong to integrations; B26
 belongs to a small team. Existing trust, API, identity and retention work
 remain prerequisites. No schedule or SLA is implied.
 
 Describe a capability with its consequence, covered path, enforcing mode,
 failure behavior and a runnable example. Use exact-action approval, a changed
 tool definition and a denied refund retried another way as current examples.
-Keep planned coding hooks and incident review out of claims about what runs
-today. Measure gateway overhead separately from end-to-end policy/evidence
+Describe the coding-runtime hooks only as far as their qualification and
+failure gaps go, and keep incident review out of claims about what runs today. Measure gateway overhead separately from end-to-end policy/evidence
 latency, with workload, platform, concurrency, percentile and failures named.
 Do not claim universal agent coverage, autonomous real-time supervision,
 tamper-evident evidence or regulatory compliance from these requirements.

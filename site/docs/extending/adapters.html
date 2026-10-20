@@ -195,7 +195,9 @@ failing:</p>
 </tbody>
 </table>
 <p>An adapter that has an execution open closes or aborts it. An execution left
-open holds one of the plane's <code>MaxOpen</code> slots until the process ends.</p>
+open holds one of the plane's <code>MaxOpen</code> slots until the adapter abandons it or
+the process ends; the enforcement API abandons each execution whose handle
+expired.</p>
 <h2 id="the-capabilities-and-what-the-plane-does-with-each">The capabilities, and what the plane does with each</h2>
 <table>
 <thead>

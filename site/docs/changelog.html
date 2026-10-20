@@ -138,6 +138,13 @@ guide installs it with <code>npm ci --ignore-scripts</code>.</li>
 </ul>
 <h3 id="fixed">Fixed</h3>
 <ul>
+<li>An enforcement receiver's <code>Serve</code> refuses any listener but the one its own
+<code>Listen</code> bound with the socket's lock held, and that one a second time, so
+the plane never serves a socket whose lock it does not hold.</li>
+<li>In <code>OBSERVE</code>, <code>pipeline_stale_handed_out_total</code> no longer counts a call the
+kernel blocked or held: only one whose decision let it run, a read the
+fail-closed table opened included
+(<a href="/docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands">ADR-0055</a>).</li>
 <li><code>guardana-control react</code> reads the clock for a stop once it holds the lock
 on the stop list. A stop no longer loses the time spent waiting for the lock,
 and a finding is no longer refused as &quot;not written&quot; because another <code>react</code>
@@ -163,7 +170,9 @@ still installed and fresh. A bundle replaced, or past its staleness budget,
 between the decision and the hand-out now blocks the call with
 <code>POLICY_STALE</code> outside <code>OBSERVE</code>, which counts it as <code>stale_handed_out</code>; a
 read <code>policy.fail_open_read</code> opened still runs while its bundle is the same.
-A resume judges this before it consumes its approval, so nothing is spent
+A resume judges this before it consumes its approval, and a change found
+then spends nothing; one found after the consume still blocks the call, with
+the approval spent
 (<a href="/docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands">ADR-0055</a>).</li>
 </ul>
 <h2 id="0120---2026-10-16"><a href="https://github.com/guardana/control/releases/tag/v0.12.0">0.12.0</a> - 2026-10-16</h2>

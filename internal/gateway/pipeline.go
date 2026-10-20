@@ -115,8 +115,8 @@ type Config struct {
 	// RetryAfter is what an agent is told to wait before retrying a held
 	// request; positive.
 	RetryAfter time.Duration
-	// MaxHeld bounds the requests held for an approval and not yet expired;
-	// positive. A request past it is refused as a hold the store would not
+	// MaxHeld bounds the requests held for an approval and not yet closed,
+	// expired ones the sweep has not reached included; positive. A request past it is refused as a hold the store would not
 	// keep.
 	MaxHeld int
 	// MaxHeldPerRun bounds the requests one opened run holds for an approval

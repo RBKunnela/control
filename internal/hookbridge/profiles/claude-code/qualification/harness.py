@@ -154,7 +154,7 @@ def events(path):
         ev = ev if isinstance(ev, dict) else {}
         meta = load_json(stem + ".meta.json", {})
         if isinstance(meta.get("stderr"), str):
-            meta["stderr"] = PROGRAM.sub("", meta["stderr"])
+            meta["stderr"] = scrub(PROGRAM.sub("", meta["stderr"]))
         out.append({
             "kind": ev.get("hook_event_name", ""),
             "tool": ev.get("tool_name", ""),
@@ -170,6 +170,16 @@ def events(path):
 # keep the reason alone.
 PROGRAM = re.compile(r"^[^\s:]+: hook: ", re.M)
 
+# An absolute path, which would name the machine the qualification ran on.
+PATH = re.compile(r"(?<![\w.])/[^\s\"';:,()\[\]]+")
+
+
+def scrub(text):
+    home = os.path.expanduser("~")
+    if len(home) > 1:
+        text = text.replace(home, "<path>")
+    return re.sub(r"(<path>)+", "<path>", PATH.sub("<path>", text))
+
 
 class Inv:
     """What one runtime invocation left behind."""
@@ -184,7 +194,10 @@ class Inv:
         self.ran = sum(1 for n in names if re.fullmatch(r"runtime-\w+\.exit", n))
         self.stream = [x for n in names if re.fullmatch(r"stream-\w+\.jsonl", n) for x in lines(os.path.join(d, n))]
         self.events = events(os.path.join(events_root, group, name))
-        self.files = load_json(os.path.join(d, "files.json"), {})
+        files = load_json(os.path.join(d, "files.json"))
+        self.observed_files = isinstance(files, dict)
+        self.files = files if self.observed_files else {}
+        self.observed_trail = os.path.isfile(os.path.join(d, "trail.jsonl"))
         self.trail = [r["event"] for r in lines(os.path.join(d, "trail.jsonl")) if r.get("type") == "event"]
         self.health = load_json(os.path.join(d, "healthz.json"), {})
         self.health_before = load_json(os.path.join(d, "healthz.before.json"), {})
@@ -208,14 +221,24 @@ class Inv:
                                 "parent": line.get("parent_tool_use_id"), "input": item.get("input") or {}})
         return out
 
-    def refused(self, call_id):
-        """Whether the runtime answered the tool call call_id with an error."""
+    def result(self, call_id):
+        """The runtime's answer to the tool call call_id, or None."""
         for line in self.stream:
             content = (line.get("message") or {}).get("content") if line.get("type") == "user" else None
             for item in content if isinstance(content, list) else []:
                 if isinstance(item, dict) and item.get("type") == "tool_result" and item.get("tool_use_id") == call_id:
-                    return item.get("is_error") is True
-        return False
+                    return item
+        return None
+
+    def refused(self, call_id):
+        """Whether the runtime answered the tool call call_id with an error."""
+        answer = self.result(call_id)
+        return answer is not None and answer.get("is_error") is True
+
+    def said(self, call_id):
+        """The text of the runtime's answer to the tool call call_id."""
+        content = (self.result(call_id) or {}).get("content")
+        return content if isinstance(content, str) else json.dumps(content)
 
     def in_project(self, path):
         d = os.path.dirname(str(path))
@@ -300,7 +323,23 @@ def missing(*invs):
             return "skipped: the invocation cap was reached before " + inv.name
         if not inv.ran:
             return "the runtime was not run for " + inv.name
+        if not inv.observed_files:
+            return "the project's snapshot could not be read for " + inv.name
+        if not inv.observed_trail:
+            return "the trail could not be read for " + inv.name
     return None
+
+
+def reason(said):
+    """The runtime's reason after the hook command it names, which holds
+    local paths and is left out."""
+    return scrub(PROGRAM.sub("", said.rsplit("]: ", 1)[-1].splitlines()[0])) if "]: " in said else ""
+
+
+def silent(admits):
+    """Whether every admit the bridge let run was answered with nothing on
+    standard output, which is the only reply that cannot widen a call."""
+    return all(e["meta"].get("stdout") == "" for e in admits if e["meta"].get("exit") == 0)
 
 
 def not_called(inv, tool, evs):
@@ -330,9 +369,10 @@ def judge_allow(c):
     proposed = admits[0]["input"].get("content") if admits else None
     reqs = inv.on("Write", "note.txt")
     mismatch = any("EXECUTED_ARGS_MISMATCH" in r["protocol"] + r["codes"] for r in inv.requests().values())
-    observed = {"admit_exits": exits(admits), "file": inv.files.get("note.txt"), "proposed": proposed,
+    observed = {"admit_exits": exits(admits), "admit_stdout": [e["meta"].get("stdout") for e in admits],
+                "file": inv.files.get("note.txt"), "proposed": proposed,
                 "trail": [r["kinds"] for r in reqs], "mismatch": mismatch}
-    ok = (exits(admits) == [0] and inv.files.get("note.txt") == proposed
+    ok = (exits(admits) == [0] and silent(admits) and inv.files.get("note.txt") == proposed
           and any("ACTION_COMPLETED" in r["kinds"] for r in reqs) and not mismatch)
     return verdict(expected, observed, ok, why)
 
@@ -342,6 +382,8 @@ def judge_block(inv):
     expected = ("the Bash call is blocked: its PreToolUse exits 2, no file marker appears, "
                 "the trail ends it ACTION_BLOCKED with RULE_DENY")
     why = missing(inv) or not_called(inv, "Bash", admits)
+    if not why and any(e["input"].get("command") != "touch marker" for e in admits):
+        why = "the model asked for another command than touch marker in " + inv.name
     reqs = [r for r in inv.requests().values() if r.get("name") == "Bash"]
     observed = {"admit_exits": exits(admits), "marker": "marker" in inv.files,
                 "trail": [(r["kinds"], r["codes"]) for r in reqs]}
@@ -388,7 +430,7 @@ def judge_pending(c, seeds):
     observed = {"admit_exits": exits(admits), "file": resumed.files.get("target.txt"),
                 "started_on_digest": resumed.started(digest) if digest else None,
                 "completed_on_digest": resumed.completed(digest) if digest else None}
-    ok = (exits(admits) == [0] and resumed.files.get("target.txt") == edit_applied(seed, admits)
+    ok = (exits(admits) == [0] and silent(admits) and resumed.files.get("target.txt") == edit_applied(seed, admits)
           and resumed.started(digest) == 1 and resumed.completed(digest) == 1)
     out.append(("pending-resumed", [resumed],
                 verdict("once approved, the identical retry runs once: its PreToolUse exits 0, the edit is "
@@ -463,19 +505,29 @@ def judge_obligation(c, seeds):
                    "OBLIGATION code (aborted, never run)", observed, ok, why)
 
 
-def judge_effect(c, group, base, runs, expected, exit_status=None):
-    """A Write that runs, or not, as the case's PreToolUse hook makes it; with
-    exit_status, every admit must also have exited with it."""
+def judge_effect(c, group, base, runs, expected, act, said=(), exit_status=None, printed=False):
+    """A Write that runs, or not, as the case's PreToolUse hook makes it. Every
+    PreToolUse hook of the Write must have been act's, so another hook's answer
+    cannot stand in for it; a refusal must be in the runtime's words said; with
+    exit_status, every admit must also have exited with it; printed, the hook
+    must be recorded as having written to standard output and exited 0."""
     inv = c(group, "run")
     admits = inv.hook("PreToolUse", "Write", base)
     why = missing(inv) or not_called(inv, "Write", admits)
+    acts = sorted({str(e["meta"].get("act")) for e in admits})
+    if not why and acts != [act]:
+        why = "the Write's PreToolUse hooks were %s, not %s alone" % (acts, act)
     writes = [u for u in inv.calls() if u["name"] == "Write" and os.path.basename(str(u["input"].get("file_path"))) == base]
     if not why and not all(inv.in_project(u["input"].get("file_path")) for u in writes):
         why = "the model wrote %s outside the project" % base
+    if not why and printed and not all(e["meta"].get("exit") == 0 and e["meta"].get("stdout") for e in admits):
+        why = "the hook's exit and output were not recorded as written and 0"
     refused = bool(writes) and all(inv.refused(u["id"]) for u in writes)
+    worded = bool(writes) and all(all(w in inv.said(u["id"]) for w in said) for u in writes)
     observed = {"pre_hook": [(e["meta"].get("act"), e["meta"].get("exit")) for e in admits],
-                "file": inv.files.get(base), "runtime_returned": inv.returned(), "write_refused": refused}
-    ok = (inv.returned() and (base in inv.files) == runs and refused != runs
+                "file": inv.files.get(base), "runtime_returned": inv.returned(), "write_refused": refused,
+                "refusal": [reason(inv.said(u["id"])) for u in writes if inv.refused(u["id"])]}
+    ok = (inv.returned() and (base in inv.files) == runs and refused != runs and worded
           and (exit_status is None or set(exits(admits)) == {exit_status}))
     return verdict(expected, observed, ok, why)
 
@@ -496,17 +548,31 @@ def judge_rewrite(inv, replacement):
     why = missing(inv) or not_called(inv, "Write", bridge)
     written = inv.files.get("note.txt")
     mismatch = any("EXECUTED_ARGS_MISMATCH" in r["protocol"] for r in inv.on("Write", "note.txt"))
+    carried = [e["input"].get("content") for e in posts]
     observed = {"bridge_exits": exits(bridge), "written": written,
                 "proposed": bridge[0]["input"].get("content") if bridge else None,
-                "completion_input": [e["input"].get("content") for e in posts],
-                "mismatch": mismatch, "run_halted": inv.halted()}
+                "completion_input": carried, "mismatch": mismatch, "run_halted": inv.halted()}
     proposed = observed["proposed"]
     if not why and (exits(bridge) != [0] or written == proposed):
         return verdict(EXPECT_REWRITE, observed, False)
     if not why and written != replacement:
         why = "the runtime wrote neither the proposed content nor the replacement"
-    return verdict(EXPECT_REWRITE, observed, mismatch and inv.halted(), why)
+    if not why and not carried:
+        why = "no completion of the Write was recorded"
+    ok = mismatch and inv.halted() and all(x == written for x in carried)
+    return verdict(EXPECT_REWRITE, observed, ok, why)
 
+
+# FAILING is, for each case whose PreToolUse hook fails, the act of its fake
+# hook and the words the runtime refuses the call in when it blocks it.
+BLOCKED = 'onFailure is "block"'
+FAILING = {
+    "timeout-block": ("sleep", ("timed out", BLOCKED)),
+    "timeout-open": ("sleep", ()),
+    "crash-block": ("crash", ("failed", BLOCKED)),
+    "crash-open": ("crash", ()),
+    "garbage": ("garbage", ()),
+}
 
 EXPECT_REWRITE = ("another hook's updatedInput is what runs; the completion carries it, and the plane records "
                   "EXECUTED_ARGS_MISMATCH and halts the run")
@@ -587,7 +653,7 @@ def judge(args):
     results.append(("plane-down", [c("plane-down", "run")],
                     judge_effect(c, "plane-down", "down.txt", False,
                                  "with the plane's socket pointing nowhere the bridge exits 2 and the Write is "
-                                 "blocked: no down.txt", exit_status=2)))
+                                 "blocked: no down.txt", "pass", exit_status=2)))
     for group, runs, how in (("timeout-block", False, "a PreToolUse hook that outlives its 5 s timeout, under "
                               "onFailure block, blocks the Write"),
                              ("timeout-open", True, "the same hook without onFailure lets the Write run"),
@@ -596,7 +662,9 @@ def judge(args):
                              ("crash-open", True, "the same hook without onFailure lets the Write run"),
                              ("garbage", True, "a PreToolUse hook that prints unreadable output and exits 0 "
                               "lets the Write run")):
-        results.append((group, [c(group, "run")], judge_effect(c, group, group + ".txt", runs, how)))
+        act, said = FAILING[group]
+        results.append((group, [c(group, "run")], judge_effect(c, group, group + ".txt", runs, how, act, said,
+                                                              printed=act == "garbage")))
     results.append(("disabled", [c("disabled", "run")], judge_disabled(c)))
     rewrite = judge_rewrite(c("rewrite", "run"), seeds["replacement"])
     results.append(("rewrite", [c("rewrite", "run")], rewrite))

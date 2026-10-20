@@ -89,7 +89,7 @@ cuts a request's links.
 ### 4. Follow a trail and raise alerts
 
 With `-state DIR` the example follows one trail from export to export. `-init`
-makes the directory, mode 0700, with an empty state and an empty alert log;
+makes the directory, mode 0700, with an empty state and alert log;
 `-cursor` prints the saved cursor, an empty line before the first export; and
 each run reads one export on its standard input:
 
@@ -108,8 +108,8 @@ cut, filtered, past those bounds, holds a record it refuses, is of another
 file than the one it first read, does not start at the saved cursor or ends behind it, or whose
 alerts would overfill the log (export again with a smaller `--limit`); and a
 state directory another user owns or may read or write, a state of another
-`schema_version` major or with a member missing or unknown, or an alert log
-shorter than the state records.
+`schema_version` major, lacking a member its version had or holding one
+unknown, or an alert log shorter than the state.
 
 It drops an event read before, by tenant, project, event id and the same
 line, as a duplicate, among the last 20 000 events. An event holding a value

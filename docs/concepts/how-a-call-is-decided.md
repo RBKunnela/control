@@ -206,7 +206,7 @@ call.
 | `enforcement_mode` | `ENFORCE`, always: the kernel knows no other mode |
 | `pdp_type` | `builtin`, also when an external answer was consulted: the verdict is the kernel's |
 | `pdp_instance` | the configured decision point's identifier when a rule's value turned on its answer, empty otherwise |
-| `decision_latency_us` | the second clock reading less the first, and nothing else reads the clock |
+| `decision_latency_us` | the second clock reading less the first, in whole microseconds and zero when the clock went back; nothing else reads the clock |
 
 ## Why
 

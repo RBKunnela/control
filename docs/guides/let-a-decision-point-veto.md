@@ -139,9 +139,10 @@ decision point in `pdp_instance` and carries one of the codes on
 
 - `policy test` passes one case per answer you rely on, silence among them.
 - `doctor` ends with `ok` on its `pdp` line.
-- A call the veto covers raises `pipeline.asks.made` and `allowed` or `denied`,
-  which shows the decision point answered; a call it does not
-  cover leaves the counters where they were.
+- A call the veto covers, and that no pause, stop, halt or `DENY` of the
+  kernel's blocks first, raises `pipeline.asks.made` and one outcome;
+  `allowed`, `denied` or `denied_obligations` shows the decision point
+  answered. A call it does not cover leaves the counters where they were.
 
 ## What the decision point sees
 

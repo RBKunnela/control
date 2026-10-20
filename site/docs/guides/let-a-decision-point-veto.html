@@ -218,9 +218,10 @@ decision point in <code>pdp_instance</code> and carries one of the codes on
 <ul>
 <li><code>policy test</code> passes one case per answer you rely on, silence among them.</li>
 <li><code>doctor</code> ends with <code>ok</code> on its <code>pdp</code> line.</li>
-<li>A call the veto covers raises <code>pipeline.asks.made</code> and <code>allowed</code> or <code>denied</code>,
-which shows the decision point answered; a call it does not
-cover leaves the counters where they were.</li>
+<li>A call the veto covers, and that no pause, stop, halt or <code>DENY</code> of the
+kernel's blocks first, raises <code>pipeline.asks.made</code> and one outcome;
+<code>allowed</code>, <code>denied</code> or <code>denied_obligations</code> shows the decision point
+answered. A call it does not cover leaves the counters where they were.</li>
 </ul>
 <h2 id="what-the-decision-point-sees">What the decision point sees</h2>
 <p>The question carries the principal, the agent, the action, the resource, the

@@ -1,9 +1,10 @@
 # Fixtures of the claude-code profile
 
 These events are written from the runtime's published hook documentation.
-None was recorded from the runtime: until the profile's qualification records
-real events at a pinned version, they show what the documentation says an
-event looks like, not what a release sends. Ids and paths are scrubbed.
+None was recorded from the runtime: they show what the documentation says an
+event looks like, not what a release sends. What Claude Code 2.1.303 sent is
+judged by the qualification in `../qualification/`. Ids and paths are
+scrubbed.
 
 The file name is the case id a claim in `../profile.json` names in
 `backed_by`, and `../cases.json` holds what each one must come to.

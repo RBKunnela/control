@@ -85,7 +85,7 @@ them:
 | a call of an opened run a stop names, with a route, in every mode | `DENY` | `RUN_STOPPED` | the stop expires or is lifted ([reaction](../reference/reaction.md)) |
 | every call, while a configured stop list cannot be read or trusted | `INDETERMINATE` | `STOP_STATE_UNAVAILABLE` | a read extends the list accepted |
 | a call nothing classifies, in every mode but `OBSERVE` | `INDETERMINATE` | `ACTION_UNCLASSIFIED` | the operator classifies it |
-| a material call after an execution ran with bytes that were not authorized | `DENY` | `EXECUTED_ARGS_MISMATCH` | the enforcement point restarts |
+| a material call after an execution ran with bytes that were not authorized: of that execution's opened run when a cooperating client reported it and fewer than `flow.max_runs` runs are halted, otherwise every one | `DENY` | `EXECUTED_ARGS_MISMATCH` | the enforcement point restarts |
 | a material call after the sink refused the closing event of a call that was sent | `INDETERMINATE` | `EVIDENCE_UNAVAILABLE` | an append succeeds |
 | a call with no opened run of its identity where runs are presented, one whose run's state cannot be read, or one whose run the id source cannot name | `INDETERMINATE` | `EVIDENCE_UNAVAILABLE` | the run resolves and its state reads, or the id source names it |
 | a call whose producer sent a run-context tag under the reserved `flow.v` prefix, `OBSERVE` included, after the mode | `INDETERMINATE` | the code of the call's refusal, `INVALID_FIELD_VALUE` for the tag alone | the producer stops sending it |
@@ -107,10 +107,11 @@ point is not asked: the question would leave the plane for nothing, during
 the incident the pause or the halt stands for
 ([ADR-0019](../adr/0019-an-operator-can-pause-calls.md)). The plane names
 these causes once, before any question leaves it, and blocks on them whatever
-changes after. With none it asks, then takes the pause state and its clock
-again and names the causes once more, so a pause or a halt that comes while
-the ask waits blocks that call. The pause state alone is taken once more
-right before each step that cannot be undone, as the next section says.
+changes after. With none it asks, then takes the pause and stop states, the
+installed policy and its clock again and names the causes once more, so a
+pause, a stop or a halt that comes while the ask waits blocks that call. The pause and stop states, the installed
+policy and the clock are taken once more, and the halts judged again, right
+before each step that cannot be undone, as the next section says.
 
 ## Pausing calls
 

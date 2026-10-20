@@ -310,7 +310,7 @@ the journal
 </tr>
 <tr>
 <td><code>policy.fail_open_read: true</code></td>
-<td>A read undecided only because the policy is unavailable runs if the rules would otherwise allow it. Off by default, and forced off under <code>LOCKDOWN</code></td>
+<td>A read undecided only because the policy is unavailable runs if the rules would allow it and, at hand-out, its bundle is still installed and the clock trusted. Off by default, and forced off under <code>LOCKDOWN</code></td>
 </tr>
 </tbody>
 </table>
@@ -345,9 +345,8 @@ ones. It stands until a restart. Read the trail's
 sent.</li>
 <li><code>evidence_unwritable</code>: a closing record could not be written. It lifts when an
 append succeeds: give the spool room or let the collector drain it, and
-watch the depth. While a mismatch halt stands it reads <code>false</code>, because the
-pipeline reports one flag for both halts and a mismatch needs the restart
-either way; <code>pipeline.sink_failures_after_effect</code> counts what happened.</li>
+watch the depth. The two flags are set apart, so both can read <code>true</code>;
+<code>pipeline.sink_failures_after_effect</code> counts what happened.</li>
 </ul>
 <h2 id="roll-back">Roll back</h2>
 <p>To change the policy, sign it with a higher <code>serial</code>, renew for it, and copy

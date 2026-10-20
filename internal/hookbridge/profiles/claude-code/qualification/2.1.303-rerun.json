@@ -16,6 +16,7 @@
       "expected": "the Write is let run silently (exit 0); note.txt holds the content its admit proposed; the trail closes the call ACTION_COMPLETED; no EXECUTED_ARGS_MISMATCH",
       "observed": {
         "admit_exits": [],
+        "admit_stdout": [],
         "file": null,
         "proposed": null,
         "trail": [],
@@ -116,6 +117,7 @@
         "file": null,
         "runtime_returned": false,
         "write_refused": false,
+        "refusal": [],
         "unknown": "not run: QUALIFY_ONLY left out plane-down/run",
         "pre_tool_use": []
       },
@@ -130,6 +132,7 @@
         "file": null,
         "runtime_returned": false,
         "write_refused": false,
+        "refusal": [],
         "unknown": "not run: QUALIFY_ONLY left out timeout-block/run",
         "pre_tool_use": []
       },
@@ -144,6 +147,7 @@
         "file": null,
         "runtime_returned": false,
         "write_refused": false,
+        "refusal": [],
         "unknown": "not run: QUALIFY_ONLY left out timeout-open/run",
         "pre_tool_use": []
       },
@@ -158,6 +162,7 @@
         "file": null,
         "runtime_returned": false,
         "write_refused": false,
+        "refusal": [],
         "unknown": "not run: QUALIFY_ONLY left out crash-block/run",
         "pre_tool_use": []
       },
@@ -172,6 +177,7 @@
         "file": null,
         "runtime_returned": false,
         "write_refused": false,
+        "refusal": [],
         "unknown": "not run: QUALIFY_ONLY left out crash-open/run",
         "pre_tool_use": []
       },
@@ -186,6 +192,7 @@
         "file": null,
         "runtime_returned": false,
         "write_refused": false,
+        "refusal": [],
         "unknown": "not run: QUALIFY_ONLY left out garbage/run",
         "pre_tool_use": []
       },
@@ -310,5 +317,5 @@
       "verdict": "unknown"
     }
   ],
-  "judged_at": "9d00c8e8"
+  "judged_at": "5203d14a"
 }

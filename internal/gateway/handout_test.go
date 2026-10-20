@@ -11,6 +11,7 @@ import (
 	"github.com/guardana/control/internal/gateway"
 	"github.com/guardana/control/internal/pause"
 	"github.com/guardana/control/internal/policy"
+	"github.com/guardana/control/pkg/contract"
 )
 
 // The hand-out recheck of ADR-0055: a call is handed out only while the
@@ -203,6 +204,50 @@ func TestAReadTheTableOpenedStaysInItsRow(t *testing.T) {
 	}
 }
 
+// adviseReads allows every read with an advisory obligation, so its verdict
+// is ALLOW_WITH_OBLIGATIONS and nothing rewrites the arguments.
+const adviseReads = `{"id":"advise-reads","effect":"ALLOW_WITH_OBLIGATIONS","obligations":[{"type":"cap_rate","params":{"per_minute":"60"},"advisory":true}],"when":{"action":{"effect":["READ"]}}}`
+
+// TestObserveCountsOnlyWhatEnforceWouldHandOut: of the calls whose bundle
+// goes stale before the hand-out, OBSERVE counts only those the kernel let
+// run, a read the fail-closed table opened among them.
+func TestObserveCountsOnlyWhatEnforceWouldHandOut(t *testing.T) {
+	for name, c := range map[string]struct {
+		rule    string
+		refusal error
+		counted uint64
+	}{
+		"held when decided":                  {approveReads, nil, 0},
+		"undecided when decided":             {allowReads, contract.ErrMissingField, 0},
+		"allowed with an obligation":         {adviseReads, nil, 1},
+		"allowed, as the control of the set": {allowReads, nil, 1},
+	} {
+		t.Run(name+", stale at the hand-out", func(t *testing.T) {
+			h := build(t, modeObserve, snapshot(t, c.rule))
+			h.sink.hook(kindDecided, func() { h.clock.set(base().Add(handOutBudget + time.Second)) })
+			a := admission(readEnvelope(), nil)
+			a.Refusal = c.refusal
+			expectRuns(t, h.p.Admit(context.Background(), a))
+			if s := h.p.Stats(); s.StaleHandedOut != c.counted {
+				t.Errorf("StaleHandedOut %d, want %d: only a call ENFORCE would have handed out counts", s.StaleHandedOut, c.counted)
+			}
+		})
+	}
+	t.Run("a read the table opened, its bundle replaced at the hand-out", func(t *testing.T) {
+		h := build(t, modeObserve, snapshot(t, allowReads), failOpen)
+		h.clock.set(base().Add(handOutBudget + time.Second))
+		h.sink.hook(kindDecided, func() { h.policy.set(snapshot(t, allowReads, denyWrites)) })
+		d := h.admit(readEnvelope(), nil)
+		expectRuns(t, d)
+		if !containsCode(d.Decision.GetReasonCodes(), codeFailOpenRead) {
+			t.Fatalf("codes %v; want a read the fail-closed table opened", d.Decision.GetReasonCodes())
+		}
+		if s := h.p.Stats(); s.StaleHandedOut != 1 {
+			t.Errorf("StaleHandedOut %d; want the read ENFORCE would hand out and then withhold counted", s.StaleHandedOut)
+		}
+	})
+}
+
 // TestObserveHandsOutWhatEnforceWouldWithhold: OBSERVE enforces no policy,
 // so a call whose bundle goes stale before the hand-out runs and is counted
 // once; a pause taken in the same window still blocks it.
@@ -213,6 +258,14 @@ func TestObserveHandsOutWhatEnforceWouldWithhold(t *testing.T) {
 		expectRuns(t, h.admit(readEnvelope(), nil))
 		if s := h.p.Stats(); s.StaleHandedOut != 1 || s.Blocks[codePolicyStale] != 0 {
 			t.Errorf("StaleHandedOut %d, Blocks %v; want one counted and none blocked", s.StaleHandedOut, s.Blocks)
+		}
+	})
+	t.Run("denied when decided, stale at the hand-out", func(t *testing.T) {
+		h := build(t, modeObserve, snapshot(t, denyReads))
+		h.sink.hook(kindDecided, func() { h.clock.set(base().Add(handOutBudget + time.Second)) })
+		expectRuns(t, h.admit(readEnvelope(), nil))
+		if s := h.p.Stats(); s.StaleHandedOut != 0 {
+			t.Errorf("StaleHandedOut %d; want a call its policy denied, which ENFORCE never hands out, not counted", s.StaleHandedOut)
 		}
 	})
 	t.Run("stale when decided, or decided with no bundle", func(t *testing.T) {

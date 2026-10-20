@@ -255,7 +255,7 @@ only an approved, unconsumed record passes.
 | --- | --- | --- |
 | `approvals.ttl` | how long a requested approval can be answered and consumed; `expires_at` is the hold's clock reading plus it | expired |
 | `approvals.retry_after` | what the agent is told to wait before retrying, in whole seconds rounded up | nothing: a retry before an answer is told to retry again |
-| `approvals.max_held` | the requests held and not yet expired | the hold is refused with `EVIDENCE_UNAVAILABLE` |
+| `approvals.max_held` | the requests held and not yet closed, an expired hold the sweep has not reached among them | the hold is refused with `EVIDENCE_UNAVAILABLE` |
 | `approvals.max_held_per_run` | the requests one opened run holds and not yet expired; 16 unless set, read only beside `runs.dir`, and below `approvals.max_held` | the hold is refused with `EVIDENCE_UNAVAILABLE` |
 | `approvals.max_open` | the executions handed out and not yet closed | the call, resumed or not, blocks with `EVIDENCE_UNAVAILABLE` |
 | `maxSweep` | the expired holds one call closes on its way in | the rest wait for the next call |

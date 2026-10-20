@@ -25,14 +25,17 @@ bridge then exits 0 and prints nothing. Anything else exits with the
 profile's block status and one line on standard error, or with 2 when the
 flags are wrong or the profile cannot be read. The bridge never
 writes a reply that allows, asks, defers or changes a call, so the plane's
-decision can only take a call away. A decision that wants the arguments
-rewritten, or carries an obligation, is denied: a hook cannot hand the
-runtime the authorized bytes.
+decision can only take a call away. A call whose authorized bytes differ
+from the proposed ones, a rewrite among them, or whose answer leaves the
+bridge an obligation to apply, is denied: a hook cannot hand the runtime the
+authorized bytes. The receiver keeps advisory obligations out of that answer,
+so they deny nothing.
 
 Between the admit and the completion the bridge keeps the execution's handle
 in a directory only its account may enter. For an event the profile maps to
 a completion, it takes that handle once and reports the input the runtime
-says it ran. The plane compares that input with the authorized one as a
+says it ran; a completion with no input sends nothing, and the plane's sweep
+abandons the execution. The plane compares that input with the authorized one as a
 value, by `digest_v1`, and records a difference as `EXECUTED_ARGS_MISMATCH`.
 
 The run token comes from `GUARDANA_CONTROL_RUN_TOKEN` in the hook's

@@ -173,7 +173,7 @@ under <code>LOCKDOWN</code>. Export the whole file or one request: a filter on k
 cuts a request's links.</p>
 <h3 id="4-follow-a-trail-and-raise-alerts">4. Follow a trail and raise alerts</h3>
 <p>With <code>-state DIR</code> the example follows one trail from export to export. <code>-init</code>
-makes the directory, mode 0700, with an empty state and an empty alert log;
+makes the directory, mode 0700, with an empty state and alert log;
 <code>-cursor</code> prints the saved cursor, an empty line before the first export; and
 each run reads one export on its standard input:</p>
 <pre><code>bin/evidence-report -state s -init
@@ -188,8 +188,8 @@ cut, filtered, past those bounds, holds a record it refuses, is of another
 file than the one it first read, does not start at the saved cursor or ends behind it, or whose
 alerts would overfill the log (export again with a smaller <code>--limit</code>); and a
 state directory another user owns or may read or write, a state of another
-<code>schema_version</code> major or with a member missing or unknown, or an alert log
-shorter than the state records.</p>
+<code>schema_version</code> major, lacking a member its version had or holding one
+unknown, or an alert log shorter than the state.</p>
 <p>It drops an event read before, by tenant, project, event id and the same
 line, as a duplicate, among the last 20 000 events. An event holding a value
 longer than 64 bytes as JSON writes it, or more than 16 reason codes, is not

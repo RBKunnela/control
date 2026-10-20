@@ -236,7 +236,8 @@ and none of it is in the release archives.
   the 1.x line sorts below 2026.8.31; the advisory scan over the lockfile is
   its alarm, and Dependabot's security updates cover the packages below it.
 - `mcp` 1.30.0 (MIT), the MCP project's Python SDK, is the client. Its 1.x line
-  speaks protocol 2025-11-25, the newest the gateway serves. It and its
+  speaks protocol 2025-11-25, which the example's stateful listener serves;
+  the gateway serves 2026-07-28 on a stateless one only. It and its
   dependencies are locked with hashes in
   `examples/connect-a-filesystem-server/client/uv.lock`. Maintained by the MCP
   project, with frequent releases.

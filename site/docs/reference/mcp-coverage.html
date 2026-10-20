@@ -214,7 +214,7 @@ child process (<code>upstreams[].command</code>).</p>
 </tr>
 <tr>
 <td><code>notifications/tools/list_changed</code> toward the agent</td>
-<td>The library emits it only for its own registry, which is empty here, so the listener declares it does not send one; an agent refreshes when <code>list.ttl</code> runs out</td>
+<td>The library emits it only for its own registry, empty here, so the listener declares it sends none; an agent refreshes when <code>list.ttl</code> runs out</td>
 </tr>
 <tr>
 <td>An upstream's own notifications and server-initiated requests, other than a changed tool list</td>
@@ -226,11 +226,11 @@ child process (<code>upstreams[].command</code>).</p>
 </tr>
 <tr>
 <td>Telling one approver from another</td>
-<td>Write access to the approvals directory is the approval authority, and <code>approver_id</code> on a record is a claim recorded as given; no authenticated provider exists yet (ADR-0016)</td>
+<td>Write access to the approvals directory is the approval authority, and <code>approver_id</code> is a claim; no authenticated provider exists yet (ADR-0016)</td>
 </tr>
 <tr>
 <td>A client other than the library's own</td>
-<td>Not exercised; the conformance tests drive the reference implementation</td>
+<td>Only the MCP project's Python SDK, over HTTP, in <code>make check-mcp-client</code> on the <a href="/docs/guides/connect-an-existing-mcp-setup">filesystem guide</a>; other clients and stdio are not exercised</td>
 </tr>
 <tr>
 <td>A tool classified <code>SPAWN_OR_DELEGATE</code></td>
@@ -238,7 +238,7 @@ child process (<code>upstreams[].command</code>).</p>
 </tr>
 <tr>
 <td>What a run read outside the gateway</td>
-<td>A run, without <code>runs.dir</code>, is the listener's principal and starts clean at each restart; on stdio a run lasts its client's one connection. The user's prompt, tool descriptions and tools not behind the gateway are not tracked, and a call carries no data label, so a <code>flow</code> rule blocks every untrusted destination after untrusted input. A <code>resources/read</code> and a <code>prompts/get</code> carry no declared result, so each leaves its run untrusted and unknown for the rest of the run (ADR-0021)</td>
+<td>A run, without <code>runs.dir</code>, is the listener's principal and starts clean at each restart; on stdio a run lasts its client's one connection. The user's prompt, tool descriptions and tools not behind the gateway are not tracked, and a call carries no data label, so a <code>flow</code> rule blocks every untrusted destination after untrusted input. A <code>resources/read</code> and a <code>prompts/get</code> carry no declared result, so each leaves its run untrusted and unknown from then on (ADR-0021)</td>
 </tr>
 </tbody>
 </table>
