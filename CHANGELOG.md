@@ -11,6 +11,30 @@ verify one.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-20
+
+A coding runtime's tool hooks can now reach a plane's `experimental`
+enforcement API through `guardana-control hook`. The hook only takes calls
+away: it lets a call run only when the plane answers `EXECUTE` of exactly the
+input the runtime proposed, and reports its completion with the input that ran
+([ADR-0056](docs/adr/0056-a-coding-runtimes-hooks-reach-the-plane-through-one-bridge.md)).
+The first built-in profile, [for one coding runtime](docs/reference/claude-code-hooks.md),
+is `experimental`, qualified on one release of that runtime and labelled
+"decided, with failure gaps": the runtime, not the plane, runs the call, so a
+hook is not an enforcement point. Outside `OBSERVE`, a call is now handed out
+only while the policy it was decided under is still installed and fresh
+([ADR-0055](docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands.md)),
+and the enforcement receiver holds a lock beside its socket, so a second plane
+on the same socket is refused
+([ADR-0054](docs/adr/0054-the-enforcement-receiver-holds-a-lock-beside-its-socket.md)).
+Every pull request now runs the guide for connecting an existing MCP setup
+with the MCP project's Python SDK
+([ADR-0057](docs/adr/0057-an-external-mcp-client-runs-the-guide-on-every-pull-request.md)).
+Among the pre-release audit's fixes: the receiver serves only the listener it
+locked, and `OBSERVE` counts a stale hand-out only for a call its policy let
+run. The project is still alpha, and the `0.x` series makes no compatibility
+promise between minor versions.
+
 ### Added
 
 - `guardana-control hook` takes a coding runtime's tool events to a plane's
@@ -1400,7 +1424,8 @@ yet.
   independence of this project from Guardana
   ([ADR-0024](docs/adr/0024-control-and-guardana-are-independent.md)).
 
-[Unreleased]: https://github.com/guardana/control/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/guardana/control/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/guardana/control/releases/tag/v0.13.0
 [0.12.0]: https://github.com/guardana/control/releases/tag/v0.12.0
 [0.11.0]: https://github.com/guardana/control/releases/tag/v0.11.0
 [0.10.2-alpha]: https://github.com/guardana/control/releases/tag/v0.10.2-alpha

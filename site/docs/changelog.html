@@ -117,7 +117,29 @@
 <a href="/docs/adr/0008-branching-and-release-policy">ADR-0008</a>. Each release is built,
 signed and attested from its tag; <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a> shows how to
 verify one.</p>
-<h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.12.0...HEAD">Unreleased</a></h2>
+<h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.13.0...HEAD">Unreleased</a></h2>
+<h2 id="0130---2026-10-20"><a href="https://github.com/guardana/control/releases/tag/v0.13.0">0.13.0</a> - 2026-10-20</h2>
+<p>A coding runtime's tool hooks can now reach a plane's <code>experimental</code>
+enforcement API through <code>guardana-control hook</code>. The hook only takes calls
+away: it lets a call run only when the plane answers <code>EXECUTE</code> of exactly the
+input the runtime proposed, and reports its completion with the input that ran
+(<a href="/docs/adr/0056-a-coding-runtimes-hooks-reach-the-plane-through-one-bridge">ADR-0056</a>).
+The first built-in profile, <a href="/docs/reference/claude-code-hooks">for one coding runtime</a>,
+is <code>experimental</code>, qualified on one release of that runtime and labelled
+&quot;decided, with failure gaps&quot;: the runtime, not the plane, runs the call, so a
+hook is not an enforcement point. Outside <code>OBSERVE</code>, a call is now handed out
+only while the policy it was decided under is still installed and fresh
+(<a href="/docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands">ADR-0055</a>),
+and the enforcement receiver holds a lock beside its socket, so a second plane
+on the same socket is refused
+(<a href="/docs/adr/0054-the-enforcement-receiver-holds-a-lock-beside-its-socket">ADR-0054</a>).
+Every pull request now runs the guide for connecting an existing MCP setup
+with the MCP project's Python SDK
+(<a href="/docs/adr/0057-an-external-mcp-client-runs-the-guide-on-every-pull-request">ADR-0057</a>).
+Among the pre-release audit's fixes: the receiver serves only the listener it
+locked, and <code>OBSERVE</code> counts a stale hand-out only for a call its policy let
+run. The project is still alpha, and the <code>0.x</code> series makes no compatibility
+promise between minor versions.</p>
 <h3 id="added">Added</h3>
 <ul>
 <li><code>guardana-control hook</code> takes a coding runtime's tool events to a plane's
