@@ -1,6 +1,6 @@
 module example.com/evidence-report
 
-go 1.27.2
+go 1.27.3
 
 require (
 	github.com/guardana/control v0.0.0-00010101000000-000000000000

@@ -118,6 +118,14 @@
 signed and attested from its tag; <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a> shows how to
 verify one.</p>
 <h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.13.0...HEAD">Unreleased</a></h2>
+<h3 id="security">Security</h3>
+<ul>
+<li>Built with Go 1.27.3, which fixes GO-2026-6809 in <code>crypto/x509</code>;
+<code>govulncheck</code> found it reachable from the evidence reader under 1.27.2.</li>
+<li>The MCP client the filesystem server's guide is checked with locks
+<code>certifi</code> 2026.10.19, which fixes PYSEC-2026-4320 (GHSA-6q48-6c7w-9gw2).
+Neither binary nor the Python client of the enforcement API uses it.</li>
+</ul>
 <h2 id="0130---2026-10-20"><a href="https://github.com/guardana/control/releases/tag/v0.13.0">0.13.0</a> - 2026-10-20</h2>
 <p>A coding runtime's tool hooks can now reach a plane's <code>experimental</code>
 enforcement API through <code>guardana-control hook</code>. The hook only takes calls
@@ -559,7 +567,7 @@ run's own calls, so no run can get another one stopped, and a child run can
 now be stopped on its own. <code>procedure lint</code> and <code>procedure test</code> check a
 procedure with cases, and <code>findings export</code> reads the findings log with a
 cursor. The fixes come from an audit of this release's own changes.</p>
-<h3 id="security">Security</h3>
+<h3 id="security-1">Security</h3>
 <ul>
 <li>Built with Go 1.27.2, which fixes GO-2026-6599, GO-2026-6600, GO-2026-6603,
 GO-2026-6604, GO-2026-6605, GO-2026-6607, GO-2026-6608 and GO-2026-6610 in

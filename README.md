@@ -162,7 +162,7 @@ binaries, `guardana-gateway` and `guardana-control`. Download one from the
 the signed `checksums.txt` as [RELEASING.md](RELEASING.md) shows, and put the
 binaries on your `PATH`.
 
-With Go 1.27.2 or later, build from source; such a binary reports version
+With Go 1.27.3 or later, build from source; such a binary reports version
 `dev`:
 
 ```bash

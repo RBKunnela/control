@@ -25,7 +25,7 @@ and the MCP inspector's command line as the client. The plane is
   checkout of this repository for the profile and the policy pack, which the
   archives do not carry.
 - Node.js with `npm`, for this server; another server needs whatever it runs on.
-- Go 1.27.2 or later, to build the report program.
+- Go 1.27.3 or later, to build the report program.
 - A client that connects to a server by URL over Streamable HTTP, protocol
   `2025-11-25` or older. A client that only starts servers as commands can
   start the plane instead (step 7).
