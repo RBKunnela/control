@@ -53,6 +53,7 @@ DEFECTS = (
 
 LIMIT = 262144
 INT32_MIN, INT32_MAX = -2147483648, 2147483647
+UINT32_MAX = 4294967295
 INT64_MIN, INT64_MAX = -9223372036854775808, 9223372036854775807
 LONGEST_SPAN = 315576000000
 # No value in range has more digits, and the interpreter converts no string of thousands.
@@ -443,6 +444,8 @@ class SecondClient:
             raise _public(exc, nothing) from exc
         decision = admitted.get("decision")
         answer = replace(nothing, decision=decision if isinstance(decision, dict) else None)
+        if not _version_read(decision):
+            raise MalformedAnswer("a decision of a version this client does not read", answer)
         if admitted.get("outcome") == "OUTCOME_PENDING":
             held = admitted.get("pending")
             raise CallPending("held", replace(answer, outcome="OUTCOME_PENDING", held=_held(held)))
@@ -559,6 +562,23 @@ class RefusalError(Exception):
         self.code = named(body.get("code"))
         self.message = str(body.get("message", ""))
         self.ending = named(body.get("ending"))
+
+
+def _version_read(decision: object) -> bool:
+    """No decision, or one of major 1 and a minor of decimal digits within 32 bits."""
+    if not isinstance(decision, dict):
+        return True
+    version = decision.get("schemaVersion", "")
+    if not isinstance(version, str):
+        return False
+    minor = version[2:] if version.startswith("1.") else ""
+    significant = minor.lstrip("0") or "0"
+    return (
+        minor.isascii()
+        and minor.isdigit()
+        and len(significant) <= len(str(UINT32_MAX))
+        and int(significant) <= UINT32_MAX
+    )
 
 
 def _left(gone: Callable[[], object] | None) -> bool:

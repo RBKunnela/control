@@ -183,6 +183,23 @@ func TestConsumeInEveryState(t *testing.T) {
 	})
 }
 
+// TestConsumeSpendsNoApprovalWithoutAnApprover: a record held already
+// approved, which Hold accepts in any state, is spent only when it names who
+// approved it.
+func TestConsumeSpendsNoApprovalWithoutAnApprover(t *testing.T) {
+	binding := approval.Binding("sha256:0")
+	var store gateway.MemoryApprovals
+	for _, tc := range []struct {
+		id, approver string
+		want         error
+	}{{"a-7", "", gateway.ErrNoApproval}, {"a-8", "alice", nil}} {
+		h := held(binding, tc.id, "req-"+tc.id)
+		h.Approval.State, h.Approval.ApproverId, h.Approval.DecidedAt = approved, tc.approver, timestamppb.New(base())
+		mustHold(t, &store, h)
+		expectConsume(t, &store, binding, "req-"+tc.id, tc.id, base(), tc.want)
+	}
+}
+
 // TestConsumeSpendsNoAnswerOutsideItsWindow: an approval answered before it
 // was requested, at the zero time or after the clock handed in is not spent,
 // and stays where it was for a reading that can spend it.

@@ -103,8 +103,11 @@ func step(v any, tok string) (any, bool) {
 		next, ok := c[tok]
 		return next, ok
 	case []any:
+		if tok == "" || strings.Trim(tok, "0123456789") != "" || len(tok) > 1 && tok[0] == '0' {
+			return nil, false
+		}
 		i, err := strconv.Atoi(tok)
-		if err != nil || i < 0 || i >= len(c) || (len(tok) > 1 && tok[0] == '0') {
+		if err != nil || i >= len(c) {
 			return nil, false
 		}
 		return c[i], true

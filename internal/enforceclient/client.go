@@ -8,9 +8,12 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	enforcev1alpha1 "github.com/guardana/control/api/gen/go/guardana/control/enforce/v1alpha1"
+	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/pkg/contract"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -133,7 +136,36 @@ func decodeAnswer(status int, data []byte, resp proto.Message) error {
 	if err := strict.Unmarshal(data, resp); err != nil {
 		return fmt.Errorf("%w: %w", ErrMalformedAnswer, err)
 	}
+	if a, ok := resp.(*enforcev1alpha1.AdmitResponse); ok {
+		return checkDecisionVersion(a.GetDecision())
+	}
 	return nil
+}
+
+// checkDecisionVersion refuses a decision whose schema_version is absent or
+// not MAJOR.MINOR in decimal on the major the generated Decision carries. An
+// answer with no decision is left to its outcome.
+func checkDecisionVersion(d *controlv1.Decision) error {
+	if d == nil {
+		return nil
+	}
+	major, minor, ok := strings.Cut(d.GetSchemaVersion(), ".")
+	if !ok || !decimal(major) || !decimal(minor) || major != decisionMajor() {
+		return fmt.Errorf("%w: a decision of a schema_version this client does not read", ErrMalformedAnswer)
+	}
+	return nil
+}
+
+func decisionMajor() string {
+	pkg := string((&controlv1.Decision{}).ProtoReflect().Descriptor().ParentFile().Package())
+	return strings.TrimPrefix(pkg[strings.LastIndex(pkg, ".")+1:], "v")
+}
+
+// decimal is ParseUint at base 10, which takes no sign, no underscore and no
+// empty string, and 32 bits, as pkg/contract reads a version.
+func decimal(s string) bool {
+	_, err := strconv.ParseUint(s, 10, 32)
+	return err == nil
 }
 
 // refusal returns the receiver's Error body err carries, if any.

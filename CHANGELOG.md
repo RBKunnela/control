@@ -19,6 +19,25 @@ verify one.
   `certifi` 2026.10.19, which fixes PYSEC-2026-4320 (GHSA-6q48-6c7w-9gw2).
   Neither binary nor the Python client of the enforcement API uses it.
 
+### Fixed
+
+- The enforcement API answers a call whose rewrite moved the decided resource
+  with `BLOCK` and the abort's code, `OBLIGATION_NOT_UNDERSTOOD`, after the
+  decision's own; it carried the kernel's allow alone, so the hook bridge and
+  the Python client reported a block with only `OBLIGATIONS_ATTACHED`.
+- The Go and Python clients of the enforcement API refuse an admit answer
+  whose decision has no schema version or one on another major as malformed,
+  and run no tool on it; the answer vectors and client cases carry the
+  version.
+- A resource pointer's array index is decimal digits only, as RFC 6901 reads
+  it: `+1`, `-0` and `+01` no longer name an element.
+- An enforcement API plane in `OBSERVE` handed out a call whose envelope the
+  contract refused for more than an unnamed tool, such as a transaction
+  naming no resource; it now aborts it and answers `BLOCK`, as the MCP
+  adapter does. A `tools` table that
+  classes a tool `SPAWN_OR_DELEGATE`, which this API can never decide, is
+  refused when the plane starts and by `doctor`.
+
 ## [0.13.0] - 2026-10-20
 
 A coding runtime's tool hooks can now reach a plane's `experimental`

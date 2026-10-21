@@ -185,6 +185,8 @@ func checkTool(tool Tool) error {
 		return errors.New("a name of 1 to 1024 bytes")
 	case tool.Effect == controlv1.EffectClass_EFFECT_CLASS_UNSPECIFIED || !declared(tool.Effect):
 		return errors.New("an effect class the contract declares")
+	case tool.Effect == controlv1.EffectClass_EFFECT_CLASS_SPAWN_OR_DELEGATE:
+		return errors.New("an effect class other than SPAWN_OR_DELEGATE, which needs a delegation this API does not carry")
 	case tool.Provider == "":
 		return errors.New("a provider")
 	case tool.ResourceType == "":

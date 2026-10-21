@@ -1784,7 +1784,11 @@ to nine fractional digits; a <code>Duration</code> as decimal seconds with <code
 <code>null</code>. A client that refuses an answer in any other form conforms. One that
 reads another form acts on it as the reference client does: the same outcome,
 the same bytes to the tool, the same closing request.
-<a href="https://github.com/guardana/control/blob/main/testdata/enforce/README.md">The answer vectors</a> hold both.</p>
+<a href="https://github.com/guardana/control/blob/main/testdata/enforce/README.md">The answer vectors</a> hold both. An admit
+answer whose decision has no <code>schemaVersion</code>, or one on another major, is
+refused as malformed under <a href="#schema-versioning">schema versioning</a>, whatever
+its outcome. A <code>BLOCK</code> that follows an abort carries the decision with the
+abort's code last; the trail's <code>POLICY_DECIDED</code> holds it without that code.</p>
 <h3 id="zero-values">Zero values</h3>
 <p>Every enum's zero value is <code>*_UNSPECIFIED</code>. In a request, <code>CompletionStatus</code>
 and <code>AbortCause</code> unspecified, or a number the receiver does not declare, is

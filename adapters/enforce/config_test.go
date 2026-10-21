@@ -74,6 +74,7 @@ func TestNewRefusesAnIncompleteConfiguration(t *testing.T) {
 		{"two tools with one name", func(c *enforce.Config) { c.Tools[1].Name = c.Tools[0].Name }, enforce.ErrTool},
 		{"no effect", func(c *enforce.Config) { c.Tools[0].Effect = controlv1.EffectClass_EFFECT_CLASS_UNSPECIFIED }, enforce.ErrTool},
 		{"an undeclared effect", func(c *enforce.Config) { c.Tools[0].Effect = 99 }, enforce.ErrTool},
+		{"a spawn the API cannot decide", func(c *enforce.Config) { c.Tools[0].Effect = controlv1.EffectClass_EFFECT_CLASS_SPAWN_OR_DELEGATE }, enforce.ErrTool},
 		{"no provider", func(c *enforce.Config) { c.Tools[0].Provider = "" }, enforce.ErrTool},
 		{"no resource type", func(c *enforce.Config) { c.Tools[0].ResourceType = "" }, enforce.ErrTool},
 		{"a pointer without a slash", func(c *enforce.Config) { c.Tools[0].ResourceFrom = "account" }, enforce.ErrTool},

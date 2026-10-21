@@ -173,8 +173,10 @@ your function makes a call of its own and lets that call's exception out,
   `ACTION_STARTED`.
 - An admit answer lost on the way can spend an approval: the retry is held
   anew.
-- A tool classed `SPAWN_OR_DELEGATE` is refused with `REQUIRED_FIELD_ABSENT`:
-  that class needs a delegation, which the enforcement API does not carry.
+- A `tools` table that classes a tool `SPAWN_OR_DELEGATE` is refused at start
+  and by `doctor`: that class needs a delegation, which the enforcement API
+  does not carry. A call whose envelope the contract refuses for anything
+  but an unnamed tool is answered `BLOCK` in every mode, `OBSERVE` included.
 
 ## Roll back
 

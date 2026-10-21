@@ -151,7 +151,7 @@ Rendered from the field table in `internal/gatewayconfig`. Rebuild it with
 | `overrides.N.returns.trust` | `GUARDANA_CONTROL_OVERRIDES_N_RETURNS_TRUST` | one of |  | no | an empty value, `TRUSTED_INTERNAL`, `PARTNER`, `UNTRUSTED_EXTERNAL`, `USER_CONTROLLED`, `MODEL_GENERATED` |
 | `overrides.N.returns.sensitivity` | `GUARDANA_CONTROL_OVERRIDES_N_RETURNS_SENSITIVITY` | one of |  | no | an empty value, `PUBLIC`, `INTERNAL`, `CONFIDENTIAL`, `RESTRICTED`, `SECRET` |
 | `tools.N.name` | `GUARDANA_CONTROL_TOOLS_N_NAME` | string |  | yes |  |
-| `tools.N.effect` | `GUARDANA_CONTROL_TOOLS_N_EFFECT` | one of |  | yes | `READ`, `WRITE`, `DELETE`, `EXECUTE`, `COMMUNICATE`, `TRANSACT`, `IDENTITY_OR_ACCESS`, `CONFIGURE`, `SPAWN_OR_DELEGATE` |
+| `tools.N.effect` | `GUARDANA_CONTROL_TOOLS_N_EFFECT` | one of |  | yes | `READ`, `WRITE`, `DELETE`, `EXECUTE`, `COMMUNICATE`, `TRANSACT`, `IDENTITY_OR_ACCESS`, `CONFIGURE` |
 | `tools.N.provider` | `GUARDANA_CONTROL_TOOLS_N_PROVIDER` | string |  | yes |  |
 | `tools.N.resource_type` | `GUARDANA_CONTROL_TOOLS_N_RESOURCE_TYPE` | string |  | yes |  |
 | `tools.N.resource_from` | `GUARDANA_CONTROL_TOOLS_N_RESOURCE_FROM` | string |  | no |  |

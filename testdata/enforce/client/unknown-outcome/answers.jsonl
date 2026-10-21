@@ -1,1 +1,1 @@
-{"for":"/enforce/v1alpha1/admit","status":200,"body":{"outcome":9,"decision":{"decisionId":"d-1","verdict":"VERDICT_ALLOW"},"execution":{"handle":"h-1","expiresAt":"2026-10-11T12:05:00Z","authorizedArguments":"eyJhbW91bnQiOjEwLCJ0byI6ImFjY3QtNyJ9"}}}
+{"for":"/enforce/v1alpha1/admit","status":200,"body":{"outcome":9,"decision":{"schemaVersion":"1.0","decisionId":"d-1","verdict":"VERDICT_ALLOW"},"execution":{"handle":"h-1","expiresAt":"2026-10-11T12:05:00Z","authorizedArguments":"eyJhbW91bnQiOjEwLCJ0byI6ImFjY3QtNyJ9"}}}

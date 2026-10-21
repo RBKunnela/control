@@ -39,8 +39,9 @@ type Admission struct {
 // The error is nil only when the caller may run the tool with exactly
 // adm.Authorized and must then report the run with one Complete on
 // adm.Handle. An error wrapping ErrAbortOwed comes with the cause the caller
-// must send in one Abort on adm.Handle; with any other error no execution is
-// open that this client can act on, and the cause is UNSPECIFIED.
+// must send in one Abort on adm.Handle; with any other error the client acts
+// on no execution, the receiver's sweep closes one it opened, and the cause
+// is UNSPECIFIED.
 func (c *Client) Admit(ctx context.Context, tool string, args []byte, key string, carry Carry) (Answer, Admission, enforcev1alpha1.AbortCause, error) {
 	const none = enforcev1alpha1.AbortCause_ABORT_CAUSE_UNSPECIFIED
 	ans := Answer{Outcome: enforcev1alpha1.Outcome_OUTCOME_BLOCK}

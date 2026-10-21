@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -41,12 +42,26 @@ func (a *Adapter) admit(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return
 	}
 	adm, tool := a.translate(req, run)
-	d := p.Admit(ctx, adm)
+	a.answer(ctx, w, p, run, key, adm, tool, p.Admit(ctx, adm))
+}
+
+// answer writes the admit answer for d: EXECUTE under a fresh handle, or
+// PENDING, or BLOCK, after aborting what may not be handed out.
+func (a *Adapter) answer(ctx context.Context, w http.ResponseWriter, p Pipeline, run gateway.OpenedRun, key string,
+	adm gateway.Admission, tool Tool, d gateway.Disposition,
+) {
 	resp := &enforcev1alpha1.AdmitResponse{Outcome: enforcev1alpha1.Outcome_OUTCOME_BLOCK, Decision: d.Decision}
+	runs := d.Action == core.Execute || d.Action == core.ExecuteWithObligations
 	switch {
-	case (d.Action == core.Execute || d.Action == core.ExecuteWithObligations) && moved(adm, tool, d):
-		a.abortMoved(ctx, p, d)
-	case d.Action == core.Execute || d.Action == core.ExecuteWithObligations:
+	case runs && untranslated(adm):
+		// What could not be translated cannot be authorized, whatever the
+		// mode let through.
+		a.abortAs(ctx, p, d, gateway.AbortUntranslatable)
+		resp.Decision = abortedDecision(d.Decision, gateway.AbortUntranslatable)
+	case runs && moved(adm, tool, d):
+		a.abortAs(ctx, p, d, gateway.AbortObligation)
+		resp.Decision = abortedDecision(d.Decision, gateway.AbortObligation)
+	case runs:
 		a.execute(ctx, w, p, run, key, d, resp)
 		return
 	case d.Action == core.AwaitApproval && d.Pending != nil:
@@ -96,14 +111,30 @@ func moved(adm gateway.Admission, tool Tool, d gateway.Disposition) bool {
 		!adapterkit.SameResource(adm.Arguments, d.AuthorizedArgs, tool.ResourceFrom, adm.Envelope.GetResource().GetId())
 }
 
-// abortMoved records that an execution whose resource moved was not handed
-// out, under the cause MCP records it under, and answers it as a block.
-func (a *Adapter) abortMoved(ctx context.Context, p Pipeline, d gateway.Disposition) {
-	if err := p.Abort(ctx, d, gateway.AbortObligation); err != nil {
+// abortAs records that an execution was not handed out, under the cause the
+// MCP adapter records the same case under, and counts it as a block.
+func (a *Adapter) abortAs(ctx context.Context, p Pipeline, d gateway.Disposition, cause gateway.AbortCause) {
+	if err := p.Abort(ctx, d, cause); err != nil {
 		a.counts.recordsFailed.Add(1)
 	}
 	a.counts.aborted.Add(1)
 	a.counts.blocked.Add(1)
+}
+
+// untranslated reports whether the envelope of adm was refused for anything
+// but a tool the table does not name, which is the mode's to decide.
+func untranslated(adm gateway.Admission) bool {
+	return adm.Refusal != nil && !errors.Is(adm.Refusal, gateway.ErrUnclassified)
+}
+
+// abortedDecision is d with the code its execution was aborted under after
+// its own, so a BLOCK answer never carries the kernel's allow alone.
+func abortedDecision(d *controlv1.Decision, cause gateway.AbortCause) *controlv1.Decision {
+	out := proto.CloneOf(d)
+	if code, ok := cause.Code(); ok && out != nil {
+		out.ReasonCodes = append(out.ReasonCodes, code)
+	}
+	return out
 }
 
 // release abandons an execution the adapter will hand to nobody, counting a

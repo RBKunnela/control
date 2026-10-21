@@ -21,8 +21,11 @@ var (
 	shapings          = []string{"none", "annotate", "hide"}
 	logLevels         = []string{"debug", "info", "warn", "error"}
 	effectNames       = contractEffectNames()
-	trustZoneNames    = []string{"", "TRUSTED_INTERNAL", "PARTNER", "UNTRUSTED_EXTERNAL", "USER_CONTROLLED", "MODEL_GENERATED"}
-	sensitivityNames  = []string{"", "PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED", "SECRET"}
+	// A tool of an enforcement API listener is never SPAWN_OR_DELEGATE: that
+	// class needs a delegation the API does not carry, so it is never decided.
+	toolEffectNames  = slices.DeleteFunc(contractEffectNames(), func(n string) bool { return n == "SPAWN_OR_DELEGATE" })
+	trustZoneNames   = []string{"", "TRUSTED_INTERNAL", "PARTNER", "UNTRUSTED_EXTERNAL", "USER_CONTROLLED", "MODEL_GENERATED"}
+	sensitivityNames = []string{"", "PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED", "SECRET"}
 )
 
 // contractEffectNames is every effect class the contract declares but the
@@ -162,7 +165,7 @@ var overrideFields = []field[OverrideConfig]{
 // toolFields is every key of one entry of the tools sequence.
 var toolFields = []field[ToolConfig]{
 	stringField("name", "", true, func(o *ToolConfig) *string { return &o.Name }),
-	enumField("effect", "", effectNames, true, func(o *ToolConfig) *string { return &o.Effect }),
+	enumField("effect", "", toolEffectNames, true, func(o *ToolConfig) *string { return &o.Effect }),
 	stringField("provider", "", true, func(o *ToolConfig) *string { return &o.Provider }),
 	stringField("resource_type", "", true, func(o *ToolConfig) *string { return &o.ResourceType }),
 	stringField("resource_from", "", false, func(o *ToolConfig) *string { return &o.ResourceFrom }),

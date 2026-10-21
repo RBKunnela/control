@@ -123,7 +123,8 @@ the operator's table of tools, never from what the client says about the
 call, and declares <code>Cooperative</code>: the client sends the bytes, so nothing the
 plane holds proves it obeyed. It applies no obligation of its own, aborts an
 execution whose rewritten bytes name another resource than the one decided
-on, closes what a client reports with <code>CloseReported</code>, and closes with
+on, or whose envelope the contract refused for more than an unnamed tool, in
+every mode, closes what a client reports with <code>CloseReported</code>, and closes with
 <code>Abandon</code> every execution nobody completed or aborted before its handle
 expired. Its receiver cases are files in
 <a href="https://github.com/guardana/control/blob/main/testdata/enforce/README.md">testdata/enforce/</a>.</p>

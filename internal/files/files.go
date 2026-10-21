@@ -20,7 +20,7 @@ func (e Error) Error() string { return string(e) }
 
 // One sentinel per refusal. Each is returned wrapped, beside what it refers to.
 const (
-	// ErrExists is a name CreateNoReplace found taken.
+	// ErrExists is a name CreateNoReplaceIn found taken.
 	ErrExists Error = "files: the name exists already"
 	// ErrNotRegular is a path that is not a regular file: a directory, a named
 	// pipe, a device or a socket.
@@ -66,17 +66,6 @@ func IsTemp(name string) bool {
 		}
 	}
 	return true
-}
-
-// CreateNoReplace writes body under dir/name with mode perm, and refuses with
-// ErrExists when the name is taken. It is CreateNoReplaceIn through a handle
-// to dir.
-func CreateNoReplace(dir, name string, body []byte, perm fs.FileMode) error {
-	root, err := os.OpenRoot(dir)
-	if err != nil {
-		return err
-	}
-	return errors.Join(CreateNoReplaceIn(root, name, body, perm), root.Close())
 }
 
 // CreateNoReplaceIn writes body under name in the directory root holds, with

@@ -159,8 +159,8 @@ func stopOf(runID, findingID string, now time.Time) reaction.Stop {
 // appendStop writes a stop of runID for fixtureFinding to the list in dir.
 func appendStop(t *testing.T, dir string, route reaction.Route, runID string) {
 	t.Helper()
-	now := time.Now()
-	if _, err := stopwrite.AppendStop(context.Background(), filepath.Join(dir, "stops"), route, stopOf(runID, fixtureFinding, now), now); err != nil {
-		t.Fatalf("appending a stop: %v", err)
+	stopAt := func(now time.Time) (reaction.Stop, error) { return stopOf(runID, fixtureFinding, now), nil }
+	if _, _, covered, err := stopwrite.AppendFinding(context.Background(), filepath.Join(dir, "stops"), route, time.Now, stopAt); err != nil || covered {
+		t.Fatalf("appending a stop: covered %v, %v", covered, err)
 	}
 }

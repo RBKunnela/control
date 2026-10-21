@@ -9,6 +9,8 @@ import (
 	"net"
 	"net/http"
 	"slices"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -102,7 +104,28 @@ func (m *mutant) post(ctx context.Context, path string, req, resp proto.Message)
 	if err := opts.Unmarshal(data, resp); err != nil {
 		return fmt.Errorf("%w: %w", enforceclient.ErrMalformedAnswer, err)
 	}
-	return nil
+	return m.readVersion(resp)
+}
+
+// readVersion refuses an admit answer whose decision names no version the
+// mutant reads, unless its defect is to read any.
+func (m *mutant) readVersion(resp proto.Message) error {
+	a, ok := resp.(*enforcev1alpha1.AdmitResponse)
+	if !ok || a.GetDecision() == nil || m.is("reads-any-decision-version") || versionRead(a.GetDecision().GetSchemaVersion()) {
+		return nil
+	}
+	return fmt.Errorf("%w: the decision's schema version", enforceclient.ErrMalformedAnswer)
+}
+
+// versionRead is the mutant's own reading of a decision's version: major 1
+// and a minor of decimal digits that fits 32 bits.
+func versionRead(v string) bool {
+	minor, ok := strings.CutPrefix(v, "1.")
+	if !ok || minor == "" || strings.Trim(minor, "0123456789") != "" {
+		return false
+	}
+	_, err := strconv.ParseUint(minor, 10, 32)
+	return err == nil
 }
 
 func (m *mutant) admit(ctx context.Context, tool string, args []byte) (*enforcev1alpha1.AdmitResponse, error) {

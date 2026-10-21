@@ -48,22 +48,6 @@ func Init(ctx context.Context, dir string, route reaction.Route, now time.Time) 
 	return h, nil
 }
 
-// AppendStop appends s to the list in dir, judged against route at the
-// writer's clock now, and returns its line number. It refuses a stop naming a
-// rule version a later one superseded, which only a carry brings.
-func AppendStop(ctx context.Context, dir string, route reaction.Route, s reaction.Stop, now time.Time) (int64, error) {
-	if err := reaction.CheckCurrent(s); err != nil {
-		return 0, fmt.Errorf("%w: %w", ErrRefused, err)
-	}
-	return appendLine(ctx, dir, route, at(now), fixed(s.Marshal()))
-}
-
-// AppendCovered appends c to the list in dir, judged against route at the
-// writer's clock now, and returns its line number.
-func AppendCovered(ctx context.Context, dir string, route reaction.Route, c reaction.Covered, now time.Time) (int64, error) {
-	return appendLine(ctx, dir, route, at(now), fixed(c.Marshal()))
-}
-
 // AppendLift appends l, signed elsewhere, to the list in dir, judged against
 // route at the writer's clock now, and returns its line number. The writer
 // holds no key: a lift the route's lift key did not sign is refused.
@@ -81,9 +65,10 @@ func AppendLift(ctx context.Context, dir string, route reaction.Route, l reactio
 // ahead of the reading. The choice is made under the lock, over the list as
 // it stands, so two writers never stop one run twice for one lifetime.
 // stopAt runs before the list is searched for the finding, so its refusal
-// stands even for a finding another writer named meanwhile. It refuses the
-// stop as AppendStop does, and returns the line number, the stop and whether
-// the line is covered.
+// stands even for a finding another writer named meanwhile. It refuses a
+// stop naming a rule version a later one superseded, which only a carry
+// brings, and returns the line number, the stop and whether the line is
+// covered.
 func AppendFinding(ctx context.Context, dir string, route reaction.Route, clock func() time.Time,
 	stopAt func(now time.Time) (reaction.Stop, error),
 ) (int64, reaction.Stop, bool, error) {

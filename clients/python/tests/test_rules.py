@@ -39,7 +39,7 @@ from tests.harness import ABORT, ADMIT, COMPLETE, RECORDED, Scripted
 
 ARGUMENTS = b'{"a":1}'
 EXECUTE = (
-    b'{"outcome":"OUTCOME_EXECUTE","decision":{"decisionId":"d-1","verdict":1},'
+    b'{"outcome":"OUTCOME_EXECUTE","decision":{"schemaVersion":"1.0","decisionId":"d-1","verdict":1},'
     b'"execution":{"handle":"h-1","authorizedArguments":"eyJhIjoxfQ=="}}'
 )
 OBLIGED = (
@@ -51,7 +51,9 @@ INNER_EXECUTE = (
     b'{"outcome":"OUTCOME_EXECUTE","execution":{"handle":"h-2",'
     b'"authorizedArguments":"eyJhIjoxfQ=="}}'
 )
-INNER_BLOCK = b'{"outcome":"OUTCOME_BLOCK","decision":{"verdict":"VERDICT_DENY"}}'
+INNER_BLOCK = (
+    b'{"outcome":"OUTCOME_BLOCK","decision":{"schemaVersion":"1.0","verdict":"VERDICT_DENY"}}'
+)
 INNER_PENDING = b'{"outcome":"OUTCOME_PENDING","pending":{"approvalId":"ap-1"}}'
 PLUS_TWO = timezone(timedelta(hours=2))
 
@@ -196,7 +198,7 @@ class Rules(unittest.TestCase):
     # What an exception carries when the tool ran, nothing of it could be told, and that landed.
     ran_unreported = Answer(
         outcome="OUTCOME_EXECUTE",
-        decision={"decisionId": "d-1", "verdict": 1},
+        decision={"schemaVersion": "1.0", "decisionId": "d-1", "verdict": 1},
         held=None,
         ran=True,
         result=None,
@@ -321,7 +323,7 @@ class Returning(Rules):
             answer,
             Answer(
                 outcome="OUTCOME_EXECUTE",
-                decision={"decisionId": "d-1", "verdict": 1},
+                decision={"schemaVersion": "1.0", "decisionId": "d-1", "verdict": 1},
                 held=None,
                 ran=True,
                 result=Result(Status.FAILURE, receipt, harness.BEFORE, harness.AFTER),
@@ -363,7 +365,9 @@ class Returning(Rules):
                 self.assertEqual(
                     answer.result, Result(Status.SUCCESS, None, harness.BEFORE, harness.AFTER)
                 )
-                self.assertEqual(answer.decision, {"decisionId": "d-1", "verdict": 1})
+                self.assertEqual(
+                    answer.decision, {"schemaVersion": "1.0", "decisionId": "d-1", "verdict": 1}
+                )
                 self.assertEqual(len(self.sent()), 2)
 
     def test_the_integer_of_recorded_is_recorded(self) -> None:
@@ -372,9 +376,9 @@ class Returning(Rules):
 
     def test_a_blocked_call_carries_the_decision_and_did_not_run(self) -> None:
         for written in (
-            b'{"outcome":"OUTCOME_BLOCK","decision":{"verdict":"VERDICT_DENY","reasonCodes":["RULE_DENY"]}}',
-            b'{"decision":{"verdict":"VERDICT_DENY","reasonCodes":["RULE_DENY"]}}',
-            b'{"outcome":7,"decision":{"verdict":"VERDICT_DENY","reasonCodes":["RULE_DENY"]},'
+            b'{"outcome":"OUTCOME_BLOCK","decision":{"schemaVersion":"1.0","verdict":"VERDICT_DENY","reasonCodes":["RULE_DENY"]}}',
+            b'{"decision":{"schemaVersion":"1.0","verdict":"VERDICT_DENY","reasonCodes":["RULE_DENY"]}}',
+            b'{"outcome":7,"decision":{"schemaVersion":"1.0","verdict":"VERDICT_DENY","reasonCodes":["RULE_DENY"]},'
             b'"execution":{"handle":"h-1","authorizedArguments":"eyJhIjoxfQ=="}}',
         ):
             with self.subTest(written=written):
@@ -385,7 +389,11 @@ class Returning(Rules):
                     raised.exception.answer,
                     Answer(
                         outcome="OUTCOME_BLOCK",
-                        decision={"verdict": "VERDICT_DENY", "reasonCodes": ("RULE_DENY",)},
+                        decision={
+                            "schemaVersion": "1.0",
+                            "verdict": "VERDICT_DENY",
+                            "reasonCodes": ("RULE_DENY",),
+                        },
                         held=None,
                         ran=False,
                         result=None,
@@ -397,7 +405,7 @@ class Returning(Rules):
     def test_a_pending_call_says_when_to_ask_again(self) -> None:
         client = self.serve(
             admit(
-                b'{"outcome":"OUTCOME_PENDING","decision":{"verdict":3},"pending":{"approvalId":"ap-1",'
+                b'{"outcome":"OUTCOME_PENDING","decision":{"schemaVersion":"1.0","verdict":3},"pending":{"approvalId":"ap-1",'
                 b'"actionDigest":"sha256:9f2c","expiresAt":"2026-10-11T13:00:00.250Z","retryAfter":"1.500s"}}'
             )
         )
@@ -415,7 +423,7 @@ class Returning(Rules):
         )
         self.assertEqual(
             (answer.outcome, answer.ran, answer.decision),
-            ("OUTCOME_PENDING", False, {"verdict": 3}),
+            ("OUTCOME_PENDING", False, {"schemaVersion": "1.0", "verdict": 3}),
         )
         self.assertEqual(self.sent(), [self.admitted])
 
@@ -509,17 +517,17 @@ class Returning(Rules):
         for what, written, names in (
             (
                 "no handle",
-                b'{"outcome":"OUTCOME_EXECUTE","decision":{"verdict":1},"execution":{"authorizedArguments":"eyJhIjoxfQ=="}}',
+                b'{"outcome":"OUTCOME_EXECUTE","decision":{"schemaVersion":"1.0","verdict":1},"execution":{"authorizedArguments":"eyJhIjoxfQ=="}}',
                 "no handle",
             ),
             (
                 "an empty handle",
-                b'{"outcome":1,"decision":{"verdict":1},"execution":{"handle":""}}',
+                b'{"outcome":1,"decision":{"schemaVersion":"1.0","verdict":1},"execution":{"handle":""}}',
                 "no handle",
             ),
             (
                 "no execution",
-                b'{"outcome":"OUTCOME_EXECUTE","decision":{"verdict":1}}',
+                b'{"outcome":"OUTCOME_EXECUTE","decision":{"schemaVersion":"1.0","verdict":1}}',
                 "no handle",
             ),
             (
@@ -549,10 +557,12 @@ class Returning(Rules):
                 self.assertEqual(self.sent(), [self.admitted])
 
     def test_an_execute_with_no_handle_still_carries_its_decision(self) -> None:
-        client = self.serve(admit(b'{"outcome":1,"decision":{"verdict":1},"execution":{}}'))
+        client = self.serve(
+            admit(b'{"outcome":1,"decision":{"schemaVersion":"1.0","verdict":1},"execution":{}}')
+        )
         with self.assertRaises(MalformedAnswer) as raised:
             client.call("t", ARGUMENTS, self.untouched)
-        self.assertEqual(raised.exception.answer.decision, {"verdict": 1})
+        self.assertEqual(raised.exception.answer.decision, {"schemaVersion": "1.0", "verdict": 1})
 
     def test_a_malformed_answer_to_complete_says_the_tool_ran(self) -> None:
         client = self.serve(

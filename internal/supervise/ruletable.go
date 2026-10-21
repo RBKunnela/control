@@ -77,10 +77,6 @@ func RuleIDsOf(schema string) []string {
 	return out
 }
 
-// RuleIDs is every rule a 0.1 procedure configures, in the order a report
-// lists them. The slice is a copy.
-func RuleIDs() []string { return slices.Clone(ruleIDs) }
-
 // RuleVersionOf is the version of rule id, and false for an id that is no
 // rule's.
 func RuleVersionOf(id string) (string, bool) {

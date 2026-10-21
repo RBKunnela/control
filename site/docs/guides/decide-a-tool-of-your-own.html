@@ -249,8 +249,10 @@ cover the directories above the socket's.</li>
 <code>ACTION_STARTED</code>.</li>
 <li>An admit answer lost on the way can spend an approval: the retry is held
 anew.</li>
-<li>A tool classed <code>SPAWN_OR_DELEGATE</code> is refused with <code>REQUIRED_FIELD_ABSENT</code>:
-that class needs a delegation, which the enforcement API does not carry.</li>
+<li>A <code>tools</code> table that classes a tool <code>SPAWN_OR_DELEGATE</code> is refused at start
+and by <code>doctor</code>: that class needs a delegation, which the enforcement API
+does not carry. A call whose envelope the contract refuses for anything
+but an unnamed tool is answered <code>BLOCK</code> in every mode, <code>OBSERVE</code> included.</li>
 </ul>
 <h2 id="roll-back">Roll back</h2>
 <p>Stop the plane: it closes every open execution before its spool drains. Then

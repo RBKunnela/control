@@ -22,7 +22,8 @@ the operator's table of tools, never from what the client says about the
 call, and declares `Cooperative`: the client sends the bytes, so nothing the
 plane holds proves it obeyed. It applies no obligation of its own, aborts an
 execution whose rewritten bytes name another resource than the one decided
-on, closes what a client reports with `CloseReported`, and closes with
+on, or whose envelope the contract refused for more than an unnamed tool, in
+every mode, closes what a client reports with `CloseReported`, and closes with
 `Abandon` every execution nobody completed or aborted before its handle
 expired. Its receiver cases are files in
 [testdata/enforce/](../../testdata/enforce/README.md).

@@ -386,6 +386,22 @@ func TestTheMutantThatDecodesLenientlyFailsAVector(t *testing.T) {
 	}
 }
 
+func TestTheMutantThatReadsAnyDecisionVersionFailsAVector(t *testing.T) {
+	vectors := loadVectors(t)
+	for _, id := range []string{"admit-execute-decision-of-another-major", "admit-execute-decision-of-an-unread-version", "admit-execute-decision-with-no-version"} {
+		t.Run(id, func(t *testing.T) {
+			v := findVector(t, vectors, id)
+			if v.Class != "refused" {
+				t.Fatalf("class %s, want a refused vector", v.Class)
+			}
+			miss := runVector(t, newMutant("reads-any-decision-version"), v)
+			if !slices.ContainsFunc(miss, func(m string) bool { return strings.HasPrefix(m, "tool reached true, want false") }) {
+				t.Fatalf("a client that reads a decision of any version departs by %q", miss)
+			}
+		})
+	}
+}
+
 func at(t *testing.T, text string) *timestamppb.Timestamp {
 	t.Helper()
 	when, err := time.Parse(time.RFC3339Nano, text)

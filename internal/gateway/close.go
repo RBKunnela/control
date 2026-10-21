@@ -148,8 +148,8 @@ const (
 	AbortCancelled
 )
 
-// code is the registry code a cause is recorded as.
-func (c AbortCause) code() (string, bool) {
+// Code is the registry code a cause is recorded as.
+func (c AbortCause) Code() (string, bool) {
 	switch c {
 	case AbortArgsMismatch:
 		return codeExecutedArgsMismatch, true
@@ -177,7 +177,7 @@ func (p *Pipeline) Abort(ctx context.Context, d Disposition, cause AbortCause) e
 	if p == nil || p.kernel == nil {
 		return ErrUnbuilt
 	}
-	code, ok := cause.code()
+	code, ok := cause.Code()
 	if !ok {
 		return fmt.Errorf("%w: %d", ErrAbortCause, cause)
 	}

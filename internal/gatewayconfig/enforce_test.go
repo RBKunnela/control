@@ -274,12 +274,14 @@ func TestAToolNeedsItsKeys(t *testing.T) {
 }
 
 // TestAToolTakesTheContractsValues: the effect, the trust zones and the
-// sensitivity take the spellings an override takes, and nothing else; a key
+// sensitivity take the spellings an override takes but SPAWN_OR_DELEGATE,
+// which needs a delegation the API does not carry, and nothing else; a key
 // an override does not have, or a tenant of its own, is not a key.
 func TestAToolTakesTheContractsValues(t *testing.T) {
 	for _, c := range []struct{ key, value string }{
 		{"effect", "PAY"},
 		{"effect", "transact"},
+		{"effect", "SPAWN_OR_DELEGATE"},
 		{"trust_zone", "INTERNAL"},
 		{"returns.trust", "SECRET"},
 		{"returns.sensitivity", "TRUSTED_INTERNAL"},
