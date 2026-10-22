@@ -325,7 +325,7 @@ func expectToxic(t *testing.T, what string, res *sdk.CallToolResult) {
 // runsHealth reads /healthz's runs object.
 func runsHealth(t *testing.T, health string) (runs map[string]any, pipeline map[string]any) {
 	t.Helper()
-	resp, err := http.Get("http://" + health + "/healthz") //nolint:noctx // a loopback read the test bounds by its own deadline
+	resp, err := http.Get("http://" + health + "/healthz")
 	if err != nil {
 		t.Fatalf("reading /healthz: %v", err)
 	}

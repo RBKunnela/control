@@ -1,0 +1,3 @@
+{"Time":"2026-10-04T13:13:01.730975+02:00","Action":"start","Package":"example.com/fixture/api/gen/v1"}
+{"Time":"2026-10-04T13:13:01.731099+02:00","Action":"output","Package":"example.com/fixture/api/gen/v1","Output":"?   \texample.com/fixture/api/gen/v1\t[no test files]\n"}
+{"Time":"2026-10-04T13:13:01.731109+02:00","Action":"skip","Package":"example.com/fixture/api/gen/v1","Elapsed":0}

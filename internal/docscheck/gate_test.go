@@ -16,7 +16,7 @@ import (
 // command (`cmd && echo ...`) in the Makefile is for.
 var gateTargets = []string{
 	"fmt-check", "vet", "lint", "test", "test-race", "fuzz-smoke", "security",
-	"proto-check", "docs-check", "tidy-check", "check-imports",
+	"scan-repo-files-probe", "proto-check", "docs-check", "tidy-check", "check-imports",
 	"check-imports-probe", "check-modules-probe", "check-brand", "check-sizes",
 	"check-actions", "check-shell", "scan-binaries-probe", "pre-push-probe",
 	"check-python", "check-python-probe",

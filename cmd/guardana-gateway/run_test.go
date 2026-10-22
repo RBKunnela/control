@@ -152,7 +152,7 @@ func TestRunServesAndStopsWithItsContext(t *testing.T) {
 
 	line := waitFor(t, &stdout, "answering /healthz, /metrics and /brand on ")
 	address := strings.TrimSpace(strings.TrimPrefix(line, "answering /healthz, /metrics and /brand on "))
-	answer, err := http.Get("http://" + address + "/healthz") //nolint:noctx // the test's own loopback address, bounded by the test timeout
+	answer, err := http.Get("http://" + address + "/healthz")
 	if err != nil {
 		t.Fatalf("GET /healthz: %v", err)
 	}

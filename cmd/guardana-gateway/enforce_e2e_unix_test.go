@@ -65,7 +65,7 @@ func (sp *servedPlane) stop(t *testing.T) int {
 // enforceHealth reads /healthz.
 func enforceHealth(t *testing.T, address string) map[string]any {
 	t.Helper()
-	resp, err := http.Get("http://" + address + "/healthz") //nolint:noctx // a loopback read the client bounds
+	resp, err := http.Get("http://" + address + "/healthz")
 	if err != nil {
 		t.Fatalf("reading /healthz: %v", err)
 	}
@@ -93,7 +93,7 @@ func healthCount(t *testing.T, answer map[string]any, section, key string) float
 
 func metricsText(t *testing.T, address string) string {
 	t.Helper()
-	resp, err := http.Get("http://" + address + "/metrics") //nolint:noctx // a loopback read the client bounds
+	resp, err := http.Get("http://" + address + "/metrics")
 	if err != nil {
 		t.Fatalf("reading /metrics: %v", err)
 	}

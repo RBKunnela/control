@@ -176,7 +176,7 @@ func TestCollectLogWithholdsKeyTextFromARequest(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			c := startCollect(t, filepath.Join(t.TempDir(), "trail.jsonl"))
-			resp, err := http.Post(c.url, "application/json", strings.NewReader(req)) //nolint:noctx // the collector this test started
+			resp, err := http.Post(c.url, "application/json", strings.NewReader(req))
 			if err != nil {
 				t.Fatal(err)
 			}

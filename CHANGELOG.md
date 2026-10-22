@@ -37,6 +37,26 @@ verify one.
   adapter does. A `tools` table that
   classes a tool `SPAWN_OR_DELEGATE`, which this API can never decide, is
   refused when the plane starts and by `doctor`.
+- The dependency scan in `make security` fails when `osv-scanner` prints no
+  "Scanned" line for a `go.mod`, `uv.lock` or `package-lock.json` the
+  repository holds, reads any file as holding no package, or finds no
+  lockfile at all, instead of passing over a lockfile it could not read; `make scan-repo-files-probe`, now part of `make quality`,
+  is its negative control.
+- `make test` fails on a package with no test files outside `api/gen/`.
+- `make test-race` reads its results through the test reporter, as
+  `make test` does, so a package that runs no test under the race detector
+  fails it.
+- `make check-shell` also checks a file whose first line names `sh`, `bash`,
+  `dash` or `ksh` in `/bin`, `/usr/bin` or `/usr/local/bin`, directly or
+  through `env`, not only `*.sh`.
+- `make fuzz-smoke` fails, naming the file, on a test file it cannot read
+  instead of passing over it.
+- CI's quality gate checks every pinned action SHA against the commit its
+  version comment's tag names in that action's repository, and fails when
+  GitHub cannot answer.
+- The format versions page names `v1alpha1` as the enforcement API version
+  this tree writes and reads, and says which formats carry no version of
+  their own: the signed envelopes and the spool's segment framing.
 
 ## [0.13.0] - 2026-10-20
 

@@ -52,7 +52,18 @@ while IFS= read -r file; do
   case "${file}" in
     api/gen/*|testdata/*|*/testdata/*) continue ;;
   esac
-  grep -qF -- Fuzz "${file}" || continue
+  # grep exits 1 for "no match" and 2 or more for "could not read"; folding the
+  # two together would pass over a fuzz target nobody read.
+  found=0
+  grep -qF -- Fuzz "${file}" || found=$?
+  case "${found}" in
+    0) ;;
+    1) continue ;;
+    *)
+      printf 'fuzz-smoke: cannot read %s (grep exit %d)\n' "${file}" "${found}" >&2
+      exit 1
+      ;;
+  esac
 
   if [[ "${file}" == */* ]]; then
     filedir="${file%/*}"

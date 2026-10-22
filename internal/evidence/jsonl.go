@@ -190,7 +190,7 @@ func DecodeJSONL(r io.Reader, limit int) ([]*controlv1.Event, error) {
 		// input would return a truncated read as a complete one. bufio hands
 		// back the underlying reader's error as it stands, so the end of the
 		// input is io.EOF itself and everything else falls through to a refusal.
-		atEOF := err == io.EOF //nolint:errorlint // see above
+		atEOF := err == io.EOF //nolint:errorlint // identity: a wrapped io.EOF is a failure
 
 		switch {
 		case errors.Is(err, bufio.ErrBufferFull):

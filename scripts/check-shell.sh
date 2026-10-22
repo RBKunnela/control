@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # shellcheck source-path=SCRIPTDIR
 # Runs `shellcheck -x` over every shell script repo_files lists, each sourced
-# file followed through its source directive and checked with it. An empty
-# list fails: a gate over no scripts is not a pass.
+# file followed through its source directive and checked with it. A script is
+# a file named *.sh or one whose first line names sh, bash, dash or ksh in
+# /bin, /usr/bin or /usr/local/bin, directly or through env, since an
+# executable needs no suffix. An empty list fails: a gate over no scripts is
+# not a pass.
 #
 # Nothing outside the scripts decides what is checked. --norc skips every rc
 # file the checker would otherwise find, in the script's directory, each parent
@@ -40,6 +43,23 @@ scripts=()
 while IFS= read -r file; do
   scripts+=("${file}")
 done <<<"${listed}"
+every="$(repo_files)"
+[[ -n "${every}" ]] || die "repo_files listed no file"
+others=""
+while IFS= read -r file; do
+  [[ "${file}" == *.sh ]] || others+="${file}"$'\n'
+done <<<"${every}"
+if [[ -n "${others}" ]]; then
+  # awk reads each file's first line only, as bytes, since a fixture may hold
+  # invalid UTF-8; a file it cannot read makes xargs fail.
+  # shellcheck disable=SC2016 # $0 is awk's record, not the shell's
+  shebanged="$(printf '%s' "${others}" | tr '\n' '\0' |
+    LC_ALL=C xargs -0 awk 'FNR == 1 { line = $0; sub(/\r$/, "", line); if (line ~ /^#![[:blank:]]*(\/usr)?(\/local)?\/bin\/(env[[:blank:]]+(-S[[:blank:]]+)?)?(ba|da|k)?sh([[:blank:]].*)?$/) print FILENAME; nextfile }')" ||
+    die "could not read the first line of every file repo_files lists"
+  while IFS= read -r file; do
+    [[ -z "${file}" ]] || scripts+=("${file}")
+  done <<<"${shebanged}"
+fi
 listed_workflows="$(repo_files '.github/workflows/*.yml' '.github/workflows/*.yaml')"
 [[ -n "${listed_workflows}" ]] || die "no workflow found"
 workflows=()

@@ -125,7 +125,7 @@ GO_SRC := . $(REPO_FILES); repo_files '*.go' | { grep -v '^api/gen/' || true; }
 # A bare `make` must not run bootstrap, which installs software.
 .DEFAULT_GOAL := quality-quick
 
-.PHONY: bootstrap fmt fmt-check vet lint test test-race fuzz-smoke security \
+.PHONY: bootstrap fmt fmt-check vet lint test test-race fuzz-smoke security scan-repo-files-probe \
         proto proto-check proto-breaking docs-check docs-gen docs-impact tidy-check check-brand \
         release-snapshot check-demo-archive scan-binaries scan-binaries-probe \
         check-imports check-imports-probe check-modules-probe check-sizes check-actions \
@@ -184,8 +184,10 @@ lint:
 test:
 	$(call each_module,$(GO) -C "$$dir" test -count=1 -shuffle=on -json $$pkgs | $(GO) run scripts/test-report.go,test)
 
+# Through the reporter, as test is: a TestMain only a race build compiles could
+# otherwise return before m.Run and pass with no test run.
 test-race:
-	$(call each_module,$(GO) -C "$$dir" test -count=1 -race $$pkgs,test-race)
+	$(call each_module,$(GO) -C "$$dir" test -count=1 -race -json $$pkgs | $(GO) run scripts/test-report.go,test-race)
 
 fuzz-smoke:
 	$(CD) scripts/fuzz-smoke.sh $(FUZZTIME)
@@ -228,6 +230,13 @@ security:
 	else \
 	  echo "security: SKIP zizmor, no workflow or composite action file"; \
 	fi
+
+# The negative control of the secret and dependency scan: the script, staged
+# in a tree with no .git, must pass a clean tree and refuse a planted secret, a
+# lockfile the scanner did not read, a tree with no lockfile and a missing
+# scanner. It runs the real scanners, so it needs the network as security does.
+scan-repo-files-probe:
+	$(CD) scripts/scan-repo-files-probe.sh
 
 proto:
 	$(CD) buf generate
@@ -382,7 +391,7 @@ quality-quick: fmt-check vet test check-imports
 quality:
 	@[ $(words $(MAKEFILE_LIST)) = 1 ] || { echo "make quality reads one makefile, this one; $(words $(MAKEFILE_LIST)) were read" >&2; exit 1; }
 	@MAKEFLAGS= GNUMAKEFLAGS= MFLAGS= $(MAKE) --no-print-directory -f "$$REPO_ROOT/$(notdir $(firstword $(MAKEFILE_LIST)))" \
-	  fmt-check vet lint test test-race fuzz-smoke security proto-check \
+	  fmt-check vet lint test test-race fuzz-smoke security scan-repo-files-probe proto-check \
 	  docs-check tidy-check check-imports check-imports-probe check-modules-probe check-brand \
 	  check-sizes check-actions check-shell scan-binaries-probe pre-push-probe check-python \
 	  check-python-probe

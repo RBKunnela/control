@@ -179,7 +179,7 @@ func (rp *runsPlane) untilBlocked(cs *sdk.ClientSession) (*sdk.CallToolResult, i
 // stopsHealth reads /healthz's stops object.
 func stopsHealth(t *testing.T, health string) stopsAnswer {
 	t.Helper()
-	resp, err := http.Get("http://" + health + "/healthz") //nolint:noctx // a loopback read the test bounds by its own deadline
+	resp, err := http.Get("http://" + health + "/healthz")
 	if err != nil {
 		t.Fatalf("reading /healthz: %v", err)
 	}

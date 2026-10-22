@@ -117,7 +117,7 @@ func TestPauseRefusalsWriteNothing(t *testing.T) {
 			t.Errorf("%s: answered %d %q, want %d saying %q", c.name, a.status, a.body, c.want, c.says)
 		}
 	}
-	if after, err := os.ReadFile(file); err != nil || string(after) != string(before) { //nolint:gosec // G304: as above
+	if after, err := os.ReadFile(file); err != nil || string(after) != string(before) { //nolint:gosec // G304: the test's own temporary directory
 		t.Errorf("a refused write changed the file: %q, %v", after, err)
 	}
 	none := serve(t, dir, "")

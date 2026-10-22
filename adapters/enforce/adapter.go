@@ -14,12 +14,14 @@ import (
 	"github.com/guardana/control/internal/gateway"
 )
 
-// The operations' paths and the header every request presents its run token
-// in. Any other path is answered ERROR_CODE_UNSUPPORTED_VERSION.
+// The version of the API the receiver serves, the operations' paths under it
+// and the header every request presents its run token in. Any other path,
+// another version's included, is answered ERROR_CODE_UNSUPPORTED_VERSION.
 const (
-	PathAdmit      = "/enforce/v1alpha1/admit"
-	PathComplete   = "/enforce/v1alpha1/complete"
-	PathAbort      = "/enforce/v1alpha1/abort"
+	APIVersion     = "v1alpha1"
+	PathAdmit      = "/enforce/" + APIVersion + "/admit"
+	PathComplete   = "/enforce/" + APIVersion + "/complete"
+	PathAbort      = "/enforce/" + APIVersion + "/abort"
 	RunTokenHeader = adapterkit.RunTokenHeader
 )
 

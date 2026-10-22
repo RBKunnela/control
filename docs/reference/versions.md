@@ -2,7 +2,7 @@
 title: Format versions
 summary: Every versioned file and message a user writes or reads, the version this tree writes, the versions it reads, and how stable each is.
 type: reference
-covers: [internal/evidence/event.go, internal/evidence/version.go, internal/core/codes.go, adapters/mcp/translate.go, adapters/enforce/translate.go, internal/gateway/decisions.go, internal/gateway/journal.go, internal/trailfile/export.go, internal/coverage/export.go, internal/coverage/inventory.go, internal/policy/rules/rules.go, internal/policy/statement.go, internal/scenario/scenario.go, internal/supervise/ruletable.go, internal/supervise/evaluate.go, internal/supervise/record.go, internal/supervise/report.go, cmd/guardana-control/procedure_cases.go, internal/findinglog/check.go, internal/findinglog/export.go, internal/observe/version.go, internal/observe/descriptor.go, internal/observelog/export.go, internal/runs/strict.go, internal/reaction/route.go, internal/reaction/line.go, internal/reaction/lift.go, internal/pause/document.go, internal/approvals/record.go, internal/holdjournal/**, internal/policystate/format.go, internal/hookbridge/**]
+covers: [internal/evidence/event.go, internal/evidence/version.go, internal/core/codes.go, adapters/mcp/translate.go, adapters/enforce/**, internal/gateway/decisions.go, internal/gateway/journal.go, internal/trailfile/export.go, internal/coverage/export.go, internal/coverage/inventory.go, internal/policy/rules/rules.go, internal/policy/statement.go, internal/scenario/scenario.go, internal/supervise/ruletable.go, internal/supervise/evaluate.go, internal/supervise/record.go, internal/supervise/report.go, cmd/guardana-control/procedure_cases.go, internal/findinglog/**, internal/observe/version.go, internal/observe/descriptor.go, internal/observelog/export.go, internal/runs/strict.go, internal/reaction/**, internal/pause/document.go, internal/approvals/record.go, internal/holdjournal/**, internal/policystate/format.go, internal/hookbridge/**, internal/enforceclient/client.go, internal/policy/bundle/bundle.go, internal/spool/frame.go]
 generated: go test ./internal/docscheck -run TestVersionsPageIsTheCode
 ---
 
@@ -45,14 +45,18 @@ version. [status.md](../status.md) is the inventory.
 | Procedure test cases (`schema_version`) | — | `0.1` | `experimental` | [test a procedure](../guides/test-a-procedure.md#2-write-a-case) |
 | Finding records and log (`guardana.control.finding.v1alpha1`) | `0.1`, `0.2` | `0.1`, `0.2` | `experimental` | [supervision.md](supervision.md#the-finding-record-and-its-log) |
 | Findings export (`guardana.control.findings-export`) | `0.1` | — | `experimental` | [supervision.md](supervision.md#findings-export) |
-| Enforcement API (`guardana.control.enforce.v1alpha1`) | — | — | `experimental` | [contracts.md](../contracts.md#the-enforcement-api) |
+| Enforcement API (`guardana.control.enforce.v1alpha1`) | `v1alpha1` | `v1alpha1` | `experimental` | [contracts.md](../contracts.md#the-enforcement-api) |
 | Reaction route (`kind`) | — | `reaction-route/v1alpha1` | `experimental` | [contracts.md](../contracts.md#the-route) |
 | Stop list (`version`) | `1.0` | `1.0` | `experimental` | [contracts.md](../contracts.md#the-stop-list) |
 | Lift (`kind`, `version`) | `reaction-lift/v1alpha1`, `1.0` | `reaction-lift/v1alpha1`, `1.0` | `experimental` | [contracts.md](../contracts.md#the-lift) |
 
 The gateway's configuration file and a `policy test` case carry no version.
 Each refuses a key it does not know, so a file that names a key a later
-release added is refused, not read in part.
+release added is refused, not read in part. The signed envelopes around a
+policy bundle, a freshness statement, a route and a lift carry no version of
+their own, only the payload type each is signed under, and the evidence
+spool frames its segments with no version at all, so a spool another release
+wrote is not promised readable.
 
 ## Reading files an older release wrote
 

@@ -144,6 +144,26 @@ naming no resource; it now aborts it and answers <code>BLOCK</code>, as the MCP
 adapter does. A <code>tools</code> table that
 classes a tool <code>SPAWN_OR_DELEGATE</code>, which this API can never decide, is
 refused when the plane starts and by <code>doctor</code>.</li>
+<li>The dependency scan in <code>make security</code> fails when <code>osv-scanner</code> prints no
+&quot;Scanned&quot; line for a <code>go.mod</code>, <code>uv.lock</code> or <code>package-lock.json</code> the
+repository holds, reads any file as holding no package, or finds no
+lockfile at all, instead of passing over a lockfile it could not read; <code>make scan-repo-files-probe</code>, now part of <code>make quality</code>,
+is its negative control.</li>
+<li><code>make test</code> fails on a package with no test files outside <code>api/gen/</code>.</li>
+<li><code>make test-race</code> reads its results through the test reporter, as
+<code>make test</code> does, so a package that runs no test under the race detector
+fails it.</li>
+<li><code>make check-shell</code> also checks a file whose first line names <code>sh</code>, <code>bash</code>,
+<code>dash</code> or <code>ksh</code> in <code>/bin</code>, <code>/usr/bin</code> or <code>/usr/local/bin</code>, directly or
+through <code>env</code>, not only <code>*.sh</code>.</li>
+<li><code>make fuzz-smoke</code> fails, naming the file, on a test file it cannot read
+instead of passing over it.</li>
+<li>CI's quality gate checks every pinned action SHA against the commit its
+version comment's tag names in that action's repository, and fails when
+GitHub cannot answer.</li>
+<li>The format versions page names <code>v1alpha1</code> as the enforcement API version
+this tree writes and reads, and says which formats carry no version of
+their own: the signed envelopes and the spool's segment framing.</li>
 </ul>
 <h2 id="0130---2026-10-20"><a href="https://github.com/guardana/control/releases/tag/v0.13.0">0.13.0</a> - 2026-10-20</h2>
 <p>A coding runtime's tool hooks can now reach a plane's <code>experimental</code>

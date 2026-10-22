@@ -41,7 +41,7 @@ func lockSocket(socket string) (func() error, error) {
 func openLock(path string) (*os.File, error) {
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL|syscall.O_NOFOLLOW, 0o600) //nolint:gosec // G304: the configured socket's own lock, in a directory ownDir checked
 	if errors.Is(err, fs.ErrExist) {
-		return os.OpenFile(path, os.O_RDWR|syscall.O_NOFOLLOW, 0) //nolint:gosec // G304: as above
+		return os.OpenFile(path, os.O_RDWR|syscall.O_NOFOLLOW, 0) //nolint:gosec // G304: the configured socket's own lock, created by a receiver before this one in a directory ownDir checked
 	}
 	if err != nil {
 		return nil, err

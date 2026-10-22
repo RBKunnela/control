@@ -19,11 +19,13 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// The operations' paths and the header a request presents its run token in.
+// The version of the API the client speaks, the operations' paths under it
+// and the header a request presents its run token in.
 const (
-	PathAdmit      = "/enforce/v1alpha1/admit"
-	PathComplete   = "/enforce/v1alpha1/complete"
-	PathAbort      = "/enforce/v1alpha1/abort"
+	APIVersion     = "v1alpha1"
+	PathAdmit      = "/enforce/" + APIVersion + "/admit"
+	PathComplete   = "/enforce/" + APIVersion + "/complete"
+	PathAbort      = "/enforce/" + APIVersion + "/abort"
 	RunTokenHeader = "Run-Token"
 )
 

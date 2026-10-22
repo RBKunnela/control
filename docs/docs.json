@@ -41,8 +41,7 @@
     "CHANGELOG.md",
     "CODE_OF_CONDUCT.md",
     "docs/adr/",
-    "internal/docscheck/testdata/",
-    "node_modules/"
+    "internal/docscheck/testdata/"
   ],
   "surfaces": [
     "api/proto/**",

@@ -29,6 +29,11 @@ var (
 	// running a test, as when a -run filter matched none of them or a TestMain
 	// exited before calling m.Run.
 	ErrNoTestsRun = errors.New("testreport: a package ran no test")
+	// ErrNoTestFiles is returned when a package outside the generated code
+	// has no test files, which go test reports as a skip of the package.
+	ErrNoTestFiles = errors.New("testreport: a package has no test files")
+	// ErrModulePath is returned when a go.mod holds no single module path.
+	ErrModulePath = errors.New("testreport: no single module path in go.mod")
 )
 
 // Summary counts what one stream reported.
@@ -40,6 +45,7 @@ type Summary struct {
 	BuildFailures  int
 	Skipped        int // tests and subtests that skipped
 	NoTestsRun     int // packages that passed without a test's run event
+	NoTestFiles    int // packages outside the generated code with no test files
 	Unfinished     int // tests that started in a passing package and reached no result
 }
 
@@ -67,15 +73,17 @@ type skipped struct {
 }
 
 type reporter struct {
-	w        io.Writer
-	sum      Summary
-	pkgs     map[string]*pkgState
-	order    []string
-	skips    []skipped
-	noTests  []string
-	open     []string
-	badLines []int
-	writeErr error
+	w         io.Writer
+	sum       Summary
+	pkgs      map[string]*pkgState
+	order     []string
+	skips     []skipped
+	noTests   []string
+	noFiles   []string
+	open      []string
+	badLines  []int
+	writeErr  error
+	generated string
 }
 
 // Summarize reads the output of `go test -json` from r and writes to w each
@@ -86,10 +94,13 @@ type reporter struct {
 //
 // The error is nil only when the stream held at least one package result, every
 // line was an event, every package reached a result, every test a passing
-// package started reached one too, nothing failed and no package with test
-// files passed without running one.
-func Summarize(r io.Reader, w io.Writer) (Summary, error) {
-	rep := &reporter{w: w, pkgs: map[string]*pkgState{}}
+// package started reached one too, nothing failed, no package with test files
+// passed without running one, and every package with no test files, which go
+// test reports as a skip of the package, is under generated: the import path
+// prefix, ending in a slash, of the generated packages (GeneratedPrefix). An
+// empty generated exempts no package.
+func Summarize(r io.Reader, w io.Writer, generated string) (Summary, error) {
+	rep := &reporter{w: w, pkgs: map[string]*pkgState{}, generated: generated}
 	br := bufio.NewReader(r)
 	for n := 1; ; n++ {
 		raw, err := br.ReadString('\n')
@@ -165,6 +176,13 @@ func parse(text string) (event, bool) {
 	return e, false
 }
 
+// isGenerated reports whether the package is under the generated prefix. A
+// prefix that does not end in a slash exempts nothing, so "api/gen" cannot
+// admit "api/generated".
+func (rep *reporter) isGenerated(name string) bool {
+	return strings.HasSuffix(rep.generated, "/") && strings.HasPrefix(name, rep.generated)
+}
+
 func (rep *reporter) pkg(name string) *pkgState {
 	p, ok := rep.pkgs[name]
 	if !ok {
@@ -187,6 +205,10 @@ func (rep *reporter) result(name string, p *pkgState, action string) {
 	if action == "pass" && !p.ran {
 		rep.sum.NoTestsRun++
 		rep.noTests = append(rep.noTests, name)
+	}
+	if action == "skip" && !rep.isGenerated(name) {
+		rep.sum.NoTestFiles++
+		rep.noFiles = append(rep.noFiles, name)
 	}
 	if action == "pass" {
 		for _, test := range p.started {
@@ -272,13 +294,24 @@ func (rep *reporter) finish() error {
 		errs = append(errs, fmt.Errorf("%w: %d package(s), %d test(s), %d build(s)",
 			ErrFailed, s.FailedPackages, s.FailedTests, s.BuildFailures))
 	}
-	if len(rep.noTests) > 0 {
-		errs = append(errs, fmt.Errorf("%w: %s", ErrNoTestsRun, strings.Join(rep.noTests, ", ")))
-	}
+	errs = append(errs, rep.untestedErrors()...)
 	if rep.writeErr != nil {
 		errs = append(errs, fmt.Errorf("testreport: writing the transcript: %w", rep.writeErr))
 	}
 	return errors.Join(errs...)
+}
+
+// untestedErrors names the packages that passed without running a test and
+// those outside the generated code that have no test files.
+func (rep *reporter) untestedErrors() []error {
+	var errs []error
+	if len(rep.noTests) > 0 {
+		errs = append(errs, fmt.Errorf("%w: %s", ErrNoTestsRun, strings.Join(rep.noTests, ", ")))
+	}
+	if len(rep.noFiles) > 0 {
+		errs = append(errs, fmt.Errorf("%w: %s", ErrNoTestFiles, strings.Join(rep.noFiles, ", ")))
+	}
+	return errs
 }
 
 // writeTail writes every test that never ended, every skip and the skip count.

@@ -69,7 +69,7 @@ func TestALoneSurrogateEscapeIsRefused(t *testing.T) {
 	if got := s.stateOf(t, "SURR"); got != pending {
 		t.Errorf("the record is %s after refused answers", got)
 	}
-	if after, err := os.ReadFile(file); err != nil || string(after) != string(before) { //nolint:gosec // G304: as above
+	if after, err := os.ReadFile(file); err != nil || string(after) != string(before) { //nolint:gosec // G304: the test's own temporary directory
 		t.Errorf("a refused pause changed the file: %q, %v", after, err)
 	}
 }

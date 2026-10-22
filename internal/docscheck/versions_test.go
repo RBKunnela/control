@@ -59,7 +59,7 @@ type versionRow struct {
 
 var (
 	versionNameRE  = regexp.MustCompile(`(?i)(version|schema|kind|major)`)
-	versionValueRE = regexp.MustCompile(`^([0-9]+(\.[0-9]+)*|[a-z][a-z-]*/v[0-9]+((alpha|beta)[0-9]+)?)$`)
+	versionValueRE = regexp.MustCompile(`^([0-9]+(\.[0-9]+)*|([a-z][a-z-]*/)?v[0-9]+((alpha|beta)[0-9]+)?)$`)
 	backtickedRE   = regexp.MustCompile("`([^`]+)`")
 	majorRuleRE    = regexp.MustCompile(`^([0-9]+)\.x$`)
 )
@@ -67,8 +67,7 @@ var (
 // versionsNotFormats are version constants the scan finds that name no
 // format of the product, each with the reason.
 var versionsNotFormats = map[string]string{
-	"examples/evidence-report/state.go#stateVersion":       "an example program's own state",
-	"examples/evidence-report/state.go#legacyStateVersion": "the earlier version of an example program's own state",
+	"examples/evidence-report/state.go#stateVersion": "an example program's own state",
 }
 
 // The page's table, held to the constants and the readers the code holds.
@@ -329,7 +328,8 @@ func isSubset(sub, set []string) bool {
 }
 
 // uncitedProblems names each version the scan found that no row cites and
-// that is not set apart as naming no format.
+// that is not set apart as naming no format, and each one set apart that the
+// scan no longer finds.
 func uncitedProblems(found map[string]string, specs map[string]versionSpec) []string {
 	cited := map[string]bool{}
 	for _, spec := range specs {
@@ -341,6 +341,11 @@ func uncitedProblems(found map[string]string, specs map[string]versionSpec) []st
 	for _, at := range slices.Sorted(maps.Keys(found)) {
 		if _, apart := versionsNotFormats[at]; !cited[at] && !apart {
 			problems = append(problems, fmt.Sprintf("%s holds version %q, and %s has no row citing it", at, found[at], versionsDoc))
+		}
+	}
+	for _, at := range slices.Sorted(maps.Keys(versionsNotFormats)) {
+		if _, ok := found[at]; !ok {
+			problems = append(problems, fmt.Sprintf("versionsNotFormats sets apart %s, which the scan no longer finds", at))
 		}
 	}
 	return problems
@@ -502,6 +507,10 @@ func TestVersionsPinRefusesAPageThatDisagrees(t *testing.T) {
 			delete(f, "internal/runs/strict.go#checkSchemaVersion/major")
 			return s
 		}, "checkSchemaVersion/major is no longer in the code"},
+		"a constant set apart gone from the code": {func(s string, f map[string]string) string {
+			delete(f, "examples/evidence-report/state.go#stateVersion")
+			return s
+		}, "versionsNotFormats sets apart examples/evidence-report/state.go#stateVersion, which the scan no longer finds"},
 		"a version the page lacks": {func(s string, f map[string]string) string {
 			f["internal/notes/notes.go#SchemaVersion"] = "0.1"
 			return s
@@ -529,6 +538,8 @@ func TestVersionScanReadsWhatTheCodeSpells(t *testing.T) {
 const (
 	FormatVersion = "0.3"
 	DocKind = "notes/v1alpha2"
+	APIVersion = "v2beta1"
+	PathVersion = "v1alpha"
 	kindHeader = "header"
 	MaxBytes = "1"
 )
@@ -542,6 +553,7 @@ func both(v string) bool { return x.IsVersion(v, "1") || x.IsVersion(v, "2") }
 	want := map[string]string{
 		"p.go#FormatVersion": "0.3",
 		"p.go#DocKind":       "notes/v1alpha2",
+		"p.go#APIVersion":    "v2beta1",
 		"p.go#check/major":   "2",
 		"p.go#both/major":    "1 and 2",
 	}

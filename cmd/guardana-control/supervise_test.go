@@ -139,7 +139,7 @@ func TestSuperviseRefusesAnEditedProcedureUnderItsVersion(t *testing.T) {
 	if n := len(readLog(t, tr.findings)); n != 2 {
 		t.Errorf("the log holds %d records, want the 2 reports of the accepted runs", n)
 	}
-	if after, err := os.ReadFile(path); err != nil || string(after) != string(before) { //nolint:gosec // G304: as above
+	if after, err := os.ReadFile(path); err != nil || string(after) != string(before) { //nolint:gosec // G304: a path in this test's own directory
 		t.Errorf("the refusal changed the log: %v\n%q\nwant\n%q", err, after, before)
 	}
 }

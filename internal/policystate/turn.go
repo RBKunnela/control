@@ -25,7 +25,7 @@ type turn struct {
 
 func turnOf(id fileID) *turn {
 	t, _ := turns.LoadOrStore(turnKey{dev: id.dev, ino: id.ino}, &turn{})
-	return t.(*turn) //nolint:forcetypeassert // turns holds nothing else
+	return t.(*turn)
 }
 
 // read waits until no writer of this process waits for or holds the

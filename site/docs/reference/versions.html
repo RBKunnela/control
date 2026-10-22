@@ -281,8 +281,8 @@ version. <a href="/docs/status">status.md</a> is the inventory.</p>
 </tr>
 <tr>
 <td>Enforcement API (<code>guardana.control.enforce.v1alpha1</code>)</td>
-<td>—</td>
-<td>—</td>
+<td><code>v1alpha1</code></td>
+<td><code>v1alpha1</code></td>
 <td><code>experimental</code></td>
 <td><a href="/docs/contracts#the-enforcement-api">contracts.md</a></td>
 </tr>
@@ -311,7 +311,11 @@ version. <a href="/docs/status">status.md</a> is the inventory.</p>
 </table>
 <p>The gateway's configuration file and a <code>policy test</code> case carry no version.
 Each refuses a key it does not know, so a file that names a key a later
-release added is refused, not read in part.</p>
+release added is refused, not read in part. The signed envelopes around a
+policy bundle, a freshness statement, a route and a lift carry no version of
+their own, only the payload type each is signed under, and the evidence
+spool frames its segments with no version at all, so a spool another release
+wrote is not promised readable.</p>
 <h2 id="reading-files-an-older-release-wrote">Reading files an older release wrote</h2>
 <ul>
 <li><strong>Wire messages, the evidence export, the runs directory, the approvals

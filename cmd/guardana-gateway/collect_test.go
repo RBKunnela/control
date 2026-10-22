@@ -104,7 +104,7 @@ func TestCollectWritesWhatArrivesUntilTheSignal(t *testing.T) {
 	if !strings.Contains(c.stdout.String(), out) || !strings.Contains(c.stdout.String(), "allow_plaintext") {
 		t.Errorf("collect printed %q, which does not name the file and the plaintext setting", c.stdout.String())
 	}
-	resp, err := http.Post(c.url, "application/json", bytes.NewReader(otlpFixture(t, "export_logs_request.json"))) //nolint:noctx // the collector this test started
+	resp, err := http.Post(c.url, "application/json", bytes.NewReader(otlpFixture(t, "export_logs_request.json")))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func TestCollectWritesWhatArrivesUntilTheSignal(t *testing.T) {
 		t.Errorf("the trail file holds\n%s\nwant\n%s", got, want)
 	}
 	c.stop(t)
-	if _, err := http.Post(c.url, "application/json", strings.NewReader("{}")); err == nil { //nolint:noctx // the collector this test stopped
+	if _, err := http.Post(c.url, "application/json", strings.NewReader("{}")); err == nil {
 		t.Error("the collector still answers after its context ended")
 	}
 }

@@ -127,6 +127,16 @@ jobs:
         # set one could make it skip a check; GO names the go the gate runs.
         run: env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS make quality GO=go
 
+      - name: Check every action pin against its repository
+        # The gate's own checks see only a pin's shape, and a commit from any
+        # fork of an action is fetchable under its name. This asks GitHub for
+        # the commit each version comment's tag names in that action's
+        # repository, and fails on a mismatch or on an answer it cannot get.
+        # The job's read-only token reads public repositories' tags.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/pin-actions.sh --check
+
   proto-breaking:
     name: Wire contract compatibility
     runs-on: ubuntu-24.04

@@ -16,6 +16,11 @@
 #                file is refused.
 #   osv-scanner  reads an empty configuration rather than any osv-scanner.toml,
 #                and the files .gitignore names as well.
+#
+# osv-scanner passes over a lockfile it cannot parse or does not recognise, so
+# its output must hold a "Scanned" line for each go.mod, uv.lock and
+# package-lock.json repo_files lists, and no such file at all fails the scan.
+# scripts/scan-repo-files-probe.sh is the negative control.
 set -euo pipefail
 
 _SCAN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
@@ -31,9 +36,15 @@ for tool in gitleaks osv-scanner; do
   command -v "${tool}" >/dev/null 2>&1 || die "${tool} is not on PATH, so the scan cannot run"
 done
 
+lockfiles="$(repo_files go.mod '*/go.mod' uv.lock '*/uv.lock' package-lock.json '*/package-lock.json')" ||
+  die "repo_files could not list the lockfiles"
+[[ -n "${lockfiles}" ]] ||
+  die "repo_files lists no go.mod, uv.lock or package-lock.json, so the dependency scan would read nothing"
+
 copy="$(mktemp -d)"
 no_ignore_list="$(mktemp -d)"
-trap 'rm -rf "${copy}" "${no_ignore_list}"' EXIT
+osv_log="$(mktemp)"
+trap 'rm -rf "${copy}" "${no_ignore_list}" "${osv_log}"' EXIT
 staged="$(repo_stage "${copy}")"
 [[ "${staged}" -gt 0 ]] || die "repo_stage copied no files"
 if repo_is_work_tree; then
@@ -49,4 +60,23 @@ fi
 
 gitleaks dir --no-banner --redact --config "${_SCAN_DIR}/gitleaks.toml" \
   --ignore-gitleaks-allow --gitleaks-ignore-path "${no_ignore_list}" "${copy}"
-osv-scanner scan source -r --no-ignore --config /dev/null "${copy}"
+rc=0
+osv-scanner scan source -r --no-ignore --config /dev/null "${copy}" 2>&1 | tee "${osv_log}" || rc=$?
+[[ ${rc} -eq 0 ]] || die "osv-scanner exited ${rc}"
+
+unread=""
+count=0
+while IFS= read -r file; do
+  count=$((count + 1))
+  grep -qF -- "Scanned ${copy}/${file} file " "${osv_log}" || unread+="${unread:+, }${file}"
+done <<<"${lockfiles}"
+[[ -z "${unread}" ]] ||
+  die "osv-scanner printed no 'Scanned' line for ${unread}, so it did not read every lockfile repo_files lists"
+# A file read as holding no package was not understood, listed above or not:
+# every advisory against what it pins would go unreported.
+empty="$(grep -E '^Scanned .* file and found 0 packages?$' "${osv_log}" |
+  sed -e "s|^Scanned ${copy}/||" -e 's| file and found 0 packages*$||' | LC_ALL=C sort | tr '\n' ' ')" || true
+[[ -z "${empty}" ]] ||
+  die "osv-scanner found no package in ${empty% }, so it read none of what that file pins"
+printf 'scan-repo-files: osv-scanner read each of the %d lockfile(s) repo_files lists: %s\n' \
+  "${count}" "$(printf '%s' "${lockfiles}" | tr '\n' ' ')"

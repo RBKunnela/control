@@ -121,6 +121,10 @@ func versionSpecs() map[string]versionSpec {
 		},
 		"Enforcement API": {
 			name: func() string { return protoPackage(&enforcev1alpha1.AdmitRequest{}) },
+			cites: []versionCite{
+				{"adapters/enforce/adapter.go#APIVersion", writes | reads},
+				{"internal/enforceclient/client.go#APIVersion", writes | reads},
+			},
 		},
 		"Observation records and log": {
 			name: func() string { return protoPackage(&observev1.Record{}) },

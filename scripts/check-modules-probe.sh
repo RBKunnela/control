@@ -17,6 +17,8 @@
 #               vet         the same in a file only GOOS=windows compiles
 #               test        a failing test, shown in the reporter's lines
 #               test-race   a data race
+#               test-race   a TestMain only a race build compiles, which
+#                           returns before m.Run and so runs no test
 #               lint        a gosec finding, with a .golangci.yml in the
 #                           module that switches gosec off, so a target that
 #                           discovered its configuration would pass
@@ -26,6 +28,8 @@
 #                           leaves out, which go test passes unfuzzed
 #               fuzz-smoke  a fuzz target whose seed fails, with a comment
 #                           between func and its name, alone in its package
+#               fuzz-smoke  a test file the search cannot read, alone in its
+#                           package (an explicit SKIP for a user who reads it)
 #   refused   every target refuses, through the module list, a tree whose
 #             root holds no go.mod, a module directory named with a glob
 #             (examples/n[x], beside an examples/nx a glob would match), and
@@ -70,9 +74,26 @@ for file in Makefile .golangci.yml scripts/fuzz-smoke.sh; do
   cp "${root}/${file}" "${copy}/${file}"
 done
 # make test pipes go test -json through scripts/test-report.go, whose logic is
-# internal/testreport; the staged root module carries both, under its own path.
+# internal/testreport; the staged root module carries both, under its own path,
+# and a test of the package, which the reporter refuses to pass without one.
 mkdir -p "${copy}/internal/testreport"
-cp "${root}/internal/testreport/doc.go" "${root}/internal/testreport/report.go" "${copy}/internal/testreport/"
+cp "${root}/internal/testreport/doc.go" "${root}/internal/testreport/report.go" \
+  "${root}/internal/testreport/generated.go" "${copy}/internal/testreport/"
+cat >"${copy}/internal/testreport/staged_test.go" <<'EOF'
+package testreport
+
+import (
+	"io"
+	"strings"
+	"testing"
+)
+
+func TestStagedReporterRefusesAnEmptyStream(t *testing.T) {
+	if _, err := Summarize(strings.NewReader(""), io.Discard, ""); err == nil {
+		t.Fatal("the staged reporter passed an empty stream")
+	}
+}
+EOF
 sed 's#"github.com/guardana/control/internal/testreport"#"example.com/probe/internal/testreport"#' \
   "${root}/scripts/test-report.go" >"${copy}/scripts/test-report.go"
 grep -q '"example.com/probe/internal/testreport"' "${copy}/scripts/test-report.go" ||
@@ -349,6 +370,20 @@ expect "WARNING: DATA RACE"
 expect "test-race: FAIL in module ${nested}"
 rm "${copy}/${nested}/zz_race_test.go"
 
+plant zz_racemain_test.go <<'EOF'
+//go:build race
+
+package nested
+
+import "testing"
+
+func TestMain(m *testing.M) {}
+EOF
+run fail test-race "planted, a race-only TestMain that runs no test"
+expect "a package ran no test" "example.com/nested"
+expect "test-race: FAIL in module ${nested}"
+rm "${copy:?}/${nested:?}/zz_racemain_test.go"
+
 plant .golangci.yml <<'EOF'
 version: "2"
 linters:
@@ -426,6 +461,27 @@ run fail fuzz-smoke "planted, a comment before the name"
 expect "probe-fuzz-hidden"
 expect "fuzz-smoke: FuzzProbeHidden failed" "./${nested}/hidden/testdata/fuzz/FuzzProbeHidden/"
 rm -rf "${copy:?}/${nested:?}/hidden"
+
+mkdir -p "${copy}/${nested}/unread"
+plant unread/unread_test.go <<'EOF'
+package unread
+
+import "testing"
+
+func FuzzProbeUnread(f *testing.F) {
+	f.Add(1)
+	f.Fuzz(func(t *testing.T, _ int) {})
+}
+EOF
+chmod 000 "${copy}/${nested}/unread/unread_test.go"
+if [[ -r "${copy}/${nested}/unread/unread_test.go" ]]; then
+  printf 'check-modules-probe: SKIP fuzz-smoke over a test file it cannot read: this user reads a file of mode 000\n'
+else
+  run fail fuzz-smoke "planted, a test file it cannot read"
+  expect "fuzz-smoke: cannot read ${nested}/unread/unread_test.go"
+fi
+chmod 0644 "${copy}/${nested}/unread/unread_test.go"
+rm -rf "${copy:?}/${nested:?}/unread"
 
 gate=(vet test test-race lint tidy-check fuzz-smoke)
 
