@@ -15,7 +15,8 @@ import (
 // of order, which is not also a continuation. When the line of timed
 // proposals names no such instance, one of another step whose place against
 // the failure is unknown makes the pair indeterminate.
-func (e *evaluation) continued(outOfOrder map[int]bool) []draft {
+func (e *evaluation) continued() []draft {
+	_, outOfOrder := e.outOfOrder()
 	var line, unplaced []*instance
 	for _, in := range e.inst {
 		if in.timed {

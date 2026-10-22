@@ -80,6 +80,7 @@ func sourceLine(ps PathSource, src *Source, now time.Time, absent []string) Sour
 		return line
 	}
 	line.State, line.Basis = Observed, when
+	line.Sampled = observe.SamplingOf(src.Descriptor.GetSampling()) != observev1.Sampling_SAMPLING_COMPLETE
 	line.Trust = observe.TrustOf(src.Descriptor.GetTrust())
 	for _, o := range seen {
 		line.Trust = weaker(line.Trust, o.GetSource().GetTrust())
@@ -101,11 +102,13 @@ func notGiven(absent []string) string {
 		"; a removed descriptor covers nothing"
 }
 
-// sourceCoverage is the strongest of the path's source lines, and the
-// weakest trust among the sources that observed it.
-func sourceCoverage(lines []SourceLine) (State, observev1.Trust, []string) {
+// sourceCoverage is the strongest of the path's source lines, the weakest
+// trust among the sources that observed it, and whether every one of them
+// samples.
+func sourceCoverage(lines []SourceLine) (State, observev1.Trust, bool, []string) {
 	state := NotCovered
 	var trust observev1.Trust
+	sampled := true
 	var by []string
 	for _, l := range lines {
 		if l.State > state {
@@ -119,7 +122,8 @@ func sourceCoverage(lines []SourceLine) (State, observev1.Trust, []string) {
 				trust = l.Trust
 			}
 			trust = weaker(trust, l.Trust)
+			sampled = sampled && l.Sampled
 		}
 	}
-	return state, trust, by
+	return state, trust, sampled, by
 }

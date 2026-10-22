@@ -58,7 +58,6 @@ type evaluation struct {
 	anySilent   bool
 	neverHeard  []string
 	lapsed      []string
-	orderFired  map[int]bool
 	// firsts holds firstOf's answer by step: the rules ask it per instance,
 	// and the instances do not change once read.
 	firsts map[int]first
@@ -281,11 +280,10 @@ func (e *evaluation) drafts(rule string) []draft {
 	case RuleRequiredStepSkipped:
 		return e.skipped()
 	case RuleStepOutOfOrder:
-		var out []draft
-		out, e.orderFired = e.outOfOrder()
+		out, _ := e.outOfOrder()
 		return out
 	case RuleContinuedAfterFailure:
-		return e.continued(e.orderFired)
+		return e.continued()
 	case RuleResourceOutsideRun:
 		return append(e.resourceOutside(), e.unjudged()...)
 	case RuleDeniedActionRetriedArguments:

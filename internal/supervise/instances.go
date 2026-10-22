@@ -63,6 +63,8 @@ type Instance struct {
 	// Tool and Upstream are what the call proposed; a report names a tool
 	// and no upstream.
 	Tool, Upstream string
+	// Protocol is the protocol the proposal's action names, "" for a report.
+	Protocol string
 	// Step is the id of the step the call is, "" when it is none.
 	Step string
 	Run  string
@@ -140,7 +142,8 @@ func (e *evaluation) markExcepted(ins []Instance, byRequest map[string]int) {
 
 func (e *evaluation) callOf(rq *request, tool [2]string) Instance {
 	p := rq.proposal
-	in := Instance{Request: rq.id, Tool: tool[0], Upstream: tool[1], Run: p.GetRunId(), Export: e.rd.exportOf[p],
+	in := Instance{Request: rq.id, Tool: tool[0], Upstream: tool[1], Protocol: p.GetProposed().GetAction().GetProtocol(),
+		Run: p.GetRunId(), Export: e.rd.exportOf[p],
 		Timed: p.GetOccurredAt().IsValid(), Outcome: outcomeOf(rq), Approval: approvalOf(rq),
 		Mode: rq.decided.GetEnforcementMode(), Doubt: rq.doubt}
 	if in.Timed {

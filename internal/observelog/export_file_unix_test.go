@@ -4,7 +4,9 @@ package observelog
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -12,7 +14,9 @@ import (
 	"syscall"
 	"testing"
 
+	observev1 "github.com/guardana/control/api/gen/go/guardana/control/observe/v1alpha1"
 	"github.com/guardana/control/internal/lineexport"
+	"github.com/guardana/control/internal/observe"
 )
 
 // TestTheExportReadsALogAWriterHolds: the bytes after the last newline are a
@@ -38,6 +42,84 @@ func TestTheExportReadsALogAWriterHolds(t *testing.T) {
 	}
 	if tr.WriterHeld || tr.Counts[lineexport.Gap] != 1 || !strings.Contains(free.String(), `"reason":"partial_tail"`) {
 		t.Errorf("once released: trailer %+v, want a partial_tail gap", tr)
+	}
+}
+
+// TestTheExportEndsAtTheLastImportReport: an observation line after the
+// last report belongs to a write a crash left open, which the next writer's
+// Open cuts, so it is the tail: pending while the log is held, a gap once it
+// is not, and never exported as an observation.
+func TestTheExportEndsAtTheLastImportReport(t *testing.T) {
+	dir := logDir(t)
+	l := openLog(t, dir)
+	write(t, l, report("2026-10-04T10:05:00Z"), observation(spanA, "read_file", "2026-10-04T10:05:00Z"))
+	path := filepath.Join(dir, FileName)
+	line, err := observe.MarshalLine(&observev1.Record{Record: &observev1.Record_Observation{
+		Observation: observation(spanB, "write_file", "2026-10-04T10:06:00Z")}})
+	mustDo(t, err)
+	appendTo(t, path, string(line))
+	for _, held := range []bool{true, false} {
+		if !held {
+			mustDo(t, l.Close())
+		}
+		var out bytes.Buffer
+		tr, err := ExportFile(path, Query{Limit: DefaultExportLimit}, &out)
+		if err != nil {
+			t.Fatal(err)
+		}
+		gaps := 0
+		if !held {
+			gaps = 1
+		}
+		if tr.WriterHeld != held || tr.TailBytes != int64(len(line)) || tr.Counts["observation"] != 1 ||
+			tr.Counts["import_report"] != 1 || tr.Counts[lineexport.Gap] != gaps || strings.Contains(out.String(), "write_file") {
+			t.Errorf("held %v: trailer %+v, want %d tail bytes, one observation, %d gaps and no write_file", held, tr, len(line), gaps)
+		}
+	}
+}
+
+// TestACursorIntoAWriteStillOpenIsPastTheEnd: a cursor naming the end of an
+// observation line no report has closed yet is refused, and holds once a
+// report closes that write.
+func TestACursorIntoAWriteStillOpenIsPastTheEnd(t *testing.T) {
+	dir := logDir(t)
+	write(t, openLog(t, dir), report("2026-10-04T10:05:00Z"), observation(spanA, "read_file", "2026-10-04T10:05:00Z"))
+	path := filepath.Join(dir, FileName)
+	line, err := observe.MarshalLine(&observev1.Record{Record: &observev1.Record_Observation{
+		Observation: observation(spanB, "write_file", "2026-10-04T10:06:00Z")}})
+	mustDo(t, err)
+	appendTo(t, path, string(line))
+	body := contents(t, path)
+	first := sha256.Sum256(body[:bytes.IndexByte(body, '\n')+1])
+	last := sha256.Sum256(line)
+	after := fmt.Sprintf("v1:%x:%d:%x", first, len(body), last)
+	if _, err := ExportFile(path, Query{After: after, Limit: DefaultExportLimit}, &bytes.Buffer{}); !errors.Is(err, ErrCursorPastEnd) {
+		t.Fatalf("a cursor into the open write: %v, want ErrCursorPastEnd", err)
+	}
+	closing, err := observe.MarshalLine(&observev1.Record{Record: &observev1.Record_ImportReport{ImportReport: report("2026-10-04T10:06:00Z")}})
+	mustDo(t, err)
+	appendTo(t, path, string(closing))
+	tr, err := ExportFile(path, Query{After: after, Limit: DefaultExportLimit}, &bytes.Buffer{})
+	if err != nil || tr.Counts["import_report"] != 1 || tr.Counts["observation"] != 0 {
+		t.Fatalf("once committed: %+v, %v; want the closing report alone", tr, err)
+	}
+}
+
+// TestADamagedLogIsExportedToItsLastNewline: no writer cuts a log it
+// refuses, so a line after the last report is read and judged: here one no
+// version this build reads, a gap.
+func TestADamagedLogIsExportedToItsLastNewline(t *testing.T) {
+	dir := logDir(t)
+	write(t, openLog(t, dir), report("2026-10-04T10:05:00Z"))
+	path := filepath.Join(dir, FileName)
+	appendTo(t, path, "{\"observation\":{}}\n")
+	var out bytes.Buffer
+	tr, err := ExportFile(path, Query{Limit: DefaultExportLimit}, &out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tr.TailBytes != 0 || tr.Counts[lineexport.Gap] != 1 || tr.Counts["import_report"] != 1 {
+		t.Errorf("trailer %+v, want no tail, the report and the line a gap", tr)
 	}
 }
 

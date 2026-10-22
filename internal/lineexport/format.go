@@ -30,7 +30,8 @@ type Refusals struct {
 	CursorMalformed error
 	// CursorOtherFile is a cursor whose first line is not this file's.
 	CursorOtherFile error
-	// CursorPastEnd is a cursor past the file's last newline.
+	// CursorPastEnd is a cursor past where the export ends: the last
+	// newline, or the end of the last committed write.
 	CursorPastEnd error
 	// CursorOffLine is a cursor whose offset does not follow a newline.
 	CursorOffLine error

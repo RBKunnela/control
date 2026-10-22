@@ -57,9 +57,11 @@ const refund02 = `{"schema_version":"0.2","procedure_id":"refund","version":"2",
 	`"EXCEPTION_TAKEN":{"severity":"info","escalation":"inform"}}}`
 
 // call is one request's trail: its events are req-e1, req-e2, ... one
-// second apart from at, in run, recorded by a plane in mode.
+// second apart from at, in run, recorded by a plane in mode, its action of
+// protocol.
 type call struct {
 	req, tool, upstream, run string
+	protocol                 string
 	at                       time.Duration
 	// outcome is "" for completed, or deny, pause, fail or approved.
 	outcome string
@@ -127,7 +129,7 @@ func (c call) events() []*controlv1.Event {
 		switch kind {
 		case proposed:
 			env := &controlv1.ActionEnvelope{SchemaVersion: "1.0", RequestId: c.req, ProjectId: proj, TenantId: tenant,
-				Action: &controlv1.Action{Kind: "tool", Name: c.tool, Provider: c.upstream}, Resource: c.res}
+				Action: &controlv1.Action{Kind: "tool", Name: c.tool, Provider: c.upstream, Protocol: c.protocol}, Resource: c.res}
 			if c.hash != "" {
 				env.Arguments = &controlv1.Arguments{CanonicalHash: c.hash}
 			}

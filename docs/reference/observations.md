@@ -29,7 +29,7 @@ member given twice or `null` is refused, naming the member.
 | `convention` | yes | `{"name": "opentelemetry.gen_ai", "version": "1.41.0"}`; the conventions are still in development, so no other version is read |
 | `otlp_version` | yes | `1.11.1` |
 | `select.service_name` | yes | the `service.name` of the resource whose spans are this source's; spans of any other resource are not imported |
-| `sampling` | no | `SAMPLING_COMPLETE` or `SAMPLING_PARTIAL`; absent or `SAMPLING_UNSPECIFIED` reads as partial |
+| `sampling` | no | `SAMPLING_COMPLETE` or `SAMPLING_PARTIAL`; absent or `SAMPLING_UNSPECIFIED` reads as partial, which `guardana-control coverage` prints as `sampled` ([coverage](coverage.md)) |
 | `heartbeat_seconds` | yes | 1 to 604800: how long the source may stay silent before its paths are unknown; `guardana-control coverage` reads it ([coverage](coverage.md)) |
 | `tenant_id`, `project_id` | yes | as `source_id` |
 | `run_attribute` | no | the span attribute that names a run; never a content attribute |
@@ -127,4 +127,12 @@ a header, `observation` and `import_report` records, gaps (`malformed`,
 duplicates and a trailer with the cursor to resume from, and the same exit
 codes. It has no filters. It reads only a file the writer would open: a
 regular file of this account, not a link, that the group and others cannot
-reach, with no other name.
+reach, with no other name. It reads to the last import report, as a writer
+keeps the log: what follows is a write still open, or one a crash left that
+the next writer cuts, counted in the trailer's `tail_bytes` while a writer
+holds the log and a `partial_tail` gap when none does. It reads back from
+the end only as far as that report, and `scanned_bytes` leaves those bytes
+out. A log over the size bound, or whose lines after that report no writer
+leaves, is read to its last newline. Each line after the report is judged
+alone, so one that repeats an earlier id with other contents, which no
+writer leaves, counts in that gap rather than as a conflict.

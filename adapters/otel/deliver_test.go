@@ -199,6 +199,8 @@ func TestOnlyTheProtocolsAnswerAccepts(t *testing.T) {
 		"an empty partial success": {http.StatusOK, `{"partialSuccess":{}}`},
 		"a null partial success":   {http.StatusOK, `{"partialSuccess":null}`},
 		"nothing rejected":         {http.StatusOK, `{"partialSuccess":{"rejectedLogRecords":"0","errorMessage":""}}`},
+		"a null message":           {http.StatusOK, `{"partialSuccess":{"rejectedLogRecords":"0","errorMessage":null}}`},
+		"a surrogate pair":         {http.StatusOK, `{"partialSuccess":{"rejectedLogRecords":"0","errorMessage":"\\\ud83d\ude00\\u"}}`},
 		"an answer at the bound":   {http.StatusOK, "{}" + strings.Repeat(" ", 64<<10-2)},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -558,7 +560,7 @@ func TestOneRunDrainsOneReader(t *testing.T) {
 // TestAnAnswerIsTheProtocolsOrItIsNotAnAnswer: protojson refuses a member
 // that appears twice, and the exporter reads the answer as strictly, in either
 // spelling, because a duplicate member read loosely turns a refusal into an
-// acceptance.
+// acceptance; so is an error message that is not a string.
 func TestAnAnswerIsTheProtocolsOrItIsNotAnAnswer(t *testing.T) {
 	for name, body := range map[string]string{
 		"partialSuccess twice":       `{"partialSuccess":{"rejectedLogRecords":"2","errorMessage":"both dropped"},"partialSuccess":null}`,
@@ -569,6 +571,14 @@ func TestAnAnswerIsTheProtocolsOrItIsNotAnAnswer(t *testing.T) {
 		"a count past every batch":   `{"partialSuccess":{"rejectedLogRecords":"9223372036854775807"}}`,
 		"an unknown member":          `{"partialSuccess":{"rejectedLogRecords":0,"unknown":1}}`,
 		"two documents":              `{} {}`,
+		"an object for the message":  `{"partialSuccess":{"rejectedLogRecords":"2","errorMessage":{}}}`,
+		"an array for the message":   `{"partialSuccess":{"rejectedLogRecords":"2","errorMessage":["dropped"]}}`,
+		"a number for the message":   `{"partialSuccess":{"rejectedLogRecords":"2","errorMessage":2}}`,
+		"a boolean for the message":  `{"partialSuccess":{"rejected_log_records":"2","error_message":true}}`,
+		"a message not UTF-8":        "{\"partialSuccess\":{\"rejectedLogRecords\":\"2\",\"errorMessage\":\"\xff\"}}",
+		"a lone high surrogate":      `{"partialSuccess":{"rejectedLogRecords":"2","errorMessage":"a\ud800"}}`,
+		"a lone low surrogate":       `{"partialSuccess":{"rejectedLogRecords":"2","errorMessage":"\udc00b"}}`,
+		"a high surrogate unpaired":  `{"partialSuccess":{"rejectedLogRecords":"2","errorMessage":"\uD800\u0041"}}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			var answers atomic.Int32

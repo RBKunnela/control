@@ -79,14 +79,14 @@ type file struct {
 }
 
 // check refuses a cursor that does not name the end of a line the file holds
-// before end, its last newline. first is the file's first line's digest,
+// before end, where the export ends. first is the file's first line's digest,
 // absent when the file has no whole line.
 func (f file) check(c cursor, end int64, first Digest, hasFirst bool) error {
 	switch {
 	case !hasFirst || c.First != first:
 		return f.rf.CursorOtherFile
 	case c.Offset > end:
-		return fmt.Errorf("%w: offset %d, last newline ends at %d", f.rf.CursorPastEnd, c.Offset, end)
+		return fmt.Errorf("%w: offset %d, the export ends at %d", f.rf.CursorPastEnd, c.Offset, end)
 	}
 	var before [1]byte
 	if err := f.readFull(before[:], c.Offset-1); err != nil {

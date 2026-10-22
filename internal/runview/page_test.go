@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/runview"
@@ -194,5 +195,24 @@ func TestEnforcedNeedsACoherentTrailAndAModeThatActs(t *testing.T) {
 				t.Errorf("the first call is marked %q, want %q", got, c.want)
 			}
 		})
+	}
+}
+
+// TestAnEnforcementAPICallIsDecidedInEveryMode: a client of the enforcement
+// API runs the call itself, so its plane enforces nothing it decides, in
+// ENFORCE as in LOCKDOWN; an MCP call in ENFORCE is enforced.
+func TestAnEnforcementAPICallIsDecidedInEveryMode(t *testing.T) {
+	lockdown := controlv1.EnforcementMode_ENFORCEMENT_MODE_LOCKDOWN
+	p, res := judge(t, refund01, supervise.Input{Exports: []supervise.Export{export(
+		call{req: "r1", tool: "get_order", upstream: "shop", protocol: "mcp"},
+		call{req: "r2", tool: "issue_refund", upstream: "pay", at: 10 * time.Second, protocol: "enforce"},
+		call{req: "r3", tool: "send_mail", upstream: "mail", at: 20 * time.Second, protocol: "enforce", mode: lockdown})}})
+	page, err := runview.Page(p, res, runview.Options{All: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sameMarks(t, "protocols", marks(string(page)), "r1 enforced", "r2 decided, not enforced", "r3 decided, not enforced")
+	if want := `<span class="mk-detail">a cooperating client enforces it</span>`; !strings.Contains(string(page), want) {
+		t.Errorf("the page holds no %s", want)
 	}
 }

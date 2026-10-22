@@ -75,8 +75,9 @@ const (
 	ErrCursorMalformed Error = "observelog: the cursor is not v1:<sha256>:<offset>:<sha256>"
 	// ErrCursorOtherFile is a cursor whose first line is not this file's.
 	ErrCursorOtherFile Error = "observelog: the cursor is from another file"
-	// ErrCursorPastEnd is a cursor past the file's last newline.
-	ErrCursorPastEnd Error = "observelog: the cursor is past the file's last newline"
+	// ErrCursorPastEnd is a cursor past where the export ends: the end of
+	// the last committed write, or the last newline of a log no writer cuts.
+	ErrCursorPastEnd Error = "observelog: the cursor is past the end of what the export reads"
 	// ErrCursorOffLine is a cursor whose offset does not follow a newline.
 	ErrCursorOffLine Error = "observelog: the cursor does not follow a newline"
 	// ErrCursorChanged is a cursor whose line is not the line ending there.

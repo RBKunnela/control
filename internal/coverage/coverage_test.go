@@ -99,7 +99,7 @@ func TestLines(t *testing.T) {
 	want := []string{
 		"gh-create enforced: planes a.yaml",
 		"  plane a.yaml: enforced: ENFORCE; override pins fingerprint fp1; the live definition is not checked; the plane's environment is not read",
-		"  source s1: observed, platform: last heard 2026-10-05T11:59:50Z, heartbeat 300 s",
+		"  source s1: observed, platform, sampled: last heard 2026-10-05T11:59:50Z, heartbeat 300 s",
 		"  join: 1 joined",
 		"undeclared paths: unknown",
 	}

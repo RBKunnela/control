@@ -5,6 +5,7 @@ import (
 
 	observev1 "github.com/guardana/control/api/gen/go/guardana/control/observe/v1alpha1"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/coverage"
 	"github.com/guardana/control/internal/supervise"
 )
 
@@ -68,7 +69,8 @@ var trustWords = map[observev1.Trust]string{
 
 // markOf marks a call from what supervise returned of it alone. Enforced
 // rests on a coherent trail whose decision a plane recorded in a mode that
-// acts on it; anything less is decided, not enforced.
+// acts on it, for a call the plane holds; anything less is decided, not
+// enforced. An enforcement API call is run by the client the plane answers.
 func markOf(in supervise.Instance) markCell {
 	switch {
 	case in.Observation != "":
@@ -85,6 +87,8 @@ func markOf(in supervise.Instance) markCell {
 		return cell(markExcepted, "an exception taken")
 	case in.Approval == supervise.ApprovalGranted:
 		return cell(markExcepted, "approval granted")
+	case in.Protocol == coverage.EnforceProtocol:
+		return cell(markDecided, "a cooperating client enforces it")
 	case in.Mode == controlv1.EnforcementMode_ENFORCEMENT_MODE_UNSPECIFIED:
 		return cell(markDecided, "no mode recorded")
 	case enforcing[in.Mode]:

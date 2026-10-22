@@ -167,7 +167,7 @@ member given twice or <code>null</code> is refused, naming the member.</p>
 <tr>
 <td><code>sampling</code></td>
 <td>no</td>
-<td><code>SAMPLING_COMPLETE</code> or <code>SAMPLING_PARTIAL</code>; absent or <code>SAMPLING_UNSPECIFIED</code> reads as partial</td>
+<td><code>SAMPLING_COMPLETE</code> or <code>SAMPLING_PARTIAL</code>; absent or <code>SAMPLING_UNSPECIFIED</code> reads as partial, which <code>guardana-control coverage</code> prints as <code>sampled</code> (<a href="/docs/reference/coverage">coverage</a>)</td>
 </tr>
 <tr>
 <td><code>heartbeat_seconds</code></td>
@@ -293,7 +293,15 @@ a header, <code>observation</code> and <code>import_report</code> records, gaps 
 duplicates and a trailer with the cursor to resume from, and the same exit
 codes. It has no filters. It reads only a file the writer would open: a
 regular file of this account, not a link, that the group and others cannot
-reach, with no other name.</p>
+reach, with no other name. It reads to the last import report, as a writer
+keeps the log: what follows is a write still open, or one a crash left that
+the next writer cuts, counted in the trailer's <code>tail_bytes</code> while a writer
+holds the log and a <code>partial_tail</code> gap when none does. It reads back from
+the end only as far as that report, and <code>scanned_bytes</code> leaves those bytes
+out. A log over the size bound, or whose lines after that report no writer
+leaves, is read to its last newline. Each line after the report is judged
+alone, so one that repeats an earlier id with other contents, which no
+writer leaves, counts in that gap rather than as a conflict.</p>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/reference/observations.md">docs/reference/observations.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.13.0, and <a href="https://github.com/guardana/control/tree/v0.13.0/docs">its documentation</a> is in its tag.</p>
 </main>
 <nav class="side" aria-label="Documentation">

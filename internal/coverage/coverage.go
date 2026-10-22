@@ -107,6 +107,9 @@ type PathCoverage struct {
 	// Trust is the weakest trust among the sources that observed the path;
 	// unspecified when none did.
 	Trust observev1.Trust
+	// Sampled is true when every source that observed the path samples, so
+	// a call of it may have gone unseen.
+	Sampled bool
 	// Planes has a line for each plane in front of the path: one that lists
 	// its upstream or has an override for its tool.
 	Planes []PlaneLine
@@ -130,7 +133,10 @@ type SourceLine struct {
 	SourceID string
 	State    State
 	Trust    observev1.Trust
-	Basis    string
+	// Sampled is an observing source whose descriptor does not say it
+	// samples completely.
+	Sampled bool
+	Basis   string
 }
 
 // JoinCheck is the join of one observation with the evidence.
@@ -198,7 +204,7 @@ func (in Input) path(p Path, sources map[string]*Source, walked families) PathCo
 	for _, ps := range p.Sources {
 		pc.Sources = append(pc.Sources, sourceLine(ps, sources[ps.SourceID], in.Now, in.AbsentDescriptors))
 	}
-	sourceState, trust, sourcesBy := sourceCoverage(pc.Sources)
+	sourceState, trust, sampled, sourcesBy := sourceCoverage(pc.Sources)
 	switch {
 	case len(counting) > 0 && planeState >= sourceState:
 		pc.State, pc.Basis = planeState, "planes "+planeNames(counting)
@@ -208,7 +214,7 @@ func (in Input) path(p Path, sources map[string]*Source, walked families) PathCo
 		pc.Basis = "no plane classifies it and no live source observed it"
 	}
 	if sourceState == Observed {
-		pc.Trust = trust
+		pc.Trust, pc.Sampled = trust, sampled
 	}
 	if planeState >= Decided {
 		pc.Joins = joins(p, pc.State, sources, counting, walked)

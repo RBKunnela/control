@@ -59,8 +59,7 @@ claimed, with such a run id, tenant and project. Only a tool call is a
 step, never a prompt or a resource read. An observation joined to a plane
 event by trace and span id is that call, not a second one; a join cut short
 leaves `STEP_OUTSIDE_PROCEDURE` and `DENIED_ACTION_RETRIED_AROUND` not
-checked, findings kept. Everything else is counted in the report and
-left out.
+checked, findings kept. Everything else is counted and left out.
 
 The procedure, descriptors and evidence exports must be regular
 files of this account that only it can write: a `CONFIRMED` finding rests on
@@ -93,7 +92,8 @@ an export; a retry confirms only when one export holds both.
 The weakest of what a finding rests on. Plane events in an unbroken chain can
 make it `CONFIRMED`; an observation makes it `SUSPECTED`; a record in doubt (a
 conflicting id, a broken chain, a silent source) makes it
-`INDETERMINATE`. The three rules about steps rest on something not seen:
+`INDETERMINATE`; the first two also leave each rule that reads them not
+checked. The step rules rest on something not seen:
 `SUSPECTED` at most, `INDETERMINATE` while a `--source` is absent, never
 heard or silent, and checked only on a closed run whose exports are whole.
 Under `0.2` a finding confirms on its run's own events alone, save the
@@ -114,8 +114,8 @@ or `<id> silent` for each `--source` not judged against.
 | 1 | otherwise |
 | 2 | nothing printed: an input refused, or a log not opened or written (a cut write no reader takes) |
 
-The log is opened, and `findings.jsonl` created where absent, only once every
-input is accepted. A failure after the write commits exits 2 and keeps the
+The log is opened, and `findings.jsonl` created, only once every input is
+accepted. A failure after the write commits exits 2 and keeps the
 write.
 
 ## The finding record and its log
@@ -126,7 +126,7 @@ escalation, references to plane events and observations and a v1
 finding with its id, rule, severity, verdict and run. Its id is
 `fnd-` and 32 hex digits, a function of the run, the procedure, the rule and
 its version, and what it is about, so a rerun finds the same ids. The log,
-`findings.jsonl`, is JSON Lines in an owner-only directory. A run of the command writes only when it read an event
+`findings.jsonl`, is JSON Lines in an owner-only directory. The command writes only when it read an event
 of the run, and ends its write with a `SuperviseReport`; a write without one
 is never read.
 
@@ -143,7 +143,7 @@ A record is schema `0.2` exactly when it carries a member `0.1` lacks
 
 A log with no header is read as it is; an empty one gains one when opened.
 The reader refuses an unknown schema or a member its schema lacks, so a
-reader of schema `0.1` alone refuses every `0.2` line.
+`0.1`-only reader refuses every `0.2` line.
 
 ## notify
 

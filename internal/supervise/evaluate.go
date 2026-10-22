@@ -107,15 +107,10 @@ type Result struct {
 // make, a run with no tenant, a tree its procedure does not read, a source
 // given twice, or a run whose events name two projects with ErrInput.
 func Evaluate(in Input) (*Result, error) {
-	if err := checkInput(in); err != nil {
+	e, err := prepare(in)
+	if err != nil {
 		return nil, err
 	}
-	rd := newRead(judged(in), in.Run.Tenant)
-	if err := rd.takeEvents(in.Exports); err != nil {
-		return nil, err
-	}
-	rd.takeObservations(in.Sources)
-	e := newEvaluation(in, rd)
 	states := e.states()
 	var drafts []draft
 	for _, id := range RuleIDsOf(e.p.schema) {
@@ -126,6 +121,19 @@ func Evaluate(in Input) (*Result, error) {
 		}
 	}
 	return e.result(drafts, states), nil
+}
+
+// prepare checks in and reads what belongs to its run, ready for the rules.
+func prepare(in Input) (*evaluation, error) {
+	if err := checkInput(in); err != nil {
+		return nil, err
+	}
+	rd := newRead(judged(in), in.Run.Tenant)
+	if err := rd.takeEvents(in.Exports); err != nil {
+		return nil, err
+	}
+	rd.takeObservations(in.Sources)
+	return newEvaluation(in, rd), nil
 }
 
 func checkInput(in Input) error {

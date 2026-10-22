@@ -17,7 +17,7 @@ func (r *Report) Lines() []string {
 		for _, l := range p.Sources {
 			state := l.State.String()
 			if l.State == Observed {
-				state += ", " + trustName(l.Trust)
+				state += ", " + trustName(l.Trust) + sampledWord(l.Sampled)
 			}
 			out = append(out, fmt.Sprintf("  source %s: %s: %s", printable(l.SourceID), state, l.Basis))
 		}
@@ -31,9 +31,16 @@ func (r *Report) Lines() []string {
 
 func stateWithTrust(p PathCoverage) string {
 	if p.State == Observed {
-		return p.State.String() + ", " + trustName(p.Trust)
+		return p.State.String() + ", " + trustName(p.Trust) + sampledWord(p.Sampled)
 	}
 	return p.State.String()
+}
+
+func sampledWord(sampled bool) string {
+	if sampled {
+		return ", sampled"
+	}
+	return ""
 }
 
 // joinLines counts the joins, names every call around the plane, and counts

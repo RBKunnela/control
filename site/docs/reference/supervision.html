@@ -193,8 +193,7 @@ claimed, with such a run id, tenant and project. Only a tool call is a
 step, never a prompt or a resource read. An observation joined to a plane
 event by trace and span id is that call, not a second one; a join cut short
 leaves <code>STEP_OUTSIDE_PROCEDURE</code> and <code>DENIED_ACTION_RETRIED_AROUND</code> not
-checked, findings kept. Everything else is counted in the report and
-left out.</p>
+checked, findings kept. Everything else is counted and left out.</p>
 <p>The procedure, descriptors and evidence exports must be regular
 files of this account that only it can write: a <code>CONFIRMED</code> finding rests on
 the export being the plane's, and nothing else protects that.</p>
@@ -262,7 +261,8 @@ an export; a retry confirms only when one export holds both.</p>
 <p>The weakest of what a finding rests on. Plane events in an unbroken chain can
 make it <code>CONFIRMED</code>; an observation makes it <code>SUSPECTED</code>; a record in doubt (a
 conflicting id, a broken chain, a silent source) makes it
-<code>INDETERMINATE</code>. The three rules about steps rest on something not seen:
+<code>INDETERMINATE</code>; the first two also leave each rule that reads them not
+checked. The step rules rest on something not seen:
 <code>SUSPECTED</code> at most, <code>INDETERMINATE</code> while a <code>--source</code> is absent, never
 heard or silent, and checked only on a closed run whose exports are whole.
 Under <code>0.2</code> a finding confirms on its run's own events alone, save the
@@ -296,8 +296,8 @@ or <code>&lt;id&gt; silent</code> for each <code>--source</code> not judged agai
 </tr>
 </tbody>
 </table>
-<p>The log is opened, and <code>findings.jsonl</code> created where absent, only once every
-input is accepted. A failure after the write commits exits 2 and keeps the
+<p>The log is opened, and <code>findings.jsonl</code> created, only once every input is
+accepted. A failure after the write commits exits 2 and keeps the
 write.</p>
 <h2 id="the-finding-record-and-its-log">The finding record and its log</h2>
 <p><code>guardana.control.finding.v1alpha1</code>, outside the v1 promise. A
@@ -306,7 +306,7 @@ escalation, references to plane events and observations and a v1
 finding with its id, rule, severity, verdict and run. Its id is
 <code>fnd-</code> and 32 hex digits, a function of the run, the procedure, the rule and
 its version, and what it is about, so a rerun finds the same ids. The log,
-<code>findings.jsonl</code>, is JSON Lines in an owner-only directory. A run of the command writes only when it read an event
+<code>findings.jsonl</code>, is JSON Lines in an owner-only directory. The command writes only when it read an event
 of the run, and ends its write with a <code>SuperviseReport</code>; a write without one
 is never read.</p>
 <p>A record is schema <code>0.2</code> exactly when it carries a member <code>0.1</code> lacks
@@ -343,7 +343,7 @@ is never read.</p>
 </table>
 <p>A log with no header is read as it is; an empty one gains one when opened.
 The reader refuses an unknown schema or a member its schema lacks, so a
-reader of schema <code>0.1</code> alone refuses every <code>0.2</code> line.</p>
+<code>0.1</code>-only reader refuses every <code>0.2</code> line.</p>
 <h2 id="notify">notify</h2>
 <p><code>notify</code> hands each <code>alert</code> record, in log order, one line on its
 standard input, to the program after <code>--</code>, without a shell, and kills its

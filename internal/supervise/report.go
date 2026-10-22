@@ -3,8 +3,10 @@ package supervise
 import (
 	"maps"
 	"slices"
+	"strconv"
 
 	findingv1alpha1 "github.com/guardana/control/api/gen/go/guardana/control/finding/v1alpha1"
+	"github.com/guardana/control/internal/trailchain"
 )
 
 // ruleState is what became of one rule, and why when it was not checked.
@@ -100,7 +102,11 @@ func (e *evaluation) absenceState() ruleState {
 }
 
 func (e *evaluation) result(drafts []draft, states map[string]ruleState) *Result {
+	e.doubtCut(states)
 	e.joinsCut(states)
+	if s, on := states[RuleExceptionTaken]; on && s.state == checked.state {
+		states[RuleExceptionTaken] = e.takenState(states, checked)
+	}
 	s := scope{tenant: e.in.Run.Tenant, project: e.rd.project, run: e.in.Run.ID, proc: e.p}
 	res := &Result{PlaneBlocks: map[string]uint64{}, SourcesNotRead: e.in.SourcesNotRead,
 		NeverHeard: e.neverHeard, Silent: e.lapsed}
@@ -135,6 +141,51 @@ func (e *evaluation) result(drafts []draft, states map[string]ruleState) *Result
 	return res
 }
 
+// doubtCut leaves not checked every rule that would read as checked while
+// a record of the run is in doubt: the left-out copy, the missing link or the
+// order its links do not give may hold the failure, denial, tool or time a
+// rule looks for. A request in doubt touches every rule, an observation only
+// those that read a source's reports. Findings stand, at the verdict the
+// doubt allows.
+func (e *evaluation) doubtCut(states map[string]ruleState) {
+	var requests []string
+	for _, rq := range e.reqs {
+		if rq.doubt {
+			requests = append(requests, rq.id)
+		}
+	}
+	requestWhy := inDoubt("request", requests)
+	observationWhy := inDoubt("observation", slices.Collect(maps.Keys(e.rd.obsDoubt)))
+	for id, s := range states {
+		if id == RuleExceptionTaken || s.state != checked.state {
+			continue
+		}
+		switch {
+		case requestWhy != "":
+			states[id] = notChecked(requestWhy)
+		case observationWhy != "" && slices.Contains(reportRules, id):
+			states[id] = notChecked(observationWhy)
+		}
+	}
+}
+
+// inDoubt names the least of ids, quoted and cut as a producer's bytes are,
+// and counts the others; "" when there are none.
+func inDoubt(kind string, ids []string) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	least := kind + " " + trailchain.Quoted(slices.Min(ids), trailchain.MaxQuotedIDBytes)
+	if len(ids) == 1 {
+		return least + " is in doubt"
+	}
+	return least + " and " + strconv.Itoa(len(ids)-1) + " more are in doubt"
+}
+
+// reportRules are the rules that read a source's reports of calls no plane
+// call joins.
+var reportRules = []string{RuleStepOutsideProcedure, RuleDeniedActionRetriedAround}
+
 // joinsCut leaves the rules that read joins not checked when a span walk ran
 // out of steps before it could tell whether a report is a plane call. Their
 // findings stand, since a rule that may stop must not be silenced by a deep
@@ -143,7 +194,7 @@ func (e *evaluation) joinsCut(states map[string]ruleState) {
 	if !slices.Contains(slices.Collect(maps.Values(e.joinDoubt)), true) {
 		return
 	}
-	for _, id := range []string{RuleStepOutsideProcedure, RuleDeniedActionRetriedAround} {
+	for _, id := range reportRules {
 		if s, on := states[id]; on && s.state == checked.state {
 			states[id] = notChecked("a span walk ran out of steps, so a source's report may be a plane call")
 		}

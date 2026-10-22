@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"unicode/utf8"
 )
 
 // class is what an answer means for the records in the request.
@@ -138,6 +139,8 @@ func readAnswer(text []byte, batch int) (int64, string) {
 	switch {
 	case !ok:
 		return 0, "the count of rejected records is not a count"
+	case !isText(inner["errorMessage"]):
+		return 0, "the error message is not a string"
 	case rejected > int64(batch):
 		return 0, "the count of rejected records is past the records in the request"
 	}
@@ -182,6 +185,17 @@ func strictMembers(raw []byte, names map[string]string) (map[string]json.RawMess
 		return nil, errors.New("the answer holds more than one document")
 	}
 	return out, nil
+}
+
+// isText reports whether raw is absent, null or a JSON string of UTF-8 whose
+// surrogate escapes come in pairs, the forms the protobuf JSON mapping reads
+// a string member from.
+func isText(raw json.RawMessage) bool {
+	if len(raw) == 0 || string(raw) == "null" {
+		return true
+	}
+	var s string
+	return utf8.Valid(raw) && json.Unmarshal(raw, &s) == nil && pairedSurrogates(raw)
 }
 
 // parseCount reads an int64 as the protobuf JSON mapping writes it, a decimal

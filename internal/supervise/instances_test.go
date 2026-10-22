@@ -11,7 +11,8 @@ import (
 )
 
 // line is one instance as the tests compare it: request or observation,
-// step, run, export, outcome, approval, mode, time state and resource.
+// step, run, export, outcome, approval, mode, time state, resource and
+// protocol.
 func line(in supervise.Instance) string {
 	who := in.Request
 	if in.Observation != "" {
@@ -31,6 +32,9 @@ func line(in supervise.Instance) string {
 	}
 	if len(in.Reasons) > 0 {
 		s += " reasons=" + strings.Join(in.Reasons, ",")
+	}
+	if in.Protocol != "" {
+		s += " protocol=" + in.Protocol
 	}
 	if in.Doubt {
 		s += " doubt"
@@ -93,19 +97,20 @@ func TestInstancesNameEachCallAsItsTrailEnded(t *testing.T) {
 }
 
 // TestInstancesCarryTheApprovalTheResourceAndTheMode: an approval granted,
-// one refused, the envelope's resource, and the mode the plane recorded
-// with its decision, which an OBSERVE plane's export names; from two
-// exports no time is told.
+// one refused, the envelope's resource and protocol, and the mode the plane
+// recorded with its decision, which an OBSERVE plane's export names; from
+// two exports no time is told.
 func TestInstancesCarryTheApprovalTheResourceAndTheMode(t *testing.T) {
 	observed := acts(lookupOf("o1", 0, orderNo("42")))
 	for _, ev := range observed.Events {
 		ev.EnforcementMode = controlv1.EnforcementMode_ENFORCEMENT_MODE_OBSERVE
 	}
+	observed.Events[0].GetProposed().Action.Protocol = "enforce"
 	res := supervise02(t, family(), observed,
 		acts(manualRefund(approved), act{call: call{req: "m2", tool: "refund_manual", upstream: "pay", at: 30 * time.Second},
 			approval: rejected}))
 	sameLines(t, lines(res),
-		`o1 get_order@shop step="lookup" run=cdef export=0 completed no-approval ENFORCEMENT_MODE_OBSERVE untold 0s res=shop_order/42/t1/prod reasons=RULE_ALLOW`,
+		`o1 get_order@shop step="lookup" run=cdef export=0 completed no-approval ENFORCEMENT_MODE_OBSERVE untold 0s res=shop_order/42/t1/prod reasons=RULE_ALLOW protocol=enforce`,
 		`m1 refund_manual@pay step="" run=1111 export=1 completed granted ENFORCEMENT_MODE_ENFORCE untold 20s reasons=APPROVAL_REQUIRED excepted`,
 		`m2 refund_manual@pay step="" run=cdef export=1 blocked asked ENFORCEMENT_MODE_ENFORCE untold 30s reasons=APPROVAL_REJECTED`,
 	)

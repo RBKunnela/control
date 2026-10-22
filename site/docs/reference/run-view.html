@@ -159,7 +159,7 @@ reader. The legend at the foot of the page summarises this table.</p>
 <tr>
 <td>decided, not enforced</td>
 <td>triangle, dashed</td>
-<td>A plane decided the call in another mode, recorded no mode, or the trail is in doubt.</td>
+<td>A plane decided the call in another mode or recorded no mode, the trail is in doubt, or the call came through the enforcement API (protocol <code>enforce</code>), whose client runs it, in any mode.</td>
 </tr>
 <tr>
 <td>observed</td>
@@ -185,8 +185,8 @@ reader. The legend at the foot of the page summarises this table.</p>
 </table>
 <p>A source's report is marked observed. A plane's call is marked blocked when
 it was denied or blocked; else decided when its trail is in doubt; else
-exception or approval; else enforced when its recorded mode acts on its
-decision; else decided. No mark says &quot;inferred&quot;: the page draws a
+exception or approval; else decided when its protocol is <code>enforce</code>; else
+enforced when its recorded mode acts on its decision; else decided. No mark says &quot;inferred&quot;: the page draws a
 call only from a plane's or a source's record, never from a guess.</p>
 <p>Colours come in a light and a dark scheme, chosen by the reader's system
 setting. In both, every colour on the page has at least 4.5:1 contrast

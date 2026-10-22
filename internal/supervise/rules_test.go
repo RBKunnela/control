@@ -2,6 +2,7 @@ package supervise_test
 
 import (
 	"maps"
+	"slices"
 	"strconv"
 	"testing"
 	"time"
@@ -356,5 +357,43 @@ func TestAContinuationStartsAfterTheFailure(t *testing.T) {
 			[]*findingv1alpha1.FindingRecord{continued(indetermin, "r2")}},
 	} {
 		t.Run(name, func(t *testing.T) { sameFindings(t, closedRun(t, p, c.x).Findings, c.want...) })
+	}
+}
+
+// TestAContinuationDoesNotRestOnTheOrderRuleRunningFirst: the failed first
+// refund, out of order, is no continuation whether or not STEP_OUT_OF_ORDER
+// was applied before CONTINUED_AFTER_FAILURE; a failed lookup followed by a
+// refund is one either way.
+func TestAContinuationDoesNotRestOnTheOrderRuleRunningFirst(t *testing.T) {
+	p := procWith(t)
+	for _, c := range []struct {
+		calls []call
+		want  []string
+	}{
+		{[]call{
+			{req: "r1", tool: "issue_refund", upstream: "pay", outcome: "fail"},
+			{req: "r2", tool: "get_order", upstream: "shop", at: 10 * time.Second},
+			{req: "r3", tool: "issue_refund", upstream: "pay", at: 20 * time.Second},
+		}, nil},
+		{[]call{
+			{req: "r1", tool: "get_order", upstream: "shop", outcome: "fail"},
+			{req: "r3", tool: "issue_refund", upstream: "pay", at: 20 * time.Second},
+		}, []string{"r1"}},
+	} {
+		in := supervise.Input{Procedure: p, Run: supervise.Run{ID: runID, Tenant: tenant, Closed: true},
+			Exports: []supervise.Export{export(c.calls...)}}
+		alone, err := supervise.ApplyAlone(in, "CONTINUED_AFTER_FAILURE")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var inTable []string
+		for _, f := range evaluate(t, in).Findings {
+			if f.GetFinding().GetRuleId() == "CONTINUED_AFTER_FAILURE" {
+				inTable = append(inTable, f.GetRefs()[0].GetEvent().GetRequestId())
+			}
+		}
+		if !slices.Equal(alone, c.want) || !slices.Equal(inTable, c.want) {
+			t.Fatalf("failed %s first: alone %q, in the table %q; want %q", c.calls[0].tool, alone, inTable, c.want)
+		}
 	}
 }

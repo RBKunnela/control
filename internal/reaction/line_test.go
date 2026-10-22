@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -233,8 +234,8 @@ func TestMarshalRefusesWhatItWouldNotReadBack(t *testing.T) {
 	} {
 		s := goldenStop()
 		tc.edit(&s)
-		if raw, err := s.Marshal(); err == nil {
-			t.Errorf("%s: Marshal wrote %s", tc.name, raw)
+		if raw, err := s.Marshal(); !errors.Is(err, reaction.ErrLineMarshal) {
+			t.Errorf("%s: Marshal = %s, %v; want ErrLineMarshal", tc.name, raw, err)
 		}
 	}
 	other := liftLineOf(t, routeKey(), "list-1", "sha256:"+bareDigest, "run-a", 2, 2)
