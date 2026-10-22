@@ -2,7 +2,7 @@
 title: Enforcement modes
 summary: What each mode does with the kernel's decision, what it needs from an adapter, and which modes this build runs.
 type: explanation
-covers: [internal/gateway/mode.go, internal/gateway/adapter.go, internal/gateway/pipeline.go, internal/gateway/admit.go, internal/gateway/pause.go, internal/gateway/flow.go, internal/gateway/runflow.go, internal/gateway/lapse.go, internal/pause/**, adapters/mcp/list.go]
+covers: [internal/gateway/mode.go, internal/gateway/adapter.go, internal/gateway/pipeline.go, internal/gateway/config.go, internal/gateway/sources.go, internal/gateway/admit.go, internal/gateway/pause.go, internal/gateway/flow.go, internal/gateway/runflow.go, internal/gateway/lapse.go, internal/pause/**, adapters/mcp/list.go]
 ---
 
 # Enforcement modes

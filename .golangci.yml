@@ -233,7 +233,7 @@ linters:
       # reads this list too.
       - linters: [forbidigo]
         text: "guarded tree: "
-        path-except: "^(internal/core|internal/policy|internal/canon|internal/evidence|pkg/contract|internal/supervise|internal/docscheck/frontmatter|internal/observe|internal/trailchain)/"
+        path-except: "^(internal/core|internal/policy|internal/canon|internal/evidence|pkg/contract|internal/supervise|internal/observe|internal/trailchain)/"
       # The kernel's determinism property sets the process zone to prove that
       # no decision reads it; that one test may name time.Local.
       - linters: [forbidigo]

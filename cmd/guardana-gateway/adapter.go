@@ -33,7 +33,7 @@ func listenerTenant(cfg *gatewayconfig.Config) string { return cfg.ListenerTenan
 // sessionCap is the cap on live sessions of a listener that keeps them; any
 // other carries none, whatever the key's default says.
 func sessionCap(cfg *gatewayconfig.Config) int {
-	if cfg.Listener.Kind != "stateful_http" {
+	if cfg.Listener.Kind != gatewayconfig.ListenerStatefulHTTP {
 		return 0
 	}
 	return cfg.Listener.MaxSessions
@@ -43,9 +43,9 @@ func sessionCap(cfg *gatewayconfig.Config) int {
 // where every MCP-side refusal is made.
 func adapterConfig(cfg *gatewayconfig.Config, logger *slog.Logger) (adaptermcp.Config, error) {
 	kinds := map[string]adaptermcp.Kind{
-		"stateless_http": adaptermcp.KindStatelessHTTP,
-		"stateful_http":  adaptermcp.KindStatefulHTTP,
-		"stdio":          adaptermcp.KindStdio,
+		gatewayconfig.ListenerStatelessHTTP: adaptermcp.KindStatelessHTTP,
+		gatewayconfig.ListenerStatefulHTTP:  adaptermcp.KindStatefulHTTP,
+		gatewayconfig.ListenerStdio:         adaptermcp.KindStdio,
 	}
 	shapings := map[string]adaptermcp.Shaping{
 		"none": adaptermcp.ShapeNone, "annotate": adaptermcp.ShapeAnnotate, "hide": adaptermcp.ShapeHide,

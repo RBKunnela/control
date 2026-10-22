@@ -1,27 +1,17 @@
 package main
 
 import (
-	"bytes"
-	"context"
 	"crypto/ed25519"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
-	"io/fs"
-	"os"
 	"path/filepath"
 	"strconv"
 	"time"
 
-	"google.golang.org/protobuf/proto"
-
-	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
-	ondisk "github.com/guardana/control/internal/files"
 	"github.com/guardana/control/internal/policy"
-	"github.com/guardana/control/internal/policy/bundle"
 	"github.com/guardana/control/internal/policykey"
-	"github.com/guardana/control/internal/policystate"
 )
 
 // The name renew reports itself under, and how the help spells what follows
@@ -193,186 +183,4 @@ func raiseAndWrite(floor, out string, s signed, issuedAt time.Time) error {
 		return fmt.Errorf("%w; the statement was written to %s", err, out)
 	}
 	return err
-}
-
-// checkStatementOut refuses, before anything is raised, an output path whose
-// directory is missing or is a floor directory, and one that exists and is
-// not a regular file holding a freshness statement. A floor directory always
-// holds its marker, since policystate opens none without one, so the marker
-// tells the signer's own floor directory and a plane's alike.
-// policykey.WriteStatement judges the path again as it writes; this check
-// keeps a refused path from costing a raise.
-func checkStatementOut(out string) error {
-	switch _, err := os.Stat(filepath.Join(filepath.Dir(out), floorMarker)); {
-	case err == nil:
-		return fmt.Errorf("--out %s: %s", out, errFloorDirectory)
-	case !errors.Is(err, fs.ErrNotExist):
-		return fmt.Errorf("--out %s: %w", out, err)
-	}
-	info, err := os.Lstat(out)
-	switch {
-	case errors.Is(err, fs.ErrNotExist):
-		if err := ondisk.CheckDir(filepath.Dir(out), 0); err != nil {
-			return fmt.Errorf("--out %s: %w", out, err)
-		}
-		return nil
-	case err != nil:
-		return fmt.Errorf("--out %s: %w", out, err)
-	case !info.Mode().IsRegular():
-		return fmt.Errorf("--out %s: %w", out, policykey.ErrStatementOut)
-	}
-	raw, err := ondisk.ReadRegular(out, policykey.MaxStatementFileBytes, 0)
-	// The file judged may be a key given in the wrong place.
-	defer clear(raw)
-	if err != nil || !policykey.IsStatement(raw) {
-		return fmt.Errorf("--out %s: %w", out, policykey.ErrStatementOut)
-	}
-	return nil
-}
-
-// checkNotNewer refuses an out that holds, under the freshness key, a
-// statement for st's bundle id ordered after st, which a renew under another
-// floor directory wrote. One equal to st is st, byte for byte, since an
-// Ed25519 signature over one body is one value, so writing it again changes
-// nothing. An absent out, or one holding a statement this key did not sign
-// or another id's, is replaced; one that can no longer be read as a
-// statement is refused, since it was one before the raise.
-func checkNotNewer(out string, st policy.Statement, freshPub ed25519.PublicKey) error {
-	env, err := policykey.ReadStatement(out)
-	switch {
-	case errors.Is(err, fs.ErrNotExist):
-		return nil
-	case err != nil:
-		return fmt.Errorf("--out %s: %w; the signer floor was raised to this renew's statement", out, err)
-	}
-	held, ours := signedBy(env, freshPub)
-	if !ours || held.BundleID() != st.BundleID() {
-		return nil
-	}
-	if held.Serial() > st.Serial() || (held.Serial() == st.Serial() && held.IssuedAt().After(st.IssuedAt())) {
-		return fmt.Errorf("--out %s: %s; the signer floor was raised to this renew's statement", out, errRaceLost)
-	}
-	return nil
-}
-
-// signedBy reads env as a statement pub signed, and reports whether it is
-// one.
-func signedBy(env policy.StatementEnvelope, pub ed25519.PublicKey) (policy.Statement, bool) {
-	st, err := policy.VerifyStatement(env, bundle.Keyring{policykey.KeyID(pub): pub})
-	return st, err == nil
-}
-
-// readPublicKey reads the public key file flagName names. A file the length
-// of no public key line is refused before it becomes a string, which nothing
-// can clear: the file may be a private key given in the wrong place.
-func readPublicKey(flagName, path string) (ed25519.PublicKey, error) {
-	line, err := ondisk.ReadRegular(path, maxPublicKeyFileBytes, 0)
-	defer clear(line)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", flagName, err)
-	}
-	if n := len(bytes.TrimSuffix(line, []byte("\n"))); n != publicLineBytes {
-		return nil, fmt.Errorf("%s: %w", flagName, policykey.ErrPublicLine)
-	}
-	pub, err := policykey.ParsePublic(string(line))
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", flagName, err)
-	}
-	return pub, nil
-}
-
-// verifiedBundle reads the bundle and verifies it under pub, by the id that
-// key derives, with every check a plane's load makes: the signature, the
-// canonical form, the digest.
-func verifiedBundle(bundlePath string, pub ed25519.PublicKey, now time.Time) (*policy.Snapshot, error) {
-	raw, err := ondisk.ReadRegular(bundlePath, maxReadBytes, 0)
-	// The file named may be a key given in the wrong place; the decoder
-	// copies what it keeps.
-	defer clear(raw)
-	if err != nil {
-		return nil, fmt.Errorf("--bundle %s: %w", bundlePath, err)
-	}
-	var b controlv1.PolicyBundle
-	if !policykey.IsBundle(raw) || proto.Unmarshal(raw, &b) != nil {
-		return nil, fmt.Errorf("--bundle %s: %s", bundlePath, errNotABundle)
-	}
-	snap, err := policy.Load(&b, bundle.Keyring{policykey.KeyID(pub): pub}, now)
-	if err != nil {
-		return nil, fmt.Errorf("--bundle %s: %w", bundlePath, err)
-	}
-	return snap, nil
-}
-
-// signStatement signs a statement for snap's bundle at issuedAt and reads it
-// back under the key's own public half, which is what makes the Statement a
-// floor can take.
-func signStatement(snap *policy.Snapshot, key ed25519.PrivateKey, issuedAt time.Time) (policy.StatementEnvelope, policy.Statement, error) {
-	pub, _ := key.Public().(ed25519.PublicKey)
-	keyID := policykey.KeyID(pub)
-	env, err := policy.SignStatement(snap.Ref().GetBundleId(), snap.Serial(), snap.Ref().GetDigest(), issuedAt, key, keyID)
-	if err != nil {
-		return policy.StatementEnvelope{}, policy.Statement{}, err
-	}
-	st, err := policy.VerifyStatement(env, bundle.Keyring{keyID: pub})
-	if err != nil {
-		return policy.StatementEnvelope{}, policy.Statement{}, err
-	}
-	return env, st, nil
-}
-
-// raiseSignerFloor raises the signer's floor in dir to st and, once the floor
-// took it, runs then under the directory's lock. Opening the directory and
-// raising share one wait of floorLockWait for its lock. A refusal of the
-// raise names what the floor holds when it can be read; then's error is
-// returned as it is.
-func raiseSignerFloor(dir string, st policy.Statement, now time.Time, then func() error) (err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), floorLockWait)
-	defer cancel()
-	store, err := policystate.OpenContext(ctx, dir, policystate.KindSigner)
-	if err != nil {
-		return fmt.Errorf("--floor %s: %w", dir, lockWaited(err))
-	}
-	defer func() {
-		if closeErr := store.Close(); closeErr != nil {
-			err = errors.Join(err, fmt.Errorf("--floor %s: %w", dir, closeErr))
-		}
-	}()
-	var ran bool
-	var thenErr error
-	_, err = store.RaiseWith(ctx, st, now, func(policy.Floor) error {
-		ran = true
-		thenErr = then()
-		return thenErr
-	})
-	switch {
-	case err == nil:
-		return nil
-	case ran && thenErr != nil:
-		return err
-	case ran:
-		return fmt.Errorf("--floor %s: %w", dir, err)
-	}
-	err = lockWaited(err)
-	id := oneLine(st.BundleID())
-	if f, readErr := store.Floor(ctx, st.BundleID()); readErr == nil {
-		return fmt.Errorf("--floor %s: bundle id %s: %w; the signer floor holds %s", dir, id, err, floorText(f))
-	}
-	return fmt.Errorf("--floor %s: bundle id %s: %w", dir, id, err)
-}
-
-// lockWaited names a wait for the floor directory's lock that ran out.
-func lockWaited(err error) error {
-	if errors.Is(err, context.DeadlineExceeded) {
-		return fmt.Errorf("%w; another holder kept the floor directory's lock past %s", err, floorLockWait)
-	}
-	return err
-}
-
-// floorText is a floor as the commands print it.
-func floorText(f policy.Floor) string {
-	if !f.HasSerial() {
-		return "no serial"
-	}
-	return "serial " + strconv.FormatInt(f.Serial(), 10) + " digest " + f.Digest() +
-		" issued_at " + policy.FormatIssuedAt(f.IssuedAt()) + " latest_issued_at " + policy.FormatIssuedAt(f.LatestIssuedAt())
 }

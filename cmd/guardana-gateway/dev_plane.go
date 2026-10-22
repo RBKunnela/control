@@ -322,10 +322,11 @@ func closeAll(listeners []net.Listener) error {
 }
 
 // halt stops the statement's renewals, then the plane's listeners, and gives
-// its exporter devDrain to ship what the spool holds, then stops the collector, releases the plane and
-// closes the silent decision point. It returns what is left unacknowledged in
-// the spool, which the trail file may lack, and whether a part had stopped with an
-// error; a closing record lost after the plane's run returned is one.
+// its exporter devDrain to ship what the spool holds, then stops the
+// collector, releases the plane and closes the silent decision point. It
+// returns what is left unacknowledged in the spool, which the trail file may
+// lack, and whether a part had stopped with an error; a closing record lost
+// after the plane's run returned is one.
 func (d *devPlane) halt() (left int64, failed error) {
 	d.signer.halt()
 	d.stop()

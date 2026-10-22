@@ -102,13 +102,13 @@ func (c *call) takeStates() {
 	c.stops = stops
 }
 
-// blockedNow takes the pause and stop states and the clock again right
+// blockIfCovered takes the pause and stop states and the clock again right
 // before an irreversible step, a resume consuming its approval or an
 // execution handed out, since a store or a sink that syncs can outlast a
 // snapshot, and a halt can be raised meanwhile. A state that covers the call
 // or cannot be read, or a halt that covers a material one, blocks it there,
 // listing every cause the plane names now, and reports so.
-func (c *call) blockedNow() bool {
+func (c *call) blockIfCovered() bool {
 	c.takeStates()
 	state := c.planeState()
 	halted := state.material && (state.sinkHalt || state.mismatchHalt || state.runHalt)

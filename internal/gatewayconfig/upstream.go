@@ -7,7 +7,7 @@ import "fmt"
 // command may not receive. An enforce_api listener has none, which
 // checkKindKeys holds.
 func (c *Config) checkUpstreams() error {
-	if c.Listener.Kind == enforceKind {
+	if c.Listener.Kind == ListenerEnforceAPI {
 		return nil
 	}
 	if len(c.Upstreams) == 0 {

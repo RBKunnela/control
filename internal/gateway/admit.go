@@ -288,16 +288,10 @@ func (c *call) close() {
 }
 
 // start writes ACTION_STARTED on trail with a fresh execution id, keeps the
-// execution for Close and hands out what to send. An execution a pause taken
-// just now covers or cannot vouch for, a resumed one whose approval has
-// expired by the clock read with that pause, one whose opened run expired by
-// that clock or whose decision's policy no longer stands, one that resumes
-// nothing and whose agent gave up on it, or one the pipeline cannot name,
-// cannot keep under its own name, cannot keep within MaxOpen, or whose opened
-// run's state it cannot raise, is blocked before it is recorded as started,
-// and so is one those checks refuse when they are made again after a raise
-// that wrote; that block closes the trail, so a resumed hold's entry is
-// forgotten there, as Close would. One whose approval, run or policy lapsed
+// execution for Close and hands out what to send. One refusedBeforeStart
+// refuses, or one the pipeline cannot name, keep or raise its run's state for,
+// is blocked before it is recorded as started; the block closes the trail, so
+// a resumed hold's entry is forgotten there, as Close would. One that lapsed
 // while ACTION_STARTED was appended is aborted instead of handed out.
 func (c *call) start(trail *evidence.Builder) Disposition {
 	requestID := c.requestID

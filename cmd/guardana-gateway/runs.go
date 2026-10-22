@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/guardana/control/internal/adapterkit"
 	"github.com/guardana/control/internal/files"
 	"github.com/guardana/control/internal/gateway"
 	"github.com/guardana/control/internal/gatewayconfig"
@@ -63,14 +64,14 @@ func toGateway(s runs.State) gateway.RunState {
 // refuses the start; an HTTP plane reads a token from each request, so a
 // token file there is refused.
 func openRuns(cfg *gatewayconfig.Config, tokenPath string) (*runs.Plane, string, error) {
-	stdio := cfg.Listener.Kind == "stdio"
+	stdio := cfg.Listener.Kind == gatewayconfig.ListenerStdio
 	switch {
 	case cfg.Runs.Dir == "" && tokenPath != "":
 		return nil, "", fmt.Errorf("--run-token-file: runs.dir is not set, so this plane serves local runs and reads no token")
 	case cfg.Runs.Dir == "":
 		return nil, "", nil
 	case !stdio && tokenPath != "":
-		return nil, "", fmt.Errorf("--run-token-file: an HTTP listener reads each request's token from its %s header", "Run-Token")
+		return nil, "", fmt.Errorf("--run-token-file: an HTTP listener reads each request's token from its %s header", adapterkit.RunTokenHeader)
 	case stdio && tokenPath == "":
 		return nil, "", fmt.Errorf("--run-token-file: a stdio plane with runs.dir serves the one run whose token this file holds, and none is named")
 	}
@@ -138,8 +139,8 @@ func (d *examination) runs(context.Context) (string, string, string) {
 	if err := plane.Close(); err != nil {
 		return verdictFail, "runs", fmt.Sprintf("runs.dir: %v", err)
 	}
-	how := "each HTTP request presents its token in the Run-Token header"
-	if d.cfg.Listener.Kind == "stdio" {
+	how := "each HTTP request presents its token in the " + adapterkit.RunTokenHeader + " header"
+	if d.cfg.Listener.Kind == gatewayconfig.ListenerStdio {
 		how = "run takes the one run's token from --run-token-file"
 	}
 	return verdictOK, "runs", fmt.Sprintf("opened in %s: every call needs a run the operator opened there; %s (ADR-0034)", path, how)

@@ -78,10 +78,10 @@ func declareDev(flags *flag.FlagSet) commandFunc {
 }
 
 // dev refuses what it must before anything is created or bound: a platform
-// without process groups, a variable of the product's in its environment, an existing --state, a policy
-// document it cannot read or sign, a demo configuration that sets what dev
-// owns, and a sibling approver of another version. Then it runs the
-// scenarios, or one plane and its page.
+// without process groups, a variable of the product's in its environment, an
+// existing --state, a policy document it cannot read or sign, a demo
+// configuration that sets what dev owns, and a sibling approver of another
+// version. Then it runs the scenarios, or one plane and its page.
 func dev(ctx context.Context, o devOptions, stdout, stderr io.Writer) int {
 	if err := refusePlatform(runtime.GOOS); err != nil {
 		return fail(stderr, "dev", err)

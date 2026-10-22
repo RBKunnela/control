@@ -15,14 +15,11 @@ import (
 	"github.com/guardana/control/pkg/contract"
 )
 
-// enforceKind is the listener that serves the enforcement API (ADR-0051).
-const enforceKind = "enforce_api"
-
 // servedKind refuses a listener kind this binary has no adapter for, before
 // anything is opened.
 func servedKind(kind string) error {
 	switch kind {
-	case "stateless_http", "stateful_http", "stdio", enforceKind:
+	case gatewayconfig.ListenerStatelessHTTP, gatewayconfig.ListenerStatefulHTTP, gatewayconfig.ListenerStdio, gatewayconfig.ListenerEnforceAPI:
 		return nil
 	}
 	return fmt.Errorf("listener.kind: %s is not a listener this build serves", strconv.Quote(kind))

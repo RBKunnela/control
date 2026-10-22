@@ -23,13 +23,8 @@ const codeMalformed = enforcev1alpha1.ErrorCode_ERROR_CODE_MALFORMED
 // execution they were taken for is open; an admit refused either is refused
 // before anything is written.
 func (a *Adapter) admit(ctx context.Context, w http.ResponseWriter, r *http.Request, p Pipeline, run gateway.OpenedRun) {
-	data, err := readBody(r.Body, a.maxBody)
-	var req *enforcev1alpha1.AdmitRequest
-	if err == nil {
-		req, err = decodeAdmit(data)
-	}
-	if err != nil {
-		a.refuse(w, codeMalformed, err.Error(), 0)
+	req, ok := readRequest(a, w, r, decodeAdmit)
+	if !ok {
 		return
 	}
 	key := req.GetRequestKey()
@@ -163,13 +158,8 @@ func toHonour(obligations []*controlv1.Obligation) []*controlv1.Obligation {
 // how it ended. retryable and result_schema_valid are never the client's to
 // set, and stay false.
 func (a *Adapter) complete(ctx context.Context, w http.ResponseWriter, r *http.Request, p Pipeline, run gateway.OpenedRun) {
-	data, err := readBody(r.Body, a.maxBody)
-	var req *enforcev1alpha1.CompleteRequest
-	if err == nil {
-		req, err = decodeComplete(data)
-	}
-	if err != nil {
-		a.refuse(w, codeMalformed, err.Error(), 0)
+	req, ok := readRequest(a, w, r, decodeComplete)
+	if !ok {
 		return
 	}
 	e, ok := a.take(w, req.GetHandle(), run)
@@ -191,20 +181,15 @@ func (a *Adapter) complete(ctx context.Context, w http.ResponseWriter, r *http.R
 // the client's. The pipeline counts a refused record of it as a failure before
 // any effect, so the adapter counts it among its failed records too.
 func (a *Adapter) abort(ctx context.Context, w http.ResponseWriter, r *http.Request, p Pipeline, run gateway.OpenedRun) {
-	data, err := readBody(r.Body, a.maxBody)
-	var req *enforcev1alpha1.AbortRequest
-	if err == nil {
-		req, err = decodeAbort(data)
-	}
-	if err != nil {
-		a.refuse(w, codeMalformed, err.Error(), 0)
+	req, ok := readRequest(a, w, r, decodeAbort)
+	if !ok {
 		return
 	}
 	e, ok := a.take(w, req.GetHandle(), run)
 	if !ok {
 		return
 	}
-	err = p.Abort(ctx, e.d, abortCause(req.GetCause()))
+	err := p.Abort(ctx, e.d, abortCause(req.GetCause()))
 	if errors.Is(err, gateway.ErrNotRecorded) {
 		a.counts.recordsFailed.Add(1)
 	}
@@ -212,6 +197,22 @@ func (a *Adapter) abort(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	a.handles.spend(req.GetHandle(), e, ending)
 	a.counts.aborted.Add(1)
 	write(w, http.StatusOK, &enforcev1alpha1.AbortResponse{Ending: ending})
+}
+
+// readRequest reads and decodes one request body, or answers it malformed
+// and reports false.
+func readRequest[T any](a *Adapter, w http.ResponseWriter, r *http.Request, decode func([]byte) (T, error)) (T, bool) {
+	data, err := readBody(r.Body, a.maxBody)
+	var req T
+	if err == nil {
+		req, err = decode(data)
+	}
+	if err != nil {
+		a.refuse(w, codeMalformed, err.Error(), 0)
+		var zero T
+		return zero, false
+	}
+	return req, true
 }
 
 // take hands over the open execution handle names in run, or answers why

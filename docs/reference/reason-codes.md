@@ -2,7 +2,7 @@
 title: Reason codes
 summary: Every reason code a decision may carry, with its number and the verdict it usually accompanies.
 type: reference
-covers: [internal/policy/reasons/**]
+covers: [internal/policy/reasons/**, internal/docscheck/reasondoc/**]
 generated: scripts/gen-reason-codes.go
 ---
 

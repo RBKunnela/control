@@ -130,7 +130,7 @@ func (l devLayer) environ(except ...string) []string {
 // that sets a key dev owns, a stdio listener, and any address dev reaches
 // that is not a loopback IP literal. It reads the file and creates nothing.
 func resolveDemo(path string, l devLayer) (*gatewayconfig.Config, error) {
-	if probe, err := gatewayconfig.Load(path, l.environ("listener.address")); err == nil && probe.Listener.Kind == "stdio" {
+	if probe, err := gatewayconfig.Load(path, l.environ("listener.address")); err == nil && probe.Listener.Kind == gatewayconfig.ListenerStdio {
 		return nil, errors.New("listener.kind is stdio; a dev plane serves its agents over HTTP on the loopback")
 	}
 	cfg, err := gatewayconfig.Load(path, l.environ())

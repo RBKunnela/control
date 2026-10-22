@@ -21,6 +21,12 @@ verify one.
 
 ### Fixed
 
+- `guardana-gateway doctor` exits 1 when standard output does not take its
+  whole report, as on a full device, and says so on standard error; it exited
+  0 with the report cut short.
+- `guardana-gateway scenario run` and `dev` fail a scenario whose stateful
+  session does not close on the transport, naming the close; the error was
+  dropped and the scenario passed.
 - The enforcement API answers a call whose rewrite moved the decided resource
   with `BLOCK` and the abort's code, `OBLIGATION_NOT_UNDERSTOOD`, after the
   decision's own; it carried the kernel's allow alone, so the hook bridge and

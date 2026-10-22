@@ -2,7 +2,7 @@
 title: Let a decision point veto calls
 summary: Point the gateway at an AuthZEN decision point, write the two rules that let it veto a scope, test what each answer does, and check the plane before it serves.
 type: how-to
-covers: [cmd/guardana-gateway/pdp.go, cmd/guardana-gateway/health.go, adapters/authzen/**, internal/gatewayconfig/**, internal/gateway/decisionpoint.go, internal/gateway/admit.go]
+covers: [cmd/guardana-gateway/pdp.go, cmd/guardana-gateway/health.go, cmd/guardana-gateway/health_counters.go, adapters/authzen/**, internal/gatewayconfig/**, internal/gateway/decisionpoint.go, internal/gateway/admit.go]
 ---
 
 # Let a decision point veto calls

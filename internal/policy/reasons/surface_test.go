@@ -1,6 +1,6 @@
 // Two pins on what leaves this package, which is a different job from the
 // tests of what the table holds: registry_test.go checks the content, this file
-// checks the shape the package hands out and the document it publishes.
+// checks the shape the package hands out.
 //
 // TestPackageExportsNoVerdictFunction keeps this package from offering a way to
 // reach a verdict from a reason code. A verdict comes from the matcher and from
@@ -9,19 +9,13 @@
 // sibling package from wrapping Lookup, and it does not pretend to. The guard
 // that matters for a decision is in the matcher's and the kernel's own
 // packages: nothing on the decision path imports this one (ADR-0012).
-//
-// TestReasonCodesDocIsCurrent keeps the published page and the table from
-// drifting apart.
 package reasons_test
 
 import (
-	"bytes"
-	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"go/types"
-	"io/fs"
 	"maps"
 	"os"
 	"path/filepath"
@@ -31,12 +25,6 @@ import (
 	"testing"
 
 	"github.com/guardana/control/internal/policy/reasons"
-	"github.com/guardana/control/internal/policy/reasons/reasondoc"
-)
-
-const (
-	docPath          = "docs/reference/reason-codes.md"
-	generatorCommand = "make docs-gen"
 )
 
 // The signatures of the two blessed functions, pinned twice.
@@ -321,60 +309,9 @@ func packageFiles(t *testing.T) map[string]*ast.File {
 	return files
 }
 
-// The pin between the table and the page. The renderer is called directly, not
-// through `go run`: a subprocess resolves its program through $PATH, so a shim
-// named go that printed the committed page would have made this test pass while
-// nothing rendered.
-func TestReasonCodesDocIsCurrent(t *testing.T) {
-	got, err := reasondoc.Page()
-	if err != nil {
-		t.Fatalf("rendering the page: %v", err)
-	}
-
-	// Read through a filesystem rooted at the repository, as
-	// internal/docscheck does: the page is named by a constant that cannot
-	// send this test reading outside the tree, and gosec does not have to take
-	// that on trust.
-	want, err := fs.ReadFile(os.DirFS(repoRoot(t)), docPath)
-	if err != nil {
-		t.Fatalf("reading %s: %v", docPath, err)
-	}
-	if !bytes.Equal(got, want) {
-		t.Errorf("%s is not what the renderer produces; rebuild it with `%s`\n%s",
-			docPath, generatorCommand, firstDifference(got, want))
-	}
-}
-
-// firstDifference names the first line that differs, so a failure reads as one
-// line rather than as two whole pages.
-func firstDifference(got, want []byte) string {
-	gotLines := strings.Split(string(got), "\n")
-	wantLines := strings.Split(string(want), "\n")
-	for i := range max(len(gotLines), len(wantLines)) {
-		gotLine, wantLine := line(gotLines, i), line(wantLines, i)
-		if gotLine != wantLine {
-			// Quoted, because the difference is sometimes a trailing space or
-			// a carriage return, and two lines that print identically read as
-			// a broken test rather than a stale page.
-			return fmt.Sprintf("first difference at line %d\nrendered:  %q\ncommitted: %q",
-				i+1, gotLine, wantLine)
-		}
-	}
-	return "the pages differ in trailing bytes only"
-}
-
-func line(lines []string, i int) string {
-	if i >= len(lines) {
-		return "<end of file>"
-	}
-	return lines[i]
-}
-
-// selfPath is this file's own compiled-in path. Both pins resolve the package
-// and the repository from it rather than from the working directory, which a
-// caller can change. Under `go test -trimpath` it resolves to nothing and both
-// callers fail loudly, which is the safe direction and is how
-// internal/docscheck works too.
+// selfPath is this file's own compiled-in path. The pins resolve the package
+// from it rather than from the working directory, which a caller can change.
+// Under `go test -trimpath` it resolves to nothing and the pins fail loudly.
 func selfPath(t *testing.T) string {
 	t.Helper()
 	_, self, _, ok := runtime.Caller(0)
@@ -382,16 +319,4 @@ func selfPath(t *testing.T) string {
 		t.Fatal("cannot resolve this file's own path; refusing to fall back on the working directory")
 	}
 	return self
-}
-
-// repoRoot walks up from internal/policy/reasons and refuses a directory that
-// holds no go.mod: reading the page from somewhere else would compare this
-// registry against another tree's document.
-func repoRoot(t *testing.T) string {
-	t.Helper()
-	root := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(selfPath(t)))))
-	if _, err := os.Stat(filepath.Join(root, "go.mod")); err != nil {
-		t.Fatalf("repository root %q holds no go.mod: %v", root, err)
-	}
-	return root
 }

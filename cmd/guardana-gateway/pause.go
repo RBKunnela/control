@@ -61,7 +61,7 @@ func toolTargets(tools []gatewayconfig.ToolConfig) pauseTargets {
 
 // targetsOf is what cfg's plane calls, with manifest read when listed.
 func targetsOf(cfg *gatewayconfig.Config, manifest []adaptermcp.Entry, listed bool) pauseTargets {
-	if cfg.Listener.Kind == enforceKind {
+	if cfg.Listener.Kind == gatewayconfig.ListenerEnforceAPI {
 		return toolTargets(cfg.Tools)
 	}
 	return upstreamTargets(cfg.Upstreams, manifest, listed)
@@ -151,7 +151,7 @@ func (d *examination) pauseFile(context.Context) (string, string, string) {
 	entries := snap.Entries()
 	d.pauseEntries = entries
 	stray := strayEntries(entries, targetsOf(d.cfg, nil, false))
-	if d.cfg.Listener.Kind == enforceKind {
+	if d.cfg.Listener.Kind == gatewayconfig.ListenerEnforceAPI {
 		for _, e := range stray {
 			if e.tool != "" {
 				writeLine(d.out, fmt.Sprintf("       pause entry %s names tool %s of provider %s, which tools does not classify: it pauses no call this plane runs",

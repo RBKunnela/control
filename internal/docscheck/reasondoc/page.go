@@ -31,7 +31,7 @@ var meta = frontmatter.Meta{
 	Title:     "Reason codes",
 	Summary:   "Every reason code a decision may carry, with its number and the verdict it usually accompanies.",
 	Type:      "reference",
-	Covers:    []string{"internal/policy/reasons/**"},
+	Covers:    []string{"internal/policy/reasons/**", "internal/docscheck/reasondoc/**"},
 	Generated: "scripts/gen-reason-codes.go",
 }
 

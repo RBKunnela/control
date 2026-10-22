@@ -66,8 +66,8 @@ named; an `--out` that is the key or the document by any spelling or link, and
 one that exists and is not a policy bundle, so no other file, another key
 included, is replaced; and a bundle the loader would refuse. `--out` is
 cleaned as text before anything reads it, so `a/link/../x` names `a/x`
-whatever `a/link` points at. When syncing the directory fails after the
-rename, `sign` reports it, though the new bundle may be in
+whatever `a/link` points at. If syncing the directory fails after the
+rename, `sign` reports it; the new bundle may be in
 place.
 
 The key reaches the command only as a path, and no refusal quotes it. Both
@@ -109,15 +109,15 @@ takes that id; removing the last entry leaves a file pausing nothing,
 because a missing file blocks every call. `pause list` prints one line per
 entry, its reason included, or `no entries`.
 
-Write access to the pause file is the authority to pause and to lift a pause:
+Write access to the pause file is the authority to pause and to lift one:
 any process running as the plane's user can empty the file, so run the commands
-as that user. They refuse, writing nothing, a file or a directory the group or
+as that user. They refuse, writing nothing, a file or directory the group or
 others may write or another account owns, a link, a file the plane would
 refuse to read, a second scope or none, a name, a reason or a scope the file
 cannot hold, and a 65th entry, each on one line that does not repeat the
 value. A writer waits up to ten seconds for another writer's lock; a
-running plane takes none. A pause blocks every call not yet handed out for
-execution when the plane reads it, within one `pause.poll_interval`; it cancels
+running plane takes none. A pause blocks every call not yet handed out
+when the plane reads it, within one `pause.poll_interval`; it cancels
 nothing already running.
 
 The `runs` commands open, close and list the runs a plane with `runs.dir`
@@ -199,13 +199,13 @@ adds any stop the route allows and, across a restart, can start a new list with 
 `run` serves one plane from a configuration file and `doctor` checks that
 file without serving: [guides/run-the-gateway.md](../guides/run-the-gateway.md)
 is their page and [configuration.md](configuration.md) lists every key.
-`--config` is required. A key naming a file or a
-directory refuses key text, naming the key and not the value. On an interrupt
+`--config` is required. A key naming a file or
+directory refuses key text, naming the key, never the value. On an interrupt
 or `SIGTERM`, `run` admits no new call, gives admitted ones
 `upstream.call_timeout` plus ten seconds, plus any `pdp.timeout`; an
 `enforce_api` plane waits ten seconds and abandons open executions. Either
 exits 1 when it cut one, lost a closing record or could not close the spool;
-`doctor` when its plane does not close.
+`doctor` when its plane does not close or stdout does not take its report.
 
 `collect` and `trail` read no configuration:
 [guides/watch-a-plane-without-a-collector.md](../guides/watch-a-plane-without-a-collector.md)

@@ -2,7 +2,7 @@
 title: Privacy
 summary: What the plane records about a call, where each record goes and who can read it, how long it stays, and that nothing goes to the project.
 type: explanation
-covers: [internal/evidence/**, adapters/mcp/translate.go, adapters/mcp/answer.go, adapters/mcp/trace.go, adapters/mcp/adapter.go, internal/gateway/authorize.go, internal/gateway/flow.go, internal/spool/**, adapters/otel/**, internal/trailfile/**, internal/metrics/**, internal/approvals/**, internal/holdjournal/**, internal/pause/**, internal/console/**, adapters/authzen/mapping.go, cmd/guardana-gateway/**, internal/observelog/**, internal/findinglog/**, internal/notify/**, internal/reaction/**]
+covers: [internal/evidence/**, adapters/mcp/translate.go, adapters/mcp/answer.go, adapters/mcp/trace.go, internal/adapterkit/envelope.go, adapters/mcp/adapter.go, internal/gateway/authorize.go, internal/gateway/flow.go, internal/spool/**, adapters/otel/**, internal/trailfile/**, internal/metrics/**, internal/approvals/**, internal/holdjournal/**, internal/pause/**, internal/console/**, adapters/authzen/mapping.go, cmd/guardana-gateway/**, internal/observelog/**, internal/findinglog/**, internal/notify/**, internal/reaction/**]
 ---
 
 # Privacy

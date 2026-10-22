@@ -659,9 +659,8 @@ func TestDecodeLineBoundHoldsForACallersBufferedReader(t *testing.T) {
 		size int
 	}{
 		{"a reader four times the bound", 1 << 20},
-		// Exactly the decoder's own size, and bufio's default. Both were held
-		// to the bound before the bound was fixed, so they are controls: the
-		// first is handed back as it is, the second is too small to be.
+		// Exactly the decoder's own size, and bufio's default, as controls:
+		// the first is handed back as it is, the second is too small to be.
 		{"a reader of exactly the decoder's size", evidence.MaxLineBytes + 1},
 		{"the default reader", 4096},
 	} {

@@ -9,10 +9,6 @@ import (
 	"github.com/guardana/control/pkg/contract"
 )
 
-// enforceKind is the listener that serves the enforcement API on a Unix
-// socket instead of MCP (ADR-0051).
-const enforceKind = "enforce_api"
-
 // The bounds of listener.execution_lifetime and listener.max_body_bytes, the
 // enforcement adapter's own.
 const (
@@ -66,16 +62,16 @@ var mcpOnly = []string{"listener.address", "upstream.call_timeout", "upstream.li
 // checkKindKeys refuses a key the listener's kind does not read: a key that
 // applies to nothing is a setting the operator believes is in force.
 func (c *Config) checkKindKeys() error {
-	if c.Listener.Kind == enforceKind {
+	if c.Listener.Kind == ListenerEnforceAPI {
 		return c.checkEnforceAPI()
 	}
 	for _, key := range enforceOnly {
 		if c.wasSet(key) {
-			return fmt.Errorf("%s: only an %s listener reads it, and the kind is %s", key, enforceKind, c.Listener.Kind)
+			return fmt.Errorf("%s: only an %s listener reads it, and the kind is %s", key, ListenerEnforceAPI, c.Listener.Kind)
 		}
 	}
 	if len(c.Tools) > 0 {
-		return fmt.Errorf("tools: only an %s listener classifies tools by name, and the kind is %s; an MCP tool is classified in overrides", enforceKind, c.Listener.Kind)
+		return fmt.Errorf("tools: only an %s listener classifies tools by name, and the kind is %s; an MCP tool is classified in overrides", ListenerEnforceAPI, c.Listener.Kind)
 	}
 	return nil
 }
@@ -86,7 +82,7 @@ func (c *Config) checkKindKeys() error {
 func (c *Config) checkEnforceAPI() error {
 	for _, key := range mcpOnly {
 		if c.wasSet(key) {
-			return fmt.Errorf("%s: an %s listener serves no MCP client and calls no upstream, so it reads no %s", key, enforceKind, key)
+			return fmt.Errorf("%s: an %s listener serves no MCP client and calls no upstream, so it reads no %s", key, ListenerEnforceAPI, key)
 		}
 	}
 	if err := c.checkEnforceListener(); err != nil {
@@ -94,11 +90,11 @@ func (c *Config) checkEnforceAPI() error {
 	}
 	switch {
 	case c.Runs.Dir == "":
-		return fmt.Errorf("runs.dir: no value, and every request to an %s listener presents a run token, which only an opened run has (ADR-0034)", enforceKind)
+		return fmt.Errorf("runs.dir: no value, and every request to an %s listener presents a run token, which only an opened run has (ADR-0034)", ListenerEnforceAPI)
 	case len(c.Upstreams) > 0:
-		return fmt.Errorf("upstreams: an %s listener calls no upstream; its tools are named in tools", enforceKind)
+		return fmt.Errorf("upstreams: an %s listener calls no upstream; its tools are named in tools", ListenerEnforceAPI)
 	case len(c.Overrides) > 0:
-		return fmt.Errorf("overrides: an %s listener classifies its tools in tools", enforceKind)
+		return fmt.Errorf("overrides: an %s listener classifies its tools in tools", ListenerEnforceAPI)
 	}
 	return c.checkTools()
 }
@@ -111,13 +107,13 @@ func (c *Config) checkEnforceListener() error {
 	l := c.Listener
 	switch {
 	case len(l.Origins) > 0:
-		return fmt.Errorf("listener.origins: an %s listener serves a Unix socket, which no browser calls", enforceKind)
+		return fmt.Errorf("listener.origins: an %s listener serves a Unix socket, which no browser calls", ListenerEnforceAPI)
 	case l.Socket == "":
-		return fmt.Errorf("listener.socket: an %s listener serves on a Unix socket, and no path is named", enforceKind)
+		return fmt.Errorf("listener.socket: an %s listener serves on a Unix socket, and no path is named", ListenerEnforceAPI)
 	case len(c.Resolve(l.Socket)) > maxSocketPath:
 		return fmt.Errorf("listener.socket: the path is %d bytes as it resolves, and a socket path is at most %d", len(c.Resolve(l.Socket)), maxSocketPath)
 	case l.ExecutionLifetime == 0:
-		return fmt.Errorf("listener.execution_lifetime: no value, and an %s listener needs one; it has no default", enforceKind)
+		return fmt.Errorf("listener.execution_lifetime: no value, and an %s listener needs one; it has no default", ListenerEnforceAPI)
 	case l.ExecutionLifetime < minExecutionLifetime || l.ExecutionLifetime > maxExecutionLifetime:
 		return fmt.Errorf("listener.execution_lifetime: %v is outside %v to %v", l.ExecutionLifetime, minExecutionLifetime, maxExecutionLifetime)
 	case l.MaxBodyBytes < minBodyBytes || l.MaxBodyBytes > maxBodyBytes:
@@ -135,7 +131,7 @@ func (c *Config) checkEnforceListener() error {
 // a resource pointer the adapter refuses, and a second entry of one name.
 func (c *Config) checkTools() error {
 	if len(c.Tools) == 0 {
-		return fmt.Errorf("tools: no tool; an %s listener blocks every call to a tool it does not classify", enforceKind)
+		return fmt.Errorf("tools: no tool; an %s listener blocks every call to a tool it does not classify", ListenerEnforceAPI)
 	}
 	seen := make(map[string]int, len(c.Tools))
 	for i := range c.Tools {

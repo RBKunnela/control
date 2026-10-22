@@ -88,8 +88,9 @@ const findingIDDomain = "finding-id:1"
 // version its own. The anchor is the tool and upstream of a plane call, the
 // one name of an observed call, a step's id, a failed or denied request's id,
 // a binding's name, an exception's id, or nothing for a deadline; under 0.2 a
-// finding that names the run of a plane event ends its anchor with that run. What the finding rests on is left
-// out, so more evidence of one finding keeps its id.
+// finding that names the run of a plane event ends its anchor with that run.
+// What the finding rests on is left out, so more evidence of one finding keeps
+// its id.
 func findingID(fields ...string) string {
 	h := sha256.New()
 	var n [8]byte

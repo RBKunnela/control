@@ -21,7 +21,10 @@ const (
 )
 
 // The protocol revision each HTTP listener serves.
-var listenerProtocol = map[string]string{"stateless_http": "2026-07-28", "stateful_http": "2025-11-25"}
+var listenerProtocol = map[string]string{
+	gatewayconfig.ListenerStatelessHTTP: "2026-07-28",
+	gatewayconfig.ListenerStatefulHTTP:  "2025-11-25",
+}
 
 // planeTarget is where a runner reaches the plane its configuration names.
 // approvals is empty when the plane keeps its holds in memory, and pauseFile

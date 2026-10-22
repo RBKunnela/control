@@ -35,15 +35,13 @@ var carrying func()
 
 // Carry starts a stop list in dir, judged against route, from the list in
 // from, judged against fromRoute, which alone may name a rule version a later
-// one superseded (reaction.CheckCarrySource): the new list holds every stop of the old
-// one no lift ended, expired or not, as it was, since the writer's clock may
-// be one a plane would not trust, and a covered line for every other finding
-// the old list names, so that a finding the old list names never stops a run
-// again. A list a plane refuses at one of its lines is carried up to that
-// line, as acceptedPart allows. The old list's lock is held until the new
-// list is written, so no write to it falls between the two. A carry writes
-// the new list whole or not at all, and refuses with ErrExists when dir holds
-// a list.
+// one superseded (reaction.CheckCarrySource). The new list keeps every stop of
+// the old one no lift ended, expired or not, since the writer's clock may be
+// one a plane would not trust, and a covered line for every other finding the
+// old list names, so none of them stops a run again. A list a plane refuses at
+// one of its lines is carried up to that line (acceptedPart). The old list
+// stays locked until the new one is written, whole or not at all, so no write
+// to it falls between the two; a dir that already holds a list is ErrExists.
 func Carry(ctx context.Context, from string, fromRoute reaction.Route, dir string, route reaction.Route, now time.Time) (Carried, error) {
 	var out Carried
 	err := locked(ctx, from, func(root *os.Root) error {

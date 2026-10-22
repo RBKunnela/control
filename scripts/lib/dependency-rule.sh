@@ -32,7 +32,6 @@ guarded=(
 # neither list fails check-imports.sh, and so does an entry here that no guarded
 # tree reaches any more.
 reached=(
-  internal/docscheck/frontmatter
   internal/observe
   internal/trailchain
 )

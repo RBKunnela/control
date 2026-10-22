@@ -1,12 +1,9 @@
 package main
 
 import (
-	"crypto/rand"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net"
-	"path/filepath"
 	"sync/atomic"
 	"time"
 
@@ -14,10 +11,7 @@ import (
 	"github.com/guardana/control/adapters/enforce"
 	adaptermcp "github.com/guardana/control/adapters/mcp"
 	"github.com/guardana/control/adapters/otel"
-	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/approvals"
-	"github.com/guardana/control/internal/core"
-	ondisk "github.com/guardana/control/internal/files"
 	"github.com/guardana/control/internal/gateway"
 	"github.com/guardana/control/internal/gatewayconfig"
 	"github.com/guardana/control/internal/holdjournal"
@@ -139,7 +133,7 @@ func build(cfg *gatewayconfig.Config, logger *slog.Logger, now time.Time, r role
 func (p *plane) open(r role, tokenPath string) error {
 	if r == roleInspect {
 		p.store = &gateway.MemoryApprovals{}
-		if p.cfg.Listener.Kind == enforceKind {
+		if p.cfg.Listener.Kind == gatewayconfig.ListenerEnforceAPI {
 			dir, _, err := openRuns(p.cfg, "")
 			if err != nil {
 				return err
@@ -179,7 +173,7 @@ func (p *plane) wire() error {
 		enforcer *enforce.Adapter
 		err      error
 	)
-	if p.cfg.Listener.Kind == enforceKind {
+	if p.cfg.Listener.Kind == gatewayconfig.ListenerEnforceAPI {
 		enforcer, err = newEnforcer(p.cfg, p.runsDir)
 		seam = enforcer
 	} else {
@@ -245,73 +239,6 @@ func (p *plane) seam() gateway.Adapter {
 	return p.adapter
 }
 
-// pipelineConfig is the pipeline's configuration over the seams this plane
-// holds, the adapter and the decision point's client.
-func (p *plane) pipelineConfig(adapter gateway.Adapter, mode controlv1.EnforcementMode, pdp *authzen.Client) gateway.Config {
-	c := gateway.Config{
-		Mode:    mode,
-		Adapter: adapter,
-		KernelOptions: core.Options{
-			MaxStale:     p.cfg.Policy.MaxStale,
-			FailOpenRead: p.cfg.Policy.FailOpenRead,
-		},
-		Policy:               p.holder,
-		Pause:                p.pauseSource(),
-		Stops:                p.stopSource(),
-		Sink:                 p.spool,
-		Approvals:            p.store,
-		Journal:              p.holds,
-		ReconcileMax:         p.cfg.Approvals.ReconcileMax,
-		Clock:                time.Now,
-		NewID:                newID,
-		ApprovalTTL:          p.cfg.Approvals.TTL,
-		RetryAfter:           p.cfg.Approvals.RetryAfter,
-		MaxHeld:              p.cfg.Approvals.MaxHeld,
-		MaxHeldPerRun:        p.cfg.Approvals.MaxHeldPerRun,
-		MaxOpen:              p.cfg.Approvals.MaxOpen,
-		MaxRuns:              p.cfg.Flow.MaxRuns,
-		AllowReadsUnrecorded: p.cfg.Evidence.OnUnwritable == "allow_reads",
-	}
-	if p.runsDir != nil {
-		c.Runs = runsDir{p.runsDir}
-	}
-	withDecisionPoint(&c, pdp, p.cfg.PDP.Timeout)
-	return c
-}
-
-// pauseSource is what the pipeline reads the pause state from. A nil poller
-// is never handed over as a source: it would be a non-nil interface serving
-// the unknown state, which blocks every call of a plane that configured no
-// pause at all.
-func (p *plane) pauseSource() gateway.PauseSource {
-	if p.poller == nil {
-		return gateway.PauseDisabled()
-	}
-	return p.poller
-}
-
-// openPause opens the reader of the pause file, whose first read has to find
-// a state it can serve: a plane never starts on a pause state it cannot read
-// (ADR-0019). The reader takes no lock and writes nothing, so doctor opens it
-// too; it logs with each change the entries unlisted names. Without pause.file
-// there is nothing to read and it returns nil.
-func openPause(cfg *gatewayconfig.Config, logger *slog.Logger, unlisted func([]pause.Entry) []string) (*pause.Poller, error) {
-	if cfg.Pause.File == "" {
-		return nil, nil
-	}
-	poller, err := pause.Open(pause.Options{
-		Path:         cfg.Resolve(cfg.Pause.File),
-		Interval:     cfg.Pause.PollInterval,
-		Clock:        time.Now,
-		Logger:       logger,
-		UnlistedOnly: unlisted,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("pause.file: %w", err)
-	}
-	return poller, nil
-}
-
 // close releases what build took, in the order that leaves nothing holding the
 // spool's directory.
 func (p *plane) close() error {
@@ -338,48 +265,4 @@ func (p *plane) close() error {
 		errs = append(errs, p.policy.floor.Close())
 	}
 	return errors.Join(errs...)
-}
-
-// shortID bounds a key id read from a bundle file, which nothing has verified
-// yet, before it reaches a log line.
-func shortID(id string) string {
-	const limit = 64
-	if len(id) > limit {
-		return id[:limit] + "..."
-	}
-	return id
-}
-
-func openSpool(cfg *gatewayconfig.Config) (*spool.Spool, error) {
-	fsync := spool.FsyncEveryRecord
-	if cfg.Evidence.Fsync == "interval" {
-		fsync = spool.FsyncInterval
-	}
-	sp, err := spool.Open(spool.Options{
-		Dir:            cfg.Resolve(cfg.Evidence.Dir),
-		MaxBytes:       cfg.Evidence.MaxBytes,
-		SegmentBytes:   cfg.Evidence.SegmentBytes,
-		ClosingReserve: cfg.Evidence.ClosingReserve,
-		Fsync:          fsync,
-		Interval:       cfg.Evidence.FsyncInterval,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("evidence: %w", err)
-	}
-	return sp, nil
-}
-
-// newID names decisions, events, approvals and executions. Every call returns
-// a fresh value; the pipeline probes that at start.
-func newID() string { return rand.Text() }
-
-// readBounded reads a regular file of at most limit bytes. The open does not
-// block, so a named pipe configured as the bundle is refused rather than
-// waited on for good.
-func readBounded(path string, limit int64) ([]byte, error) {
-	raw, err := ondisk.ReadRegular(filepath.Clean(path), limit, 0)
-	if err != nil {
-		return nil, fmt.Errorf("reading %s: %w", path, err)
-	}
-	return raw, nil
 }

@@ -128,6 +128,12 @@ Neither binary nor the Python client of the enforcement API uses it.</li>
 </ul>
 <h3 id="fixed">Fixed</h3>
 <ul>
+<li><code>guardana-gateway doctor</code> exits 1 when standard output does not take its
+whole report, as on a full device, and says so on standard error; it exited
+0 with the report cut short.</li>
+<li><code>guardana-gateway scenario run</code> and <code>dev</code> fail a scenario whose stateful
+session does not close on the transport, naming the close; the error was
+dropped and the scenario passed.</li>
 <li>The enforcement API answers a call whose rewrite moved the decided resource
 with <code>BLOCK</code> and the abort's code, <code>OBLIGATION_NOT_UNDERSTOOD</code>, after the
 decision's own; it carried the kernel's allow alone, so the hook bridge and

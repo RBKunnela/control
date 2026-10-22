@@ -5,7 +5,7 @@
 //	go run scripts/gen-reason-codes.go                                     # stdout
 //	go run scripts/gen-reason-codes.go -o docs/reference/reason-codes.md   # file
 //
-// Everything this program decides lives in internal/policy/reasons/reasondoc,
+// Everything this program decides lives in internal/docscheck/reasondoc,
 // which the gate compiles, vets, lints and tests. What is left here is argument
 // handling and a write, so that a file the gate cannot see holds no logic that
 // could be wrong.
@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/guardana/control/internal/policy/reasons/reasondoc"
+	"github.com/guardana/control/internal/docscheck/reasondoc"
 )
 
 func main() {

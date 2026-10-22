@@ -17,12 +17,12 @@ import (
 // is never handed back to be used again.
 func (c *call) refusedBeforeStart() bool {
 	switch {
-	case c.blockedNow():
+	case c.blockIfCovered():
 	case c.held && lapsedBy(c.now, c.floor, c.approvalExpires):
 		c.decide(verdictDeny, codeApprovalExpired)
 	case c.runLapsed():
 		c.decide(verdictIndeterminate, codeEvidenceUnavailable)
-	case c.policyWithheld(c.basis):
+	case c.withholdIfStale(c.basis):
 	case !c.held && c.agentGone():
 		// A resumed call spent its approval already; it is handed out, and
 		// the adapter aborts what it cannot send.
@@ -54,11 +54,11 @@ func (c *call) lapsedWhileStarting() (controlv1.Verdict, string, bool) {
 	return 0, "", false
 }
 
-// policyWithheld blocks the call, INDETERMINATE with POLICY_STALE, when the
+// withholdIfStale blocks the call, INDETERMINATE with POLICY_STALE, when the
 // policy its decision stood on, judged again at the call's last reading
 // against the policy it took then, no longer stands (ADR-0055), and reports
 // so.
-func (c *call) policyWithheld(b core.Basis) bool {
+func (c *call) withholdIfStale(b core.Basis) bool {
 	if !c.withholds(b, c.installed, c.now) {
 		return false
 	}
@@ -93,10 +93,11 @@ func (c *call) kernelLetRun() bool {
 // run expired, or whose policy stopped standing, while its ACTION_STARTED was
 // appended, the way an adapter aborts what it did not send: ACTION_FAILED with
 // a BLOCKED result naming code, which is APPROVAL_EXPIRED, EVIDENCE_UNAVAILABLE
-// or POLICY_STALE, and no executed digest. The call is blocked with a decision of the plane's own,
-// which no record carries, because the chain has no place for a decision
-// after ACTION_STARTED. A record the sink refuses leaves the trail open with
-// its request id and its journal entry, as blockUnrecorded does.
+// or POLICY_STALE, and no executed digest. The call is blocked with a decision
+// of the plane's own, which no record carries, because the chain has no place
+// for a decision after ACTION_STARTED. A record the sink refuses leaves the
+// trail open with its request id and its journal entry, as blockUnrecorded
+// does.
 func (c *call) lapsedAfterStart(trail *evidence.Builder, ex *execution, verdict controlv1.Verdict, code string) Disposition {
 	aborted := ex.stamp(nil)
 	aborted.Status = resultBlocked

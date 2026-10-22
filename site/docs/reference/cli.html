@@ -177,8 +177,8 @@ named; an <code>--out</code> that is the key or the document by any spelling or 
 one that exists and is not a policy bundle, so no other file, another key
 included, is replaced; and a bundle the loader would refuse. <code>--out</code> is
 cleaned as text before anything reads it, so <code>a/link/../x</code> names <code>a/x</code>
-whatever <code>a/link</code> points at. When syncing the directory fails after the
-rename, <code>sign</code> reports it, though the new bundle may be in
+whatever <code>a/link</code> points at. If syncing the directory fails after the
+rename, <code>sign</code> reports it; the new bundle may be in
 place.</p>
 <p>The key reaches the command only as a path, and no refusal quotes it. Both
 refuse on a platform without permission bits
@@ -213,15 +213,15 @@ only the id it drew for the entry, and <code>pause remove &lt;file&gt; &lt;id&gt
 takes that id; removing the last entry leaves a file pausing nothing,
 because a missing file blocks every call. <code>pause list</code> prints one line per
 entry, its reason included, or <code>no entries</code>.</p>
-<p>Write access to the pause file is the authority to pause and to lift a pause:
+<p>Write access to the pause file is the authority to pause and to lift one:
 any process running as the plane's user can empty the file, so run the commands
-as that user. They refuse, writing nothing, a file or a directory the group or
+as that user. They refuse, writing nothing, a file or directory the group or
 others may write or another account owns, a link, a file the plane would
 refuse to read, a second scope or none, a name, a reason or a scope the file
 cannot hold, and a 65th entry, each on one line that does not repeat the
 value. A writer waits up to ten seconds for another writer's lock; a
-running plane takes none. A pause blocks every call not yet handed out for
-execution when the plane reads it, within one <code>pause.poll_interval</code>; it cancels
+running plane takes none. A pause blocks every call not yet handed out
+when the plane reads it, within one <code>pause.poll_interval</code>; it cancels
 nothing already running.</p>
 <p>The <code>runs</code> commands open, close and list the runs a plane with <code>runs.dir</code>
 serves: <a href="/docs/reference/runs">runs.md</a>.</p>
@@ -294,13 +294,13 @@ adds any stop the route allows and, across a restart, can start a new list with 
 <p><code>run</code> serves one plane from a configuration file and <code>doctor</code> checks that
 file without serving: <a href="/docs/guides/run-the-gateway">guides/run-the-gateway.md</a>
 is their page and <a href="/docs/reference/configuration">configuration.md</a> lists every key.
-<code>--config</code> is required. A key naming a file or a
-directory refuses key text, naming the key and not the value. On an interrupt
+<code>--config</code> is required. A key naming a file or
+directory refuses key text, naming the key, never the value. On an interrupt
 or <code>SIGTERM</code>, <code>run</code> admits no new call, gives admitted ones
 <code>upstream.call_timeout</code> plus ten seconds, plus any <code>pdp.timeout</code>; an
 <code>enforce_api</code> plane waits ten seconds and abandons open executions. Either
 exits 1 when it cut one, lost a closing record or could not close the spool;
-<code>doctor</code> when its plane does not close.</p>
+<code>doctor</code> when its plane does not close or stdout does not take its report.</p>
 <p><code>collect</code> and <code>trail</code> read no configuration:
 <a href="/docs/guides/watch-a-plane-without-a-collector">guides/watch-a-plane-without-a-collector.md</a>
 is their page. <code>collect</code> listens on a loopback IP address only and appends

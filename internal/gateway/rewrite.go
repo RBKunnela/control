@@ -208,7 +208,6 @@ func redactFields(doc map[string]any, params map[string]string) error {
 	return nil
 }
 
-// isASCII reports whether s holds nothing above the ASCII range.
 func isASCII(s string) bool {
 	for i := range len(s) {
 		if s[i] >= utf8.RuneSelf {

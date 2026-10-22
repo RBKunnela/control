@@ -9,14 +9,38 @@ import (
 	"github.com/guardana/control/internal/brand"
 )
 
+// The values of mode, listener.kind, evidence.fsync and evidence.on_unwritable,
+// which code outside this package compares a loaded configuration against.
+const (
+	ModeObserve  = "OBSERVE"
+	ModeShadow   = "SHADOW"
+	ModeWarn     = "WARN"
+	ModeApprove  = "APPROVE"
+	ModeEnforce  = "ENFORCE"
+	ModeLockdown = "LOCKDOWN"
+
+	ListenerStatelessHTTP = "stateless_http"
+	ListenerStatefulHTTP  = "stateful_http"
+	ListenerStdio         = "stdio"
+	// ListenerEnforceAPI serves the enforcement API on a Unix socket instead
+	// of MCP (ADR-0051).
+	ListenerEnforceAPI = "enforce_api"
+
+	FsyncEveryRecord = "every_record"
+	FsyncInterval    = "interval"
+
+	UnwritableBlock      = "block"
+	UnwritableAllowReads = "allow_reads"
+)
+
 // The spellings the enum keys take. A key whose meaning comes from the wire
 // contract takes the contract's own name without its prefix; a key this
 // package owns takes a lower-case name.
 var (
-	modeNames         = []string{"OBSERVE", "SHADOW", "WARN", "APPROVE", "ENFORCE", "LOCKDOWN"}
-	listenerKinds     = []string{"stateless_http", "stateful_http", "stdio", enforceKind}
-	fsyncPolicies     = []string{"every_record", "interval"}
-	unwritablePolicy  = []string{"block", "allow_reads"}
+	modeNames         = []string{ModeObserve, ModeShadow, ModeWarn, ModeApprove, ModeEnforce, ModeLockdown}
+	listenerKinds     = []string{ListenerStatelessHTTP, ListenerStatefulHTTP, ListenerStdio, ListenerEnforceAPI}
+	fsyncPolicies     = []string{FsyncEveryRecord, FsyncInterval}
+	unwritablePolicy  = []string{UnwritableBlock, UnwritableAllowReads}
 	approvalProviders = []string{ProviderMemory, ProviderFile}
 	shapings          = []string{"none", "annotate", "hide"}
 	logLevels         = []string{"debug", "info", "warn", "error"}
@@ -56,7 +80,7 @@ var configFields = []field[Config]{
 	stringField("environment", "", false, func(c *Config) *string { return &c.Environment }),
 	enumField("log.level", "info", logLevels, false, func(c *Config) *string { return &c.LogLevel }),
 
-	enumField("listener.kind", "stateless_http", listenerKinds, true, func(c *Config) *string { return &c.Listener.Kind }),
+	enumField("listener.kind", ListenerStatelessHTTP, listenerKinds, true, func(c *Config) *string { return &c.Listener.Kind }),
 	stringField("listener.address", "127.0.0.1:8080", false, func(c *Config) *string { return &c.Listener.Address }),
 	filePath(stringField("listener.socket", "", false, func(c *Config) *string { return &c.Listener.Socket })),
 	noDefaultDuration("listener.execution_lifetime", func(c *Config) *time.Duration { return &c.Listener.ExecutionLifetime }),
@@ -120,9 +144,9 @@ var configFields = []field[Config]{
 	bytesField("evidence.max_bytes", "1GiB", func(c *Config) *int64 { return &c.Evidence.MaxBytes }),
 	bytesField("evidence.segment_bytes", "64MiB", func(c *Config) *int64 { return &c.Evidence.SegmentBytes }),
 	bytesField("evidence.closing_reserve", "64KiB", func(c *Config) *int64 { return &c.Evidence.ClosingReserve }),
-	enumField("evidence.fsync", "every_record", fsyncPolicies, true, func(c *Config) *string { return &c.Evidence.Fsync }),
+	enumField("evidence.fsync", FsyncEveryRecord, fsyncPolicies, true, func(c *Config) *string { return &c.Evidence.Fsync }),
 	durationField("evidence.fsync_interval", "0s", func(c *Config) *time.Duration { return &c.Evidence.FsyncInterval }),
-	enumField("evidence.on_unwritable", "block", unwritablePolicy, true, func(c *Config) *string { return &c.Evidence.OnUnwritable }),
+	enumField("evidence.on_unwritable", UnwritableBlock, unwritablePolicy, true, func(c *Config) *string { return &c.Evidence.OnUnwritable }),
 
 	address(stringField("export.endpoint", "", true, func(c *Config) *string { return &c.Export.Endpoint })),
 	boolField("export.allow_plaintext", "false", func(c *Config) *bool { return &c.Export.AllowPlaintext }),

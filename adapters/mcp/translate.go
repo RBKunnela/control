@@ -219,7 +219,7 @@ func (a *Adapter) read(req mcp.Request, meta map[string]any, kind, name string, 
 // finish hashes the arguments into the envelope and validates it, so the
 // pipeline receives either an envelope Validate accepts or the refusal.
 func (a *Adapter) finish(env *controlv1.ActionEnvelope, args []byte) error {
-	if err := hashInto(env, args); err != nil {
+	if err := adapterkit.HashInto(env, args); err != nil {
 		return err
 	}
 	return recordable(env, contract.Validate(env))
@@ -230,7 +230,7 @@ func (a *Adapter) finish(env *controlv1.ActionEnvelope, args []byte) error {
 // then Validate's refusal, so a call nothing classifies is held to every other
 // rule of the contract a classified one is.
 func unclassified(env *controlv1.ActionEnvelope, args []byte, why error) error {
-	if err := hashInto(env, args); err != nil {
+	if err := adapterkit.HashInto(env, args); err != nil {
 		return errors.Join(err, why)
 	}
 	err := recordable(env, contract.Validate(env))
@@ -287,17 +287,6 @@ func dropOverlong(env *controlv1.ActionEnvelope) {
 	if env.Context != nil {
 		env.Context.Tags = slices.DeleteFunc(env.Context.Tags, func(tag string) bool { return len(tag) > contract.MaxStringBytes })
 	}
-}
-
-// hashInto puts the arguments hash in the envelope, so that even an envelope
-// nothing classifies names the bytes it was about.
-func hashInto(env *controlv1.ActionEnvelope, args []byte) error {
-	hash, err := canon.ArgumentsHashV1(args)
-	if err != nil {
-		return &contract.ValidationError{Field: "arguments.canonical_hash", Err: fmt.Errorf("%w: %w", contract.ErrInvalidValue, err)}
-	}
-	env.Arguments = &controlv1.Arguments{CanonicalHash: hash}
-	return nil
 }
 
 func (a *Adapter) upstreamConfig(name string) Upstream {

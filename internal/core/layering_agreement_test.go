@@ -45,7 +45,7 @@ var wantExclusions = []string{
 	`    rules:`,
 	`      - linters: [forbidigo]`,
 	`        text: "guarded tree: "`,
-	`        path-except: "^(internal/core|internal/policy|internal/canon|internal/evidence|pkg/contract|internal/supervise|internal/docscheck/frontmatter|internal/observe|internal/trailchain)/"`,
+	`        path-except: "^(internal/core|internal/policy|internal/canon|internal/evidence|pkg/contract|internal/supervise|internal/observe|internal/trailchain)/"`,
 	`      - linters: [forbidigo]`,
 	"        text: \"use of `time.Local` forbidden\"",
 	`        path: "^internal/core/property_test\\.go$"`,

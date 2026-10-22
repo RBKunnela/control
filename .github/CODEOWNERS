@@ -46,9 +46,9 @@
 /cmd/guardana-gateway/reaction.go @guardana/security-maintainers
 /cmd/guardana-gateway/pdp.go @guardana/security-maintainers
 /cmd/guardana-gateway/adapter.go @guardana/security-maintainers
-/cmd/guardana-gateway/build.go @guardana/security-maintainers
+/cmd/guardana-gateway/build*.go @guardana/security-maintainers
 /cmd/guardana-gateway/approvals.go @guardana/security-maintainers
-/cmd/guardana-gateway/serve.go @guardana/security-maintainers
+/cmd/guardana-gateway/serve*.go @guardana/security-maintainers
 /cmd/guardana-gateway/stop.go @guardana/security-maintainers
 /adapters/authzen/     @guardana/security-maintainers
 /adapters/mcp/         @guardana/security-maintainers

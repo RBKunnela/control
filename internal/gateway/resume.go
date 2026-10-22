@@ -102,13 +102,13 @@ func (c *call) try(own *heldRequest, binding approval.Binding, r *resumption) (D
 // a retry.
 func (c *call) refusedBeforeConsume(own *heldRequest) bool {
 	switch requested := own.approval.GetRequestedAt().AsTime(); {
-	case c.blockedNow():
+	case c.blockIfCovered():
 		// A pause or a stop: the retry comes after it ends.
 	case unvouched(c.now, c.floor) || c.now.Before(requested):
 		// A clock that cannot vouch for the approval: the retry comes at a
 		// reading that can.
 		c.decide(verdictDeny, codeApprovalExpired)
-	case c.policyWithheld(own.basis):
+	case c.withholdIfStale(own.basis):
 		// The retry comes once the bundle is current again; a bundle
 		// replaced since never is, and the hold expires.
 	case c.agentGone():

@@ -2,7 +2,6 @@ package gateway
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -10,135 +9,8 @@ import (
 	"github.com/guardana/control/internal/core"
 	"github.com/guardana/control/internal/evidence"
 	"github.com/guardana/control/internal/pause"
-	"github.com/guardana/control/internal/policy"
 	"github.com/guardana/control/internal/reaction"
 )
-
-// PolicySource serves the snapshot a call is decided against; a Holder is one.
-type PolicySource interface {
-	Current() *policy.Snapshot
-}
-
-// PauseSource serves the operator's pause state a call is decided under; a
-// pause.Poller is one. A call reads it once, and once more after an ask to
-// the decision point (ADR-0019).
-type PauseSource interface {
-	Current() pause.Snapshot
-}
-
-// PauseDisabled is the source of a plane configured with no pause file. It is
-// a choice the caller states: a nil source is refused, never read as this.
-func PauseDisabled() PauseSource { return disabledPause{} }
-
-type disabledPause struct{}
-
-func (disabledPause) Current() pause.Snapshot { return pause.DisabledSnapshot() }
-
-// StopSource serves the stop state a call is decided under (ADR-0046); a stop
-// list's poller is one. A call reads it each time it reads the pause source.
-type StopSource interface {
-	Current() reaction.Snapshot
-}
-
-// StopsDisabled is the source of a plane configured with no route. It is a
-// choice the caller states: a nil source is refused, never read as this.
-func StopsDisabled() StopSource { return disabledStops{} }
-
-type disabledStops struct{}
-
-func (disabledStops) Current() reaction.Snapshot { return reaction.DisabledSnapshot() }
-
-// DefaultMaxHeldPerRun is how many requests one opened run may hold for an
-// approval when Config.MaxHeldPerRun is zero.
-const DefaultMaxHeldPerRun = 16
-
-// Config configures a Pipeline once, at New.
-type Config struct {
-	// Mode is the plane's enforcement mode, applied after the decision to
-	// what is done and never to what is decided.
-	Mode controlv1.EnforcementMode
-	// Adapter is the protocol the plane speaks.
-	Adapter Adapter
-	// KernelOptions configure the kernel New builds. Its mode is always
-	// ENFORCE whatever Mode says, its applicable obligations are the ones
-	// the pipeline applies itself plus the adapter's declared ones, its
-	// decision point is DecisionPointID, and under LOCKDOWN its fail-open
-	// reads are off.
-	KernelOptions core.Options
-	// DecisionPoint is the external decision point the pipeline asks when a
-	// decision turns on its answer (ADR-0017). It is set exactly when the
-	// policy reads that answer.
-	DecisionPoint DecisionPoint
-	// DecisionPointID names DecisionPoint on a decision that consulted its
-	// answer; non-empty with a decision point and empty without one.
-	DecisionPointID string
-	// DecisionTimeout bounds one ask; positive with a decision point and zero
-	// without one.
-	DecisionTimeout time.Duration
-	// Policy serves the snapshot.
-	Policy PolicySource
-	// Pause serves the operator's pause state; PauseDisabled where no pause
-	// file is configured. A snapshot it serves that nobody read, or that is
-	// older than it answers for, blocks every call.
-	Pause PauseSource
-	// Stops serves the stop state; StopsDisabled where no route is
-	// configured, and any other source only with Runs, since a stop names an
-	// opened run. A snapshot nobody read, or one older than it answers for,
-	// blocks every call.
-	Stops StopSource
-	// Sink takes every event of every trail.
-	Sink evidence.Sink
-	// Approvals holds requests and consumes approvals.
-	Approvals ApprovalStore
-	// Runs is the runs directory, set exactly when the adapter presents runs.
-	// Without it every run is local (ADR-0021); with it every call needs an
-	// opened run (ADR-0034).
-	Runs Runs
-	// Journal is the plane's own durable record of its own holds. It is
-	// optional: without one the plane holds and resumes as it otherwise
-	// would and closes no hold it loses to a restart, which Stats reports
-	// rather than leaves to be discovered.
-	Journal HoldJournal
-	// ReconcileMax bounds the journal entries one Reconcile reads; zero takes
-	// a bound of its own, and a negative one is refused. A bound that bites
-	// makes that pass unmeasured rather than done.
-	ReconcileMax int
-	// Clock is what the plane reads. A reading outside 1970 to 9999, or one
-	// behind an instant the call already relied on, never passes an expiry.
-	Clock func() time.Time
-	// NewID names decisions, events, approvals and executions. It has to
-	// return a unique, non-empty id on every call.
-	NewID func() string
-	// ApprovalTTL is how long a requested approval can be answered and
-	// consumed; positive.
-	ApprovalTTL time.Duration
-	// RetryAfter is what an agent is told to wait before retrying a held
-	// request; positive.
-	RetryAfter time.Duration
-	// MaxHeld bounds the requests held for an approval and not yet closed,
-	// expired ones the sweep has not reached included; positive. A request past it is refused as a hold the store would not
-	// keep.
-	MaxHeld int
-	// MaxHeldPerRun bounds the requests one opened run holds for an approval
-	// and not yet expired, so no one run fills MaxHeld for every other; zero
-	// takes DefaultMaxHeldPerRun. A request past it is refused as one past
-	// MaxHeld is. Calls under no opened run are held to MaxHeld alone.
-	MaxHeldPerRun int
-	// MaxOpen bounds the executions handed out and not yet closed or aborted;
-	// positive. A call past it is blocked with EVIDENCE_UNAVAILABLE, because
-	// the plane would have nowhere to record its closing.
-	MaxOpen int
-	// MaxRuns bounds the runs the pipeline keeps a flow state for; positive.
-	// A call whose run would be past it is decided with the state nobody
-	// computed. No run is ever dropped, since that would wash away what it
-	// took in (ADR-0021).
-	MaxRuns int
-	// AllowReadsUnrecorded is the explicit risk setting of invariant 5 for
-	// evidence (ADR-0014): a read whose trail the sink will not take runs
-	// unrecorded and counted. A material call never does, and neither does a
-	// call that would be held for an approval.
-	AllowReadsUnrecorded bool
-}
 
 // Admission is one proposed action as the adapter translated it.
 type Admission struct {
@@ -242,19 +114,9 @@ type openTrail struct {
 	held *heldRequest
 }
 
-// New checks cfg once and returns a pipeline, or refuses the configuration:
-// a mode this build does not know or enforce, an adapter that lacks what the
-// mode needs, an end-user binding on a listener that authenticates nobody,
-// runs presented without a runs directory or a runs directory nobody presents
-// runs to, a nil policy source, pause source, stop source, sink, approval
-// store, clock or id source, a stop source other than StopsDisabled on a plane
-// that serves no opened run,
-// an id source that returns an empty id or one id twice, a lifetime, retry
-// interval or bound that is not positive, a negative bound on one run's held
-// requests, a decision point the current policy
-// does not read or a policy that reads one none is configured for, a decision point
-// without its identifier or a positive deadline, and kernel options the
-// kernel refuses.
+// New checks cfg once and returns a pipeline, or refuses the configuration
+// with the first of New's refusals in errors.go it meets, or with the kernel's
+// refusal of its options.
 func New(cfg Config) (*Pipeline, error) {
 	if err := checkConfig(cfg); err != nil {
 		return nil, err
@@ -279,96 +141,22 @@ func New(cfg Config) (*Pipeline, error) {
 	return &Pipeline{cfg: cfg, kernel: kernel, open: make(map[string]*execution), trails: make(map[string]openTrail), runs: make(map[runKey]*run)}, nil
 }
 
-// checkConfig is New's refusals, in the order New documents them.
-func checkConfig(cfg Config) error {
-	if err := checkAdapter(cfg.Mode, cfg.Adapter); err != nil {
-		return err
-	}
-	if err := checkRuns(cfg); err != nil {
-		return err
-	}
-	if err := checkSources(cfg); err != nil {
-		return err
-	}
-	if _, disabled := cfg.Stops.(disabledStops); !disabled && cfg.Runs == nil {
-		return ErrStopsWithoutRuns
-	}
-	if err := checkBounds(cfg); err != nil {
-		return err
-	}
-	if first, second := cfg.NewID(), cfg.NewID(); first == "" || second == "" || first == second {
-		return ErrIDSource
-	}
-	return nil
-}
-
-// checkSources refuses a nil policy source, pause source, stop source, sink,
-// approval store, clock or id source.
-func checkSources(cfg Config) error {
-	switch {
-	case cfg.Policy == nil:
-		return ErrNoPolicy
-	case cfg.Pause == nil:
-		return ErrNoPause
-	case cfg.Stops == nil:
-		return ErrNoStops
-	case cfg.Sink == nil:
-		return ErrNoSink
-	case cfg.Approvals == nil:
-		return ErrNoApprovals
-	case cfg.Clock == nil:
-		return ErrNoClock
-	case cfg.NewID == nil:
-		return ErrNoIDSource
-	}
-	return nil
-}
-
-// checkBounds refuses a lifetime, retry interval, hold bound, bound on open
-// executions or bound on runs that is not positive, and a negative bound on
-// one run's holds or on a reconciliation.
-func checkBounds(cfg Config) error {
-	switch {
-	case cfg.ApprovalTTL <= 0:
-		return fmt.Errorf("%w: %v", ErrApprovalTTL, cfg.ApprovalTTL)
-	case cfg.RetryAfter <= 0:
-		return fmt.Errorf("%w: %v", ErrRetryAfter, cfg.RetryAfter)
-	case cfg.MaxHeld <= 0:
-		return fmt.Errorf("%w: %d", ErrMaxHeld, cfg.MaxHeld)
-	case cfg.MaxHeldPerRun < 0:
-		return fmt.Errorf("%w: %d", ErrMaxHeldPerRun, cfg.MaxHeldPerRun)
-	case cfg.MaxOpen <= 0:
-		return fmt.Errorf("%w: %d", ErrMaxOpen, cfg.MaxOpen)
-	case cfg.MaxRuns <= 0:
-		return fmt.Errorf("%w: %d", ErrMaxRuns, cfg.MaxRuns)
-	case cfg.ReconcileMax < 0:
-		return fmt.Errorf("%w: %d", ErrReconcileMax, cfg.ReconcileMax)
-	}
-	return nil
-}
-
 // Admit decides one admission and says what to do about it. It has no error
-// return: whatever the pipeline cannot do is a block that names its cause. A
-// nil or zero Pipeline answers with the decision of a kernel nobody built:
-// INDETERMINATE, POLICY_UNAVAILABLE, Block.
+// return: whatever the pipeline cannot do is a block that names its cause, and
+// a nil or zero Pipeline answers INDETERMINATE, POLICY_UNAVAILABLE, Block.
 //
-// The order is fixed: the pause and stop states are taken, then the clock, then the
-// policy snapshot and the flow state of the call's run, which every decision
-// of the call is made under and ACTION_PROPOSED records (ADR-0021), and which
-// a refused call reads without minting a run unless the mode is OBSERVE; the
-// plane's own causes to block the call are named; the
-// kernel decides against that snapshot, and asks the decision point nothing
-// when the plane named a cause (ADR-0019); after an ask the pause and stop states and
-// the clock are taken again and the causes named once more; those causes and
-// the mode are applied to the action, never to the decision; the rewriting obligations produce the authorized arguments,
-// and when they changed them the kernel decides the authorized envelope again
-// and that decision is the one recorded; a request awaiting approval is
-// looked up, resumed or held;
-// then the trail is written, ACTION_PROPOSED and POLICY_DECIDED first, and
-// whatever executes has ACTION_STARTED written, and its declared result taken
-// into its run, before this returns. A request
-// id whose trail is still open in this pipeline is refused before anything is
-// written, unless the call resumes that trail (ADR-0013).
+// The order is fixed: the pause and stop states, then the clock, then one
+// policy snapshot and the flow state of the call's run, which every decision of
+// the call is made under and ACTION_PROPOSED records (ADR-0021). The plane's
+// own causes, taken before the kernel decides and again after an ask, change
+// the action and never the decision, and a call they block asks the decision
+// point nothing (ADR-0019). Arguments a rewriting obligation changed are decided
+// again, and that decision is the one recorded. The trail is written
+// ACTION_PROPOSED and POLICY_DECIDED first, and whatever executes has
+// ACTION_STARTED written, and its declared result taken into its run, before
+// Admit returns. A request id whose trail is
+// still open is refused before anything is written, unless the call resumes
+// that trail (ADR-0013).
 func (p *Pipeline) Admit(ctx context.Context, a Admission) Disposition {
 	if p == nil || p.kernel == nil {
 		return unbuilt(ctx, a)
@@ -392,10 +180,10 @@ func withArguments(a Admission) Admission {
 // executes nothing and asks the decision point nothing, which is what shaping
 // a listing needs. It reads no pause or stop state: a paused tool stays
 // listed, and a call to it reads PAUSED (ADR-0019); a stopped run's listing
-// is the listing of any other run, and its call reads RUN_STOPPED (ADR-0046). It reads no run either: a listing is
-// cached per principal and outlives any flow state, so a flow rule is
-// undetermined here. A nil or zero Pipeline answers the decision of a kernel
-// nobody built.
+// is the listing of any other run, and its call reads RUN_STOPPED (ADR-0046).
+// It reads no run either: a listing is cached per principal and outlives any
+// flow state, so a flow rule is undetermined here. A nil or zero Pipeline
+// answers the decision of a kernel nobody built.
 func (p *Pipeline) Preview(ctx context.Context, a Admission) *controlv1.Decision {
 	if p == nil || p.kernel == nil {
 		return unbuilt(ctx, a).Decision

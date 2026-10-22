@@ -2,7 +2,7 @@
 title: Failure modes
 summary: What a plane does when its collector, spool, decision point, upstream, pause file, stop list, freshness statement or clock fails, or it is killed holding calls.
 type: reference
-covers: [cmd/guardana-gateway/serve.go, cmd/guardana-gateway/adapter.go, cmd/guardana-gateway/chaos_*_test.go, adapters/mcp/middleware.go, adapters/mcp/answer.go, adapters/authzen/**, adapters/otel/**, internal/spool/**, internal/pause/**, internal/gateway/close.go, internal/gateway/decisionpoint.go, internal/gateway/lapse.go, internal/gateway/resume.go, internal/core/clock.go, internal/core/clock_test.go, internal/gateway/e2e/**, internal/gateway/reconcile.go, internal/policy/policy.go, internal/policywatch/**, internal/policystate/**, internal/reaction/stoplist/**, cmd/guardana-gateway/reaction.go]
+covers: [cmd/guardana-gateway/serve.go, cmd/guardana-gateway/serve_listen.go, cmd/guardana-gateway/adapter.go, cmd/guardana-gateway/chaos_*_test.go, adapters/mcp/middleware.go, adapters/mcp/answer.go, adapters/authzen/**, adapters/otel/**, internal/spool/**, internal/pause/**, internal/gateway/close.go, internal/gateway/decisionpoint.go, internal/gateway/lapse.go, internal/gateway/resume.go, internal/core/clock.go, internal/core/clock_test.go, internal/gateway/e2e/**, internal/gateway/reconcile.go, internal/policy/policy.go, internal/policywatch/**, internal/policystate/**, internal/reaction/stoplist/**, cmd/guardana-gateway/reaction.go]
 ---
 
 # Failure modes

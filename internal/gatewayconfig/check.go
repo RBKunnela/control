@@ -28,10 +28,10 @@ func (c *Config) check() error {
 // checkListener refuses an address on a listener that has none, and an empty
 // origin.
 func (c *Config) checkListener() error {
-	if c.Listener.Kind == "stdio" && c.wasSet("listener.address") {
+	if c.Listener.Kind == ListenerStdio && c.wasSet("listener.address") {
 		return fmt.Errorf("listener.address: a stdio listener serves one agent over a pipe and binds nothing")
 	}
-	if c.Listener.Kind != "stdio" && c.Listener.Address == "" {
+	if c.Listener.Kind != ListenerStdio && c.Listener.Address == "" {
 		return fmt.Errorf("listener.address: an HTTP listener needs an address to bind")
 	}
 	for i, origin := range c.Listener.Origins {
@@ -59,7 +59,7 @@ const (
 // checkSessionIdle refuses a session bound on a listener that keeps no
 // session, and one outside its bounds.
 func (c *Config) checkSessionIdle() error {
-	if c.Listener.Kind != "stateful_http" && c.wasSet("listener.session_idle") {
+	if c.Listener.Kind != ListenerStatefulHTTP && c.wasSet("listener.session_idle") {
 		return fmt.Errorf("listener.session_idle: only a stateful_http listener keeps sessions, and the kind is %s", c.Listener.Kind)
 	}
 	if c.Listener.SessionIdle < minSessionIdle || c.Listener.SessionIdle > maxSessionIdle {
@@ -75,7 +75,7 @@ const maxMaxSessions = 16384
 // checkMaxSessions refuses a cap on sessions on a listener that keeps none,
 // and one outside its bounds.
 func (c *Config) checkMaxSessions() error {
-	if c.Listener.Kind != "stateful_http" && c.wasSet("listener.max_sessions") {
+	if c.Listener.Kind != ListenerStatefulHTTP && c.wasSet("listener.max_sessions") {
 		return fmt.Errorf("listener.max_sessions: only a stateful_http listener keeps sessions, and the kind is %s", c.Listener.Kind)
 	}
 	if c.Listener.MaxSessions < 1 || c.Listener.MaxSessions > maxMaxSessions {
@@ -261,9 +261,9 @@ func (c *Config) checkPause() error {
 // loss window nobody chose.
 func (c *Config) checkEvidence() error {
 	switch {
-	case c.Evidence.Fsync == "interval" && c.Evidence.FsyncInterval <= 0:
+	case c.Evidence.Fsync == FsyncInterval && c.Evidence.FsyncInterval <= 0:
 		return fmt.Errorf("evidence.fsync_interval: the interval policy needs a positive interval, which is what a power loss may cost")
-	case c.Evidence.Fsync == "every_record" && c.Evidence.FsyncInterval != 0:
+	case c.Evidence.Fsync == FsyncEveryRecord && c.Evidence.FsyncInterval != 0:
 		return fmt.Errorf("evidence.fsync_interval: only the interval policy takes one")
 	case c.Evidence.SegmentBytes > c.Evidence.MaxBytes:
 		return fmt.Errorf("evidence.segment_bytes: %d is over evidence.max_bytes %d", c.Evidence.SegmentBytes, c.Evidence.MaxBytes)
@@ -300,7 +300,7 @@ func notHTTP(key, value string) error {
 // mode enforces: under OBSERVE and SHADOW a list is answered as the upstream
 // serves it.
 func (c *Config) checkShaping() error {
-	if c.List.Shaping != "none" && (c.ModeName == "OBSERVE" || c.ModeName == "SHADOW") {
+	if c.List.Shaping != "none" && (c.ModeName == ModeObserve || c.ModeName == ModeShadow) {
 		return fmt.Errorf("list.shaping: %s under %s; shaping is none in a mode that does not enforce (ADR-0013)", c.List.Shaping, c.ModeName)
 	}
 	return nil

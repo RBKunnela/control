@@ -3,7 +3,6 @@ package enforce
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -11,7 +10,6 @@ import (
 	enforcev1alpha1 "github.com/guardana/control/api/gen/go/guardana/control/enforce/v1alpha1"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/adapterkit"
-	"github.com/guardana/control/internal/canon"
 	"github.com/guardana/control/internal/gateway"
 	"github.com/guardana/control/pkg/contract"
 )
@@ -47,7 +45,7 @@ func (a *Adapter) translate(req *enforcev1alpha1.AdmitRequest, run gateway.Opene
 		Context:       &controlv1.RunContext{},
 		Action:        &controlv1.Action{Kind: kindTool, Name: req.GetTool(), Protocol: protocolName},
 	}
-	env.TraceId, env.SpanId = traceContext(req.GetTraceparent())
+	env.TraceId, env.SpanId = adapterkit.TraceContext(req.GetTraceparent())
 	adm := gateway.Admission{Envelope: env, Arguments: args, Run: &run}
 	tool, ok := a.tools[req.GetTool()]
 	if !ok {
@@ -74,7 +72,7 @@ func (a *Adapter) translate(req *enforcev1alpha1.AdmitRequest, run gateway.Opene
 // pipeline receives either an envelope Validate accepts or the refusal. A
 // resource id past the contract's bound is recorded as its placeholder.
 func finish(env *controlv1.ActionEnvelope, args []byte) error {
-	if err := hashInto(env, args); err != nil {
+	if err := adapterkit.HashInto(env, args); err != nil {
 		return err
 	}
 	if id := env.GetResource().GetId(); len(id) > contract.MaxStringBytes {
@@ -90,7 +88,7 @@ func finish(env *controlv1.ActionEnvelope, args []byte) error {
 // rule of the contract a classified one is.
 func unclassified(env *controlv1.ActionEnvelope, args []byte) error {
 	why := fmt.Errorf("%w: the tool table does not name the tool", gateway.ErrUnclassified)
-	if err := hashInto(env, args); err != nil {
+	if err := adapterkit.HashInto(env, args); err != nil {
 		return errors.Join(err, why)
 	}
 	err := contract.Validate(env)
@@ -99,34 +97,4 @@ func unclassified(env *controlv1.ActionEnvelope, args []byte) error {
 		return why
 	}
 	return err
-}
-
-// hashInto puts the arguments hash in the envelope, so that even an envelope
-// nothing classifies names the bytes it was about.
-func hashInto(env *controlv1.ActionEnvelope, args []byte) error {
-	hash, err := canon.ArgumentsHashV1(args)
-	if err != nil {
-		return &contract.ValidationError{Field: "arguments.canonical_hash", Err: fmt.Errorf("%w: %w", contract.ErrInvalidValue, err)}
-	}
-	env.Arguments = &controlv1.Arguments{CanonicalHash: hash}
-	return nil
-}
-
-// traceContext returns the trace id and the caller's span id a traceparent
-// of version 00 names, or two empty strings for anything else. The value is
-// the client's claim: it correlates a call with a trace and decides nothing.
-func traceContext(v string) (traceID, spanID string) {
-	parts := strings.Split(v, "-")
-	if len(v) != 55 || len(parts) != 4 || parts[0] != "00" || len(parts[1]) != 32 || len(parts[2]) != 16 || len(parts[3]) != 2 {
-		return "", ""
-	}
-	for _, p := range parts[1:] {
-		if strings.Trim(p, "0123456789abcdef") != "" {
-			return "", ""
-		}
-	}
-	if strings.Trim(parts[1], "0") == "" || strings.Trim(parts[2], "0") == "" {
-		return "", ""
-	}
-	return parts[1], parts[2]
 }

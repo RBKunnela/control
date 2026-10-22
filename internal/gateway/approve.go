@@ -61,7 +61,7 @@ func (c *call) approve(snap *policy.Snapshot) Disposition {
 // written while the store searched blocks it, as one written during the ask
 // does, and the clock read with them judges its run again.
 func (c *call) holdAnew(binding approval.Binding, unheld []Held) Disposition {
-	if c.blockedNow() {
+	if c.blockIfCovered() {
 		return c.freshBlock()
 	}
 	if c.runLapsed() {
@@ -72,21 +72,14 @@ func (c *call) holdAnew(binding approval.Binding, unheld []Held) Disposition {
 }
 
 // holdOrUsed holds this call anew, unless a record the store keeps for a
-// request the pipeline no longer holds resolves as spent: a resume of that
-// request consumed its approval, and this call is the next identical one
-// (ADR-0013).
-//
-// The resolution is the one Find already returned. Consumed is the plane's own
-// proof that the approval was spent, even once the hold is gone from memory,
-// because only Consume writes it and only a plane resuming a request it held
-// calls Consume. It does not prove that anything ran: a pause or a record
-// the sink refuses after the consume blocks the execution with the approval
-// spent.
-// Pending, not resumed and a store that cannot say prove nothing spent, so
-// the call is held anew and counted.
-//
-// The plane never consumes a record it does not hold: that would spend an
-// answer the reconciliation may still have to resolve, and would tell the
+// request the pipeline no longer holds resolves as consumed, as Find returned
+// it: a resume of that request spent its approval, and this call is the next
+// identical one (ADR-0013). Only a plane resuming a request it held consumes,
+// so Consumed proves the approval spent once the hold is gone, though not that
+// anything ran: a pause or a record the sink refuses after the consume blocks
+// the execution. Every other resolution proves nothing spent, and the call is
+// held anew and counted. A record the plane does not hold is never consumed:
+// that would spend an answer a reconciliation may still resolve, and tell the
 // next identical call that its approval was spent (ADR-0016).
 func (c *call) holdOrUsed(binding approval.Binding, unheld []Held) Disposition {
 	for _, held := range unheld {
