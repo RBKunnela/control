@@ -91,7 +91,7 @@ with `runs.dir` refuses it.
 For each call step the runner:
 
 1. sends the arguments and reads the answer's kind only from the
-   `guardana.control/answer` marker and whether it is an error, and its
+   `guardana.control/answer` marker and whether it is a JSON-RPC error, and its
    codes, approval and ids only from the result's `_meta` or the error's
    data;
 2. polls `/healthz` until the spool holds nothing unacknowledged, and

@@ -193,7 +193,7 @@ security boundary (<a href="/docs/status">status</a>).</p>
 <td><code>TestAnUnknownStopStateBlocksEveryCall</code>, <code>TestHealthAnswersTheStopStateAnd503WhenTheListIsRewritten</code></td>
 </tr>
 <tr>
-<td>Freshness statement missing, expired or refused, at any time</td>
+<td>No freshness statement current</td>
 <td>blocked, a read too unless <code>policy.fail_open_read</code> opened it</td>
 <td><code>POLICY_STALE</code></td>
 <td><code>isError</code> and the code</td>
@@ -213,7 +213,7 @@ security boundary (<a href="/docs/status">status</a>).</p>
 <td>blocked outside <code>OBSERVE</code>, a read too, whatever <code>policy.fail_open_read</code> says</td>
 <td><code>POLICY_STALE</code></td>
 <td><code>isError</code> and the code</td>
-<td>yes, once the clock passes the verified time, or at a restart after <code>policy state reset</code>; outside 1970 to 9999, no: fix the clock</td>
+<td>yes, once the clock passes the verified time and, after a step back, a newer statement arrives, or a restart follows <code>policy state reset</code>; outside 1970 to 9999, no</td>
 <td><code>TestAClockOutsideTheUsableRangeIsACauseInTheRequest</code>, <code>TestAClockBehindAVerifiedTimeIsACauseInTheRequest</code>, <code>TestAClockBehindTheFloorStopsAnUnconfirmedSnapshotsRead</code></td>
 </tr>
 <tr>

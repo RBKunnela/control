@@ -118,10 +118,11 @@ counted on `/healthz`:
 | an entry that will not decode | nothing, and the pass is not complete | `holds_unmeasured`, `reconcile_incomplete` |
 | more journal entries than `approvals.reconcile_max` | the pass stops and reports itself unmeasured rather than done | `reconcile_incomplete` |
 
-A running plane that cannot write a held trail's closing record leaves that
-trail open, keeps its request id reserved until the plane restarts so no other
-call writes under it, and counts it in `held_trails_left_open`; the next start
-reports its journal entry, where there is one.
+A running plane that cannot write a held trail's closing record before
+hand-out leaves that trail open, keeps its request id reserved until the plane
+restarts so no other call writes under it, and counts it in
+`held_trails_left_open`; after hand-out it counts `sink_failures_after_effect`.
+The next start reports its journal entry, where there is one.
 
 **A plane configured without `approvals.hold_journal_dir` does not close a hold
 it loses.** That is the behaviour of a plane on the memory provider, it is
@@ -254,7 +255,7 @@ only an approved, unconsumed record passes.
 | Setting | Bounds | Past it |
 | --- | --- | --- |
 | `approvals.ttl` | how long a requested approval can be answered and consumed; `expires_at` is the hold's clock reading plus it | expired |
-| `approvals.retry_after` | what the agent is told to wait before retrying, in whole seconds rounded up | nothing: a retry before an answer is told to retry again |
+| `approvals.retry_after` | what the agent is told to wait before retrying, rounded up to whole seconds over MCP | nothing: a retry before an answer is told to retry again |
 | `approvals.max_held` | the requests held and not yet closed, an expired hold the sweep has not reached among them | the hold is refused with `EVIDENCE_UNAVAILABLE` |
 | `approvals.max_held_per_run` | the requests one opened run holds and not yet expired; 16 unless set, read only beside `runs.dir`, and below `approvals.max_held` | the hold is refused with `EVIDENCE_UNAVAILABLE` |
 | `approvals.max_open` | the executions handed out and not yet closed | the call, resumed or not, blocks with `EVIDENCE_UNAVAILABLE` |

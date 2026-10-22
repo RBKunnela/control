@@ -125,6 +125,11 @@ caller enforces the decision is <code>Cooperative</code>.</p>
 <p>Amended by <a href="/docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands">ADR-0055</a>: a call, a resumed one included,
 is handed out only while the bundle its decision stood on is still installed
 and fresh, and a resume judges this before it consumes its approval.</p>
+<p>Amended to state the translation the adapter makes of the two methods that are
+not tool calls: a <code>resources/read</code> and a <code>prompts/get</code> are effect <code>READ</code>, of
+resource type <code>mcp.resource</code> or <code>mcp.prompt</code> named by the URI or the prompt's
+name, served by the plane's one upstream; no override classifies them, and with
+more than one upstream they are unclassified.</p>
 <p>Amended by <a href="/docs/adr/0016-approval-providers-and-the-lost-hold">ADR-0016</a>: a hold the
 plane loses to a restart is closed from the plane's own hold journal rather than
 left open, and a store record the plane no longer holds is resolved as not

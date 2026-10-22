@@ -76,7 +76,7 @@ the export being the plane's, and nothing else protects that.
 | `REQUIRED_STEP_SKIPPED` | a required step has no instance |
 | `STEP_OUT_OF_ORDER` | a step comes before one it must follow |
 | `CONTINUED_AFTER_FAILURE` | another step proposed after a step's failure, before its retry, unless it is a step's first instance out of order |
-| `RESOURCE_OUTSIDE_RUN` | one binding's calls carry more than one resource; indeterminate for a binding called with no id of its type |
+| `RESOURCE_OUTSIDE_RUN` | one binding's calls carry more than one resource; indeterminate for one resource beside an id-less call |
 | `DENIED_ACTION_RETRIED_ARGUMENTS` | a denied tool is called again with other arguments |
 | `DENIED_ACTION_RETRIED_RESOURCE` | another tool or upstream on a denied call's resource, not a read after a denied non-read |
 | `DENIED_ACTION_RETRIED_AROUND` | a source reports the denied tool after the denial, joined to no plane call; not checked with no `--source` or one unread or unheard |
@@ -84,8 +84,8 @@ the export being the plane's, and nothing else protects that.
 
 An order is untold, its finding `INDETERMINATE`, when a proposal or a failure
 has no time, or between two of one instant. A retry continues nothing, though
-each denial of it counts toward `REPEATED_DENIAL`, and an approval belongs to
-the step it held. Every rule orders by the plane's times, never by place in
+each denial of it counts toward `REPEATED_DENIAL`; an approved call, no
+retry, belongs to the step it held. Every rule orders by the plane's times, never by place in
 an export; a retry confirms only when one export holds both.
 
 ## The verdict

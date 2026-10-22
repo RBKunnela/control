@@ -110,8 +110,9 @@ lines, repeated ones included, and refuses a longer file with exit 1.
   `trail` still counts a repeat once, and refuses a file in which one event id
   carries two different lines.
 - **A request it cannot read is refused**, with 400, 413 when it is too large
-  or 415 for a media type or encoding it does not take, and the plane quarantines
-  the record it cannot deliver instead of retrying it for ever. So is a record
+  or 415 for a media type or encoding it does not take. The plane splits a 400
+  or 413 down to one record and quarantines it instead of retrying it for
+  ever; a 415 it sends again. So is a record
   whose event id the file already holds with other content, so the file stays
   one `trail` reads.
 

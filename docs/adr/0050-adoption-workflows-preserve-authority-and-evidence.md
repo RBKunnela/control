@@ -1,6 +1,6 @@
 # ADR-0050: Adoption workflows preserve authority and evidence
 
-Status: proposed
+Status: accepted
 Date: 2026-10-09
 
 ## Context

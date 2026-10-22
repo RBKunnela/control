@@ -154,7 +154,7 @@ and its path at most 103 bytes. A running plane holds a lock on
 <code>enforce.sock.lock</code> beside the socket, so a second plane on the same socket is
 refused. The file stays after the plane stops; never remove it while a plane
 runs. <code>execution_lifetime</code> is how long a client may
-take between an <code>EXECUTE</code> and its report. <code>listener.max_open_per_run</code>, 16 by
+take between an <code>EXECUTE</code> and its report, while its run stays open. <code>listener.max_open_per_run</code>, 16 by
 default, bounds the executions one run holds open and stays below
 <code>approvals.max_open</code>. The table takes the keys an MCP override takes but the
 fingerprint: nothing binds a name to what the tool does. A tool it does not

@@ -115,7 +115,7 @@ stop, its agent connected or not, each up to
 seconds to append its closing record, then up to five seconds for the exporter to ship what
 the spool holds, then the collector, then the page, whose input dev closes.
 Dev then prints `unshipped:`, the bytes the collector never acknowledged,
-which the trail file lacks; it never says the trail is complete. It exits 0
+which the trail file may lack; it never says the trail is complete. It exits 0
 after an interrupt and 1 when a part stopped on its own, the page included,
 whatever the page's status, or did not stop cleanly: a call cut at the stop,
 a closing record lost before or after the plane closed, or a part that did

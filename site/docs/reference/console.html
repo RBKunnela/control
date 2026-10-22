@@ -133,9 +133,9 @@ of the start: the page's script sends it once to <code>/api/session</code> and r
 a session token of the same strength, which the tab keeps and sends in a
 header with every other request. After the trade, or after ten minutes, the
 printed token is refused; the ten minutes are counted on the wall clock as
-well, so a machine that slept through them does not extend them. The link
-stays in the browser's history and may be kept in its session files, but what
-it carries is spent. The session belongs to the tab that traded it and to a
+well, so a machine that slept through them does not extend them. The script
+takes the token out of the address bar at once; the link may stay in the
+browser's history and session files, but what it carries is spent. The session belongs to the tab that traded it and to a
 copy of that tab, which a browser makes when a tab is duplicated. A tab that
 lost its session, and any other tab, says to start the console command again
 and open the link it prints. Nothing else is printed on stdout; diagnostics go to

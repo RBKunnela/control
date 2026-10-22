@@ -49,8 +49,8 @@ The identity is your listener's: `tenant_id`, `listener.principal.type`,
 `listener.principal.id` and `listener.agent.id`. The command prints `run_id`,
 `root`, `expires_at` and `token`; the token is printed this once. A task that
 spawns another opens the child with `--parent <run id>`, so the two share what
-they take in; the child ends no later than its parent
-([reference/runs.md](../reference/runs.md)).
+they take in; the child expires no later than its parent, and closing the
+parent leaves it open ([reference/runs.md](../reference/runs.md)).
 
 ### 3. Point the plane at it
 

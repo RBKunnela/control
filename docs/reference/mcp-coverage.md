@@ -2,7 +2,7 @@
 title: MCP enforcement coverage
 summary: Per revision, transport and method, what the gateway enforces today and what it does not.
 type: reference
-covers: [adapters/mcp/**, internal/gateway/**, cmd/guardana-gateway/**, pkg/contract/effect.go]
+covers: [adapters/mcp/**, internal/gateway/**, cmd/guardana-gateway/**, pkg/contract/effect.go, internal/secretscan/**]
 ---
 
 # MCP enforcement coverage
@@ -102,8 +102,8 @@ strings `<ns>/request_id` and `<ns>/decision_id`:
 | Answer | Where the ids travel |
 | --- | --- |
 | a block, a pending state, the upstream's result | the result's `_meta` |
-| an upstream's wire error, `data` an object or absent | the top level of `data` |
-| an upstream's wire error, other `data` | nowhere; the data arrives as sent |
+| an upstream's wire error, `data` an object, `null` or absent | the top level of `data` |
+| an upstream's wire error, other `data` | nowhere; the data arrives unchanged |
 
 A retry told to wait again, or run, names the held request's trail; one refused
 on its own trail names that. The ids are added after the result is hashed,

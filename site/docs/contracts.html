@@ -139,9 +139,9 @@ and <code>guardana.control.finding.v1alpha1</code> are described on
 <a href="#the-enforcement-api">The enforcement API</a> below.</p>
 <h2 id="schema-versioning">Schema versioning</h2>
 <p><code>schema_version</code> is <code>1.0</code>. Five messages carry it: <code>ActionEnvelope</code>,
-<code>Decision</code>, <code>Approval</code>, <code>ActionResult</code> and <code>Event</code>. A message nested inside one
-of those carries no version of its own and is versioned by the message that
-carries it.</p>
+<code>Decision</code>, <code>Approval</code>, <code>ActionResult</code> and <code>Event</code>. Any other message nested
+inside one of those carries no version of its own and is versioned by the
+message that carries it.</p>
 <p>The value is <code>MAJOR.MINOR</code>.</p>
 <ul>
 <li>A <strong>major</strong> bump means the security meaning of a field changed. A receiver
@@ -180,7 +180,7 @@ parse can see it. <code>Decode</code> therefore reads each entry of <code>princi
 such a field as <code>ErrUnknownField</code> at the map, so the envelope keeps the
 unknown-field rule on both paths (<code>implemented</code>). A message the runtime parsed
 anywhere else has lost those fields for good. The envelope is the only message
-this repository decodes from binary; <code>Obligation.params</code>, in a <code>Decision</code>, is a
+with a map this repository decodes from binary; <code>Obligation.params</code>, in a <code>Decision</code>, is a
 map too, and a binary decoder for it would need the same pass. ADR-0002 carries
 the measurement.</p>
 <p><code>Validate</code> performs the version check, <code>implemented</code>: it refuses anything that
@@ -1843,10 +1843,10 @@ and end times, a <code>result_hash</code> and a <code>side_effect_confirmation</
 cannot tell whether the bytes left completes with <code>COMPLETION_STATUS_UNKNOWN</code>
 and never aborts. An abort names the handle and one cause:
 <code>ABORT_CAUSE_ARGUMENTS_DIFFER</code>, <code>ABORT_CAUSE_OBLIGATION</code> or
-<code>ABORT_CAUSE_NOT_SENT</code>. Both answer with how the execution ended:
-<code>ENDING_RECORDED</code>, <code>ENDING_RECORD_FAILED</code>, <code>ENDING_UNRECORDED</code> (a read the
-operator let run unrecorded) or <code>ENDING_ABANDONED</code> (the handle expired
-before either arrived).</p>
+<code>ABORT_CAUSE_NOT_SENT</code>. Both answer <code>ENDING_RECORDED</code>, <code>ENDING_RECORD_FAILED</code>
+or <code>ENDING_UNRECORDED</code> (a read the operator let run unrecorded). A handle past
+its expiry is refused with <code>ERROR_CODE_HANDLE_UNKNOWN</code>; the receiver records
+it abandoned.</p>
 <h3 id="the-error-body">The error body</h3>
 <p>A refusal of the contract is answered with an <code>Error</code> as the body, before
 anything is written: its <code>code</code>, a <code>message</code> for a person, and <code>ending</code> set

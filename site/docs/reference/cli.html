@@ -296,10 +296,11 @@ file without serving: <a href="/docs/guides/run-the-gateway">guides/run-the-gate
 is their page and <a href="/docs/reference/configuration">configuration.md</a> lists every key.
 <code>--config</code> is required. A key naming a file or a
 directory refuses key text, naming the key and not the value. On an interrupt
-or <code>SIGTERM</code>, <code>run</code> admits no new call, waits for admitted calls up to
-<code>upstream.call_timeout</code> plus ten seconds, plus <code>pdp.timeout</code> with a decision
-point, and exits 1 when it cut one, lost a closing record or could not close the
-spool; <code>doctor</code> exits 1 when the plane it checked does not close.</p>
+or <code>SIGTERM</code>, <code>run</code> admits no new call, gives admitted ones
+<code>upstream.call_timeout</code> plus ten seconds, plus any <code>pdp.timeout</code>; an
+<code>enforce_api</code> plane waits ten seconds and abandons open executions. Either
+exits 1 when it cut one, lost a closing record or could not close the spool;
+<code>doctor</code> when its plane does not close.</p>
 <p><code>collect</code> and <code>trail</code> read no configuration:
 <a href="/docs/guides/watch-a-plane-without-a-collector">guides/watch-a-plane-without-a-collector.md</a>
 is their page. <code>collect</code> listens on a loopback IP address only and appends

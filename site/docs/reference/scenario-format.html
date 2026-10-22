@@ -246,7 +246,7 @@ with <code>runs.dir</code> refuses it.</p>
 <p>For each call step the runner:</p>
 <ol>
 <li>sends the arguments and reads the answer's kind only from the
-<code>guardana.control/answer</code> marker and whether it is an error, and its
+<code>guardana.control/answer</code> marker and whether it is a JSON-RPC error, and its
 codes, approval and ids only from the result's <code>_meta</code> or the error's
 data;</li>
 <li>polls <code>/healthz</code> until the spool holds nothing unacknowledged, and

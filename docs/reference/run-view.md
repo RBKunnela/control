@@ -64,7 +64,7 @@ against its background.
 
 ## Which calls are drawn
 
-By default the page draws, for each finding, the calls it cites and the call
+By default the page draws, for each finding it lists, the calls it cites and the call
 just before and just after each, and counts the calls between as not drawn. A
 run with no finding that cites a call draws no call. `--view-all` draws every
 call of the run. Either way the page draws at most 1000 calls, and when it

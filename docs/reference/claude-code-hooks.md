@@ -87,8 +87,8 @@ not the plane, runs the call.
 ```
 
 - `timeout` is 30 because the profile says so: the bridge gives up on each
-  request to the plane after 12 seconds and on its requests together after
-  27, counted once the event is read. That leaves three seconds of the
+  request to the plane after 12 seconds and starts none after 27, counted
+  once the event is read. That leaves three seconds of the
   runtime's limit for starting the command and reading the event; a hook
   that overruns the limit blocks the call under `onFailure: "block"`.
 - `onFailure: "block"` sits on `PreToolUse` only. With it, a hook that times

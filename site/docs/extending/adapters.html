@@ -136,8 +136,15 @@ past a rule the first one enforces.</p>
 <a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a>: it sees a call before
 its effect. Sensors, detectors, reactions and notifiers run as separate
 programs speaking versioned data contracts, never as code compiled into the
-plane (<a href="/docs/status">status.md</a> says which exist), so this guide does not
-cover them.</p>
+plane (<a href="/docs/status">status.md</a> says which exist). Their contracts are on
+other pages: a tool's client in
+<a href="/docs/guides/decide-a-tool-of-your-own">decide a tool of your own</a>, an
+evidence consumer in
+<a href="/docs/guides/read-the-evidence-from-a-program">read the evidence from a program</a>,
+a decision point in
+<a href="/docs/guides/let-a-decision-point-veto#what-the-decision-point-sees">what the decision point sees</a>,
+a notifier in <a href="/docs/reference/supervision#notify">notify</a>, and a trace
+source in <a href="/docs/reference/observations#the-source-descriptor">the source descriptor</a>.</p>
 <h2 id="the-seam">The seam</h2>
 <p>The seam is internal, in <code>internal/gateway</code>:</p>
 <pre><code class="language-go">type Adapter interface {
@@ -145,12 +152,10 @@ cover them.</p>
     Capabilities() Capabilities   // fixed for the adapter&#39;s lifetime
 }
 </code></pre>
-<p>It is deliberately not <code>pkg/adapter</code>. A public package with one consumer in the
-tree is a compatibility promise made to nobody, and
+<p>It is deliberately not <code>pkg/adapter</code>. Two adapters in this tree use it, and
 <a href="/docs/adr/0009-open-core-boundary">ADR-0009</a> says a pluggable seam stays
-internal until its own decision promotes it. The second adapter is what shows
-what the two have in common; until then the shape may change with a minor
-release. That is what <code>stability: development</code> means here. An adapter is
+internal until its own decision promotes it; until then its shape may change
+with a minor release. That is what <code>stability: development</code> means here. An adapter is
 therefore written inside this repository: Go refuses to let another module
 import <code>internal/</code>, and an integration built elsewhere speaks the enforcement
 API instead.</p>
@@ -191,7 +196,7 @@ failing:</p>
 </tr>
 <tr>
 <td><code>Preview(ctx, Admission) *Decision</code></td>
-<td>what a call would be decided, recording and holding nothing. It is what shaping a listing asks</td>
+<td>the decision a listing shows: the kernel's, the mode's and the halts', without pauses, stops, run flow or the decision point. It records and holds nothing, and is what shaping a listing asks</td>
 </tr>
 </tbody>
 </table>

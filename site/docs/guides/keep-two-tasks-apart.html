@@ -142,8 +142,8 @@ first <code>runs open</code> makes it a runs directory; a plane refuses it befor
 <code>listener.principal.id</code> and <code>listener.agent.id</code>. The command prints <code>run_id</code>,
 <code>root</code>, <code>expires_at</code> and <code>token</code>; the token is printed this once. A task that
 spawns another opens the child with <code>--parent &lt;run id&gt;</code>, so the two share what
-they take in; the child ends no later than its parent
-(<a href="/docs/reference/runs">reference/runs.md</a>).</p>
+they take in; the child expires no later than its parent, and closing the
+parent leaves it open (<a href="/docs/reference/runs">reference/runs.md</a>).</p>
 <h3 id="3-point-the-plane-at-it">3. Point the plane at it</h3>
 <pre><code class="language-yaml">runs:
   dir: /var/lib/guardana/runs

@@ -166,8 +166,8 @@ call its other conditions match.</li>
 $ echo $?
 0
 </code></pre>
-<p>Nothing is printed on a pass. On a refusal, the first refusal in document
-order is one line on stderr and the exit status is 1; the parser stops at the
+<p>Nothing is printed on a pass. On a refusal, the first refusal in the
+parser's fixed order is one line on stderr and the exit status is 1; the parser stops at the
 first refusal, so fix one per run:</p>
 <pre><code>$ go run ./cmd/guardana-control policy lint refused.json
 guardana-control: policy lint: rule &#34;cap-refunds&#34; &#34;rules[0].obligations[0].type&#34;: &#34;rules: an obligation type outside the catalogue&#34;

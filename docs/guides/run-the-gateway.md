@@ -59,9 +59,9 @@ the plane: a floor made anew takes any older bundle.
 
 ### 2. Write a configuration
 
-Every path in the file resolves against its directory. Every key has an
-environment variable under `GUARDANA_CONTROL_`, the key in capitals with
-underscores for dots, which wins over the file. An unknown key is refused.
+Every path key resolves against its directory; upstream `args` pass as
+written. Every key has an environment variable under `GUARDANA_CONTROL_`, the
+key in capitals with underscores for dots, which wins over the file. An unknown key is refused.
 [configuration.md](../reference/configuration.md) lists every key. The plane
 refuses the file if it, or a directory or link above it, belongs to an
 account but its own or root, or another account may write it.

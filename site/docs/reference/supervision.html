@@ -233,7 +233,7 @@ the export being the plane's, and nothing else protects that.</p>
 </tr>
 <tr>
 <td><code>RESOURCE_OUTSIDE_RUN</code></td>
-<td>one binding's calls carry more than one resource; indeterminate for a binding called with no id of its type</td>
+<td>one binding's calls carry more than one resource; indeterminate for one resource beside an id-less call</td>
 </tr>
 <tr>
 <td><code>DENIED_ACTION_RETRIED_ARGUMENTS</code></td>
@@ -255,8 +255,8 @@ the export being the plane's, and nothing else protects that.</p>
 </table>
 <p>An order is untold, its finding <code>INDETERMINATE</code>, when a proposal or a failure
 has no time, or between two of one instant. A retry continues nothing, though
-each denial of it counts toward <code>REPEATED_DENIAL</code>, and an approval belongs to
-the step it held. Every rule orders by the plane's times, never by place in
+each denial of it counts toward <code>REPEATED_DENIAL</code>; an approved call, no
+retry, belongs to the step it held. Every rule orders by the plane's times, never by place in
 an export; a retry confirms only when one export holds both.</p>
 <h2 id="the-verdict">The verdict</h2>
 <p>The weakest of what a finding rests on. Plane events in an unbroken chain can

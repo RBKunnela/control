@@ -143,7 +143,7 @@ with `make docs-gen`; an edit made here does not survive the next run.
 - [ADR-0047: A procedure states its exceptions, resources and children](adr/0047-a-procedure-states-its-exceptions-resources-and-children.md): accepted
 - [ADR-0048: One run drawn as a page, and findings exported with a cursor](adr/0048-one-run-drawn-as-a-page-and-findings-exported-with-a-cursor.md): accepted
 - [ADR-0049: The site names the published release](adr/0049-the-site-names-the-published-release.md): accepted
-- [ADR-0050: Adoption workflows preserve authority and evidence](adr/0050-adoption-workflows-preserve-authority-and-evidence.md): proposed
+- [ADR-0050: Adoption workflows preserve authority and evidence](adr/0050-adoption-workflows-preserve-authority-and-evidence.md): accepted
 - [ADR-0051: A tool outside MCP is admitted, completed and aborted through an enforcement API](adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api.md): accepted
 - [ADR-0052: A change is gated on its pull request, and releases keep a rhythm](adr/0052-a-change-is-gated-on-its-pull-request.md): accepted
 - [ADR-0053: A Python client of the enforcement API lives in this repository](adr/0053-a-python-client-of-the-enforcement-api-in-this-repository.md): accepted

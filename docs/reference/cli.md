@@ -201,10 +201,11 @@ file without serving: [guides/run-the-gateway.md](../guides/run-the-gateway.md)
 is their page and [configuration.md](configuration.md) lists every key.
 `--config` is required. A key naming a file or a
 directory refuses key text, naming the key and not the value. On an interrupt
-or `SIGTERM`, `run` admits no new call, waits for admitted calls up to
-`upstream.call_timeout` plus ten seconds, plus `pdp.timeout` with a decision
-point, and exits 1 when it cut one, lost a closing record or could not close the
-spool; `doctor` exits 1 when the plane it checked does not close.
+or `SIGTERM`, `run` admits no new call, gives admitted ones
+`upstream.call_timeout` plus ten seconds, plus any `pdp.timeout`; an
+`enforce_api` plane waits ten seconds and abandons open executions. Either
+exits 1 when it cut one, lost a closing record or could not close the spool;
+`doctor` when its plane does not close.
 
 `collect` and `trail` read no configuration:
 [guides/watch-a-plane-without-a-collector.md](../guides/watch-a-plane-without-a-collector.md)

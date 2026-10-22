@@ -42,9 +42,9 @@ and `guardana.control.finding.v1alpha1` are described on
 ## Schema versioning
 
 `schema_version` is `1.0`. Five messages carry it: `ActionEnvelope`,
-`Decision`, `Approval`, `ActionResult` and `Event`. A message nested inside one
-of those carries no version of its own and is versioned by the message that
-carries it.
+`Decision`, `Approval`, `ActionResult` and `Event`. Any other message nested
+inside one of those carries no version of its own and is versioned by the
+message that carries it.
 
 The value is `MAJOR.MINOR`.
 
@@ -88,7 +88,7 @@ parse can see it. `Decode` therefore reads each entry of `principal.attributes`,
 such a field as `ErrUnknownField` at the map, so the envelope keeps the
 unknown-field rule on both paths (`implemented`). A message the runtime parsed
 anywhere else has lost those fields for good. The envelope is the only message
-this repository decodes from binary; `Obligation.params`, in a `Decision`, is a
+with a map this repository decodes from binary; `Obligation.params`, in a `Decision`, is a
 map too, and a binary decoder for it would need the same pass. ADR-0002 carries
 the measurement.
 
@@ -1444,10 +1444,10 @@ and end times, a `result_hash` and a `side_effect_confirmation`. A client that
 cannot tell whether the bytes left completes with `COMPLETION_STATUS_UNKNOWN`
 and never aborts. An abort names the handle and one cause:
 `ABORT_CAUSE_ARGUMENTS_DIFFER`, `ABORT_CAUSE_OBLIGATION` or
-`ABORT_CAUSE_NOT_SENT`. Both answer with how the execution ended:
-`ENDING_RECORDED`, `ENDING_RECORD_FAILED`, `ENDING_UNRECORDED` (a read the
-operator let run unrecorded) or `ENDING_ABANDONED` (the handle expired
-before either arrived).
+`ABORT_CAUSE_NOT_SENT`. Both answer `ENDING_RECORDED`, `ENDING_RECORD_FAILED`
+or `ENDING_UNRECORDED` (a read the operator let run unrecorded). A handle past
+its expiry is refused with `ERROR_CODE_HANDLE_UNKNOWN`; the receiver records
+it abandoned.
 
 ### The error body
 

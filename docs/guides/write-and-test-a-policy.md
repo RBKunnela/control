@@ -72,8 +72,8 @@ $ echo $?
 0
 ```
 
-Nothing is printed on a pass. On a refusal, the first refusal in document
-order is one line on stderr and the exit status is 1; the parser stops at the
+Nothing is printed on a pass. On a refusal, the first refusal in the
+parser's fixed order is one line on stderr and the exit status is 1; the parser stops at the
 first refusal, so fix one per run:
 
 ```

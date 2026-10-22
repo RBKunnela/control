@@ -68,8 +68,8 @@ Commit subjects and pull request titles follow
 `type(scope): summary`. The type is one of `feat`, `fix`, `docs`, `test`,
 `refactor`, `perf`, `build`, `ci`, `chore` or `revert`, and a `!` after the
 scope marks a breaking change. The scope is optional and names the area, such
-as `gateway` or `policy`. The summary is imperative, without a trailing period,
-and the whole subject fits in 72 characters. The body says why, wrapped at 72
+as `gateway` or `policy`. The summary is imperative, without a trailing period;
+the subject with ` (#N)` fits in 72 characters. The body says why, wrapped at 72
 columns:
 
 ```text
@@ -111,8 +111,9 @@ Only maintainers merge, once the review and the required checks pass.
 
 Every page under `docs/`, except a decision record, opens with frontmatter:
 `title` (its one heading), `summary`, `type`, `covers` (globs of the code whose
-change makes the page suspect) and, on a rendered page, `generated`. The
-directory fixes the type, and `docs/docs.json` holds each type's word budget.
+change makes the page suspect) and, on a rendered page, `generated`.
+`docs/docs.json` names each directory's type, any page's own, and each type's
+budget.
 `make docs-check` refuses a page that breaks any of this, a dead link, or a
 "supports", "provides" or "integrates with" claim with no status label.
 

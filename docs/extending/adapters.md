@@ -37,8 +37,15 @@ An adapter is the enforcement point among the five ports of
 [ADR-0039](../adr/0039-many-channels-into-one-core.md): it sees a call before
 its effect. Sensors, detectors, reactions and notifiers run as separate
 programs speaking versioned data contracts, never as code compiled into the
-plane ([status.md](../status.md) says which exist), so this guide does not
-cover them.
+plane ([status.md](../status.md) says which exist). Their contracts are on
+other pages: a tool's client in
+[decide a tool of your own](../guides/decide-a-tool-of-your-own.md), an
+evidence consumer in
+[read the evidence from a program](../guides/read-the-evidence-from-a-program.md),
+a decision point in
+[what the decision point sees](../guides/let-a-decision-point-veto.md#what-the-decision-point-sees),
+a notifier in [notify](../reference/supervision.md#notify), and a trace
+source in [the source descriptor](../reference/observations.md#the-source-descriptor).
 
 ## The seam
 
@@ -51,12 +58,10 @@ type Adapter interface {
 }
 ```
 
-It is deliberately not `pkg/adapter`. A public package with one consumer in the
-tree is a compatibility promise made to nobody, and
+It is deliberately not `pkg/adapter`. Two adapters in this tree use it, and
 [ADR-0009](../adr/0009-open-core-boundary.md) says a pluggable seam stays
-internal until its own decision promotes it. The second adapter is what shows
-what the two have in common; until then the shape may change with a minor
-release. That is what `stability: development` means here. An adapter is
+internal until its own decision promotes it; until then its shape may change
+with a minor release. That is what `stability: development` means here. An adapter is
 therefore written inside this repository: Go refuses to let another module
 import `internal/`, and an integration built elsewhere speaks the enforcement
 API instead.
@@ -78,7 +83,7 @@ failing:
 | `CloseReported(ctx, disposition, sent, result) error` | `Close` for bytes a cooperating caller reports it sent. A mismatch halts the material calls of that execution's opened run only, until restart; with no opened run, past `MaxRuns` halted runs, or through an adapter that is not cooperative, it halts the plane as `Close` does |
 | `Abort(ctx, disposition, cause) error` | the call did not go, and the cause says why: the adapter's own pre-send check, an obligation it applies, a call it cannot route, a call its protocol cannot express |
 | `Abandon(ctx, disposition) error` | nobody closed or aborted the execution before it expired. It is closed as `ACTION_FAILED` with status `UNKNOWN` and `EXECUTION_ABANDONED`, since nobody knows whether the call ran, and halts nothing; `ErrNotMinted` for an execution that is not open |
-| `Preview(ctx, Admission) *Decision` | what a call would be decided, recording and holding nothing. It is what shaping a listing asks |
+| `Preview(ctx, Admission) *Decision` | the decision a listing shows: the kernel's, the mode's and the halts', without pauses, stops, run flow or the decision point. It records and holds nothing, and is what shaping a listing asks |
 
 An adapter that has an execution open closes or aborts it. An execution left
 open holds one of the plane's `MaxOpen` slots until the adapter abandons it or

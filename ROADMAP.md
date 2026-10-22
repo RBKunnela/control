@@ -5,7 +5,8 @@ agents across connected channels, then react within the operator's authority.
 MCP is the first channel. [ADR-0039](docs/adr/0039-many-channels-into-one-core.md)
 records the architecture.
 
-Everything here is `planned`, in delivery order, without dates. Finished
+Everything here is `planned` but what the table names as existing, in
+delivery order, without dates. Finished
 tasks leave the [backlog](docs/backlog.md);
 [status](docs/status.md) is the inventory of what exists.
 
@@ -41,10 +42,8 @@ preview, explicit apply and undo are B23; setup never silently widens authority.
 
 ## 2. Integrations without a fork
 
-A Python wrapper over the `experimental` Enforcement API admits, completes
-and aborts a custom tool call, binds run and identity, consumes approval once
-and never retries an uncertain effect. Choose one framework or coding-runtime integration with
-adopters, then TypeScript and a second integration. Add proxy and process
+Choose one framework integration with adopters, then TypeScript and a
+second integration. Add proxy and process
 sensors. Publish port contracts with language-neutral conformance suites
 after two consumers use each. A public Go seam needs its own record.
 Tool-definition review and policy comparison (B25, B27) help operators

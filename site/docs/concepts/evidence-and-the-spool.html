@@ -187,7 +187,7 @@ unset, so a gap looks like a gap and never like an empty decision.</p>
 </tr>
 <tr>
 <td><code>ACTION_STARTED</code></td>
-<td>the call is handed to execution</td>
+<td>the call passed its checks; a lapse found during its append ends the trail with <code>ACTION_FAILED</code> and nothing is handed out</td>
 <td>no payload; <code>execution_id</code> names this execution, and the closing event carries it again</td>
 </tr>
 <tr>

@@ -110,7 +110,8 @@ in a terminal of its own:
 guardana-gateway collect --listen 127.0.0.1:4318 --out trail/plane.jsonl
 ```
 
-Check the configuration; every check line should begin `ok`:
+Open both runs as step 5 shows first. Then check the configuration; every
+check line should begin `ok`:
 
 ```
 $ guardana-gateway doctor --config plane.yaml

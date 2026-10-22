@@ -53,7 +53,11 @@
     "internal/policy/reasons/**",
     "internal/evidence/chain.go",
     "internal/trailchain/**",
-    "scripts/lib/dependency-rule.sh"
+    "scripts/lib/dependency-rule.sh",
+    "clients/python/**",
+    "testdata/enforce/**",
+    "internal/hookbridge/profiles/**",
+    "examples/**"
   ],
   "released": "0.13.0"
 }

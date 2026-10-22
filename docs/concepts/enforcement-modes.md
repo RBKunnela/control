@@ -168,8 +168,8 @@ store's or the hold journal's, which a running plane locks. The check compares
 the directories by identity as well as by path, so a link to one of them, or
 a spelling in another case on a volume that ignores case, is refused too.
 
-A pause bites on every call not yet handed out for execution when the plane
-reads it. Nothing already running is cancelled: an execution handed out before
+A pause bites on every call not yet recorded as started when the plane reads
+it. Nothing already running is cancelled: an execution handed out before
 it finishes and is recorded, since cancelling it would turn an effect into an
 unknown one. A paused retry of a held request is blocked on a trail of its
 own, holds nothing anew and consumes nothing, and that holds for a pause read

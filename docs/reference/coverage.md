@@ -86,9 +86,9 @@ receive time; one heard after the command's clock is unknown.
 ## The join
 
 Beside an enforced or decided path, each matching observation is checked
-against the exports of the planes that count for it. It is joined when it, or
-an observation below it in the same trace, tenant and project, has the span id
-of a tool call's proposal for that tool on that upstream, or for an
+against the exports of the planes that count for it. It is joined when a
+whole export holds, for it or an observation below it in the same trace,
+tenant and project, the span id of a tool call's proposal for that tool on that upstream, or for an
 `enforce_tool` of that tool through the enforcement API, in the same tenant
 and project, recorded in a mode
 at least as strong as the path's state. A call every such plane's export could

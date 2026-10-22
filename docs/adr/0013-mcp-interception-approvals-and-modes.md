@@ -19,6 +19,12 @@ Amended by [ADR-0055](0055-a-call-is-handed-out-only-while-its-policy-stands.md)
 is handed out only while the bundle its decision stood on is still installed
 and fresh, and a resume judges this before it consumes its approval.
 
+Amended to state the translation the adapter makes of the two methods that are
+not tool calls: a `resources/read` and a `prompts/get` are effect `READ`, of
+resource type `mcp.resource` or `mcp.prompt` named by the URI or the prompt's
+name, served by the plane's one upstream; no override classifies them, and with
+more than one upstream they are unclassified.
+
 Amended by [ADR-0016](0016-approval-providers-and-the-lost-hold.md): a hold the
 plane loses to a restart is closed from the plane's own hold journal rather than
 left open, and a store record the plane no longer holds is resolved as not

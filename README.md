@@ -96,8 +96,9 @@ the operator explicitly let a read run unrecorded.
 | `ALLOW_WITH_OBLIGATIONS` | Proceed under enforced conditions, unless advisory. |
 | `INDETERMINATE` | No decision; never an allow. |
 
-`OBSERVE` records decisions and lets calls run. No model grants authority.
-Content capture is off by default; hidden reasoning is never stored.
+`OBSERVE` records decisions; pauses, stops and halts still block calls. No
+model grants authority. Content capture is off by default; hidden reasoning
+is never stored.
 
 ## Connected channels towards 1.0
 

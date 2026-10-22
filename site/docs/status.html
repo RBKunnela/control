@@ -191,7 +191,7 @@ already holds a package doc and a test holds nothing that decides.</li>
 <tr>
 <td>Policy keys and signed bundle files</td>
 <td><code>implemented</code></td>
-<td><code>internal/policykey/</code> (the private key file and its reader, the public key line and its one parser, the derived key id, the bundle file, and the freshness statement's file, <code>experimental</code>), <code>internal/files/</code> (create without replacing, replace, bounded read of a regular file), <code>internal/keytext/</code> (the withholding and quoting both binaries and the approvals page print through, which reads no key), <a href="/docs/adr/0018-keys-and-bundles-on-disk">ADR-0018</a>. <code>policy keygen</code> and <code>policy sign</code> write them and the gateway parses <code>policy.public_key</code> through the same package. Unix-like systems only; the approvals store, the hold journal and the spool still carry their own file code</td>
+<td><code>internal/policykey/</code> (the private key file and its reader, the public key line and its one parser, the derived key id, the bundle file, and the freshness statement's file, <code>experimental</code>), <code>internal/files/</code> (create without replacing, replace, bounded read of a regular file), <code>internal/keytext/</code> (the withholding and quoting both binaries and the approvals page print through, which reads no key), <a href="/docs/adr/0018-keys-and-bundles-on-disk">ADR-0018</a>. <code>policy keygen</code> and <code>policy sign</code> write them and the gateway parses <code>policy.public_key</code> through the same package. Unix-like systems only; the approvals store, the hold journal and the spool carry their own file code</td>
 </tr>
 <tr>
 <td>Continuous integration</td>
@@ -256,7 +256,7 @@ already holds a package doc and a test holds nothing that decides.</li>
 <tr>
 <td>Approval binding to one action digest and one bundle digest</td>
 <td><code>implemented</code></td>
-<td><code>internal/core/approval/</code> (<code>Bind</code>), golden in <code>testdata/digest/binding.json</code>. <code>internal/gateway/</code> holds a request for approval, keeps the record of what it minted itself, and consumes the approval exactly once on the retry (<a href="/docs/adr/0013-mcp-interception-approvals-and-modes">ADR-0013</a>). An approver outside the plane answers through the file provider below; a hold still does not survive a restart, and a plane that keeps a hold journal closes the trail of one it lost at its next start, and counts one it cannot close as left open (<a href="/docs/adr/0016-approval-providers-and-the-lost-hold">ADR-0016</a>)</td>
+<td><code>internal/core/approval/</code> (<code>Bind</code>), golden in <code>testdata/digest/binding.json</code>. <code>internal/gateway/</code> holds a request for approval, keeps the record of what it minted itself, and consumes the approval exactly once on the retry (<a href="/docs/adr/0013-mcp-interception-approvals-and-modes">ADR-0013</a>). An approver outside the plane answers through the file provider below; a hold does not survive a restart, and a plane that keeps a hold journal closes the trail of one it lost at its next start, and counts one it cannot close as left open (<a href="/docs/adr/0016-approval-providers-and-the-lost-hold">ADR-0016</a>)</td>
 </tr>
 <tr>
 <td>Evidence spool</td>
@@ -291,7 +291,7 @@ already holds a package doc and a test holds nothing that decides.</li>
 <tr>
 <td>Python client of the enforcement API</td>
 <td><code>experimental</code></td>
-<td><code>clients/python/</code> (<code>guardana_control.enforce</code>, a project of its own outside the Go module: one synchronous call that admits, runs the tool only with the authorized bytes and closes with one <code>complete</code> or one <code>abort</code>; the standard library alone; answers read in the form the receiver writes, from a field table <code>scripts/gen-pyschema.go</code> generates from the descriptors), <a href="/docs/adr/0053-a-python-client-of-the-enforcement-api-in-this-repository">ADR-0053</a>, <a href="/docs/guides/decide-a-tool-of-your-own">guides/decide-a-tool-of-your-own.md</a>. <code>make check-python</code> runs every client case, every negative control and every answer vector of <code>testdata/enforce/</code> on the two CPython versions pinned in <code>scripts/tool-versions.env</code>, drives a real plane once, and builds and imports the wheel. It cooperates: a plane reports its calls <code>decided, not enforced</code>. No <code>asyncio</code> entry point. The release workflow uploads the wheel and source archive to PyPI by trusted publishing, and its dry run to TestPyPI; from 0.12.0, <code>pip install guardana-control</code> installs it</td>
+<td><code>clients/python/</code> (<code>guardana_control.enforce</code>, a project of its own outside the Go module: one synchronous call that admits, runs the tool only with the authorized bytes and closes with one <code>complete</code> or one <code>abort</code>; the standard library alone; answers read in the form the receiver writes, from a field table <code>scripts/gen-pyschema.go</code> generates from the descriptors), <a href="/docs/adr/0053-a-python-client-of-the-enforcement-api-in-this-repository">ADR-0053</a>, <a href="/docs/guides/decide-a-tool-of-your-own">guides/decide-a-tool-of-your-own.md</a>. <code>make check-python</code> runs every client case, every negative control and every answer vector of <code>testdata/enforce/</code> on the two CPython versions pinned in <code>scripts/tool-versions.env</code>, drives a real plane once, and builds and imports the wheel. It cooperates: a plane reports its calls <code>decided, not enforced</code>. No <code>asyncio</code> entry point. The release workflow uploads the wheel and source archive to PyPI by trusted publishing, and its dry run to TestPyPI; <code>pip install guardana-control</code> installs it</td>
 </tr>
 <tr>
 <td>Enforcement API receiver</td>
@@ -326,7 +326,7 @@ already holds a package doc and a test holds nothing that decides.</li>
 <tr>
 <td>Connect an existing MCP setup: a guide and a profile for the reference filesystem server</td>
 <td><code>experimental</code></td>
-<td><code>examples/connect-a-filesystem-server/</code>, <a href="/docs/guides/connect-an-existing-mcp-setup">guides/connect-an-existing-mcp-setup.md</a>. The profile classifies the 14 tools of <code>@modelcontextprotocol/server-filesystem</code> 2026.8.31 under the approval-for-writes pack; it was tried end to end, over HTTP and over stdio, with the MCP inspector's command line as the client. A test loads it; its fingerprints match the tool definitions that version lists, and a definition another version changes is unclassified. <code>make check-mcp-client</code>, the CI job &quot;External MCP client&quot; (<a href="/docs/adr/0057-an-external-mcp-client-runs-the-guide-on-every-pull-request">ADR-0057</a>), runs the guide with that version from the example's lockfile and the MCP project's Python SDK 1.30.0 over HTTP: 14 tools classified, a read, a write held, approved and run once, a reuse and a rejection refused, the report read; over stdio it runs in no test. The three-user trial <code>docs/backlog.md</code> asks of B06 has not run</td>
+<td><code>examples/connect-a-filesystem-server/</code>, <a href="/docs/guides/connect-an-existing-mcp-setup">guides/connect-an-existing-mcp-setup.md</a>. The profile classifies the 14 tools of <code>@modelcontextprotocol/server-filesystem</code> 2026.8.31 under the approval-for-writes pack; a run by hand takes it end to end, over HTTP and over stdio, with the MCP inspector's command line as the client. A test loads it; its fingerprints match the tool definitions that version lists, and a definition another version changes is unclassified. <code>make check-mcp-client</code>, the CI job &quot;External MCP client&quot; (<a href="/docs/adr/0057-an-external-mcp-client-runs-the-guide-on-every-pull-request">ADR-0057</a>), runs the guide with that version from the example's lockfile and the MCP project's Python SDK 1.30.0 over HTTP: 14 tools classified, a read, a write held, approved and run once, a reuse and a rejection refused, the report read; over stdio it runs in no test. The three-user trial <code>docs/backlog.md</code> asks of B06 has not run</td>
 </tr>
 <tr>
 <td>Runs an operator opens, each with its own durable flow state</td>
@@ -409,9 +409,9 @@ already holds a package doc and a test holds nothing that decides.</li>
 <td><a href="/docs/backlog">backlog B26</a>, <a href="/docs/adoption-and-incident-workflows#b26-review-findings-and-export-an-incident-package">adoption requirements</a>; findings export exists, but no case review history or joined incident package is built</td>
 </tr>
 <tr>
-<td>Notifiers beyond the local program, and channels beyond MCP and the OpenTelemetry trace sensor</td>
+<td>Notifiers beyond the local program, and channels beyond MCP, the enforcement API, its hook bridge and the OpenTelemetry trace sensor</td>
 <td><code>planned</code></td>
-<td><code>adapters/</code>, <a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a></td>
+<td>notifiers <code>internal/notify/</code>, channels <code>adapters/</code>, <a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a>, <a href="/docs/adr/0045-one-run-is-supervised-against-its-procedure">ADR-0045</a></td>
 </tr>
 <tr>
 <td>Releases built, signed and attested from a tag</td>
@@ -446,7 +446,7 @@ this:</p>
 <tbody>
 <tr>
 <td>Setup for common agent stacks, a proxy for the rest</td>
-<td>An MCP proxy only; no framework integration and no proxy for other tool APIs</td>
+<td>An MCP proxy; the enforcement API for a tool outside MCP, with a Go and a Python client, which cooperates; one coding runtime's hooks through <code>guardana-control hook</code>; no framework integration and no proxy for other tool APIs</td>
 </tr>
 <tr>
 <td>Oversight of what agents do and the data they reach</td>

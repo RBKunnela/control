@@ -189,7 +189,8 @@ route_id: refunds
 in a terminal of its own:</p>
 <pre><code>guardana-gateway collect --listen 127.0.0.1:4318 --out trail/plane.jsonl
 </code></pre>
-<p>Check the configuration; every check line should begin <code>ok</code>:</p>
+<p>Open both runs as step 5 shows first. Then check the configuration; every
+check line should begin <code>ok</code>:</p>
 <pre><code>$ guardana-gateway doctor --config plane.yaml
 …
 ok      upstreams     1 upstream(s) answered, 4 tool(s) listed, 4 classified, 0 unclassified
