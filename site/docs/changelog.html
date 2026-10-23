@@ -128,6 +128,14 @@ Neither binary nor the Python client of the enforcement API uses it.</li>
 </ul>
 <h3 id="fixed">Fixed</h3>
 <ul>
+<li><code>scripts/github-bootstrap.sh</code>'s preflight runs the docscheck test that
+holds <code>.github/CODEOWNERS</code> on every pull request, so it judges each file by
+its last matching rule, and needs <code>go</code> on PATH. Its own prefix match refused
+<code>.golangci.yml</code>, which <code>/.golangci.*</code> gives to the security maintainers, so
+the declared settings could not be applied. That test now refuses <code>**</code>,
+<code>[ ]</code> and a glob in a directory pattern, which it read as matching nothing,
+and reads a glob that gives a file to anyone else as also taking what lies
+under a directory it names.</li>
 <li><code>guardana-gateway doctor</code> exits 1 when standard output does not take its
 whole report, as on a full device, and says so on standard error; it exited
 0 with the report cut short.</li>

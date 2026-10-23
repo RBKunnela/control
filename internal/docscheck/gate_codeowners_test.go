@@ -247,9 +247,36 @@ func TestOwnersOfTakesTheLastMatchingRule(t *testing.T) {
 	if got := ownersOf(rules[1:2], "README.md"); got != nil {
 		t.Errorf("a file no rule matches is owned by %q", got)
 	}
-	for _, line := range []string{"internal/a/ @a", "/docs/**/x @a", "/docs/ ", "!/docs/ @a"} {
+	for _, line := range []string{
+		"internal/a/ @a", "/docs/**/x @a", "/docs/ ", "!/docs/ @a", "/internal/** @a", "/** @a", "/internal/*/ @a",
+		"/x/re?c/ @a", "/a/m[c]p/ @a", `/a\ b @a`,
+	} {
 		if _, err := codeownersRules([]string{line}); err == nil {
 			t.Errorf("codeownersRules read %q without an error", line)
+		}
+	}
+}
+
+func TestAGlobIsReadAgainstTheSecurityMaintainers(t *testing.T) {
+	rules, err := codeownersRules([]string{
+		"*              @all",
+		"/internal/     " + securityTeam,
+		"/internal/re*  @x",
+		"/tools/*       " + securityTeam,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for file, want := range map[string]string{
+		"internal/reaction.go":       "@x",
+		"internal/reaction/x.go":     "@x",
+		"internal/reaction/sub/y.go": "@x",
+		"internal/core/x.go":         securityTeam,
+		"tools/a.go":                 securityTeam,
+		"tools/sub/a.go":             "@all",
+	} {
+		if got := ownersOf(rules, file); !slices.Equal(got, []string{want}) {
+			t.Errorf("ownersOf(%q) = %q, want [%s]", file, got, want)
 		}
 	}
 }
@@ -292,9 +319,9 @@ type codeownersRule struct {
 }
 
 // codeownersRules reads the forms this file uses: "*", an anchored directory
-// "/dir/", and an anchored path "/name" that may carry a glob in its last
-// element. Any other form is an error rather than a rule matched differently
-// from GitHub.
+// "/dir/" with no glob in it, and an anchored path "/name" whose last element
+// alone may carry * or ?. Any other form, ** and [ ] among them, is an error
+// rather than a rule matched differently from GitHub.
 func codeownersRules(lines []string) ([]codeownersRule, error) {
 	var rules []codeownersRule
 	for _, line := range lines {
@@ -309,7 +336,7 @@ func codeownersRules(lines []string) ([]codeownersRule, error) {
 		if len(fields) < 2 {
 			return nil, fmt.Errorf("%q names no owner", pattern)
 		}
-		if pattern != "*" && (!strings.HasPrefix(pattern, "/") || strings.Contains(path.Dir(strings.TrimSuffix(pattern, "/")), "*")) {
+		if pattern != "*" && !readableForm(pattern) {
 			return nil, fmt.Errorf("%q is not a form this reader matches", pattern)
 		}
 		rules = append(rules, codeownersRule{pattern: pattern, owners: fields[1:]})
@@ -317,8 +344,24 @@ func codeownersRules(lines []string) ([]codeownersRule, error) {
 	return rules, nil
 }
 
+func readableForm(pattern string) bool {
+	dir, last := path.Split(strings.TrimPrefix(pattern, "/"))
+	switch {
+	case !strings.HasPrefix(pattern, "/") || strings.ContainsAny(pattern, `[]\`) || strings.Contains(pattern, "**"):
+		return false
+	case strings.HasSuffix(pattern, "/"):
+		return !strings.ContainsAny(pattern, "*?")
+	default:
+		return last != "" && !strings.ContainsAny(dir, "*?")
+	}
+}
+
 // ownersOf returns the owners of the last rule that matches file, a
-// repository-relative slash path, or nil when none does.
+// repository-relative slash path, or nil when none does. A glob in a last
+// element names what lies at that level, as GitHub's docs/* example reads;
+// a rule that does not give a file to the security maintainers is read as
+// also taking what lies under a directory its glob names, so a reading GitHub
+// might not share never counts in their favour.
 func ownersOf(rules []codeownersRule, file string) []string {
 	var owners []string
 	for _, r := range rules {
@@ -331,13 +374,23 @@ func ownersOf(rules []codeownersRule, file string) []string {
 			match = strings.HasPrefix(file, anchored)
 		default:
 			ok, err := path.Match(anchored, file)
-			match = (err == nil && ok) || strings.HasPrefix(file, anchored+"/")
+			match = (err == nil && ok) || strings.HasPrefix(file, anchored+"/") ||
+				(!slices.Contains(r.owners, securityTeam) && globsAnAncestor(anchored, file))
 		}
 		if match {
 			owners = r.owners
 		}
 	}
 	return owners
+}
+
+func globsAnAncestor(pattern, file string) bool {
+	for dir := path.Dir(file); dir != "."; dir = path.Dir(dir) {
+		if ok, err := path.Match(pattern, dir); err == nil && ok {
+			return true
+		}
+	}
+	return false
 }
 
 // quotedArray returns the entries of the bash array `name=( ... )`, one

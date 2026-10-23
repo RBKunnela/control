@@ -21,6 +21,14 @@ verify one.
 
 ### Fixed
 
+- `scripts/github-bootstrap.sh`'s preflight runs the docscheck test that
+  holds `.github/CODEOWNERS` on every pull request, so it judges each file by
+  its last matching rule, and needs `go` on PATH. Its own prefix match refused
+  `.golangci.yml`, which `/.golangci.*` gives to the security maintainers, so
+  the declared settings could not be applied. That test now refuses `**`,
+  `[ ]` and a glob in a directory pattern, which it read as matching nothing,
+  and reads a glob that gives a file to anyone else as also taking what lies
+  under a directory it names.
 - `guardana-gateway doctor` exits 1 when standard output does not take its
   whole report, as on a full device, and says so on standard error; it exited
   0 with the report cut short.

@@ -20,7 +20,7 @@
 #   CONFIRM=i-understand scripts/github-bootstrap.sh
 #
 # gh must be signed in with the repo and admin:org scopes, because the teams
-# belong to the organization, and jq must be on PATH for the preflight. The repository must exist and hold main; this
+# belong to the organization, and jq and go must be on PATH for the preflight. The repository must exist and hold main; this
 # script creates neither.
 set -euo pipefail
 
@@ -120,27 +120,28 @@ require_contexts_exist() {
   printf 'preflight: every required status check is reported by a job in %s\n' "${dir}"
 }
 
-# require_security_owned; every TWO_APPROVAL_PATHS entry lies under a path
-# .github/CODEOWNERS gives to @guardana/security-maintainers.
+# CODEOWNERS_TEST is the docscheck test that holds .github/CODEOWNERS on every
+# pull request: each file under a two-approval path is the security
+# maintainers' by its last matching rule.
+CODEOWNERS_TEST="TestCodeownersCoverTheGuardedTrees"
+
+# require_security_owned; runs CODEOWNERS_TEST on this tree, so the preflight
+# reads CODEOWNERS exactly as the gate does. Only the test's own PASS line
+# passes it: go test reports ok for a -run that matches no test.
 require_security_owned() {
-  local owned path entry covered missing=0
-  owned="$(awk '$1 !~ /^#/ && $2 == "@guardana/security-maintainers" {
-    p = $1; sub(/^\//, "", p); sub(/\/$/, "", p); print p }' "${REPO_ROOT}/.github/CODEOWNERS")"
-  for path in "${TWO_APPROVAL_PATHS[@]}"; do
-    path="${path%/\*\*}"
-    covered=0
-    while IFS= read -r entry; do
-      [[ -n "${entry}" ]] || continue
-      if [[ "${path}" == "${entry}" || "${path}" == "${entry}/"* ]]; then
-        covered=1
-      fi
-    done <<<"${owned}"
-    if ((covered == 0)); then
-      printf 'github-bootstrap: CODEOWNERS gives %s to no security maintainer\n' "${path}" >&2
-      missing=$((missing + 1))
-    fi
-  done
-  if ((missing > 0)); then
+  local out
+  if ! command -v go >/dev/null 2>&1; then
+    printf 'github-bootstrap: go is not on PATH, so CODEOWNERS cannot be checked\n' >&2
+    exit 1
+  fi
+  if ! out="$(cd "${REPO_ROOT}" && go test -count=1 -v -run "^${CODEOWNERS_TEST}\$" ./internal/docscheck 2>&1)"; then
+    printf '%s\n' "${out}" >&2
+    printf 'github-bootstrap: .github/CODEOWNERS fails %s; its output is above\n' "${CODEOWNERS_TEST}" >&2
+    exit 1
+  fi
+  if ! grep -qE -- "^--- PASS: ${CODEOWNERS_TEST} \(" <<<"${out}"; then
+    printf '%s\n' "${out}" >&2
+    printf 'github-bootstrap: %s did not run, so CODEOWNERS was not checked\n' "${CODEOWNERS_TEST}" >&2
     exit 1
   fi
   printf 'preflight: every two-approval path is owned by @guardana/security-maintainers\n'
