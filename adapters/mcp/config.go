@@ -9,6 +9,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/classify"
 	"github.com/guardana/control/internal/gateway"
 	"github.com/guardana/control/internal/secretscan"
 )
@@ -224,7 +225,11 @@ func checkUpstreams(upstreams []Upstream) (map[string]bool, error) {
 	}
 	names := map[string]bool{}
 	for i, up := range upstreams {
-		if up.Name == "" || up.Transport == nil || names[up.Name] {
+		// The name is every call's action.provider.
+		if err := classify.CheckEnvelopeString(up.Name); err != nil {
+			return nil, fmt.Errorf("%w: Upstreams[%d]: name: %w", ErrUpstream, i, err)
+		}
+		if up.Transport == nil || names[up.Name] {
 			return nil, fmt.Errorf("%w: Upstreams[%d]", ErrUpstream, i)
 		}
 		names[up.Name] = true
@@ -232,8 +237,9 @@ func checkUpstreams(upstreams []Upstream) (map[string]bool, error) {
 	return names, nil
 }
 
-// checkOverrides refuses an entry that cannot classify, and a second entry
-// for one upstream's tool, which the manifest would let replace the first.
+// checkOverrides refuses an entry that cannot classify, naming the key
+// classify.Check refuses, and a second entry for one upstream's tool, which
+// the manifest would let replace the first.
 func checkOverrides(overrides []Override, names map[string]bool) error {
 	type key struct{ upstream, tool string }
 	seen := make(map[key]int, len(overrides))
@@ -245,13 +251,11 @@ func checkOverrides(overrides []Override, names map[string]bool) error {
 		switch {
 		case !names[o.Upstream]:
 			return fmt.Errorf("%w: Overrides[%d] names no configured upstream", ErrOverride, i)
-		case o.Tool == "" || o.Fingerprint == "" || o.ResourceType == "":
-			return fmt.Errorf("%w: Overrides[%d] needs a tool, a fingerprint and a resource type", ErrOverride, i)
-		case o.Effect == controlv1.EffectClass_EFFECT_CLASS_UNSPECIFIED || o.Effect.Descriptor().Values().ByNumber(o.Effect.Number()) == nil:
-			return fmt.Errorf("%w: Overrides[%d] names no effect class", ErrOverride, i)
+		case o.Tool == "" || o.Fingerprint == "":
+			return fmt.Errorf("%w: Overrides[%d] needs a tool and a fingerprint", ErrOverride, i)
 		}
-		if err := checkPointer(o.ResourceFrom); err != nil {
-			return fmt.Errorf("overrides[%d]: %w", i, err)
+		if err := o.Check(); err != nil {
+			return fmt.Errorf("%w: Overrides[%d]: %w", ErrOverride, i, err)
 		}
 	}
 	return nil

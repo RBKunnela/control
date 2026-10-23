@@ -165,6 +165,10 @@ classified or listed.</p>
 <p>Amended by <a href="/docs/adr/0034-a-run-the-operator-opens-has-an-identity-of-its-own">ADR-0034</a>:
 a retry resumes a held request only from the run that was held; a retry from
 another opened run is held anew.</p>
+<p>Amended by <a href="/docs/adr/0059-a-tools-classification-is-one-type-checked-when-it-loads">ADR-0059</a>: an override's
+classification is one type with the enforcement API's, checked once when the
+configuration loads and again by <code>mcp.New</code>; one no envelope could carry is
+refused there, in every mode.</p>
 <h2 id="context">Context</h2>
 <p>The kernel decides and nothing calls it. The first protocol target is the Model
 Context Protocol, and its two live revisions are different protocols. <code>2026-07-28</code>

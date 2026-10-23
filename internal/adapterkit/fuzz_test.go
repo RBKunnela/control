@@ -5,6 +5,7 @@ import (
 
 	"github.com/guardana/control/internal/adapterkit"
 	"github.com/guardana/control/internal/canon"
+	"github.com/guardana/control/internal/classify"
 )
 
 // FuzzResourceID holds the reading of a resource id to the canonical form:
@@ -23,7 +24,7 @@ func FuzzResourceID(f *testing.F) {
 		f.Add([]byte(seed.args), seed.pointer)
 	}
 	f.Fuzz(func(t *testing.T, args []byte, pointer string) {
-		if adapterkit.CheckPointer(pointer) != nil {
+		if classify.CheckPointer(pointer) != nil {
 			return
 		}
 		id := adapterkit.ResourceID(args, pointer)

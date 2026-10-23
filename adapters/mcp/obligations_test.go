@@ -17,6 +17,7 @@ import (
 
 	"github.com/guardana/control/adapters/mcp"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/classify"
 	"github.com/guardana/control/internal/gateway"
 )
 
@@ -176,7 +177,7 @@ func TestShortenTimeoutObligation(t *testing.T) {
 func TestDenyExternalSinkObligation(t *testing.T) {
 	r := newRig(t, mcp.KindStatelessHTTP, rigOptions{overrides: func(v *victim, t *testing.T) []mcp.Override {
 		o := v.overrides(t)
-		o = append(o, mcp.Override{Upstream: "victim", Tool: "unlisted", Fingerprint: v.fingerprint(t, "unlisted"), Effect: effectComm, ResourceType: "peer", ResourceFrom: "/path", TrustZone: zoneInternal})
+		o = append(o, mcp.Override{Upstream: "victim", Tool: "unlisted", Fingerprint: v.fingerprint(t, "unlisted"), Classification: classify.Classification{Effect: effectComm, ResourceType: "peer", ResourceFrom: "/path", TrustZone: zoneInternal}})
 		return o
 	}})
 	r.pipe.decide = executeWith(obligation("deny_external_sink", nil))
@@ -197,7 +198,7 @@ func TestDenyExternalSinkObligation(t *testing.T) {
 func TestObligationWithAnUnreadParameterIsNotApplied(t *testing.T) {
 	r := newRig(t, mcp.KindStatelessHTTP, rigOptions{overrides: func(v *victim, t *testing.T) []mcp.Override {
 		o := v.overrides(t)
-		o = append(o, mcp.Override{Upstream: "victim", Tool: "unlisted", Fingerprint: v.fingerprint(t, "unlisted"), Effect: effectRead, ResourceType: "file", ResourceFrom: "/path", TrustZone: zoneInternal})
+		o = append(o, mcp.Override{Upstream: "victim", Tool: "unlisted", Fingerprint: v.fingerprint(t, "unlisted"), Classification: classify.Classification{Effect: effectRead, ResourceType: "file", ResourceFrom: "/path", TrustZone: zoneInternal}})
 		return o
 	}})
 	agent := r.connect(t, "agent-a")

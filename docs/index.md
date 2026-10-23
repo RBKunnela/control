@@ -152,3 +152,5 @@ with `make docs-gen`; an edit made here does not survive the next run.
 - [ADR-0056: A coding runtime's hooks reach the plane through one bridge, by value](adr/0056-a-coding-runtimes-hooks-reach-the-plane-through-one-bridge.md): accepted
 - [ADR-0057: An MCP client outside the Go SDK runs the guide on every pull request](adr/0057-an-external-mcp-client-runs-the-guide-on-every-pull-request.md): accepted
 - [ADR-0058: A copy an import never read is doubt for the runs it claimed](adr/0058-a-copy-an-import-never-read-is-doubt-for-the-runs-it-claimed.md): accepted
+- [ADR-0059: A tool's classification is one type, checked when it loads](adr/0059-a-tools-classification-is-one-type-checked-when-it-loads.md): accepted
+- [ADR-0060: pkg/contract exports what each effect class requires](adr/0060-pkg-contract-exports-what-each-effect-class-requires.md): accepted

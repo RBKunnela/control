@@ -8,6 +8,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/classify"
 )
 
 // fractionTool is a definition as the SDK hands it over after decoding a
@@ -71,7 +72,7 @@ func TestAFractionInASchemaIsFingerprinted(t *testing.T) {
 		}
 	}
 
-	m := newManifest([]Override{{Upstream: "up", Tool: "sample", Fingerprint: fractionToolFingerprint, Effect: controlv1.EffectClass_EFFECT_CLASS_READ, ResourceType: "model"}}, emptySecrets(t))
+	m := newManifest([]Override{{Upstream: "up", Tool: "sample", Fingerprint: fractionToolFingerprint, Classification: classify.Classification{Effect: controlv1.EffectClass_EFFECT_CLASS_READ, ResourceType: "model"}}}, emptySecrets(t))
 	if e := m.classify("up", fractionTool()); !e.Classified {
 		t.Errorf("a pinned definition with fractions is unclassified: %s", e.why)
 	}

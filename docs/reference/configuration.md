@@ -2,7 +2,7 @@
 title: Configuration
 summary: Every key the gateway reads, with its environment variable, kind, default, whether it is required and the spellings it takes.
 type: reference
-covers: [internal/gatewayconfig/**, cmd/guardana-gateway/**]
+covers: [internal/gatewayconfig/**, internal/classify/**, cmd/guardana-gateway/**]
 generated: scripts/gen-config.go
 ---
 
@@ -22,14 +22,21 @@ under the `interval` policy and refused under `every_record`; the `file` approva
 provider needs `approvals.dir` and `approvals.hold_journal_dir`, and that journal
 directory may be neither the spool's nor the approvals directory, nor inside either;
 and `APPROVE` needs the `file` provider, since nothing outside the process answers a
-request held in memory. An `enforce_api` listener serves the enforcement API on the Unix
+request held in memory. An entry of `overrides` or `tools` is refused when no call to its tool could carry
+an envelope the contract takes: `resource_type` is an identifier of at most 1024 bytes,
+`resource_from` an RFC 6901 pointer of at most 8 tokens of 64 bytes, an effect whose
+envelope needs a resource id (`WRITE`, `DELETE`, `TRANSACT`, `IDENTITY_OR_ACCESS` and `CONFIGURE`) needs `resource_from`, and
+`COMMUNICATE` needs `trust_zone`; a tool's `name` and `provider`, and an upstream's
+`name`, which is every call's `action.provider`, are identifiers of at most 1024 bytes too. An identifier is held to the contract's rule
+([contracts](../contracts.md#decoding-and-validation)): invalid UTF-8 is refused, and so
+are White_Space at either end and, anywhere, a space other than U+0020, a code point in
+Cc, Cf, Zl or Zp, or a Default_Ignorable_Code_Point. An `enforce_api` listener serves the enforcement API on the Unix
 socket `listener.socket` names, at most 103 bytes as it resolves; the plane checks that
 the socket's directory is its own with no permission for group or others, and checks
 neither a macOS access control list on it nor a parent directory another account may
 write. It needs `runs.dir`, `listener.execution_lifetime`, from one
-second to an hour with no default, and at least one entry of `tools`, each name once
-and at most 1024 bytes, each `resource_from` an RFC 6901 pointer of at most 8 tokens of
-64 bytes; `listener.max_body_bytes` takes 1KiB to 256KiB, `listener.max_open_per_run` is
+second to an hour with no default, and at least one entry of `tools`, each name once;
+`listener.max_body_bytes` takes 1KiB to 256KiB, `listener.max_open_per_run` is
 positive and below `approvals.max_open`, and a tool's resource has the plane's
 `tenant_id` and `environment`. It refuses `listener.address`, `listener.origins`,
 `upstreams`, `overrides` and the `upstream.` and `list.` keys, and every other kind refuses

@@ -124,14 +124,21 @@ under the <code>interval</code> policy and refused under <code>every_record</cod
 provider needs <code>approvals.dir</code> and <code>approvals.hold_journal_dir</code>, and that journal
 directory may be neither the spool's nor the approvals directory, nor inside either;
 and <code>APPROVE</code> needs the <code>file</code> provider, since nothing outside the process answers a
-request held in memory. An <code>enforce_api</code> listener serves the enforcement API on the Unix
+request held in memory. An entry of <code>overrides</code> or <code>tools</code> is refused when no call to its tool could carry
+an envelope the contract takes: <code>resource_type</code> is an identifier of at most 1024 bytes,
+<code>resource_from</code> an RFC 6901 pointer of at most 8 tokens of 64 bytes, an effect whose
+envelope needs a resource id (<code>WRITE</code>, <code>DELETE</code>, <code>TRANSACT</code>, <code>IDENTITY_OR_ACCESS</code> and <code>CONFIGURE</code>) needs <code>resource_from</code>, and
+<code>COMMUNICATE</code> needs <code>trust_zone</code>; a tool's <code>name</code> and <code>provider</code>, and an upstream's
+<code>name</code>, which is every call's <code>action.provider</code>, are identifiers of at most 1024 bytes too. An identifier is held to the contract's rule
+(<a href="/docs/contracts#decoding-and-validation">contracts</a>): invalid UTF-8 is refused, and so
+are White_Space at either end and, anywhere, a space other than U+0020, a code point in
+Cc, Cf, Zl or Zp, or a Default_Ignorable_Code_Point. An <code>enforce_api</code> listener serves the enforcement API on the Unix
 socket <code>listener.socket</code> names, at most 103 bytes as it resolves; the plane checks that
 the socket's directory is its own with no permission for group or others, and checks
 neither a macOS access control list on it nor a parent directory another account may
 write. It needs <code>runs.dir</code>, <code>listener.execution_lifetime</code>, from one
-second to an hour with no default, and at least one entry of <code>tools</code>, each name once
-and at most 1024 bytes, each <code>resource_from</code> an RFC 6901 pointer of at most 8 tokens of
-64 bytes; <code>listener.max_body_bytes</code> takes 1KiB to 256KiB, <code>listener.max_open_per_run</code> is
+second to an hour with no default, and at least one entry of <code>tools</code>, each name once;
+<code>listener.max_body_bytes</code> takes 1KiB to 256KiB, <code>listener.max_open_per_run</code> is
 positive and below <code>approvals.max_open</code>, and a tool's resource has the plane's
 <code>tenant_id</code> and <code>environment</code>. It refuses <code>listener.address</code>, <code>listener.origins</code>,
 <code>upstreams</code>, <code>overrides</code> and the <code>upstream.</code> and <code>list.</code> keys, and every other kind refuses

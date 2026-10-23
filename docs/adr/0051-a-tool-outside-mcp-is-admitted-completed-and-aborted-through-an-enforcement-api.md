@@ -17,6 +17,11 @@ the receiver holds a lock beside its socket for as long as it listens.
 Amended by [ADR-0056](0056-a-coding-runtimes-hooks-reach-the-plane-through-one-bridge.md): a client that cannot carry a
 rewrite, such as a coding runtime's hook, aborts it and denies the call.
 
+Amended by [ADR-0059](0059-a-tools-classification-is-one-type-checked-when-it-loads.md): a tool's
+classification is one type with an MCP override's, and a tool whose name,
+provider or classification no envelope could carry is refused when the
+configuration loads and by `enforce.New`.
+
 ## Context
 
 The pipeline in `internal/gateway` is protocol-neutral. `Admit` decides an

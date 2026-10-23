@@ -55,6 +55,24 @@ func IsMaterial(e controlv1.EffectClass) bool {
 	return e != controlv1.EffectClass_EFFECT_CLASS_READ
 }
 
+// EffectRequires lists the wire paths Validate requires of an envelope of
+// class e beyond those every envelope needs: action.provider for a material
+// class, then the class's own row, in the order Validate checks them. The zero
+// class starts with action.effect, the field Validate refuses it for, so a
+// reader that checks the list in order refuses what Validate does. A class
+// this build does not declare gets the material default alone. The list is a
+// fresh copy on every call, so a caller cannot change what Validate requires.
+func EffectRequires(e controlv1.EffectClass) []string {
+	var out []string
+	if e == controlv1.EffectClass_EFFECT_CLASS_UNSPECIFIED {
+		out = append(out, "action.effect")
+	}
+	if IsMaterial(e) {
+		out = append(out, "action.provider")
+	}
+	return append(out, effectRequirements()[e]...)
+}
+
 // effectRequirements is the contract's table, as data: a switch with a branch
 // per class puts the same rule in two places the day a class is added.
 //

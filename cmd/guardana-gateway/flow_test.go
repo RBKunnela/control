@@ -8,6 +8,7 @@ import (
 
 	adaptermcp "github.com/guardana/control/adapters/mcp"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	toolclass "github.com/guardana/control/internal/classify"
 	"github.com/guardana/control/internal/gateway"
 	"github.com/guardana/control/internal/gatewayconfig"
 )
@@ -17,9 +18,19 @@ import (
 // restrictive answers.
 func TestAnOverrideCarriesWhatItsToolReturns(t *testing.T) {
 	cfg := &gatewayconfig.Config{Overrides: []gatewayconfig.OverrideConfig{
-		{Upstream: "u", Tool: "fetch", Fingerprint: "f", Effect: "READ", ResourceType: "page",
-			TrustZone: "UNTRUSTED_EXTERNAL", ReturnsTrust: "PARTNER", ReturnsSensitivity: "RESTRICTED"},
-		{Upstream: "u", Tool: "mail", Fingerprint: "f", Effect: "COMMUNICATE", ResourceType: "mailbox", TrustZone: "PARTNER"},
+		{
+			Upstream:    "u",
+			Tool:        "fetch",
+			Fingerprint: "f",
+			Spelling: toolclass.Spelling{
+				Effect:             "READ",
+				ResourceType:       "page",
+				TrustZone:          "UNTRUSTED_EXTERNAL",
+				ReturnsTrust:       "PARTNER",
+				ReturnsSensitivity: "RESTRICTED",
+			},
+		},
+		{Upstream: "u", Tool: "mail", Fingerprint: "f", Spelling: toolclass.Spelling{Effect: "COMMUNICATE", ResourceType: "mailbox", TrustZone: "PARTNER"}},
 	}}
 	out, err := overrides(cfg)
 	if err != nil {

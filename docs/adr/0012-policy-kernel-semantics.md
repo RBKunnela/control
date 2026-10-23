@@ -23,6 +23,11 @@ Amended by [ADR-0055](0055-a-call-is-handed-out-only-while-its-policy-stands.md)
 bundle again when the call is handed out, and a read the fail-closed table
 opened stays open there only while its bundle is the same one.
 
+Amended by [ADR-0059](0059-a-tools-classification-is-one-type-checked-when-it-loads.md): a classification whose effect
+class needs a `resource.id` or a destination it cannot supply is refused when
+the configuration loads, so no call to its tool reaches the kernel to be
+refused `REQUIRED_FIELD_ABSENT` for it.
+
 ## Context
 
 ADR-0003 chose structured predicates and deny-overrides, and left the exact

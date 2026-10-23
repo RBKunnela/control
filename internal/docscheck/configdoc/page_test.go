@@ -73,8 +73,8 @@ func TestPageCarriesTheFrontmatterTheCheckReads(t *testing.T) {
 	if meta.Title != "Configuration" || meta.Type != "reference" || meta.Generated != Generator {
 		t.Errorf("frontmatter is %+v", meta)
 	}
-	if len(meta.Covers) != 2 || meta.Covers[0] != "internal/gatewayconfig/**" {
-		t.Errorf("covers is %q, want the package and the command", meta.Covers)
+	if len(meta.Covers) != 3 || meta.Covers[0] != "internal/gatewayconfig/**" || meta.Covers[1] != "internal/classify/**" {
+		t.Errorf("covers is %q, want the loader, the classification and the command", meta.Covers)
 	}
 	if !strings.HasPrefix(string(body), "\n# Configuration\n") {
 		t.Errorf("the body does not start with the H1: %q", body[:min(len(body), 40)])

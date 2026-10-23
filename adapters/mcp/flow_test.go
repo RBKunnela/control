@@ -30,12 +30,13 @@ func declaredSensitivities() []controlv1.Sensitivity {
 }
 
 // TestWhatAToolReturnsReachesThePipelineApartFromTheLabels: over every
-// declared result trust and sensitivity and three destinations, the admission
-// carries the override's classification of the result as it was declared, and
-// the envelope carries no data label and the destination unrelaxed. A
-// destination the operator trusts says nothing about what the tool returns.
+// declared result trust and sensitivity and two destinations of a message,
+// the admission carries the override's classification of the result as it
+// was declared, and the envelope carries no data label and the destination
+// the override declared. A destination the operator trusts says nothing about
+// what the tool returns.
 func TestWhatAToolReturnsReachesThePipelineApartFromTheLabels(t *testing.T) {
-	for _, destination := range []controlv1.TrustZone{0, controlv1.TrustZone_TRUST_ZONE_PARTNER, zoneExternal} {
+	for _, destination := range []controlv1.TrustZone{controlv1.TrustZone_TRUST_ZONE_PARTNER, zoneExternal} {
 		for _, trust := range declaredZones() {
 			for _, read := range declaredSensitivities() {
 				overrides := func(v *victim, t *testing.T) []mcp.Override {
@@ -67,6 +68,36 @@ func TestWhatAToolReturnsReachesThePipelineApartFromTheLabels(t *testing.T) {
 					t.Errorf("declared %s %s: the destination is %s, want %s", trust, read, got, destination)
 				}
 			}
+		}
+	}
+}
+
+// TestWhatAReadReturnsSetsNoDestination: a read with no destination of its
+// own keeps none, whatever trust its results declare: what a tool returns is
+// never where a call sends data (ADR-0021).
+func TestWhatAReadReturnsSetsNoDestination(t *testing.T) {
+	for _, trust := range declaredZones() {
+		overrides := func(v *victim, t *testing.T) []mcp.Override {
+			out := v.overrides(t)
+			for i := range out {
+				if out[i].Tool == "read_file" {
+					out[i].TrustZone, out[i].ReturnsTrust = 0, trust
+				}
+			}
+			return out
+		}
+		r := newRig(t, mcp.KindStdio, rigOptions{overrides: overrides})
+		agent := r.connect(t, "agent-a")
+		if _, err := callTool(t, agent, "read_file", map[string]any{"path": "/a"}); err != nil {
+			t.Fatalf("read_file: %v", err)
+		}
+		adm := r.pipe.admitted()
+		if len(adm) != 1 {
+			t.Fatalf("%d admissions", len(adm))
+		}
+		if a := adm[0].a; a.ResultTrust != trust || a.Envelope.GetDestination() != nil {
+			t.Errorf("returns %s: the admission says %s and the envelope's destination is %v, want none",
+				trust, a.ResultTrust, a.Envelope.GetDestination())
 		}
 	}
 }

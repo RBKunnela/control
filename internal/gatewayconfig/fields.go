@@ -5,8 +5,9 @@ import (
 	"strings"
 	"time"
 
-	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/brand"
+	"github.com/guardana/control/internal/classify"
+	"github.com/guardana/control/pkg/contract"
 )
 
 // The values of mode, listener.kind, evidence.fsync and evidence.on_unwritable,
@@ -44,27 +45,16 @@ var (
 	approvalProviders = []string{ProviderMemory, ProviderFile}
 	shapings          = []string{"none", "annotate", "hide"}
 	logLevels         = []string{"debug", "info", "warn", "error"}
-	effectNames       = contractEffectNames()
-	// A tool of an enforcement API listener is never SPAWN_OR_DELEGATE: that
-	// class needs a delegation the API does not carry, so it is never decided.
-	toolEffectNames  = slices.DeleteFunc(contractEffectNames(), func(n string) bool { return n == "SPAWN_OR_DELEGATE" })
-	trustZoneNames   = []string{"", "TRUSTED_INTERNAL", "PARTNER", "UNTRUSTED_EXTERNAL", "USER_CONTROLLED", "MODEL_GENERATED"}
-	sensitivityNames = []string{"", "PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED", "SECRET"}
+	effectNames       = classify.EffectNames()
+	// A tool of an enforcement API listener is never of a class that needs a
+	// delegation: the API carries none, so such a call is never decided.
+	toolEffectNames = slices.DeleteFunc(classify.EffectNames(), func(n string) bool {
+		effect, err := contract.ParseEffect(n)
+		return err != nil || classify.RequiresDelegation(effect)
+	})
+	trustZoneNames   = append([]string{""}, classify.ZoneNames()...)
+	sensitivityNames = append([]string{""}, classify.SensitivityNames()...)
 )
-
-// contractEffectNames is every effect class the contract declares but the
-// zero one, in its declared order and spelled as contract.ParseEffect takes
-// it. Read from the descriptor, so the key takes what run will parse.
-func contractEffectNames() []string {
-	values := controlv1.EffectClass(0).Descriptor().Values()
-	names := make([]string, 0, values.Len())
-	for i := range values.Len() {
-		if v := values.Get(i); v.Number() != 0 {
-			names = append(names, strings.TrimPrefix(string(v.Name()), "EFFECT_CLASS_"))
-		}
-	}
-	return names
-}
 
 // ModeNames returns the spellings the mode key admits, in the table's order.
 // The list is a copy.
@@ -178,24 +168,24 @@ var overrideFields = []field[OverrideConfig]{
 	stringField("upstream", "", true, func(o *OverrideConfig) *string { return &o.Upstream }),
 	stringField("tool", "", true, func(o *OverrideConfig) *string { return &o.Tool }),
 	stringField("fingerprint", "", true, func(o *OverrideConfig) *string { return &o.Fingerprint }),
-	enumField("effect", "", effectNames, true, func(o *OverrideConfig) *string { return &o.Effect }),
-	stringField("resource_type", "", true, func(o *OverrideConfig) *string { return &o.ResourceType }),
-	stringField("resource_from", "", false, func(o *OverrideConfig) *string { return &o.ResourceFrom }),
-	enumField("trust_zone", "", trustZoneNames, false, func(o *OverrideConfig) *string { return &o.TrustZone }),
-	enumField("returns.trust", "", trustZoneNames, false, func(o *OverrideConfig) *string { return &o.ReturnsTrust }),
-	enumField("returns.sensitivity", "", sensitivityNames, false, func(o *OverrideConfig) *string { return &o.ReturnsSensitivity }),
+	enumField(classify.KeyEffect, "", effectNames, true, func(o *OverrideConfig) *string { return &o.Effect }),
+	stringField(classify.KeyResourceType, "", true, func(o *OverrideConfig) *string { return &o.ResourceType }),
+	stringField(classify.KeyResourceFrom, "", false, func(o *OverrideConfig) *string { return &o.ResourceFrom }),
+	enumField(classify.KeyTrustZone, "", trustZoneNames, false, func(o *OverrideConfig) *string { return &o.TrustZone }),
+	enumField(classify.KeyReturnsTrust, "", trustZoneNames, false, func(o *OverrideConfig) *string { return &o.ReturnsTrust }),
+	enumField(classify.KeyReturnsSensitivity, "", sensitivityNames, false, func(o *OverrideConfig) *string { return &o.ReturnsSensitivity }),
 }
 
 // toolFields is every key of one entry of the tools sequence.
 var toolFields = []field[ToolConfig]{
 	stringField("name", "", true, func(o *ToolConfig) *string { return &o.Name }),
-	enumField("effect", "", toolEffectNames, true, func(o *ToolConfig) *string { return &o.Effect }),
+	enumField(classify.KeyEffect, "", toolEffectNames, true, func(o *ToolConfig) *string { return &o.Effect }),
 	stringField("provider", "", true, func(o *ToolConfig) *string { return &o.Provider }),
-	stringField("resource_type", "", true, func(o *ToolConfig) *string { return &o.ResourceType }),
-	stringField("resource_from", "", false, func(o *ToolConfig) *string { return &o.ResourceFrom }),
-	enumField("trust_zone", "", trustZoneNames, false, func(o *ToolConfig) *string { return &o.TrustZone }),
-	enumField("returns.trust", "", trustZoneNames, false, func(o *ToolConfig) *string { return &o.ReturnsTrust }),
-	enumField("returns.sensitivity", "", sensitivityNames, false, func(o *ToolConfig) *string { return &o.ReturnsSensitivity }),
+	stringField(classify.KeyResourceType, "", true, func(o *ToolConfig) *string { return &o.ResourceType }),
+	stringField(classify.KeyResourceFrom, "", false, func(o *ToolConfig) *string { return &o.ResourceFrom }),
+	enumField(classify.KeyTrustZone, "", trustZoneNames, false, func(o *ToolConfig) *string { return &o.TrustZone }),
+	enumField(classify.KeyReturnsTrust, "", trustZoneNames, false, func(o *ToolConfig) *string { return &o.ReturnsTrust }),
+	enumField(classify.KeyReturnsSensitivity, "", sensitivityNames, false, func(o *ToolConfig) *string { return &o.ReturnsSensitivity }),
 }
 
 // listField is a key whose value is a sequence of scalars, one item per

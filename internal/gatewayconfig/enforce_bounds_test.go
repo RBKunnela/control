@@ -11,7 +11,7 @@ import (
 
 	"github.com/guardana/control/adapters/enforce"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
-	"github.com/guardana/control/internal/adapterkit"
+	"github.com/guardana/control/internal/classify"
 	"github.com/guardana/control/internal/gateway"
 )
 
@@ -134,29 +134,11 @@ func (noRuns) Resolve(context.Context, string, gateway.RunIdentity, time.Time) (
 func adapterConfigOf(cfg *Config, socket string) enforce.Config {
 	tools := make([]enforce.Tool, 0, len(cfg.Tools))
 	for _, tool := range cfg.Tools {
-		tools = append(tools, enforce.Tool{Name: tool.Name, Effect: controlv1.EffectClass_EFFECT_CLASS_READ, Provider: "p", ResourceType: "r", ResourceFrom: tool.ResourceFrom})
+		tools = append(tools, enforce.Tool{Name: tool.Name, Provider: "p", Classification: classify.Classification{Effect: controlv1.EffectClass_EFFECT_CLASS_READ, ResourceType: "r", ResourceFrom: tool.ResourceFrom}})
 	}
 	return enforce.Config{
 		Socket: socket, ExecutionLifetime: time.Minute,
 		Identity: enforce.Identity{Principal: &controlv1.Principal{Id: "p"}, Agent: &controlv1.Agent{Id: "a"}},
 		Runs:     noRuns{}, Tools: tools, Clock: time.Now, NewID: func() string { return strconv.Itoa(1) },
-	}
-}
-
-// TestThePointerCheckIsTheAdapters: the loader refuses exactly the resource
-// pointers the adapters refuse, at each bound and one step past it.
-func TestThePointerCheckIsTheAdapters(t *testing.T) {
-	token := func(n int) string { return strings.Repeat("a", n) }
-	pointers := []string{"", "/", "/a", "a", "a/b", "/a/b", "//", "/~0", "/~1", "/~", "/~2", "/a~", "/~01",
-		"/" + token(64), "/" + token(65), strings.Repeat("/a", 8), strings.Repeat("/a", 9), "/0", "/-",
-		"/a b", "/\u00e9", "/" + token(63) + "~0"}
-	for _, p := range pointers {
-		mine, theirs := checkPointer(p), adapterkit.CheckPointer(p)
-		if (mine == nil) != (theirs == nil) {
-			t.Errorf("%q: the loader says %v, the adapters %v", p, mine, theirs)
-		}
-	}
-	if checkPointer("/"+token(65)) == nil || checkPointer(strings.Repeat("/a", 9)) == nil || checkPointer("/~2") == nil {
-		t.Error("a pointer past a bound was taken")
 	}
 }

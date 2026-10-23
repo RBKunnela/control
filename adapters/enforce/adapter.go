@@ -82,8 +82,9 @@ var _ gateway.Adapter = (*Adapter)(nil)
 // one. It refuses a socket path that is empty, relative or too long, an
 // execution lifetime outside its bounds, a body bound outside its bounds, an
 // identity with no principal id or agent id, a nil run resolver, a tool table
-// that is empty or holds an incomplete, repeated or out-of-bounds tool, a
-// negative bound, and a nil clock or id source.
+// that is empty or holds a repeated tool, one of a class that needs a
+// delegation, or one whose name, provider or classification no envelope could
+// carry, a negative bound, and a nil clock or id source.
 func New(cfg Config) (*Adapter, error) {
 	if err := checkConfig(cfg); err != nil {
 		return nil, err

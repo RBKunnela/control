@@ -11,9 +11,8 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
-	"github.com/guardana/control/internal/adapterkit"
 	"github.com/guardana/control/internal/canon"
+	"github.com/guardana/control/internal/classify"
 	"github.com/guardana/control/internal/gateway"
 	"github.com/guardana/control/internal/secretscan"
 )
@@ -25,7 +24,8 @@ const fingerprintDomain = "mcp-tool-fingerprint/v1\n"
 // Override is the operator's classification of one tool definition. The
 // fingerprint pins the definition it classifies: a tool whose name matches
 // and whose fingerprint does not is unclassified until the operator looks
-// again (ADR-0013). Annotations never classify; only this does.
+// again (ADR-0013). Annotations never classify; only this does. The promoted
+// Check covers the classification alone; New checks the rest of the override.
 type Override struct {
 	// Upstream names the server that serves the tool.
 	Upstream string
@@ -33,44 +33,21 @@ type Override struct {
 	Tool string
 	// Fingerprint is Fingerprint of the definition the operator classified.
 	Fingerprint string
-	// Effect is the effect class of a call to the tool.
-	Effect controlv1.EffectClass
-	// ResourceType is the envelope's resource.type.
-	ResourceType string
-	// ResourceFrom is an RFC 6901 pointer into the call's arguments, whose
-	// string or integer value is the envelope's resource.id. Empty means the
-	// call names no resource, which Validate refuses for the effects that
-	// need one.
-	ResourceFrom string
-	// TrustZone is the destination's, for a tool that sends data somewhere.
-	// It says nothing about what the tool returns.
-	TrustZone controlv1.TrustZone
-	// ReturnsTrust is the trust zone of what the tool's results contain;
-	// UNSPECIFIED, the zero value, is untrusted.
-	ReturnsTrust controlv1.TrustZone
-	// ReturnsSensitivity is the highest sensitivity the tool's results can
-	// hold; UNSPECIFIED, the zero value, is unknown. It is never copied into
-	// the envelope's data labels, which say what a call carries (ADR-0021).
-	ReturnsSensitivity controlv1.Sensitivity
+	classify.Classification
 }
 
 // Entry is one tool as the manifest holds it: the upstream's definition and,
-// when an override pins its fingerprint, its classification.
+// when an override pins its fingerprint, its classification. The promoted
+// Check covers the classification alone, and an unclassified entry holds the
+// zero one, which it refuses; New checked the override it was copied from.
 type Entry struct {
 	Upstream    string
 	Tool        *mcp.Tool
 	Fingerprint string
 	// Classified is false for a definition no override pins; a call to it
 	// is refused before the policy sees it.
-	Classified   bool
-	Effect       controlv1.EffectClass
-	ResourceType string
-	ResourceFrom string
-	TrustZone    controlv1.TrustZone
-	// ReturnsTrust and ReturnsSensitivity classify what a call's result
-	// contains, as the override declares it.
-	ReturnsTrust       controlv1.TrustZone
-	ReturnsSensitivity controlv1.Sensitivity
+	Classified bool
+	classify.Classification
 	// Ambiguous marks a name two upstreams serve: no call can be routed.
 	Ambiguous bool
 	// why is the reason a listed definition is not classified.
@@ -111,15 +88,6 @@ func Fingerprint(t *mcp.Tool) (string, error) {
 	}
 	sum := sha256.Sum256(append([]byte(fingerprintDomain), body...))
 	return "sha256:" + hex.EncodeToString(sum[:]), nil
-}
-
-// checkPointer refuses a ResourceFrom pointer that is not RFC 6901 or is
-// outside the bound. The empty pointer names no resource and is allowed.
-func checkPointer(p string) error {
-	if err := adapterkit.CheckPointer(p); err != nil {
-		return fmt.Errorf("%w: ResourceFrom: %w", ErrOverride, err)
-	}
-	return nil
 }
 
 // manifest is the adapter's own view of every upstream's tools, keyed by
@@ -203,12 +171,7 @@ func (m *manifest) classify(upstream string, tool *mcp.Tool) *Entry {
 		e.why = "the definition changed since it was classified"
 	default:
 		e.Classified = true
-		e.Effect = o.Effect
-		e.ResourceType = o.ResourceType
-		e.ResourceFrom = o.ResourceFrom
-		e.TrustZone = o.TrustZone
-		e.ReturnsTrust = o.ReturnsTrust
-		e.ReturnsSensitivity = o.ReturnsSensitivity
+		e.Classification = o.Classification
 	}
 	return e
 }

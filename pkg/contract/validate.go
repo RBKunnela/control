@@ -108,12 +108,7 @@ func checkSemantics(env *controlv1.ActionEnvelope) error {
 	if effect == controlv1.EffectClass_EFFECT_CLASS_UNSPECIFIED {
 		return &ValidationError{Field: "action.effect", Err: ErrMissingField}
 	}
-	if IsMaterial(effect) {
-		if err := requirePresent(env, "action.provider"); err != nil {
-			return err
-		}
-	}
-	for _, path := range effectRequirements()[effect] {
+	for _, path := range EffectRequires(effect) {
 		if err := requirePresent(env, path); err != nil {
 			return err
 		}

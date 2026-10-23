@@ -15,6 +15,7 @@ import (
 
 	"github.com/guardana/control/adapters/enforce"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/classify"
 	"github.com/guardana/control/internal/core"
 	"github.com/guardana/control/internal/enforceclient"
 	"github.com/guardana/control/internal/evidence"
@@ -148,7 +149,7 @@ func newPlane(t *testing.T, o planeOptions) *plane {
 	clock := pl.clock.read
 	r := &runs{state: gateway.RunState{Trusted: true, MaxRead: controlv1.Sensitivity_SENSITIVITY_PUBLIC}}
 	if o.tools == nil {
-		o.tools = []enforce.Tool{{Name: "refund", Effect: controlv1.EffectClass_EFFECT_CLASS_TRANSACT, Provider: "payments", ResourceType: "account", ResourceFrom: "/account"}}
+		o.tools = []enforce.Tool{{Name: "refund", Provider: "payments", Classification: classify.Classification{Effect: controlv1.EffectClass_EFFECT_CLASS_TRANSACT, ResourceType: "account", ResourceFrom: "/account"}}}
 	}
 	a, err := enforce.New(enforce.Config{
 		Socket: pl.socket, ExecutionLifetime: time.Minute,

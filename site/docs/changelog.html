@@ -120,11 +120,23 @@ verify one.</p>
 <h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.13.0...HEAD">Unreleased</a></h2>
 <h3 id="security">Security</h3>
 <ul>
+<li><code>mcp.New</code> refuses an override whose <code>ReturnsTrust</code> or <code>ReturnsSensitivity</code>
+is a number the contract does not declare. Such an override loaded through
+the Go API and its calls ran with a result classification the run's flow
+state under-reported; the configuration file could not spell one, and
+<code>enforce.New</code> refused it already
+(<a href="/docs/adr/0059-a-tools-classification-is-one-type-checked-when-it-loads">ADR-0059</a>).</li>
 <li>Built with Go 1.27.3, which fixes GO-2026-6809 in <code>crypto/x509</code>;
 <code>govulncheck</code> found it reachable from the evidence reader under 1.27.2.</li>
 <li>The MCP client the filesystem server's guide is checked with locks
 <code>certifi</code> 2026.10.19, which fixes PYSEC-2026-4320 (GHSA-6q48-6c7w-9gw2).
 Neither binary nor the Python client of the enforcement API uses it.</li>
+</ul>
+<h3 id="added">Added</h3>
+<ul>
+<li><code>pkg/contract</code> exports <code>EffectRequires</code>, what <code>Validate</code> requires of each
+effect class
+(<a href="/docs/adr/0060-pkg-contract-exports-what-each-effect-class-requires">ADR-0060</a>).</li>
 </ul>
 <h3 id="fixed">Fixed</h3>
 <ul>
@@ -225,6 +237,21 @@ shutdown of an enforcement API plane, the collector's 415, the hook's
 deadlines, coverage's join and others. The status page, roadmap and backlog
 stop describing the Python client and the hook bridge as planned, and
 ADR-0050 is marked accepted, as it was on merging.</li>
+<li>A gateway configuration refuses a tool classification no envelope could
+carry, naming the key, where before it loaded and every call to the tool was
+refused: a <code>WRITE</code>, <code>DELETE</code>, <code>CONFIGURE</code>, <code>TRANSACT</code> or
+<code>IDENTITY_OR_ACCESS</code> override or tool without <code>resource_from</code>, a
+<code>COMMUNICATE</code> one without <code>trust_zone</code>, a <code>resource_type</code>, tool <code>name</code> or
+<code>provider</code> the contract's identifier rule refuses (invalid UTF-8, white
+space at either end, or anywhere a space other than U+0020, a control or
+format character, a line or paragraph separator or a default-ignorable code
+point), an override's <code>resource_type</code> past 1024 bytes, and, in <code>coverage</code>,
+an override's <code>resource_from</code> that is not an RFC 6901 pointer within its
+bounds. An upstream's <code>name</code>, every MCP call's <code>action.provider</code>, is held to
+the same rule and to 1024 bytes. In every mode, <code>OBSERVE</code> included, each call to such a tool was
+blocked before it was sent. <code>mcp.New</code> and <code>enforce.New</code> refuse the same, and
+the wording of these refusals now names the configuration key
+(<a href="/docs/adr/0059-a-tools-classification-is-one-type-checked-when-it-loads">ADR-0059</a>).</li>
 </ul>
 <h2 id="0130---2026-10-20"><a href="https://github.com/guardana/control/releases/tag/v0.13.0">0.13.0</a> - 2026-10-20</h2>
 <p>A coding runtime's tool hooks can now reach a plane's <code>experimental</code>
@@ -248,7 +275,7 @@ Among the pre-release audit's fixes: the receiver serves only the listener it
 locked, and <code>OBSERVE</code> counts a stale hand-out only for a call its policy let
 run. The project is still alpha, and the <code>0.x</code> series makes no compatibility
 promise between minor versions.</p>
-<h3 id="added">Added</h3>
+<h3 id="added-1">Added</h3>
 <ul>
 <li><code>guardana-control hook</code> takes a coding runtime's tool events to a plane's
 enforcement API: a call runs only when the plane answers <code>EXECUTE</code> of
@@ -320,7 +347,7 @@ removes a socket a live receiver may hold, supervision reports a deadline not
 checked when an event of the run has no timestamp, and <code>react</code> reads the clock
 for each stop as it writes it. The project is still alpha, and the <code>0.x</code>
 series makes no compatibility promise between minor versions.</p>
-<h3 id="added-1">Added</h3>
+<h3 id="added-2">Added</h3>
 <ul>
 <li>A Python client of the <code>experimental</code> enforcement API, under
 <code>clients/python/</code> and imported as <code>guardana_control.enforce</code>
@@ -404,7 +431,7 @@ another account could rewrite. From this release a version is a plain
 (<a href="/docs/adr/0025-public-repository-merges-and-releases">ADR-0025</a>); the
 project is still alpha, and the <code>0.x</code> series still makes no compatibility
 promise between minor versions.</p>
-<h3 id="added-2">Added</h3>
+<h3 id="added-3">Added</h3>
 <ul>
 <li>The enforcement API contract, <code>guardana.control.enforce.v1alpha1</code>: the
 <code>admit</code>, <code>complete</code> and <code>abort</code> messages a tool outside MCP exchanges with
@@ -590,7 +617,7 @@ published release rather than the next one, the repository's GitHub settings
 have a read-only check, and a pause file replaced during a read is read
 again. 0.10.1-alpha was tagged with most of these changes and never
 published: its release job stopped at the new image scan.</p>
-<h3 id="added-3">Added</h3>
+<h3 id="added-4">Added</h3>
 <ul>
 <li>The release scans every binary it ships before anything is attested or
 published: each binary of every archive and the image's binary for
@@ -675,7 +702,7 @@ GO-2026-6604, GO-2026-6605, GO-2026-6607, GO-2026-6608 and GO-2026-6610 in
 <code>mime/multipart</code> and <code>os</code>; <code>govulncheck</code> found the plane's calls reaching
 the HTTP/2 ones under 1.27.1.</li>
 </ul>
-<h3 id="added-4">Added</h3>
+<h3 id="added-5">Added</h3>
 <ul>
 <li>Procedure schema <code>0.2</code>, read beside <code>0.1</code>
 (<a href="/docs/adr/0047-a-procedure-states-its-exceptions-resources-and-children">ADR-0047</a>).
@@ -784,7 +811,7 @@ when it has a second name: a checkout under a umask of 002 needs
 user. An upstream that asks for more input ends the call as failed. A second
 override of one tool is refused at start. <code>runs open --parent</code> refuses a
 child whose expiry would pass its parent's.</p>
-<h3 id="added-5">Added</h3>
+<h3 id="added-6">Added</h3>
 <ul>
 <li>A confirmed finding can stop the run it is about
 (<a href="/docs/adr/0046-a-finding-stops-one-run-through-a-signed-route">ADR-0046</a>).
@@ -930,7 +957,7 @@ observed tool call, and supervision let the runtime's own report of a step
 count as the step. <a href="/docs/status">docs/status.md</a> says what is
 <code>implemented</code> and what is <code>experimental</code>. Nothing here is a security boundary
 yet.</p>
-<h3 id="added-6">Added</h3>
+<h3 id="added-7">Added</h3>
 <ul>
 <li><code>guardana-control coverage</code> prints, for each path an operator declares in an
 inventory, whether a plane enforces it, decides it without enforcing it, a
@@ -1007,7 +1034,7 @@ accepted another account's directory; and the commit gate could stamp a
 commit that broke the wire contract. <a href="/docs/status">docs/status.md</a> says
 what is <code>implemented</code> and what is <code>experimental</code>. Nothing here is a security
 boundary yet.</p>
-<h3 id="added-7">Added</h3>
+<h3 id="added-8">Added</h3>
 <ul>
 <li>Observations: <code>guardana-control observe import</code> reads an agent runtime's
 OpenTelemetry GenAI spans (OTLP/JSON, conventions 1.41.0) for one source an
@@ -1127,7 +1154,7 @@ release gate counted a pull request run and could be passed by a tag named
 another account owned; and a stateful listener kept any number of sessions
 open. <a href="/docs/status">docs/status.md</a> says what is <code>implemented</code> and what is
 <code>experimental</code>. Nothing here is a security boundary yet.</p>
-<h3 id="added-8">Added</h3>
+<h3 id="added-9">Added</h3>
 <ul>
 <li><code>examples/evidence-report -state &lt;dir&gt;</code> follows a trail one export after
 another and raises local alerts: a JSON line each, appended to
@@ -1339,7 +1366,7 @@ refusal printed a header credential; and some MCP clients refused the plane's
 answers as schema errors. <a href="/docs/status">docs/status.md</a> says what is
 <code>implemented</code> and what is <code>experimental</code>. Nothing here is a security boundary
 yet.</p>
-<h3 id="added-9">Added</h3>
+<h3 id="added-10">Added</h3>
 <ul>
 <li><code>guardana-control policy explain &lt;case&gt;</code> decides one case as <code>policy test</code>
 does and says how: the decision's verdict, action, mode, policy digest and
@@ -1399,7 +1426,7 @@ plane without <code>runs.dir</code> behaves as before. A stdio plane no longer w
 start lines into the protocol stream.
 <a href="/docs/status">docs/status.md</a> says what is <code>implemented</code> and what is
 <code>experimental</code>. Nothing here is a security boundary yet.</p>
-<h3 id="added-10">Added</h3>
+<h3 id="added-11">Added</h3>
 <ul>
 <li>Runs an operator opens
 (<a href="/docs/adr/0034-a-run-the-operator-opens-has-an-identity-of-its-own">ADR-0034</a>):
@@ -1445,7 +1472,7 @@ default (<a href="/docs/adr/0032-the-enforcement-mode-has-no-default">ADR-0032</
 <code>dev --decision-point=silent</code>, which the old command lacks and now needs.
 <code>dev</code> refuses a system without process groups before it starts anything.</li>
 </ul>
-<h3 id="added-11">Added</h3>
+<h3 id="added-12">Added</h3>
 <ul>
 <li>A website for <code>control.guardana.dev</code> in <code>site/</code>: one static page with
 no script and nothing loaded from another host, whose diagrams
@@ -1506,7 +1533,7 @@ the gateway beside the archives, and pages that say what the plane
 protects, what it records and which failures it survives.
 <a href="/docs/status">docs/status.md</a> says what is <code>implemented</code> and what is
 <code>experimental</code>. Nothing here is a security boundary yet.</p>
-<h3 id="added-12">Added</h3>
+<h3 id="added-13">Added</h3>
 <ul>
 <li>Reason code <code>APPROVAL_STATE_UNKNOWN</code> (44, <code>INDETERMINATE</code>): a lost hold
 whose approval the plane could not read or trust closes with it, where
@@ -1573,7 +1600,7 @@ Such an answer could be read as refused or as unavailable instead.</li>
 <p>The first public release. <a href="/docs/status">docs/status.md</a> says what is
 <code>implemented</code> and what is <code>experimental</code>. Nothing here is a security boundary
 yet.</p>
-<h3 id="added-13">Added</h3>
+<h3 id="added-14">Added</h3>
 <ul>
 <li>Wire contracts, frozen at <code>1.0</code>: eight protobuf files for the action
 envelope, the decision, approvals, results, events, findings, policy bundles

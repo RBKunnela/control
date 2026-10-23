@@ -13,11 +13,23 @@ verify one.
 
 ### Security
 
+- `mcp.New` refuses an override whose `ReturnsTrust` or `ReturnsSensitivity`
+  is a number the contract does not declare. Such an override loaded through
+  the Go API and its calls ran with a result classification the run's flow
+  state under-reported; the configuration file could not spell one, and
+  `enforce.New` refused it already
+  ([ADR-0059](docs/adr/0059-a-tools-classification-is-one-type-checked-when-it-loads.md)).
 - Built with Go 1.27.3, which fixes GO-2026-6809 in `crypto/x509`;
   `govulncheck` found it reachable from the evidence reader under 1.27.2.
 - The MCP client the filesystem server's guide is checked with locks
   `certifi` 2026.10.19, which fixes PYSEC-2026-4320 (GHSA-6q48-6c7w-9gw2).
   Neither binary nor the Python client of the enforcement API uses it.
+
+### Added
+
+- `pkg/contract` exports `EffectRequires`, what `Validate` requires of each
+  effect class
+  ([ADR-0060](docs/adr/0060-pkg-contract-exports-what-each-effect-class-requires.md)).
 
 ### Fixed
 
@@ -118,6 +130,21 @@ verify one.
   deadlines, coverage's join and others. The status page, roadmap and backlog
   stop describing the Python client and the hook bridge as planned, and
   ADR-0050 is marked accepted, as it was on merging.
+- A gateway configuration refuses a tool classification no envelope could
+  carry, naming the key, where before it loaded and every call to the tool was
+  refused: a `WRITE`, `DELETE`, `CONFIGURE`, `TRANSACT` or
+  `IDENTITY_OR_ACCESS` override or tool without `resource_from`, a
+  `COMMUNICATE` one without `trust_zone`, a `resource_type`, tool `name` or
+  `provider` the contract's identifier rule refuses (invalid UTF-8, white
+  space at either end, or anywhere a space other than U+0020, a control or
+  format character, a line or paragraph separator or a default-ignorable code
+  point), an override's `resource_type` past 1024 bytes, and, in `coverage`,
+  an override's `resource_from` that is not an RFC 6901 pointer within its
+  bounds. An upstream's `name`, every MCP call's `action.provider`, is held to
+  the same rule and to 1024 bytes. In every mode, `OBSERVE` included, each call to such a tool was
+  blocked before it was sent. `mcp.New` and `enforce.New` refuse the same, and
+  the wording of these refusals now names the configuration key
+  ([ADR-0059](docs/adr/0059-a-tools-classification-is-one-type-checked-when-it-loads.md)).
 
 ## [0.13.0] - 2026-10-20
 

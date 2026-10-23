@@ -1,17 +1,14 @@
 package enforce
 
 import (
-	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
-	"google.golang.org/protobuf/reflect/protoreflect"
-
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
-	"github.com/guardana/control/internal/adapterkit"
+	"github.com/guardana/control/internal/classify"
 	"github.com/guardana/control/internal/gateway"
-	"github.com/guardana/control/pkg/contract"
 )
 
 // The bounds of a listener's execution lifetime. An execution handed out is
@@ -54,29 +51,15 @@ type Identity struct {
 }
 
 // Tool is the operator's classification of one tool, by name. Nothing binds
-// it to what the tool does: the plane never sees the tool's definition.
+// it to what the tool does: the plane never sees the tool's definition. The
+// promoted Check covers the classification alone; New checks the name and the
+// provider too.
 type Tool struct {
 	// Name is what an admit names the tool by.
 	Name string
-	// Effect is the effect class of a call to the tool.
-	Effect controlv1.EffectClass
 	// Provider is the envelope's action.provider.
 	Provider string
-	// ResourceType is the envelope's resource.type.
-	ResourceType string
-	// ResourceFrom is an RFC 6901 pointer into the call's arguments, whose
-	// string or integer value is the envelope's resource.id. Empty means the
-	// call names no resource, which Validate refuses for the effects that
-	// need one.
-	ResourceFrom string
-	// TrustZone is the destination's, for a tool that sends data somewhere.
-	TrustZone controlv1.TrustZone
-	// ReturnsTrust is the trust zone of what the tool's results contain;
-	// UNSPECIFIED, the zero value, is untrusted.
-	ReturnsTrust controlv1.TrustZone
-	// ReturnsSensitivity is the highest sensitivity the tool's results can
-	// hold; UNSPECIFIED, the zero value, is unknown.
-	ReturnsSensitivity controlv1.Sensitivity
+	classify.Classification
 }
 
 // Config configures an Adapter once, at New.
@@ -179,25 +162,28 @@ func checkTools(tools []Tool) error {
 	return nil
 }
 
-func checkTool(tool Tool) error {
-	switch {
-	case tool.Name == "" || len(tool.Name) > contract.MaxStringBytes:
-		return errors.New("a name of 1 to 1024 bytes")
-	case tool.Effect == controlv1.EffectClass_EFFECT_CLASS_UNSPECIFIED || !declared(tool.Effect):
-		return errors.New("an effect class the contract declares")
-	case tool.Effect == controlv1.EffectClass_EFFECT_CLASS_SPAWN_OR_DELEGATE:
-		return errors.New("an effect class other than SPAWN_OR_DELEGATE, which needs a delegation this API does not carry")
-	case tool.Provider == "":
-		return errors.New("a provider")
-	case tool.ResourceType == "":
-		return errors.New("a resource type")
-	case !declared(tool.TrustZone) || !declared(tool.ReturnsTrust) || !declared(tool.ReturnsSensitivity):
-		return errors.New("a trust zone or sensitivity the contract declares")
-	}
-	return adapterkit.CheckPointer(tool.ResourceFrom)
-}
+// The keys of a tool that are not its classification's.
+const (
+	keyName     = "name"
+	keyProvider = "provider"
+)
 
-// declared reports whether v is a value its enumeration declares.
-func declared(v protoreflect.Enum) bool {
-	return v.Descriptor().Values().ByNumber(v.Number()) != nil
+// checkTool refuses a name or a provider no envelope can carry, a class that
+// needs a delegation this API does not carry, and a classification
+// classify.Check refuses, each as a *classify.Error naming the key.
+func checkTool(tool Tool) error {
+	if err := classify.CheckEnvelopeString(tool.Name); err != nil {
+		return &classify.Error{Key: keyName, Err: err}
+	}
+	if err := tool.Check(); err != nil {
+		return err
+	}
+	if classify.RequiresDelegation(tool.Effect) {
+		return &classify.Error{Key: classify.KeyEffect, Err: fmt.Errorf("%w: %s needs a delegation this API does not carry",
+			classify.ErrEffect, strings.TrimPrefix(tool.Effect.String(), "EFFECT_CLASS_"))}
+	}
+	if err := classify.CheckEnvelopeString(tool.Provider); err != nil {
+		return &classify.Error{Key: keyProvider, Err: err}
+	}
+	return nil
 }

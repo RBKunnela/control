@@ -117,6 +117,9 @@ Date: 2026-09-10</p>
 <a href="/docs/adr/0004-evidence-and-privacy-defaults">ADR-0004</a>,
 <a href="/docs/adr/0005-canonical-action-digest">ADR-0005</a> and
 <a href="/docs/adr/0010-digest-domain-separation">ADR-0010</a>.</p>
+<p>Amended by <a href="/docs/adr/0059-a-tools-classification-is-one-type-checked-when-it-loads">ADR-0059</a>: the identifier rule is applied to an
+operator's resource type, tool name and provider when the configuration
+loads, not first at the call.</p>
 <h2 id="context">Context</h2>
 <p>The v1 contract was frozen by ADR-0002, which made every breaking change after
 it a failure. A review of the whole repository before the policy kernel was

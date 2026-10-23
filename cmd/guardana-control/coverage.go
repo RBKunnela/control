@@ -19,7 +19,6 @@ import (
 	"github.com/guardana/control/internal/gatewayconfig"
 	"github.com/guardana/control/internal/observe"
 	"github.com/guardana/control/internal/observelog"
-	"github.com/guardana/control/pkg/contract"
 )
 
 const (
@@ -189,22 +188,23 @@ func readPlane(path string) (coverage.Plane, error) {
 		return coverage.Plane{}, refusedInput("plane", path, err)
 	}
 	p := coverage.Plane{Name: path, Mode: mode, FailOpenRead: cfg.Policy.FailOpenRead, Cooperative: cfg.Listener.Kind == gatewayconfig.ListenerEnforceAPI}
-	for i, tool := range cfg.Tools {
-		effect, err := contract.ParseEffect(tool.Effect)
+	for i := range cfg.Tools {
+		c, err := cfg.Tools[i].Classification()
 		if err != nil {
-			return coverage.Plane{}, refusedInput("plane", path, fmt.Errorf("tools.%d: %w", i, err))
+			return coverage.Plane{}, refusedInput("plane", path, fmt.Errorf("tools.%d.%w", i, err))
 		}
-		p.Tools = append(p.Tools, coverage.Tool{Name: tool.Name, Effect: effect})
+		p.Tools = append(p.Tools, coverage.Tool{Name: cfg.Tools[i].Name, Effect: c.Effect})
 	}
 	for _, u := range cfg.Upstreams {
 		p.Upstreams = append(p.Upstreams, u.Name)
 	}
-	for i, o := range cfg.Overrides {
-		effect, err := contract.ParseEffect(o.Effect)
+	for i := range cfg.Overrides {
+		o := &cfg.Overrides[i]
+		c, err := o.Classification()
 		if err != nil {
-			return coverage.Plane{}, refusedInput("plane", path, fmt.Errorf("overrides.%d: %w", i, err))
+			return coverage.Plane{}, refusedInput("plane", path, fmt.Errorf("overrides.%d.%w", i, err))
 		}
-		p.Overrides = append(p.Overrides, coverage.Override{Upstream: o.Upstream, Tool: o.Tool, Fingerprint: o.Fingerprint, Effect: effect})
+		p.Overrides = append(p.Overrides, coverage.Override{Upstream: o.Upstream, Tool: o.Tool, Fingerprint: o.Fingerprint, Effect: c.Effect})
 	}
 	return p, nil
 }

@@ -10,6 +10,7 @@ import (
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/guardana/control/adapters/mcp"
+	"github.com/guardana/control/internal/classify"
 	"github.com/guardana/control/internal/gateway"
 )
 
@@ -22,7 +23,7 @@ func leakyVictim(t *testing.T, secret string) (*victim, func(*victim, *testing.T
 	v.tools["leaky"] = leaky
 	v.server.AddTool(leaky, v.handler("leaky"))
 	return v, func(v *victim, t *testing.T) []mcp.Override {
-		return append(v.overrides(t), mcp.Override{Upstream: "victim", Tool: "leaky", Fingerprint: v.fingerprint(t, "leaky"), Effect: effectRead, ResourceType: "file", ResourceFrom: "/path"})
+		return append(v.overrides(t), mcp.Override{Upstream: "victim", Tool: "leaky", Fingerprint: v.fingerprint(t, "leaky"), Classification: classify.Classification{Effect: effectRead, ResourceType: "file", ResourceFrom: "/path"}})
 	}
 }
 

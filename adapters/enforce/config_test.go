@@ -8,6 +8,7 @@ import (
 
 	"github.com/guardana/control/adapters/enforce"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/classify"
 	"github.com/guardana/control/internal/gateway"
 )
 
@@ -100,6 +101,39 @@ func TestNewRefusesAnIncompleteConfiguration(t *testing.T) {
 				t.Fatalf("New = %v, %v; want %v", a, err, tc.want)
 			}
 		})
+	}
+}
+
+// TestANameOrProviderNoEnvelopeCarriesIsRefused: the two strings a tool puts
+// in an envelope beside its classification are held to the contract's string
+// rule, and the refusal names the key; one byte under the bound and an inner
+// space are the controls.
+func TestANameOrProviderNoEnvelopeCarriesIsRefused(t *testing.T) {
+	for _, tc := range []struct {
+		name, key string
+		mut       func(*enforce.Tool)
+	}{
+		{"a provider past the bound", "provider", func(tool *enforce.Tool) { tool.Provider = strings.Repeat("p", 1025) }},
+		{"a provider led by a space", "provider", func(tool *enforce.Tool) { tool.Provider = " payments" }},
+		{"a zero-width provider", "provider", func(tool *enforce.Tool) { tool.Provider = "pay\u200bments" }},
+		{"a zero-width name", "name", func(tool *enforce.Tool) { tool.Name = "re\u200bfund" }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := validConfig()
+			tc.mut(&cfg.Tools[0])
+			_, err := enforce.New(cfg)
+			var ce *classify.Error
+			if !errors.Is(err, enforce.ErrTool) || !errors.As(err, &ce) || ce.Key != tc.key || !errors.Is(err, classify.ErrString) {
+				t.Fatalf("New = %v; want ErrTool naming %s", err, tc.key)
+			}
+		})
+	}
+	for _, provider := range []string{strings.Repeat("p", 1024), "pay ments"} {
+		cfg := validConfig()
+		cfg.Tools[0].Provider = provider
+		if _, err := enforce.New(cfg); err != nil {
+			t.Errorf("a provider of %d bytes: %v", len(provider), err)
+		}
 	}
 }
 

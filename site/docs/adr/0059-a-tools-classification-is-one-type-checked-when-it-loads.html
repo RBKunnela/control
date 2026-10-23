@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ADR-0059: A tool&#39;s classification is one type, checked when it loads · Guardana Control</title>
+<meta name="description" content="Decision record, accepted."/>
+<link rel="canonical" href="https://control.guardana.dev/docs/adr/0059-a-tools-classification-is-one-type-checked-when-it-loads"/>
+<meta name="theme-color" content="#0B8F80"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="stylesheet" href="/assets/brand/v1/tokens.css"/>
+<link rel="stylesheet" href="/assets/control/control.css"/>
+<link rel="stylesheet" href="/assets/control/docs.css"/>
+</head>
+<body class="doc">
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap bar">
+  <a class="mark" href="/"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 4.5 5.6v6.1c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V5.6z"/><path d="M10.2 8.4v7.8M10.2 12.3h5.3"/></svg><span>Guardana <b>Control</b></span></a>
+  <a class="vlink" href="https://github.com/guardana/control/releases/tag/v0.13.0"><span class="ver">v0.13.0</span></a>
+  <nav aria-label="Primary">
+    <a href="/docs/">Docs</a>
+    <a href="/docs/status">Status</a>
+    <a class="hide-s" href="/docs/roadmap">Roadmap</a>
+    <a class="gh" href="https://github.com/guardana/control" aria-label="GitHub"><svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span class="hide-s">GitHub</span></a>
+  </nav>
+</div></header>
+<div class="wrap shell">
+<details class="mnav">
+<summary>Menu · <b>ADR-0059: A tool&#39;s classification is one type, checked when it loads</b></summary>
+<nav class="inner" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</details>
+<main id="main" class="prose">
+<h1 id="adr-0059-a-tools-classification-is-one-type-checked-when-it-loads">ADR-0059: A tool's classification is one type, checked when it loads</h1>
+<p>Status: accepted
+Date: 2026-10-23</p>
+<p>Amends <a href="/docs/adr/0011-contract-corrections-before-publication">ADR-0011</a> on where
+the identifier rule is applied to what an operator writes,
+<a href="/docs/adr/0012-policy-kernel-semantics">ADR-0012</a> on which missing fields reach the
+kernel, <a href="/docs/adr/0013-mcp-interception-approvals-and-modes">ADR-0013</a> on what an
+override may hold, and
+<a href="/docs/adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api">ADR-0051</a>
+on what a tool of the enforcement API may hold. Builds on
+<a href="/docs/adr/0060-pkg-contract-exports-what-each-effect-class-requires">ADR-0060</a>.</p>
+<h2 id="context">Context</h2>
+<p>An operator classifies a tool twice over: an MCP override pins a definition
+by its fingerprint, and a tool of the enforcement API is named in a table.
+Both say the same six things: the effect class, the resource type, the pointer
+the resource id is read through, where the tool sends data, and what its
+results hold. Those six were declared as fields seven times: in the
+configuration's override and tool entries, in the MCP adapter's override and
+manifest entry, in the enforcement adapter's tool, and again by hand in the two
+converters between them and in <code>coverage</code>. Four checks refused four different
+sets of them. None applied the identifier rule, so a resource type with a
+leading space or a zero-width character loaded and every call to its tool was
+refused. The configuration held its own copy of the pointer check, kept equal
+to the adapters' by a test, because the approver's binary links the
+configuration and may not link the adapters' kit. The trust zone spellings were
+a hand-written list beside the policy catalogue's, which reads the descriptor.</p>
+<p>A classification can also be complete in its keys and still useless. An
+envelope's <code>resource.id</code> comes only from the arguments at the classification's
+pointer, and its destination only from its trust zone. A <code>WRITE</code> with no
+pointer loads, and the contract refuses every call to it with
+<code>REQUIRED_FIELD_ABSENT</code>; so does a <code>COMMUNICATE</code> with no zone.</p>
+<h2 id="decision">Decision</h2>
+<p><code>internal/classify</code> holds the classification once:</p>
+<ul>
+<li><code>Classification</code> is the six values as the contract types them, and
+<code>Spelling</code> the six as a configuration file writes them. The two adapters
+embed <code>Classification</code>; the configuration's override and tool entries embed
+<code>Spelling</code>, whose fields the field tables bind, and turn it into a
+<code>Classification</code> with <code>Parse</code>. The converters copy it whole.</li>
+<li><code>Parse</code> reads each enum through the contract's descriptor, as the policy
+catalogue does; the empty string is the zero zone or sensitivity, and an
+explicit <code>UNSPECIFIED</code> is refused.</li>
+<li><code>Check</code> is the one check, and every entry point calls it: the
+configuration loader for an override and for a tool, <code>mcp.New</code>, <code>enforce.New</code>
+and <code>coverage</code> through the loader. It refuses an effect class that is not
+declared or is the zero one; a resource type that is empty, longer than
+<code>contract.MaxStringBytes</code> or refused by <code>contract.CheckIdentifier</code>; a pointer
+that is not RFC 6901 or is past 8 tokens of 64 bytes; a trust zone or a
+sensitivity the contract does not declare; and, reading
+<code>contract.EffectRequires</code>, a class whose envelope needs <code>resource.id</code> with no
+pointer, or <code>destination.trust_zone</code> with the zero zone.</li>
+<li>Its rule is that a classification <code>Check</code> accepts never makes <code>Validate</code>
+refuse the envelope it supplies. For the fields that reach the envelope the
+converse holds too: given a non-empty resource type, which every entry point
+required before, each refusal is one <code>Validate</code> would make of every call.
+The returns zone and sensitivity never reach the envelope; an undeclared one
+is refused because the run's flow state reads it. Nothing else is refused: a
+pointer that names no member in a given call is that call's to answer.</li>
+<li>A refusal is an <code>*Error</code> naming the key as the file spells it,
+<code>resource_from</code> or <code>returns.trust</code>; the loader prefixes <code>overrides.N.</code> or
+<code>tools.N.</code>, the adapters <code>Overrides[N]</code> or <code>tools[N]</code> beside their sentinel.
+No refusal repeats the value, which may be anything an operator pasted.</li>
+<li>The enforcement API's tool name and provider are held to the same string
+rule, <code>CheckEnvelopeString</code>, and its refusal of a class that needs a
+delegation reads <code>RequiresDelegation</code>, which reads the contract's table too.</li>
+<li>The pointer check moved here from <code>internal/adapterkit</code>, which keeps reading
+the id; the configuration's copy and the test holding it equal are gone. The
+configuration's zone, sensitivity and effect spellings are the lists
+<code>EffectNames</code>, <code>ZoneNames</code> and <code>SensitivityNames</code> give.</li>
+<li>A test parses every non-test Go file of the module and fails on a struct
+field named <code>ResourceFrom</code>, <code>ReturnsTrust</code> or <code>ReturnsSensitivity</code> outside
+this package.</li>
+</ul>
+<h2 id="security--compatibility-impact">Security / compatibility impact</h2>
+<p>A configuration that loaded before is refused when it holds an override or a
+tool that no envelope could carry:</p>
+<ul>
+<li>a <code>WRITE</code>, <code>DELETE</code>, <code>CONFIGURE</code>, <code>TRANSACT</code> or <code>IDENTITY_OR_ACCESS</code> entry
+without <code>resource_from</code>, and a <code>COMMUNICATE</code> entry without <code>trust_zone</code>;</li>
+<li>a <code>resource_type</code>, a tool <code>name</code> or a <code>provider</code> the identifier rule refuses;</li>
+<li>an override's <code>resource_type</code> past 1024 bytes;</li>
+<li>an override's <code>resource_from</code> that is not RFC 6901 or is past its bounds,
+which <code>run</code> refused already when it built the adapter and <code>coverage</code> now
+refuses too;</li>
+<li>an upstream's <code>name</code> the identifier rule refuses or past 1024 bytes: it is
+the <code>action.provider</code> of every call to that upstream, so every one was
+refused. <code>mcp.New</code> refuses it too.</li>
+</ul>
+<p>Through the Go API, an <code>mcp.Override</code> with an undeclared zone or sensitivity
+number and an <code>enforce.Tool</code> with a provider or resource type past 1024 bytes
+are refused by <code>New</code>. The refusals' wording changed: they name the key as the
+file spells it.</p>
+<p>None of the refusals of a field that reaches the envelope could let a call
+run. Neither adapter sends a call whose envelope the contract refuses, in any
+mode, <code>OBSERVE</code> included, so every call to such a tool was blocked before it
+was sent, an <code>mcp.Override</code> with an undeclared <code>TrustZone</code> among them. The
+refusal moves from each call to the file, and a plane that holds such an entry
+stops starting until it is mended.</p>
+<p>One refusal is a hardening of what ran. Through the Go API, an <code>mcp.Override</code>
+with an undeclared <code>ReturnsTrust</code> or <code>ReturnsSensitivity</code> loaded and its calls
+ran: those values feed the admission's result trust and sensitivity, not the
+envelope, and <code>SensitivityAtLeast</code> of an undeclared number against a floor is
+false, so the run's flow state under-reported what the call returned. <code>New</code>
+now refuses it. The configuration file could not spell such a value, and
+<code>enforce.New</code> refused it already.</p>
+<p>The rule holds what the contract requires today. A class a later minor adds,
+or a row the contract changes, changes what loads in the same build, because
+the check reads the contract's own table.</p>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>One check per entry point, held equal by tests: that is what drifted, and
+the pointer copy existed only because of where the approver's binary may
+reach. One package below both removes the reason.</li>
+<li>Leave the effect requirements to the call: a plane that can only refuse its
+tool's calls starts, and <code>doctor</code> passes it.</li>
+<li>Refuse only outside <code>OBSERVE</code>: under <code>OBSERVE</code> too the adapters block every
+call whose envelope the contract refuses, so the entry does nothing there
+either.</li>
+<li>Build a sample envelope and ask <code>Validate</code>: the answer would depend on what
+the sample filled in, and the refusal would name a wire path, not the key.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<p>An operator learns of an entry the contract would refuse when the file loads,
+from the key, instead of from a blocked call. The adapters' Go types changed
+shape, which no promise covers: <code>pkg/</code> is the public surface, and the adapters
+are not in it. A new classification field is added once, here.</p>
+<h2 id="validation">Validation</h2>
+<ul>
+<li><code>internal/classify</code>: <code>TestCheckAcceptsExactlyWhatValidateAccepts</code>, a property
+over every declared class and one undeclared number, an empty or a valid
+pointer, every declared destination zone and one undeclared one, declared
+returns values only, and resource types valid and invalid, holds <code>Check</code> to
+<code>Validate</code> both ways over that domain; <code>TestCheckRefusesWhatNoEnvelopeCarries</code>
+covers an invalid pointer and undeclared returns values, which <code>Validate</code>
+never sees; <code>TestCheckRefusesAMissingFieldWhereValidateDoes</code> and
+<code>TestRequiresDelegationIsValidates</code> hold the requirements and the delegation
+rule to <code>Validate</code> per class; <code>FuzzParse</code> fuzzes the spelling;
+<code>TestTheClassificationIsDeclaredOnce</code> and its planted-file control hold the
+type to one declaration; <code>TestTheClassificationImportsOnlyTheContract</code> holds
+its imports.</li>
+<li><code>cmd/guardana-gateway</code>: <code>TestAClassificationIsRefusedAlikeAtEveryEntryPoint</code>
+runs one table through the loader, <code>mcp.New</code> and <code>enforce.New</code> and requires
+the same key from each.</li>
+<li><code>internal/gatewayconfig</code>: <code>TestAClassificationNoEnvelopeCarriesIsRefusedAtLoad</code>
+and <code>TestAToolNameOrProviderNoEnvelopeCarriesIsRefused</code>.</li>
+</ul>
+<p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/adr/0059-a-tools-classification-is-one-type-checked-when-it-loads.md">docs/adr/0059-a-tools-classification-is-one-type-checked-when-it-loads.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.13.0, and <a href="https://github.com/guardana/control/tree/v0.13.0/docs">its documentation</a> is in its tag.</p>
+</main>
+<nav class="side" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</div>
+<footer class="foot"><div class="wrap row">
+  <p>Guardana Control · Apache-2.0</p>
+  <ul>
+    <li><a href="https://github.com/guardana/control">GitHub</a></li>
+    <li><a href="https://github.com/guardana/control/releases">Releases</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/SECURITY.md">Security</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/LICENSE">Licence Apache-2.0</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/TRADEMARKS.md">Trademarks</a></li>
+  </ul>
+</div></footer>
+</body>
+</html>

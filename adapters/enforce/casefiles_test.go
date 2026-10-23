@@ -11,6 +11,7 @@ import (
 
 	"github.com/guardana/control/adapters/enforce"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/classify"
 )
 
 const casesDir = "../../testdata/enforce"
@@ -188,11 +189,16 @@ func buildFromSetup(t *testing.T, s setupFile, d defect) (*rig, map[string]strin
 	o.tools = nil
 	for _, tf := range s.Tools {
 		o.tools = append(o.tools, enforce.Tool{
-			Name: tf.Name, Effect: enumValue[controlv1.EffectClass](t, tf.Effect, controlv1.EffectClass_value),
-			Provider: tf.Provider, ResourceType: tf.ResourceType, ResourceFrom: tf.ResourceFrom,
-			TrustZone:          enumValue[controlv1.TrustZone](t, tf.TrustZone, controlv1.TrustZone_value),
-			ReturnsTrust:       enumValue[controlv1.TrustZone](t, tf.ReturnsTrust, controlv1.TrustZone_value),
-			ReturnsSensitivity: enumValue[controlv1.Sensitivity](t, tf.ReturnsSensitivity, controlv1.Sensitivity_value),
+			Name:     tf.Name,
+			Provider: tf.Provider,
+			Classification: classify.Classification{
+				Effect:             enumValue[controlv1.EffectClass](t, tf.Effect, controlv1.EffectClass_value),
+				ResourceType:       tf.ResourceType,
+				ResourceFrom:       tf.ResourceFrom,
+				TrustZone:          enumValue[controlv1.TrustZone](t, tf.TrustZone, controlv1.TrustZone_value),
+				ReturnsTrust:       enumValue[controlv1.TrustZone](t, tf.ReturnsTrust, controlv1.TrustZone_value),
+				ReturnsSensitivity: enumValue[controlv1.Sensitivity](t, tf.ReturnsSensitivity, controlv1.Sensitivity_value),
+			},
 		})
 	}
 	if d.tools != nil {

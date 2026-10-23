@@ -11,6 +11,7 @@ import (
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/guardana/control/adapters/mcp"
+	"github.com/guardana/control/internal/classify"
 	"github.com/guardana/control/internal/gateway"
 )
 
@@ -41,8 +42,8 @@ func twoUpstreams(t *testing.T, shared bool) (*mcp.Adapter, *fakePipeline, *vict
 	cfg := newConfig(t, first, mcp.KindStatelessHTTP, connect(first), rigOptions{})
 	cfg.Upstreams = append(cfg.Upstreams, mcp.Upstream{Name: "second", Transport: connect(second), TenantID: "t1", Environment: "prod"})
 	cfg.Overrides = append(cfg.Overrides,
-		mcp.Override{Upstream: "second", Tool: "other", Fingerprint: second.fingerprint(t, "other"), Effect: effectRead, ResourceType: "file", ResourceFrom: "/path"},
-		mcp.Override{Upstream: "second", Tool: "read_file", Fingerprint: second.fingerprint(t, "read_file"), Effect: effectRead, ResourceType: "file", ResourceFrom: "/path"},
+		mcp.Override{Upstream: "second", Tool: "other", Fingerprint: second.fingerprint(t, "other"), Classification: classify.Classification{Effect: effectRead, ResourceType: "file", ResourceFrom: "/path"}},
+		mcp.Override{Upstream: "second", Tool: "read_file", Fingerprint: second.fingerprint(t, "read_file"), Classification: classify.Classification{Effect: effectRead, ResourceType: "file", ResourceFrom: "/path"}},
 	)
 	a, err := mcp.New(cfg)
 	if err != nil {

@@ -18,6 +18,7 @@ import (
 
 	"github.com/guardana/control/adapters/mcp"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/classify"
 	"github.com/guardana/control/internal/core"
 	"github.com/guardana/control/internal/gateway"
 	"github.com/guardana/control/internal/policy"
@@ -203,8 +204,14 @@ func fuzzOverrides(f *testing.F, v *victim) []mcp.Override {
 			f.Fatalf("Fingerprint(%s): %v", name, err)
 		}
 		out = append(out, mcp.Override{
-			Upstream: "victim", Tool: name, Fingerprint: fp,
-			Effect: effectRead, ResourceType: "file", ResourceFrom: "/path",
+			Upstream:    "victim",
+			Tool:        name,
+			Fingerprint: fp,
+			Classification: classify.Classification{
+				Effect:       effectRead,
+				ResourceType: "file",
+				ResourceFrom: "/path",
+			},
 		})
 	}
 	return out

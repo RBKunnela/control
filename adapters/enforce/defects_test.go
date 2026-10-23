@@ -15,6 +15,7 @@ import (
 
 	"github.com/guardana/control/adapters/enforce"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/classify"
 	"github.com/guardana/control/internal/core"
 	"github.com/guardana/control/internal/gateway"
 )
@@ -214,7 +215,7 @@ func defects() map[string]defect {
 			return tools
 		}},
 		"classifies-every-tool": {tools: func(tools []enforce.Tool) []enforce.Tool {
-			return append(tools, enforce.Tool{Name: "drop_database", Effect: effectRead, Provider: "db", ResourceType: "database"})
+			return append(tools, enforce.Tool{Name: "drop_database", Provider: "db", Classification: classify.Classification{Effect: effectRead, ResourceType: "database"}})
 		}},
 		"lenient-decoding": {request: func(path, token, body string, _ map[string]string) (string, string, string) {
 			return path, token, editBody(body, func(m map[string]any) {

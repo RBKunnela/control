@@ -9,6 +9,10 @@ Amends [ADR-0002](0002-wire-contracts-and-versioning.md),
 [ADR-0005](0005-canonical-action-digest.md) and
 [ADR-0010](0010-digest-domain-separation.md).
 
+Amended by [ADR-0059](0059-a-tools-classification-is-one-type-checked-when-it-loads.md): the identifier rule is applied to an
+operator's resource type, tool name and provider when the configuration
+loads, not first at the call.
+
 ## Context
 
 The v1 contract was frozen by ADR-0002, which made every breaking change after

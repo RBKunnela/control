@@ -22,6 +22,7 @@ import (
 
 	"github.com/guardana/control/adapters/mcp"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/classify"
 )
 
 // The tools the victim serves, and what the operator classifies them as.
@@ -172,15 +173,15 @@ func (v *victim) fingerprint(t *testing.T, name string) string {
 func (v *victim) overrides(t *testing.T) []mcp.Override {
 	t.Helper()
 	out := []mcp.Override{
-		{Upstream: upstreamName, Tool: toolRead, Fingerprint: v.fingerprint(t, toolRead), Effect: effectRead, ResourceType: "file", ResourceFrom: "/path"},
-		{Upstream: upstreamName, Tool: toolDelete, Fingerprint: v.fingerprint(t, toolDelete), Effect: effectDelete, ResourceType: "file", ResourceFrom: "/path"},
-		{Upstream: upstreamName, Tool: toolTransfer, Fingerprint: v.fingerprint(t, toolTransfer), Effect: effectTransact, ResourceType: "account", ResourceFrom: "/account"},
-		{Upstream: upstreamName, Tool: toolMail, Fingerprint: v.fingerprint(t, toolMail), Effect: effectComm, ResourceType: "mailbox", ResourceFrom: "/to", TrustZone: zoneExternal},
-		{Upstream: upstreamName, Tool: toolSlow, Fingerprint: v.fingerprint(t, toolSlow), Effect: effectRead, ResourceType: "file", ResourceFrom: "/path"},
+		{Upstream: upstreamName, Tool: toolRead, Fingerprint: v.fingerprint(t, toolRead), Classification: classify.Classification{Effect: effectRead, ResourceType: "file", ResourceFrom: "/path"}},
+		{Upstream: upstreamName, Tool: toolDelete, Fingerprint: v.fingerprint(t, toolDelete), Classification: classify.Classification{Effect: effectDelete, ResourceType: "file", ResourceFrom: "/path"}},
+		{Upstream: upstreamName, Tool: toolTransfer, Fingerprint: v.fingerprint(t, toolTransfer), Classification: classify.Classification{Effect: effectTransact, ResourceType: "account", ResourceFrom: "/account"}},
+		{Upstream: upstreamName, Tool: toolMail, Fingerprint: v.fingerprint(t, toolMail), Classification: classify.Classification{Effect: effectComm, ResourceType: "mailbox", ResourceFrom: "/to", TrustZone: zoneExternal}},
+		{Upstream: upstreamName, Tool: toolSlow, Fingerprint: v.fingerprint(t, toolSlow), Classification: classify.Classification{Effect: effectRead, ResourceType: "file", ResourceFrom: "/path"}},
 	}
 	for _, class := range declaredEffectClasses() {
 		name := classTool(class)
-		o := mcp.Override{Upstream: upstreamName, Tool: name, Fingerprint: v.fingerprint(t, name), Effect: class, ResourceType: "file", ResourceFrom: "/path"}
+		o := mcp.Override{Upstream: upstreamName, Tool: name, Fingerprint: v.fingerprint(t, name), Classification: classify.Classification{Effect: class, ResourceType: "file", ResourceFrom: "/path"}}
 		if class == effectComm {
 			o.TrustZone = zoneExternal
 		}

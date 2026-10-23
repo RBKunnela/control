@@ -23,10 +23,10 @@ const (
 	ErrIdentity Error = "enforce: the listener's identity is missing"
 	// ErrNoRuns is a nil run resolver: every request presents a run token.
 	ErrNoRuns Error = "enforce: no run resolver"
-	// ErrTool is an empty tool table, or a tool with no name, a name another
-	// tool has, an effect class or resource type it lacks, an enumeration
-	// value the contract does not declare, or a resource pointer outside the
-	// bound.
+	// ErrTool is an empty tool table, a name another tool has, a name or a
+	// provider no envelope can carry, an effect class that needs a delegation,
+	// or a classification classify.Check refuses. A refusal of one key wraps
+	// a *classify.Error naming it.
 	ErrTool Error = "enforce: the tool table is empty, incomplete or out of bounds"
 	// ErrBound is a negative bound on kept handles, on a run's open
 	// executions, on a sweep or on a request's time.

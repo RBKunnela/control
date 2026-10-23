@@ -4,6 +4,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/guardana/control/internal/classify"
 )
 
 const classified = `
@@ -24,11 +26,10 @@ func TestFlowDefaultsStandWhereTheFileIsSilent(t *testing.T) {
 		t.Errorf("flow.max_runs = %d, want 64", cfg.Flow.MaxRuns)
 	}
 	o := cfg.Overrides[0]
-	trust, errT := o.ReturnsZone()
-	read, errS := o.ReturnsLevel()
-	if o.ReturnsTrust != "" || o.ReturnsSensitivity != "" || errT != nil || errS != nil ||
-		trust.String() != "TRUST_ZONE_UNSPECIFIED" || read.String() != "SENSITIVITY_UNSPECIFIED" {
-		t.Errorf("an override silent on its results: %q %q -> %v %v, %v %v", o.ReturnsTrust, o.ReturnsSensitivity, trust, errT, read, errS)
+	c, err := o.Classification()
+	if o.ReturnsTrust != "" || o.ReturnsSensitivity != "" || err != nil ||
+		c.ReturnsTrust.String() != "TRUST_ZONE_UNSPECIFIED" || c.ReturnsSensitivity.String() != "SENSITIVITY_UNSPECIFIED" {
+		t.Errorf("an override silent on its results: %q %q -> %v %v, %v", o.ReturnsTrust, o.ReturnsSensitivity, c.ReturnsTrust, c.ReturnsSensitivity, err)
 	}
 }
 
@@ -37,15 +38,13 @@ func TestFlowDefaultsStandWhereTheFileIsSilent(t *testing.T) {
 // destination alone.
 func TestAnOverrideDeclaresWhatItsToolReturns(t *testing.T) {
 	cfg := load(t, write(t, "\nflow:\n  max_runs: 3\n"+classified+"    returns:\n      trust: TRUSTED_INTERNAL\n      sensitivity: CONFIDENTIAL\n"))
-	o := cfg.Overrides[0]
-	trust, errT := o.ReturnsZone()
-	read, errS := o.ReturnsLevel()
-	if cfg.Flow.MaxRuns != 3 || errT != nil || errS != nil ||
-		trust.String() != "TRUST_ZONE_TRUSTED_INTERNAL" || read.String() != "SENSITIVITY_CONFIDENTIAL" {
-		t.Errorf("flow.max_runs %d, returns %v %v, %v %v", cfg.Flow.MaxRuns, trust, errT, read, errS)
+	c, err := cfg.Overrides[0].Classification()
+	if cfg.Flow.MaxRuns != 3 || err != nil ||
+		c.ReturnsTrust.String() != "TRUST_ZONE_TRUSTED_INTERNAL" || c.ReturnsSensitivity.String() != "SENSITIVITY_CONFIDENTIAL" {
+		t.Errorf("flow.max_runs %d, returns %v %v, %v", cfg.Flow.MaxRuns, c.ReturnsTrust, c.ReturnsSensitivity, err)
 	}
-	if zone, err := o.Zone(); err != nil || zone.String() != "TRUST_ZONE_PARTNER" {
-		t.Errorf("returns.trust changed the destination: %v %v", zone, err)
+	if c.TrustZone.String() != "TRUST_ZONE_PARTNER" {
+		t.Errorf("returns.trust changed the destination: %v", c.TrustZone)
 	}
 }
 
@@ -81,11 +80,12 @@ func TestWhatAToolReturnsTakesTheContractsNames(t *testing.T) {
 	}
 	for _, level := range []string{"PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED", "SECRET"} {
 		cfg := load(t, write(t, classified+"    returns:\n      sensitivity: "+level+"\n"))
-		if got, err := cfg.Overrides[0].ReturnsLevel(); err != nil || got.String() != "SENSITIVITY_"+level {
-			t.Errorf("%s: %v %v", level, got, err)
+		if c, err := cfg.Overrides[0].Classification(); err != nil || c.ReturnsSensitivity.String() != "SENSITIVITY_"+level {
+			t.Errorf("%s: %v %v", level, c.ReturnsSensitivity, err)
 		}
 	}
-	if _, err := (&OverrideConfig{ReturnsSensitivity: "UNSPECIFIED"}).ReturnsLevel(); err == nil {
-		t.Error("ReturnsLevel accepted the zero value's spelling, which says nothing")
+	silent := &OverrideConfig{Spelling: classify.Spelling{Effect: "READ", ResourceType: "order", ReturnsSensitivity: "UNSPECIFIED"}}
+	if _, err := silent.Classification(); err == nil {
+		t.Error("Classification accepted the zero value's spelling, which says nothing")
 	}
 }

@@ -108,7 +108,7 @@ func TestNoDurationTakesANegativeValue(t *testing.T) {
 func TestASecondOverrideOfOneToolIsRefused(t *testing.T) {
 	entry := func(upstream, tool, effect string) string {
 		return "  - upstream: " + upstream + "\n    tool: " + tool + "\n    fingerprint: abc\n" +
-			"    effect: " + effect + "\n    resource_type: order\n"
+			"    effect: " + effect + "\n    resource_type: order\n    resource_from: /id\n"
 	}
 	billing := "  - name: billing\n    endpoint: http://127.0.0.1:2/mcp\n"
 	for _, c := range []struct {

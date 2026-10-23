@@ -16,6 +16,7 @@ import (
 	"github.com/guardana/control/adapters/enforce"
 	enforcev1alpha1 "github.com/guardana/control/api/gen/go/guardana/control/enforce/v1alpha1"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/classify"
 	"github.com/guardana/control/internal/enforceclient"
 	"github.com/guardana/control/internal/hookbridge"
 	"github.com/guardana/control/internal/policy/strictjson"
@@ -197,7 +198,7 @@ func (s *profileSuite) plane(t *testing.T, policy, tool string) (*env, *argSpy) 
 		if !ok {
 			t.Fatalf("%s: tool %s has no effect class %q", s.dir, st.Name, st.Effect)
 		}
-		o.tools = append(o.tools, enforce.Tool{Name: st.Name, Effect: controlv1.EffectClass(effect), Provider: "runtime", ResourceType: st.ResourceType, ResourceFrom: st.ResourceFrom})
+		o.tools = append(o.tools, enforce.Tool{Name: st.Name, Provider: "runtime", Classification: classify.Classification{Effect: controlv1.EffectClass(effect), ResourceType: st.ResourceType, ResourceFrom: st.ResourceFrom}})
 		names = append(names, st.Name)
 	}
 	quoted, err := json.Marshal(names)

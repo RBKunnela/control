@@ -24,6 +24,7 @@ import (
 	"github.com/guardana/control/adapters/mcp"
 	"github.com/guardana/control/adapters/otel"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/classify"
 	"github.com/guardana/control/internal/core"
 	"github.com/guardana/control/internal/evidence"
 	"github.com/guardana/control/internal/gateway"
@@ -260,8 +261,14 @@ func newRig(tb testing.TB, mode fsyncMode, record bool) *rig {
 		},
 		Upstreams: []mcp.Upstream{{Name: rtUpstream, Transport: serveUpstream(tb, server), TenantID: "t1", Environment: "prod"}},
 		Overrides: []mcp.Override{{
-			Upstream: rtUpstream, Tool: rtTool, Fingerprint: fingerprint,
-			Effect: controlv1.EffectClass_EFFECT_CLASS_READ, ResourceType: "file", ResourceFrom: "/path",
+			Upstream:    rtUpstream,
+			Tool:        rtTool,
+			Fingerprint: fingerprint,
+			Classification: classify.Classification{
+				Effect:       controlv1.EffectClass_EFFECT_CLASS_READ,
+				ResourceType: "file",
+				ResourceFrom: "/path",
+			},
 		}},
 		ProjectID: "p1", TenantID: "t1", Environment: "prod",
 		Clock:   time.Now,

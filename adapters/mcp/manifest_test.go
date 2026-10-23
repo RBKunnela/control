@@ -13,6 +13,7 @@ import (
 
 	"github.com/guardana/control/adapters/mcp"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/classify"
 )
 
 // TestFingerprintCoversTheWholeDefinition: the fingerprint of one fixed
@@ -163,10 +164,10 @@ func TestOverrideMustPinTheFingerprint(t *testing.T) {
 func TestResourceFromReadsTheResourceID(t *testing.T) {
 	r := newRig(t, mcp.KindStatelessHTTP, rigOptions{overrides: func(v *victim, t *testing.T) []mcp.Override {
 		return []mcp.Override{
-			{Upstream: "victim", Tool: "read_file", Fingerprint: v.fingerprint(t, "read_file"), Effect: effectRead, ResourceType: "file", ResourceFrom: "/path"},
-			{Upstream: "victim", Tool: "transfer", Fingerprint: v.fingerprint(t, "transfer"), Effect: effectRead, ResourceType: "account", ResourceFrom: "/account/0/a~1b"},
-			{Upstream: "victim", Tool: "slow", Fingerprint: v.fingerprint(t, "slow"), Effect: effectRead, ResourceType: "file", ResourceFrom: "/path/deep"},
-			{Upstream: "victim", Tool: "unlisted", Fingerprint: v.fingerprint(t, "unlisted"), Effect: effectRead, ResourceType: "file", ResourceFrom: "/n"},
+			{Upstream: "victim", Tool: "read_file", Fingerprint: v.fingerprint(t, "read_file"), Classification: classify.Classification{Effect: effectRead, ResourceType: "file", ResourceFrom: "/path"}},
+			{Upstream: "victim", Tool: "transfer", Fingerprint: v.fingerprint(t, "transfer"), Classification: classify.Classification{Effect: effectRead, ResourceType: "account", ResourceFrom: "/account/0/a~1b"}},
+			{Upstream: "victim", Tool: "slow", Fingerprint: v.fingerprint(t, "slow"), Classification: classify.Classification{Effect: effectRead, ResourceType: "file", ResourceFrom: "/path/deep"}},
+			{Upstream: "victim", Tool: "unlisted", Fingerprint: v.fingerprint(t, "unlisted"), Classification: classify.Classification{Effect: effectRead, ResourceType: "file", ResourceFrom: "/n"}},
 		}
 	}})
 	agent := r.connect(t, "agent-a")
@@ -225,6 +226,10 @@ func TestNewRefusesEachMisconfiguration(t *testing.T) {
 		{"no upstream", func(c *mcp.Config) { c.Upstreams = nil }, mcp.ErrUpstream},
 		{"upstream without a name", func(c *mcp.Config) { c.Upstreams[0].Name = "" }, mcp.ErrUpstream},
 		{"upstream without a transport", func(c *mcp.Config) { c.Upstreams[0].Transport = nil }, mcp.ErrUpstream},
+		// An upstream's name is every call's action.provider.
+		{"upstream name led by a space", func(c *mcp.Config) { c.Upstreams[0].Name = " victim"; c.Overrides = nil }, mcp.ErrUpstream},
+		{"zero-width upstream name", func(c *mcp.Config) { c.Upstreams[0].Name = "victim\u200b"; c.Overrides = nil }, mcp.ErrUpstream},
+		{"upstream name past the bound", func(c *mcp.Config) { c.Upstreams[0].Name = strings.Repeat("u", 1025); c.Overrides = nil }, mcp.ErrUpstream},
 		{"two upstreams with one name", func(c *mcp.Config) { c.Upstreams = append(c.Upstreams, c.Upstreams[0]) }, mcp.ErrUpstream},
 		{"override on an unknown upstream", func(c *mcp.Config) { c.Overrides[0].Upstream = "other" }, mcp.ErrOverride},
 		{"override without a tool", func(c *mcp.Config) { c.Overrides[0].Tool = "" }, mcp.ErrOverride},
@@ -236,6 +241,10 @@ func TestNewRefusesEachMisconfiguration(t *testing.T) {
 		{"pointer with a bare tilde", func(c *mcp.Config) { c.Overrides[0].ResourceFrom = "/a~2" }, mcp.ErrOverride},
 		{"pointer too deep", func(c *mcp.Config) { c.Overrides[0].ResourceFrom = deep }, mcp.ErrOverride},
 		{"pointer token too long", func(c *mcp.Config) { c.Overrides[0].ResourceFrom = longToken }, mcp.ErrOverride},
+		// What a tool returns feeds the run's flow state and never the
+		// envelope, so no call would refuse an undeclared value of it.
+		{"an undeclared returned trust", func(c *mcp.Config) { c.Overrides[0].ReturnsTrust = 6 }, mcp.ErrOverride},
+		{"an undeclared returned sensitivity", func(c *mcp.Config) { c.Overrides[0].ReturnsSensitivity = -1 }, mcp.ErrOverride},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -352,7 +361,7 @@ func FuzzManifest(f *testing.F) {
 				t.Skip()
 			}
 		}
-		o := mcp.Override{Upstream: upstream, Tool: tool, Fingerprint: fp, Effect: controlv1.EffectClass(effect), ResourceType: rtype, ResourceFrom: from}
+		o := mcp.Override{Upstream: upstream, Tool: tool, Fingerprint: fp, Classification: classify.Classification{Effect: controlv1.EffectClass(effect), ResourceType: rtype, ResourceFrom: from}}
 		a := buildWith(t, v, o)
 		if a == nil {
 			return
@@ -417,7 +426,7 @@ func checkManifest(t *testing.T, a *mcp.Adapter, listed *sdk.Tool, o mcp.Overrid
 func TestADenyOnAResourceIDHoldsForEverySpelling(t *testing.T) {
 	deny42 := `{"id":"deny-42","effect":"DENY","when":{"resource":{"id":["42"]}}}`
 	r := newRig(t, mcp.KindStatelessHTTP, rigOptions{mode: modeEnforce, rules: []string{allowEverything, deny42}, overrides: func(v *victim, t *testing.T) []mcp.Override {
-		return []mcp.Override{{Upstream: "victim", Tool: "unlisted", Fingerprint: v.fingerprint(t, "unlisted"), Effect: effectRead, ResourceType: "file", ResourceFrom: "/n"}}
+		return []mcp.Override{{Upstream: "victim", Tool: "unlisted", Fingerprint: v.fingerprint(t, "unlisted"), Classification: classify.Classification{Effect: effectRead, ResourceType: "file", ResourceFrom: "/n"}}}
 	}})
 	agent := r.connect(t, "agent-a")
 	call := func(args string) *sdk.CallToolResult {
@@ -449,7 +458,7 @@ func TestADenyOnAResourceIDHoldsForEverySpelling(t *testing.T) {
 func TestARuleOnANumericIDUsesItsCanonicalText(t *testing.T) {
 	spelled := `{"id":"deny-spelled","effect":"DENY","when":{"resource":{"id":["42.0","1e2"]}}}`
 	r := newRig(t, mcp.KindStatelessHTTP, rigOptions{mode: modeEnforce, rules: []string{allowEverything, spelled}, overrides: func(v *victim, t *testing.T) []mcp.Override {
-		return []mcp.Override{{Upstream: "victim", Tool: "unlisted", Fingerprint: v.fingerprint(t, "unlisted"), Effect: effectRead, ResourceType: "file", ResourceFrom: "/n"}}
+		return []mcp.Override{{Upstream: "victim", Tool: "unlisted", Fingerprint: v.fingerprint(t, "unlisted"), Classification: classify.Classification{Effect: effectRead, ResourceType: "file", ResourceFrom: "/n"}}}
 	}})
 	agent := r.connect(t, "agent-a")
 	for i, args := range []string{`{"n":42.0}`, `{"n":1e2}`, `{"n":100}`} {

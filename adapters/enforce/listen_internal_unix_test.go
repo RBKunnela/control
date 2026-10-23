@@ -13,6 +13,7 @@ import (
 	"time"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/classify"
 	"github.com/guardana/control/internal/gateway"
 )
 
@@ -47,7 +48,7 @@ func TestListenChecksTheSocketAndItsDirectoryAfterTheBind(t *testing.T) {
 			a, err := New(Config{
 				Socket: socket, ExecutionLifetime: time.Minute, Runs: noRuns{},
 				Identity: Identity{Principal: &controlv1.Principal{Id: "user-1"}, Agent: &controlv1.Agent{Id: "agent-1"}},
-				Tools:    []Tool{{Name: "read_file", Effect: controlv1.EffectClass_EFFECT_CLASS_READ, Provider: "files", ResourceType: "file"}},
+				Tools:    []Tool{{Name: "read_file", Provider: "files", Classification: classify.Classification{Effect: controlv1.EffectClass_EFFECT_CLASS_READ, ResourceType: "file"}}},
 				Clock:    time.Now, NewID: func() string { return "id" },
 			})
 			if err != nil {

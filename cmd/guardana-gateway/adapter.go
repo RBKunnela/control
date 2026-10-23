@@ -23,7 +23,6 @@ import (
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/gatewayconfig"
 	"github.com/guardana/control/internal/secretscan"
-	"github.com/guardana/control/pkg/contract"
 )
 
 // listenerTenant is the tenant of the listener's principal: its own, or the
@@ -223,27 +222,11 @@ func overrides(cfg *gatewayconfig.Config) ([]adaptermcp.Override, error) {
 	out := make([]adaptermcp.Override, 0, len(cfg.Overrides))
 	for i := range cfg.Overrides {
 		o := &cfg.Overrides[i]
-		effect, err := contract.ParseEffect(o.Effect)
+		c, err := o.Classification()
 		if err != nil {
-			return nil, fmt.Errorf("overrides.%d.effect: %w", i, err)
+			return nil, fmt.Errorf("overrides.%d.%w", i, err)
 		}
-		zone, err := o.Zone()
-		if err != nil {
-			return nil, fmt.Errorf("overrides.%d.trust_zone: %w", i, err)
-		}
-		returnsZone, err := o.ReturnsZone()
-		if err != nil {
-			return nil, fmt.Errorf("overrides.%d.returns.trust: %w", i, err)
-		}
-		returnsLevel, err := o.ReturnsLevel()
-		if err != nil {
-			return nil, fmt.Errorf("overrides.%d.returns.sensitivity: %w", i, err)
-		}
-		out = append(out, adaptermcp.Override{
-			Upstream: o.Upstream, Tool: o.Tool, Fingerprint: o.Fingerprint, Effect: effect,
-			ResourceType: o.ResourceType, ResourceFrom: o.ResourceFrom, TrustZone: zone,
-			ReturnsTrust: returnsZone, ReturnsSensitivity: returnsLevel,
-		})
+		out = append(out, adaptermcp.Override{Upstream: o.Upstream, Tool: o.Tool, Fingerprint: o.Fingerprint, Classification: c})
 	}
 	return out, nil
 }

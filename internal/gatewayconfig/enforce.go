@@ -2,11 +2,9 @@ package gatewayconfig
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
-	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
-	"github.com/guardana/control/pkg/contract"
+	"github.com/guardana/control/internal/classify"
 )
 
 // The bounds of listener.execution_lifetime and listener.max_body_bytes, the
@@ -24,32 +22,18 @@ const maxSocketPath = 103
 
 // ToolConfig is the operator's classification of one tool of an enforcement
 // API listener, by name. Its resource's tenant and environment are the
-// listener's.
+// listener's. The trust zone is where a call to the tool sends data; the
+// returns keys are what its results contain (ADR-0021).
 type ToolConfig struct {
-	Name         string
-	Effect       string
-	Provider     string
-	ResourceType string
-	ResourceFrom string
-	// TrustZone is where a call to the tool sends data; ReturnsTrust and
-	// ReturnsSensitivity are what its results contain (ADR-0021).
-	TrustZone          string
-	ReturnsTrust       string
-	ReturnsSensitivity string
+	Name     string
+	Provider string
+	classify.Spelling
 }
 
-// Zone is the destination's trust zone of the tool. Empty is UNSPECIFIED,
-// which the contract counts as untrusted.
-func (t *ToolConfig) Zone() (controlv1.TrustZone, error) { return zoneNamed(t.TrustZone) }
-
-// ReturnsZone is the trust zone of what the tool returns. Empty is
-// UNSPECIFIED, which counts as untrusted.
-func (t *ToolConfig) ReturnsZone() (controlv1.TrustZone, error) { return zoneNamed(t.ReturnsTrust) }
-
-// ReturnsLevel is the highest sensitivity the tool returns. Empty is
-// UNSPECIFIED, which is unknown.
-func (t *ToolConfig) ReturnsLevel() (controlv1.Sensitivity, error) {
-	return sensitivityNamed(t.ReturnsSensitivity)
+// Classification is the tool's classification as the adapter takes it, or
+// the refusal naming its key.
+func (t *ToolConfig) Classification() (classify.Classification, error) {
+	return classify.Parse(t.Spelling)
 }
 
 // enforceOnly are the scalar keys only an enforce_api listener reads.
@@ -127,8 +111,9 @@ func (c *Config) checkEnforceListener() error {
 }
 
 // checkTools refuses an empty table, which would leave every call
-// unclassified, an entry missing a key, a name, a provider, a resource type or
-// a resource pointer the adapter refuses, and a second entry of one name.
+// unclassified, an entry missing a key, a name or a provider no envelope can
+// carry, a classification classify.Parse refuses, and a second entry of one
+// name.
 func (c *Config) checkTools() error {
 	if len(c.Tools) == 0 {
 		return fmt.Errorf("tools: no tool; an %s listener blocks every call to a tool it does not classify", ListenerEnforceAPI)
@@ -139,52 +124,18 @@ func (c *Config) checkTools() error {
 		if err := checkRequired(t, toolFields, fmt.Sprintf("tools.%d.", i)); err != nil {
 			return err
 		}
-		for _, f := range []struct{ key, value string }{{"name", t.Name}, {"provider", t.Provider}, {"resource_type", t.ResourceType}} {
-			if len(f.value) > contract.MaxStringBytes {
-				return fmt.Errorf("tools.%d.%s: %d bytes, past the %d a %s takes", i, f.key, len(f.value), contract.MaxStringBytes, f.key)
+		for _, f := range []struct{ key, value string }{{"name", t.Name}, {"provider", t.Provider}} {
+			if err := classify.CheckEnvelopeString(f.value); err != nil {
+				return fmt.Errorf("tools.%d.%s: %w", i, f.key, err)
 			}
 		}
-		if err := checkPointer(t.ResourceFrom); err != nil {
-			return fmt.Errorf("tools.%d.resource_from: %w", i, err)
+		if _, err := t.Classification(); err != nil {
+			return fmt.Errorf("tools.%d.%w", i, err)
 		}
 		if first, ok := seen[t.Name]; ok {
 			return fmt.Errorf("tools.%d: the tool %s is classified by tools.%d already", i, quoteValue(t.Name), first)
 		}
 		seen[t.Name] = i
-	}
-	return nil
-}
-
-// The bounds on a resource pointer the adapters take.
-const (
-	maxPointerTokens    = 8
-	maxPointerTokenSize = 64
-)
-
-// checkPointer refuses what the adapters' pointer check refuses: a pointer
-// that is not RFC 6901 or is past its bounds. The approver's binary loads
-// this package and may not link the adapters' kit, which reaches the
-// gateway, so a test holds the two checks to one answer.
-func checkPointer(p string) error {
-	if p == "" {
-		return nil
-	}
-	if !strings.HasPrefix(p, "/") {
-		return fmt.Errorf("%s does not start with /", quoteValue(p))
-	}
-	tokens := strings.Split(p[1:], "/")
-	if len(tokens) > maxPointerTokens {
-		return fmt.Errorf("%d tokens, limit %d", len(tokens), maxPointerTokens)
-	}
-	for _, tok := range tokens {
-		if len(tok) > maxPointerTokenSize {
-			return fmt.Errorf("a token of %d bytes, limit %d", len(tok), maxPointerTokenSize)
-		}
-		for i := 0; i < len(tok); i++ {
-			if tok[i] == '~' && (i+1 >= len(tok) || (tok[i+1] != '0' && tok[i+1] != '1')) {
-				return fmt.Errorf("a ~ that escapes neither ~ nor /")
-			}
-		}
 	}
 	return nil
 }

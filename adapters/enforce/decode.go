@@ -6,6 +6,7 @@ import (
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	enforcev1alpha1 "github.com/guardana/control/api/gen/go/guardana/control/enforce/v1alpha1"
@@ -100,4 +101,9 @@ func requestKey(k string) bool {
 // validTime accepts an absent time or one the Timestamp type can hold.
 func validTime(ts *timestamppb.Timestamp) bool {
 	return ts == nil || ts.CheckValid() == nil
+}
+
+// declared reports whether v is a value its enumeration declares.
+func declared(v protoreflect.Enum) bool {
+	return v.Descriptor().Values().ByNumber(v.Number()) != nil
 }

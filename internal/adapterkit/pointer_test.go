@@ -1,27 +1,10 @@
 package adapterkit_test
 
 import (
-	"errors"
-	"strings"
 	"testing"
 
 	"github.com/guardana/control/internal/adapterkit"
 )
-
-func TestAPointerIsCheckedAgainstRFC6901AndTheBound(t *testing.T) {
-	eight := strings.Repeat("/a", adapterkit.MaxPointerTokens)
-	token64 := "/" + strings.Repeat("t", 64)
-	for _, p := range []string{"", "/", "/a", "/a~0b~1c", eight, token64, "/0/x"} {
-		if err := adapterkit.CheckPointer(p); err != nil {
-			t.Errorf("CheckPointer(%q) = %v, want accepted", p, err)
-		}
-	}
-	for _, p := range []string{"a", "a/b", eight + "/a", token64 + "t", "/a~", "/a~2", "/~"} {
-		if err := adapterkit.CheckPointer(p); !errors.Is(err, adapterkit.ErrPointer) {
-			t.Errorf("CheckPointer(%q) = %v, want ErrPointer", p, err)
-		}
-	}
-}
 
 // TestResourceIDOfANumberIsItsCanonicalText: a number at the pointer becomes
 // the text the digest writes for it, so 42.0 names the resource 42 names and

@@ -124,6 +124,10 @@ enforcement API is built. Amends ADR-0013's adapter capabilities and
 the receiver holds a lock beside its socket for as long as it listens.</p>
 <p>Amended by <a href="/docs/adr/0056-a-coding-runtimes-hooks-reach-the-plane-through-one-bridge">ADR-0056</a>: a client that cannot carry a
 rewrite, such as a coding runtime's hook, aborts it and denies the call.</p>
+<p>Amended by <a href="/docs/adr/0059-a-tools-classification-is-one-type-checked-when-it-loads">ADR-0059</a>: a tool's
+classification is one type with an MCP override's, and a tool whose name,
+provider or classification no envelope could carry is refused when the
+configuration loads and by <code>enforce.New</code>.</p>
 <h2 id="context">Context</h2>
 <p>The pipeline in <code>internal/gateway</code> is protocol-neutral. <code>Admit</code> decides an
 envelope with its argument bytes and answers with a disposition: block, hold

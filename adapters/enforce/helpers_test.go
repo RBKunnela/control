@@ -19,6 +19,7 @@ import (
 
 	"github.com/guardana/control/adapters/enforce"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/classify"
 	"github.com/guardana/control/internal/core"
 	"github.com/guardana/control/internal/evidence"
 	"github.com/guardana/control/internal/gateway"
@@ -65,9 +66,9 @@ func listenerWho() gateway.RunIdentity {
 
 func tools() []enforce.Tool {
 	return []enforce.Tool{
-		{Name: "refund", Effect: effectTransact, Provider: "payments", ResourceType: "account", ResourceFrom: "/account"},
-		{Name: "read_file", Effect: effectRead, Provider: "files", ResourceType: "file", ResourceFrom: "/path"},
-		{Name: "send_mail", Effect: effectComm, Provider: "mail", ResourceType: "mailbox", ResourceFrom: "/to", TrustZone: zoneExternal},
+		{Name: "refund", Provider: "payments", Classification: classify.Classification{Effect: effectTransact, ResourceType: "account", ResourceFrom: "/account"}},
+		{Name: "read_file", Provider: "files", Classification: classify.Classification{Effect: effectRead, ResourceType: "file", ResourceFrom: "/path"}},
+		{Name: "send_mail", Provider: "mail", Classification: classify.Classification{Effect: effectComm, ResourceType: "mailbox", ResourceFrom: "/to", TrustZone: zoneExternal}},
 	}
 }
 

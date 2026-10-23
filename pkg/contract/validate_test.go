@@ -755,6 +755,9 @@ func TestExportedFunctionSetIsClosed(t *testing.T) {
 		// about, rather than one it refuses.
 		"NewFlowState":          true,
 		"ValidSensitivityFloor": true,
+		// What Validate requires of each class, for a loader that refuses a
+		// classification no envelope could carry (ADR-0060).
+		"EffectRequires": true,
 	}
 
 	found := exportedFunctions(t)
@@ -858,6 +861,8 @@ func clearPath(t *testing.T, env *controlv1.ActionEnvelope, path string) {
 	t.Helper()
 
 	switch path {
+	case "action.provider":
+		env.Action.Provider = ""
 	case "resource.type":
 		env.Resource.Type = ""
 	case "resource.id":

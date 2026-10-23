@@ -128,6 +128,10 @@ is not compared with the clock.</p>
 <p>Amended by <a href="/docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands">ADR-0055</a>: the kernel judges a decision's
 bundle again when the call is handed out, and a read the fail-closed table
 opened stays open there only while its bundle is the same one.</p>
+<p>Amended by <a href="/docs/adr/0059-a-tools-classification-is-one-type-checked-when-it-loads">ADR-0059</a>: a classification whose effect
+class needs a <code>resource.id</code> or a destination it cannot supply is refused when
+the configuration loads, so no call to its tool reaches the kernel to be
+refused <code>REQUIRED_FIELD_ABSENT</code> for it.</p>
 <h2 id="context">Context</h2>
 <p>ADR-0003 chose structured predicates and deny-overrides, and left the exact
 fail-closed mapping open. ADR-0011 settled what the wire says. What is

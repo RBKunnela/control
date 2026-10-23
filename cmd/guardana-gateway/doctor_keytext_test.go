@@ -103,6 +103,8 @@ func TestDoctorWithholdsKeyTextInAnUnclassifiedTool(t *testing.T) {
 // argument may carry a certificate and loads, and an override may name key
 // text; the settings list prints no argument at all, only how many there
 // are, and withholds the override's key text, keeping the rest of its line.
+// A pointer that is key text and not RFC 6901 is refused at load, and the
+// refusal names the key without repeating the value.
 func TestDoctorPrintsNoKeyTextFromAnUpstreamOrAnOverride(t *testing.T) {
 	_, body := fixtureKeyText(t)
 	tr := newTree(t)
@@ -113,20 +115,26 @@ func TestDoctorPrintsNoKeyTextFromAnUpstreamOrAnOverride(t *testing.T) {
 	doc := strings.Replace(string(raw), "    endpoint: http://127.0.0.1:1/mcp\n",
 		"    command: server\n    args:\n      - --ca=-----BEGIN CERTIFICATE-----x-----END CERTIFICATE-----\n"+
 			`      - "a\n`+forgedCheck+`"`+"\n", 1)
-	doc += "\noverrides:\n  - upstream: orders\n    tool: " + body + "\n    fingerprint: abc\n" +
-		"    effect: READ\n    resource_type: order\n    resource_from: " + body + "\n"
-	if err := os.WriteFile(tr.config, []byte(doc), 0o600); err != nil { //nolint:gosec // G703: the configuration copy under the test's temp dir
-
-		t.Fatal(err)
+	override := func(from string) string {
+		return "\noverrides:\n  - upstream: orders\n    tool: " + body + "\n    fingerprint: abc\n" +
+			"    effect: READ\n    resource_type: order\n    resource_from: " + from + "\n"
 	}
-	out := doctorOutput(t, tr.config)
-	checkNoKeyTextOrForgedLine(t, out, body)
-	for _, want := range []string{
-		`orders -> command server (2 arguments)`,
-		`orders/[key text withheld] is READ on order from "[key text withheld]"`,
+	for _, c := range []struct {
+		from  string
+		wants []string
+	}{
+		{"/" + body, []string{`orders -> command server (2 arguments)`, `orders/[key text withheld] is READ on order from "[key text withheld]"`}},
+		{body, []string{`overrides.0.resource_from: classify: the resource pointer is not RFC 6901`}},
 	} {
-		if !strings.Contains(out, want) {
-			t.Errorf("doctor's output does not hold %q:\n%s", want, out)
+		if err := os.WriteFile(tr.config, []byte(doc+override(c.from)), 0o600); err != nil { //nolint:gosec // G703: the configuration copy under the test's temp dir
+			t.Fatal(err)
+		}
+		out := doctorOutput(t, tr.config)
+		checkNoKeyTextOrForgedLine(t, out, body)
+		for _, want := range c.wants {
+			if !strings.Contains(out, want) {
+				t.Errorf("doctor's output does not hold %q:\n%s", want, out)
+			}
 		}
 	}
 }

@@ -495,7 +495,7 @@ a pattern.
 
 ## Effect, sensitivity and flow
 
-What a receiver can establish about an action before any policy exists. Seven
+What a receiver can establish about an action before any policy exists. Eight
 functions and one type in `pkg/contract`, split between
 [effect.go](../pkg/contract/effect.go) and
 [labels.go](../pkg/contract/labels.go), all `implemented` and all pure. The
@@ -511,6 +511,16 @@ kernel, the matcher and the gateway call them.
   `EFFECT_CLASS_UNSPECIFIED` is material, because an effect nobody declared
   cannot be assumed harmless, and so is a class from a later minor this build
   cannot name.
+- `EffectRequires(e)` lists the wire paths `Validate` requires of an envelope
+  of class `e` beyond those every envelope needs, in the order it checks them:
+  `action.provider` for a material class, then the class's row of the table
+  above. `EFFECT_CLASS_UNSPECIFIED` gets `action.effect` first, the field
+  `Validate` refuses it for before it reads the list, so a reader that checks
+  the list in order refuses the same field. A class this build cannot name
+  gets `action.provider` alone. Each call
+  returns a fresh copy, and `Validate` reads its requirements through it. The
+  gateway's configuration refuses a tool classification against it when it
+  loads ([ADR-0060](adr/0060-pkg-contract-exports-what-each-effect-class-requires.md)).
 - `SensitivityAtLeast(s, floor)` compares on the declared numbers, the scale
   being ordered least sensitive first. `SENSITIVITY_UNSPECIFIED` is false in
   either position: on the left it is a producer that did not say, on the right

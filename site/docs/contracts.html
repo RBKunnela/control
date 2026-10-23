@@ -651,7 +651,7 @@ the envelope.</p>
 for the character classes above and the dots and colons of a host, never for
 a pattern.</p>
 <h2 id="effect-sensitivity-and-flow">Effect, sensitivity and flow</h2>
-<p>What a receiver can establish about an action before any policy exists. Seven
+<p>What a receiver can establish about an action before any policy exists. Eight
 functions and one type in <code>pkg/contract</code>, split between
 <a href="https://github.com/guardana/control/blob/main/pkg/contract/effect.go">effect.go</a> and
 <a href="https://github.com/guardana/control/blob/main/pkg/contract/labels.go">labels.go</a>, all <code>implemented</code> and all pure. The
@@ -670,6 +670,18 @@ error still holds the restrictive value.</p>
 <code>EFFECT_CLASS_UNSPECIFIED</code> is material, because an effect nobody declared
 cannot be assumed harmless, and so is a class from a later minor this build
 cannot name.</p>
+</li>
+<li>
+<p><code>EffectRequires(e)</code> lists the wire paths <code>Validate</code> requires of an envelope
+of class <code>e</code> beyond those every envelope needs, in the order it checks them:
+<code>action.provider</code> for a material class, then the class's row of the table
+above. <code>EFFECT_CLASS_UNSPECIFIED</code> gets <code>action.effect</code> first, the field
+<code>Validate</code> refuses it for before it reads the list, so a reader that checks
+the list in order refuses the same field. A class this build cannot name
+gets <code>action.provider</code> alone. Each call
+returns a fresh copy, and <code>Validate</code> reads its requirements through it. The
+gateway's configuration refuses a tool classification against it when it
+loads (<a href="/docs/adr/0060-pkg-contract-exports-what-each-effect-class-requires">ADR-0060</a>).</p>
 </li>
 <li>
 <p><code>SensitivityAtLeast(s, floor)</code> compares on the declared numbers, the scale

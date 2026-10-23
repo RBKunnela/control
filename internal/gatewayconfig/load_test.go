@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/guardana/control/internal/brand"
+	"github.com/guardana/control/internal/classify"
 )
 
 // document is the configuration every loader test starts from: complete in
@@ -250,13 +251,13 @@ func TestModeAndZoneAreTheContractsValues(t *testing.T) {
 		zone string
 		want string
 	}{{"", "TRUST_ZONE_UNSPECIFIED"}, {"PARTNER", "TRUST_ZONE_PARTNER"}} {
-		got, err := (&OverrideConfig{TrustZone: c.zone}).Zone()
-		if err != nil || got.String() != c.want {
-			t.Errorf("Zone(%q) = %v, %v, want %s", c.zone, got, err, c.want)
+		got, err := (&OverrideConfig{Spelling: classify.Spelling{Effect: "READ", ResourceType: "r", TrustZone: c.zone}}).Classification()
+		if err != nil || got.TrustZone.String() != c.want {
+			t.Errorf("trust_zone %q = %v, %v, want %s", c.zone, got.TrustZone, err, c.want)
 		}
 	}
-	if _, err := (&OverrideConfig{TrustZone: "INTERNAL"}).Zone(); err == nil {
-		t.Error("Zone() accepted a spelling the contract does not declare")
+	if _, err := (&OverrideConfig{Spelling: classify.Spelling{Effect: "READ", ResourceType: "r", TrustZone: "INTERNAL"}}).Classification(); err == nil {
+		t.Error("Classification() accepted a zone the contract does not declare")
 	}
 }
 
@@ -381,7 +382,7 @@ func TestAVariableOfAnotherProductIsLeftAlone(t *testing.T) {
 
 func overrideOf(upstream string) string {
 	return "\noverrides:\n  - upstream: " + upstream + "\n    tool: read_order\n    fingerprint: abc\n" +
-		"    effect: READ\n    resource_type: order\n"
+		"    effect: READ\n    resource_type: order\n    resource_from: /id\n    trust_zone: PARTNER\n"
 }
 
 func overrideWithout(key string) string {

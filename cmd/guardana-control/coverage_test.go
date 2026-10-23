@@ -64,6 +64,7 @@ overrides:
     fingerprint: sha256:00
     effect: WRITE
     resource_type: file
+    resource_from: /path
 `
 
 // freshSpan is one OTLP/JSON line of the descriptor's service with one tool

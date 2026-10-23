@@ -8,6 +8,7 @@ import (
 
 	"github.com/guardana/control/adapters/enforce"
 	"github.com/guardana/control/internal/brand"
+	"github.com/guardana/control/internal/classify"
 )
 
 // enforceDocument is a plane serving the enforcement API: complete in its
@@ -99,7 +100,7 @@ func TestAnEnforceAPIListenerLoads(t *testing.T) {
 	if cfg.Resolve(l.Socket) != "/run/plane/enforce.sock" {
 		t.Errorf("an absolute socket resolves to %q", cfg.Resolve(l.Socket))
 	}
-	want := ToolConfig{Name: "refund", Effect: "TRANSACT", Provider: "payments", ResourceType: "order", ResourceFrom: "/order_id"}
+	want := ToolConfig{Name: "refund", Provider: "payments", Spelling: classify.Spelling{Effect: "TRANSACT", ResourceType: "order", ResourceFrom: "/order_id"}}
 	if len(cfg.Tools) != 1 || cfg.Tools[0] != want {
 		t.Fatalf("the tools loaded as %+v, want [%+v]", cfg.Tools, want)
 	}
@@ -109,21 +110,13 @@ func TestAnEnforceAPIListenerLoads(t *testing.T) {
 }
 
 // trustOf is the tool's destination zone, returned trust and returned
-// sensitivity as the contract names them, or the first error.
+// sensitivity as the contract names them, or the refusal.
 func trustOf(tool *ToolConfig) string {
-	zone, err := tool.Zone()
+	c, err := tool.Classification()
 	if err != nil {
 		return err.Error()
 	}
-	trust, err := tool.ReturnsZone()
-	if err != nil {
-		return err.Error()
-	}
-	level, err := tool.ReturnsLevel()
-	if err != nil {
-		return err.Error()
-	}
-	return zone.String() + " " + trust.String() + " " + level.String()
+	return c.TrustZone.String() + " " + c.ReturnsTrust.String() + " " + c.ReturnsSensitivity.String()
 }
 
 // TestAToolDeclaresItsTrust: trust_zone, returns.trust and returns.sensitivity
@@ -261,16 +254,19 @@ func TestAnEnforceAPIListenerNeedsATool(t *testing.T) {
 
 // TestAToolNeedsItsKeys: a name, an effect, a provider and a resource type
 // are each required, and the refusal names the entry's key; resource_from may
-// be left out.
+// be left out of a read, and not of a class whose envelope needs a resource
+// id.
 func TestAToolNeedsItsKeys(t *testing.T) {
 	for _, line := range []string{"effect: TRANSACT", "provider: payments", "resource_type: order"} {
 		key, _, _ := strings.Cut(line, ":")
 		refusedSaying(t, enforceWithout(t, "    "+line), nil, "tools.0."+key+": no value")
 	}
 	refusedSaying(t, strings.Replace(enforceDocument, "  - name: refund\n    effect:", "  - effect:", 1), nil, "tools.0.name: no value")
-	if cfg := load(t, writeDocument(t, enforceWithout(t, "    resource_from: /order_id"))); cfg.Tools[0].ResourceFrom != "" {
+	read := strings.Replace(enforceWithout(t, "    resource_from: /order_id"), "effect: TRANSACT", "effect: READ", 1)
+	if cfg := load(t, writeDocument(t, read)); cfg.Tools[0].ResourceFrom != "" {
 		t.Errorf("resource_from left out reads as %q", cfg.Tools[0].ResourceFrom)
 	}
+	refusedSaying(t, enforceWithout(t, "    resource_from: /order_id"), nil, "tools.0.resource_from: ")
 }
 
 // TestAToolTakesTheContractsValues: the effect, the trust zones and the

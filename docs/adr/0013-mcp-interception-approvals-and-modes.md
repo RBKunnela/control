@@ -69,6 +69,11 @@ Amended by [ADR-0034](0034-a-run-the-operator-opens-has-an-identity-of-its-own.m
 a retry resumes a held request only from the run that was held; a retry from
 another opened run is held anew.
 
+Amended by [ADR-0059](0059-a-tools-classification-is-one-type-checked-when-it-loads.md): an override's
+classification is one type with the enforcement API's, checked once when the
+configuration loads and again by `mcp.New`; one no envelope could carry is
+refused there, in every mode.
+
 ## Context
 
 The kernel decides and nothing calls it. The first protocol target is the Model

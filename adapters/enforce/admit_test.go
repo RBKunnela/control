@@ -112,6 +112,32 @@ func TestTheEnvelopeIsBuiltFromTheRunAndTheTable(t *testing.T) {
 	}
 }
 
+// TestWhatAReadReturnsSetsNoDestination: a read with no destination of its
+// own keeps none, whatever trust the table says its results hold: what a tool
+// returns is never where a call sends data (ADR-0021).
+func TestWhatAReadReturnsSetsNoDestination(t *testing.T) {
+	values := controlv1.TrustZone(0).Descriptor().Values()
+	for i := range values.Len() {
+		trust := controlv1.TrustZone(values.Get(i).Number())
+		o := defaults()
+		if o.tools[1].Name != "read_file" || o.tools[1].TrustZone != 0 {
+			t.Fatalf("the table's second tool is %+v, not the read with no destination this test is about", o.tools[1])
+		}
+		o.tools[1].ReturnsTrust = trust
+		r := newRig(t, o)
+		if resp := r.admit(t, runA, "read_file", `{"path":"a"}`, `,"requestKey":"k1"`); resp.GetOutcome() != outcomeExecute {
+			t.Fatalf("returns %s: outcome %s", trust, resp.GetOutcome())
+		}
+		envs := r.proposed(t)
+		if len(envs) != 1 {
+			t.Fatalf("returns %s: %d proposals", trust, len(envs))
+		}
+		if d := envs[0].GetDestination(); d != nil {
+			t.Errorf("returns %s: the envelope's destination is %v, want none", trust, d)
+		}
+	}
+}
+
 func TestATraceparentNotOfVersion00RecordsNoTrace(t *testing.T) {
 	r := newRig(t, defaults())
 	for _, tp := range []string{

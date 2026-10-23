@@ -12,7 +12,6 @@ import (
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/gatewayconfig"
 	"github.com/guardana/control/internal/runs"
-	"github.com/guardana/control/pkg/contract"
 )
 
 // servedKind refuses a listener kind this binary has no adapter for, before
@@ -59,26 +58,11 @@ func enforceTools(cfg *gatewayconfig.Config) ([]enforce.Tool, error) {
 	out := make([]enforce.Tool, 0, len(cfg.Tools))
 	for i := range cfg.Tools {
 		t := &cfg.Tools[i]
-		effect, err := contract.ParseEffect(t.Effect)
+		c, err := t.Classification()
 		if err != nil {
-			return nil, fmt.Errorf("tools.%d.effect: %w", i, err)
+			return nil, fmt.Errorf("tools.%d.%w", i, err)
 		}
-		zone, err := t.Zone()
-		if err != nil {
-			return nil, fmt.Errorf("tools.%d.trust_zone: %w", i, err)
-		}
-		returnsZone, err := t.ReturnsZone()
-		if err != nil {
-			return nil, fmt.Errorf("tools.%d.returns.trust: %w", i, err)
-		}
-		returnsLevel, err := t.ReturnsLevel()
-		if err != nil {
-			return nil, fmt.Errorf("tools.%d.returns.sensitivity: %w", i, err)
-		}
-		out = append(out, enforce.Tool{
-			Name: t.Name, Effect: effect, Provider: t.Provider, ResourceType: t.ResourceType, ResourceFrom: t.ResourceFrom,
-			TrustZone: zone, ReturnsTrust: returnsZone, ReturnsSensitivity: returnsLevel,
-		})
+		out = append(out, enforce.Tool{Name: t.Name, Provider: t.Provider, Classification: c})
 	}
 	return out, nil
 }

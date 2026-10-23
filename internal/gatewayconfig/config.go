@@ -8,6 +8,7 @@ import (
 	"time"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/classify"
 )
 
 // Config is one plane's configuration, as a file and the environment set it.
@@ -213,19 +214,20 @@ type UpstreamConfig struct {
 
 // OverrideConfig is the operator's classification of one tool definition. The
 // fingerprint pins the definition: a tool whose definition changed is
-// unclassified until the operator looks again (ADR-0013).
+// unclassified until the operator looks again (ADR-0013). The trust zone is
+// where a call to the tool sends data; the returns keys are what its results
+// contain (ADR-0021).
 type OverrideConfig struct {
-	Upstream     string
-	Tool         string
-	Fingerprint  string
-	Effect       string
-	ResourceType string
-	ResourceFrom string
-	// TrustZone is where a call to the tool sends data; ReturnsTrust and
-	// ReturnsSensitivity are what its results contain (ADR-0021).
-	TrustZone          string
-	ReturnsTrust       string
-	ReturnsSensitivity string
+	Upstream    string
+	Tool        string
+	Fingerprint string
+	classify.Spelling
+}
+
+// Classification is the override's classification as the adapter takes it,
+// or the refusal naming its key.
+func (o *OverrideConfig) Classification() (classify.Classification, error) {
+	return classify.Parse(o.Spelling)
 }
 
 // Mode is the enforcement mode the contract names. The table has already
@@ -237,23 +239,6 @@ func (c *Config) Mode() (controlv1.EnforcementMode, error) {
 		return 0, fmt.Errorf("the contract declares no enforcement mode %q", c.ModeName)
 	}
 	return controlv1.EnforcementMode(number), nil
-}
-
-// Zone is the destination's trust zone of one override, as the contract names
-// it. Empty is UNSPECIFIED, which the contract counts as untrusted.
-func (o *OverrideConfig) Zone() (controlv1.TrustZone, error) {
-	return zoneNamed(o.TrustZone)
-}
-
-func zoneNamed(name string) (controlv1.TrustZone, error) {
-	if name == "" {
-		return controlv1.TrustZone_TRUST_ZONE_UNSPECIFIED, nil
-	}
-	number, ok := controlv1.TrustZone_value["TRUST_ZONE_"+name]
-	if !ok {
-		return 0, fmt.Errorf("the contract declares no trust zone %q", name)
-	}
-	return controlv1.TrustZone(number), nil
 }
 
 // Resolve reads a path from the configuration against the directory of the

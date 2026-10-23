@@ -22,6 +22,7 @@ import (
 	"github.com/guardana/control/adapters/mcp"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/canon"
+	"github.com/guardana/control/internal/classify"
 	"github.com/guardana/control/internal/core"
 	"github.com/guardana/control/internal/evidence"
 	"github.com/guardana/control/internal/gateway"
@@ -176,11 +177,11 @@ func (v *victim) fingerprint(t *testing.T, name string) string {
 func (v *victim) overrides(t *testing.T) []mcp.Override {
 	t.Helper()
 	return []mcp.Override{
-		{Upstream: "victim", Tool: "read_file", Fingerprint: v.fingerprint(t, "read_file"), Effect: effectRead, ResourceType: "file", ResourceFrom: "/path"},
-		{Upstream: "victim", Tool: "delete_file", Fingerprint: v.fingerprint(t, "delete_file"), Effect: effectDelete, ResourceType: "file", ResourceFrom: "/path"},
-		{Upstream: "victim", Tool: "transfer", Fingerprint: v.fingerprint(t, "transfer"), Effect: effectTransact, ResourceType: "account", ResourceFrom: "/account"},
-		{Upstream: "victim", Tool: "send_mail", Fingerprint: v.fingerprint(t, "send_mail"), Effect: effectComm, ResourceType: "mailbox", ResourceFrom: "/to", TrustZone: zoneExternal},
-		{Upstream: "victim", Tool: "slow", Fingerprint: v.fingerprint(t, "slow"), Effect: effectRead, ResourceType: "file", ResourceFrom: "/path"},
+		{Upstream: "victim", Tool: "read_file", Fingerprint: v.fingerprint(t, "read_file"), Classification: classify.Classification{Effect: effectRead, ResourceType: "file", ResourceFrom: "/path"}},
+		{Upstream: "victim", Tool: "delete_file", Fingerprint: v.fingerprint(t, "delete_file"), Classification: classify.Classification{Effect: effectDelete, ResourceType: "file", ResourceFrom: "/path"}},
+		{Upstream: "victim", Tool: "transfer", Fingerprint: v.fingerprint(t, "transfer"), Classification: classify.Classification{Effect: effectTransact, ResourceType: "account", ResourceFrom: "/account"}},
+		{Upstream: "victim", Tool: "send_mail", Fingerprint: v.fingerprint(t, "send_mail"), Classification: classify.Classification{Effect: effectComm, ResourceType: "mailbox", ResourceFrom: "/to", TrustZone: zoneExternal}},
+		{Upstream: "victim", Tool: "slow", Fingerprint: v.fingerprint(t, "slow"), Classification: classify.Classification{Effect: effectRead, ResourceType: "file", ResourceFrom: "/path"}},
 	}
 }
 
