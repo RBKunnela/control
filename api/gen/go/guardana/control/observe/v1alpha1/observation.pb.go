@@ -818,8 +818,16 @@ type ImportReport struct {
 	Counts               *ImportCounts          `protobuf:"bytes,8,opt,name=counts,proto3" json:"counts,omitempty"`
 	EarliestEventTime    *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=earliest_event_time,json=earliestEventTime,proto3" json:"earliest_event_time,omitempty"`
 	LatestEventTime      *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=latest_event_time,json=latestEventTime,proto3" json:"latest_event_time,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// The runs claimed by the spans this import refused and by the
+	// observations the log refused for an id it held with other content, in
+	// ascending order, each once, at most 64.
+	DoubtedRunIds []string `protobuf:"bytes,11,rep,name=doubted_run_ids,json=doubtedRunIds,proto3" json:"doubted_run_ids,omitempty"`
+	// One of those claimed no run, or more runs were claimed than
+	// doubted_run_ids holds: every run of the source is in doubt, and
+	// doubted_run_ids is empty.
+	EveryRunDoubted bool `protobuf:"varint,12,opt,name=every_run_doubted,json=everyRunDoubted,proto3" json:"every_run_doubted,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ImportReport) Reset() {
@@ -920,6 +928,20 @@ func (x *ImportReport) GetLatestEventTime() *timestamppb.Timestamp {
 		return x.LatestEventTime
 	}
 	return nil
+}
+
+func (x *ImportReport) GetDoubtedRunIds() []string {
+	if x != nil {
+		return x.DoubtedRunIds
+	}
+	return nil
+}
+
+func (x *ImportReport) GetEveryRunDoubted() bool {
+	if x != nil {
+		return x.EveryRunDoubted
+	}
+	return false
 }
 
 // One line of an observation log: exactly one of its members.
@@ -1065,7 +1087,7 @@ const file_guardana_control_observe_v1alpha1_observation_proto_rawDesc = "" +
 	"\x0fstrings_dropped\x18\f \x01(\x04R\x0estringsDropped\x1a:\n" +
 	"\fSkippedEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xad\x04\n" +
+	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\x81\x05\n" +
 	"\fImportReport\x12%\n" +
 	"\x0eschema_version\x18\x01 \x01(\tR\rschemaVersion\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x1d\n" +
@@ -1079,7 +1101,9 @@ const file_guardana_control_observe_v1alpha1_observation_proto_rawDesc = "" +
 	"\x06counts\x18\b \x01(\v2/.guardana.control.observe.v1alpha1.ImportCountsR\x06counts\x12J\n" +
 	"\x13earliest_event_time\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\x11earliestEventTime\x12F\n" +
 	"\x11latest_event_time\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\x0flatestEventTime\"\xbe\x01\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\x0flatestEventTime\x12&\n" +
+	"\x0fdoubted_run_ids\x18\v \x03(\tR\rdoubtedRunIds\x12*\n" +
+	"\x11every_run_doubted\x18\f \x01(\bR\x0feveryRunDoubted\"\xbe\x01\n" +
 	"\x06Record\x12R\n" +
 	"\vobservation\x18\x01 \x01(\v2..guardana.control.observe.v1alpha1.ObservationH\x00R\vobservation\x12V\n" +
 	"\rimport_report\x18\x02 \x01(\v2/.guardana.control.observe.v1alpha1.ImportReportH\x00R\fimportReportB\b\n" +

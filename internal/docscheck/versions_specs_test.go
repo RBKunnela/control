@@ -129,13 +129,14 @@ func versionSpecs() map[string]versionSpec {
 		"Observation records and log": {
 			name: func() string { return protoPackage(&observev1.Record{}) },
 			cites: []versionCite{
-				{"internal/observe/version.go#SchemaVersion", writes},
-				{"internal/observe/version.go#CheckVersion/major", readsMajor},
+				{"internal/observe/version.go#SchemaVersion", writes | reads},
+				{"internal/observe/version.go#SchemaVersion02", writes | reads},
+				{"internal/observe/version.go#checkVersion/major", readsMajor},
 			},
 			refuses: func(v string) (bool, error) { return errors.Is(observe.CheckVersion(v), observe.ErrVersion), nil },
 		},
 		"Source descriptor": {
-			cites: []versionCite{{"internal/observe/version.go#CheckVersion/major", readsMajor}},
+			cites: []versionCite{{"internal/observe/version.go#checkVersion/major", readsMajor}},
 			refuses: func(v string) (bool, error) {
 				_, err := observe.ReadDescriptor([]byte(`{"schema_version":` + strconv.Quote(v) + `}`))
 				return errors.Is(err, observe.ErrVersion), nil

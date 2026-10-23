@@ -58,6 +58,10 @@ type evaluation struct {
 	anySilent   bool
 	neverHeard  []string
 	lapsed      []string
+	// refused is what each source's imports refused, and refusedJudged the
+	// sources a copy of which may be a call of a run judged.
+	refused       map[string]refusals
+	refusedJudged map[string]bool
 	// firsts holds firstOf's answer by step: the rules ask it per instance,
 	// and the instances do not change once read.
 	firsts map[int]first
@@ -72,6 +76,14 @@ type evaluation struct {
 	// are applied.
 	waived map[waiverKey]*waiver
 }
+
+// refusals are the runs a source's imports refused a copy of, or every run.
+type refusals struct {
+	every bool
+	runs  map[string]bool
+}
+
+func (r refusals) covers(run string) bool { return r.every || r.runs[run] }
 
 type first struct {
 	in   *instance
@@ -127,7 +139,7 @@ func (e *evaluation) spanEvents() {
 // by then may simply not have arrived. A source named and not read reported
 // nothing that was read.
 func (e *evaluation) hearSources() {
-	e.silent = map[string]bool{}
+	e.silent, e.refused, e.refusedJudged = map[string]bool{}, map[string]refusals{}, map[string]bool{}
 	e.anySilent = len(e.in.SourcesNotRead) > 0
 	for _, s := range e.in.Sources {
 		silent := !s.Heard
@@ -144,6 +156,14 @@ func (e *evaluation) hearSources() {
 		}
 		e.silent[s.SourceID] = silent
 		e.anySilent = e.anySilent || silent
+		r := refusals{every: s.EveryRunDoubted, runs: map[string]bool{}}
+		for _, run := range s.DoubtedRuns {
+			r.runs[run] = true
+		}
+		e.refused[s.SourceID] = r
+		for run := range e.rd.runs {
+			e.refusedJudged[s.SourceID] = e.refusedJudged[s.SourceID] || r.covers(run)
+		}
 	}
 }
 
@@ -237,8 +257,9 @@ func leastRequest(ins []*instance) *instance {
 }
 
 // obsRef cites an observation: it suggests at most, and nothing when its id
-// was read with two contents, its source is silent, or the join may have
-// missed it.
+// was read with two contents, its source is silent, its source's imports
+// refused a copy that may be a call of its run, or the join may have missed
+// it.
 func (e *evaluation) obsRef(o *observev1.Observation) ref {
 	id := o.GetObservationId()
 	return ref{v: e.obsVerdict(o), r: &findingv1alpha1.Reference{Ref: &findingv1alpha1.Reference_Observation{
@@ -249,7 +270,8 @@ func (e *evaluation) obsRef(o *observev1.Observation) ref {
 // obsVerdict is the verdict obsRef cites o at.
 func (e *evaluation) obsVerdict(o *observev1.Observation) controlv1.FindingVerdict {
 	id := o.GetObservationId()
-	if e.rd.obsDoubt[id] || e.joinDoubt[id] || e.silent[e.rd.obsSource[id].SourceID] {
+	src := e.rd.obsSource[id].SourceID
+	if e.rd.obsDoubt[id] || e.joinDoubt[id] || e.silent[src] || e.refused[src].covers(o.GetCorrelation().GetRunId()) {
 		return indeterminate
 	}
 	return suspected

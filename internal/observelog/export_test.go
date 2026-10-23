@@ -177,7 +177,7 @@ func gapReason(t *testing.T, line string) string {
 // one change, so the change alone decides the verdict.
 func TestTheExportNamesWhyALineIsAGap(t *testing.T) {
 	a := string(bytes.SplitAfter(readGolden(t, "log.jsonl"), []byte("\n"))[0])
-	later := strings.Replace(a, `"0.1"`, `"0.2"`, 1)
+	later := strings.Replace(a, `"0.1"`, `"0.3"`, 1)
 	for name, c := range map[string]struct{ line, want string }{
 		"the writer's line":          {a, ""},
 		"a CRLF ending":              {strings.TrimSuffix(a, "\n") + "\r\n", gapCR},
@@ -187,7 +187,7 @@ func TestTheExportNamesWhyALineIsAGap(t *testing.T) {
 		"a later version":            {later, gapVersion},
 		"a later version's member":   {strings.Replace(later, `"tenantId"`, `"futureMember":1,"tenantId"`, 1), gapVersion},
 		"an unknown member at 0.1":   {strings.Replace(a, `"tenantId"`, `"futureMember":1,"tenantId"`, 1), gapMalformed},
-		"an unknown kind at a later": {`{"futureRecord":{"schemaVersion":"0.2"}}` + "\n", gapMalformed},
+		"an unknown kind at a later": {`{"futureRecord":{"schemaVersion":"0.3"}}` + "\n", gapMalformed},
 	} {
 		if got := gapReason(t, c.line); got != c.want {
 			t.Errorf("%s: the line is %q, want %q", name, got, c.want)

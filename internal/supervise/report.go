@@ -4,6 +4,7 @@ import (
 	"maps"
 	"slices"
 	"strconv"
+	"strings"
 
 	findingv1alpha1 "github.com/guardana/control/api/gen/go/guardana/control/finding/v1alpha1"
 	"github.com/guardana/control/internal/trailchain"
@@ -103,7 +104,6 @@ func (e *evaluation) absenceState() ruleState {
 
 func (e *evaluation) result(drafts []draft, states map[string]ruleState) *Result {
 	e.doubtCut(states)
-	e.joinsCut(states)
 	if s, on := states[RuleExceptionTaken]; on && s.state == checked.state {
 		states[RuleExceptionTaken] = e.takenState(states, checked)
 	}
@@ -144,29 +144,55 @@ func (e *evaluation) result(drafts []draft, states map[string]ruleState) *Result
 // doubtCut leaves not checked every rule that would read as checked while
 // a record of the run is in doubt: the left-out copy, the missing link or the
 // order its links do not give may hold the failure, denial, tool or time a
-// rule looks for. A request in doubt touches every rule, an observation only
-// those that read a source's reports. Findings stand, at the verdict the
-// doubt allows.
+// rule looks for. A request in doubt touches every rule; an observation, a
+// source whose imports refused a copy that may be a call of a run judged,
+// and a span walk cut short only those that read a source's reports. A rule
+// already not checked names its own reason first and each doubt after it.
+// Findings stand, at the verdict the doubt allows.
 func (e *evaluation) doubtCut(states map[string]ruleState) {
-	var requests []string
+	every, reports := e.doubts()
+	for id, s := range states {
+		causes := every
+		if slices.Contains(reportRules, id) {
+			causes = append(slices.Clone(every), reports...)
+		}
+		switch {
+		case id == RuleExceptionTaken || len(causes) == 0 || s == notApplied:
+		case s.state == checked.state:
+			states[id] = notChecked(strings.Join(causes, "; "))
+		case s.state == findingv1alpha1.RuleState_RULE_STATE_NOT_CHECKED:
+			states[id] = notChecked(s.why + "; " + strings.Join(causes, "; "))
+		}
+	}
+}
+
+// doubts names, in a fixed order, what puts every rule in doubt, and what
+// puts in doubt the rules that read a source's reports besides.
+func (e *evaluation) doubts() (every, reports []string) {
+	var requests, sources []string
 	for _, rq := range e.reqs {
 		if rq.doubt {
 			requests = append(requests, rq.id)
 		}
 	}
-	requestWhy := inDoubt("request", requests)
-	observationWhy := inDoubt("observation", slices.Collect(maps.Keys(e.rd.obsDoubt)))
-	for id, s := range states {
-		if id == RuleExceptionTaken || s.state != checked.state {
-			continue
-		}
-		switch {
-		case requestWhy != "":
-			states[id] = notChecked(requestWhy)
-		case observationWhy != "" && slices.Contains(reportRules, id):
-			states[id] = notChecked(observationWhy)
+	for id, judged := range e.refusedJudged {
+		if judged {
+			sources = append(sources, id)
 		}
 	}
+	if why := inDoubt("request", requests); why != "" {
+		every = append(every, why)
+	}
+	if why := inDoubt("observation", slices.Collect(maps.Keys(e.rd.obsDoubt))); why != "" {
+		reports = append(reports, why)
+	}
+	if why := inDoubt("source", sources); why != "" {
+		reports = append(reports, why+": an import refused a copy that may be a call of a run judged")
+	}
+	if slices.Contains(slices.Collect(maps.Values(e.joinDoubt)), true) {
+		reports = append(reports, "a span walk ran out of steps, so a source's report may be a plane call")
+	}
+	return every, reports
 }
 
 // inDoubt names the least of ids, quoted and cut as a producer's bytes are,
@@ -185,21 +211,6 @@ func inDoubt(kind string, ids []string) string {
 // reportRules are the rules that read a source's reports of calls no plane
 // call joins.
 var reportRules = []string{RuleStepOutsideProcedure, RuleDeniedActionRetriedAround}
-
-// joinsCut leaves the rules that read joins not checked when a span walk ran
-// out of steps before it could tell whether a report is a plane call. Their
-// findings stand, since a rule that may stop must not be silenced by a deep
-// span chain the agent can build.
-func (e *evaluation) joinsCut(states map[string]ruleState) {
-	if !slices.Contains(slices.Collect(maps.Values(e.joinDoubt)), true) {
-		return
-	}
-	for _, id := range reportRules {
-		if s, on := states[id]; on && s.state == checked.state {
-			states[id] = notChecked("a span walk ran out of steps, so a source's report may be a plane call")
-		}
-	}
-}
 
 // reportSchema02 is the version of a report that carries the children mode
 // and the run tree, which a 0.2 procedure's report always does.

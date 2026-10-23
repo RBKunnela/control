@@ -32,8 +32,9 @@ func MarshalLine(r *observev1.Record) ([]byte, error) {
 	if err := checkRecord(r); err != nil {
 		return nil, err
 	}
-	if v := innerVersion(r); v != SchemaVersion {
-		return nil, fmt.Errorf("%w: schema_version %s, this writer writes %q", ErrLine, quoted(v, maxVersionBytes), SchemaVersion)
+	if v := innerVersion(r); v != SchemaVersion && v != SchemaVersion02 {
+		return nil, fmt.Errorf("%w: schema_version %s, this writer writes %q and %q", ErrLine,
+			quoted(v, maxVersionBytes), SchemaVersion, SchemaVersion02)
 	}
 	if hasUnknownFields(r.ProtoReflect()) {
 		return nil, fmt.Errorf("%w: a field this build cannot name would be dropped", ErrLine)
@@ -89,10 +90,40 @@ func checkRecord(r *observev1.Record) error {
 	if err := CheckVersion(innerVersion(r)); err != nil {
 		return fmt.Errorf("%w: %w", ErrLine, err)
 	}
+	if err := checkSchema(innerVersion(r), added02(ir)); err != nil {
+		return err
+	}
 	if o != nil {
 		return checkObservation(o)
 	}
-	return checkOrigin(ir.GetTenantId(), ir.GetProjectId(), ir.GetSource(), ir.GetReceivedTime())
+	if err := checkOrigin(ir.GetTenantId(), ir.GetProjectId(), ir.GetSource(), ir.GetReceivedTime()); err != nil {
+		return err
+	}
+	return checkDoubt(ir)
+}
+
+// checkSchema holds a record to the schema its members call for, given
+// added, the first member it carries that SchemaVersion does not have, or "".
+func checkSchema(version, added string) error {
+	switch {
+	case version == SchemaVersion && added != "":
+		return fmt.Errorf("%w: %s: not a member of schema %q", ErrLine, added, SchemaVersion)
+	case version == SchemaVersion02 && added == "":
+		return fmt.Errorf("%w: schema_version: %q on a record with no member of %q", ErrLine, SchemaVersion02, SchemaVersion02)
+	}
+	return nil
+}
+
+// added02 names the first member of r that SchemaVersion does not have, or
+// "" for none or no report.
+func added02(r *observev1.ImportReport) string {
+	switch {
+	case len(r.GetDoubtedRunIds()) > 0:
+		return "doubted_run_ids"
+	case r.GetEveryRunDoubted():
+		return "every_run_doubted"
+	}
+	return ""
 }
 
 // checkOrigin holds what every record carries: whose it is, which source it

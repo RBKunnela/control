@@ -134,6 +134,10 @@ rule would cite are in doubt, a broken chain or an event id read with two
 contents, it cites only the clean ones and keeps its verdict when at least
 <code>max_denials</code> are clean; a route naming version 1 is refused but as the
 source of a carry, which keeps its stops (<a href="/docs/adr/0046-a-finding-stops-one-run-through-a-signed-route">ADR-0046</a>).</p>
+<p>Amended by <a href="/docs/adr/0058-a-copy-an-import-never-read-is-doubt-for-the-runs-it-claimed">ADR-0058</a>:
+a run a source's import reports doubt leaves <code>STEP_OUTSIDE_PROCEDURE</code> and
+<code>DENIED_ACTION_RETRIED_AROUND</code> not checked, and a finding citing an
+observation of a doubted run is <code>INDETERMINATE</code>.</p>
 <h2 id="context">Context</h2>
 <p>A plane decides each call on its own. Whether a run as a whole kept to the
 procedure it was meant to follow (the steps it took, their order, the steps it

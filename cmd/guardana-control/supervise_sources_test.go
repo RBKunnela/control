@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -165,5 +167,97 @@ func TestSuperviseAnUnjoinedObservationIsNoInstanceOfItsStep(t *testing.T) {
 	want := regexp.MustCompile(`(?m)^step refund: no instance; reported by the runtime only: obs-[0-9a-f]{32}$`)
 	if !want.MatchString(stdout) || strings.Contains(stdout, "; observations ") {
 		t.Errorf("stderr %q, stdout\n%s\nwant the refund step's observation reported by the runtime only", stderr, stdout)
+	}
+}
+
+// spansLine is one OTLP/JSON line of supSpan's resource holding spans.
+func spansLine(spans ...string) string {
+	line := fmt.Sprintf(supSpan, 0, 0, "", "")
+	open, closing := `"spans":[`, `]}],"schemaUrl"`
+	return line[:strings.Index(line, open)+len(open)] + strings.Join(spans, ",") + line[strings.Index(line, closing):]
+}
+
+// toolSpan is supSpan's span with spanID, a call of tool claimed for run
+// with status code status, ending at end.
+func toolSpan(spanID, tool, run string, status int, end time.Time) string {
+	line := fmt.Sprintf(supSpan, end.Add(-time.Second).UnixNano(), end.UnixNano(), tool, run)
+	open, closing := `"spans":[`, `]}],"schemaUrl"`
+	span := line[strings.Index(line, open)+len(open) : strings.Index(line, closing)]
+	return strings.NewReplacer(`"00f067aa0ba90001"`, strconv.Quote(spanID),
+		`"status":{"code":1}`, fmt.Sprintf(`"status":{"code":%d}`, status)).Replace(span)
+}
+
+// importSpans imports line and wants the conflicts and refusals counted, and
+// exit 1 for any.
+func (tr supTree) importSpans(t *testing.T, descriptor, log, line string, conflicts, refused int) {
+	t.Helper()
+	input := filepath.Join(tr.dir, "spans.jsonl")
+	writeFixture(t, input, line)
+	code, out, stderr := invoke(t, "observe", "import", "--source", descriptor, "--log", log, input)
+	want := exitOK
+	if conflicts+refused > 0 {
+		want = exitFail
+	}
+	if counted(t, out, "conflict") != conflicts || counted(t, out, "refused") != refused || code != want {
+		t.Fatalf("import: exit %d, stdout %q, stderr %q; want %d conflict(s), %d refused", code, out, stderr, conflicts, refused)
+	}
+}
+
+// TestSuperviseACopyTheImportRefusedIsNotAPass: an agent that sends an
+// allowed call and then a call no step lists, under the same trace and span
+// id or in a span the import refuses, has its log keep the allowed call
+// alone. The run is not judged as if the log held all it was sent: while a
+// refused span, either copy of a conflict, or a refused copy of no run
+// claimed it, the rules that read the source's reports are not checked and
+// supervise exits 1. Copies that all claimed another run leave it judged.
+func TestSuperviseACopyTheImportRefusedIsNotAPass(t *testing.T) {
+	const why = `not checked: source "agent-runtime" is in doubt: an import refused a copy that may be a call of a run judged`
+	const other = "run-ffffffffffffffffffffffffffffffff"
+	end := supBase.Add(5 * time.Second)
+	call := func(tool, run string) string { return toolSpan("00f067aa0ba90001", tool, run, 1, end) }
+	refused := func(run string) string { return toolSpan("00f067aa0ba90002", "drop_table", run, 7, end) }
+	for name, c := range map[string]struct {
+		spans                    func(run string) []string
+		conflicts, refused, code int
+	}{
+		"the allowed call alone": {func(run string) []string { return []string{call("search_docs", run)} }, 0, 0, exitOK},
+		"a forbidden call, the same ids": {func(run string) []string {
+			return []string{call("search_docs", run), call("drop_table", run)}
+		}, 1, 0, exitFail},
+		"a forbidden call refused": {func(run string) []string { return []string{call("search_docs", run), refused(run)} }, 0, 1, exitFail},
+		"a forbidden call of no run": {func(run string) []string {
+			return []string{call("search_docs", run), call("drop_table", "")}
+		}, 1, 0, exitFail},
+		"a forbidden call of another run, the same ids as this run's": {func(run string) []string {
+			return []string{call("search_docs", run), call("drop_table", other)}
+		}, 1, 0, exitFail},
+		"two calls of another run, the same ids": {func(run string) []string {
+			return []string{call("search_docs", run), toolSpan("00f067aa0ba90003", "search_docs", other, 1, end),
+				toolSpan("00f067aa0ba90003", "drop_table", other, 1, end)}
+		}, 1, 0, exitOK},
+		"a refused call of another run": {func(run string) []string { return []string{call("search_docs", run), refused(other)} }, 0, 1, exitOK},
+	} {
+		t.Run(name, func(t *testing.T) {
+			tr := newSupTree(t)
+			writeFixture(t, tr.procedure, supProcedure02)
+			descriptor, log := tr.source(t)
+			spans := c.spans(tr.run)
+			tr.importSpans(t, descriptor, log, spansLine(spans...), c.conflicts, c.refused)
+			x := tr.export(t, tr.run, supBase, conformingCalls()...)
+			tr.closeRun(t, tr.run)
+			code, stdout, stderr := invoke(t, tr.args("--evidence", x, "--source", descriptor, "--log", log)...)
+			if code != c.code || stderr != "" || strings.Contains(stdout, "finding ") {
+				t.Fatalf("exit %d, stderr %q, stdout\n%s\nwant %d and no finding", code, stderr, stdout, c.code)
+			}
+			for _, rule := range []string{"STEP_OUTSIDE_PROCEDURE", "DENIED_ACTION_RETRIED_AROUND"} {
+				want := "rule " + rule + " checked\n"
+				if c.code != exitOK {
+					want = "rule " + rule + " " + why + "\n"
+				}
+				if !strings.Contains(stdout, want) {
+					t.Errorf("stdout does not hold %q:\n%s", want, stdout)
+				}
+			}
+		})
 	}
 }

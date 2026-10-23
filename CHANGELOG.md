@@ -57,6 +57,21 @@ verify one.
   why names the record, quoted and cut at 64 bytes. A broken chain or a
   conflicting copy only lowered a finding's verdict, so a run with no finding
   passed on evidence that may hide a failure, a denial or a call.
+- `supervise` holds in doubt a run an import refused a copy of: a span the
+  importer refused, or an observation the log refused for an id it held with
+  other content. While a run it judges is in doubt, the rules that read a
+  source's reports are not checked, naming the source, and a finding citing
+  an observation of that run is `INDETERMINATE`. The log kept the first
+  content of an id and only counted the other, and a refused span was only
+  counted, so an agent that sent an allowed call and then a forbidden one,
+  under the same trace and span id or in a span the import refuses, passed
+  with exit 0. An import report names the runs those copies claimed, both
+  copies' of a conflict, in `doubted_run_ids`, at most 64, or sets
+  `every_run_doubted` for a refused copy that claims none, a line refused
+  whole or a 65th run; a report carrying either is schema `0.2`, which a
+  `0.1`-only reader refuses, and a `0.1` report that counts a refusal or a
+  conflict doubts every run. Such a doubt lasts until the log is rotated by
+  hand. A rule cut for several reasons names each.
 - `supervise --view` draws a call that came through the enforcement API,
   protocol `enforce`, as decided, not enforced, in every mode, as `coverage`
   already holds it; it was drawn enforced under `ENFORCE`.

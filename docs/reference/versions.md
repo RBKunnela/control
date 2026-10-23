@@ -36,7 +36,7 @@ version. [status.md](../status.md) is the inventory.
 | Hook profile (`kind`) | — | `hook-profile/v1alpha1` | `experimental` | [runtime-profiles](../extending/runtime-profiles.md#the-profile) |
 | Hook bridge handles (`version`) | `1.0` | `1.x` | `experimental` | [runtime-profiles](../extending/runtime-profiles.md#what-the-bridge-does) |
 | Runs directory (`schema_version`) | `1.0` | `1.x` | `experimental` | [contracts.md](../contracts.md#the-runs-directory) |
-| Observation records and log (`guardana.control.observe.v1alpha1`) | `0.1` | `0.1` | `experimental` | [observations.md](observations.md#the-log) |
+| Observation records and log (`guardana.control.observe.v1alpha1`) | `0.1`, `0.2` | `0.1`, `0.2` | `experimental` | [observations.md](observations.md#the-log) |
 | Source descriptor (`schema_version`) | — | `0.1` | `experimental` | [observations.md](observations.md#the-source-descriptor) |
 | OpenTelemetry GenAI spans, imported | — | conventions `1.41.0`, OTLP `1.11.1` | `experimental` | [observations.md](observations.md#what-an-import-keeps) |
 | Observation export (`guardana.control.observation-export`) | `0.1` | — | `experimental` | [observations.md](observations.md#commands) |
@@ -78,7 +78,12 @@ wrote is not promised readable.
   trailer's `identity` says which.
 - **Observation records and the source descriptor.** Only the minors in the
   reader's table are read; another `0.x` is refused rather than read as the
-  nearest one.
+  nearest one. An import report is `0.2` exactly when it names runs in doubt
+  or sets `every_run_doubted`, and a reader of `0.1` alone, such as an
+  earlier release's, refuses that line. The observation export carries each
+  report's line as the log holds it, so its reader meets `0.2` import
+  reports inside an export whose own version stays `0.1`; an earlier
+  release's export counts such a line as an `unsupported_version` gap.
 
 `internal/docscheck/versions_test.go` holds the table to the constants and
 readers in the code. It fails when a version changes there, when a format is

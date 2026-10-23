@@ -42,7 +42,7 @@ func TestUnmarshalLineIsStrict(t *testing.T) {
 		"a duplicate member":        {replace(obs, `"tenantId":"tenant-a"`, `"tenantId":"tenant-a","tenantId":"tenant-b"`), "duplicate"},
 		"a duplicate, two spelling": {replace(obs, `"tenantId":"tenant-a"`, `"tenantId":"tenant-a","tenant_id":"tenant-b"`), "duplicate"},
 		"a duplicate map key":       {replace(rep, `{"unmapped_operation":"1"}`, `{"a":"1","a":"2"}`), "duplicate"},
-		"version of a later minor":  {replace(obs, `"schemaVersion":"0.1"`, `"schemaVersion":"0.2"`), "minor"},
+		"version of a later minor":  {replace(obs, `"schemaVersion":"0.1"`, `"schemaVersion":"0.3"`), "minor"},
 		"version absent":            {replace(rep, `"schemaVersion":"0.1",`, ``), "absent"},
 		"invalid UTF-8":             {replace(obs, "read_file", "read\xfffile"), "UTF-8"},
 		"a trailing comma":          {replace(obs, `"contentAttributesDropped":2}`, `"contentAttributesDropped":2,}`), ""},
@@ -114,9 +114,9 @@ func TestTheWritersLongestLineReads(t *testing.T) {
 // The reader takes every minor in its table, the writer only the one it
 // writes.
 func TestTheWriterWritesOnlyItsOwnVersion(t *testing.T) {
-	defer observe.AcceptMinor("2")()
+	defer observe.AcceptMinor("3")()
 	o := fixtureObservation()
-	o.SchemaVersion = "0.2"
+	o.SchemaVersion = "0.3"
 	raw, err := protojson.Marshal(obsRecord(o))
 	if err != nil {
 		t.Fatal(err)
@@ -126,7 +126,7 @@ func TestTheWriterWritesOnlyItsOwnVersion(t *testing.T) {
 	}
 	_, err = observe.MarshalLine(obsRecord(o))
 	if !errors.Is(err, observe.ErrLine) || !strings.Contains(err.Error(), "this writer writes") {
-		t.Fatalf("MarshalLine of 0.2 = %v, want a refusal naming the writer's version", err)
+		t.Fatalf("MarshalLine of 0.3 = %v, want a refusal naming the writer's version", err)
 	}
 }
 

@@ -8,15 +8,15 @@ covers: [internal/supervise/**, internal/findinglog/**, internal/notify/**, cmd/
 # Supervision
 
 `guardana-control supervise` checks a run an operator opened against its
-procedure, from the plane's evidence and the agent runtime's reports, and
-appends findings to a findings log.
+procedure, from the plane's evidence and the runtime's reports, and
+appends findings to a log.
 `guardana-control notify` hands each alert in that log to a program of the
 operator's, at least once. Both are `experimental`. Neither decides a call,
 and no plane reads what they write
 ([ADR-0045](../adr/0045-one-run-is-supervised-against-its-procedure.md));
 `react` turns a confirmed finding into a stop a plane reads
-([reaction.md](reaction.md)). `--view` draws the run as a
-page ([run-view.md](run-view.md)).
+([reaction.md](reaction.md)). `--view` draws the run
+([run-view.md](run-view.md)).
 
 ```
 guardana-control supervise --procedure <file> --runs <dir> --run <run-id> --findings <dir>
@@ -63,7 +63,7 @@ checked, findings kept. Everything else is counted and left out.
 
 The procedure, descriptors and evidence exports must be regular
 files of this account that only it can write: a `CONFIRMED` finding rests on
-the export being the plane's, and nothing else protects that.
+the export being the plane's.
 
 ## The rules
 
@@ -90,10 +90,13 @@ an export; a retry confirms only when one export holds both.
 ## The verdict
 
 The weakest of what a finding rests on. Plane events in an unbroken chain can
-make it `CONFIRMED`; an observation makes it `SUSPECTED`; a record in doubt (a
-conflicting id, a broken chain, a silent source) makes it
-`INDETERMINATE`; the first two also leave each rule that reads them not
-checked. The step rules rest on something not seen:
+make it `CONFIRMED`; an observation makes it `SUSPECTED`; a record in doubt,
+`INDETERMINATE`. So are a silent source's observations. A request with two
+copies or a broken chain leaves no rule checked; an observation with two
+contents, or a judged run a log doubts, while it holds that report
+([observations](observations.md#the-log)), leaves `STEP_OUTSIDE_PROCEDURE`
+and `DENIED_ACTION_RETRIED_AROUND` not checked.
+The step rules rest on something not seen:
 `SUSPECTED` at most, `INDETERMINATE` while a `--source` is absent, never
 heard or silent, and checked only on a closed run whose exports are whole.
 Under `0.2` a finding confirms on its run's own events alone, save the
@@ -142,8 +145,7 @@ A record is schema `0.2` exactly when it carries a member `0.1` lacks
 | `LogHeader` | a new log's first line: `log_id`, `log-` and 32 hex digits of 128 random bits |
 
 A log with no header is read as it is; an empty one gains one when opened.
-The reader refuses an unknown schema or a member its schema lacks, so a
-`0.1`-only reader refuses every `0.2` line.
+The reader refuses an unknown schema or a member its schema lacks.
 
 ## notify
 

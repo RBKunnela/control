@@ -101,15 +101,15 @@ func (ids index) read(pending index, line []byte) (*observev1.Record, bool, erro
 	if o == nil {
 		return r, true, nil
 	}
-	sum, id := observe.ContentDigest(o), o.GetObservationId()
-	held, ok := ids[id]
+	h, id := heldOf(o), o.GetObservationId()
+	kept, ok := ids[id]
 	if !ok {
-		held, ok = pending[id]
+		kept, ok = pending[id]
 	}
-	if sum == "" || (ok && held != sum) {
+	if h.sum == "" || (ok && kept.sum != h.sum) {
 		return nil, false, errors.New("an observation id an earlier line carries with other content")
 	}
-	pending[id] = sum
+	pending[id] = h
 	return r, false, nil
 }
 

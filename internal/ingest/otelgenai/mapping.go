@@ -93,6 +93,15 @@ func keyable(s *span) bool {
 		s.statusCode >= 0 && s.statusCode <= 2
 }
 
+// claimedRun is the run attribute's string on a span, "" when it holds none.
+func claimedRun(s *span, runKey string) string {
+	v, ok := index(s.attrs.kept)[runKey]
+	if runKey == "" || !ok || v.kind != kindString {
+		return ""
+	}
+	return v.str
+}
+
 func (im *importer) observation(s *span, rule subjectRule, operation string) (*observev1.Observation, spanCounts) {
 	var c spanCounts
 	a := index(s.attrs.kept)

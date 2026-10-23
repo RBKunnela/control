@@ -15,7 +15,8 @@ func TestCheckVersion(t *testing.T) {
 	}{
 		{"0.1", ""},
 		{"", "absent"},
-		{"0.2", "minor"},
+		{"0.2", ""},
+		{"0.3", "minor"},
 		{"0.10", "minor"},
 		{"0.0", "minor"},
 		{"1.1", "major"},
@@ -50,10 +51,12 @@ func TestCheckVersion(t *testing.T) {
 }
 
 func TestSchemaVersionIsInTheTable(t *testing.T) {
-	if observe.SchemaVersion != "0.1" {
-		t.Fatalf("SchemaVersion = %q, want 0.1", observe.SchemaVersion)
+	if observe.SchemaVersion != "0.1" || observe.SchemaVersion02 != "0.2" {
+		t.Fatalf("SchemaVersion = %q, SchemaVersion02 = %q, want 0.1 and 0.2", observe.SchemaVersion, observe.SchemaVersion02)
 	}
-	if err := observe.CheckVersion(observe.SchemaVersion); err != nil {
-		t.Fatalf("the version this package writes does not read: %v", err)
+	for _, v := range []string{observe.SchemaVersion, observe.SchemaVersion02} {
+		if err := observe.CheckVersion(v); err != nil {
+			t.Fatalf("a version this package writes does not read: %v", err)
+		}
 	}
 }

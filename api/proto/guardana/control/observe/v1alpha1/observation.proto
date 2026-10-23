@@ -136,6 +136,14 @@ message ImportReport {
   ImportCounts counts = 8;
   google.protobuf.Timestamp earliest_event_time = 9;
   google.protobuf.Timestamp latest_event_time = 10;
+  // The runs claimed by the spans this import refused and by the
+  // observations the log refused for an id it held with other content, in
+  // ascending order, each once, at most 64.
+  repeated string doubted_run_ids = 11;
+  // One of those claimed no run, or more runs were claimed than
+  // doubted_run_ids holds: every run of the source is in doubt, and
+  // doubted_run_ids is empty.
+  bool every_run_doubted = 12;
 }
 
 // One line of an observation log: exactly one of its members.

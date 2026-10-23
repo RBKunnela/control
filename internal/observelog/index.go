@@ -7,22 +7,32 @@ import (
 	"github.com/guardana/control/internal/observe"
 )
 
-// index maps each observation id the log holds to its content digest. It is
-// rebuilt from the file on every open and never written down, so it cannot
-// disagree with the lines it describes.
-type index map[string]string
+// index maps each observation id the log holds to what it was written with.
+// It is rebuilt from the file on every open and never written down, so it
+// cannot disagree with the lines it describes.
+type index map[string]held
 
-// batch is what one write appends and what it found.
+// held is an id's content digest and the run its observation claims, or "".
+type held struct{ sum, run string }
+
+func heldOf(o *observev1.Observation) held {
+	return held{sum: observe.ContentDigest(o), run: o.GetCorrelation().GetRunId()}
+}
+
+// batch is what one write appends and what it found, and the runs its
+// conflicting observations claim.
 type batch struct {
 	lines []byte
 	added index
 	found Written
+	doubt observe.Doubt
 }
 
 // fresh encodes the observations neither the index nor an earlier one of obs
 // holds, and counts the rest: a duplicate when the content is the same, a
-// conflict when it is not. An observation the codec refuses, or one with no
-// digest, refuses the whole write.
+// conflict when it is not. A conflict puts in doubt the run each copy
+// claims. An observation the codec refuses, or one with no digest, refuses
+// the whole write.
 func (ids index) fresh(obs []*observev1.Observation) (batch, error) {
 	b := batch{added: index{}}
 	for i, o := range obs {
@@ -30,22 +40,28 @@ func (ids index) fresh(obs []*observev1.Observation) (batch, error) {
 		if err != nil {
 			return batch{}, fmt.Errorf("%w: observation %d: %w", ErrRecord, i, err)
 		}
-		sum := observe.ContentDigest(o)
-		if sum == "" {
+		h := heldOf(o)
+		if h.sum == "" {
 			return batch{}, fmt.Errorf("%w: observation %d has no content digest", ErrRecord, i)
 		}
 		id := o.GetObservationId()
-		held, ok := ids[id]
+		kept, ok := ids[id]
 		if !ok {
-			held, ok = b.added[id]
+			kept, ok = b.added[id]
 		}
 		switch {
-		case ok && held == sum:
+		case ok && kept.sum == h.sum:
 			b.found.Duplicates++
 		case ok:
 			b.found.Conflicts++
+			b.doubt.ClaimOf(o)
+			// The copy kept may be the false one, so its run is in doubt too;
+			// a copy that claims no run is no run's.
+			if kept.run != "" {
+				b.doubt.Claim(kept.run)
+			}
 		default:
-			b.added[id] = sum
+			b.added[id] = h
 			b.lines = append(b.lines, line...)
 			b.found.Observations++
 		}
@@ -54,7 +70,7 @@ func (ids index) fresh(obs []*observev1.Observation) (batch, error) {
 }
 
 func (ids index) add(added index) {
-	for id, sum := range added {
-		ids[id] = sum
+	for id, h := range added {
+		ids[id] = h
 	}
 }

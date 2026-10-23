@@ -111,15 +111,15 @@
 <main id="main" class="prose">
 <h1 id="supervision">Supervision</h1>
 <p><code>guardana-control supervise</code> checks a run an operator opened against its
-procedure, from the plane's evidence and the agent runtime's reports, and
-appends findings to a findings log.
+procedure, from the plane's evidence and the runtime's reports, and
+appends findings to a log.
 <code>guardana-control notify</code> hands each alert in that log to a program of the
 operator's, at least once. Both are <code>experimental</code>. Neither decides a call,
 and no plane reads what they write
 (<a href="/docs/adr/0045-one-run-is-supervised-against-its-procedure">ADR-0045</a>);
 <code>react</code> turns a confirmed finding into a stop a plane reads
-(<a href="/docs/reference/reaction">reaction.md</a>). <code>--view</code> draws the run as a
-page (<a href="/docs/reference/run-view">run-view.md</a>).</p>
+(<a href="/docs/reference/reaction">reaction.md</a>). <code>--view</code> draws the run
+(<a href="/docs/reference/run-view">run-view.md</a>).</p>
 <pre><code>guardana-control supervise --procedure &lt;file&gt; --runs &lt;dir&gt; --run &lt;run-id&gt; --findings &lt;dir&gt;
     [--evidence &lt;export&gt;]... [--source &lt;descriptor&gt; --log &lt;dir&gt;]...
     [--view &lt;file&gt; [--view-all]]
@@ -196,7 +196,7 @@ leaves <code>STEP_OUTSIDE_PROCEDURE</code> and <code>DENIED_ACTION_RETRIED_AROUN
 checked, findings kept. Everything else is counted and left out.</p>
 <p>The procedure, descriptors and evidence exports must be regular
 files of this account that only it can write: a <code>CONFIRMED</code> finding rests on
-the export being the plane's, and nothing else protects that.</p>
+the export being the plane's.</p>
 <h2 id="the-rules">The rules</h2>
 <table>
 <thead>
@@ -259,10 +259,13 @@ retry, belongs to the step it held. Every rule orders by the plane's times, neve
 an export; a retry confirms only when one export holds both.</p>
 <h2 id="the-verdict">The verdict</h2>
 <p>The weakest of what a finding rests on. Plane events in an unbroken chain can
-make it <code>CONFIRMED</code>; an observation makes it <code>SUSPECTED</code>; a record in doubt (a
-conflicting id, a broken chain, a silent source) makes it
-<code>INDETERMINATE</code>; the first two also leave each rule that reads them not
-checked. The step rules rest on something not seen:
+make it <code>CONFIRMED</code>; an observation makes it <code>SUSPECTED</code>; a record in doubt,
+<code>INDETERMINATE</code>. So are a silent source's observations. A request with two
+copies or a broken chain leaves no rule checked; an observation with two
+contents, or a judged run a log doubts, while it holds that report
+(<a href="/docs/reference/observations#the-log">observations</a>), leaves <code>STEP_OUTSIDE_PROCEDURE</code>
+and <code>DENIED_ACTION_RETRIED_AROUND</code> not checked.
+The step rules rest on something not seen:
 <code>SUSPECTED</code> at most, <code>INDETERMINATE</code> while a <code>--source</code> is absent, never
 heard or silent, and checked only on a closed run whose exports are whole.
 Under <code>0.2</code> a finding confirms on its run's own events alone, save the
@@ -342,8 +345,7 @@ is never read.</p>
 </tbody>
 </table>
 <p>A log with no header is read as it is; an empty one gains one when opened.
-The reader refuses an unknown schema or a member its schema lacks, so a
-<code>0.1</code>-only reader refuses every <code>0.2</code> line.</p>
+The reader refuses an unknown schema or a member its schema lacks.</p>
 <h2 id="notify">notify</h2>
 <p><code>notify</code> hands each <code>alert</code> record, in log order, one line on its
 standard input, to the program after <code>--</code>, without a shell, and kills its

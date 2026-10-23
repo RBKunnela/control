@@ -70,7 +70,7 @@ type recordCase struct {
 
 var observationCases = []recordCase{
 	{"version absent", func(o *observev1.Observation) { o.SchemaVersion = "" }, "absent"},
-	{"version next minor", func(o *observev1.Observation) { o.SchemaVersion = "0.2" }, "minor"},
+	{"version next minor", func(o *observev1.Observation) { o.SchemaVersion = "0.3" }, "minor"},
 	{"version major", func(o *observev1.Observation) { o.SchemaVersion = "1.0" }, "major"},
 	{"id absent", func(o *observev1.Observation) { o.ObservationId = "" }, "observation_id"},
 	{"id 31 digits", func(o *observev1.Observation) { o.ObservationId = fixtureObservationID[:35] }, "observation_id"},
@@ -113,7 +113,7 @@ var reportCases = []struct {
 	member string
 }{
 	{"version absent", func(r *observev1.ImportReport) { r.SchemaVersion = "" }, "absent"},
-	{"version next minor", func(r *observev1.ImportReport) { r.SchemaVersion = "0.2" }, "minor"},
+	{"version next minor", func(r *observev1.ImportReport) { r.SchemaVersion = "0.3" }, "minor"},
 	{"tenant absent", func(r *observev1.ImportReport) { r.TenantId = "" }, "tenant_id"},
 	{"project absent", func(r *observev1.ImportReport) { r.ProjectId = "" }, "project_id"},
 	{"no counts", func(r *observev1.ImportReport) { r.Counts = nil }, ""},

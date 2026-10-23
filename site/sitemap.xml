@@ -60,6 +60,7 @@
   <url><loc>https://control.guardana.dev/docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands</loc></url>
   <url><loc>https://control.guardana.dev/docs/adr/0056-a-coding-runtimes-hooks-reach-the-plane-through-one-bridge</loc></url>
   <url><loc>https://control.guardana.dev/docs/adr/0057-an-external-mcp-client-runs-the-guide-on-every-pull-request</loc></url>
+  <url><loc>https://control.guardana.dev/docs/adr/0058-a-copy-an-import-never-read-is-doubt-for-the-runs-it-claimed</loc></url>
   <url><loc>https://control.guardana.dev/docs/backlog</loc></url>
   <url><loc>https://control.guardana.dev/docs/changelog</loc></url>
   <url><loc>https://control.guardana.dev/docs/concepts/approvals-and-the-held-call</loc></url>

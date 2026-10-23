@@ -73,7 +73,7 @@ func ReadDescriptor(b []byte) (*observev1.SourceDescriptor, error) {
 }
 
 func checkDescriptor(d *observev1.SourceDescriptor) error {
-	if err := CheckVersion(d.GetSchemaVersion()); err != nil {
+	if err := checkVersion(d.GetSchemaVersion(), descriptorMinors); err != nil {
 		return refuse("schema_version", err)
 	}
 	checks := []struct {

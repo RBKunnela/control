@@ -58,6 +58,7 @@ func Import(r io.Reader, desc *observev1.SourceDescriptor, descriptorSHA256 stri
 		if tooLong {
 			im.counts.Read++
 			im.counts.Refused++
+			im.doubt.Claim("")
 			continue
 		}
 		im.line(line)
@@ -94,7 +95,7 @@ func lowerHex(s string) bool {
 // importer accumulates one import. earliest and latest span the end times
 // of every span of the selected resource that was read and not refused,
 // skipped ones included, so a source that sends only operations the importer
-// skips is still heard.
+// skips is still heard. doubt holds the runs the refused spans claim.
 type importer struct {
 	desc             *observev1.SourceDescriptor
 	sha              string
@@ -102,6 +103,7 @@ type importer struct {
 	counts           *observev1.ImportCounts
 	observations     []*observev1.Observation
 	earliest, latest uint64
+	doubt            observe.Doubt
 }
 
 func (im *importer) source() *observev1.SourceRef {
@@ -128,6 +130,7 @@ func (im *importer) line(line []byte) {
 		n := countSpans(line)
 		im.counts.Read += n
 		im.counts.Refused += n
+		im.doubt.Claim("")
 		return
 	}
 	for _, rs := range resources {
@@ -159,6 +162,7 @@ func (im *importer) selected(rs *resourceSpans) bool {
 func (im *importer) span(s *span) {
 	if !keyable(s) {
 		im.counts.Refused++
+		im.doubt.Claim(claimedRun(s, im.desc.GetRunAttribute()))
 		return
 	}
 	im.heard(s.end)
@@ -197,7 +201,7 @@ func (im *importer) add(c spanCounts) {
 }
 
 func (im *importer) report(in *lines) *observev1.ImportReport {
-	return &observev1.ImportReport{
+	r := &observev1.ImportReport{
 		SchemaVersion:        observe.SchemaVersion,
 		TenantId:             im.desc.GetTenantId(),
 		ProjectId:            im.desc.GetProjectId(),
@@ -209,4 +213,6 @@ func (im *importer) report(in *lines) *observev1.ImportReport {
 		EarliestEventTime:    eventTime(im.earliest),
 		LatestEventTime:      eventTime(im.latest),
 	}
+	im.doubt.Fill(r)
+	return r
 }

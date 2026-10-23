@@ -122,6 +122,9 @@ and <a href="/docs/adr/0004-evidence-and-privacy-defaults">ADR-0004</a>.</p>
 <code>internal/supervise</code>, the sixth guarded tree, imports <code>internal/observe</code>; the
 test below holds the plane's five trees, not every guarded tree, away from
 observation code.</p>
+<p>Amended by <a href="/docs/adr/0058-a-copy-an-import-never-read-is-doubt-for-the-runs-it-claimed">ADR-0058</a>:
+the reader's table below holds <code>0.1</code> and <code>0.2</code>. An <code>ImportReport</code> naming the
+runs its refused copies claimed is <code>0.2</code>; every other record stays <code>0.1</code>.</p>
 <h2 id="context">Context</h2>
 <p>ADR-0039 fixed what an observation says and left its shape open. The first
 source is an agent runtime's OpenTelemetry traces under the GenAI semantic

@@ -29,6 +29,11 @@ contents, it cites only the clean ones and keeps its verdict when at least
 `max_denials` are clean; a route naming version 1 is refused but as the
 source of a carry, which keeps its stops ([ADR-0046](0046-a-finding-stops-one-run-through-a-signed-route.md)).
 
+Amended by [ADR-0058](0058-a-copy-an-import-never-read-is-doubt-for-the-runs-it-claimed.md):
+a run a source's import reports doubt leaves `STEP_OUTSIDE_PROCEDURE` and
+`DENIED_ACTION_RETRIED_AROUND` not checked, and a finding citing an
+observation of a doubted run is `INDETERMINATE`.
+
 ## Context
 
 A plane decides each call on its own. Whether a run as a whole kept to the

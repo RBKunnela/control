@@ -66,3 +66,4 @@ request with `Status: proposed`, and set it to `accepted` when it merges.
 | [0055](0055-a-call-is-handed-out-only-while-its-policy-stands.md) | A call is handed out only while the policy it was decided under stands |
 | [0056](0056-a-coding-runtimes-hooks-reach-the-plane-through-one-bridge.md) | A coding runtime's hooks reach the plane through one bridge, by value |
 | [0057](0057-an-external-mcp-client-runs-the-guide-on-every-pull-request.md) | An MCP client outside the Go SDK runs the guide on every pull request |
+| [0058](0058-a-copy-an-import-never-read-is-doubt-for-the-runs-it-claimed.md) | A copy an import never read is doubt for the runs it claimed |

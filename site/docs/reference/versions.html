@@ -218,8 +218,8 @@ version. <a href="/docs/status">status.md</a> is the inventory.</p>
 </tr>
 <tr>
 <td>Observation records and log (<code>guardana.control.observe.v1alpha1</code>)</td>
-<td><code>0.1</code></td>
-<td><code>0.1</code></td>
+<td><code>0.1</code>, <code>0.2</code></td>
+<td><code>0.1</code>, <code>0.2</code></td>
 <td><code>experimental</code></td>
 <td><a href="/docs/reference/observations#the-log">observations.md</a></td>
 </tr>
@@ -336,7 +336,12 @@ header's <code>log_id</code>, or by its first line in a log that has no header; 
 trailer's <code>identity</code> says which.</li>
 <li><strong>Observation records and the source descriptor.</strong> Only the minors in the
 reader's table are read; another <code>0.x</code> is refused rather than read as the
-nearest one.</li>
+nearest one. An import report is <code>0.2</code> exactly when it names runs in doubt
+or sets <code>every_run_doubted</code>, and a reader of <code>0.1</code> alone, such as an
+earlier release's, refuses that line. The observation export carries each
+report's line as the log holds it, so its reader meets <code>0.2</code> import
+reports inside an export whose own version stays <code>0.1</code>; an earlier
+release's export counts such a line as an <code>unsupported_version</code> gap.</li>
 </ul>
 <p><code>internal/docscheck/versions_test.go</code> holds the table to the constants and
 readers in the code. It fails when a version changes there, when a format is

@@ -147,7 +147,8 @@ func judgedSize(f *os.File) (int64, error) {
 // one write that is synced before Write returns. An observation whose id the
 // log or an earlier one of obs holds is not appended: a duplicate when its
 // content digest is the same, a conflict when it is not. The report written
-// is a copy of report with those counts added to its own.
+// is a copy of report with those counts added to its own, and the runs the
+// conflicts claim to the runs it puts in doubt.
 //
 // An observation or a report the codec refuses, or none for report, refuses
 // the whole call as ErrRecord, and a write that would take the file past
@@ -170,7 +171,7 @@ func (l *Log) Write(obs []*observev1.Observation, report *observev1.ImportReport
 	if err != nil {
 		return Written{}, err
 	}
-	line, err := reportLine(report, b.found)
+	line, err := reportLine(report, b.found, &b.doubt)
 	if err != nil {
 		return Written{}, err
 	}
@@ -193,20 +194,29 @@ func (l *Log) Write(obs []*observev1.Observation, report *observev1.ImportReport
 }
 
 // reportLine encodes a copy of report with found's duplicates and conflicts
-// added to its counts.
-func reportLine(report *observev1.ImportReport, found Written) ([]byte, error) {
+// added to its counts, and doubt's runs to its runs in doubt. report itself
+// must be one the codec writes, so runs in doubt it names in another form
+// are refused rather than put in order.
+func reportLine(report *observev1.ImportReport, found Written, doubt *observe.Doubt) ([]byte, error) {
 	if report == nil {
 		return nil, fmt.Errorf("%w: no import report", ErrRecord)
+	}
+	if _, err := observe.MarshalLine(&observev1.Record{Record: &observev1.Record_ImportReport{ImportReport: report}}); err != nil {
+		return nil, fmt.Errorf("%w: the import report: %w", ErrRecord, err)
 	}
 	r, ok := proto.Clone(report).(*observev1.ImportReport)
 	if !ok {
 		return nil, fmt.Errorf("%w: the import report does not copy", ErrRecord)
 	}
+	// Merged before this write's own conflicts are counted, which doubt
+	// already names, so they are not read as conflicts that name no run.
+	doubt.Merge(r)
 	if r.Counts == nil {
 		r.Counts = &observev1.ImportCounts{}
 	}
 	r.Counts.Duplicate += uint64(found.Duplicates) //nolint:gosec // G115: a count is never negative
 	r.Counts.Conflict += uint64(found.Conflicts)   //nolint:gosec // G115: a count is never negative
+	doubt.Fill(r)
 	line, err := observe.MarshalLine(&observev1.Record{Record: &observev1.Record_ImportReport{ImportReport: r}})
 	if err != nil {
 		return nil, fmt.Errorf("%w: the import report: %w", ErrRecord, err)

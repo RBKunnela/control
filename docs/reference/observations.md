@@ -98,6 +98,29 @@ receive time, the input's first-line digest and size, every count above, and
 the earliest and latest event time. A source was last heard at its newest
 event time not later than a report's receive time.
 
+A span the import refused was never written, and of a conflict's two copies
+either may be the false one, so each may hide a call of the run it claimed.
+The report's `doubted_run_ids` names those runs, ascending, at most 64: a
+refused span's, and both copies' of a conflict, save a kept copy that claims
+no run, which adds none. A refused span or a
+conflict's refused copy that claims no run, a line refused before its spans
+are read, or a 65th run sets `every_run_doubted` instead. A report that counts
+a refusal or a conflict and names no run, as a `0.1` report does, is read as
+doubting every run; [supervision](supervision.md#the-verdict) says what a
+doubted run leaves unchecked.
+
+A report that carries either member is schema `0.2`; every other report and
+every observation is `0.1`, and the reader refuses a `0.2` record with
+neither and a `0.1` report with one. A reader of `0.1` alone, such as an
+earlier release's, refuses every `0.2` line.
+
+A doubt has no time bound: it holds for as long as the log holds the report,
+and a doubt of every run reaches every later run of the source. Only rotating
+the log ends it: with no import running, move `observations.jsonl` out of its
+directory by hand, and the next import starts a new file. The observations
+the old file held go with it; until that import, `supervise` finds the source
+never heard.
+
 ## Commands
 
 ```
