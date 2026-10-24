@@ -129,6 +129,9 @@ verify one.
 
 ### Changed
 
+- `make check-sizes` holds `*.py` and `*.sh` files to the size budget too,
+  tests included: above 350 non-blank lines warns, above 500 fails. The
+  files that were over it are split, with nothing changed for a caller.
 - Statements on the public pages that the code contradicted are corrected:
   what `OBSERVE` still blocks, a held trail's closing record after hand-out,
   shutdown of an enforcement API plane, the collector's 415, the hook's

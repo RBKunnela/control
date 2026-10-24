@@ -210,9 +210,11 @@ class Imports(unittest.TestCase):
         )
 
     def test_the_second_client_and_the_harness_take_only_public_types(self) -> None:
-        for name in ("second_client.py", "harness.py"):
+        for name in ("second_client.py", "harness.py", "cases.py"):
             taken = taken_from_the_module(
                 (Path(__file__).parent / name).read_text(encoding="utf-8")
             )
             self.assertTrue(taken, name)
             self.assertEqual(taken - PUBLIC, set(), name)
+        reader = (Path(__file__).parent / "second_reader.py").read_text(encoding="utf-8")
+        self.assertEqual(taken_from_the_module(reader), set(), "second_reader.py")

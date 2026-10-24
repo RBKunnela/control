@@ -7,7 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from guardana_control.enforce import Result, Status
-from tests import harness
+from tests import cases, harness
 from tests.test_conformance import method_name, reference, second
 
 TOOL = "refund"
@@ -130,10 +130,10 @@ def script_of(vector: Vector) -> list[harness.Scripted]:
     )
     leading = {"admit": None, "complete": "execute-plain", "abort": "unknown-obligation"}
     case = leading[vector.operation]
-    return [own] if case is None else [harness.load_script(case)[0], own]
+    return [own] if case is None else [cases.load_script(case)[0], own]
 
 
-def run_vector(make: harness.Maker, vector: Vector) -> harness.Told:
+def run_vector(make: harness.Maker, vector: Vector) -> cases.Told:
     """Makes the vectors' one call and returns what it told its caller."""
     reached: list[bytes] = []
 
@@ -144,14 +144,14 @@ def run_vector(make: harness.Maker, vector: Vector) -> harness.Told:
     receiver = harness.Receiver(script_of(vector), goes_on=vector.operation == "admit")
     try:
         client = make(receiver.socket, RUN, lambda: harness.AFTER if reached else harness.BEFORE)
-        outcome = harness.attempt(client, TOOL, ARGUMENTS, tool)
+        outcome = cases.attempt(client, TOOL, ARGUMENTS, tool)
         requests = receiver.requests()
     finally:
         receiver.close()
     if isinstance(outcome, BaseException):
-        told = harness.describe(None, outcome, None)
+        told = cases.describe(None, outcome, None)
     else:
-        told = harness.describe(outcome, None, None)
+        told = cases.describe(outcome, None, None)
     told.reached, told.requests = bool(reached), requests
     told.received = reached[0] if reached else None
     return told
@@ -189,7 +189,7 @@ def as_refused(vector: Vector) -> dict[str, object]:
     }
 
 
-def behaviour(told: harness.Told) -> dict[str, object]:
+def behaviour(told: cases.Told) -> dict[str, object]:
     """What the client did, in the shape of an expectation."""
     operations = {path: name for name, path in harness.PATHS.items()}
     return {
@@ -202,10 +202,10 @@ def behaviour(told: harness.Told) -> dict[str, object]:
     }
 
 
-def request_misses(told: harness.Told) -> list[str]:
+def request_misses(told: cases.Told) -> list[str]:
     misses: list[str] = []
     for number, request in enumerate(told.requests, start=1):
-        misses += harness.request_misses(number, request, RUN)
+        misses += cases.request_misses(number, request, RUN)
     return misses
 
 

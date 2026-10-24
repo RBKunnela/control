@@ -12,7 +12,7 @@ from guardana_control.enforce import (
     MalformedAnswer,
     NoAnswer,
 )
-from tests import harness
+from tests import cases, harness
 from tests.harness import ABORT, ADMIT, COMPLETE, Got, Scripted
 from tests.second_client import Connection
 
@@ -51,7 +51,7 @@ class Comparison(unittest.TestCase):
     def test_a_value_matches_only_its_like(self) -> None:
         want = {"handle": "h-1", "startedAt": "*", "nested": {"n": 1}}
         same = {"handle": "h-1", "startedAt": "2026-10-11T12:00:01Z", "nested": {"n": 1}}
-        self.assertEqual(harness.match_json("r", want, same), [])
+        self.assertEqual(cases.match_json("r", want, same), [])
         for body, miss in (
             (
                 {"handle": "h-2", "startedAt": "x", "nested": {"n": 1}},
@@ -67,7 +67,7 @@ class Comparison(unittest.TestCase):
             ({**same, "handle": None}, ["r.handle: None, want 'h-1'"]),
         ):
             with self.subTest(body=body):
-                self.assertEqual(harness.match_json("r", want, body), miss)
+                self.assertEqual(cases.match_json("r", want, body), miss)
 
     def test_requests_are_held_to_their_expectation(self) -> None:
         admit = b'{"tool":"t","arguments":"eyJhIjoxfQ=="}'
@@ -91,7 +91,7 @@ class Comparison(unittest.TestCase):
             "completion_status": "COMPLETION_STATUS_UNKNOWN",
         }
         sent = [got(ADMIT, admit), got(COMPLETE, complete)]
-        self.assertEqual(harness.compare_requests(sent, "tok", expect), [])
+        self.assertEqual(cases.compare_requests(sent, "tok", expect), [])
         late = complete.replace(b"12:00:10Z", b"12:00:09Z")
         local = complete.replace(b"12:00:11.500Z", b"14:00:11.500+02:00")
         for what, requests, miss in (
@@ -159,7 +159,7 @@ class Comparison(unittest.TestCase):
             ),
         ):
             with self.subTest(what=what):
-                misses = harness.compare_requests(requests, "tok", expect)
+                misses = cases.compare_requests(requests, "tok", expect)
                 self.assertTrue([m for m in misses if miss in m], misses)
 
     def test_an_outcome_is_told_in_the_shared_files_words(self) -> None:
@@ -178,12 +178,12 @@ class Comparison(unittest.TestCase):
         ):
             with self.subTest(kind=kind):
                 answer = Answer("OUTCOME_EXECUTE", None, None, True, None, "ENDING_RECORDED")
-                told = harness.describe(None if error else answer, error, tool_error)
+                told = cases.describe(None if error else answer, error, tool_error)
                 self.assertEqual((told.kind, told.code, told.ending), (kind, code, ending))
         undeclared = CallRefused(NOTHING, status=500, code="42", message="")
-        self.assertEqual(harness.describe(None, undeclared, None).code, "")
+        self.assertEqual(cases.describe(None, undeclared, None).code, "")
         numbered = Answer("OUTCOME_EXECUTE", None, Held("ap-1", "", None, None), True, None, "9")
-        told = harness.describe(numbered, None, None)
+        told = cases.describe(numbered, None, None)
         self.assertEqual((told.ending, told.approval_id, told.retry_after), ("", "ap-1", ""))
 
 

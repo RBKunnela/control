@@ -69,8 +69,8 @@ is a rule the admin keeps. Only a release commit is pushed to `main` directly
 | Everyone | anyone with a GitHub account | open issues, and pull requests from a fork |
 
 Nobody can force-push or delete `main`, or move or delete a release tag.
-Settings, teams and rulesets live in `scripts/lib/github-settings.sh`, where a
-change starts; `scripts/github-bootstrap.sh` applies them, and
+Settings, teams and rulesets live in `scripts/lib/github-settings.sh` and what
+it sources; `scripts/github-bootstrap.sh` applies them, and
 `scripts/github-settings-check.sh` compares them with GitHub without writing:
 exit 1 on drift, 2 when unsure. How a release is cut is in
 [RELEASING.md](RELEASING.md).

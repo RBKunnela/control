@@ -37,7 +37,7 @@ var arrayDeclaration = regexp.MustCompile(`^([A-Z][A-Z0-9_]*)=\($`)
 // and the sourced value is the one the reader sees.
 func TestSettingsArraysAreAssignedOnce(t *testing.T) {
 	fsys := repoFS(t)
-	files := []string{githubSettings, "scripts/github-bootstrap.sh", "scripts/github-settings-check.sh"}
+	files := []string{githubSettings, "scripts/lib/github-bodies.sh", "scripts/lib/github-rulesets.sh", "scripts/github-bootstrap.sh", "scripts/github-settings-check.sh"}
 	var names []string
 	for _, line := range readLines(t, fsys, githubSettings) {
 		if m := arrayDeclaration.FindStringSubmatch(line); m != nil && !slices.Contains(names, m[1]) {

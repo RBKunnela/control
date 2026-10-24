@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # shellcheck source-path=SCRIPTDIR
-# Size budget for hand-written Go. Above 350 non-blank lines warns, above 500
-# fails. Generated code is exempt only under api/gen/, which proto-check holds
-# equal to the generator's output; a .pb.go name anywhere else proves nothing.
+# Size budget for hand-written Go, Python and shell. Above 350 non-blank lines
+# warns, above 500 fails. A Go test file is exempt; a Python or shell file is
+# judged whole, tests included. Generated code is exempt only where something
+# holds it equal to its generator's output: under api/gen/, which proto-check
+# compares, and at the one Python path named below; a generated-looking name
+# anywhere else proves nothing.
 set -euo pipefail
 
 _CHECK_SIZES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
@@ -19,9 +22,11 @@ readonly FAIL_LIMIT=500
 
 # Captured before the loop so a failing enumeration aborts here instead of
 # leaving the loop with nothing to read and a clean exit.
-files="$(repo_files '*.go')"
+files="$(repo_files '*.go' '*.py' '*.sh')"
 
-checked=0
+go_checked=0
+python_checked=0
+shell_checked=0
 warnings=0
 failures=0
 
@@ -29,10 +34,21 @@ while IFS= read -r file; do
   [[ -n "${file}" ]] || continue
   case "${file}" in
     api/gen/*|testdata/*|*/testdata/*|*_test.go) continue ;;
+    # Written by scripts/gen-pyschema.go; internal/docscheck fails when it differs.
+    clients/python/src/guardana_control/enforce/_schema.py) continue ;;
+  esac
+
+  case "${file}" in
+    *.go) go_checked=$((go_checked + 1)) ;;
+    *.py) python_checked=$((python_checked + 1)) ;;
+    *.sh) shell_checked=$((shell_checked + 1)) ;;
+    *)
+      printf 'check-sizes: %s is listed but is neither Go, Python nor shell\n' "${file}" >&2
+      exit 1
+      ;;
   esac
 
   lines="$(awk 'NF { n++ } END { print n + 0 }' "${file}")"
-  checked=$((checked + 1))
 
   if (( lines > FAIL_LIMIT )); then
     printf 'FAIL %s: %d lines (limit %d)\n' "${file}" "${lines}" "${FAIL_LIMIT}" >&2
@@ -43,15 +59,19 @@ while IFS= read -r file; do
   fi
 done <<<"${files}"
 
-printf 'check-sizes: %d file(s) checked, %d warning(s), %d failure(s)\n' \
-  "${checked}" "${warnings}" "${failures}"
+checked=$((go_checked + python_checked + shell_checked))
+printf 'check-sizes: %d file(s) checked (%d Go, %d Python, %d shell), %d warning(s), %d failure(s)\n' \
+  "${checked}" "${go_checked}" "${python_checked}" "${shell_checked}" "${warnings}" "${failures}"
 
-# A run that examined nothing is a broken enumeration, not a clean tree. The
-# repository always has hand-written Go outside api/gen/ and _test.go files.
-if (( checked == 0 )); then
-  printf 'check-sizes: no Go production source found; refusing to report a pass\n' >&2
-  exit 1
-fi
+# A kind that examined nothing is a broken enumeration, not a clean tree. The
+# repository always holds hand-written Go outside api/gen/ and _test.go files,
+# the Python client and the gate's own scripts.
+for kind in Go:${go_checked} Python:${python_checked} shell:${shell_checked}; do
+  if (( ${kind#*:} == 0 )); then
+    printf 'check-sizes: no %s source found; refusing to report a pass\n' "${kind%%:*}" >&2
+    exit 1
+  fi
+done
 
 if (( failures > 0 )); then
   exit 1

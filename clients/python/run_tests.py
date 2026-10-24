@@ -41,8 +41,13 @@ sys.path += [str(HERE / "src"), str(HERE)]
 # of the module's imports, the harness's independence, the rules no case file
 # holds, the reader's refusals, the transport's bounds, and this gate's own
 # controls. A renamed, deleted or uncollected one fails the run.
-_RULES = "tests.test_rules"
+_CONSTRUCTION = "tests.test_rules_construction.Construction"
+_RETURNING = "tests.test_rules_returning.Returning"
+_ABORTING = "tests.test_rules_aborting.Aborting"
+_RUNNING = "tests.test_rules_running.Running"
+_NESTED = "tests.test_rules_nested.Nested"
 _TRANSPORT = "tests.test_transport.Transport"
+_FRAMING = "tests.test_transport_framing.Framing"
 PROMISED = (
     "tests.test_e2e.Plane.test_an_allowed_call_runs_and_a_denied_one_never_reaches_the_tool",
     "tests.test_imports.Imports.test_the_module_imports_only_the_allowed_modules_and_itself",
@@ -54,30 +59,30 @@ PROMISED = (
     "tests.test_vectors.VectorFile.test_the_pinned_refusals_are_the_files_may_refuse_vectors",
     "tests.test_wire.Refused.test_every_refusal",
     "tests.test_wire.Refused.test_the_other_answers_are_read_as_strictly",
-    f"{_RULES}.Construction.test_a_timeout_that_is_no_finite_positive_number_is_refused",
-    f"{_RULES}.Returning.test_only_recorded_says_the_record_landed",
-    f"{_RULES}.Returning.test_an_answer_the_client_cannot_act_on_sends_nothing",
-    f"{_RULES}.Aborting.test_an_obligation_outranks_missing_bytes_and_a_gone_caller",
-    f"{_RULES}.Aborting.test_a_refused_abort_is_still_an_abort",
-    f"{_RULES}.Aborting.test_a_caller_gone_before_admit_sends_nothing",
-    f"{_RULES}.Aborting.test_an_interrupt_between_admit_and_the_tool_aborts_and_is_raised_again",
-    f"{_RULES}.Running.test_the_tool_cannot_change_what_complete_reports_as_sent",
-    f"{_RULES}.Running.test_not_sent_met_only_in_a_chain_completes",
-    f"{_RULES}.Running.test_any_exception_of_the_tool_is_completed_unknown_and_raised_again",
-    f"{_RULES}.Running.test_an_interrupt_after_the_tool_is_completed_unknown_and_raised_again",
-    f"{_RULES}.Running.test_a_tool_that_cannot_return_a_result_is_refused_before_admit",
-    f"{_RULES}.Running.test_one_client_serves_concurrent_calls_from_threads",
+    f"{_CONSTRUCTION}.test_a_timeout_that_is_no_finite_positive_number_is_refused",
+    f"{_RETURNING}.test_only_recorded_says_the_record_landed",
+    f"{_RETURNING}.test_an_answer_the_client_cannot_act_on_sends_nothing",
+    f"{_ABORTING}.test_an_obligation_outranks_missing_bytes_and_a_gone_caller",
+    f"{_ABORTING}.test_a_refused_abort_is_still_an_abort",
+    f"{_ABORTING}.test_a_caller_gone_before_admit_sends_nothing",
+    f"{_ABORTING}.test_an_interrupt_between_admit_and_the_tool_aborts_and_is_raised_again",
+    f"{_RUNNING}.test_the_tool_cannot_change_what_complete_reports_as_sent",
+    f"{_RUNNING}.test_not_sent_met_only_in_a_chain_completes",
+    f"{_RUNNING}.test_any_exception_of_the_tool_is_completed_unknown_and_raised_again",
+    f"{_RUNNING}.test_an_interrupt_after_the_tool_is_completed_unknown_and_raised_again",
+    f"{_RUNNING}.test_a_tool_that_cannot_return_a_result_is_refused_before_admit",
+    f"{_RUNNING}.test_one_client_serves_concurrent_calls_from_threads",
     f"{_TRANSPORT}.test_the_timeout_bounds_a_whole_request_not_each_read",
     f"{_TRANSPORT}.test_an_answer_at_the_bound_is_read_and_one_byte_past_it_is_not",
     f"{_TRANSPORT}.test_a_redirect_is_not_followed",
-    f"{_TRANSPORT}.test_a_bound_on_the_head_or_on_a_chunk_ends_the_read_at_once",
-    f"{_TRANSPORT}.test_a_framing_a_stricter_reader_refuses_is_no_answer",
-    f"{_TRANSPORT}.test_the_framings_a_receiver_may_write_are_still_read",
-    f"{_RULES}.Nested.test_an_exception_of_a_call_the_tool_made_leaves_as_the_outer_calls_own",
-    f"{_RULES}.Nested.test_an_outer_complete_that_did_not_land_is_raised_from_the_outer_calls_own",
-    f"{_RULES}.Nested.test_a_group_holding_an_exception_of_a_call_leaves_as_the_outer_calls_own",
-    f"{_RULES}.Nested.test_a_group_that_holds_an_interrupt_leaves_as_raised",
-    f"{_RULES}.Nested.test_a_group_holding_no_exception_of_this_module_leaves_unchanged",
+    f"{_FRAMING}.test_a_bound_on_the_head_or_on_a_chunk_ends_the_read_at_once",
+    f"{_FRAMING}.test_a_framing_a_stricter_reader_refuses_is_no_answer",
+    f"{_FRAMING}.test_the_framings_a_receiver_may_write_are_still_read",
+    f"{_NESTED}.test_an_exception_of_a_call_the_tool_made_leaves_as_the_outer_calls_own",
+    f"{_NESTED}.test_an_outer_complete_that_did_not_land_is_raised_from_the_outer_calls_own",
+    f"{_NESTED}.test_a_group_holding_an_exception_of_a_call_leaves_as_the_outer_calls_own",
+    f"{_NESTED}.test_a_group_that_holds_an_interrupt_leaves_as_raised",
+    f"{_NESTED}.test_a_group_holding_no_exception_of_this_module_leaves_unchanged",
     f"{_TRANSPORT}.test_a_trailer_that_never_ends_ends_the_call_by_the_timeout",
     "tests.test_e2e.Commands.test_the_plane_is_named_gateway_and_the_command_is_the_other",
     "tests.test_e2e.Commands.test_any_other_holding_is_refused_and_named",

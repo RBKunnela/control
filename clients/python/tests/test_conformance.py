@@ -7,7 +7,7 @@ from collections.abc import Callable
 from datetime import datetime
 
 from guardana_control.enforce import Client
-from tests import harness
+from tests import cases, harness
 from tests.second_client import DEFECTS
 from tests.second_client import SecondClient as Second
 
@@ -41,7 +41,7 @@ class NegativeControls(unittest.TestCase):
 
 def _passes(make: harness.Maker, case_id: str) -> Callable[[unittest.TestCase], None]:
     def test(self: unittest.TestCase) -> None:
-        self.assertEqual(harness.run_case(make, case_id), [])
+        self.assertEqual(cases.run_case(make, case_id), [])
 
     return test
 
@@ -52,13 +52,13 @@ def _fails(case: dict[str, object]) -> Callable[[unittest.TestCase], None]:
 
     def test(self: unittest.TestCase) -> None:
         self.assertIn(defect, DEFECTS)
-        misses = harness.run_case(second(defect), harness.as_text(case["id"], "id"))
+        misses = cases.run_case(second(defect), harness.as_text(case["id"], "id"))
         self.assertNotEqual(misses, [], f"a client that {control['breaks']} passed")
 
     return test
 
 
-for _case in harness.client_cases():
+for _case in cases.client_cases():
     _id = harness.as_text(_case["id"], "id")
     setattr(ReferenceClient, method_name(_id), _passes(reference, _id))
     setattr(SecondClient, method_name(_id), _passes(second(), _id))
@@ -69,13 +69,13 @@ class CaseFiles(unittest.TestCase):
     """The index, the directories and the defects name one another."""
 
     def test_the_index_lists_the_directories(self) -> None:
-        listed = sorted(harness.as_text(case["id"], "id") for case in harness.client_cases())
+        listed = sorted(harness.as_text(case["id"], "id") for case in cases.client_cases())
         held = sorted(entry.name for entry in (harness.TESTDATA / "client").iterdir())
         self.assertEqual(listed, held)
         self.assertEqual(len(listed), 17)
 
     def test_every_case_names_a_rule_and_a_defect_the_second_client_has(self) -> None:
-        for case in harness.client_cases():
+        for case in cases.client_cases():
             control = harness.as_object(case["negative_control"], "negative_control")
             self.assertEqual(case["contract"], "v1alpha1")
             self.assertTrue(case["rule"] and control["breaks"], case["id"])
@@ -84,7 +84,7 @@ class CaseFiles(unittest.TestCase):
     def test_the_second_client_has_no_defect_without_a_case(self) -> None:
         used = {
             harness.as_object(case["negative_control"], "negative_control")["defect"]
-            for case in harness.client_cases()
+            for case in cases.client_cases()
         }
         self.assertEqual(used, set(DEFECTS))
         self.assertEqual(len(DEFECTS), 16)
