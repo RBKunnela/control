@@ -24,6 +24,11 @@ verify one.
 - The MCP client the filesystem server's guide is checked with locks
   `certifi` 2026.10.19, which fixes PYSEC-2026-4320 (GHSA-6q48-6c7w-9gw2).
   Neither binary nor the Python client of the enforcement API uses it.
+- The filesystem server the same guide installs locks `body-parser` 2.4.0,
+  which fixes GHSA-27r3-jxmh-p828, and `fast-uri` 3.1.9, which fixes
+  GHSA-333x-w4r6-6crp, GHSA-w74x-v6f9-j3xg, GHSA-wjr9-j795-jxcr and
+  GHSA-xhq7-xmqj-769h. Both are packages below the server, at the version its
+  fingerprints were taken from; nothing this project ships uses them.
 
 ### Added
 
