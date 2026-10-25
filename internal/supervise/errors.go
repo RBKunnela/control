@@ -8,7 +8,8 @@ type Error string
 // Error returns the refusal's text.
 func (e Error) Error() string { return string(e) }
 
-// The refusals. None quotes the input.
+// The refusals. None quotes the input except a refused source's ids, each
+// quoted.
 const (
 	// ErrProcedure is a procedure document this version does not accept.
 	ErrProcedure Error = "supervise: procedure refused"

@@ -24,7 +24,7 @@ security boundary ([status](../status.md)).
 | HTTP upstream drops the connection mid-call | sent once, never retried | none | a JSON-RPC error | yes, the next call is sent | `TestAnHTTPUpstreamThatDropsTheCallIsNeverASuccess` |
 | Pause file unreadable | blocked | `PAUSE_STATE_UNAVAILABLE` | `isError` and the code | yes, at the first read of a whole file | `TestAPauseFileSpoiledWhileThePlaneRunsBlocksEveryCall` |
 | Stop list unknown | blocked | `STOP_STATE_UNAVAILABLE` | `isError` and the code | yes, at a whole read extending the accepted list; shrunk or rewritten, no | `TestAnUnknownStopStateBlocksEveryCall`, `TestHealthAnswersTheStopStateAnd503WhenTheListIsRewritten` |
-| No freshness statement current | blocked, a read too unless `policy.fail_open_read` opened it | `POLICY_STALE` | `isError` and the code | yes, at the first poll taking a statement bound to the bundle | `TestAnUnconfirmedPlaneBlocksMaterialCalls`, `TestARenewalConfirmsAgain` |
+| No freshness statement current | blocked outside `OBSERVE`, a read too unless `policy.fail_open_read` opened it outside `LOCKDOWN` | `POLICY_STALE` | `isError` and the code | yes, at the first poll taking a statement bound to the bundle | `TestAnUnconfirmedPlaneBlocksMaterialCalls`, `TestARenewalConfirmsAgain` |
 | Bundle file torn, unsigned, older or another id's | runs on the last good bundle until its statement expires, then blocked | none, then `POLICY_STALE` | the upstream's answer, then `isError` and the code | yes, once the file holds the served bundle or a newer one with its statement | `TestEveryRefusedReplacementMovesNothing` |
 | Clock outside 1970 to 9999, or behind the verified time | blocked outside `OBSERVE`, a read too, whatever `policy.fail_open_read` says | `POLICY_STALE` | `isError` and the code | yes, once the clock passes the verified time and, after a step back, a newer statement arrives, or a restart follows `policy state reset`; outside 1970 to 9999, no | `TestAClockOutsideTheUsableRangeIsACauseInTheRequest`, `TestAClockBehindAVerifiedTimeIsACauseInTheRequest`, `TestAClockBehindTheFloorStopsAnUnconfirmedSnapshotsRead` |
 | Floor directory or file missing or unreadable at start | none: the plane does not start | none | no listener | no: restore it, or make it again with `policy state init` or `reset` | `TestAStartWithNoFloorIsRefused`, `TestAStartIsRefusedForWhatItCannotRead` |
@@ -41,8 +41,8 @@ the adapter's code.
 
 The exporter resends with a backoff growing to `export.max_backoff`; every record stays in the spool (`/healthz`: `spool.unacknowledged`), and no
 call is blocked until the spool is full. Once a collector answers again, every record it accepts
-arrives, at least once, so it tells copies apart by `event_id`; one it keeps
-refusing goes to the spool's `quarantine.log`.
+arrives, at least once, so it tells copies apart by `event_id`; one refused
+with `400`, `413` or `422` three times running goes to `quarantine.log`.
 `TestCollectorOutageBlocksNoDecision` in `internal/gateway/e2e/` holds the
 same for a collector answering `503`.
 
@@ -126,10 +126,9 @@ refusal by cause in
 floor restored below the confirmed statement counts under `floor`. The
 bundle in use keeps its confirmation, but a refused bundle file stops
 renewals, since each poll pairs statement and file, so the plane turns stale
-when the last budget ends. Then each call's `POLICY_DECIDED` carries
-`POLICY_STALE` and `policy_freshness` `STALE`, `/healthz` answers
-`"status":"degraded"`, and outside `OBSERVE` a call is blocked, a read too
-unless `policy.fail_open_read`.
+when the last budget ends. Then each `POLICY_DECIDED` carries
+`policy_freshness` `STALE` and, unless its input was refused, `POLICY_STALE`;
+`/healthz` answers `"status":"degraded"`.
 
 ## A clock that cannot be read as now
 

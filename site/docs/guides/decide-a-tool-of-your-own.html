@@ -229,9 +229,10 @@ your function makes a call of its own and lets that call's exception out,
 <li><code>/healthz</code> has an <code>enforce</code> object: <code>open_handles</code>, the answers by outcome,
 <code>abandoned</code> and the refusals by error code; <code>runs.refused_at_request</code> counts
 refused tokens by cause.</li>
-<li>In the trail a blocked call ends <code>ACTION_BLOCKED</code> with no <code>ACTION_STARTED</code>,
-and a handle nobody completed ends <code>ACTION_FAILED</code> with
-<code>EXECUTION_ABANDONED</code>.</li>
+<li>In the trail a call blocked before it starts ends <code>ACTION_BLOCKED</code> with no
+<code>ACTION_STARTED</code>, one blocked after, as when a rewrite moves its resource,
+ends <code>ACTION_FAILED</code> with a <code>BLOCKED</code> result, and a handle nobody completed
+ends <code>ACTION_FAILED</code> with <code>EXECUTION_ABANDONED</code>.</li>
 <li><code>guardana-control coverage</code> with an <code>enforce_tool</code> path in the inventory
 prints it <code>decided, not enforced</code>, naming the cooperating client
 (<a href="/docs/reference/coverage">reference/coverage.md</a>).</li>
@@ -240,9 +241,10 @@ prints it <code>decided, not enforced</code>, naming the cooperating client
 <ul>
 <li>It is not a security boundary. A client can ignore <code>BLOCK</code>, send other bytes
 and report the authorized ones; the plane records what it is told.</li>
-<li>Bytes a client reports that differ from the authorized ones halt that run's
-material calls until restart, and no other run's until <code>flow.max_runs</code> runs
-are halted; past that, a mismatch halts material calls across the plane.</li>
+<li>Arguments a client reports whose canonical form differs from the authorized
+ones halt that run's material calls until restart, and no other run's until
+<code>flow.max_runs</code> runs are halted; past that, a mismatch halts material calls
+across the plane.</li>
 <li>The socket checks read mode bits, not macOS access control lists, and do not
 cover the directories above the socket's.</li>
 <li>A stop closes every open execution as unknown; a crash leaves them at

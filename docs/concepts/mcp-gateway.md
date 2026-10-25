@@ -42,7 +42,7 @@ sequenceDiagram
     end
     Plane->>Plane: apply rewriting obligations, decide the authorized envelope again
     Plane->>Sink: ACTION_PROPOSED, POLICY_DECIDED, ACTION_STARTED
-    Sink-->>Plane: durable, closing record reserved
+    Sink-->>Plane: appended, on disk under evidence.fsync every_record, closing record reserved
     Plane-->>Listener: Disposition: execute, authorized bytes and digest
     Listener->>Listener: digest the bytes about to go
     Listener->>Server: tools/call with exactly those bytes

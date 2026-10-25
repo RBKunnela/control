@@ -187,7 +187,9 @@ and <code>attributes</code>, <code>agent.instance_id</code> and <code>model_ref<
 <p><code>POLICY_DECIDED</code> and <code>ACTION_BLOCKED</code> carry a decision: the verdict, the
 reason codes, the ids of the rules that matched, the obligations as the
 policy wrote them, the action digest, the bundle digest, timings, and, when a
-decision point was asked, its identifier.</p>
+decision point was asked, its identifier. On a block of the enforcement
+point's own, <code>ACTION_BLOCKED</code> carries that point's decision instead: the same
+digests, and no rule ids, obligations or identifier.</p>
 <p><code>APPROVAL_REQUESTED</code>, <code>APPROVAL_DECIDED</code> and <code>APPROVAL_EXPIRED</code> carry the
 approval: its ids, the action digest, the bundle digest, its state and times,
 and on an answer the <code>approver_id</code> and the optional <code>--reason</code> exactly as the

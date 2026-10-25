@@ -3,8 +3,8 @@
 qualify.sh runs the plane and the runtime and leaves, per invocation, what it
 saw in <cases>/<group>/<invocation>/ and the hook events in
 <events>/<group>/<invocation>/. Every verdict here is read from those files.
-A case whose tool call was not made, or whose observation is missing, is
-unknown, never passed.
+A case whose tool call was not made, or whose observation is missing or
+cannot be read, is unknown, never passed.
 
     harness.py settings --template <file> --out <file> --hook <command> [options]
     harness.py page-check --template <file> --page <file>
@@ -30,7 +30,7 @@ import sys
 # so nothing beside this file can stand in for a module of the standard library.
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from harness_observed import events, lines, load_json  # noqa: E402
+from harness_observed import events, jsonl, load_json  # noqa: E402
 from harness_verdicts import FAIL, PASS, UNKNOWN, judge  # noqa: E402
 
 KEEP = 2048
@@ -101,7 +101,7 @@ def snapshot(args):
 
 
 def held(args):
-    for ev in reversed(events(args.dir)):
+    for ev in reversed(events(args.dir)[0]):
         m = re.search(r"held for approval (\S+);", ev["meta"].get("stderr", ""))
         if m and ev["kind"] == "PreToolUse":
             print(m.group(1))
@@ -125,7 +125,10 @@ def free_port(_):
 
 
 def report(args):
-    results = lines(args.results)
+    results, problem = jsonl(args.results)
+    if problem:
+        print("harness: " + problem, file=sys.stderr)
+        return 2
     meta = load_json(args.meta, {})
     doc = dict(meta, cases=results)
     if args.judged_at:

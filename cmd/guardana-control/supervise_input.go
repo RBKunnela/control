@@ -127,10 +127,12 @@ func readSupervisedSource(descriptor, logDir string) (supervise.Source, bool, er
 	}
 	out := supervise.Source{
 		SourceID:         src.Descriptor.GetSourceId(),
+		Tenant:           src.Descriptor.GetTenantId(),
+		Project:          src.Descriptor.GetProjectId(),
 		HeartbeatSeconds: src.Descriptor.GetHeartbeatSeconds(),
 	}
 	out.LastHeard, out.Heard = observe.LastHeard(src.Descriptor, src.Records)
-	out.EveryRunDoubted, out.DoubtedRuns = observe.DoubtedRuns(src.Records)
+	out.EveryRunDoubted, out.DoubtedRuns = observe.DoubtedRuns(src.Descriptor, src.Records)
 	for _, r := range src.Records {
 		if o := r.GetObservation(); o != nil {
 			out.Observations = append(out.Observations, o)

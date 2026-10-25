@@ -41,13 +41,18 @@ long as the log lasts.
 4. `observelog.Write` refuses a caller's report the codec would refuse, then
    adds the runs of the conflicts it finds itself. A `0.1` report that counts
    a refusal or a conflict is read as doubting every run.
-5. `supervise` takes, per source, every run its log's reports doubt. When a
+5. `supervise` takes, per source, every run that source's own reports doubt:
+   those in its log that name its source, tenant and project, as its
+   liveness is read, whichever descriptor digest wrote them. When a
    run the evaluation judges is among them (the root, or under `inherit` any
    run of the tree), `STEP_OUTSIDE_PROCEDURE` and
    `DENIED_ACTION_RETRIED_AROUND` are not checked, findings kept. A finding
    citing an observation is `INDETERMINATE` when that observation's own run
    is doubted, `SUSPECTED` otherwise. The reason names every cause that cut
-   the rule.
+   the rule. A source is read under its descriptor's identity alone:
+   `supervise` refuses, as an input error, a `--source` whose tenant is not
+   the run's, or whose project is not the one the run's events name. With
+   no event of the run read no rule is checked, and only the tenant is held.
 6. A doubt has no time bound: it holds while the log holds the report, and
    rotating the log by hand ends it.
 
@@ -97,3 +102,7 @@ omitted span would be.
   by the cited observation's run, every cause named.
 - `cmd/guardana-control/supervise_sources_test.go`: a copy the import refused
   is not a pass; a refused copy of another run leaves this run checked.
+- `internal/supervise/identity_test.go` and
+  `cmd/guardana-control/supervise_identity_test.go`: a source of another
+  tenant or project is refused; the run's own source still finds the run in
+  doubt.

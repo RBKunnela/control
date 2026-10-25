@@ -45,12 +45,15 @@ case "$#:${1:-}" in
 esac
 
 # semver_of <version output>
-# Prints the first x.y.z token on the first line. Each pinned tool prints its
-# own version there, ahead of any compiler version it also reports.
+# Prints the first version token on the first line, without a leading "v": a
+# word that starts x.y.z, whole up to the next white space, so a prerelease or
+# build such as 2.14.0-rc.1, -dev or +dirty never matches a pin of the
+# release. Each pinned tool prints its own version there, ahead of any
+# compiler version it also reports.
 semver_of() {
   local first="${1%%$'\n'*}"
-  [[ "${first}" =~ ([0-9]+\.[0-9]+\.[0-9]+) ]] || return 1
-  printf '%s\n' "${BASH_REMATCH[1]}"
+  [[ "${first}" =~ (^|[[:space:]])v?([0-9]+\.[0-9]+\.[0-9]+[^[:space:]]*) ]] || return 1
+  printf '%s\n' "${BASH_REMATCH[2]}"
 }
 
 # go_version_pin <go.mod>
@@ -112,7 +115,7 @@ check_tool() {
     fail "${bin}: ${key} is empty or missing in tool-versions.env"
     return
   fi
-  # The pins carry a leading "v"; the tools report the bare number.
+  # The pins carry a leading "v"; semver_of drops the one a tool reports.
   want="${want#v}"
   if ! command -v "${bin}" >/dev/null 2>&1; then
     if ((check_only)); then

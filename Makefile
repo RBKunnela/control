@@ -14,6 +14,32 @@ ifneq ($(strip $(-*-eval-flags-*-)$(findstring --eval,$(MAKEFLAGS))),)
 $(error this Makefile takes no --eval or -E: $(-*-eval-flags-*-))
 endif
 
+# A makefile named in MAKEFILES is read before this one and can undefine
+# MAKECMDGOALS, MAKEFILE_LIST or MAKE around every guard below, so it is
+# refused whatever the goal. One that also undefines MAKEFILES, like one named
+# by -f before this one, is beyond any guard a makefile can hold: CI's command
+# line unsets MAKEFILES, and gate-commit.sh starts make with a clean
+# environment.
+ifneq ($(strip $(value MAKEFILES)),)
+$(error this Makefile is read alone; MAKEFILES names $(value MAKEFILES))
+endif
+
+# The guard below reads the goals from MAKECMDGOALS. One set on the command
+# line or taken from the environment replaces make's own without changing the
+# goals make runs, and would turn the guard off, so it is refused whatever
+# the goal.
+ifneq ($(filter-out default undefined,$(origin MAKECMDGOALS)),)
+$(error MAKECMDGOALS is make's own; it comes from the $(origin MAKECMDGOALS))
+endif
+
+# With no goal named, make runs .DEFAULT_GOAL, which MAKECMDGOALS does not
+# hold, so one set on the command line, through MAKEFLAGS or from the
+# environment could run quality around the guard below. It is refused
+# whatever the goal.
+ifneq ($(filter-out file default undefined,$(origin .DEFAULT_GOAL)),)
+$(error .DEFAULT_GOAL is this Makefile's; it comes from the $(origin .DEFAULT_GOAL))
+endif
+
 # make quality reports green only over work it did. A dry run, a touch, a
 # question, ignored errors or the environment over this Makefile would print
 # its last line over recipes that never ran or failed; another makefile, a
@@ -23,9 +49,16 @@ endif
 # is refused before any recipe, however it was set, since an earlier CI step
 # can set any of them through the environment. GO=go is the one command-line
 # variable allowed, so a caller can name the go it means.
+#
+# A variable from the environment reaches the recipes' shell as written, not
+# as make expands it, so these guards read each one's value unexpanded: a
+# spelling that expands to nothing in make, such as SHELLOPTS='$(if ,noexec)',
+# still sets it for bash. CDPATH redirects a recipe's cd into a module and
+# GLOBIGNORE drops files from a recipe's glob.
 ifneq ($(filter quality,$(MAKECMDGOALS)),)
-ifneq ($(strip $(MAKEFILES)$(BASH_ENV)$(ENV)),)
-$(error make quality reads this Makefile alone and starts its recipes' shell clean; MAKEFILES, BASH_ENV or ENV is set)
+shell_state := $(foreach v,BASH_ENV ENV SHELLOPTS BASHOPTS CDPATH GLOBIGNORE,$(if $(value $(v)),$(v))) $(filter BASH_FUNC_%,$(.VARIABLES))
+ifneq ($(strip $(shell_state)),)
+$(error make quality starts its recipes' shell clean; BASH_ENV, ENV, SHELLOPTS, BASHOPTS, CDPATH, GLOBIGNORE or an exported function is set: $(strip $(shell_state)))
 endif
 ifneq ($(words $(MAKEFILE_LIST)),1)
 $(error make quality reads one makefile, this one: $(MAKEFILE_LIST))
@@ -42,8 +75,8 @@ endif
 ifneq ($(origin FUZZTIME) $(origin RANGE),file file)
 $(error make quality takes FUZZTIME and RANGE from this Makefile; FUZZTIME comes from the $(origin FUZZTIME), RANGE from the $(origin RANGE))
 endif
-ifneq ($(strip $(GOFLAGS)$(shell $(GO) env GOFLAGS 2>/dev/null)),)
-$(error make quality builds what the module says; GOFLAGS is set: $(strip $(GOFLAGS) $(shell $(GO) env GOFLAGS 2>/dev/null)))
+ifneq ($(strip $(value GOFLAGS)$(shell $(GO) env GOFLAGS 2>/dev/null)),)
+$(error make quality builds what the module says; GOFLAGS is set: $(strip $(value GOFLAGS) $(shell $(GO) env GOFLAGS 2>/dev/null)))
 endif
 ifneq ($(strip $(foreach f,n t q i e,$(findstring $(f),$(firstword -$(MAKEFLAGS))))),)
 $(error make quality runs and checks every recipe; MAKEFLAGS asks for a dry run, a touch, a question, ignored errors or the environment over this Makefile: $(MAKEFLAGS))

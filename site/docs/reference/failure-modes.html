@@ -194,7 +194,7 @@ security boundary (<a href="/docs/status">status</a>).</p>
 </tr>
 <tr>
 <td>No freshness statement current</td>
-<td>blocked, a read too unless <code>policy.fail_open_read</code> opened it</td>
+<td>blocked outside <code>OBSERVE</code>, a read too unless <code>policy.fail_open_read</code> opened it outside <code>LOCKDOWN</code></td>
 <td><code>POLICY_STALE</code></td>
 <td><code>isError</code> and the code</td>
 <td>yes, at the first poll taking a statement bound to the bundle</td>
@@ -243,8 +243,8 @@ the adapter's code.</p>
 <h2 id="collector-gone-then-back">Collector gone, then back</h2>
 <p>The exporter resends with a backoff growing to <code>export.max_backoff</code>; every record stays in the spool (<code>/healthz</code>: <code>spool.unacknowledged</code>), and no
 call is blocked until the spool is full. Once a collector answers again, every record it accepts
-arrives, at least once, so it tells copies apart by <code>event_id</code>; one it keeps
-refusing goes to the spool's <code>quarantine.log</code>.
+arrives, at least once, so it tells copies apart by <code>event_id</code>; one refused
+with <code>400</code>, <code>413</code> or <code>422</code> three times running goes to <code>quarantine.log</code>.
 <code>TestCollectorOutageBlocksNoDecision</code> in <code>internal/gateway/e2e/</code> holds the
 same for a collector answering <code>503</code>.</p>
 <h2 id="spool-full">Spool full</h2>
@@ -313,10 +313,9 @@ refusal by cause in
 floor restored below the confirmed statement counts under <code>floor</code>. The
 bundle in use keeps its confirmation, but a refused bundle file stops
 renewals, since each poll pairs statement and file, so the plane turns stale
-when the last budget ends. Then each call's <code>POLICY_DECIDED</code> carries
-<code>POLICY_STALE</code> and <code>policy_freshness</code> <code>STALE</code>, <code>/healthz</code> answers
-<code>&quot;status&quot;:&quot;degraded&quot;</code>, and outside <code>OBSERVE</code> a call is blocked, a read too
-unless <code>policy.fail_open_read</code>.</p>
+when the last budget ends. Then each <code>POLICY_DECIDED</code> carries
+<code>policy_freshness</code> <code>STALE</code> and, unless its input was refused, <code>POLICY_STALE</code>;
+<code>/healthz</code> answers <code>&quot;status&quot;:&quot;degraded&quot;</code>.</p>
 <h2 id="a-clock-that-cannot-be-read-as-now">A clock that cannot be read as now</h2>
 <p>The kernel judges no expiry and no bundle's age by a reading before 1970,
 after 9999-12-31, or behind the

@@ -34,7 +34,7 @@ type's names.
 | Type | Parameter | Required | Value |
 | --- | --- | --- | --- |
 | `redact_fields` | `fields` | yes | comma-separated member names, each non-empty, without `.`, `/` or white space |
-| `cap_amount` | `max` | yes | a base-10 integer in 64 bits, with an optional sign |
+| `cap_amount` | `max` | yes | a base-10 integer from -9007199254740991 to 9223372036854775807, with an optional sign |
 | `cap_amount` | `field` | no | any string, the exact name of one top-level member |
 | `restrict_resources` | `ids` | one of `ids`, `prefix` | comma-separated ids, none empty, each one the identifier rule admits |
 | `restrict_resources` | `prefix` | one of `ids`, `prefix` | an identifier; its last `/`-separated segment printable ASCII without `%`, `;`, `?`, `#` or `\` |
@@ -64,7 +64,10 @@ loads it as a plane does.
 A grammar is the set of values its applier acts on as written, read from what
 the applier parses, not from a reading of the parameter's name. So `max` and
 `ms` take a sign and leading zeros, which `strconv.ParseInt` reads, and
-`field` takes any string, which the gateway looks up as written. An `ids`
+`field` takes any string, which the gateway looks up as written. `max` stops
+below at the smallest integer canon writes: the gateway canonicalizes the
+arguments after capping them, so a smaller `max` would deny every call it
+capped. An `ids`
 entry that is empty, or that the identifier rule refuses, is refused although
 the adapter applies the rest of the list: it skips the first and can never
 match the second, since every envelope's resource id passes that rule. A

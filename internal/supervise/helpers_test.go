@@ -214,9 +214,10 @@ func (o ob) obs() *observev1.Observation {
 	return out
 }
 
-// source is s1, heard an hour after t0 with a heartbeat of 300 s.
+// source is s1 of t1 and p1, heard an hour after t0 with a heartbeat of
+// 300 s.
 func source(obs ...ob) supervise.Source {
-	s := supervise.Source{SourceID: "s1", HeartbeatSeconds: 300, LastHeard: t0.Add(time.Hour), Heard: true}
+	s := supervise.Source{SourceID: "s1", Tenant: tenant, Project: proj, HeartbeatSeconds: 300, LastHeard: t0.Add(time.Hour), Heard: true}
 	for _, o := range obs {
 		s.Observations = append(s.Observations, o.obs())
 	}

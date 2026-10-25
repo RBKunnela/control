@@ -256,9 +256,9 @@ environment, never from a flag or the event. Start Claude Code with it set.</p>
 its effect class; a tool it does not name is refused, and the call blocked,
 except on a plane in <code>OBSERVE</code>. Name <code>ToolSearch</code> too: Claude Code calls it
 to load a deferred tool, an MCP tool among them, so a table without it
-blocks every deferred tool. Class <code>Agent</code> as <code>EXECUTE</code>: <code>SPAWN_OR_DELEGATE</code>
-needs a delegation the enforcement API does not carry, so such a call is
-refused with <code>REQUIRED_FIELD_ABSENT</code> <em>(both seen on 2.1.303)</em>. For example:</p>
+blocks every deferred tool <em>(seen on 2.1.303)</em>. Class <code>Agent</code> as <code>EXECUTE</code>:
+<code>SPAWN_OR_DELEGATE</code> needs a delegation the enforcement API does not carry,
+so the plane refuses to start with a tool of that class. For example:</p>
 <pre><code class="language-yaml">tools:
   - name: Bash
     effect: EXECUTE

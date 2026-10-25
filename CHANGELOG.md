@@ -126,6 +126,57 @@ verify one.
 - The format versions page names `v1alpha1` as the enforcement API version
   this tree writes and reads, and says which formats carry no version of
   their own: the signed envelopes and the spool's segment framing.
+- `policy sign` and `policy lint` refuse a `cap_amount` `max` below
+  -9007199254740991, the smallest integer canon writes. The gateway capped an
+  amount to such a limit and then could not canonicalize the arguments, so
+  every call the rule matched was denied with `OBLIGATION_NOT_UNDERSTOOD`; a
+  bundle already signed with one still loads and is denied as before.
+- `supervise` reads a source's doubt from that source's own import reports,
+  those naming its source, tenant and project, as it reads its liveness. A
+  line another source's import refused, in the same log directory, put the
+  supervised source's runs in doubt and left `STEP_OUTSIDE_PROCEDURE` and
+  `DENIED_ACTION_RETRIED_AROUND` not checked. `supervise` also refuses a
+  `--source` whose descriptor names another tenant than the run's, or another
+  project than its events, and an export in which an event of the run names
+  no project. The run's observations were read under such a descriptor while
+  its liveness and its doubt were another project's.
+- The OTLP exporter writes a log record's time from the event's seconds and
+  nanoseconds as an unsigned count. An event before 1678 or after 2262 could
+  get another time or none: 1600-01-01 was sent as a time in the future, and
+  2300-01-01 without one. A time before the epoch, or past what 64 unsigned
+  bits count, carries no time, as an event without one does.
+- The Makefile refuses, whatever the goal, a `MAKECMDGOALS` or a
+  `.DEFAULT_GOAL` set on the command line, through `MAKEFLAGS` or from the
+  environment, and a makefile named in `MAKEFILES`. Its `make quality` guard
+  read the goals from `MAKECMDGOALS`, so `make quality MAKECMDGOALS=
+  MAKE=/usr/bin/true` and `make .DEFAULT_GOAL=quality MAKE=/usr/bin/true`
+  passed every guard, ran no check and printed `quality: green`, and a
+  `MAKEFILES` makefile could undefine `MAKECMDGOALS` to the same end. CI's
+  gate step also unsets `MAKEFILES`, since such a makefile can undefine
+  `MAKEFILES` too. `make quality` also refuses `SHELLOPTS`, `BASHOPTS`,
+  `CDPATH`, `GLOBIGNORE` and an exported bash function, which change what its
+  recipes' shell runs: `SHELLOPTS=noexec` ran nothing and exited 0. These
+  guards, and those on `BASH_ENV`, `ENV`, `GOFLAGS` and `MAKEFILES`, read the
+  value as the shell or go gets it, not as make expands it, so a spelling make
+  expands to nothing is refused too.
+- `scripts/bootstrap.sh` compares a tool's whole version word with its pin,
+  suffix included, so a prerelease or development build such as
+  `2.14.0-rc.1`, `2.14.0-dev` or `2.14.0+dirty` fails a pin of `2.14.0`; it
+  read only the leading `x.y.z` and passed them, in `--check` too, which the
+  release commit's cold gate runs.
+- The hook profile's qualification passes the secret-read case only when the
+  runtime's stream holds its error answer to that Read; a runtime that
+  stopped after the hook, with no answer recorded, passed it. Every case is
+  unknown when a line of the runtime's stream or of the trail does not parse,
+  a hook event cannot be read or its directory cannot be listed, and the two
+  rewrite cases are unknown when
+  the plane's count of halted runs was not read; such a line was skipped and
+  the rest judged. A results line that does
+  not parse fails the report. The 2.1.310 observations, judged again, still
+  pass all 20 cases.
+- `guardana-gateway doctor` reports `unknown`, not `fail`, when a decision
+  point's published metadata gives its identifier or evaluation endpoint as
+  JSON `null`, as it does for any other value that is not a string.
 
 ### Changed
 
@@ -141,7 +192,11 @@ verify one.
   shutdown of an enforcement API plane, the collector's 415, the hook's
   deadlines, coverage's join and others. The status page, roadmap and backlog
   stop describing the Python client and the hook bridge as planned, and
-  ADR-0050 is marked accepted, as it was on merging.
+  ADR-0050 is marked accepted, as it was on merging. The pre-release audit
+  corrected fifteen more: among them the trail of a call blocked after it
+  started, the digest `OBSERVE` records for a call whose input the kernel
+  refused, when an evidence record is on disk, which collector answers
+  quarantine a record, and which stale decisions carry `POLICY_STALE`.
 - A gateway configuration refuses a tool classification no envelope could
   carry, naming the key, where before it loaded and every call to the tool was
   refused: a `WRITE`, `DELETE`, `CONFIGURE`, `TRANSACT` or

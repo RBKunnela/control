@@ -204,11 +204,12 @@
     {
       "id": "obligation",
       "invocations": 1,
-      "expected": "the Read, allowed only with an obligation, is denied: its PreToolUse exits 2, the content never reaches the model, and the trail closes it ACTION_FAILED, BLOCKED, with an OBLIGATION code (aborted, never run)",
+      "expected": "the Read, allowed only with an obligation, is denied: its PreToolUse exits 2, the runtime answers the Read with an error, the content never reaches the model, and the trail closes it ACTION_FAILED, BLOCKED, with an OBLIGATION code (aborted, never run)",
       "observed": {
         "admit_exits": [
           2
         ],
+        "read_refused": true,
         "content_reached_model": false,
         "trail": [
           [
@@ -550,5 +551,6 @@
       },
       "verdict": "pass"
     }
-  ]
+  ],
+  "judged_at": "06faded6"
 }

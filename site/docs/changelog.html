@@ -233,6 +233,56 @@ GitHub cannot answer.</li>
 <li>The format versions page names <code>v1alpha1</code> as the enforcement API version
 this tree writes and reads, and says which formats carry no version of
 their own: the signed envelopes and the spool's segment framing.</li>
+<li><code>policy sign</code> and <code>policy lint</code> refuse a <code>cap_amount</code> <code>max</code> below
+-9007199254740991, the smallest integer canon writes. The gateway capped an
+amount to such a limit and then could not canonicalize the arguments, so
+every call the rule matched was denied with <code>OBLIGATION_NOT_UNDERSTOOD</code>; a
+bundle already signed with one still loads and is denied as before.</li>
+<li><code>supervise</code> reads a source's doubt from that source's own import reports,
+those naming its source, tenant and project, as it reads its liveness. A
+line another source's import refused, in the same log directory, put the
+supervised source's runs in doubt and left <code>STEP_OUTSIDE_PROCEDURE</code> and
+<code>DENIED_ACTION_RETRIED_AROUND</code> not checked. <code>supervise</code> also refuses a
+<code>--source</code> whose descriptor names another tenant than the run's, or another
+project than its events, and an export in which an event of the run names
+no project. The run's observations were read under such a descriptor while
+its liveness and its doubt were another project's.</li>
+<li>The OTLP exporter writes a log record's time from the event's seconds and
+nanoseconds as an unsigned count. An event before 1678 or after 2262 could
+get another time or none: 1600-01-01 was sent as a time in the future, and
+2300-01-01 without one. A time before the epoch, or past what 64 unsigned
+bits count, carries no time, as an event without one does.</li>
+<li>The Makefile refuses, whatever the goal, a <code>MAKECMDGOALS</code> or a
+<code>.DEFAULT_GOAL</code> set on the command line, through <code>MAKEFLAGS</code> or from the
+environment, and a makefile named in <code>MAKEFILES</code>. Its <code>make quality</code> guard
+read the goals from <code>MAKECMDGOALS</code>, so <code>make quality MAKECMDGOALS= MAKE=/usr/bin/true</code> and <code>make .DEFAULT_GOAL=quality MAKE=/usr/bin/true</code>
+passed every guard, ran no check and printed <code>quality: green</code>, and a
+<code>MAKEFILES</code> makefile could undefine <code>MAKECMDGOALS</code> to the same end. CI's
+gate step also unsets <code>MAKEFILES</code>, since such a makefile can undefine
+<code>MAKEFILES</code> too. <code>make quality</code> also refuses <code>SHELLOPTS</code>, <code>BASHOPTS</code>,
+<code>CDPATH</code>, <code>GLOBIGNORE</code> and an exported bash function, which change what its
+recipes' shell runs: <code>SHELLOPTS=noexec</code> ran nothing and exited 0. These
+guards, and those on <code>BASH_ENV</code>, <code>ENV</code>, <code>GOFLAGS</code> and <code>MAKEFILES</code>, read the
+value as the shell or go gets it, not as make expands it, so a spelling make
+expands to nothing is refused too.</li>
+<li><code>scripts/bootstrap.sh</code> compares a tool's whole version word with its pin,
+suffix included, so a prerelease or development build such as
+<code>2.14.0-rc.1</code>, <code>2.14.0-dev</code> or <code>2.14.0+dirty</code> fails a pin of <code>2.14.0</code>; it
+read only the leading <code>x.y.z</code> and passed them, in <code>--check</code> too, which the
+release commit's cold gate runs.</li>
+<li>The hook profile's qualification passes the secret-read case only when the
+runtime's stream holds its error answer to that Read; a runtime that
+stopped after the hook, with no answer recorded, passed it. Every case is
+unknown when a line of the runtime's stream or of the trail does not parse,
+a hook event cannot be read or its directory cannot be listed, and the two
+rewrite cases are unknown when
+the plane's count of halted runs was not read; such a line was skipped and
+the rest judged. A results line that does
+not parse fails the report. The 2.1.310 observations, judged again, still
+pass all 20 cases.</li>
+<li><code>guardana-gateway doctor</code> reports <code>unknown</code>, not <code>fail</code>, when a decision
+point's published metadata gives its identifier or evaluation endpoint as
+JSON <code>null</code>, as it does for any other value that is not a string.</li>
 </ul>
 <h3 id="changed">Changed</h3>
 <ul>
@@ -248,7 +298,11 @@ what <code>OBSERVE</code> still blocks, a held trail's closing record after hand
 shutdown of an enforcement API plane, the collector's 415, the hook's
 deadlines, coverage's join and others. The status page, roadmap and backlog
 stop describing the Python client and the hook bridge as planned, and
-ADR-0050 is marked accepted, as it was on merging.</li>
+ADR-0050 is marked accepted, as it was on merging. The pre-release audit
+corrected fifteen more: among them the trail of a call blocked after it
+started, the digest <code>OBSERVE</code> records for a call whose input the kernel
+refused, when an evidence record is on disk, which collector answers
+quarantine a record, and which stale decisions carry <code>POLICY_STALE</code>.</li>
 <li>A gateway configuration refuses a tool classification no envelope could
 carry, naming the key, where before it loaded and every call to the tool was
 refused: a <code>WRITE</code>, <code>DELETE</code>, <code>CONFIGURE</code>, <code>TRANSACT</code> or

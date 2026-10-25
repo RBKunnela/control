@@ -146,13 +146,18 @@ alone refuses every <code>0.2</code> line rather than read past the members.</li
 <li><code>observelog.Write</code> refuses a caller's report the codec would refuse, then
 adds the runs of the conflicts it finds itself. A <code>0.1</code> report that counts
 a refusal or a conflict is read as doubting every run.</li>
-<li><code>supervise</code> takes, per source, every run its log's reports doubt. When a
+<li><code>supervise</code> takes, per source, every run that source's own reports doubt:
+those in its log that name its source, tenant and project, as its
+liveness is read, whichever descriptor digest wrote them. When a
 run the evaluation judges is among them (the root, or under <code>inherit</code> any
 run of the tree), <code>STEP_OUTSIDE_PROCEDURE</code> and
 <code>DENIED_ACTION_RETRIED_AROUND</code> are not checked, findings kept. A finding
 citing an observation is <code>INDETERMINATE</code> when that observation's own run
 is doubted, <code>SUSPECTED</code> otherwise. The reason names every cause that cut
-the rule.</li>
+the rule. A source is read under its descriptor's identity alone:
+<code>supervise</code> refuses, as an input error, a <code>--source</code> whose tenant is not
+the run's, or whose project is not the one the run's events name. With
+no event of the run read no rule is checked, and only the tenant is held.</li>
 <li>A doubt has no time bound: it holds while the log holds the report, and
 rotating the log by hand ends it.</li>
 </ol>
@@ -197,6 +202,10 @@ a <code>0.1</code> report that counts a refusal as every run.</li>
 by the cited observation's run, every cause named.</li>
 <li><code>cmd/guardana-control/supervise_sources_test.go</code>: a copy the import refused
 is not a pass; a refused copy of another run leaves this run checked.</li>
+<li><code>internal/supervise/identity_test.go</code> and
+<code>cmd/guardana-control/supervise_identity_test.go</code>: a source of another
+tenant or project is refused; the run's own source still finds the run in
+doubt.</li>
 </ul>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/adr/0058-a-copy-an-import-never-read-is-doubt-for-the-runs-it-claimed.md">docs/adr/0058-a-copy-an-import-never-read-is-doubt-for-the-runs-it-claimed.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.13.0, and <a href="https://github.com/guardana/control/tree/v0.13.0/docs">its documentation</a> is in its tag.</p>
 </main>

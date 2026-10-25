@@ -153,9 +153,10 @@ your function makes a call of its own and lets that call's exception out,
 - `/healthz` has an `enforce` object: `open_handles`, the answers by outcome,
   `abandoned` and the refusals by error code; `runs.refused_at_request` counts
   refused tokens by cause.
-- In the trail a blocked call ends `ACTION_BLOCKED` with no `ACTION_STARTED`,
-  and a handle nobody completed ends `ACTION_FAILED` with
-  `EXECUTION_ABANDONED`.
+- In the trail a call blocked before it starts ends `ACTION_BLOCKED` with no
+  `ACTION_STARTED`, one blocked after, as when a rewrite moves its resource,
+  ends `ACTION_FAILED` with a `BLOCKED` result, and a handle nobody completed
+  ends `ACTION_FAILED` with `EXECUTION_ABANDONED`.
 - `guardana-control coverage` with an `enforce_tool` path in the inventory
   prints it `decided, not enforced`, naming the cooperating client
   ([reference/coverage.md](../reference/coverage.md)).
@@ -164,9 +165,10 @@ your function makes a call of its own and lets that call's exception out,
 
 - It is not a security boundary. A client can ignore `BLOCK`, send other bytes
   and report the authorized ones; the plane records what it is told.
-- Bytes a client reports that differ from the authorized ones halt that run's
-  material calls until restart, and no other run's until `flow.max_runs` runs
-  are halted; past that, a mismatch halts material calls across the plane.
+- Arguments a client reports whose canonical form differs from the authorized
+  ones halt that run's material calls until restart, and no other run's until
+  `flow.max_runs` runs are halted; past that, a mismatch halts material calls
+  across the plane.
 - The socket checks read mode bits, not macOS access control lists, and do not
   cover the directories above the socket's.
 - A stop closes every open execution as unknown; a crash leaves them at

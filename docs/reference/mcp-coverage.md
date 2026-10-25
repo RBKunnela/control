@@ -126,10 +126,10 @@ point's own.
 | `EVIDENCE_UNAVAILABLE` | a record the decision depends on could not be written, kept or read back: the sink refused an event, a bound on held requests or open executions was reached, or the approval store or the hold journal could not answer, or answered with an approval that names another request, is not approved, or outlives the expiry the gateway minted; or, under `runs.dir`, its run ([runs.md](runs.md#what-a-plane-does-with-a-token)) |
 | `APPROVAL_PENDING`, `APPROVAL_EXPIRED`, `APPROVAL_REJECTED`, `APPROVAL_ALREADY_USED` | the state of the approval this call waits on |
 | `APPROVAL_NOT_RESUMED`, `APPROVAL_STATE_UNKNOWN` | a request this plane lost to a restart was granted, or its answer could not be read or trusted; it never ran |
-| `APPROVAL_DIGEST_MISMATCH`, `APPROVAL_BUNDLE_MISMATCH` | an approval a store returned named another action or another policy bundle |
+| `APPROVAL_DIGEST_MISMATCH`, `APPROVAL_BUNDLE_MISMATCH` | an approval a store returned named another action or policy bundle |
 | `EXECUTED_ARGS_MISMATCH` | the bytes about to be sent, or the bytes sent, were not the authorized ones |
 | `EXECUTION_ABANDONED` | never in an MCP answer |
-| `OBLIGATION_NOT_UNDERSTOOD` | an obligation the plane cannot apply, or whose parameters it cannot read, or a rewrite changed the member `resource_from` reads |
+| `OBLIGATION_NOT_UNDERSTOOD` | a non-advisory obligation the plane cannot apply, or whose parameters it cannot read, or a rewrite changed the member `resource_from` reads |
 | `INVALID_FIELD_VALUE`, `MALFORMED_INPUT` | the call, classified or not, could not be translated into a valid envelope; `INVALID_FIELD_VALUE` also when its request id names a trail still open in the gateway |
 | `POLICY_STALE` | the decision's bundle was replaced or stale at hand-out |
 | `POLICY_UNAVAILABLE` | a block reached the adapter with a decision naming no cause; it answers with the kernel's code for an absent policy |

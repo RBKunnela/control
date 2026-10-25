@@ -107,7 +107,10 @@ conflict's refused copy that claims no run, a line refused before its spans
 are read, or a 65th run sets `every_run_doubted` instead. A report that counts
 a refusal or a conflict and names no run, as a `0.1` report does, is read as
 doubting every run; [supervision](supervision.md#the-verdict) says what a
-doubted run leaves unchecked.
+doubted run leaves unchecked. A source's doubt is read from its own reports
+alone, those naming its source, tenant and project, so another source
+importing into the same log directory puts none of its runs in doubt.
+`supervise` refuses a `--source` whose tenant or project is not the run's.
 
 A report that carries either member is schema `0.2`; every other report and
 every observation is `0.1`, and the reader refuses a `0.2` record with

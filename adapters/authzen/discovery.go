@@ -100,10 +100,14 @@ func (c *Client) compare(text []byte) Report {
 }
 
 // stringMember reads a member that is a JSON string; an absent one reads as
-// empty, which no configuration equals.
+// empty, which no configuration equals. A null one is not a string, though
+// json.Unmarshal reads it into one without an error.
 func stringMember(raw json.RawMessage) (string, bool) {
 	if raw == nil {
 		return "", true
+	}
+	if string(raw) == "null" {
+		return "", false
 	}
 	var s string
 	err := json.Unmarshal(raw, &s)

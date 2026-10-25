@@ -1,6 +1,9 @@
 package supervise
 
 import (
+	"fmt"
+	"strconv"
+
 	findingv1alpha1 "github.com/guardana/control/api/gen/go/guardana/control/finding/v1alpha1"
 	observev1 "github.com/guardana/control/api/gen/go/guardana/control/observe/v1alpha1"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
@@ -100,14 +103,36 @@ func (r *read) eventOutside(ev *controlv1.Event) string {
 
 // takeProject names the one project the run's events were recorded in. A
 // finding and a report name one project, so a run recorded in two is refused
-// rather than judged as one.
+// rather than judged as one, and so is an event that names none, which would
+// otherwise take whichever project another event names.
 func (r *read) takeProject() error {
 	for _, ev := range r.events {
 		switch p := ev.GetProjectId(); {
+		case p == "":
+			return ErrInput.with("an event of the run names no project")
 		case r.project == "":
 			r.project = p
 		case p != r.project:
 			return ErrInput.with("the run's events name more than one project")
+		}
+	}
+	return nil
+}
+
+// checkSources refuses a source whose tenant is not the run's, or whose
+// project is not the one the run's events name: observations are taken
+// under the run's identity and liveness and doubt read under the source's,
+// so the two must be one. With no event read no rule is checked, and only
+// the tenant is held.
+func (r *read) checkSources(sources []Source) error {
+	for _, s := range sources {
+		switch {
+		case s.Tenant != r.tenant:
+			return ErrInput.with(fmt.Sprintf("source %s is of tenant %s, the run of tenant %s",
+				strconv.Quote(s.SourceID), strconv.Quote(s.Tenant), strconv.Quote(r.tenant)))
+		case len(r.events) > 0 && s.Project != r.project:
+			return ErrInput.with(fmt.Sprintf("source %s is of project %s, the run's events of project %s",
+				strconv.Quote(s.SourceID), strconv.Quote(s.Project), strconv.Quote(r.project)))
 		}
 	}
 	return nil

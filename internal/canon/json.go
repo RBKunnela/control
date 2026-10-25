@@ -32,16 +32,18 @@ var (
 	ErrTooDeep          = errors.New("canon: nesting too deep")
 )
 
+// The JSON-safe integer range, the only integers canon writes: beyond 2^53-1
+// no IEEE-754 double is faithful, so a reader going through a JavaScript JSON
+// parser would see another value and compute another digest (ADR-0005).
+const (
+	MaxSafeInteger = 1<<53 - 1
+	MinSafeInteger = -MaxSafeInteger
+)
+
 const (
 	// maxDepth counts containers, not values: a scalar at the top level sits at
 	// depth 0, [] at depth 1, [[]] at depth 2.
 	maxDepth = 32
-
-	// The JSON-safe integer range: beyond 2^53-1 no IEEE-754 double is faithful,
-	// so a reader going through a JavaScript JSON parser would see another value
-	// and compute another digest (ADR-0005).
-	maxSafeInteger = 1<<53 - 1
-	minSafeInteger = -maxSafeInteger
 
 	// Lowercase, because RFC 8785 section 3.2.2.2 fixes the case of the four hex
 	// digits in a \u escape and a digest compares bytes.
@@ -277,7 +279,7 @@ func escapeFor(c byte) string {
 }
 
 func (e *encoder) writeSigned(n int64) error {
-	if n > maxSafeInteger || n < minSafeInteger {
+	if n > MaxSafeInteger || n < MinSafeInteger {
 		return e.unsupported(outsideRange)
 	}
 	e.buf.WriteString(strconv.FormatInt(n, 10))
@@ -303,7 +305,7 @@ func numberText(literal string, f form) (string, string) {
 
 // writeUnsigned formats from uint64, so no value wraps on its way to the check.
 func (e *encoder) writeUnsigned(n uint64) error {
-	if n > maxSafeInteger {
+	if n > MaxSafeInteger {
 		return e.unsupported(outsideRange)
 	}
 	e.buf.WriteString(strconv.FormatUint(n, 10))

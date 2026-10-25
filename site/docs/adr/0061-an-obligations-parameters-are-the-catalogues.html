@@ -154,7 +154,7 @@ type's names.</p>
 <td><code>cap_amount</code></td>
 <td><code>max</code></td>
 <td>yes</td>
-<td>a base-10 integer in 64 bits, with an optional sign</td>
+<td>a base-10 integer from -9007199254740991 to 9223372036854775807, with an optional sign</td>
 </tr>
 <tr>
 <td><code>cap_amount</code></td>
@@ -204,7 +204,10 @@ loads it as a plane does.</p>
 <p>A grammar is the set of values its applier acts on as written, read from what
 the applier parses, not from a reading of the parameter's name. So <code>max</code> and
 <code>ms</code> take a sign and leading zeros, which <code>strconv.ParseInt</code> reads, and
-<code>field</code> takes any string, which the gateway looks up as written. An <code>ids</code>
+<code>field</code> takes any string, which the gateway looks up as written. <code>max</code> stops
+below at the smallest integer canon writes: the gateway canonicalizes the
+arguments after capping them, so a smaller <code>max</code> would deny every call it
+capped. An <code>ids</code>
 entry that is empty, or that the identifier rule refuses, is refused although
 the adapter applies the rest of the list: it skips the first and can never
 match the second, since every envelope's resource id passes that rule. A

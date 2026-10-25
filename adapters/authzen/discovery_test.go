@@ -65,6 +65,12 @@ func TestCheckDiscovery(t *testing.T) {
 		"the endpoint not a string": {"", func(b string) string {
 			return `{"policy_decision_point":"` + b + `","access_evaluation_endpoint":["` + b + askedPath + `"]}`
 		}, DiscoveryUnknown},
+		"a null identifier": {"", func(b string) string {
+			return `{"policy_decision_point":null,"access_evaluation_endpoint":"` + b + askedPath + `"}`
+		}, DiscoveryUnknown},
+		"a null endpoint": {"", func(b string) string {
+			return `{"policy_decision_point":"` + b + `","access_evaluation_endpoint":null}`
+		}, DiscoveryUnknown},
 		"not JSON": {"", func(string) string { return `<html></html>` }, DiscoveryUnknown},
 	}
 	for name, tc := range cases {

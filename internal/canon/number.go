@@ -58,7 +58,7 @@ func actionNumber(literal string) (string, string) {
 	if err != nil || math.IsInf(f, 0) || (f == 0 && d.digits != "") {
 		return "", numberNotDouble
 	}
-	if math.Abs(f) > maxSafeInteger {
+	if math.Abs(f) > MaxSafeInteger {
 		return "", numberOutside
 	}
 	nearest, ok := shortest(f)
@@ -72,7 +72,7 @@ func actionNumber(literal string) (string, string) {
 // digest goldens pin for every integer inside the JSON-safe range.
 func integerText(literal string) (string, string) {
 	i, err := strconv.ParseInt(literal, 10, 64)
-	if err != nil || i > maxSafeInteger || i < minSafeInteger {
+	if err != nil || i > MaxSafeInteger || i < MinSafeInteger {
 		return "", outsideRange
 	}
 	return strconv.FormatInt(i, 10), ""

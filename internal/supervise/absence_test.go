@@ -56,15 +56,16 @@ func TestASourceNamedButNotReadPutsAnAbsenceInDoubt(t *testing.T) {
 // TestASourceIsSilentOnlyPastItsHeartbeat: the run's last plane event is at
 // 33 s; s1 and s2 have a heartbeat of 300 s. s1, heard at -267 s, is heard
 // exactly at that event; s2, heard a nanosecond earlier, is silent; s3 was
-// never heard.
+// never heard; s4, heard after the event, was live as of it.
 func TestASourceIsSilentOnlyPastItsHeartbeat(t *testing.T) {
 	heard := func(id string, at time.Duration, ok bool) supervise.Source {
-		return supervise.Source{SourceID: id, HeartbeatSeconds: 300, LastHeard: t0.Add(at), Heard: ok}
+		return supervise.Source{SourceID: id, Tenant: tenant, Project: proj, HeartbeatSeconds: 300, LastHeard: t0.Add(at), Heard: ok}
 	}
 	res := evaluate(t, supervise.Input{Procedure: procWith(t), Run: supervise.Run{Closed: true},
 		Exports: []supervise.Export{export(conforming()...)},
 		Sources: []supervise.Source{
 			heard("s1", -267*time.Second, true), heard("s2", -267*time.Second-1, true), heard("s3", time.Hour, false),
+			heard("s4", time.Hour, true),
 		}})
 	if !reflect.DeepEqual(res.Silent, []string{"s2"}) || !reflect.DeepEqual(res.NeverHeard, []string{"s3"}) {
 		t.Fatalf("silent %q, never heard %q; want [s2] and [s3]", res.Silent, res.NeverHeard)

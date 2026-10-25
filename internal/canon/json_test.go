@@ -14,7 +14,7 @@ import (
 )
 
 // Written as literals rather than as the package constants they mirror: a test
-// that reads maxDepth and maxSafeInteger from the implementation cannot notice
+// that reads maxDepth and MaxSafeInteger from the implementation cannot notice
 // the implementation changing them.
 const (
 	safeMax  = 9007199254740991  // 2^53-1

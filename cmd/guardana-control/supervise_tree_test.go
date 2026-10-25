@@ -205,7 +205,7 @@ func TestSuperviseInputOfA02ProcedureHoldsTheTree(t *testing.T) {
 
 // TestSuperviseHearsASourceOnlyFromItsOwnTenantAndProject: an import report
 // written under the descriptor's project is the source heard; the same log
-// read under a descriptor of another project is a source never heard.
+// is not read under a descriptor of another project, which is refused.
 func TestSuperviseHearsASourceOnlyFromItsOwnTenantAndProject(t *testing.T) {
 	tr := newSupTree(t)
 	descriptor, log := tr.source(t)
@@ -224,8 +224,5 @@ func TestSuperviseHearsASourceOnlyFromItsOwnTenantAndProject(t *testing.T) {
 		t.Fatal("the descriptor names no project to move")
 	}
 	writeFixture(t, descriptor, moved)
-	code, stdout, stderr := invoke(t, tr.args("--evidence", x, "--source", descriptor, "--log", log)...)
-	if code != exitFail || !strings.Contains(stdout, "source agent-runtime: never heard\n") {
-		t.Fatalf("another project: exit %d, stderr %q, stdout\n%s\nwant 1 and the source never heard", code, stderr, stdout)
-	}
+	supRefused(t, tr.args("--evidence", x, "--source", descriptor, "--log", log), `source "agent-runtime" is of project "elsewhere"`)
 }

@@ -56,7 +56,9 @@ and `attributes`, `agent.instance_id` and `model_ref`, `delegation`,
 `POLICY_DECIDED` and `ACTION_BLOCKED` carry a decision: the verdict, the
 reason codes, the ids of the rules that matched, the obligations as the
 policy wrote them, the action digest, the bundle digest, timings, and, when a
-decision point was asked, its identifier.
+decision point was asked, its identifier. On a block of the enforcement
+point's own, `ACTION_BLOCKED` carries that point's decision instead: the same
+digests, and no rule ids, obligations or identifier.
 
 `APPROVAL_REQUESTED`, `APPROVAL_DECIDED` and `APPROVAL_EXPIRED` carry the
 approval: its ids, the action digest, the bundle digest, its state and times,

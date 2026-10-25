@@ -261,3 +261,40 @@ func TestSuperviseACopyTheImportRefusedIsNotAPass(t *testing.T) {
 		})
 	}
 }
+
+// TestSuperviseAnotherSourcesDoubtIsNotThisSources: a line another source's
+// import refused whole, in the same log directory, puts that source's runs in
+// doubt and not the supervised source's, whose rules are still checked.
+func TestSuperviseAnotherSourcesDoubtIsNotThisSources(t *testing.T) {
+	tr := newSupTree(t)
+	writeFixture(t, tr.procedure, supProcedure02)
+	descriptor, log := tr.source(t)
+	end := supBase.Add(5 * time.Second)
+	tr.importSpans(t, descriptor, log, spansLine(toolSpan("00f067aa0ba90001", "search_docs", tr.run, 1, end)), 0, 0)
+	raw, err := os.ReadFile(descriptor) //nolint:gosec // G304: the test's own temporary directory
+	if err != nil {
+		t.Fatal(err)
+	}
+	other := filepath.Join(tr.dir, "other.json")
+	writeFixture(t, other, strings.Replace(string(raw), `"agent-runtime"`, `"other-runtime"`, 1))
+	malformed := filepath.Join(tr.dir, "malformed.jsonl")
+	writeFixture(t, malformed, "{not a line of spans\n")
+	if code, out, stderr := invoke(t, "observe", "import", "--source", other, "--log", log, malformed); code != exitFail || counted(t, out, "refused") != 1 {
+		t.Fatalf("import of the other source: exit %d, stdout %q, stderr %q; want 1 and one refusal", code, out, stderr)
+	}
+	x := tr.export(t, tr.run, supBase, conformingCalls()...)
+	tr.closeRun(t, tr.run)
+	code, stdout, stderr := invoke(t, tr.args("--evidence", x, "--source", descriptor, "--log", log)...)
+	if code != exitOK || stderr != "" {
+		t.Fatalf("exit %d, stderr %q, stdout\n%s\nwant 0", code, stderr, stdout)
+	}
+	for _, rule := range []string{"STEP_OUTSIDE_PROCEDURE", "DENIED_ACTION_RETRIED_AROUND"} {
+		if want := "rule " + rule + " checked\n"; !strings.Contains(stdout, want) {
+			t.Errorf("stdout does not hold %q:\n%s", want, stdout)
+		}
+	}
+	code, stdout, _ = invoke(t, tr.args("--evidence", x, "--source", other, "--log", log)...)
+	if want := `source "other-runtime" is in doubt`; code != exitFail || !strings.Contains(stdout, want) {
+		t.Errorf("supervised against the other source: exit %d, stdout\n%s\nwant 1 and %q", code, stdout, want)
+	}
+}

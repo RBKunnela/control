@@ -55,11 +55,12 @@ or a parent chain that misses the root; every member is judged, and
 the tree is closed when every member is. `separate` takes any opened run and
 lists its children, not judged. Plane events count when their run is judged
 and their tenant the run's. Observations count when their correlation is
-claimed, with such a run id, tenant and project. Only a tool call is a
-step, never a prompt or a resource read. An observation joined to a plane
-event by trace and span id is that call, not a second one; a join cut short
-leaves `STEP_OUTSIDE_PROCEDURE` and `DENIED_ACTION_RETRIED_AROUND` not
-checked, findings kept. Everything else is counted and left out.
+claimed, with such a run id, tenant and project; another tenant's or
+project's `--source` is refused. Only a tool call is a step, never a
+prompt or resource read. An observation joined to a plane event by trace
+and span id is that call; a join cut short leaves
+`STEP_OUTSIDE_PROCEDURE` and `DENIED_ACTION_RETRIED_AROUND` not checked,
+findings kept. Everything else is counted and left out.
 
 The procedure, descriptors and evidence exports must be regular
 files of this account that only it can write: a `CONFIRMED` finding rests on
@@ -91,9 +92,9 @@ an export; a retry confirms only when one export holds both.
 
 The weakest of what a finding rests on. Plane events in an unbroken chain can
 make it `CONFIRMED`; an observation makes it `SUSPECTED`; a record in doubt,
-`INDETERMINATE`. So are a silent source's observations. A request with two
-copies or a broken chain leaves no rule checked; an observation with two
-contents, or a judged run a log doubts, while it holds that report
+`INDETERMINATE`. So are a silent source's observations. A request with
+conflicting copies or a broken chain leaves no rule checked; an observation
+with two contents, or a judged run its source doubts, until the log is rotated
 ([observations](observations.md#the-log)), leaves `STEP_OUTSIDE_PROCEDURE`
 and `DENIED_ACTION_RETRIED_AROUND` not checked.
 The step rules rest on something not seen:
@@ -118,8 +119,7 @@ or `<id> silent` for each `--source` not judged against.
 | 2 | nothing printed: an input refused, or a log not opened or written (a cut write no reader takes) |
 
 The log is opened, and `findings.jsonl` created, only once every input is
-accepted. A failure after the write commits exits 2 and keeps the
-write.
+accepted. A failure after the write commits exits 2 and keeps it.
 
 ## The finding record and its log
 
@@ -152,7 +152,7 @@ The reader refuses an unknown schema or a member its schema lacks.
 `notify` hands each `alert` record, in log order, one line on its
 standard input, to the program after `--`, without a shell, and kills its
 process group at the timeout (30 s by default) and again once the program
-has exited. A delivery is keyed on the
+exits. A delivery is keyed on the
 finding id and verdict and marked in the state only after the program exits
 0, so a crash delivers that record again: a receiver drops a key it has
 seen. The state is an owner-only directory, locked while in use; `--init`

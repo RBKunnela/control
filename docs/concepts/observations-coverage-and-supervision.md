@@ -91,8 +91,10 @@ another run's. Every other finding stays in the log, for `notify`,
 
 Observations and plane events meet by trace and span id: a joined
 observation is the plane's call, not a second one. Coverage and supervision
-read a source's liveness from the same import reports and heartbeat, and
-each treats a silent source as unknown, never as one with nothing to report.
+read a source's liveness from the same import reports and heartbeat:
+coverage as of now, supervision as of the run's last plane event, so a
+source heard after that event is live. Each treats a silent source as
+unknown, never as one with nothing to report.
 
 Coverage answers a different question from supervision. It says which paths
 could be seen at all; supervision judges one run by what was seen, and does

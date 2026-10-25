@@ -38,7 +38,7 @@ func TestPageOneRowPerParameterInOrder(t *testing.T) {
 	}
 	text := string(page)
 	rows := []string{
-		"| `cap_amount` | the gateway, the adapter | `max` | yes | a base-10 integer that fits in 64 bits, with an optional sign |\n",
+		"| `cap_amount` | the gateway, the adapter | `max` | yes | a base-10 integer from -9007199254740991 to 9223372036854775807, with an optional sign |\n",
 		"| `cap_amount` | the gateway, the adapter | `field` | no | the exact name of one top-level member |\n",
 		"| `restrict_resources` | the adapter | `ids` | one of `ids`, `prefix` | comma-separated resource ids, none empty and each one the identifier rule admits |\n",
 		"| `restrict_resources` | the adapter | `prefix` | one of `ids`, `prefix` | an identifier whose last `/`-separated segment is printable ASCII without `%`, `;`, `?`, `#` or `\\` |\n",

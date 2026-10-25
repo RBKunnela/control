@@ -3,6 +3,7 @@ package observe_test
 import (
 	"fmt"
 	"slices"
+	"strings"
 	"testing"
 
 	observev1 "github.com/guardana/control/api/gen/go/guardana/control/observe/v1alpha1"
@@ -145,12 +146,19 @@ func TestADoubtOfNoRunOrPastItsBoundIsEveryRun(t *testing.T) {
 	}
 }
 
-// TestDoubtedRunsReadsEveryReport: the runs of every report add up; one of
-// every run, or one that counts a refusal or a conflict and names no run,
-// puts every run in doubt.
+// TestDoubtedRunsReadsEveryReport: the runs of every report of the source add
+// up; one of every run, or one that counts a refusal or a conflict and names
+// no run, puts every run in doubt. A report of another source, tenant or
+// project puts none of this source's runs in doubt.
 func TestDoubtedRunsReadsEveryReport(t *testing.T) {
+	of := func(source, tenant, project string, counts *observev1.ImportCounts, every bool, runs ...string) *observev1.Record {
+		return reportRecord(&observev1.ImportReport{
+			Source: &observev1.SourceRef{SourceId: source, DescriptorSha256: strings.Repeat("a", 64)}, TenantId: tenant, ProjectId: project,
+			Counts: counts, EveryRunDoubted: every, DoubtedRunIds: runs,
+		})
+	}
 	report := func(counts *observev1.ImportCounts, every bool, runs ...string) *observev1.Record {
-		return reportRecord(&observev1.ImportReport{Counts: counts, EveryRunDoubted: every, DoubtedRunIds: runs})
+		return of("s1", "t1", "p1", counts, every, runs...)
 	}
 	refused, conflict := &observev1.ImportCounts{Refused: 1}, &observev1.ImportCounts{Conflict: 2}
 	seen := obsRecord(fixtureObservation())
@@ -164,8 +172,15 @@ func TestDoubtedRunsReadsEveryReport(t *testing.T) {
 		"every run":                {[]*observev1.Record{report(refused, false, runN(2)), report(nil, true)}, true, nil},
 		"a refusal naming no run":  {[]*observev1.Record{report(refused, false)}, true, nil},
 		"a conflict naming no run": {[]*observev1.Record{report(nil, false, runN(1)), report(conflict, false)}, true, nil},
+		"another source's": {[]*observev1.Record{report(nil, false, runN(1)), of("s2", "t1", "p1", nil, true),
+			of("s2", "t1", "p1", refused, false), of("s2", "t1", "p1", conflict, false, runN(3))}, false, []string{runN(1)}},
+		"another tenant's":  {[]*observev1.Record{of("s1", "t2", "p1", nil, true), of("s1", "t2", "p1", refused, false, runN(3))}, false, nil},
+		"another project's": {[]*observev1.Record{of("s1", "t1", "p2", nil, true), of("s1", "t1", "p2", refused, false, runN(3))}, false, nil},
+		"an older descriptor's": {[]*observev1.Record{reportRecord(&observev1.ImportReport{
+			Source: &observev1.SourceRef{SourceId: "s1", DescriptorSha256: strings.Repeat("b", 64)}, TenantId: "t1", ProjectId: "p1", EveryRunDoubted: true,
+		})}, true, nil},
 	} {
-		every, runs := observe.DoubtedRuns(c.records)
+		every, runs := observe.DoubtedRuns(liveDescriptor(), c.records)
 		if every != c.every || !slices.Equal(runs, c.runs) {
 			t.Errorf("%s: every %v, runs %v; want %v, %v", name, every, runs, c.every, c.runs)
 		}

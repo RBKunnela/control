@@ -84,12 +84,27 @@ func procedureTest(path string, stdout, stderr io.Writer) int {
 	return exitOK
 }
 
+// evaluateCase supervises in with each source under the run's tenant and the
+// project its events name: a case's source has no descriptor, so no identity
+// of its own.
+func evaluateCase(in supervise.Input) (*supervise.Result, error) {
+	project, err := supervise.RunProject(in)
+	if err != nil {
+		return nil, err
+	}
+	in.Sources = slices.Clone(in.Sources)
+	for i := range in.Sources {
+		in.Sources[i].Tenant, in.Sources[i].Project = in.Run.Tenant, project
+	}
+	return supervise.Evaluate(in)
+}
+
 // runProcedureCase supervises one case and reports its line and whether it
 // matched. A case supervise refuses to judge fails with the refusal.
 func runProcedureCase(p *supervise.Procedure, c procedureCase) (string, bool) {
 	in := c.input
 	in.Procedure = p
-	res, err := supervise.Evaluate(in)
+	res, err := evaluateCase(in)
 	if err != nil {
 		return "refused: " + err.Error(), false
 	}

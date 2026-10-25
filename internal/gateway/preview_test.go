@@ -55,12 +55,14 @@ func TestAnUnclassifiedCallIsBlockedInEveryModeButObserve(t *testing.T) {
 
 // TestAnUnclassifiedCallRunsUnderObserve: OBSERVE enforces no decision and
 // takes a call nothing classifies, so the call runs with its proposed bytes,
-// the trail holds the kernel's decision alone, and it closes clean; a nil
+// the trail holds the kernel's decision alone, and it closes clean with the
+// digest of the bytes sent, which the refused decision does not carry; a nil
 // envelope still blocks.
 func TestAnUnclassifiedCallRunsUnderObserve(t *testing.T) {
 	h := build(t, modeObserve, snapshot(t, allowWrites), observer)
 	args := []byte(`{"k": 1}`)
-	d := h.p.Admit(context.Background(), unclassified(args))
+	a := unclassified(args)
+	d := h.p.Admit(context.Background(), a)
 	if d.Action != core.Execute || !bytes.Equal(d.AuthorizedArgs, args) {
 		t.Fatalf("under OBSERVE: Action = %d, args %q; want the proposed bytes run", d.Action, d.AuthorizedArgs)
 	}
@@ -72,12 +74,25 @@ func TestAnUnclassifiedCallRunsUnderObserve(t *testing.T) {
 	if err := h.p.Close(context.Background(), d, args, result(controlv1.ResultStatus_RESULT_STATUS_SUCCESS)); err != nil {
 		t.Errorf("Close of the observed call: %v", err)
 	}
+	expectSentDigestOnly(t, h.events(), actionDigest(t, a.Envelope, string(args)))
 	if s := h.p.Stats(); s.Halted || s.Mismatches != 0 {
 		t.Errorf("Stats = %+v", s)
 	}
 	// A nil envelope blocks under OBSERVE too: nothing can be written about it.
 	if d := h.p.Admit(context.Background(), gateway.Admission{Refusal: gateway.ErrUnclassified}); d.Action != core.Block {
 		t.Errorf("a nil envelope under OBSERVE: Action = %d, want Block", d.Action)
+	}
+}
+
+// expectSentDigestOnly asserts a trail whose POLICY_DECIDED carries no action
+// digest and whose ACTION_COMPLETED carries sent, the digest of the bytes sent.
+func expectSentDigestOnly(t *testing.T, events []*controlv1.Event, sent string) {
+	t.Helper()
+	decided, closing := events[1], events[len(events)-1]
+	if decided.GetKind() != kindDecided || decided.GetDecision().GetActionDigest() != "" ||
+		closing.GetKind() != kindCompleted || closing.GetResult().GetExecutedActionDigest() != sent {
+		t.Errorf("the refused decision carries digest %q and the closing %s carries %q; want none on the decision and the sent bytes' on %s",
+			decided.GetDecision().GetActionDigest(), closing.GetKind(), closing.GetResult().GetExecutedActionDigest(), kindCompleted)
 	}
 }
 

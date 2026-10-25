@@ -22,31 +22,45 @@ def read_text(path):
         return ""
 
 
-def lines(path):
+def jsonl(path):
+    """The object on each line of path, and why a line or the file could not be
+    read, or None. A line that does not parse is never skipped, since what it
+    held is not known."""
     out = []
     try:
-        with open(path, encoding="utf-8", errors="replace") as f:
-            for line in f:
+        with open(path, encoding="utf-8") as f:
+            for n, line in enumerate(f, 1):
                 try:
-                    out.append(json.loads(line))
+                    value = json.loads(line)
                 except ValueError:
-                    continue
-    except OSError:
-        pass
-    return out
+                    return out, "line %d of %s does not parse" % (n, os.path.basename(path))
+                if not isinstance(value, dict):
+                    return out, "line %d of %s is not an object" % (n, os.path.basename(path))
+                out.append(value)
+    except (OSError, UnicodeDecodeError) as e:
+        return out, "%s could not be read: %s" % (os.path.basename(path), type(e).__name__)
+    return out, None
 
 
 def events(path):
+    """The hook events recorded in path, and why one could not be read, or
+    None. Every invocation's settings create path, so one that cannot be
+    listed, absent included, is not known; a missing meta file is a hook that
+    wrote none, as one killed while the bridge ran; an unreadable one is not
+    known."""
     out = []
     try:
         names = sorted(n for n in os.listdir(path) if re.fullmatch(r"\d{3}\.json", n))
-    except OSError:
-        return out
+    except OSError as e:
+        return out, "the hook events of %s could not be listed: %s" % (os.path.basename(path), type(e).__name__)
     for name in names:
         stem = os.path.join(path, name[:-5])
         ev = load_json(stem + ".json")
-        ev = ev if isinstance(ev, dict) else {}
-        meta = load_json(stem + ".meta.json", {})
+        if not isinstance(ev, dict):
+            return out, "hook event %s could not be read" % name
+        meta = load_json(stem + ".meta.json") if os.path.exists(stem + ".meta.json") else {}
+        if not isinstance(meta, dict):
+            return out, "the meta file of hook event %s could not be read" % name
         if isinstance(meta.get("stderr"), str):
             meta["stderr"] = scrub(PROGRAM.sub("", meta["stderr"]))
         out.append({
@@ -57,7 +71,7 @@ def events(path):
             "input": ev.get("tool_input") if isinstance(ev.get("tool_input"), dict) else {},
             "meta": meta,
         })
-    return out
+    return out, None
 
 
 # The program's name the bridge puts before each line it writes; the results
@@ -85,16 +99,30 @@ class Inv:
         self.skipped = os.path.exists(os.path.join(d, "skipped"))
         self.unselected = os.path.exists(os.path.join(d, "unselected"))
         names = sorted(os.listdir(d)) if os.path.isdir(d) else []
-        self.ran = sum(1 for n in names if re.fullmatch(r"runtime-\w+\.exit", n))
-        self.stream = [x for n in names if re.fullmatch(r"stream-\w+\.jsonl", n) for x in lines(os.path.join(d, n))]
-        self.events = events(os.path.join(events_root, group, name))
+        keys = [m.group(1) for m in (re.fullmatch(r"runtime-(\w+)\.exit", n) for n in names) if m]
+        self.ran = len(keys)
+        problems = []
+        self.stream = []
+        for key in keys:
+            if "stream-%s.jsonl" % key not in names:
+                problems.append("runtime-%s left no stream" % key)
+                continue
+            values, problem = jsonl(os.path.join(d, "stream-%s.jsonl" % key))
+            self.stream += values
+            problems.append(problem)
+        self.events, problem = events(os.path.join(events_root, group, name))
+        problems.append(problem)
         files = load_json(os.path.join(d, "files.json"))
         self.observed_files = isinstance(files, dict)
         self.files = files if self.observed_files else {}
         self.observed_trail = os.path.isfile(os.path.join(d, "trail.jsonl"))
-        self.trail = [r["event"] for r in lines(os.path.join(d, "trail.jsonl")) if r.get("type") == "event"]
-        self.health = load_json(os.path.join(d, "healthz.json"), {})
-        self.health_before = load_json(os.path.join(d, "healthz.before.json"), {})
+        trail, problem = jsonl(os.path.join(d, "trail.jsonl")) if self.observed_trail else ([], None)
+        problems.append(problem)
+        self.trail = [r["event"] for r in trail if r.get("type") == "event"]
+        self.problem = next((p + " in " + self.name for p in problems if p), None)
+        self.halts = runs_halted(load_json(os.path.join(d, "healthz.json")))
+        self.halts_before = runs_halted(load_json(os.path.join(d, "healthz.before.json")))
+        self.observed_health = self.halts is not None and self.halts_before is not None
         self.approved = load_json(os.path.join(d, "approved.json"), {})
         self.exits = [read_text(os.path.join(d, n)).strip() for n in names if re.fullmatch(r"runtime-\w+\.exit", n)]
         self.stopped = any("stopped after" in read_text(os.path.join(d, n))
@@ -200,5 +228,13 @@ class Inv:
         return sum(r["kinds"].count("ACTION_COMPLETED") for r in self.requests().values() if r.get("digest") == digest)
 
     def halted(self):
-        before = (self.health_before.get("pipeline") or {}).get("runs_halted", 0)
-        return (self.health.get("pipeline") or {}).get("runs_halted", 0) > before
+        """Whether the plane halted a run during the invocation; read only when
+        observed_health says both counts were read."""
+        return self.observed_health and self.halts > self.halts_before
+
+
+def runs_halted(health):
+    """The plane's count of halted runs in a /healthz answer, or None."""
+    pipeline = health.get("pipeline") if isinstance(health, dict) else None
+    n = pipeline.get("runs_halted") if isinstance(pipeline, dict) else None
+    return n if isinstance(n, int) and not isinstance(n, bool) else None

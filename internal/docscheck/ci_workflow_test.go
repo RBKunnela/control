@@ -10,7 +10,7 @@ import (
 const (
 	ciWorkflowPath = ".github/workflows/ci.yml"
 	ciGateJob      = "quality"
-	ciGateCommand  = "env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS make quality GO=go"
+	ciGateCommand  = "env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make quality GO=go"
 )
 
 // The keys the gate job and its gate step may carry. Anything else can skip
@@ -413,7 +413,7 @@ jobs:
           printf '%s\n' "${pins}" >>"$GITHUB_ENV"
           if: this is script text, not a key
       - name: Run the quality gate
-        run: env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS make quality GO=go
+        run: env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make quality GO=go
 
   other:
     if: false
@@ -433,8 +433,9 @@ func TestCIGateProblems(t *testing.T) {
 	cases := map[string]struct{ old, replacement, want string }{
 		"the quick gate":                {gateRun + "\n", "run: make quality-quick\n\n", "no step of the quality job runs exactly \"" + ciGateCommand + "\""},
 		"the gate in the caller's env":  {gateRun + "\n", "run: make quality GO=go\n\n", "runs exactly"},
-		"the gate with MAKEFLAGS kept":  {gateRun + "\n", "run: env -u GNUMAKEFLAGS -u MFLAGS make quality GO=go\n\n", "runs exactly"},
-		"the gate with GO from the env": {gateRun + "\n", "run: env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS make quality\n\n", "runs exactly"},
+		"the gate with MAKEFLAGS kept":  {gateRun + "\n", "run: env -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make quality GO=go\n\n", "runs exactly"},
+		"the gate with MAKEFILES kept":  {gateRun + "\n", "run: env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS make quality GO=go\n\n", "runs exactly"},
+		"the gate with GO from the env": {gateRun + "\n", "run: env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make quality\n\n", "runs exactly"},
 		"the gate with a fallback":      {gateRun + "\n", "run: " + ciGateCommand + " || true\n\n", "runs exactly"},
 		"the gate in a block":           {gateRun + "\n", "run: |\n          " + ciGateCommand + "\n\n", "runs exactly"},
 		"the gate quoted":               {gateRun + "\n", "run: \"" + ciGateCommand + "\"\n\n", "runs exactly"},

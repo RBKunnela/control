@@ -116,9 +116,9 @@ not the plane, runs the call.
   its effect class; a tool it does not name is refused, and the call blocked,
   except on a plane in `OBSERVE`. Name `ToolSearch` too: Claude Code calls it
   to load a deferred tool, an MCP tool among them, so a table without it
-  blocks every deferred tool. Class `Agent` as `EXECUTE`: `SPAWN_OR_DELEGATE`
-  needs a delegation the enforcement API does not carry, so such a call is
-  refused with `REQUIRED_FIELD_ABSENT` *(both seen on 2.1.303)*. For example:
+  blocks every deferred tool *(seen on 2.1.303)*. Class `Agent` as `EXECUTE`:
+  `SPAWN_OR_DELEGATE` needs a delegation the enforcement API does not carry,
+  so the plane refuses to start with a tool of that class. For example:
 
   ```yaml
   tools:

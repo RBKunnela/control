@@ -67,8 +67,9 @@ func tool(env *controlv1.ActionEnvelope) *controlv1.ActionEnvelope {
 }
 
 // expectPlaneBlock asserts the plane's own block, the codes it lists in their
-// order and the verdict they make, a trail of three events whose
-// POLICY_DECIDED is the kernel's own, and the block counted by its first code.
+// order and the verdict they make, no rule, obligation or decision point on
+// it, a trail of three events whose POLICY_DECIDED is the kernel's own, and
+// the block counted by its first code.
 func expectPlaneBlock(t *testing.T, h *harness, d gateway.Disposition, verdict controlv1.Verdict, codes ...string) {
 	t.Helper()
 	expectBlock(t, d, verdict, codes[0], gateway.PDPType)
@@ -77,6 +78,10 @@ func expectPlaneBlock(t *testing.T, h *harness, d gateway.Disposition, verdict c
 	}
 	if ids := d.Decision.GetPolicyRuleIds(); len(ids) != 0 {
 		t.Errorf("the plane's decision names rules %v; a pause entry is no rule of the bundle", ids)
+	}
+	if d.Decision.GetObligations() != nil || d.Decision.GetPdpInstance() != "" {
+		t.Errorf("the plane's decision carries obligations %v and decision point %q; want neither",
+			d.Decision.GetObligations(), d.Decision.GetPdpInstance())
 	}
 	trail := h.trailOf(d.Decision.GetRequestId())
 	expectKinds(t, kindsOf(trail), []controlv1.EventKind{kindProposed, kindDecided, kindBlocked})

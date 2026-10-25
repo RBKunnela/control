@@ -37,7 +37,8 @@ type Export struct {
 	NotWhole string
 }
 
-// Source is one observation source with the observations of its log.
+// Source is one observation source with the observations of its log, read
+// under one identity: its descriptor's source id, tenant and project.
 // LastHeard and Heard are what observe.LastHeard reads from its import
 // reports, and EveryRunDoubted and DoubtedRuns what observe.DoubtedRuns
 // reads: a span an import refused, or an observation the log refused for an
@@ -45,6 +46,7 @@ type Export struct {
 // run, when EveryRunDoubted, or of a run DoubtedRuns names.
 type Source struct {
 	SourceID         string
+	Tenant, Project  string
 	HeartbeatSeconds uint32
 	LastHeard        time.Time
 	Heard            bool
@@ -110,7 +112,8 @@ type Result struct {
 // Evaluate checks one run against its procedure. It refuses a run id that is
 // not an opened run's with ErrRunID, and a procedure ReadProcedure did not
 // make, a run with no tenant, a tree its procedure does not read, a source
-// given twice, or a run whose events name two projects with ErrInput.
+// given twice, a run whose events name two projects, or a source of another
+// tenant or project than the run's with ErrInput.
 func Evaluate(in Input) (*Result, error) {
 	e, err := prepare(in)
 	if err != nil {
@@ -128,6 +131,20 @@ func Evaluate(in Input) (*Result, error) {
 	return e.result(drafts, states), nil
 }
 
+// RunProject is the one project the run's events name, as Evaluate reads
+// them, or "" when none of them is read. It refuses what Evaluate refuses
+// before it reads a source.
+func RunProject(in Input) (string, error) {
+	if err := checkInput(in); err != nil {
+		return "", err
+	}
+	rd := newRead(judged(in), in.Run.Tenant)
+	if err := rd.takeEvents(in.Exports); err != nil {
+		return "", err
+	}
+	return rd.project, nil
+}
+
 // prepare checks in and reads what belongs to its run, ready for the rules.
 func prepare(in Input) (*evaluation, error) {
 	if err := checkInput(in); err != nil {
@@ -135,6 +152,9 @@ func prepare(in Input) (*evaluation, error) {
 	}
 	rd := newRead(judged(in), in.Run.Tenant)
 	if err := rd.takeEvents(in.Exports); err != nil {
+		return nil, err
+	}
+	if err := rd.checkSources(in.Sources); err != nil {
 		return nil, err
 	}
 	rd.takeObservations(in.Sources)

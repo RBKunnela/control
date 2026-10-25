@@ -3,8 +3,12 @@ package otel
 import (
 	"bytes"
 	"encoding/json"
+	"math"
 	"strconv"
 	"strings"
+	"time"
+
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/brand"
@@ -79,10 +83,8 @@ func encode(events []*controlv1.Event) ([]byte, error) {
 			Body:           anyValue{StringValue: strings.TrimSuffix(line.String(), "\n")},
 			Attributes:     attributes(ev),
 		}
-		// A time before the epoch has no unsigned nanosecond count; the
-		// record then carries no time, as one with no occurred_at does.
-		if ts := ev.GetOccurredAt(); ts != nil && ts.AsTime().UnixNano() >= 0 {
-			rec.TimeUnixNano = strconv.FormatInt(ts.AsTime().UnixNano(), 10)
+		if n, ok := unixNano(ev.GetOccurredAt()); ok {
+			rec.TimeUnixNano = strconv.FormatUint(n, 10)
 		}
 		records = append(records, rec)
 	}
@@ -94,6 +96,29 @@ func encode(events []*controlv1.Event) ([]byte, error) {
 		}},
 	}}}
 	return json.Marshal(req)
+}
+
+// The largest count of nanoseconds since the epoch in 64 unsigned bits, as
+// seconds and the nanos past them.
+const (
+	maxUnixSeconds = int64(math.MaxUint64 / uint64(time.Second))
+	maxUnixNanos   = int32(math.MaxUint64 % uint64(time.Second))
+)
+
+// unixNano is ts as OTLP's unsigned count of nanoseconds since the epoch. A
+// time before the epoch, or past what 64 unsigned bits count, has none, and
+// its record then carries no time, as one with no occurred_at does. The count
+// is taken from the seconds and nanos, since time.Time's signed count wraps
+// outside 1678 to 2262.
+func unixNano(ts *timestamppb.Timestamp) (uint64, bool) {
+	if ts == nil || ts.CheckValid() != nil {
+		return 0, false
+	}
+	secs, nanos := ts.GetSeconds(), ts.GetNanos()
+	if secs < 0 || secs > maxUnixSeconds || secs == maxUnixSeconds && nanos > maxUnixNanos {
+		return 0, false
+	}
+	return uint64(secs)*uint64(time.Second) + uint64(nanos), true //nolint:gosec // G115: CheckValid holds nanos to 0 through 999999999
 }
 
 func attributes(ev *controlv1.Event) []keyValue {

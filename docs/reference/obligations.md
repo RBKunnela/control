@@ -56,7 +56,7 @@ types the gateway and the MCP adapter declare. Rebuild it with
 | `restrict_resources` | the MCP adapter | `ids` | one of `ids`, `prefix` | comma-separated resource ids, none empty and each one the identifier rule admits |
 | `restrict_resources` | the MCP adapter | `prefix` | one of `ids`, `prefix` | an identifier whose last `/`-separated segment is printable ASCII without `%`, `;`, `?`, `#` or `\` |
 | `require_idempotency_key` | `planned`: nothing in this build | none |  |  |
-| `cap_amount` | the gateway | `max` | yes | a base-10 integer that fits in 64 bits, with an optional sign |
+| `cap_amount` | the gateway | `max` | yes | a base-10 integer from -9007199254740991 to 9223372036854775807, with an optional sign |
 | `cap_amount` | the gateway | `field` | no | the exact name of one top-level member |
 | `cap_rate` | `planned`: nothing in this build | none |  |  |
 | `require_sandbox` | `planned`: nothing in this build | none |  |  |

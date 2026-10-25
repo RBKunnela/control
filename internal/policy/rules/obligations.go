@@ -10,6 +10,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/guardana/control/internal/canon"
 	"github.com/guardana/control/pkg/contract"
 )
 
@@ -28,8 +29,10 @@ const (
 	// looks the name up as written, so every string names a member some
 	// arguments can hold.
 	GrammarMemberName
-	// GrammarInteger is a base-10 integer that fits in 64 bits, with an
-	// optional sign, as strconv.ParseInt reads it.
+	// GrammarInteger is a base-10 integer from the smallest integer canon
+	// writes to the largest int64, with an optional sign, as strconv.ParseInt
+	// reads it. cap_amount writes it into arguments that are canonicalized
+	// after the rewrite, and a larger one never replaces an amount canon read.
 	GrammarInteger
 	// GrammarIdentifiers is comma-separated resource ids, none empty and each
 	// one the identifier rule admits: an entry no envelope can carry as its
@@ -57,7 +60,7 @@ func (g Grammar) Describe() string {
 	case GrammarMemberName:
 		return "the exact name of one top-level member"
 	case GrammarInteger:
-		return "a base-10 integer that fits in 64 bits, with an optional sign"
+		return "a base-10 integer from " + strconv.FormatInt(canon.MinSafeInteger, 10) + " to " + strconv.FormatInt(math.MaxInt64, 10) + ", with an optional sign"
 	case GrammarIdentifiers:
 		return "comma-separated resource ids, none empty and each one the identifier rule admits"
 	case GrammarResourcePrefix:
@@ -79,8 +82,8 @@ func (g Grammar) accepts(s string) bool {
 	case GrammarMemberName:
 		return true
 	case GrammarInteger:
-		_, err := strconv.ParseInt(s, 10, 64)
-		return err == nil
+		n, err := strconv.ParseInt(s, 10, 64)
+		return err == nil && n >= canon.MinSafeInteger
 	case GrammarIdentifiers:
 		return everyEntry(s, func(id string) bool {
 			return len(id) <= contract.MaxStringBytes && contract.CheckIdentifier(id) == nil

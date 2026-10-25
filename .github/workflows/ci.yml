@@ -125,7 +125,7 @@ jobs:
       - name: Run the quality gate
         # make takes options from these variables, so an earlier step that
         # set one could make it skip a check; GO names the go the gate runs.
-        run: env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS make quality GO=go
+        run: env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make quality GO=go
 
       - name: Check every action pin against its repository
         # The gate's own checks see only a pin's shape, and a commit from any

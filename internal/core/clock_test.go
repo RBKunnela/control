@@ -165,3 +165,16 @@ func TestARefusedRequestAtAnUnusableClockReadsStale(t *testing.T) {
 		t.Errorf("freshness %s, want STALE", got)
 	}
 }
+
+// TestARefusedRequestPastItsBudgetReadsStaleWithoutTheCode: the freshness
+// step never runs for a refused request, so a snapshot past its budget makes
+// its freshness STALE and adds no POLICY_STALE to the refusal's code.
+func TestARefusedRequestPastItsBudgetReadsStaleWithoutTheCode(t *testing.T) {
+	refused := request(readEnvelope())
+	refused.Refusal = contract.ErrTooLarge
+	out := decide(kernelAt(t, failOpen()), refused, snapshotAt(t, document(300, allowReads), at(-300*time.Second-time.Nanosecond)))
+	check(t, out, expect{verdict: verdictIndeterminate, action: core.Block, codes: []string{codeLimitExceeded}})
+	if got := out.Decision.GetPolicyFreshness(); got != stale {
+		t.Errorf("freshness %s, want STALE", got)
+	}
+}
