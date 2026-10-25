@@ -117,7 +117,36 @@
 <a href="/docs/adr/0008-branching-and-release-policy">ADR-0008</a>. Each release is built,
 signed and attested from its tag; <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a> shows how to
 verify one.</p>
-<h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.13.0...HEAD">Unreleased</a></h2>
+<h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.14.0...HEAD">Unreleased</a></h2>
+<h2 id="0140---2026-10-25"><a href="https://github.com/guardana/control/releases/tag/v0.14.0">0.14.0</a> - 2026-10-25</h2>
+<p><code>supervise</code> no longer passes a run on evidence that may hide a call. A request
+whose trail is in doubt leaves not checked every rule that would read as
+checked. A span or observation an import refused while it claimed a run leaves
+the rules that read a source's reports not checked, and makes a finding citing
+that run's observations <code>INDETERMINATE</code>. Either way the command now exits 1,
+where it exited 0
+(<a href="/docs/adr/0058-a-copy-an-import-never-read-is-doubt-for-the-runs-it-claimed">ADR-0058</a>).
+An import report carrying such a doubt is schema <code>0.2</code>, which a reader of <code>0.1</code>
+only refuses, and the doubt lasts until the log is rotated by hand. A gateway
+configuration with a tool classification no envelope could carry is now refused
+when it loads
+(<a href="/docs/adr/0059-a-tools-classification-is-one-type-checked-when-it-loads">ADR-0059</a>).
+<code>policy lint</code>, <code>policy test</code>, <code>policy sign</code> and <code>guardana-gateway dev</code> refuse
+an obligation parameter its type does not declare, a missing required one or a
+malformed value, while a bundle already signed still loads
+(<a href="/docs/adr/0061-an-obligations-parameters-are-the-catalogues">ADR-0061</a>).
+In <code>OBSERVE</code> the enforcement API now blocks every call whose envelope the
+contract refuses, as the MCP adapter does. Both of its clients refuse an admit
+answer whose decision carries no schema version, or one on another major.
+<code>pkg/contract</code> exports what each effect class requires
+(<a href="/docs/adr/0060-pkg-contract-exports-what-each-effect-class-requires">ADR-0060</a>).
+The <code>experimental</code> hook profile is qualified on a second release of its runtime
+and is still labelled &quot;decided, with failure gaps&quot;. Among the pre-release
+audit's fixes: a source's doubt is read from that source's own reports only,
+a <code>--source</code> of another tenant or project is refused, and <code>cap_amount</code>'s <code>max</code>
+is held to the integer range the canonical form writes.
+The project is still alpha, and the <code>0.x</code> series makes no compatibility promise
+between minor versions.</p>
 <h3 id="security">Security</h3>
 <ul>
 <li><code>mcp.New</code> refuses an override whose <code>ReturnsTrust</code> or <code>ReturnsSensitivity</code>

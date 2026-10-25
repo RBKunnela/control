@@ -4,7 +4,7 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "guardana-control"
-version = "0.13.0"
+version = "0.14.0"
 description = "Ask a Guardana Control plane before a tool acts, and report how the call ended."
 readme = "README.md"
 requires-python = ">=3.11"

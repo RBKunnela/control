@@ -11,6 +11,37 @@ verify one.
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-10-25
+
+`supervise` no longer passes a run on evidence that may hide a call. A request
+whose trail is in doubt leaves not checked every rule that would read as
+checked. A span or observation an import refused while it claimed a run leaves
+the rules that read a source's reports not checked, and makes a finding citing
+that run's observations `INDETERMINATE`. Either way the command now exits 1,
+where it exited 0
+([ADR-0058](docs/adr/0058-a-copy-an-import-never-read-is-doubt-for-the-runs-it-claimed.md)).
+An import report carrying such a doubt is schema `0.2`, which a reader of `0.1`
+only refuses, and the doubt lasts until the log is rotated by hand. A gateway
+configuration with a tool classification no envelope could carry is now refused
+when it loads
+([ADR-0059](docs/adr/0059-a-tools-classification-is-one-type-checked-when-it-loads.md)).
+`policy lint`, `policy test`, `policy sign` and `guardana-gateway dev` refuse
+an obligation parameter its type does not declare, a missing required one or a
+malformed value, while a bundle already signed still loads
+([ADR-0061](docs/adr/0061-an-obligations-parameters-are-the-catalogues.md)).
+In `OBSERVE` the enforcement API now blocks every call whose envelope the
+contract refuses, as the MCP adapter does. Both of its clients refuse an admit
+answer whose decision carries no schema version, or one on another major.
+`pkg/contract` exports what each effect class requires
+([ADR-0060](docs/adr/0060-pkg-contract-exports-what-each-effect-class-requires.md)).
+The `experimental` hook profile is qualified on a second release of its runtime
+and is still labelled "decided, with failure gaps". Among the pre-release
+audit's fixes: a source's doubt is read from that source's own reports only,
+a `--source` of another tenant or project is refused, and `cap_amount`'s `max`
+is held to the integer range the canonical form writes.
+The project is still alpha, and the `0.x` series makes no compatibility promise
+between minor versions.
+
 ### Security
 
 - `mcp.New` refuses an override whose `ReturnsTrust` or `ReturnsSensitivity`
@@ -1634,7 +1665,8 @@ yet.
   independence of this project from Guardana
   ([ADR-0024](docs/adr/0024-control-and-guardana-are-independent.md)).
 
-[Unreleased]: https://github.com/guardana/control/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/guardana/control/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/guardana/control/releases/tag/v0.14.0
 [0.13.0]: https://github.com/guardana/control/releases/tag/v0.13.0
 [0.12.0]: https://github.com/guardana/control/releases/tag/v0.12.0
 [0.11.0]: https://github.com/guardana/control/releases/tag/v0.11.0
