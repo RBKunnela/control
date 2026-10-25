@@ -18,7 +18,7 @@
   "hook_timeout_seconds": 30,
   "max_event_bytes": 16777216,
   "claims": {
-    "runtime": {"name": "Claude Code", "tested_versions": ["2.1.303"], "backed_by": ["qualification/allow", "qualification/block"]},
+    "runtime": {"name": "Claude Code", "tested_versions": ["2.1.303", "2.1.310"], "backed_by": ["qualification/allow", "qualification/block"]},
     "fail_closed": {"setting": "onFailure: \"block\"", "min_version": "2.1.295", "backed_by": ["qualification/timeout-block", "qualification/crash-block", "qualification/timeout-open", "qualification/crash-open"]},
     "pending": {"value": "deny-with-reason", "backed_by": ["pre-write", "qualification/pending-held", "qualification/pending-resumed", "qualification/pending-used", "qualification/concurrent"]},
     "call_id": {"value": true, "backed_by": ["pre-bash", "post-success", "pre-no-call-id", "qualification/allow"]},

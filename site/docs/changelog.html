@@ -236,6 +236,10 @@ their own: the signed envelopes and the spool's segment framing.</li>
 </ul>
 <h3 id="changed">Changed</h3>
 <ul>
+<li>The <a href="/docs/reference/claude-code-hooks">built-in hook profile</a> is
+qualified on a newer release of its runtime too: all 20 cases passed on the
+first run, in 22 invocations, and the profile names that release among its
+tested versions.</li>
 <li><code>make check-sizes</code> holds <code>*.py</code> and <code>*.sh</code> files to the size budget too,
 tests included: above 350 non-blank lines warns, above 500 fails. The
 files that were over it are split, with nothing changed for a caller.</li>

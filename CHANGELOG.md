@@ -129,6 +129,10 @@ verify one.
 
 ### Changed
 
+- The [built-in hook profile](docs/reference/claude-code-hooks.md) is
+  qualified on a newer release of its runtime too: all 20 cases passed on the
+  first run, in 22 invocations, and the profile names that release among its
+  tested versions.
 - `make check-sizes` holds `*.py` and `*.sh` files to the size budget too,
   tests included: above 350 non-blank lines warns, above 500 fails. The
   files that were over it are split, with nothing changed for a caller.

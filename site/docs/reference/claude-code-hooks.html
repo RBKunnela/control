@@ -132,7 +132,7 @@ endorsed by the publisher of Claude Code.</p>
 </tr>
 <tr>
 <td>Qualified on the real runtime</td>
-<td>2.1.303: all 20 cases passed, two of them on a rerun once the tools table named <code>ToolSearch</code> and classed <code>Agent</code> as <code>EXECUTE</code>, and one on a rerun that recorded the hook's output</td>
+<td>2.1.310: all 20 cases passed on the first run, in 22 invocations. 2.1.303: all 20 passed, two of them on a rerun once the tools table named <code>ToolSearch</code> and classed <code>Agent</code> as <code>EXECUTE</code>, and one on a rerun that recorded the hook's output</td>
 </tr>
 <tr>
 <td>Events</td>
@@ -158,10 +158,11 @@ endorsed by the publisher of Claude Code.</p>
 </table>
 <p>The fixtures are written from Claude Code's published hook documentation, and
 every CI run passes them through the bridge against a plane. The
-qualification ran Claude Code 2.1.303 headless against a plane, case by case,
-and its results are in the profile's <code>qualification/</code> directory. What it
-observed is marked <em>(seen on 2.1.303)</em> below; the rest is from the
-documentation and unverified. The label stays &quot;decided, with failure gaps&quot;. It cannot become
+qualification ran Claude Code 2.1.303, and later 2.1.310, headless against a
+plane, case by case, and its results are in the profile's <code>qualification/</code>
+directory. What the first run observed is marked <em>(seen on 2.1.303)</em> below,
+and 2.1.310 passed the same cases; the rest is from the documentation and
+unverified. The label stays &quot;decided, with failure gaps&quot;. It cannot become
 &quot;decided, not enforced&quot; until the fail-closed setting is in managed settings,
 the hook command is an absolute path to a binary the agent cannot replace and
 names this built-in profile, and the runtime's shell sandbox keeps the agent
