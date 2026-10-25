@@ -2,13 +2,13 @@
 title: Policy explain
 summary: What `guardana-control policy explain` reads, every line it prints, which rule decided and which input a rule could not read, and its bounds.
 type: reference
-covers: [cmd/guardana-control/explain.go, internal/core/explain.go, internal/policy/match/explain.go]
+covers: [cmd/guardana-control/explain.go, cmd/guardana-control/policytest.go, internal/core/explain.go, internal/policy/match/explain.go]
 ---
 
 # Policy explain
 
 `guardana-control policy explain <case>` decides one case the way `policy test`
-does and prints how: the decision, what the kernel found before the policy,
+does, without its obligation parameter check, and prints how: the decision, what the kernel found before the policy,
 and how each rule read the call. It is `implemented`. Why it reads the kernel's
 own evaluation, and nothing beside it, is
 [ADR-0036](../adr/0036-policy-explain-reads-the-kernels-own-evaluation.md).
@@ -18,9 +18,11 @@ own evaluation, and nothing beside it, is
 One case file in the format of
 [policy-format.md](policy-format.md#a-test-case), with `expect` optional. The
 document is signed in memory, loaded at `loaded_at` and decided at
-`decided_at`, exactly as `policy test` decides it, and the decision printed is
-the one `policy test` compares. When the case has `expect`, the last line says
-whether the decision met it.
+`decided_at`, and the decision printed is the one `policy test` compares. The
+one difference: explain does not hold obligation parameters to
+[obligations.md](obligations.md) before signing, as loading a bundle does not,
+so it explains a case `policy test` refuses for a parameter. When the case has
+`expect`, the last line says whether the decision met it.
 
 ```
 $ guardana-control policy explain examples/starter-packs/approval-for-writes/cases/unknown-message-after-untrusted-input.json

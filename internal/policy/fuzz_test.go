@@ -68,7 +68,7 @@ func expectOneCheck(t *testing.T, snap *policy.Snapshot, err error) {
 	if named != 1 {
 		t.Fatalf("%v names %d of Load's checks, want 1", err, named)
 	}
-	for _, other := range []error{policy.ErrSigningKey, policy.ErrRollback, policy.ErrSerialReused} {
+	for _, other := range []error{policy.ErrSigningKey, policy.ErrObligationParams, policy.ErrRollback, policy.ErrSerialReused} {
 		if errors.Is(err, other) {
 			t.Fatalf("%v names %q, which Load never returns", err, other)
 		}

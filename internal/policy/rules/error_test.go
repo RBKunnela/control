@@ -146,6 +146,8 @@ const (
 	_ sentinel = ErrObligationsOnEffect
 	_ sentinel = ErrObligationType
 	_ sentinel = ErrReason
+	_ sentinel = ErrObligationParam
+	_ sentinel = ErrObligationValue
 )
 
 // TestSentinelsAreDistinct: the refusals are constants of one string type, so
@@ -160,7 +162,7 @@ func TestSentinelsAreDistinct(t *testing.T) {
 		}
 		seen[s.Error()] = true
 	}
-	if len(seen) != 18 {
-		t.Fatalf("%d sentinels, want 18", len(seen))
+	if len(seen) != 20 {
+		t.Fatalf("%d sentinels, want 20", len(seen))
 	}
 }

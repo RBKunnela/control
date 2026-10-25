@@ -13,6 +13,7 @@ import (
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/canon"
+	"github.com/guardana/control/internal/policy/rules"
 )
 
 // The obligations the pipeline applies to the argument bytes itself; every
@@ -32,28 +33,14 @@ const (
 // it to the kernel.
 var rewriting = []string{obligationRedactFields, obligationCapAmount}
 
-// rewritingParams is the parameters each rewriting type reads. The catalogue
-// holds no parameter schema, so this table is both what onlyParams checks
-// and what the obligation reference page renders.
-var rewritingParams = map[string][]string{
-	obligationRedactFields: {paramFields},
-	obligationCapAmount:    {paramMax, paramField},
-}
+// paramNames is the catalogue's list of the parameters a type declares, which
+// onlyParams checks an obligation against.
+var paramNames = rules.ParamNames
 
 // RewritingObligations returns the obligation types the pipeline applies
 // itself, by rewriting the arguments before the decision it records.
 func RewritingObligations() []string {
 	return slices.Clone(rewriting)
-}
-
-// ObligationParams returns, for each type the pipeline rewrites, the
-// parameters it reads; an obligation carrying any other is refused.
-func ObligationParams() map[string][]string {
-	out := make(map[string][]string, len(rewritingParams))
-	for typ, params := range rewritingParams {
-		out[typ] = slices.Clone(params)
-	}
-	return out
 }
 
 // errRewrite is an obligation of a rewriting type the pipeline cannot apply as
@@ -243,11 +230,11 @@ func capAmount(doc map[string]any, params map[string]string) error {
 	return nil
 }
 
-// onlyParams refuses a parameter outside the ones typ reads in
-// rewritingParams: a parameter nobody read would be an instruction nobody
-// followed.
+// onlyParams refuses a parameter outside the ones the catalogue declares for
+// typ: a parameter nobody read would be an instruction nobody followed. A
+// bundle signed without the catalogue's check can still carry one.
 func onlyParams(typ string, params map[string]string) error {
-	known, ok := rewritingParams[typ]
+	known, ok := paramNames(typ)
 	if !ok {
 		return fmt.Errorf("%s declares no parameters", typ)
 	}

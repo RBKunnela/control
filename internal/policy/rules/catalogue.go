@@ -29,22 +29,89 @@ func reasonsFor(effect controlv1.Verdict) []string {
 	return nil
 }
 
-// obligationTypes is the obligation catalogue. The enforcement point applies
-// some of these types; a receiver that cannot apply a non-advisory one denies
-// (ADR-0011).
-func obligationTypes() []string {
-	return []string{
-		"redact_fields", "read_only", "restrict_resources", "require_idempotency_key",
-		"cap_amount", "cap_rate", "require_sandbox", "second_approver", "emit_alert",
-		"shorten_timeout", "deny_external_sink",
+// Param is one parameter an obligation type declares.
+type Param struct {
+	Name     string
+	Required bool
+	Grammar  Grammar
+}
+
+// ObligationSpec is one type of the obligation catalogue: the parameters it
+// declares, and the names of which at least one must be present. A type with
+// no Params takes no parameters.
+type ObligationSpec struct {
+	Type   string
+	Params []Param
+	OneOf  []string
+}
+
+// catalogue is the obligation catalogue. The enforcement point applies some of
+// these types; a receiver that cannot apply a non-advisory one denies
+// (ADR-0011). A type nothing applies declares no parameters, since a value no
+// applier reads could only be an instruction nobody follows (ADR-0061).
+func catalogue() []ObligationSpec {
+	return []ObligationSpec{
+		{Type: "redact_fields", Params: []Param{{Name: "fields", Required: true, Grammar: GrammarMemberNames}}},
+		{Type: "read_only"},
+		{
+			Type:   "restrict_resources",
+			Params: []Param{{Name: "ids", Grammar: GrammarIdentifiers}, {Name: "prefix", Grammar: GrammarResourcePrefix}},
+			OneOf:  []string{"ids", "prefix"},
+		},
+		{Type: "require_idempotency_key"},
+		{Type: "cap_amount", Params: []Param{{Name: "max", Required: true, Grammar: GrammarInteger}, {Name: "field", Grammar: GrammarMemberName}}},
+		{Type: "cap_rate"},
+		{Type: "require_sandbox"},
+		{Type: "second_approver"},
+		{Type: "emit_alert"},
+		{Type: "shorten_timeout", Params: []Param{{Name: "ms", Required: true, Grammar: GrammarMilliseconds}}},
+		{Type: "deny_external_sink"},
 	}
 }
 
+// Obligations returns the catalogue, in its order. Every call builds a fresh
+// copy, so a caller cannot change what the parser reads.
+func Obligations() []ObligationSpec { return catalogue() }
+
+func obligationTypes() []string {
+	specs := catalogue()
+	out := make([]string, len(specs))
+	for i, s := range specs {
+		out[i] = s.Type
+	}
+	return out
+}
+
+func obligationSpec(typ string) (ObligationSpec, bool) {
+	for _, s := range catalogue() {
+		if s.Type == typ {
+			return s, true
+		}
+	}
+	return ObligationSpec{}, false
+}
+
+// ParamNames returns the parameters typ declares, in the catalogue's order,
+// and false for a type outside the catalogue. An applier refuses any other
+// parameter by this list; the value it parses itself.
+func ParamNames(typ string) ([]string, bool) {
+	spec, ok := obligationSpec(typ)
+	if !ok {
+		return nil, false
+	}
+	out := make([]string, len(spec.Params))
+	for i, p := range spec.Params {
+		out[i] = p.Name
+	}
+	return out, true
+}
+
 // KnownObligation reports whether name is an obligation type of the
-// catalogue, spelled exactly. It is the catalogue's one exported reading, for
-// a receiver that must refuse an obligation type it could never be handed.
+// catalogue, spelled exactly, for a receiver that must refuse an obligation
+// type it could never be handed.
 func KnownObligation(name string) bool {
-	return slices.Contains(obligationTypes(), name)
+	_, ok := obligationSpec(name)
+	return ok
 }
 
 // ruleEffect reads a rule's effect. The four are named here rather than
@@ -91,7 +158,7 @@ func obligationType(v any, a at) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if !slices.Contains(obligationTypes(), s) {
+	if !KnownObligation(s) {
 		return "", a.refuse(ErrObligationType)
 	}
 	return s, nil

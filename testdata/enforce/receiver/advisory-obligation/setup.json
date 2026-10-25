@@ -7,9 +7,6 @@
       "obligations": [
         {
           "type": "cap_rate",
-          "params": {
-            "per_minute": "60"
-          },
           "advisory": true
         }
       ],

@@ -7,8 +7,8 @@
 //
 // Everything this program decides lives in internal/docscheck/obligationdoc,
 // which the gate compiles, vets, lints and tests. What is left here is
-// argument handling, a read of the catalogue's source and a write; who applies
-// each type comes from obligationdoc.Appliers.
+// argument handling and a write; the catalogue comes from rules.Obligations
+// and who applies each type from obligationdoc.Appliers.
 package main
 
 import (
@@ -17,9 +17,8 @@ import (
 	"os"
 
 	"github.com/guardana/control/internal/docscheck/obligationdoc"
+	"github.com/guardana/control/internal/policy/rules"
 )
-
-const catalogue = "internal/policy/rules/catalogue.go"
 
 func main() {
 	out := flag.String("o", "", "write the page to this file instead of standard output")
@@ -28,11 +27,7 @@ func main() {
 		fail(fmt.Errorf("unexpected argument %q", flag.Arg(0)))
 	}
 
-	src, err := os.ReadFile(catalogue)
-	if err != nil {
-		fail(fmt.Errorf("reading the catalogue: %w", err))
-	}
-	page, err := obligationdoc.Page(src, obligationdoc.Appliers())
+	page, err := obligationdoc.Page(rules.Obligations(), obligationdoc.Appliers())
 	if err != nil {
 		fail(err)
 	}

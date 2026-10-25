@@ -153,6 +153,14 @@ verify one.
   blocked before it was sent. `mcp.New` and `enforce.New` refuse the same, and
   the wording of these refusals now names the configuration key
   ([ADR-0059](docs/adr/0059-a-tools-classification-is-one-type-checked-when-it-loads.md)).
+- `policy lint`, `policy test`, `policy sign` and `guardana-gateway dev`
+  refuse an obligation parameter its type does not declare, a missing
+  required one, or a malformed value; a loaded bundle is unaffected, and
+  `policy explain` still explains such a document. The five types nothing
+  applies, `cap_rate` among them, take no parameters, and
+  `restrict_resources` needs `ids` or `prefix`. The catalogue states each
+  type's parameters and the reference page renders them from it
+  ([ADR-0061](docs/adr/0061-an-obligations-parameters-are-the-catalogues.md)).
 
 ## [0.13.0] - 2026-10-20
 

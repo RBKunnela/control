@@ -19,6 +19,7 @@ import (
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/classify"
 	"github.com/guardana/control/internal/gateway"
+	"github.com/guardana/control/internal/policy/rules"
 )
 
 func obligation(typ string, params map[string]string) *controlv1.Obligation {
@@ -202,18 +203,28 @@ func TestObligationWithAnUnreadParameterIsNotApplied(t *testing.T) {
 		return o
 	}})
 	agent := r.connect(t, "agent-a")
-	// The extra key is, where one exists, a parameter another type reads.
-	for _, tc := range []struct {
+	type unread struct {
 		typ    string
 		params map[string]string
 		extra  string
-	}{
+	}
+	// The extra key is, where one exists, a parameter another type reads.
+	cases := []unread{
 		{"read_only", map[string]string{}, "ids"},
 		{"restrict_resources", map[string]string{"ids": "/x"}, "ms"},
 		{"restrict_resources", map[string]string{"prefix": "/"}, "fields"},
 		{"shorten_timeout", map[string]string{"ms": "60000"}, "prefix"},
 		{"deny_external_sink", map[string]string{}, "limit"},
-	} {
+	}
+	// And a key no type of the catalogue declares, on every applied type.
+	for _, extra := range outsideTheCatalogue(t, "per_minute", "seconds", "x", "MS") {
+		cases = append(cases,
+			unread{"read_only", map[string]string{}, extra},
+			unread{"restrict_resources", map[string]string{"ids": "/x"}, extra},
+			unread{"shorten_timeout", map[string]string{"ms": "60000"}, extra},
+			unread{"deny_external_sink", map[string]string{}, extra})
+	}
+	for _, tc := range cases {
 		t.Run(tc.typ+"/"+tc.extra, func(t *testing.T) {
 			r.pipe.decide = executeWith(obligation(tc.typ, tc.params))
 			if res, err := callTool(t, agent, "unlisted", map[string]any{"path": "/x"}); err != nil || res.IsError {
@@ -238,28 +249,31 @@ func TestObligationWithAnUnreadParameterIsNotApplied(t *testing.T) {
 	}
 }
 
-// TestObligationParamsNameWhatEachTypeReads: the declared parameters are the
-// ones the conformance tests above exercise, one entry per applied type, and
-// a caller that changes the returned table changes nothing the adapter reads.
-func TestObligationParamsNameWhatEachTypeReads(t *testing.T) {
-	want := map[string][]string{
-		"read_only":          nil,
-		"restrict_resources": {"ids", "prefix"},
-		"shorten_timeout":    {"ms"},
-		"deny_external_sink": nil,
+// outsideTheCatalogue returns names after checking that no type of the
+// catalogue declares any of them.
+func outsideTheCatalogue(t *testing.T, names ...string) []string {
+	t.Helper()
+	for _, spec := range rules.Obligations() {
+		for _, p := range spec.Params {
+			if slices.Contains(names, p.Name) {
+				t.Fatalf("%s declares %s, which this test needs undeclared", spec.Type, p.Name)
+			}
+		}
 	}
-	got := mcp.ObligationParams()
-	if !maps.EqualFunc(got, want, func(a, b []string) bool { return slices.Equal(a, b) }) {
-		t.Fatalf("ObligationParams = %v, want %v", got, want)
+	return names
+}
+
+// TestAppliedObligationsAreACopy: a caller that changes the returned list
+// changes nothing the adapter declares.
+func TestAppliedObligationsAreACopy(t *testing.T) {
+	want := []string{"read_only", "restrict_resources", "shorten_timeout", "deny_external_sink"}
+	got := mcp.AppliedObligations()
+	if !slices.Equal(got, want) {
+		t.Fatalf("AppliedObligations = %v, want %v", got, want)
 	}
-	types := slices.Sorted(maps.Keys(got))
-	if applied := slices.Sorted(slices.Values(mcp.AppliedObligations())); !slices.Equal(types, applied) {
-		t.Errorf("parameters declared for %v, types applied %v", types, applied)
-	}
-	got["shorten_timeout"][0] = "seconds"
-	got["read_only"] = append(got["read_only"], "ms")
-	if again := mcp.ObligationParams(); !slices.Equal(again["shorten_timeout"], []string{"ms"}) || len(again["read_only"]) != 0 {
-		t.Errorf("a caller's change reached the table: %v", again)
+	got[0] = "cap_rate"
+	if again := mcp.AppliedObligations(); !slices.Equal(again, want) {
+		t.Errorf("a caller's change reached the list: %v", again)
 	}
 }
 

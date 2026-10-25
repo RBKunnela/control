@@ -260,12 +260,12 @@ own denial as the kernel's. Every code is in
 <tr>
 <td><code>type</code></td>
 <td>yes</td>
-<td>A type of the catalogue in <a href="/docs/reference/obligations">obligations.md</a>, spelled exactly.</td>
+<td>A type in <a href="/docs/reference/obligations">obligations.md</a>, spelled exactly.</td>
 </tr>
 <tr>
 <td><code>params</code></td>
 <td>no</td>
-<td>A string map, 1 to 32 entries; a value may be empty.</td>
+<td>1 to 32 string entries, checked against <a href="/docs/reference/obligations">obligations.md</a> by <code>policy lint</code> and when signing, not when loading.</td>
 </tr>
 <tr>
 <td><code>advisory</code></td>

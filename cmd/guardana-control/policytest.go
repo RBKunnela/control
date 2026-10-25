@@ -11,9 +11,11 @@ import (
 	"strings"
 	"time"
 
+	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/core"
 	"github.com/guardana/control/internal/policy"
 	"github.com/guardana/control/internal/policy/bundle"
+	"github.com/guardana/control/internal/policy/rules"
 	"github.com/guardana/control/pkg/contract"
 )
 
@@ -106,7 +108,7 @@ func runCase(path string) (string, bool) {
 // decoder a receiver would use, and what that decoder refuses is handed to
 // the kernel as its refusal rather than stopping the case.
 func decide(c *testCase) (outcome, error) {
-	p, err := prepare(c)
+	p, err := prepare(c, policy.Sign)
 	if err != nil {
 		return outcome{}, err
 	}
@@ -118,8 +120,10 @@ func decide(c *testCase) (outcome, error) {
 }
 
 // explainCase is decide through Kernel.Explain, which decides as Decide does.
+// It signs with signLoadable, so it explains every document a plane loads,
+// one the obligation parameter check refuses among them.
 func explainCase(c *testCase) (explained, error) {
-	p, err := prepare(c)
+	p, err := prepare(c, signLoadable)
 	if err != nil {
 		return explained{}, err
 	}
@@ -145,9 +149,36 @@ type prepared struct {
 	snap    *policy.Snapshot
 }
 
-func prepare(c *testCase) (prepared, error) {
+// signer signs a case's document in memory.
+type signer func(document []byte, key ed25519.PrivateKey, keyID string) (*controlv1.PolicyBundle, error)
+
+// signLoadable signs document as policy.Sign does, without the obligation
+// parameter check, which Load does not run either: a bundle signed elsewhere
+// can hold what that check refuses and still load. Load then runs every check
+// it runs on a plane's bundle, so a bundle this signer gets wrong is refused
+// there.
+func signLoadable(document []byte, key ed25519.PrivateKey, keyID string) (*controlv1.PolicyBundle, error) {
+	doc, canonical, err := rules.Parse(document)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", policy.ErrDocument, err)
+	}
+	signature, err := bundle.SignBytes(canonical, key)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", policy.ErrSigningKey, err)
+	}
+	return &controlv1.PolicyBundle{
+		Ref:             &controlv1.PolicyBundleRef{BundleId: doc.Bundle.ID, Version: doc.Bundle.Version, Digest: bundle.Digest(canonical)},
+		Canonical:       canonical,
+		SignatureAlg:    bundle.SignatureAlg,
+		Signature:       signature,
+		KeyId:           keyID,
+		MaxStaleSeconds: doc.Bundle.MaxStaleSeconds,
+	}, nil
+}
+
+func prepare(c *testCase, sign signer) (prepared, error) {
 	key := ed25519.NewKeyFromSeed([]byte(signingSeed))
-	signed, err := policy.Sign(c.document, key, signingKeyID)
+	signed, err := sign(c.document, key, signingKeyID)
 	if err != nil {
 		return prepared{}, err
 	}

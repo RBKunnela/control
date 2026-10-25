@@ -48,7 +48,7 @@ const (
 	allowRefunds   = `{"id":"allow-refunds","effect":"ALLOW","when":{"action":{"name":["refund"]}}}`
 	denyRefunds    = `{"id":"deny-refunds","effect":"DENY","when":{"action":{"name":["refund"]}}}`
 	approveRefunds = `{"id":"approve-refunds","effect":"REQUIRE_APPROVAL","when":{"action":{"name":["refund"]}}}`
-	cappedRefunds  = `{"id":"capped-refunds","effect":"ALLOW_WITH_OBLIGATIONS","obligations":[{"type":"cap_rate","params":{"per_minute":"60"},"advisory":true},{"type":"cap_amount","params":{"max":"1000"}}],"when":{"action":{"name":["refund"]}}}`
+	cappedRefunds  = `{"id":"capped-refunds","effect":"ALLOW_WITH_OBLIGATIONS","obligations":[{"type":"cap_rate","advisory":true},{"type":"cap_amount","params":{"max":"1000"}}],"when":{"action":{"name":["refund"]}}}`
 )
 
 func base() time.Time { return time.Date(2026, time.October, 11, 12, 0, 0, 0, time.UTC) }

@@ -7,7 +7,7 @@
         "id": "capped-reads",
         "effect": "ALLOW_WITH_OBLIGATIONS",
         "obligations": [
-          {"type": "cap_rate", "params": {"per_minute": "60"}, "advisory": true},
+          {"type": "cap_rate", "advisory": true},
           {"type": "redact_fields", "params": {"fields": "ssn"}}
         ],
         "when": {"action": {"effect": ["READ"]}}

@@ -220,7 +220,7 @@ const (
 	approveRefunds = `{"id":"approve-refunds","effect":"REQUIRE_APPROVAL","obligations":[{"type":"cap_amount","params":{"max":"10000"}}],"when":{"action":{"name":["refund"]}}}`
 	// cappedReads allows every READ with an obligation the kernel of these
 	// tests can apply.
-	cappedReads = `{"id":"capped-reads","effect":"ALLOW_WITH_OBLIGATIONS","obligations":[{"type":"cap_rate","params":{"per_minute":"60"},"advisory":true},{"type":"redact_fields","params":{"fields":"ssn"}}],"when":{"action":{"effect":["READ"]}}}`
+	cappedReads = `{"id":"capped-reads","effect":"ALLOW_WITH_OBLIGATIONS","obligations":[{"type":"cap_rate","advisory":true},{"type":"redact_fields","params":{"fields":"ssn"}}],"when":{"action":{"effect":["READ"]}}}`
 	// sandboxedReads allows every READ with an obligation the kernel of these
 	// tests cannot apply, and one it can.
 	sandboxedReads = `{"id":"sandboxed-reads","effect":"ALLOW_WITH_OBLIGATIONS","obligations":[{"type":"redact_fields","params":{"fields":"ssn"}},{"type":"require_sandbox"}],"when":{"action":{"effect":["READ"]}}}`

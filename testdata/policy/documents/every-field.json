@@ -42,7 +42,7 @@
       "id": "refunds-need-approval",
       "effect": "REQUIRE_APPROVAL",
       "obligations": [
-        {"type": "cap_amount", "params": {"max": "10000", "currency": "EUR"}},
+        {"type": "cap_amount", "params": {"max": "10000", "field": "amount"}},
         {"type": "emit_alert", "advisory": true}
       ],
       "when": {

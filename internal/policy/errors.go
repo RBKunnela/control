@@ -46,10 +46,18 @@ const (
 	ErrCreatedAt Error = "policy: ref.created_at is set, and no creation time is signed"
 )
 
-// ErrSigningKey is Sign's refusal of a private key that cannot sign: one of the
-// wrong size, or one whose public half is not its seed's. It wraps the bundle
-// package's own refusal.
-const ErrSigningKey Error = "policy: the private key cannot sign"
+// Sign's own refusals, beside ErrDocument for a document Parse refuses.
+const (
+	// ErrSigningKey is a private key that cannot sign: one of the wrong size,
+	// or one whose public half is not its seed's. It wraps the bundle
+	// package's own refusal.
+	ErrSigningKey Error = "policy: the private key cannot sign"
+	// ErrObligationParams is a document that parses, and would load, holding
+	// an obligation parameter the catalogue does not declare for its type, a
+	// missing required one or a value outside its grammar. It wraps the
+	// rules package's refusal; Load never returns it.
+	ErrObligationParams Error = "policy: an obligation's parameters are not the catalogue's"
+)
 
 // A Holder's refusals of a bundle that passed every check of Load.
 const (

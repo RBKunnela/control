@@ -174,7 +174,9 @@ guardana-control: policy lint: rule &#34;cap-refunds&#34; &#34;rules[0].obligati
 </code></pre>
 <p>The refusal names the rule and, as a path, the member it refused, and never
 repeats the value. <code>lint</code> runs the load's checks on the document itself; the
-signature and the key are checked only when a bundle is loaded.</p>
+signature and the key are checked only when a bundle is loaded. It also holds
+obligation parameters to <a href="/docs/reference/obligations">reference/obligations.md</a>,
+which loading does not.</p>
 <h3 id="3-write-a-case-per-decision-you-rely-on">3. Write a case per decision you rely on</h3>
 <p>A case is one JSON file holding the document, an envelope, the run's flow, the
 kernel's options, two timestamps, optionally a decision point's answer, and the

@@ -260,6 +260,14 @@ the same rule and to 1024 bytes. In every mode, <code>OBSERVE</code> included, e
 blocked before it was sent. <code>mcp.New</code> and <code>enforce.New</code> refuse the same, and
 the wording of these refusals now names the configuration key
 (<a href="/docs/adr/0059-a-tools-classification-is-one-type-checked-when-it-loads">ADR-0059</a>).</li>
+<li><code>policy lint</code>, <code>policy test</code>, <code>policy sign</code> and <code>guardana-gateway dev</code>
+refuse an obligation parameter its type does not declare, a missing
+required one, or a malformed value; a loaded bundle is unaffected, and
+<code>policy explain</code> still explains such a document. The five types nothing
+applies, <code>cap_rate</code> among them, take no parameters, and
+<code>restrict_resources</code> needs <code>ids</code> or <code>prefix</code>. The catalogue states each
+type's parameters and the reference page renders them from it
+(<a href="/docs/adr/0061-an-obligations-parameters-are-the-catalogues">ADR-0061</a>).</li>
 </ul>
 <h2 id="0130---2026-10-20"><a href="https://github.com/guardana/control/releases/tag/v0.13.0">0.13.0</a> - 2026-10-20</h2>
 <p>A coding runtime's tool hooks can now reach a plane's <code>experimental</code>

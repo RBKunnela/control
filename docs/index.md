@@ -55,7 +55,7 @@ with `make docs-gen`; an edit made here does not survive the next run.
 - [Failure modes](reference/failure-modes.md): What a plane does when its collector, spool, decision point, upstream, pause file, stop list, freshness statement or clock fails, or it is killed holding calls.
 - [MCP enforcement coverage](reference/mcp-coverage.md): Per revision, transport and method, what the gateway enforces today and what it does not.
 - [Metrics](reference/metrics.md): Every metric a plane answers on /metrics, with its type, its label, the statistic it reads and what it counts.
-- [Obligations](reference/obligations.md): The catalogue of obligation types a policy rule may name, and what the tree does with one.
+- [Obligations](reference/obligations.md): The catalogue of obligation types a policy rule may name, the parameters each takes, and what the tree does with one.
 - [Observations](reference/observations.md): The source descriptor, what an import of OpenTelemetry GenAI spans keeps and drops, the observation log and its export.
 - [Policy explain](reference/policy-explain.md): What `guardana-control policy explain` reads, every line it prints, which rule decided and which input a rule could not read, and its bounds.
 - [Policy document format](reference/policy-format.md): Every member of an agent-policy/v1alpha1 document, the values each admits, the bounds, and the members of a policy test case.
@@ -154,3 +154,4 @@ with `make docs-gen`; an edit made here does not survive the next run.
 - [ADR-0058: A copy an import never read is doubt for the runs it claimed](adr/0058-a-copy-an-import-never-read-is-doubt-for-the-runs-it-claimed.md): accepted
 - [ADR-0059: A tool's classification is one type, checked when it loads](adr/0059-a-tools-classification-is-one-type-checked-when-it-loads.md): accepted
 - [ADR-0060: pkg/contract exports what each effect class requires](adr/0060-pkg-contract-exports-what-each-effect-class-requires.md): accepted
+- [ADR-0061: An obligation's parameters are the catalogue's](adr/0061-an-obligations-parameters-are-the-catalogues.md): accepted

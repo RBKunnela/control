@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Obligations · Guardana Control</title>
-<meta name="description" content="The catalogue of obligation types a policy rule may name, and what the tree does with one."/>
+<meta name="description" content="The catalogue of obligation types a policy rule may name, the parameters each takes, and what the tree does with one."/>
 <link rel="canonical" href="https://control.guardana.dev/docs/reference/obligations"/>
 <meta name="theme-color" content="#0B8F80"/>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
@@ -117,29 +117,44 @@ obligation by its type, with string parameters and an <code>advisory</code> flag
 is false by default: false means the call proceeds only if the obligation is
 applied (<a href="/docs/adr/0011-contract-corrections-before-publication">ADR-0011</a>).</p>
 <p>The table below is the catalogue, the closed set of types a policy document
-may name, and who in this build applies each type. Recognising a type is
-<code>implemented</code>: the parser and <code>policy lint</code> refuse a document naming a type
-outside it, and the kernel refuses a configuration whose applicable types
-include one outside it. The gateway rewrites the arguments for its types
-before the decision it records, and an adapter applies the types it declares
-to the call it sends. A decision carrying a non-advisory obligation that
-nothing here applies is <code>DENY</code> with <code>OBLIGATION_NOT_UNDERSTOOD</code>, and no
-fail-open setting relieves that; an advisory one is skipped.</p>
-<p>The policy parser checks a parameter's key only as a map key; the catalogue
-holds no parameter schema. The applier of a type reads the parameters its
-row lists and refuses any other, so an obligation carrying another is not
-applied: a non-advisory one stops the call and an advisory one is skipped.
-A type nothing in this build applies lists no parameters. What is built and
-what is not is in <a href="/docs/status">status.md</a>.</p>
+may name, with the parameters each type takes and who in this build applies
+it. Recognising a type is <code>implemented</code>: the parser and <code>policy lint</code> refuse
+a document naming a type outside it, and the kernel refuses a configuration
+whose applicable types include one outside it. The gateway rewrites the
+arguments for its types before the decision it records, and an adapter
+applies the types it declares to the call it sends. A decision carrying a
+non-advisory obligation that nothing here applies is <code>DENY</code> with
+<code>OBLIGATION_NOT_UNDERSTOOD</code>, and no fail-open setting relieves that; an
+advisory one is skipped.</p>
+<p>Checking parameters is <code>implemented</code>: <code>policy lint</code>, <code>policy test</code>,
+<code>policy sign</code> and <code>guardana-gateway dev</code> refuse a parameter the type does
+not declare, a required one that is missing, and a value outside the
+grammar its row states
+(<a href="/docs/adr/0061-an-obligations-parameters-are-the-catalogues">ADR-0061</a>).
+A type nothing in this build applies takes no parameters. The first two
+refusals read
+<code>rules: a parameter the obligation's type does not declare or requires</code>,
+at <code>rules[0].obligations[0].params[1].key</code> for a key or at
+<code>rules[0].obligations[0].params</code> for one missing, and the third
+<code>rules: a parameter value the obligation's type cannot apply</code>, at
+<code>rules[0].obligations[0].params[0]</code>: a parameter is named by its position in
+sorted key order, never by its key or value. <code>policy explain</code> and loading a
+bundle do not check parameters, so a bundle signed elsewhere still loads and
+is explained. Its applier reads only the parameters the type declares and
+parses each value itself, and an obligation it cannot apply as written is
+not applied: a non-advisory one stops the call and an advisory one is
+skipped. What is built and what is not is in <a href="/docs/status">status.md</a>.</p>
 <p>Rendered from the catalogue in <code>internal/policy/rules/catalogue.go</code> and the
-types and parameters the gateway and the MCP adapter declare. Rebuild it
-with <code>make docs-gen</code>; an edit made here does not survive the next run.</p>
+types the gateway and the MCP adapter declare. Rebuild it with
+<code>make docs-gen</code>; an edit made here does not survive the next run.</p>
 <table>
 <thead>
 <tr>
 <th>Type</th>
 <th>Applied by</th>
-<th>Parameters</th>
+<th>Parameter</th>
+<th>Required</th>
+<th>Value</th>
 </tr>
 </thead>
 <tbody>
@@ -147,56 +162,92 @@ with <code>make docs-gen</code>; an edit made here does not survive the next run
 <td><code>redact_fields</code></td>
 <td>the gateway</td>
 <td><code>fields</code></td>
+<td>yes</td>
+<td>comma-separated top-level member names, each non-empty and without <code>.</code>, <code>/</code> or white space</td>
 </tr>
 <tr>
 <td><code>read_only</code></td>
 <td>the MCP adapter</td>
 <td>none</td>
+<td></td>
+<td></td>
 </tr>
 <tr>
 <td><code>restrict_resources</code></td>
 <td>the MCP adapter</td>
-<td><code>ids</code>, <code>prefix</code></td>
+<td><code>ids</code></td>
+<td>one of <code>ids</code>, <code>prefix</code></td>
+<td>comma-separated resource ids, none empty and each one the identifier rule admits</td>
+</tr>
+<tr>
+<td><code>restrict_resources</code></td>
+<td>the MCP adapter</td>
+<td><code>prefix</code></td>
+<td>one of <code>ids</code>, <code>prefix</code></td>
+<td>an identifier whose last <code>/</code>-separated segment is printable ASCII without <code>%</code>, <code>;</code>, <code>?</code>, <code>#</code> or <code>\</code></td>
 </tr>
 <tr>
 <td><code>require_idempotency_key</code></td>
 <td><code>planned</code>: nothing in this build</td>
+<td>none</td>
+<td></td>
 <td></td>
 </tr>
 <tr>
 <td><code>cap_amount</code></td>
 <td>the gateway</td>
-<td><code>max</code>, <code>field</code></td>
+<td><code>max</code></td>
+<td>yes</td>
+<td>a base-10 integer that fits in 64 bits, with an optional sign</td>
+</tr>
+<tr>
+<td><code>cap_amount</code></td>
+<td>the gateway</td>
+<td><code>field</code></td>
+<td>no</td>
+<td>the exact name of one top-level member</td>
 </tr>
 <tr>
 <td><code>cap_rate</code></td>
 <td><code>planned</code>: nothing in this build</td>
+<td>none</td>
+<td></td>
 <td></td>
 </tr>
 <tr>
 <td><code>require_sandbox</code></td>
 <td><code>planned</code>: nothing in this build</td>
+<td>none</td>
+<td></td>
 <td></td>
 </tr>
 <tr>
 <td><code>second_approver</code></td>
 <td><code>planned</code>: nothing in this build</td>
+<td>none</td>
+<td></td>
 <td></td>
 </tr>
 <tr>
 <td><code>emit_alert</code></td>
 <td><code>planned</code>: nothing in this build</td>
+<td>none</td>
+<td></td>
 <td></td>
 </tr>
 <tr>
 <td><code>shorten_timeout</code></td>
 <td>the MCP adapter</td>
 <td><code>ms</code></td>
+<td>yes</td>
+<td>a base-10 integer from 1 to 9223372036854</td>
 </tr>
 <tr>
 <td><code>deny_external_sink</code></td>
 <td>the MCP adapter</td>
 <td>none</td>
+<td></td>
+<td></td>
 </tr>
 </tbody>
 </table>

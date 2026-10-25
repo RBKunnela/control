@@ -284,6 +284,33 @@ func TestSignRefusalsLeaveOutAsItWas(t *testing.T) {
 	}
 }
 
+// TestSignRefusesAParameterBeforeTheKey: a document the obligation parameter
+// check refuses is refused before the key is opened, which would be refused
+// for its mode, and the bundle already at --out stays as it was.
+func TestSignRefusesAParameterBeforeTheKey(t *testing.T) {
+	tr := newSignTree(t)
+	if code, _, stderr := invoke(t, "policy", "sign", "--key", tr.key, "--out", tr.out, tr.doc); code != exitOK {
+		t.Fatalf("signing the bundle a plane runs: exit %d, %q", code, stderr)
+	}
+	before := readFile(t, tr.out)
+	param := filepath.Join(tr.dir, "param.json")
+	doc := `{"apiVersion":"agent-policy/v1alpha1","bundle":{"id":"p","version":"1","serial":1,"maxStaleSeconds":300},` +
+		`"rules":[{"id":"r","effect":"ALLOW_WITH_OBLIGATIONS","obligations":[{"type":"read_only","params":{"x":"1"}}],"when":{"action":{"effect":["READ"]}}}]}`
+	if err := os.WriteFile(param, []byte(doc), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(tr.key, 0o640); err != nil { //nolint:gosec // G302: the key file mode sign must refuse
+		t.Fatal(err)
+	}
+	code, _, stderr := invoke(t, "policy", "sign", "--key", tr.key, "--out", tr.out, param)
+	if line := oneStderrLine(t, stderr); code != exitFail || !strings.Contains(line, "rules: a parameter the obligation's type does not declare") {
+		t.Errorf("a parameter read_only does not declare: exit %d, stderr %q; want the parameter's refusal, not the key's", code, line)
+	}
+	if got := readFile(t, tr.out); got != before {
+		t.Errorf("--out changed from %d bytes to %d", len(before), len(got))
+	}
+}
+
 // TestSignRefusesAnOutItCannotWrite: the key is left readable by the group, so
 // an --out check that did not refuse would show as the key's refusal instead.
 func TestSignRefusesAnOutItCannotWrite(t *testing.T) {

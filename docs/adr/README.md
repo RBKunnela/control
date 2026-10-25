@@ -69,3 +69,4 @@ request with `Status: proposed`, and set it to `accepted` when it merges.
 | [0058](0058-a-copy-an-import-never-read-is-doubt-for-the-runs-it-claimed.md) | A copy an import never read is doubt for the runs it claimed |
 | [0059](0059-a-tools-classification-is-one-type-checked-when-it-loads.md) | A tool's classification is one type, checked when it loads |
 | [0060](0060-pkg-contract-exports-what-each-effect-class-requires.md) | `pkg/contract` exports what each effect class requires |
+| [0061](0061-an-obligations-parameters-are-the-catalogues.md) | An obligation's parameters are the catalogue's |

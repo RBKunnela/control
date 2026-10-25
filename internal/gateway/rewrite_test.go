@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -157,42 +156,27 @@ func TestRewriteRefusesAListedTypeWithNoHandler(t *testing.T) {
 	}
 }
 
-// TestObligationParamsNameWhatEachTypeReads: one entry per rewriting type,
-// holding the parameters the cases above exercise, and a caller that changes
-// the returned table changes nothing the pipeline reads.
-func TestObligationParamsNameWhatEachTypeReads(t *testing.T) {
-	want := map[string][]string{
-		"redact_fields": {"fields"},
-		"cap_amount":    {"max", "field"},
-	}
-	got := ObligationParams()
-	if !maps.EqualFunc(got, want, func(a, b []string) bool { return slices.Equal(a, b) }) {
-		t.Fatalf("ObligationParams = %v, want %v", got, want)
-	}
-	if types := slices.Sorted(maps.Keys(got)); !slices.Equal(types, slices.Sorted(slices.Values(RewritingObligations()))) {
-		t.Errorf("parameters declared for %v, types rewritten %v", types, RewritingObligations())
-	}
-	got["cap_amount"][0] = "limit"
-	if again := ObligationParams(); !slices.Equal(again["cap_amount"], []string{"max", "field"}) {
-		t.Errorf("a caller's change reached the table: %v", again)
-	}
-}
-
-// TestRewriteChecksParametersAgainstTheTable: the table ObligationParams
-// returns is the one the handlers check, so a parameter it gains is accepted
-// and one it loses is refused.
-func TestRewriteChecksParametersAgainstTheTable(t *testing.T) {
-	saved := rewritingParams
-	t.Cleanup(func() { rewritingParams = saved })
+// TestRewriteChecksParametersAgainstTheCatalogue: the names paramNames gives
+// are the ones the handlers check, so a parameter they gain is accepted and
+// one they lose is refused.
+func TestRewriteChecksParametersAgainstTheCatalogue(t *testing.T) {
+	saved := paramNames
+	t.Cleanup(func() { paramNames = saved })
 	ob := obligation("cap_amount", false, "max", "1", "currency", "EUR")
 
-	rewritingParams = map[string][]string{obligationRedactFields: {paramFields}, obligationCapAmount: {paramMax, paramField, "currency"}}
-	if out, _, err := rewrite([]byte(`{"amount":5}`), []*controlv1.Obligation{ob}); err != nil || string(out) != `{"amount":1}` {
-		t.Errorf("with currency in the table: %q, %v", out, err)
+	paramNames = func(typ string) ([]string, bool) {
+		names, ok := saved(typ)
+		return append(names, "currency"), ok
 	}
-	rewritingParams = map[string][]string{obligationRedactFields: {paramFields}, obligationCapAmount: {paramField}}
+	if out, _, err := rewrite([]byte(`{"amount":5}`), []*controlv1.Obligation{ob}); err != nil || string(out) != `{"amount":1}` {
+		t.Errorf("with currency declared: %q, %v", out, err)
+	}
+	paramNames = func(typ string) ([]string, bool) {
+		names, ok := saved(typ)
+		return slices.DeleteFunc(names, func(n string) bool { return n == paramMax }), ok
+	}
 	if _, _, err := rewrite([]byte(`{"amount":5}`), []*controlv1.Obligation{obligation("cap_amount", false, "max", "1")}); !errors.Is(err, errRewrite) {
-		t.Errorf("with max gone from the table: %v, want errRewrite", err)
+		t.Errorf("with max no longer declared: %v, want errRewrite", err)
 	}
 }
 

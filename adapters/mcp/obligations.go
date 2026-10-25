@@ -12,6 +12,7 @@ import (
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/adapterkit"
 	"github.com/guardana/control/internal/gateway"
+	"github.com/guardana/control/internal/policy/rules"
 	"github.com/guardana/control/pkg/contract"
 )
 
@@ -29,38 +30,14 @@ const (
 	paramMS     = "ms"
 )
 
-// applies is each type the adapter applies, in the order it declares them,
-// with the parameters it reads. The catalogue holds no parameter schema, so
-// this table is both what the adapter checks an obligation against and what
-// the obligation reference page renders.
-var applies = []struct {
-	typ    string
-	params []string
-}{
-	{obligationReadOnly, nil},
-	{obligationRestrictResources, []string{paramIDs, paramPrefix}},
-	{obligationShortenTimeout, []string{paramMS}},
-	{obligationDenyExternalSink, nil},
-}
+// applies is each type the adapter applies, in the order it declares them.
+// The parameters each reads are the catalogue's.
+var applies = []string{obligationReadOnly, obligationRestrictResources, obligationShortenTimeout, obligationDenyExternalSink}
 
 // AppliedObligations returns the obligation types the adapter applies to a
 // call it sends, which it declares to the kernel as applicable.
 func AppliedObligations() []string {
-	out := make([]string, 0, len(applies))
-	for _, a := range applies {
-		out = append(out, a.typ)
-	}
-	return out
-}
-
-// ObligationParams returns, for each type the adapter applies, the parameters
-// it reads; an obligation carrying any other is not applied.
-func ObligationParams() map[string][]string {
-	out := make(map[string][]string, len(applies))
-	for _, a := range applies {
-		out[a.typ] = slices.Clone(a.params)
-	}
-	return out
+	return slices.Clone(applies)
 }
 
 // applied is what the obligations of a decision demand of the send.
@@ -131,21 +108,24 @@ func applyOne(c *call, o *controlv1.Obligation, out *applied) error {
 	return nil
 }
 
-// onlyParams refuses a parameter the obligation's type does not read: a
-// parameter nobody read would be an instruction nobody followed.
+// onlyParams refuses a parameter outside the ones the catalogue declares for
+// the obligation's type: a parameter nobody read would be an instruction
+// nobody followed. A bundle signed without the catalogue's check can still
+// carry one.
 func onlyParams(o *controlv1.Obligation) error {
-	for _, a := range applies {
-		if a.typ != o.GetType() {
-			continue
-		}
-		for key := range o.GetParams() {
-			if !slices.Contains(a.params, key) {
-				return fmt.Errorf("parameter %q is not one this adapter applies", key)
-			}
-		}
-		return nil
+	if !slices.Contains(applies, o.GetType()) {
+		return errors.New("not applied by this adapter")
 	}
-	return errors.New("not applied by this adapter")
+	known, ok := rules.ParamNames(o.GetType())
+	if !ok {
+		return errors.New("not an obligation type of the catalogue")
+	}
+	for key := range o.GetParams() {
+		if !slices.Contains(known, key) {
+			return fmt.Errorf("parameter %q is not one this adapter applies", key)
+		}
+	}
+	return nil
 }
 
 // shorten reads ms as a positive integer and keeps the shortest timeout. A

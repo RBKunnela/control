@@ -44,6 +44,13 @@ const (
 	ErrObligationsOnEffect sentinel = "rules: obligations on a rule whose effect carries none"
 	ErrObligationType      sentinel = "rules: an obligation type outside the catalogue"
 	ErrReason              sentinel = "rules: a reason this rule's effect may not name"
+	// ErrObligationParam is a parameter the obligation's type does not
+	// declare, a required one absent, or none of a set of which one is
+	// required. Only CheckObligations returns it, never Parse.
+	ErrObligationParam sentinel = "rules: a parameter the obligation's type does not declare or requires"
+	// ErrObligationValue is a parameter value outside its grammar. Only
+	// CheckObligations returns it, never Parse.
+	ErrObligationValue sentinel = "rules: a parameter value the obligation's type cannot apply"
 	// ErrExternal is an external constraint in a form other than a denial.
 	ErrExternal sentinel = "rules: external holds only when the decision point denies"
 	// ErrExternalEffect is an external constraint on a rule whose effect is

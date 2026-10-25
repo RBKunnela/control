@@ -406,7 +406,7 @@ func TestDecisionFields(t *testing.T) {
 		Verdict:            verdictObligations,
 		ReasonCodes:        []string{codeObligationsAttached},
 		Obligations: []*controlv1.Obligation{
-			{Type: "cap_rate", Params: map[string]string{"per_minute": "60"}, Advisory: true},
+			{Type: "cap_rate", Advisory: true},
 			{Type: "redact_fields", Params: map[string]string{"fields": "ssn"}},
 		},
 		DecisionLatencyUs: 250,
@@ -561,7 +561,8 @@ func TestDecisionsShareNothing(t *testing.T) {
 	reference := proto.CloneOf(first)
 	first.ReasonCodes[0] = "RULE_ALLOW"
 	first.PolicyRuleIds[0] = "other"
-	first.Obligations[0].Params["per_minute"] = "0"
+	first.Obligations[0].Advisory = false
+	first.Obligations[1].Params["fields"] = "other"
 	first.Obligations[1].Type = "require_sandbox"
 	second := decide(k, request(readEnvelope()), snap).Decision
 	reference.DecisionId, second.DecisionId = "", ""

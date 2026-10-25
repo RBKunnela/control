@@ -30,7 +30,7 @@ const (
 	everyFieldCanonical = `{"apiVersion":"agent-policy/v1alpha1","bundle":{"id":"payments","maxStaleSeconds":900,"serial":12,"version":"2026-09-11.1"},"rules":[` +
 		`{"effect":"DENY","id":"no-secrets-to-untrusted-hosts","reason":"TOXIC_FLOW_SENSITIVE_TO_EXTERNAL","when":{"data":{"sensitivityAtLeast":"CONFIDENTIAL"},"destination":{"host":["paste.example.net"],"trustZone":["UNTRUSTED_EXTERNAL","USER_CONTROLLED"]},"flow":{"toxicAtLeast":"RESTRICTED"}}},` +
 		`{"effect":"DENY","id":"prod-stays-in-its-team","reason":"RULE_DENY","when":{"principal":{"attributes":{"rôle":["équipe"],"team":["payments","risk"]},"authnStrength":["mfa"],"id":["user:ana"],"tenantId":["acme"],"type":["human"]},"resource":{"environment":["prod"],"id":["ledger/eu-1"],"labels":{"tier":["gold"]},"tenantId":["acme"],"type":["ledger"]}}},` +
-		`{"effect":"REQUIRE_APPROVAL","id":"refunds-need-approval","obligations":[{"params":{"currency":"EUR","max":"10000"},"type":"cap_amount"},{"advisory":true,"type":"emit_alert"}],"when":{"action":{"effect":["TRANSACT","WRITE"],"kind":["tool_call"],"name":["refund"],"protocol":["mcp"],"provider":["payments"]},"agent":{"framework":["custom"],"id":["billing-agent"]}}},` +
+		`{"effect":"REQUIRE_APPROVAL","id":"refunds-need-approval","obligations":[{"params":{"field":"amount","max":"10000"},"type":"cap_amount"},{"advisory":true,"type":"emit_alert"}],"when":{"action":{"effect":["TRANSACT","WRITE"],"kind":["tool_call"],"name":["refund"],"protocol":["mcp"],"provider":["payments"]},"agent":{"framework":["custom"],"id":["billing-agent"]}}},` +
 		`{"effect":"ALLOW_WITH_OBLIGATIONS","id":"delegated-reads-stay-read-only","obligations":[{"advisory":false,"type":"read_only"}],"reason":"OBLIGATIONS_ATTACHED","when":{"action":{"effect":["READ"]},"delegation":{"scopes":["ledger:read"]}}},` +
 		`{"effect":"ALLOW","id":"reads","when":{"action":{"effect":["READ"]}}}]}`
 )
@@ -89,7 +89,7 @@ func everyFieldModel() *Document {
 			{
 				ID: "refunds-need-approval", Effect: controlv1.Verdict_VERDICT_REQUIRE_APPROVAL,
 				Obligations: []Obligation{
-					{Type: "cap_amount", Params: map[string]string{"max": "10000", "currency": "EUR"}},
+					{Type: "cap_amount", Params: map[string]string{"max": "10000", "field": "amount"}},
 					{Type: "emit_alert", Advisory: true},
 				},
 				When: When{

@@ -107,8 +107,9 @@ func signCommand(args []string, stdout, stderr io.Writer) int {
 
 // sign refuses in a fixed order and writes nothing on any refusal: the output
 // path, then the document, then the key, then the signed bundle as the loader
-// reads it. A document that does not parse is refused before the key file is
-// opened. No refusal prints the --key value.
+// reads it. A document that does not parse, fails the obligation parameter
+// check or does not compile is refused before the key file is opened. No
+// refusal prints the --key value.
 func sign(keyPath, out, document string, now time.Time, stdout, stderr io.Writer) int {
 	if err := policykey.CheckPlatform(); err != nil {
 		return fail(stderr, signName, err)
@@ -125,6 +126,9 @@ func sign(keyPath, out, document string, now time.Time, stdout, stderr io.Writer
 	}
 	doc, _, err := rules.Parse(raw)
 	if err != nil {
+		return fail(stderr, signName, err)
+	}
+	if err := rules.CheckObligations(doc); err != nil {
 		return fail(stderr, signName, err)
 	}
 	if _, err := match.Compile(doc); err != nil {

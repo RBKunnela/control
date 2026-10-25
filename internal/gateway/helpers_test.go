@@ -387,7 +387,7 @@ const (
 	approveRefunds = `{"id":"approve-refunds","effect":"REQUIRE_APPROVAL","obligations":[{"type":"cap_amount","params":{"max":"1000"}}],"when":{"action":{"name":["refund"]}}}`
 	// cappedRefunds rewrites the arguments and leaves one advisory
 	// obligation for the adapter.
-	cappedRefunds = `{"id":"capped-refunds","effect":"ALLOW_WITH_OBLIGATIONS","obligations":[{"type":"cap_rate","params":{"per_minute":"60"},"advisory":true},{"type":"redact_fields","params":{"fields":"ssn"}},{"type":"cap_amount","params":{"max":"1000"}}],"when":{"action":{"name":["refund"]}}}`
+	cappedRefunds = `{"id":"capped-refunds","effect":"ALLOW_WITH_OBLIGATIONS","obligations":[{"type":"cap_rate","advisory":true},{"type":"redact_fields","params":{"fields":"ssn"}},{"type":"cap_amount","params":{"max":"1000"}}],"when":{"action":{"name":["refund"]}}}`
 	// unappliableRefunds asks to cap a member the arguments do not hold.
 	unappliableRefunds = `{"id":"unappliable-refunds","effect":"ALLOW_WITH_OBLIGATIONS","obligations":[{"type":"cap_amount","params":{"max":"1000","field":"total"}}],"when":{"action":{"name":["refund"]}}}`
 )

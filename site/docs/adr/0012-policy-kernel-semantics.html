@@ -132,6 +132,11 @@ opened stays open there only while its bundle is the same one.</p>
 class needs a <code>resource.id</code> or a destination it cannot supply is refused when
 the configuration loads, so no call to its tool reaches the kernel to be
 refused <code>REQUIRED_FIELD_ABSENT</code> for it.</p>
+<p>Amended by <a href="/docs/adr/0061-an-obligations-parameters-are-the-catalogues">ADR-0061</a>: the
+catalogue states each obligation type's parameters, and <code>policy lint</code>,
+<code>policy test</code>, <code>policy sign</code> and <code>guardana-gateway dev</code> refuse a document
+holding one its type does not declare, a missing required one or a value
+outside its grammar; loading a bundle does not check them.</p>
 <h2 id="context">Context</h2>
 <p>ADR-0003 chose structured predicates and deny-overrides, and left the exact
 fail-closed mapping open. ADR-0011 settled what the wire says. What is

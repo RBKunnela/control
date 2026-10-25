@@ -83,7 +83,9 @@ guardana-control: policy lint: rule "cap-refunds" "rules[0].obligations[0].type"
 
 The refusal names the rule and, as a path, the member it refused, and never
 repeats the value. `lint` runs the load's checks on the document itself; the
-signature and the key are checked only when a bundle is loaded.
+signature and the key are checked only when a bundle is loaded. It also holds
+obligation parameters to [reference/obligations.md](../reference/obligations.md),
+which loading does not.
 
 ### 3. Write a case per decision you rely on
 

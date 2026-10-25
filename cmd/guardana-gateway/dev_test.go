@@ -120,6 +120,26 @@ func TestDevRefusesAPolicyItCannotSign(t *testing.T) {
 	untouched(t, state)
 }
 
+// TestDevRefusesAnUndeclaredObligationParameter: dev signs the bundle it
+// runs, so a document the obligation parameter check refuses is refused as
+// the policy, with that refusal, before anything is laid out.
+func TestDevRefusesAnUndeclaredObligationParameter(t *testing.T) {
+	t.Parallel()
+	d := writeDemo(t, "http://127.0.0.1:9/mcp", "5ms", "")
+	doc := `{"apiVersion":"agent-policy/v1alpha1","bundle":{"id":"orders","version":"1","serial":1,"maxStaleSeconds":300},` +
+		`"rules":[{"id":"r","effect":"ALLOW_WITH_OBLIGATIONS","obligations":[{"type":"cap_rate","params":{"per_minute":"60"},"advisory":true}],"when":{"action":{"effect":["READ"]}}}]}`
+	if err := os.WriteFile(d.policy, []byte(doc), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	state := filepath.Join(t.TempDir(), "state")
+	status, stdout, stderr := runDev(t, "--config", d.config, "--policy", d.policy, "--state", state)
+	if status != exitFail || !strings.HasPrefix(stderr, brand.Gateway+": dev: --policy: ") || stdout != "" ||
+		!strings.Contains(stderr, "rules: a parameter the obligation's type does not declare or requires") {
+		t.Fatalf("exit %d, stdout %q, stderr %q; want 1 refusing the policy for its parameter", status, stdout, stderr)
+	}
+	untouched(t, state)
+}
+
 // TestDevRefusesAnExistingState: a directory that is there, empty or not,
 // is refused and left as it was.
 func TestDevRefusesAnExistingState(t *testing.T) {

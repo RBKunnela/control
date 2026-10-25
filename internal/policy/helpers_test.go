@@ -59,8 +59,8 @@ const (
 
 	// everyFieldDigest and everyFieldSignature are the same two values for the
 	// canonical form of the rules package's every-field sample.
-	everyFieldDigest    = "sha256:53a9e2c4efba9927762693b7b2a7df97d3b1dc01add66e5037abfe2714a764e4"
-	everyFieldSignature = "2979094f700a6653be374fe4f57e53c137e74cca2b2376dd6a4b1ef6e0520504ecd04d42f4ce2772ab9a313e639da5cc7657128584fbfe98b467f394c882090b"
+	everyFieldDigest    = "sha256:5d4561fc510225b75a2d94533aac2a1ec3fa2bbfa27eb9725318dc0673968102"
+	everyFieldSignature = "14c80ebc4108a7b0af507abb187bd8f53397288140b59a8bbcfc38bb0880353b8c30ef1383a25f0154f597cfe2485aac165da93edcf21ba4eeff6263936d7109"
 
 	// unavailableCode is what a program nobody compiled answers with. It is
 	// written out here, and a test holds it to the registry.
@@ -275,7 +275,7 @@ func loadChecks() []error {
 // sentinels are every refusal the package names: Load's, then Sign's and
 // the holder's own, then the statement's and the floor's.
 func sentinels() []error {
-	all := append(loadChecks(), policy.ErrSigningKey, policy.ErrRollback, policy.ErrSerialReused, policy.ErrBundlePin)
+	all := append(loadChecks(), policy.ErrSigningKey, policy.ErrObligationParams, policy.ErrRollback, policy.ErrSerialReused, policy.ErrBundlePin)
 	all = append(all, statementSentinels()...)
 	return append(all, floorSentinels()...)
 }

@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -88,6 +89,8 @@ func TestSignRefuses(t *testing.T) {
 		{"no key id", raw, key(1), "", policy.ErrKey, bundle.ErrUnknownKey},
 		{"a document the format refuses", []byte(`{"apiVersion":"agent-policy/v1alpha1"}`), key(1), "k1", policy.ErrDocument, nil},
 		{"no document", nil, key(1), "k1", policy.ErrDocument, nil},
+		{"a parameter its type does not declare", withParams(`{"currency":"EUR","max":"10000"}`), key(1), "k1", policy.ErrObligationParams, nil},
+		{"a value its type cannot apply", withParams(`{"max":"10 000"}`), key(1), "k1", policy.ErrObligationParams, nil},
 		{"a private key one byte short", raw, key(1)[:63], "k1", policy.ErrSigningKey, bundle.ErrKeySize},
 		{"no private key", raw, nil, "k1", policy.ErrSigningKey, bundle.ErrKeySize},
 		{"a private key whose public half is another key's", raw, mismatched, "k1", policy.ErrSigningKey, bundle.ErrKeyPair},
@@ -102,12 +105,40 @@ func TestSignRefuses(t *testing.T) {
 			expectWithin(t, err, tc.within)
 		}
 		var parse *rules.Error
-		if errors.Is(tc.want, policy.ErrDocument) && !errors.As(err, &parse) {
+		if (errors.Is(tc.want, policy.ErrDocument) || errors.Is(tc.want, policy.ErrObligationParams)) && !errors.As(err, &parse) {
 			t.Errorf("%s: %v does not carry the parse's own refusal", tc.name, err)
 		}
 	}
 	if _, err := policy.Sign(raw, key(1), "k1"); err != nil {
 		t.Fatalf("the accepting twin: %v", err)
+	}
+	for params, want := range map[string]error{
+		`{"currency":"EUR","max":"10000"}`: rules.ErrObligationParam,
+		`{"max":"10 000"}`:                 rules.ErrObligationValue,
+	} {
+		if _, err := policy.Sign(withParams(params), key(1), "k1"); !errors.Is(err, want) {
+			t.Errorf("params %s: Sign = %v, want %v", params, err, want)
+		}
+	}
+}
+
+// withParams is the example with its obligation's params replaced.
+func withParams(params string) []byte {
+	return []byte(strings.Replace(exampleCanonical, `{"max":"10000"}`, params, 1))
+}
+
+// TestLoadTakesABundleSignedWithoutTheParameterCheck: the parameter check is
+// Sign's, never Load's, so a bundle signed elsewhere with a parameter the
+// catalogue does not declare still loads, under its own digest.
+func TestLoadTakesABundleSignedWithoutTheParameterCheck(t *testing.T) {
+	t.Parallel()
+	doc := string(withParams(`{"currency":"EUR","max":"10000"}`))
+	if _, err := policy.Sign([]byte(doc), key(1), "k1"); err == nil {
+		t.Fatal("Sign accepted the parameter this test needs it to refuse")
+	}
+	snap := load(t, valid().withDoc(doc).build())
+	if got := snap.Ref().GetDigest(); got != digestOf([]byte(doc)) {
+		t.Errorf("loaded digest %s, want %s", got, digestOf([]byte(doc)))
 	}
 }
 

@@ -206,7 +206,7 @@ func TestAReadTheTableOpenedStaysInItsRow(t *testing.T) {
 
 // adviseReads allows every read with an advisory obligation, so its verdict
 // is ALLOW_WITH_OBLIGATIONS and nothing rewrites the arguments.
-const adviseReads = `{"id":"advise-reads","effect":"ALLOW_WITH_OBLIGATIONS","obligations":[{"type":"cap_rate","params":{"per_minute":"60"},"advisory":true}],"when":{"action":{"effect":["READ"]}}}`
+const adviseReads = `{"id":"advise-reads","effect":"ALLOW_WITH_OBLIGATIONS","obligations":[{"type":"cap_rate","advisory":true}],"when":{"action":{"effect":["READ"]}}}`
 
 // TestObserveCountsOnlyWhatEnforceWouldHandOut: of the calls whose bundle
 // goes stale before the hand-out, OBSERVE counts only those the kernel let

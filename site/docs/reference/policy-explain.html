@@ -111,7 +111,7 @@
 <main id="main" class="prose">
 <h1 id="policy-explain">Policy explain</h1>
 <p><code>guardana-control policy explain &lt;case&gt;</code> decides one case the way <code>policy test</code>
-does and prints how: the decision, what the kernel found before the policy,
+does, without its obligation parameter check, and prints how: the decision, what the kernel found before the policy,
 and how each rule read the call. It is <code>implemented</code>. Why it reads the kernel's
 own evaluation, and nothing beside it, is
 <a href="/docs/adr/0036-policy-explain-reads-the-kernels-own-evaluation">ADR-0036</a>.</p>
@@ -119,9 +119,11 @@ own evaluation, and nothing beside it, is
 <p>One case file in the format of
 <a href="/docs/reference/policy-format#a-test-case">policy-format.md</a>, with <code>expect</code> optional. The
 document is signed in memory, loaded at <code>loaded_at</code> and decided at
-<code>decided_at</code>, exactly as <code>policy test</code> decides it, and the decision printed is
-the one <code>policy test</code> compares. When the case has <code>expect</code>, the last line says
-whether the decision met it.</p>
+<code>decided_at</code>, and the decision printed is the one <code>policy test</code> compares. The
+one difference: explain does not hold obligation parameters to
+<a href="/docs/reference/obligations">obligations.md</a> before signing, as loading a bundle does not,
+so it explains a case <code>policy test</code> refuses for a parameter. When the case has
+<code>expect</code>, the last line says whether the decision met it.</p>
 <pre><code>$ guardana-control policy explain examples/starter-packs/approval-for-writes/cases/unknown-message-after-untrusted-input.json
 verdict: INDETERMINATE
 kernel_action: Block

@@ -3,68 +3,60 @@ package obligationdoc
 import (
 	"strings"
 	"testing"
+
+	"github.com/guardana/control/internal/policy/rules"
 )
 
-// catalogueSource is the shape of internal/policy/rules/catalogue.go that
-// Names reads: the one function, returning a literal list of strings.
-func catalogueSource(list string) string {
-	return "package rules\n\nfunc other() []string { return []string{\"x\"} }\n\n" +
-		"func obligationTypes() []string {\n\treturn []string{" + list + "}\n}\n"
+// specs is a small catalogue: a type with a required and an optional
+// parameter, one with a set of which one is required, and one with none.
+func specs() []rules.ObligationSpec {
+	return []rules.ObligationSpec{
+		{Type: "cap_amount", Params: []rules.Param{
+			{Name: "max", Required: true, Grammar: rules.GrammarInteger},
+			{Name: "field", Grammar: rules.GrammarMemberName},
+		}},
+		{Type: "restrict_resources", Params: []rules.Param{
+			{Name: "ids", Grammar: rules.GrammarIdentifiers},
+			{Name: "prefix", Grammar: rules.GrammarResourcePrefix},
+		}, OneOf: []string{"ids", "prefix"}},
+		{Type: "emit_alert"},
+	}
 }
 
-func TestNamesReadsTheListInOrder(t *testing.T) {
-	got, err := Names([]byte(catalogueSource(`"cap_amount", "redact_fields",
-		"emit_alert"`)))
+// appliers apply every type of specs that declares parameters.
+func appliers() []Applier {
+	return []Applier{
+		{Name: "the gateway", Types: []string{"cap_amount"}},
+		{Name: "the adapter", Types: []string{"cap_amount", "restrict_resources"}},
+	}
+}
+
+func TestPageOneRowPerParameterInOrder(t *testing.T) {
+	page, err := Page(specs(), appliers())
 	if err != nil {
-		t.Fatalf("Names: %v", err)
-	}
-	if want := []string{"cap_amount", "redact_fields", "emit_alert"}; strings.Join(got, ",") != strings.Join(want, ",") {
-		t.Errorf("Names = %q, want %q", got, want)
-	}
-}
-
-func TestNamesRefusals(t *testing.T) {
-	for name, src := range map[string]string{
-		"not go":           "not go source",
-		"no such function": "package rules\n\nfunc other() []string { return []string{\"x\"} }\n",
-		"two returns": "package rules\n\nfunc obligationTypes() []string {\n\tif true {\n\t\treturn []string{\"a\"}\n\t}\n" +
-			"\treturn []string{\"b\"}\n}\n",
-		"a call, not a literal":            "package rules\n\nfunc obligationTypes() []string {\n\treturn other()\n}\n",
-		"an element that is not a literal": catalogueSource(`"a", name`),
-		"a concatenation":                  catalogueSource(`"a" + "b"`),
-		"empty":                            catalogueSource(``),
-		"a duplicate":                      catalogueSource(`"a", "b", "a"`),
-		"an empty name":                    catalogueSource(`"a", ""`),
-		"a pipe in a name":                 catalogueSource(`"a|b"`),
-		"a backtick in a name":             catalogueSource(`"a` + "`" + `b"`),
-		"a control character in a name":    catalogueSource(`"a\nb"`),
-		"a raw string element":             catalogueSource("`a`"),
-	} {
-		t.Run(name, func(t *testing.T) {
-			got, err := Names([]byte(src))
-			if err == nil {
-				t.Fatalf("Names accepted the source: %q", got)
-			}
-			if got != nil {
-				t.Errorf("Names returned %q beside the error", got)
-			}
-		})
-	}
-}
-
-func TestRenderOneRowPerNameInOrder(t *testing.T) {
-	page, err := render([]string{"cap_amount", "redact_fields"}, nil)
-	if err != nil {
-		t.Fatalf("render: %v", err)
+		t.Fatalf("Page: %v", err)
 	}
 	text := string(page)
-	rows := strings.Count(text, "\n| `")
-	if rows != 2 {
-		t.Errorf("page holds %d rows, want 2:\n%s", rows, text)
+	rows := []string{
+		"| `cap_amount` | the gateway, the adapter | `max` | yes | a base-10 integer that fits in 64 bits, with an optional sign |\n",
+		"| `cap_amount` | the gateway, the adapter | `field` | no | the exact name of one top-level member |\n",
+		"| `restrict_resources` | the adapter | `ids` | one of `ids`, `prefix` | comma-separated resource ids, none empty and each one the identifier rule admits |\n",
+		"| `restrict_resources` | the adapter | `prefix` | one of `ids`, `prefix` | an identifier whose last `/`-separated segment is printable ASCII without `%`, `;`, `?`, `#` or `\\` |\n",
+		"| `emit_alert` | " + unapplied + " | none |  |  |\n",
 	}
-	first, second := strings.Index(text, "| `cap_amount` |"), strings.Index(text, "| `redact_fields` |")
-	if first < 0 || second < 0 || second < first {
-		t.Errorf("rows at %d and %d, want both present and in the catalogue's order", first, second)
+	last := -1
+	for _, row := range rows {
+		at := strings.Index(text, row)
+		if at < 0 {
+			t.Fatalf("page has no row %q:\n%s", row, text)
+		}
+		if at < last {
+			t.Errorf("row %q is out of the catalogue's order", row)
+		}
+		last = at
+	}
+	if got := strings.Count(text, "\n| `"); got != len(rows) {
+		t.Errorf("page holds %d rows, want %d", got, len(rows))
 	}
 	for _, label := range []string{"`implemented`", "`planned`"} {
 		if !strings.Contains(text, label) {
@@ -76,25 +68,12 @@ func TestRenderOneRowPerNameInOrder(t *testing.T) {
 	}
 }
 
-func TestRenderRefusesAnEmptyCatalogue(t *testing.T) {
-	page, err := render(nil, nil)
-	if err == nil {
-		t.Fatalf("render(nil, nil) returned %d bytes, want an error", len(page))
-	}
-	if page != nil {
-		t.Errorf("render(nil, nil) returned %d bytes beside the error", len(page))
-	}
-}
-
 func TestPageIsDeterministic(t *testing.T) {
-	src := []byte(catalogueSource(`"cap_amount", "redact_fields"`))
-	appliers := []Applier{{Name: "the gateway", Types: []string{"redact_fields", "cap_amount"},
-		Params: map[string][]string{"redact_fields": {"fields"}, "cap_amount": {"max", "field"}}}}
-	first, err := Page(src, appliers)
+	first, err := Page(specs(), appliers())
 	if err != nil {
 		t.Fatalf("Page: %v", err)
 	}
-	second, err := Page(src, appliers)
+	second, err := Page(specs(), appliers())
 	if err != nil {
 		t.Fatalf("Page, second call: %v", err)
 	}
@@ -103,82 +82,59 @@ func TestPageIsDeterministic(t *testing.T) {
 	}
 }
 
-// A name Names refuses never reaches a row; a name it accepts always does.
-func FuzzNames(f *testing.F) {
-	f.Add(catalogueSource(`"cap_amount", "redact_fields"`))
-	f.Add(catalogueSource(`"a|b"`))
-	f.Add("package rules\n")
-	f.Fuzz(func(t *testing.T, src string) {
-		names, err := Names([]byte(src))
-		if err != nil {
-			if names != nil {
-				t.Errorf("names %q beside the error", names)
-			}
-			return
-		}
-		page, err := Page([]byte(src), nil)
-		if err != nil {
-			t.Fatalf("Names accepted what Page refuses: %v", err)
-		}
-		if strings.Count(string(page), "\n| `") != len(names) {
-			t.Errorf("%d names, page:\n%s", len(names), page)
-		}
-	})
-}
-
-func TestRenderNamesWhoAppliesEachType(t *testing.T) {
-	appliers := []Applier{
-		{Name: "the gateway", Types: []string{"cap_amount"}, Params: map[string][]string{"cap_amount": {"max", "field"}}},
-		{Name: "the adapter", Types: []string{"cap_amount", "read_only"}, Params: map[string][]string{"cap_amount": {"max", "field"}, "read_only": nil}},
-	}
-	page, err := render([]string{"cap_amount", "read_only", "emit_alert"}, appliers)
-	if err != nil {
-		t.Fatalf("render: %v", err)
-	}
-	text := string(page)
-	for _, row := range []string{
-		"| `cap_amount` | the gateway, the adapter | `max`, `field` |\n",
-		"| `read_only` | the adapter | none |\n",
-		"| `emit_alert` | " + unapplied + " |  |\n",
-	} {
-		if !strings.Contains(text, row) {
-			t.Errorf("page has no row %q:\n%s", row, text)
-		}
-	}
-}
-
 // A page that listed an applier for a type the catalogue lacks would state a
-// capability the kernel refuses at start, so the renderer refuses it first.
-func TestRenderRefusesAnApplierThePageCannotState(t *testing.T) {
-	names := []string{"cap_amount"}
-	for _, tc := range []struct {
-		name     string
+// capability the kernel refuses at start, and a row the table cannot carry
+// would state something else; the renderer refuses both first.
+func TestPageRefusesWhatItCannotState(t *testing.T) {
+	with := func(edit func([]rules.ObligationSpec) []rules.ObligationSpec) []rules.ObligationSpec {
+		return edit(specs())
+	}
+	for name, tc := range map[string]struct {
+		specs    []rules.ObligationSpec
 		appliers []Applier
 	}{
-		{"a type outside the catalogue", []Applier{{Name: "the adapter", Types: []string{"cap_rate"}}}},
-		{"no name", []Applier{{Types: []string{"cap_amount"}}}},
-		{"a name a cell cannot carry", []Applier{{Name: "a|b", Types: []string{"cap_amount"}, Params: map[string][]string{"cap_amount": nil}}}},
-		{"a type with no parameter entry", []Applier{{Name: "the adapter", Types: []string{"cap_amount"}, Params: map[string][]string{}}}},
-		{"parameters for a type not applied", []Applier{{Name: "the adapter", Types: []string{"cap_amount"},
-			Params: map[string][]string{"cap_amount": nil, "read_only": {"x"}}}}},
-		{"a parameter a cell cannot carry", []Applier{{Name: "the adapter", Types: []string{"cap_amount"}, Params: map[string][]string{"cap_amount": {"a|b"}}}}},
-		{"a backtick in a parameter", []Applier{{Name: "the adapter", Types: []string{"cap_amount"}, Params: map[string][]string{"cap_amount": {"a`b"}}}}},
-		{"a comma in a parameter", []Applier{{Name: "the adapter", Types: []string{"cap_amount"}, Params: map[string][]string{"cap_amount": {"a,b"}}}}},
-		{"an empty parameter", []Applier{{Name: "the adapter", Types: []string{"cap_amount"}, Params: map[string][]string{"cap_amount": {""}}}}},
-		{"a parameter twice", []Applier{{Name: "the adapter", Types: []string{"cap_amount"}, Params: map[string][]string{"cap_amount": {"max", "max"}}}}},
-		{"two appliers reading different parameters", []Applier{
-			{Name: "the gateway", Types: []string{"cap_amount"}, Params: map[string][]string{"cap_amount": {"max"}}},
-			{Name: "the adapter", Types: []string{"cap_amount"}, Params: map[string][]string{"cap_amount": {"max", "field"}}},
-		}},
-		{"two appliers, one reading none", []Applier{
-			{Name: "the gateway", Types: []string{"cap_amount"}, Params: map[string][]string{"cap_amount": {"max"}}},
-			{Name: "the adapter", Types: []string{"cap_amount"}, Params: map[string][]string{"cap_amount": nil}},
-		}},
+		"an empty catalogue": {nil, appliers()},
+		"a type twice": {with(func(s []rules.ObligationSpec) []rules.ObligationSpec {
+			return append(s, rules.ObligationSpec{Type: "emit_alert"})
+		}), appliers()},
+		"an empty type":    {with(func(s []rules.ObligationSpec) []rules.ObligationSpec { s[2].Type = ""; return s }), appliers()},
+		"a pipe in a type": {with(func(s []rules.ObligationSpec) []rules.ObligationSpec { s[2].Type = "a|b"; return s }), appliers()},
+		"a backtick in a type": {with(func(s []rules.ObligationSpec) []rules.ObligationSpec {
+			s[2].Type = "a`b"
+			return s
+		}), appliers()},
+		"a control character in a type": {with(func(s []rules.ObligationSpec) []rules.ObligationSpec {
+			s[2].Type = "a\nb"
+			return s
+		}), appliers()},
+		"a parameter a cell cannot carry": {with(func(s []rules.ObligationSpec) []rules.ObligationSpec {
+			s[0].Params[1].Name = "a|b"
+			return s
+		}), appliers()},
+		"a parameter twice": {with(func(s []rules.ObligationSpec) []rules.ObligationSpec {
+			s[0].Params[1].Name = "max"
+			return s
+		}), appliers()},
+		"a parameter with no grammar": {with(func(s []rules.ObligationSpec) []rules.ObligationSpec {
+			s[0].Params[1].Grammar = 0
+			return s
+		}), appliers()},
+		"one of an undeclared parameter": {with(func(s []rules.ObligationSpec) []rules.ObligationSpec {
+			s[1].OneOf = []string{"ids", "path"}
+			return s
+		}), appliers()},
+		"parameters on a type nothing applies": {with(func(s []rules.ObligationSpec) []rules.ObligationSpec {
+			s[2].Params = []rules.Param{{Name: "per_minute", Grammar: rules.GrammarInteger}}
+			return s
+		}), appliers()},
+		"an applier of a type outside the catalogue": {specs(), []Applier{{Name: "the adapter", Types: []string{"cap_rate"}}}},
+		"an applier with no name":                    {specs(), []Applier{{Types: []string{"cap_amount"}}}},
+		"an applier name a cell cannot carry":        {specs(), []Applier{{Name: "a|b", Types: []string{"cap_amount"}}}},
 	} {
-		t.Run(tc.name, func(t *testing.T) {
-			page, err := render(names, tc.appliers)
+		t.Run(name, func(t *testing.T) {
+			page, err := Page(tc.specs, tc.appliers)
 			if err == nil {
-				t.Fatalf("render accepted %+v and returned %d bytes", tc.appliers, len(page))
+				t.Fatalf("Page accepted the catalogue and returned %d bytes", len(page))
 			}
 			if page != nil {
 				t.Errorf("%d bytes beside the error", len(page))

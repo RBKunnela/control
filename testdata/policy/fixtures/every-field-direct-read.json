@@ -87,7 +87,7 @@
             "type": "cap_amount",
             "params": {
               "max": "10000",
-              "currency": "EUR"
+              "field": "amount"
             }
           },
           {

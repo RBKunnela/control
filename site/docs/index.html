@@ -156,7 +156,7 @@ with <code>make docs-gen</code>; an edit made here does not survive the next run
 <li><a href="/docs/reference/failure-modes">Failure modes</a>: What a plane does when its collector, spool, decision point, upstream, pause file, stop list, freshness statement or clock fails, or it is killed holding calls.</li>
 <li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a>: Per revision, transport and method, what the gateway enforces today and what it does not.</li>
 <li><a href="/docs/reference/metrics">Metrics</a>: Every metric a plane answers on /metrics, with its type, its label, the statistic it reads and what it counts.</li>
-<li><a href="/docs/reference/obligations">Obligations</a>: The catalogue of obligation types a policy rule may name, and what the tree does with one.</li>
+<li><a href="/docs/reference/obligations">Obligations</a>: The catalogue of obligation types a policy rule may name, the parameters each takes, and what the tree does with one.</li>
 <li><a href="/docs/reference/observations">Observations</a>: The source descriptor, what an import of OpenTelemetry GenAI spans keeps and drops, the observation log and its export.</li>
 <li><a href="/docs/reference/policy-explain">Policy explain</a>: What <code>guardana-control policy explain</code> reads, every line it prints, which rule decided and which input a rule could not read, and its bounds.</li>
 <li><a href="/docs/reference/policy-format">Policy document format</a>: Every member of an agent-policy/v1alpha1 document, the values each admits, the bounds, and the members of a policy test case.</li>
@@ -255,6 +255,7 @@ with <code>make docs-gen</code>; an edit made here does not survive the next run
 <li><a href="/docs/adr/0058-a-copy-an-import-never-read-is-doubt-for-the-runs-it-claimed">ADR-0058: A copy an import never read is doubt for the runs it claimed</a>: accepted</li>
 <li><a href="/docs/adr/0059-a-tools-classification-is-one-type-checked-when-it-loads">ADR-0059: A tool's classification is one type, checked when it loads</a>: accepted</li>
 <li><a href="/docs/adr/0060-pkg-contract-exports-what-each-effect-class-requires">ADR-0060: pkg/contract exports what each effect class requires</a>: accepted</li>
+<li><a href="/docs/adr/0061-an-obligations-parameters-are-the-catalogues">ADR-0061: An obligation's parameters are the catalogue's</a>: accepted</li>
 </ul>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/index.md">docs/index.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.13.0, and <a href="https://github.com/guardana/control/tree/v0.13.0/docs">its documentation</a> is in its tag.</p>
 </main>

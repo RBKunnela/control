@@ -28,13 +28,14 @@ func docWithWhen(when string) string {
 	return docWithRules(`{"id":"r","effect":"DENY","when":` + when + `}`)
 }
 
-// sentinels is every refusal class Parse has, written out, so a test can
-// check that a refusal carries exactly one of them.
+// sentinels is every refusal class Parse and CheckObligations have, written
+// out, so a test can check that a refusal carries exactly one of them.
 var sentinels = []error{
 	ErrTooLarge, ErrNotStrictJSON, ErrWrongType, ErrUnknownKey, ErrMissingKey,
 	ErrEmpty, ErrIdentifier, ErrReservedKey, ErrAPIVersion, ErrNotPositive,
 	ErrEnum, ErrFloor, ErrDuplicateRuleID, ErrObligationsOnEffect,
 	ErrObligationType, ErrReason, ErrExternal, ErrExternalEffect,
+	ErrObligationParam, ErrObligationValue,
 }
 
 // Characters the identifier rule refuses, built from code points so that no

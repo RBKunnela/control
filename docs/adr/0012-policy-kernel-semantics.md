@@ -28,6 +28,12 @@ class needs a `resource.id` or a destination it cannot supply is refused when
 the configuration loads, so no call to its tool reaches the kernel to be
 refused `REQUIRED_FIELD_ABSENT` for it.
 
+Amended by [ADR-0061](0061-an-obligations-parameters-are-the-catalogues.md): the
+catalogue states each obligation type's parameters, and `policy lint`,
+`policy test`, `policy sign` and `guardana-gateway dev` refuse a document
+holding one its type does not declare, a missing required one or a value
+outside its grammar; loading a bundle does not check them.
+
 ## Context
 
 ADR-0003 chose structured predicates and deny-overrides, and left the exact

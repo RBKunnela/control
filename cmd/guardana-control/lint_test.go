@@ -54,6 +54,18 @@ func TestLintRefusesWithTheFirstRefusalOnOneLine(t *testing.T) {
 			`{"apiVersion":"agent-policy/v1alpha1","bundle":{"id":"p","version":"1","serial":1,"maxStaleSeconds":300},"rules":[{"id":"r","effect":"ALLOW_WITH_OBLIGATIONS","obligations":[{"type":"cap_amounts"}],"when":{"action":{"effect":["READ"]}}}]}`,
 			`rules: an obligation type outside the catalogue`,
 		},
+		"a parameter its type does not declare": {
+			`{"apiVersion":"agent-policy/v1alpha1","bundle":{"id":"p","version":"1","serial":1,"maxStaleSeconds":300},"rules":[{"id":"r","effect":"ALLOW_WITH_OBLIGATIONS","obligations":[{"type":"cap_rate","params":{"per_minute":"60"},"advisory":true}],"when":{"action":{"effect":["READ"]}}}]}`,
+			`rule "r" "rules[0].obligations[0].params[0].key": "rules: a parameter the obligation's type does not declare or requires: cap_rate takes no parameters"`,
+		},
+		"a value its type cannot apply": {
+			`{"apiVersion":"agent-policy/v1alpha1","bundle":{"id":"p","version":"1","serial":1,"maxStaleSeconds":300},"rules":[{"id":"r","effect":"ALLOW_WITH_OBLIGATIONS","obligations":[{"type":"shorten_timeout","params":{"ms":"0"}}],"when":{"action":{"effect":["READ"]}}}]}`,
+			`rule "r" "rules[0].obligations[0].params[0]": "rules: a parameter value the obligation's type cannot apply`,
+		},
+		"restrict_resources with neither ids nor prefix": {
+			`{"apiVersion":"agent-policy/v1alpha1","bundle":{"id":"p","version":"1","serial":1,"maxStaleSeconds":300},"rules":[{"id":"r","effect":"ALLOW_WITH_OBLIGATIONS","obligations":[{"type":"restrict_resources"}],"when":{"action":{"effect":["READ"]}}}]}`,
+			`rule "r" "rules[0].obligations[0].params": "rules: a parameter the obligation's type does not declare or requires: restrict_resources requires one of \"ids\", \"prefix\""`,
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			path := write(t, "policy.json", []byte(tc.document))
