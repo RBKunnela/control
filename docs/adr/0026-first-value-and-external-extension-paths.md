@@ -9,6 +9,11 @@ so a sensor of another kind, a coverage map and a run-scoped stop come before
 any public SDK; the former second milestone, runs and evidence other tools can
 read, is delivered, its consumer in a module of its own.
 
+Amended by [ADR-0064](0064-milestone-two-starts-with-an-independent-sensor.md):
+milestone 2 starts with the independent sensors (B21), then the port
+contracts (B12); the two integrations of the 1.0 bar are maintained here
+against independently maintained upstreams.
+
 Builds on [ADR-0007](0007-repository-layout-and-dependency-rule.md),
 [ADR-0009](0009-open-core-boundary.md) and
 [ADR-0024](0024-control-and-guardana-are-independent.md). Amends ADR-0007 on

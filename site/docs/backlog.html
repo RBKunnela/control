@@ -131,9 +131,9 @@ issue. Completion requires code, documentation and the applicable checks.</p>
 <tbody>
 <tr>
 <td>B00</td>
-<td>Establish a reproducible baseline</td>
+<td>Publish each release's baseline</td>
 <td>none</td>
-<td>Full <code>make quality</code> and CI on the exact candidate commit pass; platform, tool versions, skips and failures are recorded. A partial target run cannot satisfy this task</td>
+<td>The cold gate of the release commit and CI on it pass, and the release notes name the platform, the tool versions, the expected skips and any failure. A partial target run cannot satisfy this task</td>
 </tr>
 </tbody>
 </table>
@@ -150,14 +150,14 @@ issue. Completion requires code, documentation and the applicable checks.</p>
 <tbody>
 <tr>
 <td>B06</td>
-<td>Connect an existing MCP setup</td>
+<td>Trial the connect guide with three new users</td>
 <td>none</td>
-<td>Copyable client/server instructions and a local profile work with an independently maintained server. Classification remains operator-owned; missing classification and unsupported methods are visible. At least three new users attempt the guide; time and help are recorded</td>
+<td>At least three new users attempt <a href="/docs/guides/connect-an-existing-mcp-setup">connect an existing MCP setup</a> on a server of their own; their time, errors and the help they needed are recorded and published, with each blocker they hit fixed or listed</td>
 </tr>
 <tr>
 <td>B23</td>
 <td>Preview and apply an existing MCP configuration</td>
-<td>B06</td>
+<td>none</td>
 <td>A supported client configuration is read into an explicit change plan, with paths outside the gateway named. Dry-run writes nothing and starts no server; apply is explicit, preserves unrelated settings and makes an owner-only backup. A second apply is a no-op; undo refuses intervening edits. Verification shows a live allowed and refused or held call, policy version, reported result, coverage gaps and the next operator step in a readable local report linked to its source records. Malformed files, links, concurrent edits and credentials in output have adversarial cases. Measure setup with three users</td>
 </tr>
 </tbody>
@@ -174,38 +174,41 @@ issue. Completion requires code, documentation and the applicable checks.</p>
 </thead>
 <tbody>
 <tr>
-<td>B11</td>
-<td>Ship one framework integration</td>
+<td>B21</td>
+<td>Add sensors independent of the agent</td>
 <td>none</td>
-<td>One framework integration an adopter selects passes the client conformance cases of <a href="/docs/adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api">ADR-0051</a>, with its covered and bypassing tool paths published</td>
+<td>The source descriptor's checks are neutral to the sensor's kind, with the checks specific to one kind beside its importer (<a href="/docs/adr/0040-observations-a-record-a-log-and-one-importer">ADR-0040</a> amended), so a descriptor may be marked independent. An importer reads an egress proxy's access log under such a descriptor, and a second reads process events from the host the agent runs on; a connection is attributed to a run only as well as the proxy identifies its caller, and an unattributed one stays unknown. The coverage map shows an egress destination the plane never decided on</td>
+</tr>
+<tr>
+<td>B12</td>
+<td>Publish the port contracts and add TypeScript</td>
+<td>B21</td>
+<td>Sensor, detector, reaction and notifier contracts are published with conformance suites of input and expected output files any language runs, once two consumers have used each. An outside program can write an observation and a finding that names its detector. An external detector or notifier built from them alone passes its suite. Queue bounds, lag and failures are visible and cannot affect authorization. TypeScript passes the same client fixtures. A Go seam is promoted only with its own ADR and two consumers; nothing is loaded into a plane at run time</td>
 </tr>
 <tr>
 <td>B25</td>
 <td>Review changes to tool definitions</td>
-<td>B00</td>
+<td>none</td>
 <td>Compare an operator-reviewed manifest with a newly observed one, name changed fields and old/new fingerprints, and export a bounded report with source and observation time. Reuse the existing classification refusal. Description, schema, metadata, removed and ambiguous tools, and a silent or unavailable source have cases. Review never repins a definition or signs a policy; unchanged definitions do not attest unchanged server code</td>
 </tr>
 <tr>
 <td>B27</td>
 <td>Compare and simulate a candidate policy</td>
-<td>B00</td>
+<td>none</td>
 <td>A report names both policy digests, input provenance and per-case before/after verdicts, obligations and missing facts. Reuse the kernel's evaluation; publish denominators and unknowns. Cases cover broadened effects/resources, rule conflict, absent arguments or flow context, missing historic policy, gaps and changed definitions. Simulation sends no tool call, consumes no approval and cannot activate a policy</td>
 </tr>
 <tr>
-<td>B21</td>
-<td>Add sensors independent of the agent</td>
-<td>ADR-0040</td>
-<td>An importer reads an egress proxy's access log under a descriptor marked independent, and a second reads process events from the host the agent runs on; a connection is attributed to a run only as well as the proxy identifies its caller, and an unattributed one stays unknown. The coverage map shows an egress destination the plane never decided on</td>
-</tr>
-<tr>
-<td>B12</td>
-<td>Publish the port contracts and add TypeScript</td>
-<td>B11 for the enforcement client</td>
-<td>Sensor, detector, reaction and notifier contracts are published with conformance suites of input and expected output files any language runs, once two consumers have used each. An external detector or notifier built from them alone passes its suite. Queue bounds, lag and failures are visible and cannot affect authorization. TypeScript passes the same client fixtures. A Go seam is promoted only with its own ADR and two consumers; nothing is loaded into a plane at run time</td>
+<td>B11</td>
+<td>Ship one framework integration</td>
+<td>none</td>
+<td>One framework integration an adopter selects is maintained here against the framework's independently maintained release, passes the client conformance cases of <a href="/docs/adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api">ADR-0051</a> at a pinned version, and has its covered and bypassing tool paths published</td>
 </tr>
 </tbody>
 </table>
-<p>LangGraph and the OpenAI Agents SDK are framework candidates for what remains
+<p>The order is the table's (<a href="/docs/adr/0064-milestone-two-starts-with-an-independent-sensor">ADR-0064</a>):
+the sensor contract B12 publishes needs a second kind of sensor, and B28
+needs both. B25 and B27 block nothing and go beside them.
+LangGraph and the OpenAI Agents SDK are framework candidates for what remains
 of B11. A second coding runtime waits until adopters name one. Transport
 retries may not replay a material tool execution.
 Custom policy-provider work preserves ADR-0017's veto-only semantics.</p>
@@ -250,6 +253,57 @@ mappings.</p>
 <td>Run continuous supervision and authorized reaction</td>
 <td>B12, B13, B14, B21</td>
 <td>An operator-configured service follows versioned evidence and observation exports with durable cursors, checks procedures and delivers findings through bounded queues. Source silence, export gaps, sampling, lag and unreadable inputs remain visible and never look like completed work. Restart and replay do not duplicate an authority-bearing reaction. Every stop uses the existing confirmed-finding bar and a signed, scoped, expiring route; unknown or observation-only findings cannot stop a run. Tests exercise concurrent runs, source outage, partial exports, expired authority, replay and notifier failure. A notifier failure cannot grant authority or change a verdict; no reaction cancels an effect already running</td>
+</tr>
+</tbody>
+</table>
+<h2 id="release-bar-for-10">Release bar for 1.0</h2>
+<p>Each task here is one item of <a href="/docs/roadmap#release-bar-for-10">ROADMAP.md's release bar</a>.
+The coding runtime's hooks (qualified) and B11 are the two integrations.</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Work</th>
+<th>Depends on</th>
+<th>Acceptance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>B29</td>
+<td>Make the evidence trail tamper-evident</td>
+<td>none</td>
+<td>Each event carries a hash link to the one before it in its trail and the plane signs checkpoints over the trails under a key apart from the policy's; a verifier any language can run reports a removed, reordered, altered or appended record and a checkpoint that is missing, stale or signed by another key, with adversarial cases for each and a page stating what the claim covers and what it does not</td>
+</tr>
+<tr>
+<td>B30</td>
+<td>Maintain a second digest implementation</td>
+<td>B12</td>
+<td>A TypeScript implementation of <code>digest_v1</code>, the arguments hash and the approval binding passes every golden and refusal vector of <code>testdata/digest/</code> in CI, beside the Go one, and any result that differs from a vector's expected one fails the run</td>
+</tr>
+<tr>
+<td>B31</td>
+<td>Decide the v1 contracts and their migration</td>
+<td>B12, B21</td>
+<td>The observation and finding contracts are promoted to v1 by their own records or excluded from 1.0 in one; every versioned format of <a href="/docs/reference/versions">versions.md</a> states its compatibility and migration rule, and fixtures show an upgrade read and an unsupported major refused for each</td>
+</tr>
+<tr>
+<td>B32</td>
+<td>Test isolation, offline use and recovery</td>
+<td>B13, B14</td>
+<td>Cross-run, cross-tenant and cross-account attempts are refused in tests; the release archives' supported workflows run with external networking unavailable and fail visibly where a configured service is needed; crash points in the spool, the journals, the floors and the runs directory recover without reusing spent authority</td>
+</tr>
+<tr>
+<td>B33</td>
+<td>Publish sustained performance</td>
+<td>none</td>
+<td>A reproducible workload with stated concurrency, duration and conditions runs on a quiet dedicated machine; its tail latency to p99.9, errors and export lag are published with the hardware named, and earlier results are kept beside it</td>
+</tr>
+<tr>
+<td>B34</td>
+<td>Get an outside review and exercise disclosure</td>
+<td>none</td>
+<td>An independent reviewer, found through a free route, reviews the threat model and the trust boundaries and rebuilds one integration from the public pages; the report is published with each finding fixed or recorded as a limit. One report is taken through the disclosure process end to end and its timings recorded</td>
 </tr>
 </tbody>
 </table>

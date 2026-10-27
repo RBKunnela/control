@@ -136,7 +136,7 @@ the complete product model and today's limits.</p>
 <tr>
 <td>Observe</td>
 <td>Join tool and API evidence with runtime, proxy and process observations; show coverage, sampling and silence.</td>
-<td>B11, B12, B21</td>
+<td>B21, B12</td>
 </tr>
 <tr>
 <td>Supervise</td>
@@ -168,12 +168,12 @@ identity assumptions stated. The report shows the action, policy version,
 decision, known or uncertain result and next operator step. Configuration
 preview, explicit apply and undo are B23; setup never silently widens authority.</p>
 <h2 id="2-integrations-without-a-fork">2. Integrations without a fork</h2>
-<p>Choose one framework integration with adopters, then TypeScript and a
-second integration. Add proxy and process
-sensors. Publish port contracts with language-neutral conformance suites
-after two consumers use each. A public Go seam needs its own record.
-Tool-definition review and policy comparison (B25, B27) help operators
-revalidate changes before rollout.</p>
+<p>Add proxy and process sensors independent of the agent first (B21). Then
+publish port contracts with language-neutral conformance suites once two
+consumers use each, with a TypeScript client (B12); continuous supervision
+(B28) builds on both. A framework integration (B11) follows when an adopter
+picks one. Tool-definition review and policy comparison (B25, B27) go beside
+them and block nothing. A public Go seam needs its own record.</p>
 <h2 id="3-a-small-team">3. A small team</h2>
 <p>Authenticated operators hold scoped read, approve, pause and stop rights.
 Retention, export and recovery work without a managed service. Continuous
@@ -189,13 +189,14 @@ stays optional and off unless configured.</p>
 <p>Supported coverage and reactions require conformance suites, adversarial
 tests, explicit bounds and visible failures. 1.0 also requires compatibility
 and migration policies, a second digest implementation passing the goldens,
-two independently maintained integrations, external threat-model review,
-an exercised disclosure process, isolation tests, tested offline use and
-recovery, and reproducible sustained tail-latency benchmarks. Observation
-contracts need their own v1 record or an explicit exclusion. An evidence
-integrity claim needs hash links and signed checkpoints. Content capture
-stays off by default; hidden reasoning is never stored. Feature counts do
-not meet this bar.</p>
+two integrations qualified against independently maintained upstreams, an
+external threat-model review, an exercised disclosure process, isolation
+tests, tested offline use and recovery, and reproducible sustained
+tail-latency benchmarks. Observation contracts need their own v1 record or an
+explicit exclusion. 1.0 claims evidence integrity, with hash links and signed
+checkpoints. Content capture stays off by default; hidden reasoning is never
+stored. Feature counts do not meet this bar. The backlog's B11 and B29 to B34
+are its open items.</p>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/ROADMAP.md">ROADMAP.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.14.0, and <a href="https://github.com/guardana/control/tree/v0.14.0/docs">its documentation</a> is in its tag.</p>
 </main>
 <nav class="side" aria-label="Documentation">

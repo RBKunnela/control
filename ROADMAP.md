@@ -20,7 +20,7 @@ the complete product model and today's limits.
 
 | Area | Target for 1.0 | Delivery path |
 | --- | --- | --- |
-| Observe | Join tool and API evidence with runtime, proxy and process observations; show coverage, sampling and silence. | B11, B12, B21 |
+| Observe | Join tool and API evidence with runtime, proxy and process observations; show coverage, sampling and silence. | B21, B12 |
 | Supervise | Check procedures, permissions, resources, exceptions and child runs; report deviations and uncertain outcomes. | Existing supervision, B12, B26, B28 |
 | React | Inform, alert, request review, approve one exact action, pause calls or stop later actions within authenticated run, agent or principal scopes. | Existing controls, B12–B14, B26, B28 |
 | Integrate | MCP and custom tools share policy, approvals and evidence; publish each integration's enforcement and bypasses. | Existing hook bridge, B11, B12 |
@@ -42,12 +42,12 @@ preview, explicit apply and undo are B23; setup never silently widens authority.
 
 ## 2. Integrations without a fork
 
-Choose one framework integration with adopters, then TypeScript and a
-second integration. Add proxy and process
-sensors. Publish port contracts with language-neutral conformance suites
-after two consumers use each. A public Go seam needs its own record.
-Tool-definition review and policy comparison (B25, B27) help operators
-revalidate changes before rollout.
+Add proxy and process sensors independent of the agent first (B21). Then
+publish port contracts with language-neutral conformance suites once two
+consumers use each, with a TypeScript client (B12); continuous supervision
+(B28) builds on both. A framework integration (B11) follows when an adopter
+picks one. Tool-definition review and policy comparison (B25, B27) go beside
+them and block nothing. A public Go seam needs its own record.
 
 ## 3. A small team
 
@@ -69,10 +69,11 @@ stays optional and off unless configured.
 Supported coverage and reactions require conformance suites, adversarial
 tests, explicit bounds and visible failures. 1.0 also requires compatibility
 and migration policies, a second digest implementation passing the goldens,
-two independently maintained integrations, external threat-model review,
-an exercised disclosure process, isolation tests, tested offline use and
-recovery, and reproducible sustained tail-latency benchmarks. Observation
-contracts need their own v1 record or an explicit exclusion. An evidence
-integrity claim needs hash links and signed checkpoints. Content capture
-stays off by default; hidden reasoning is never stored. Feature counts do
-not meet this bar.
+two integrations qualified against independently maintained upstreams, an
+external threat-model review, an exercised disclosure process, isolation
+tests, tested offline use and recovery, and reproducible sustained
+tail-latency benchmarks. Observation contracts need their own v1 record or an
+explicit exclusion. 1.0 claims evidence integrity, with hash links and signed
+checkpoints. Content capture stays off by default; hidden reasoning is never
+stored. Feature counts do not meet this bar. The backlog's B11 and B29 to B34
+are its open items.

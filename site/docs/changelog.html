@@ -120,6 +120,10 @@ verify one.</p>
 <h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.14.0...HEAD">Unreleased</a></h2>
 <h3 id="changed">Changed</h3>
 <ul>
+<li>The roadmap starts milestone 2 with the sensors independent of the agent
+(B21), then the port contracts and the TypeScript client (B12), and lists
+the open items of the 1.0 release bar as backlog tasks B29 to B34
+(<a href="/docs/adr/0064-milestone-two-starts-with-an-independent-sensor">ADR-0064</a>).</li>
 <li>A pull request's gate no longer fuzzes: <code>make quality</code> runs the seeds of
 every fuzz target in its tests and checks with <code>make fuzz-list</code> that each
 target compiles, while the nightly run and the release commit's cold gate
