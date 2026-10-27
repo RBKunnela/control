@@ -15,10 +15,9 @@ once, binds to one action digest under one bundle, and expires
 ([ADR-0013](../adr/0013-mcp-interception-approvals-and-modes.md),
 [ADR-0011](../adr/0011-contract-corrections-before-publication.md)).
 
-Who may answer, and what becomes of a hold the plane loses, are
-[ADR-0016](../adr/0016-approval-providers-and-the-lost-hold.md): an approver
-writes a file in the approvals directory, and a hold lost to a restart is
-closed on its own trail and never run, where the plane journals its holds.
+[ADR-0016](../adr/0016-approval-providers-and-the-lost-hold.md) says who may
+answer, an approver writing a file in the approvals directory, and what
+becomes of a hold the plane loses.
 
 ## One held request, end to end
 
@@ -180,7 +179,7 @@ stateDiagram-v2
     [*] --> held: APPROVAL_REQUESTED written, the hold kept and stored
     held --> held: a retry before an answer is told the same approval_id again
     held --> running: an approved retry consumes the approval once, APPROVAL_DECIDED then ACTION_STARTED
-    held --> expired: nobody answered before expires_at
+    held --> expired: expires_at passed before a retry resumed it
     held --> rejected: a retry finds the approver said no
     held --> refused: the store would not keep the hold, or MaxHeld holds stand
     held --> lost: the plane stopped while the request was held
@@ -203,13 +202,13 @@ Sources: `internal/gateway/approve.go`, `internal/gateway/resume.go`,
 | an approved retry whose approval expires before the call is handed out | `APPROVAL_DECIDED`, then `ACTION_BLOCKED` with `DENY`, `APPROVAL_EXPIRED`, or `ACTION_STARTED` and `ACTION_FAILED` naming it when the expiry passed during that append; the approval stays spent | `DENY`, `APPROVAL_EXPIRED`, and nothing is sent |
 | an approved retry whose bundle went stale, or was replaced, before the call is handed out | before the consume, this call's own trail: `ACTION_PROPOSED`, `POLICY_DECIDED`, `ACTION_BLOCKED`, nothing spent and the hold kept; after it, `APPROVAL_DECIDED` then `ACTION_BLOCKED`, or `ACTION_STARTED` and `ACTION_FAILED`, and the approval stays spent | `INDETERMINATE`, `POLICY_STALE`, and nothing is sent; a retry under a newer bundle is held anew |
 | the next identical call after the held one ran | its own trail: `ACTION_PROPOSED`, `POLICY_DECIDED`, `ACTION_BLOCKED` | `DENY`, `APPROVAL_ALREADY_USED`: the approval was spent, which is not by itself a statement that the earlier call ran ([reference/reason-codes](../reference/reason-codes.md)); once the spent approval has expired, the same call is held anew |
-| nobody answered before `expires_at` | `APPROVAL_EXPIRED`, `ACTION_BLOCKED` with `DENY`, `APPROVAL_EXPIRED`; written by the next call that opens a trail, at most `maxSweep` holds per call, before the request id is freed | a retry after the expiry is a new request with a new hold |
+| it expired before a retry resumed it, answered or not | `APPROVAL_EXPIRED`, `ACTION_BLOCKED` with `DENY`, `APPROVAL_EXPIRED`; written by the next call that opens a trail, at most `maxSweep` holds per call, before the request id is freed | a retry after the expiry is a new request with a new hold |
 | a retry finds the approver rejected it | `APPROVAL_DECIDED` with the answer, `ACTION_BLOCKED` with `DENY`, `APPROVAL_REJECTED`; a rejection that fails a check below is recorded as the enforcement point's own approval, `APPROVAL_EXPIRED`; a rejection nobody retries after is closed at the expiry like an unanswered hold | that block |
 | the agent gave up on its retry before the approval was consumed or the call handed out | this call's own trail: `ACTION_PROPOSED`, `POLICY_DECIDED`, `ACTION_BLOCKED` with `INDETERMINATE`, `EVIDENCE_UNAVAILABLE`; nothing is spent and the hold stands; after the consume, the execution is aborted unsent and the approval is spent | nothing: the agent is gone |
 | the store would not keep the hold, or `MaxHeld` holds stand | `APPROVAL_EXPIRED`, `ACTION_BLOCKED` with `INDETERMINATE`, `EVIDENCE_UNAVAILABLE`: the window the enforcement point opened is closed first, since the chain lets nothing else follow a request for approval | that block |
 | the store cannot answer, or the hold was dropped or resumed between the lookup and the flip to running | this call's own trail: `ACTION_PROPOSED`, `POLICY_DECIDED`, `ACTION_BLOCKED` with `INDETERMINATE`, `EVIDENCE_UNAVAILABLE` | that block |
 | the trail cannot be written | nothing more: the block is not recorded either | `INDETERMINATE`, `EVIDENCE_UNAVAILABLE` |
-| the plane stopped while the request was held | at its next start: `APPROVAL_DECIDED` with the answer and `ACTION_BLOCKED` with `APPROVAL_NOT_RESUMED` or `APPROVAL_REJECTED`, or `APPROVAL_EXPIRED` and `ACTION_BLOCKED` with `APPROVAL_EXPIRED` or `APPROVAL_STATE_UNKNOWN`; nothing at all where no journal is configured | nothing: that connection was answered pending long ago, and a later identical call is held anew |
+| the plane stopped while the request was held | at its next start: `APPROVAL_DECIDED` with the answer and `ACTION_BLOCKED` with `APPROVAL_NOT_RESUMED` or `APPROVAL_REJECTED`, or `APPROVAL_EXPIRED` and `ACTION_BLOCKED` with `APPROVAL_EXPIRED` or `APPROVAL_STATE_UNKNOWN`; nothing at all where no journal is configured | nothing: that connection was answered pending long ago, and a later identical call is held anew or, if the plane had spent the approval, refused `APPROVAL_ALREADY_USED` until it expires |
 
 A consumed approval stays consumed when the upstream call then fails, because
 the effect may have happened; that failure is a new request.
@@ -232,9 +231,10 @@ own approval, `APPROVAL_EXPIRED`, never as decided:
 | its expiry is no later than the one the enforcement point minted | `INDETERMINATE`, `EVIDENCE_UNAVAILABLE` |
 | the hold is still the one on its trail, flipped to running in one step under the enforcement point's lock | `INDETERMINATE`, `EVIDENCE_UNAVAILABLE` |
 
-**Expiry is judged three times.** The store's answer is checked when it is
-consumed; the expiry is checked again by the plane's clock with the pause
-state right before `ACTION_STARTED` is written, and once more right after it.
+**Expiry is judged up to four times.** The store's answer is checked when it
+is consumed; the expiry is checked again by the plane's clock with the pause
+state right before `ACTION_STARTED` is written, again once an opened run's
+state is raised, and once more right after it.
 A journal or a sink slow enough to let the approval expire in between cannot
 send the call: before `ACTION_STARTED` it is blocked with `DENY`,
 `APPROVAL_EXPIRED`; after it, the execution is aborted with `ACTION_FAILED`
@@ -242,7 +242,7 @@ naming `APPROVAL_EXPIRED`. The approval stays spent. A pause read at the first
 of those moments is named instead, because the plane's own causes come first.
 The adapter's time after the hand-out is not covered
 ([ADR-0027](../adr/0027-expiry-at-hand-out-and-an-unreadable-lost-hold.md)).
-The bundle the decision stood on is judged at those two moments too, and once
+The bundle the decision stood on is judged at those moments too, and once
 before the consume, where a stale or replaced bundle spends nothing
 ([ADR-0055](../adr/0055-a-call-is-handed-out-only-while-its-policy-stands.md)).
 
@@ -303,9 +303,9 @@ Each of these has to be positive, or the plane refuses to start.
 
 ## Where the code lives
 
-`internal/gateway/approve.go` is the branch a call takes when it awaits an
-approval, the hold and its refusals, and `internal/gateway/resume.go` the retry
-that resumes it, with the checks of what the store answers;
+`internal/gateway/approve.go` holds a call that awaits an approval and
+refuses what it cannot hold, and `internal/gateway/resume.go` resumes it and
+checks what the store answers;
 `internal/gateway/trails.go`
 keeps the enforcement point's own record of a hold, flips it to running and
 closes the expired ones; `internal/gateway/approvals.go` is the store

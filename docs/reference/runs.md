@@ -43,7 +43,7 @@ guardana-control runs open --tenant acme --principal-type service --principal ag
 
 Every flag but `--parent` is required. `--tenant`, `--principal-type`,
 `--principal` and `--agent` must be what the plane's listener resolves:
-`tenant_id` (or `listener.principal.tenant_id`), `listener.principal.type`,
+`listener.principal.tenant_id`, or else `tenant_id`, `listener.principal.type`,
 `listener.principal.id` and `listener.agent.id`. A token presented for any
 other identity is refused. `--ttl` is a duration from `1m` to `720h`, with no
 default.

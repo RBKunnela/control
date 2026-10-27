@@ -139,7 +139,7 @@ a record.</p>
 </code></pre>
 <p>Every flag but <code>--parent</code> is required. <code>--tenant</code>, <code>--principal-type</code>,
 <code>--principal</code> and <code>--agent</code> must be what the plane's listener resolves:
-<code>tenant_id</code> (or <code>listener.principal.tenant_id</code>), <code>listener.principal.type</code>,
+<code>listener.principal.tenant_id</code>, or else <code>tenant_id</code>, <code>listener.principal.type</code>,
 <code>listener.principal.id</code> and <code>listener.agent.id</code>. A token presented for any
 other identity is refused. <code>--ttl</code> is a duration from <code>1m</code> to <code>720h</code>, with no
 default.</p>

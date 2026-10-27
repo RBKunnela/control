@@ -116,8 +116,8 @@ and you want every call decided from policy, enforced before the
 server sees it, and recorded. Start in <code>OBSERVE</code>, which records every call and
 blocks only for the plane's own causes, and move to <code>ENFORCE</code> once the tools
 are classified.</p>
-<p>The gateway is <code>experimental</code>; <a href="/docs/status">status.md</a> says what runs and what
-does not. Nothing here is a security boundary yet.</p>
+<p>The gateway is <code>experimental</code>; <a href="/docs/status">status.md</a> says what runs today.
+Nothing here is a security boundary yet.</p>
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
 <li><code>guardana-gateway</code> from a release archive, or built: <code>go build ./cmd/guardana-gateway</code>.</li>
@@ -150,11 +150,12 @@ guardana-control policy state init --kind plane --bundle-id orders-policy floors
 the plane: a floor made anew takes any older bundle.</p>
 <h3 id="2-write-a-configuration">2. Write a configuration</h3>
 <p>Every path key resolves against its directory; upstream <code>args</code> pass as
-written. Every key has an environment variable under <code>GUARDANA_CONTROL_</code>, the
-key in capitals with underscores for dots, which wins over the file. An unknown key is refused.
-<a href="/docs/reference/configuration">configuration.md</a> lists every key. The plane
+written. Every key has an environment variable under <code>GUARDANA_CONTROL_</code>, which wins
+over the file. An unknown key is refused.
+<a href="/docs/reference/configuration">configuration.md</a> lists every key and variable. The plane
 refuses the file if it, or a directory or link above it, belongs to an
-account but its own or root, or another account may write it.</p>
+account but its own or root, or another account may write it, save a sticky
+directory or root's on a read-only mount.</p>
 <pre><code class="language-yaml">mode: OBSERVE
 project_id: orders
 tenant_id: acme
@@ -209,7 +210,7 @@ more often than that budget less twice the poll interval.</p>
 <pre><code>guardana-gateway doctor --config gateway.yaml
 </code></pre>
 <p><code>doctor</code> prints every key and its source, credentials excepted, then one
-line per check, stopping at the first it cannot make. The <code>policy</code> line
+line per check, up to the first it cannot make. The <code>policy</code> line
 fails for a statement missing, expired, dated ahead or naming another bundle,
 or a bundle below its floor, which it never raises; like <code>run</code>'s first
 line, it names <code>policy.fail_open_read</code>. An unclassified tool is
@@ -284,8 +285,8 @@ complete. Then change the mode and restart.</p>
 <p>An approver answers with the approval commands
 (<a href="/docs/reference/cli">reference/cli.md</a>). Write access to <code>approvals.dir</code> is
 the approval authority, and <code>--approver-id</code> is a claim, never authenticated. A
-hold lost to a restart never runs, and the next start closes its trail from
-the journal
+hold lost to a restart never runs; the next start closes its trail from the
+journal
 (<a href="/docs/concepts/approvals-and-the-held-call">concepts/approvals-and-the-held-call.md</a>).</p>
 <h3 id="9-set-the-evidence-rules-on-purpose">9. Set the evidence rules on purpose</h3>
 <table>

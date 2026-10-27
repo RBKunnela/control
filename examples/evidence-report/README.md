@@ -33,9 +33,9 @@ after=$(bin/evidence-report -state s -cursor)
 ```
 
 One run at a time reads the next export, logs each new alert to
-`s/alerts.jsonl` and stderr as a JSON line, `"v":1`, `experimental`, then
-prints requests that ended. Exit 1 is a new alert. Exit 2 leaves
-`state.json` unchanged; alerts already logged stay, not raised again, and
+`s/alerts.jsonl` as a JSON line, `"v":1`, `experimental`, and to stderr after
+`evidence-report: alert`, then prints requests that ended. Exit 1 is a new alert. Exit 2 leaves
+`state.json` unchanged unless only its last sync failed; alerts already logged stay, not raised again, and
 rows may print again.
 
 ## What it cannot see

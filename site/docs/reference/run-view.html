@@ -174,7 +174,7 @@ reader. The legend at the foot of the page summarises this table.</p>
 <tr>
 <td>blocked</td>
 <td>cross, long dashes</td>
-<td>The policy denied the call, or the plane blocked it: a pause, a stop, an approval refused or expired, or a verdict such as <code>INDETERMINATE</code>.</td>
+<td>The call's coherent trail ends blocked: the policy's <code>DENY</code>, a pause, a stop, an approval refused or expired, or a verdict such as <code>INDETERMINATE</code>.</td>
 </tr>
 <tr>
 <td>not seen</td>
@@ -183,8 +183,8 @@ reader. The legend at the foot of the page summarises this table.</p>
 </tr>
 </tbody>
 </table>
-<p>A source's report is marked observed. A plane's call is marked blocked when
-it was denied or blocked; else decided when its trail is in doubt; else
+<p>A source's report is marked observed. A plane's call is marked decided when
+its trail is in doubt; else blocked when it was denied or blocked; else
 exception or approval; else decided when its protocol is <code>enforce</code>; else
 enforced when its recorded mode acts on its decision; else decided. No mark says &quot;inferred&quot;: the page draws a
 call only from a plane's or a source's record, never from a guess.</p>

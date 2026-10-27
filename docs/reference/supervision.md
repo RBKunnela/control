@@ -44,7 +44,7 @@ another digest is refused.
 | `exceptions` | at most 128, each an `id`, the rule it `waives`, a `step`, or for `STEP_OUTSIDE_PROCEDURE` a `tool` and `upstream` the procedure lacks, and one `condition`: `approval: granted`, `step_failed: <step>` or `reason: <code>`, a code on the call's policy decision. Only that rule, on an approval, and the three about steps take one, a skipped step not on an approval |
 | `children` | `inherit` or `separate`, below |
 | `rules` | for each rule of its schema, a `severity` (`info` to `critical`) and an `escalation` (`inform` or `alert`) |
-| `max_denials`, `deadline_seconds` | at least 1; absent, its rule is off |
+| `max_denials`, `deadline_seconds` | 1 to 4294967295; absent, its rule is off |
 
 ## What belongs to the run
 
@@ -55,8 +55,9 @@ or a parent chain that misses the root; every member is judged, and
 the tree is closed when every member is. `separate` takes any opened run and
 lists its children, not judged. Plane events count when their run is judged
 and their tenant the run's. Observations count when their correlation is
-claimed, with such a run id, tenant and project; another tenant's or
-project's `--source` is refused. Only a tool call is a step, never a
+claimed, with such a run id, tenant and project; another tenant's
+`--source` is refused, and another project's once an event of the run is
+read. Only a tool call is a step, never a
 prompt or resource read. An observation joined to a plane event by trace
 and span id is that call; a join cut short leaves
 `STEP_OUTSIDE_PROCEDURE` and `DENIED_ACTION_RETRIED_AROUND` not checked,
@@ -85,7 +86,7 @@ the export being the plane's.
 An order is untold, its finding `INDETERMINATE`, when a proposal or a failure
 has no time, or between two of one instant. A retry continues nothing, though
 each denial of it counts toward `REPEATED_DENIAL`; an approved call, no
-retry, belongs to the step it held. Every rule orders by the plane's times, never by place in
+retry, belongs to the step it held. Plane calls order by the plane's times, never by place in
 an export; a retry confirms only when one export holds both.
 
 ## The verdict
@@ -93,7 +94,8 @@ an export; a retry confirms only when one export holds both.
 The weakest of what a finding rests on. Plane events in an unbroken chain can
 make it `CONFIRMED`; an observation makes it `SUSPECTED`; a record in doubt,
 `INDETERMINATE`. So are a silent source's observations. A request with
-conflicting copies or a broken chain leaves no rule checked; an observation
+conflicting copies, a broken chain or events of two runs leaves no rule
+checked; an observation
 with two contents, or a judged run its source doubts, until the log is rotated
 ([observations](observations.md#the-log)), leaves `STEP_OUTSIDE_PROCEDURE`
 and `DENIED_ACTION_RETRIED_AROUND` not checked.
@@ -144,7 +146,6 @@ A record is schema `0.2` exactly when it carries a member `0.1` lacks
 | `SuperviseReport.run_tree` | each run's id and parent, the supervised run first, each other after its parent |
 | `LogHeader` | a new log's first line: `log_id`, `log-` and 32 hex digits of 128 random bits |
 
-A log with no header is read as it is; an empty one gains one when opened.
 The reader refuses an unknown schema or a member its schema lacks.
 
 ## notify
@@ -171,8 +172,7 @@ guardana-control findings export --findings <dir> [--after <cursor>] [--limit <n
 ```
 
 `findings export` writes the log as JSON Lines in the evidence export's
-shape, format `guardana.control.findings-export` `0.1`, unstable as the
-records are
+shape, format `guardana.control.findings-export` `0.1`
 ([ADR-0048](../adr/0048-one-run-drawn-as-a-page-and-findings-exported-with-a-cursor.md)):
 `header`, `finding_record` and `supervise_report` each carrying its log line,
 `gap`, `duplicate` and `trailer`. Read as `notify` reads it, under no lock,

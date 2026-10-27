@@ -12,12 +12,12 @@ covers: [internal/lineexport/**, internal/trailfile/export.go, internal/trailfil
 A plane's evidence lands in a trail file, one event per line, written by
 `guardana-gateway collect` ([watch a plane without a
 collector](watch-a-plane-without-a-collector.md)). A report, an alert or a
-dashboard of your own should read it through the export, which is a
+dashboard should read it through the export, which is a
 versioned format with a cursor, a record for every line it could not read, and
 a trailer that says whether it reached the end
 ([ADR-0035](../adr/0035-a-versioned-evidence-export-and-a-bounded-query.md)).
-The format is `experimental`, and [contracts.md](../contracts.md#the-evidence-export)
-states it member by member.
+[contracts.md](../contracts.md#the-evidence-export) states the format member
+by member.
 
 ## Prerequisites
 
@@ -141,7 +141,7 @@ alert and 1 with one or more.
 
 The alerts are appended, synced and written to standard error first, then
 the rows printed, then the state replaced. Exit 2 leaves `state.json`
-unchanged: alerts already appended stay in the log, no later run raises them
+unchanged unless only its last sync failed: alerts already appended stay in the log, no later run raises them
 again, and the rows may print again.
 
 It prints and keeps only identifiers, kinds, the enforcement mode, the

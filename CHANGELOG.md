@@ -29,6 +29,11 @@ verify one.
 
 ### Fixed
 
+- Statements on seventeen public pages that the code contradicted are
+  corrected: among them an identical retry after a spent approval, which is
+  refused until the approval expires, how many times expiry is judged, three
+  answers of the enforcement API, the stateless listener's older revisions,
+  supervision's bounds and ordering, and the evidence report's exit 2.
 - `scripts/publish-python-dist.sh` compared the release files' digests with
   the build's before uploading, but a failing `sha256sum` gave an empty digest
   on both sides; each digest is now checked to be 64 hex digits.

@@ -45,7 +45,8 @@ guardana-control runs open --tenant acme --principal-type service \
   --principal agent-runner --agent orders-assistant --ttl 8h /var/lib/guardana/runs
 ```
 
-The identity is your listener's: `tenant_id`, `listener.principal.type`,
+The identity is your listener's: `listener.principal.tenant_id`, or
+`tenant_id` when it is unset, `listener.principal.type`,
 `listener.principal.id` and `listener.agent.id`. The command prints `run_id`,
 `root`, `expires_at` and `token`; the token is printed this once. A task that
 spawns another opens the child with `--parent <run id>`, so the two share what
@@ -87,8 +88,8 @@ A plane started again with the same token reaches the same state.
 guardana-control runs close /var/lib/guardana/runs <run id>
 ```
 
-Its token is refused from the next request on. `runs list` shows every run
-and whether it is open, closed or expired.
+Its token is refused from the next request on. `runs list` shows up to 1000
+runs, failing past that, and whether each is open, closed or expired.
 
 ## Verify
 

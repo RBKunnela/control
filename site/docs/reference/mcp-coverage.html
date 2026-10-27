@@ -128,9 +128,9 @@ decisions.</p>
 <tbody>
 <tr>
 <td><code>stateless_http</code></td>
-<td><code>2026-07-28</code></td>
+<td><code>2026-07-28</code>, and older</td>
 <td>the listener's configuration</td>
-<td>No session; each request carries its protocol version and client claim in <code>_meta</code></td>
+<td>No session; a <code>2026-07-28</code> request carries its protocol version and client claim in <code>_meta</code></td>
 </tr>
 <tr>
 <td><code>stateful_http</code></td>
@@ -222,11 +222,11 @@ child process (<code>upstreams[].command</code>).</p>
 </tr>
 <tr>
 <td>Resuming a hold the plane lost</td>
-<td>A hold does not survive a restart, and its call never runs. With a hold journal the next start closes its trail, with the approver's answer and <code>APPROVAL_NOT_RESUMED</code> or as expired, or counts it left open; without one it stays open. The agent and the approver start over (ADR-0016)</td>
+<td>A hold does not survive a restart, and its call never runs. With a hold journal the next start closes its trail, with the approver's answer and <code>APPROVAL_NOT_RESUMED</code> or as expired, or counts it left open; without one it stays open (ADR-0016)</td>
 </tr>
 <tr>
 <td>Telling one approver from another</td>
-<td>Write access to the approvals directory is the approval authority, and <code>approver_id</code> is a claim; no authenticated provider exists yet (ADR-0016)</td>
+<td>Write access to the approvals directory is the approval authority, and <code>approver_id</code> is a claim (ADR-0016)</td>
 </tr>
 <tr>
 <td>A client other than the library's own</td>
@@ -313,8 +313,8 @@ error, outside the protocol's reserved range and the library's private code.</p>
 </tr>
 </tbody>
 </table>
-<p>An upstream's own wire error passes through with its code and message, unless
-it quotes a credential the plane sends; any
+<p>An upstream's own wire error, and the client library's <code>-32005</code> <code>rejected by transport</code>, passes through with its code and message, unless it quotes a
+credential the plane sends; any
 other failure, a timeout or a broken session, answers <code>-32603</code> <code>the upstream did not answer</code>, never the transport's text, which can quote the endpoint. Only <code>&lt;ns&gt;/answer</code> (<code>blocked</code>,
 <code>pending</code> or <code>withheld</code>, <code>&lt;ns&gt;</code> being the product's namespace) in an answer's <code>_meta</code> or in
 the error's <code>data</code> marks an answer the gateway made. The namespace is stripped

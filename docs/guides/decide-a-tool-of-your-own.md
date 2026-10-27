@@ -173,7 +173,8 @@ your function makes a call of its own and lets that call's exception out,
   cover the directories above the socket's.
 - A stop closes every open execution as unknown; a crash leaves them at
   `ACTION_STARTED`.
-- An admit answer lost on the way can spend an approval: the retry is held
+- An admit answer lost on the way can spend an approval: an identical retry
+  is refused `APPROVAL_ALREADY_USED` until the approval expires, then held
   anew.
 - A `tools` table that classes a tool `SPAWN_OR_DELEGATE` is refused at start
   and by `doctor`: that class needs a delegation, which the enforcement API

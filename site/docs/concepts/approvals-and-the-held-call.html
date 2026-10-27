@@ -117,10 +117,9 @@ retry that is the same request again resumes it; the approval is consumed
 once, binds to one action digest under one bundle, and expires
 (<a href="/docs/adr/0013-mcp-interception-approvals-and-modes">ADR-0013</a>,
 <a href="/docs/adr/0011-contract-corrections-before-publication">ADR-0011</a>).</p>
-<p>Who may answer, and what becomes of a hold the plane loses, are
-<a href="/docs/adr/0016-approval-providers-and-the-lost-hold">ADR-0016</a>: an approver
-writes a file in the approvals directory, and a hold lost to a restart is
-closed on its own trail and never run, where the plane journals its holds.</p>
+<p><a href="/docs/adr/0016-approval-providers-and-the-lost-hold">ADR-0016</a> says who may
+answer, an approver writing a file in the approvals directory, and what
+becomes of a hold the plane loses.</p>
 <h2 id="one-held-request-end-to-end">One held request, end to end</h2>
 <figure class="dg-text" id="diagram-1"><figcaption>One held request, end to end</figcaption><p>The call is held and the agent told it is pending; an approver answers in the store; the agent&#39;s identical retry is decided again, consumes the approval once, and only the authorized bytes reach the upstream. <a href="https://github.com/guardana/control/blob/main/docs/concepts/approvals-and-the-held-call.md">Drawn on GitHub</a>.</p><details><summary>The diagram's source</summary><pre><code class="language-mermaid">sequenceDiagram
     accTitle: One held request, end to end
@@ -365,7 +364,7 @@ one the retry equals, oldest first.</p>
     [*] --&gt; held: APPROVAL_REQUESTED written, the hold kept and stored
     held --&gt; held: a retry before an answer is told the same approval_id again
     held --&gt; running: an approved retry consumes the approval once, APPROVAL_DECIDED then ACTION_STARTED
-    held --&gt; expired: nobody answered before expires_at
+    held --&gt; expired: expires_at passed before a retry resumed it
     held --&gt; rejected: a retry finds the approver said no
     held --&gt; refused: the store would not keep the hold, or MaxHeld holds stand
     held --&gt; lost: the plane stopped while the request was held
@@ -410,7 +409,7 @@ one the retry equals, oldest first.</p>
 <td><code>DENY</code>, <code>APPROVAL_ALREADY_USED</code>: the approval was spent, which is not by itself a statement that the earlier call ran (<a href="/docs/reference/reason-codes">reference/reason-codes</a>); once the spent approval has expired, the same call is held anew</td>
 </tr>
 <tr>
-<td>nobody answered before <code>expires_at</code></td>
+<td>it expired before a retry resumed it, answered or not</td>
 <td><code>APPROVAL_EXPIRED</code>, <code>ACTION_BLOCKED</code> with <code>DENY</code>, <code>APPROVAL_EXPIRED</code>; written by the next call that opens a trail, at most <code>maxSweep</code> holds per call, before the request id is freed</td>
 <td>a retry after the expiry is a new request with a new hold</td>
 </tr>
@@ -442,7 +441,7 @@ one the retry equals, oldest first.</p>
 <tr>
 <td>the plane stopped while the request was held</td>
 <td>at its next start: <code>APPROVAL_DECIDED</code> with the answer and <code>ACTION_BLOCKED</code> with <code>APPROVAL_NOT_RESUMED</code> or <code>APPROVAL_REJECTED</code>, or <code>APPROVAL_EXPIRED</code> and <code>ACTION_BLOCKED</code> with <code>APPROVAL_EXPIRED</code> or <code>APPROVAL_STATE_UNKNOWN</code>; nothing at all where no journal is configured</td>
-<td>nothing: that connection was answered pending long ago, and a later identical call is held anew</td>
+<td>nothing: that connection was answered pending long ago, and a later identical call is held anew or, if the plane had spent the approval, refused <code>APPROVAL_ALREADY_USED</code> until it expires</td>
 </tr>
 </tbody>
 </table>
@@ -492,9 +491,10 @@ own approval, <code>APPROVAL_EXPIRED</code>, never as decided:</p>
 </tr>
 </tbody>
 </table>
-<p><strong>Expiry is judged three times.</strong> The store's answer is checked when it is
-consumed; the expiry is checked again by the plane's clock with the pause
-state right before <code>ACTION_STARTED</code> is written, and once more right after it.
+<p><strong>Expiry is judged up to four times.</strong> The store's answer is checked when it
+is consumed; the expiry is checked again by the plane's clock with the pause
+state right before <code>ACTION_STARTED</code> is written, again once an opened run's
+state is raised, and once more right after it.
 A journal or a sink slow enough to let the approval expire in between cannot
 send the call: before <code>ACTION_STARTED</code> it is blocked with <code>DENY</code>,
 <code>APPROVAL_EXPIRED</code>; after it, the execution is aborted with <code>ACTION_FAILED</code>
@@ -502,7 +502,7 @@ naming <code>APPROVAL_EXPIRED</code>. The approval stays spent. A pause read at 
 of those moments is named instead, because the plane's own causes come first.
 The adapter's time after the hand-out is not covered
 (<a href="/docs/adr/0027-expiry-at-hand-out-and-an-unreadable-lost-hold">ADR-0027</a>).
-The bundle the decision stood on is judged at those two moments too, and once
+The bundle the decision stood on is judged at those moments too, and once
 before the consume, where a stale or replaced bundle spends nothing
 (<a href="/docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands">ADR-0055</a>).</p>
 <p>An approval marked multi-use is left pending and counted: this enforcement
@@ -602,9 +602,9 @@ honoured on, so a store that lies cannot run a call the enforcement point
 did not hold (ADR-0013).</li>
 </ul>
 <h2 id="where-the-code-lives">Where the code lives</h2>
-<p><code>internal/gateway/approve.go</code> is the branch a call takes when it awaits an
-approval, the hold and its refusals, and <code>internal/gateway/resume.go</code> the retry
-that resumes it, with the checks of what the store answers;
+<p><code>internal/gateway/approve.go</code> holds a call that awaits an approval and
+refuses what it cannot hold, and <code>internal/gateway/resume.go</code> resumes it and
+checks what the store answers;
 <code>internal/gateway/trails.go</code>
 keeps the enforcement point's own record of a hold, flips it to running and
 closes the expired ones; <code>internal/gateway/approvals.go</code> is the store

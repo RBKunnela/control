@@ -157,9 +157,9 @@ lock and leaves the floor as it was; what the start refuses fails. It prints
 the route's id, serial and digest, the floor, the list's id, state and age,
 the count of active stops and the first 64 of them, each of those naming a run
 the runs directory does not hold, and each rule whose lifetime ends a stop
-before its run can end; a listed stop whose run's record cannot be read leaves it unknown. `/healthz` answers the same
-under `stops`, with the unknown state's cause, the list's use of its bounds
-and the reads it made; an unknown state answers `503`, and a list past nine
+before its run can end; a listed stop whose run's record cannot be read leaves it unknown. `/healthz` answers the same,
+rule lifetimes apart, under `stops`, with the unknown state's cause, the
+list's use of its bounds and its reads; an unknown state answers `503`, and a list past nine
 tenths of a bound is `degraded`. `/metrics` counts the reads, the failed ones
 by cause, and the active stops ([metrics.md](metrics.md)). The plane logs each
 stop that becomes active, expires or is lifted, with its finding id.
@@ -167,7 +167,7 @@ stop that becomes active, expires or is lifted, with its finding id.
 
 ## Limits
 
-- A call already handed out for execution when the stop is read is not cut:
+- A call already handed out when the stop is read is not cut:
   the stop bites on the run's next call, within one poll interval of the line
   being written.
 - Any process of the plane's account can add a stop the route allows for any

@@ -248,16 +248,16 @@ lock and leaves the floor as it was; what the start refuses fails. It prints
 the route's id, serial and digest, the floor, the list's id, state and age,
 the count of active stops and the first 64 of them, each of those naming a run
 the runs directory does not hold, and each rule whose lifetime ends a stop
-before its run can end; a listed stop whose run's record cannot be read leaves it unknown. <code>/healthz</code> answers the same
-under <code>stops</code>, with the unknown state's cause, the list's use of its bounds
-and the reads it made; an unknown state answers <code>503</code>, and a list past nine
+before its run can end; a listed stop whose run's record cannot be read leaves it unknown. <code>/healthz</code> answers the same,
+rule lifetimes apart, under <code>stops</code>, with the unknown state's cause, the
+list's use of its bounds and its reads; an unknown state answers <code>503</code>, and a list past nine
 tenths of a bound is <code>degraded</code>. <code>/metrics</code> counts the reads, the failed ones
 by cause, and the active stops (<a href="/docs/reference/metrics">metrics.md</a>). The plane logs each
 stop that becomes active, expires or is lifted, with its finding id.
 <a href="/docs/reference/failure-modes">failure-modes.md</a> says what an unknown state does.</p>
 <h2 id="limits">Limits</h2>
 <ul>
-<li>A call already handed out for execution when the stop is read is not cut:
+<li>A call already handed out when the stop is read is not cut:
 the stop bites on the run's next call, within one poll interval of the line
 being written.</li>
 <li>Any process of the plane's account can add a stop the route allows for any

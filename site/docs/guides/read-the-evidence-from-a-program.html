@@ -114,12 +114,12 @@
 <p>A plane's evidence lands in a trail file, one event per line, written by
 <code>guardana-gateway collect</code> (<a href="/docs/guides/watch-a-plane-without-a-collector">watch a plane without a
 collector</a>). A report, an alert or a
-dashboard of your own should read it through the export, which is a
+dashboard should read it through the export, which is a
 versioned format with a cursor, a record for every line it could not read, and
 a trailer that says whether it reached the end
 (<a href="/docs/adr/0035-a-versioned-evidence-export-and-a-bounded-query">ADR-0035</a>).
-The format is <code>experimental</code>, and <a href="/docs/contracts#the-evidence-export">contracts.md</a>
-states it member by member.</p>
+<a href="/docs/contracts#the-evidence-export">contracts.md</a> states the format member
+by member.</p>
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
 <li>A trail file: the one <code>collect</code> writes, or the demo's <code>&lt;state&gt;/trail.jsonl</code>
@@ -248,7 +248,7 @@ last newline is alerted once while it stays there. It exits 0 with no new
 alert and 1 with one or more.</p>
 <p>The alerts are appended, synced and written to standard error first, then
 the rows printed, then the state replaced. Exit 2 leaves <code>state.json</code>
-unchanged: alerts already appended stay in the log, no later run raises them
+unchanged unless only its last sync failed: alerts already appended stay in the log, no later run raises them
 again, and the rows may print again.</p>
 <p>It prints and keeps only identifiers, kinds, the enforcement mode, the
 action's kind, name, provider and protocol, verdicts, reason codes, decision

@@ -1861,8 +1861,10 @@ its expiry is refused with <code>ERROR_CODE_HANDLE_UNKNOWN</code>; the receiver 
 it abandoned.</p>
 <h3 id="the-error-body">The error body</h3>
 <p>A refusal of the contract is answered with an <code>Error</code> as the body, before
-anything is written: its <code>code</code>, a <code>message</code> for a person, and <code>ending</code> set
-only with <code>ERROR_CODE_HANDLE_SPENT</code>. Reason codes stay on decisions and
+anything is written, save an admit a shutdown overtakes: its execution is
+recorded abandoned and it is answered <code>ERROR_CODE_UNAVAILABLE</code>. The <code>Error</code>
+holds its <code>code</code>, a <code>message</code> for a person, and <code>ending</code> set only with
+<code>ERROR_CODE_HANDLE_SPENT</code>. Reason codes stay on decisions and
 closing records.</p>
 <table>
 <thead>
@@ -1890,11 +1892,11 @@ closing records.</p>
 </tr>
 <tr>
 <td><code>ERROR_CODE_HANDLE_SPENT</code></td>
-<td>a handle already completed or aborted, answered to its own run until it expires or the receiver's bound on the spent handles it keeps forgets it, after which it is <code>ERROR_CODE_HANDLE_UNKNOWN</code></td>
+<td>a handle being closed, <code>ending</code> unset, or already completed or aborted, answered to its own run until it expires or the receiver's bound on the spent handles it keeps forgets it, after which it is <code>ERROR_CODE_HANDLE_UNKNOWN</code></td>
 </tr>
 <tr>
 <td><code>ERROR_CODE_DUPLICATE_REQUEST</code></td>
-<td>the request key of an execution still open in the same run</td>
+<td>the request key of an admit in flight or an execution still open in the same run</td>
 </tr>
 <tr>
 <td><code>ERROR_CODE_UNAVAILABLE</code></td>

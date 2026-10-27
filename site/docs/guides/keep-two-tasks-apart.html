@@ -138,7 +138,8 @@ first <code>runs open</code> makes it a runs directory; a plane refuses it befor
 <pre><code>guardana-control runs open --tenant acme --principal-type service \
   --principal agent-runner --agent orders-assistant --ttl 8h /var/lib/guardana/runs
 </code></pre>
-<p>The identity is your listener's: <code>tenant_id</code>, <code>listener.principal.type</code>,
+<p>The identity is your listener's: <code>listener.principal.tenant_id</code>, or
+<code>tenant_id</code> when it is unset, <code>listener.principal.type</code>,
 <code>listener.principal.id</code> and <code>listener.agent.id</code>. The command prints <code>run_id</code>,
 <code>root</code>, <code>expires_at</code> and <code>token</code>; the token is printed this once. A task that
 spawns another opens the child with <code>--parent &lt;run id&gt;</code>, so the two share what
@@ -164,8 +165,8 @@ guardana-gateway run --config gateway.yaml --run-token-file task-1.token
 <h3 id="5-close-a-run-when-its-task-ends">5. Close a run when its task ends</h3>
 <pre><code>guardana-control runs close /var/lib/guardana/runs &lt;run id&gt;
 </code></pre>
-<p>Its token is refused from the next request on. <code>runs list</code> shows every run
-and whether it is open, closed or expired.</p>
+<p>Its token is refused from the next request on. <code>runs list</code> shows up to 1000
+runs, failing past that, and whether each is open, closed or expired.</p>
 <h2 id="verify">Verify</h2>
 <ul>
 <li><code>doctor</code>'s <code>runs</code> line is <code>ok</code> and says <code>opened in /var/lib/guardana/runs</code>.</li>

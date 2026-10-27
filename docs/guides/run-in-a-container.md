@@ -46,7 +46,8 @@ is published with each release, whose notes name its digest.
      floor made anew at each start takes any older bundle.
    - The configuration directory owned by 65532, its files with one name each,
      and neither writable by others: `chown -R 65532 conf`. The plane refuses a
-     configuration another account owns, here the host user who made it.
+     configuration owned by any account but its own or root, here the host
+     user who made it.
    - The bundle and the statement can stay in the read-only configuration
      directory. Run `renew` where the freshness key lives, not in the
      container, and copy the statement into that directory; the plane

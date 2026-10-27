@@ -253,7 +253,7 @@ for the same thing; the right column is where the code defines it.</p>
 </tr>
 <tr>
 <td>notifier</td>
-<td>a port that delivers findings to a tool an operator watches, at least once, each with a stable id a receiver drops repeats by; it holds no authority over a plane</td>
+<td>a port that delivers findings to a tool an operator watches, at least once, each keyed by finding id and verdict, a key a receiver drops repeats by; it holds no authority over a plane</td>
 <td><code>internal/notify/</code>, run by <code>guardana-control notify</code>, which hands alerts to a local program, <code>experimental</code>; other notifiers <code>planned</code></td>
 </tr>
 <tr>

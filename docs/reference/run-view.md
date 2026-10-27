@@ -49,11 +49,11 @@ reader. The legend at the foot of the page summarises this table.
 | decided, not enforced | triangle, dashed | A plane decided the call in another mode or recorded no mode, the trail is in doubt, or the call came through the enforcement API (protocol `enforce`), whose client runs it, in any mode. |
 | observed | circle, dotted | Only a source reported the call, with the trust its descriptor declared. |
 | exception or approval | diamond, dash and dot | An exception waived the call, or the approvals store granted it. |
-| blocked | cross, long dashes | The policy denied the call, or the plane blocked it: a pause, a stop, an approval refused or expired, or a verdict such as `INDETERMINATE`. |
+| blocked | cross, long dashes | The call's coherent trail ends blocked: the policy's `DENY`, a pause, a stop, an approval refused or expired, or a verdict such as `INDETERMINATE`. |
 | not seen | hexagon, sparse dashes | A step with no call, or a source never heard, silent or not read. |
 
-A source's report is marked observed. A plane's call is marked blocked when
-it was denied or blocked; else decided when its trail is in doubt; else
+A source's report is marked observed. A plane's call is marked decided when
+its trail is in doubt; else blocked when it was denied or blocked; else
 exception or approval; else decided when its protocol is `enforce`; else
 enforced when its recorded mode acts on its decision; else decided. No mark says "inferred": the page draws a
 call only from a plane's or a source's record, never from a guess.

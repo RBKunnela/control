@@ -249,7 +249,8 @@ across the plane.</li>
 cover the directories above the socket's.</li>
 <li>A stop closes every open execution as unknown; a crash leaves them at
 <code>ACTION_STARTED</code>.</li>
-<li>An admit answer lost on the way can spend an approval: the retry is held
+<li>An admit answer lost on the way can spend an approval: an identical retry
+is refused <code>APPROVAL_ALREADY_USED</code> until the approval expires, then held
 anew.</li>
 <li>A <code>tools</code> table that classes a tool <code>SPAWN_OR_DELEGATE</code> is refused at start
 and by <code>doctor</code>: that class needs a delegation, which the enforcement API

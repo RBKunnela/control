@@ -136,6 +136,11 @@ time, which no lint read before.</li>
 </ul>
 <h3 id="fixed">Fixed</h3>
 <ul>
+<li>Statements on seventeen public pages that the code contradicted are
+corrected: among them an identical retry after a spent approval, which is
+refused until the approval expires, how many times expiry is judged, three
+answers of the enforcement API, the stateless listener's older revisions,
+supervision's bounds and ordering, and the evidence report's exit 2.</li>
 <li><code>scripts/publish-python-dist.sh</code> compared the release files' digests with
 the build's before uploading, but a failing <code>sha256sum</code> gave an empty digest
 on both sides; each digest is now checked to be 64 hex digits.</li>

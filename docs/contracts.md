@@ -1462,8 +1462,10 @@ it abandoned.
 ### The error body
 
 A refusal of the contract is answered with an `Error` as the body, before
-anything is written: its `code`, a `message` for a person, and `ending` set
-only with `ERROR_CODE_HANDLE_SPENT`. Reason codes stay on decisions and
+anything is written, save an admit a shutdown overtakes: its execution is
+recorded abandoned and it is answered `ERROR_CODE_UNAVAILABLE`. The `Error`
+holds its `code`, a `message` for a person, and `ending` set only with
+`ERROR_CODE_HANDLE_SPENT`. Reason codes stay on decisions and
 closing records.
 
 | Code | When |
@@ -1472,6 +1474,6 @@ closing records.
 | `ERROR_CODE_MALFORMED` | an unreadable body, a member the message does not declare, or a value past its bound |
 | `ERROR_CODE_UNSUPPORTED_VERSION` | a path naming a version the receiver does not serve |
 | `ERROR_CODE_HANDLE_UNKNOWN` | a handle unknown, expired, of another run or never minted: one answer for all four |
-| `ERROR_CODE_HANDLE_SPENT` | a handle already completed or aborted, answered to its own run until it expires or the receiver's bound on the spent handles it keeps forgets it, after which it is `ERROR_CODE_HANDLE_UNKNOWN` |
-| `ERROR_CODE_DUPLICATE_REQUEST` | the request key of an execution still open in the same run |
+| `ERROR_CODE_HANDLE_SPENT` | a handle being closed, `ending` unset, or already completed or aborted, answered to its own run until it expires or the receiver's bound on the spent handles it keeps forgets it, after which it is `ERROR_CODE_HANDLE_UNKNOWN` |
+| `ERROR_CODE_DUPLICATE_REQUEST` | the request key of an admit in flight or an execution still open in the same run |
 | `ERROR_CODE_UNAVAILABLE` | the receiver cannot serve requests now, or the run holds as many open executions as the receiver allows |

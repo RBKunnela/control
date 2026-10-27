@@ -17,7 +17,7 @@ decisions.
 
 | Listener | Serves | Identity per call comes from | Notes |
 | --- | --- | --- | --- |
-| `stateless_http` | `2026-07-28` | the listener's configuration | No session; each request carries its protocol version and client claim in `_meta` |
+| `stateless_http` | `2026-07-28`, and older | the listener's configuration | No session; a `2026-07-28` request carries its protocol version and client claim in `_meta` |
 | `stateful_http` | `2025-11-25` and older | the listener's configuration | A `2026-07-28` request gets `-32022` and the versions served, so a client renegotiates. Sessions end idle after `listener.session_idle`; past `listener.max_sessions` live, an open gets `503` |
 | `stdio` | one agent over a pipe | the listener's configuration | Nothing authenticates a pipe |
 
@@ -49,8 +49,8 @@ child process (`upstreams[].command`).
 | The Tasks extension | `planned` ([status.md](../status.md)) |
 | `notifications/tools/list_changed` toward the agent | The library emits it only for its own registry, empty here, so the listener declares it sends none; an agent refreshes when `list.ttl` runs out |
 | An upstream's own notifications and server-initiated requests, other than a changed tool list | Only a changed tool list is handled, by refreshing the manifest; sampling, roots and progress from an upstream reach no agent |
-| Resuming a hold the plane lost | A hold does not survive a restart, and its call never runs. With a hold journal the next start closes its trail, with the approver's answer and `APPROVAL_NOT_RESUMED` or as expired, or counts it left open; without one it stays open. The agent and the approver start over (ADR-0016) |
-| Telling one approver from another | Write access to the approvals directory is the approval authority, and `approver_id` is a claim; no authenticated provider exists yet (ADR-0016) |
+| Resuming a hold the plane lost | A hold does not survive a restart, and its call never runs. With a hold journal the next start closes its trail, with the approver's answer and `APPROVAL_NOT_RESUMED` or as expired, or counts it left open; without one it stays open (ADR-0016) |
+| Telling one approver from another | Write access to the approvals directory is the approval authority, and `approver_id` is a claim (ADR-0016) |
 | A client other than the library's own | Only the MCP project's Python SDK, over HTTP, in `make check-mcp-client` on the [filesystem guide](../guides/connect-an-existing-mcp-setup.md); other clients and stdio are not exercised |
 | A tool classified `SPAWN_OR_DELEGATE` | The contract requires a delegation chain for that class and the listener carries none, so every such call is refused as `REQUIRED_FIELD_ABSENT` before a rule or a decision point is read |
 | What a run read outside the gateway | A run, without `runs.dir`, is the listener's principal and starts clean at each restart; on stdio a run lasts its client's one connection. The user's prompt, tool descriptions and tools not behind the gateway are not tracked, and a call carries no data label, so a `flow` rule blocks every untrusted destination after untrusted input. A `resources/read` and a `prompts/get` carry no declared result, so each leaves its run untrusted and unknown from then on (ADR-0021) |
@@ -87,8 +87,9 @@ error, outside the protocol's reserved range and the library's private code.
 | `-31102` | a [run token](runs.md#what-a-plane-does-with-a-token) was refused; one message for every cause | none |
 | `-31103` | an answer was [withheld](../concepts/mcp-gateway.md#an-answer-that-quotes-a-credential) | `<ns>/answer: withheld` |
 
-An upstream's own wire error passes through with its code and message, unless
-it quotes a credential the plane sends; any
+An upstream's own wire error, and the client library's `-32005` `rejected by
+transport`, passes through with its code and message, unless it quotes a
+credential the plane sends; any
 other failure, a timeout or a broken session, answers `-32603` `the upstream
 did not answer`, never the transport's text, which can quote the endpoint. Only `<ns>/answer` (`blocked`,
 `pending` or `withheld`, `<ns>` being the product's namespace) in an answer's `_meta` or in

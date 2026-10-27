@@ -18,7 +18,7 @@ What the generator encodes, and the exporter has to match:
   product slug, one `scopeLogs` entry whose scope is named after the product's
   OpenTelemetry namespace;
 - one `logRecords` entry per event: `timeUnixNano` from `occurred_at`, absent
-  when the event has none; `severityNumber` `SEVERITY_NUMBER_INFO` and
+  when the event has none, or its time precedes 1970 or passes 2554; `severityNumber` `SEVERITY_NUMBER_INFO` and
   `severityText` `INFO`; `body.stringValue` the event's JSONL line without its
   newline, exactly as `internal/evidence` writes it; attributes, in this
   order and each under the namespace prefix, for `event_id`, `request_id`,

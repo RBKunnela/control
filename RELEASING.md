@@ -62,7 +62,7 @@ Only `main`'s head may release, with CI, Security and the newest CodeQL
 analysis covering it; advancing `main` before approval fails it. Before
 Publish, failure leaves at most a draft and staging/version image tags:
 delete them, fix the cause, release the next version. Publish requires
-exactly the verified files and reads them back; failure then leaves a public
+exactly the verified files and rereads their digests; failure then leaves a public
 release and reports recovery steps.
 
 ## A dry run

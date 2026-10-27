@@ -315,7 +315,8 @@ release added is refused, not read in part. The signed envelopes around a
 policy bundle, a freshness statement, a route and a lift carry no version of
 their own, only the payload type each is signed under, and the evidence
 spool frames its segments with no version at all, so a spool another release
-wrote is not promised readable.</p>
+wrote is not promised readable. <code>notify</code>'s <code>--state</code> list of delivered alerts,
+one quoted key per line, carries none either.</p>
 <h2 id="reading-files-an-older-release-wrote">Reading files an older release wrote</h2>
 <ul>
 <li><strong>Wire messages, the evidence export, the runs directory, the approvals

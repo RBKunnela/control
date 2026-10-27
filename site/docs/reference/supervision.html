@@ -177,7 +177,7 @@ another digest is refused.</p>
 </tr>
 <tr>
 <td><code>max_denials</code>, <code>deadline_seconds</code></td>
-<td>at least 1; absent, its rule is off</td>
+<td>1 to 4294967295; absent, its rule is off</td>
 </tr>
 </tbody>
 </table>
@@ -189,8 +189,9 @@ or a parent chain that misses the root; every member is judged, and
 the tree is closed when every member is. <code>separate</code> takes any opened run and
 lists its children, not judged. Plane events count when their run is judged
 and their tenant the run's. Observations count when their correlation is
-claimed, with such a run id, tenant and project; another tenant's or
-project's <code>--source</code> is refused. Only a tool call is a step, never a
+claimed, with such a run id, tenant and project; another tenant's
+<code>--source</code> is refused, and another project's once an event of the run is
+read. Only a tool call is a step, never a
 prompt or resource read. An observation joined to a plane event by trace
 and span id is that call; a join cut short leaves
 <code>STEP_OUTSIDE_PROCEDURE</code> and <code>DENIED_ACTION_RETRIED_AROUND</code> not checked,
@@ -256,13 +257,14 @@ the export being the plane's.</p>
 <p>An order is untold, its finding <code>INDETERMINATE</code>, when a proposal or a failure
 has no time, or between two of one instant. A retry continues nothing, though
 each denial of it counts toward <code>REPEATED_DENIAL</code>; an approved call, no
-retry, belongs to the step it held. Every rule orders by the plane's times, never by place in
+retry, belongs to the step it held. Plane calls order by the plane's times, never by place in
 an export; a retry confirms only when one export holds both.</p>
 <h2 id="the-verdict">The verdict</h2>
 <p>The weakest of what a finding rests on. Plane events in an unbroken chain can
 make it <code>CONFIRMED</code>; an observation makes it <code>SUSPECTED</code>; a record in doubt,
 <code>INDETERMINATE</code>. So are a silent source's observations. A request with
-conflicting copies or a broken chain leaves no rule checked; an observation
+conflicting copies, a broken chain or events of two runs leaves no rule
+checked; an observation
 with two contents, or a judged run its source doubts, until the log is rotated
 (<a href="/docs/reference/observations#the-log">observations</a>), leaves <code>STEP_OUTSIDE_PROCEDURE</code>
 and <code>DENIED_ACTION_RETRIED_AROUND</code> not checked.
@@ -344,8 +346,7 @@ is never read.</p>
 </tr>
 </tbody>
 </table>
-<p>A log with no header is read as it is; an empty one gains one when opened.
-The reader refuses an unknown schema or a member its schema lacks.</p>
+<p>The reader refuses an unknown schema or a member its schema lacks.</p>
 <h2 id="notify">notify</h2>
 <p><code>notify</code> hands each <code>alert</code> record, in log order, one line on its
 standard input, to the program after <code>--</code>, without a shell, and kills its
@@ -365,8 +366,7 @@ before any program ran.</p>
     [--max-bytes &lt;n&gt;]
 </code></pre>
 <p><code>findings export</code> writes the log as JSON Lines in the evidence export's
-shape, format <code>guardana.control.findings-export</code> <code>0.1</code>, unstable as the
-records are
+shape, format <code>guardana.control.findings-export</code> <code>0.1</code>
 (<a href="/docs/adr/0048-one-run-drawn-as-a-page-and-findings-exported-with-a-cursor">ADR-0048</a>):
 <code>header</code>, <code>finding_record</code> and <code>supervise_report</code> each carrying its log line,
 <code>gap</code>, <code>duplicate</code> and <code>trailer</code>. Read as <code>notify</code> reads it, under no lock,

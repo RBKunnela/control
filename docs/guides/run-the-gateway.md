@@ -15,8 +15,8 @@ server sees it, and recorded. Start in `OBSERVE`, which records every call and
 blocks only for the plane's own causes, and move to `ENFORCE` once the tools
 are classified.
 
-The gateway is `experimental`; [status.md](../status.md) says what runs and what
-does not. Nothing here is a security boundary yet.
+The gateway is `experimental`; [status.md](../status.md) says what runs today.
+Nothing here is a security boundary yet.
 
 ## Prerequisites
 
@@ -60,11 +60,12 @@ the plane: a floor made anew takes any older bundle.
 ### 2. Write a configuration
 
 Every path key resolves against its directory; upstream `args` pass as
-written. Every key has an environment variable under `GUARDANA_CONTROL_`, the
-key in capitals with underscores for dots, which wins over the file. An unknown key is refused.
-[configuration.md](../reference/configuration.md) lists every key. The plane
+written. Every key has an environment variable under `GUARDANA_CONTROL_`, which wins
+over the file. An unknown key is refused.
+[configuration.md](../reference/configuration.md) lists every key and variable. The plane
 refuses the file if it, or a directory or link above it, belongs to an
-account but its own or root, or another account may write it.
+account but its own or root, or another account may write it, save a sticky
+directory or root's on a read-only mount.
 
 ```yaml
 mode: OBSERVE
@@ -127,7 +128,7 @@ guardana-gateway doctor --config gateway.yaml
 ```
 
 `doctor` prints every key and its source, credentials excepted, then one
-line per check, stopping at the first it cannot make. The `policy` line
+line per check, up to the first it cannot make. The `policy` line
 fails for a statement missing, expired, dated ahead or naming another bundle,
 or a bundle below its floor, which it never raises; like `run`'s first
 line, it names `policy.fail_open_read`. An unclassified tool is
@@ -199,8 +200,8 @@ approvals:
 An approver answers with the approval commands
 ([reference/cli.md](../reference/cli.md)). Write access to `approvals.dir` is
 the approval authority, and `--approver-id` is a claim, never authenticated. A
-hold lost to a restart never runs, and the next start closes its trail from
-the journal
+hold lost to a restart never runs; the next start closes its trail from the
+journal
 ([concepts/approvals-and-the-held-call.md](../concepts/approvals-and-the-held-call.md)).
 
 ### 9. Set the evidence rules on purpose

@@ -12,7 +12,8 @@
     "AGENTS.md": 1055,
     "CONTRIBUTING.md": 834,
     "GOVERNANCE.md": 719,
-    "testdata/digest/README.md": 1966
+    "testdata/digest/README.md": 1966,
+    "examples/evidence-report/README.md": 309
   },
   "directories": {
     "docs": {"type": "project"},

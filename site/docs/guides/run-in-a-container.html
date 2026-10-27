@@ -149,7 +149,8 @@ owns. A volume that does not outlive the container protects nothing: a
 floor made anew at each start takes any older bundle.</li>
 <li>The configuration directory owned by 65532, its files with one name each,
 and neither writable by others: <code>chown -R 65532 conf</code>. The plane refuses a
-configuration another account owns, here the host user who made it.</li>
+configuration owned by any account but its own or root, here the host
+user who made it.</li>
 <li>The bundle and the statement can stay in the read-only configuration
 directory. Run <code>renew</code> where the freshness key lives, not in the
 container, and copy the statement into that directory; the plane

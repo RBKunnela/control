@@ -63,7 +63,7 @@ unset, so a gap looks like a gap and never like an empty decision.
 | `POLICY_DECIDED` | right after the proposal | the kernel's decision: about the proposed envelope, or about the authorized one when a rewriting obligation changed the bytes |
 | `APPROVAL_REQUESTED` | the call is held for an approval | the approval the enforcement point minted: `approval_id`, `request_id`, the action digest, the bundle digest, `PENDING`, `requested_at`, `expires_at` |
 | `APPROVAL_DECIDED` | an approved retry resumes the held request, or a rejected one closes it | the approval as answered, with `approver_id` and its state |
-| `APPROVAL_EXPIRED` | nobody answered before `expires_at`, or the enforcement point could not keep the hold | the approval with state `EXPIRED` |
+| `APPROVAL_EXPIRED` | the approval expired before a retry resumed it, answered or not, or the enforcement point could not keep the hold | the approval with state `EXPIRED` |
 | `ACTION_STARTED` | the call passed its checks; a lapse found during its append ends the trail with `ACTION_FAILED` and nothing is handed out | no payload; `execution_id` names this execution, and the closing event carries it again |
 | `ACTION_COMPLETED` | the bytes sent were the authorized ones and the result succeeded | the result, with `executed_action_digest` equal to the decision's action digest; when `OBSERVE` runs a call whose input the kernel refused, the decision has none and the result has the digest of the bytes sent |
 | `ACTION_FAILED` | the result was not a success, the bytes sent were not the authorized ones, or the adapter did not send | the result; `tool_protocol_status: EXECUTED_ARGS_MISMATCH` on a mismatch; on an abort a `BLOCKED` result carrying the cause's code and no executed digest |

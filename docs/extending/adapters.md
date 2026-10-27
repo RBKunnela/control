@@ -102,7 +102,7 @@ expired.
 | `PresentsRuns` | The adapter resolves a run token on every call and hands the run in. Declared exactly when the plane has a runs directory, or the plane is refused at start (ADR-0034) |
 | `SeeDelegation` | The adapter can read a delegation chain out of the call |
 | `SeeResourceIDs` | The adapter can name the resource a call touches |
-| `Obligations` | The obligation types the adapter applies itself, by name from the catalogue. The plane's own rewriting types plus these are the kernel's applicable set; an obligation outside the union is a `DENY` with `OBLIGATION_NOT_UNDERSTOOD` |
+| `Obligations` | The obligation types the adapter applies itself, by name from the catalogue. The plane's own rewriting types plus these are the kernel's applicable set; a non-advisory obligation outside the union is a `DENY` with `OBLIGATION_NOT_UNDERSTOOD` |
 
 A capability is a promise to the plane, so the plane checks it at start and never
 per call: the mode table maps every declared enforcement mode to what it needs,
