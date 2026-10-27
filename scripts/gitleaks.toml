@@ -6,6 +6,7 @@
 # The built-in rules and the built-in allowlist, nothing more. A finding that
 # is not a secret is excepted here, in a change the security maintainers
 # review, never by a gitleaks:allow comment or a .gitleaksignore beside it;
-# internal/docscheck's gitleaks test names every exception as well.
+# internal/docscheck's gitleaks test pins this file's text, so an exception
+# changes that test in the same review.
 [extend]
 useDefault = true

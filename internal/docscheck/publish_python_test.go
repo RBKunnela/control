@@ -41,6 +41,7 @@ type publishRun struct {
 	uvRC    string
 	uv      string // the version the fake uv reports; the pinned one when empty
 	built   string // the building job's listing; that of files when empty
+	sha256  string // a stand-in for sha256sum; the real one when empty
 }
 
 // runPublish runs the script with the fakes and returns its output, exit
@@ -79,16 +80,11 @@ func publishFakes(t *testing.T, dir string, run publishRun) (string, string) {
 			t.Fatal(err)
 		}
 	}
-	for _, tool := range publishTools {
-		if err := os.Symlink(settingsTool(t, tool), filepath.Join(bin, tool)); err != nil {
-			t.Fatal(err)
-		}
+	fakes := map[string]string{"uv": fakePublishUv, "curl": fakePublishCurl, "sleep": fakePublishSleep}
+	if run.sha256 != "" {
+		fakes["sha256sum"] = run.sha256
 	}
-	for name, body := range map[string]string{"uv": fakePublishUv, "curl": fakePublishCurl, "sleep": fakePublishSleep} {
-		if err := os.WriteFile(filepath.Join(bin, name), []byte(body), 0o700); err != nil { //nolint:gosec // G306: the fake has to be executable
-			t.Fatal(err)
-		}
-	}
+	publishBin(t, bin, fakes)
 	for name, content := range run.files {
 		if err := os.WriteFile(filepath.Join(dist, name), []byte(content), 0o600); err != nil {
 			t.Fatal(err)
@@ -100,6 +96,25 @@ func publishFakes(t *testing.T, dir string, run publishRun) (string, string) {
 		}
 	}
 	return bin, dist
+}
+
+// publishBin fills bin with each tool the script runs, the fakes in place of
+// the real ones they name.
+func publishBin(t *testing.T, bin string, fakes map[string]string) {
+	t.Helper()
+	for _, tool := range publishTools {
+		if _, faked := fakes[tool]; faked {
+			continue
+		}
+		if err := os.Symlink(settingsTool(t, tool), filepath.Join(bin, tool)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for name, body := range fakes {
+		if err := os.WriteFile(filepath.Join(bin, name), []byte(body), 0o700); err != nil { //nolint:gosec // G306: the fake has to be executable
+			t.Fatal(err)
+		}
+	}
 }
 
 func fakeCalls(t *testing.T, file string) []string {
@@ -195,14 +210,24 @@ func TestPublishReadsBackExactlyTheUploadedFiles(t *testing.T) {
 	}
 }
 
+func TestPublishAcceptsThePinnedUvBeforeItsBuildNote(t *testing.T) {
+	run := publishRun{files: pubFiles, index: "pypi", version: "1.2.3", answer: listing(t, pubFiles), uv: pinnedUv(t) + " (abc 2026-01-01)"}
+	if out, code, uv, _ := runPublish(t, run); code != 0 || len(uv) != 1 {
+		t.Fatalf("exit %d with uv calls %q, want one upload:\n%s", code, uv, out)
+	}
+}
+
 func TestPublishRefusesBeforeUploading(t *testing.T) {
 	cases := map[string]publishRun{
-		"no version given":      {files: pubFiles, index: "pypi"},
-		"another version given": {files: pubFiles, index: "pypi", version: "1.2.4"},
-		"a version with a tail": {files: pubFiles, index: "pypi", version: "1.2.3+local"},
-		"an index of no name":   {files: pubFiles, index: "elsewhere", version: "1.2.3"},
-		"another uv":            {files: pubFiles, index: "pypi", version: "1.2.3", uv: "0.0.1"},
-		"a post release":        {files: map[string]string{"guardana_control-1.2.3.post1-py3-none-any.whl": "w", "guardana_control-1.2.3.post1.tar.gz": "a"}, index: "pypi", version: "1.2.3.post1"},
+		"no version given":              {files: pubFiles, index: "pypi"},
+		"another version given":         {files: pubFiles, index: "pypi", version: "1.2.4"},
+		"a version with a tail":         {files: pubFiles, index: "pypi", version: "1.2.3+local"},
+		"an index of no name":           {files: pubFiles, index: "elsewhere", version: "1.2.3"},
+		"another uv":                    {files: pubFiles, index: "pypi", version: "1.2.3", uv: "0.0.1"},
+		"a prerelease of the pinned uv": {files: pubFiles, index: "pypi", version: "1.2.3", uv: pinnedUv(t) + "-beta.1"},
+		"a build of the pinned uv":      {files: pubFiles, index: "pypi", version: "1.2.3", uv: pinnedUv(t) + "+dirty (abc 2026-01-01)"},
+		"no version after uv":           {files: pubFiles, index: "pypi", version: "1.2.3", uv: " " + pinnedUv(t)},
+		"a post release":                {files: map[string]string{"guardana_control-1.2.3.post1-py3-none-any.whl": "w", "guardana_control-1.2.3.post1.tar.gz": "a"}, index: "pypi", version: "1.2.3.post1"},
 		"files the build did not list": {files: pubFiles, index: "pypi", version: "1.2.3",
 			built: listingOf(map[string]string{pubWheel: "other bytes", pubArchive: "archive bytes"})},
 		"a listing that is empty": {files: pubFiles, index: "pypi", version: "1.2.3", built: " "},
@@ -221,6 +246,46 @@ func TestPublishRefusesBeforeUploading(t *testing.T) {
 			}
 			if len(uv) != 0 {
 				t.Fatalf("uv was called %q before the refusal", uv)
+			}
+		})
+	}
+}
+
+// TestPublishRefusesADigestThatIsNotOne gives the script a sha256sum that
+// fails or prints something other than 64 lowercase hex digits, and the
+// building job the line such a sha256sum would have given it there too: both
+// sides of the comparison then agree, so only the digest's own check refuses.
+func TestPublishRefusesADigestThatIsNotOne(t *testing.T) {
+	cases := map[string]struct{ stand, digest string }{
+		"a sha256sum that fails":       {"#!/usr/bin/env bash\nexit 1\n", ""},
+		"a short digest":               {"#!/usr/bin/env bash\necho 'abc123  -'\n", "abc123"},
+		"a digest in upper case":       {"#!/usr/bin/env bash\necho '" + strings.Repeat("AB", 32) + "  -'\n", strings.Repeat("AB", 32)},
+		"a digest one digit too long":  {"#!/usr/bin/env bash\necho '" + strings.Repeat("a", 65) + "  -'\n", strings.Repeat("a", 65)},
+		"a digest one digit too short": {"#!/usr/bin/env bash\nprintf '" + strings.Repeat("a", 63) + "'\n", strings.Repeat("a", 63)},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			built := pubWheel + " " + tc.digest + "," + pubArchive + " " + tc.digest
+			files := map[string]string{pubWheel: "w", pubArchive: "a"}
+			answer := text(`{"urls":[{"filename":"` + pubWheel + `","digests":{"sha256":"` + tc.digest + `"}},` +
+				`{"filename":"` + pubArchive + `","digests":{"sha256":"` + tc.digest + `"}}]}`)
+			out, code, uv, _ := runPublish(t, publishRun{files: files, index: "pypi", version: "1.2.3", built: built, answer: answer, sha256: tc.stand})
+			if code == 0 {
+				t.Fatalf("exit 0, want a refusal:\n%s", out)
+			}
+			if len(uv) != 0 {
+				t.Fatalf("uv was called %q before the refusal", uv)
+			}
+			if !strings.Contains(out, "no SHA-256 digest of ") {
+				t.Errorf("the refusal does not name the digest:\n%s", out)
+			}
+			dir := t.TempDir()
+			bin, dist := publishFakes(t, dir, publishRun{files: files, sha256: tc.stand})
+			cmd := exec.Command(settingsTool(t, "bash"), filepath.Join(repoRoot(t), "scripts", "publish-python-dist.sh"), "--list", dist) //nolint:gosec // G204: bash from PATH running this repository's own script
+			cmd.Env = []string{"PATH=" + bin, "HOME=" + dir, "TMPDIR=" + dir}
+			listed, err := fileOutput(t, cmd, false)
+			if exitCode(t, err) == 0 {
+				t.Fatalf("--list passed: %q", listed)
 			}
 		})
 	}

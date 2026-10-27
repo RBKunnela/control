@@ -217,8 +217,24 @@ vet:
 # .golangci.yaml, .golangci.toml or .golangci.json beside .golangci.yml, so a
 # file dropped at the root would replace the one the security maintainers own
 # and the agreement tests read. A nested module is linted with the same file.
+# The programs under scripts/ carry `//go:build ignore`, so ./... never reaches
+# them, and each is its own package main: each is named alone, which loads it
+# past its build constraint as `go build` of one file does.
 lint:
 	$(call each_module,(cd -- "$$dir" && golangci-lint run --allow-serial-runners --config "$$REPO_ROOT/.golangci.yml" ./...),lint)
+	@$(RUN) \
+	progs=$$(. $(REPO_FILES); repo_files 'scripts/*.go'); \
+	if [[ -z "$$progs" ]]; then \
+	  echo "lint: no program under scripts/, and the repository has them, so the search stopped working" >&2; \
+	  exit 1; \
+	fi; \
+	n=0; \
+	while IFS= read -r prog <&3; do \
+	  golangci-lint run --allow-serial-runners --config "$$REPO_ROOT/.golangci.yml" "$$prog" || \
+	    { echo "lint: FAIL in $$prog" >&2; exit 1; }; \
+	  n=$$((n + 1)); \
+	done 3<<<"$$progs"; \
+	echo "lint: $$n program(s) under scripts/ linted"
 
 test:
 	$(call each_module,$(GO) -C "$$dir" test -count=1 -shuffle=on -json $$pkgs | $(GO) run scripts/test-report.go,test)

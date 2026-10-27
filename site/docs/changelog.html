@@ -126,9 +126,21 @@ target compiles, while the nightly run and the release commit's cold gate
 fuzz each one for ten seconds. <code>docs-check</code> leaves <code>make quality</code>, whose
 tests run the same packages
 (<a href="/docs/adr/0062-the-gate-is-guarded-at-its-entry-points-and-fuzzed-at-night">ADR-0062</a>).</li>
+<li><code>make test</code> and <code>make test-race</code> fail on a skipped test that
+<code>scripts/expected-skips.txt</code> does not name, or one whose skip message does
+not say what the list says; the sixteen tests that skip on Linux or macOS
+are named there
+(<a href="/docs/adr/0063-a-skipped-test-fails-the-gate-unless-the-repository-expects-it">ADR-0063</a>).</li>
+<li><code>make lint</code> lints the generator programs under <code>scripts/</code> too, one at a
+time, which no lint read before.</li>
 </ul>
 <h3 id="fixed">Fixed</h3>
 <ul>
+<li><code>scripts/publish-python-dist.sh</code> compared the release files' digests with
+the build's before uploading, but a failing <code>sha256sum</code> gave an empty digest
+on both sides; each digest is now checked to be 64 hex digits.</li>
+<li>The uv version check every Python gate script calls took <code>uv 0.12.9-beta.1</code>
+for a pin of 0.12.9; it now compares uv's whole version word.</li>
 <li>A workflow step that wrote <code>SHELLOPTS=noexec</code> or <code>BASH_ENV</code> to
 <code>$GITHUB_ENV</code> could make a later step's bash, the quality gate's among them,
 run nothing and succeed. Every workflow now starts its steps in a bash that

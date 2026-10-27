@@ -16,6 +16,15 @@ import (
 // name; a package under it may have no test files.
 const generated = "example.com/fixture/api/gen/"
 
+// fixtureSkips are the skips the recorded streams hold, each one expected.
+var fixtureSkips = testreport.ExpectedSkips{
+	{Package: "example.com/fixture/skipping", Test: "TestParent/linux_only"}: "not on darwin",
+	{Package: "example.com/fixture/skipping", Test: "TestSilent"}:            "(no message)",
+	{Package: "example.com/fixture/skipping", Test: "TestNeedsRoot"}:         "needs a non-root user",
+	{Package: "example.com/fixture/allskip", Test: "TestA"}:                  "needs root",
+	{Package: "example.com/fixture/parallel", Test: "TestSkipped"}:           "not here",
+}
+
 func readFixture(t *testing.T, name string) []byte {
 	t.Helper()
 	b, err := fs.ReadFile(os.DirFS("testdata"), name)
@@ -50,7 +59,7 @@ func TestSummarizeRecordedStreams(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var out bytes.Buffer
-			got, err := testreport.Summarize(bytes.NewReader(readFixture(t, tc.name+".jsonl")), &out, generated)
+			got, err := testreport.Summarize(bytes.NewReader(readFixture(t, tc.name+".jsonl")), &out, generated, fixtureSkips)
 			if tc.wantErr == nil && err != nil {
 				t.Fatalf("Summarize: %v", err)
 			}
@@ -135,7 +144,7 @@ func TestSummarizeRefusesWhatDoesNotProveAPass(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := testreport.Summarize(strings.NewReader(tc.input), &bytes.Buffer{}, generated)
+			_, err := testreport.Summarize(strings.NewReader(tc.input), &bytes.Buffer{}, generated, fixtureSkips)
 			if !errors.Is(err, tc.want) {
 				t.Fatalf("Summarize error = %v, want %v", err, tc.want)
 			}
@@ -145,7 +154,7 @@ func TestSummarizeRefusesWhatDoesNotProveAPass(t *testing.T) {
 
 func TestSummarizeShowsWhatItRefuses(t *testing.T) {
 	var out bytes.Buffer
-	if _, err := testreport.Summarize(strings.NewReader("panic: boom\n"), &out, generated); err == nil {
+	if _, err := testreport.Summarize(strings.NewReader("panic: boom\n"), &out, generated, fixtureSkips); err == nil {
 		t.Fatal("Summarize accepted a line that is not an event")
 	}
 	if out.String() != "panic: boom\n" {
@@ -155,7 +164,7 @@ func TestSummarizeShowsWhatItRefuses(t *testing.T) {
 	passing := string(readFixture(t, "passing.jsonl"))
 	unfinished := passing[:strings.LastIndex(strings.TrimSuffix(passing, "\n"), "\n")+1]
 	out.Reset()
-	if _, err := testreport.Summarize(strings.NewReader(unfinished), &out, generated); err == nil {
+	if _, err := testreport.Summarize(strings.NewReader(unfinished), &out, generated, fixtureSkips); err == nil {
 		t.Fatal("Summarize accepted a package without a result")
 	}
 	want := "-test.shuffle 1791112380631026000\nPASS\nok  \texample.com/fixture/passing\t0.289s\ntest: 0 skipped\n"
@@ -166,7 +175,7 @@ func TestSummarizeShowsWhatItRefuses(t *testing.T) {
 
 func TestSummarizeWritesNothingForAnEmptyStream(t *testing.T) {
 	var out bytes.Buffer
-	if _, err := testreport.Summarize(strings.NewReader(""), &out, generated); err == nil {
+	if _, err := testreport.Summarize(strings.NewReader(""), &out, generated, fixtureSkips); err == nil {
 		t.Fatal("Summarize accepted an empty stream")
 	}
 	if out.Len() != 0 {
@@ -180,7 +189,7 @@ func TestSummarizeNamesAPassingPackageWithoutAResultLine(t *testing.T) {
 {"Action":"pass","Package":"example.com/p","Test":"TestX"}
 {"Action":"pass","Package":"example.com/p"}
 `
-	got, err := testreport.Summarize(strings.NewReader(input), &out, generated)
+	got, err := testreport.Summarize(strings.NewReader(input), &out, generated, fixtureSkips)
 	if err != nil {
 		t.Fatalf("Summarize: %v", err)
 	}
@@ -200,7 +209,7 @@ func TestSummarizeShowsATestThatNeverFinished(t *testing.T) {
 {"Action":"fail","Package":"example.com/p"}
 `
 	var out bytes.Buffer
-	if _, err := testreport.Summarize(strings.NewReader(input), &out, generated); !errors.Is(err, testreport.ErrFailed) {
+	if _, err := testreport.Summarize(strings.NewReader(input), &out, generated, fixtureSkips); !errors.Is(err, testreport.ErrFailed) {
 		t.Fatalf("Summarize error = %v, want ErrFailed", err)
 	}
 	want := "panic: test timed out after 1s\nFAIL\texample.com/p\t1.0s\ntest: 0 skipped\n"
@@ -216,7 +225,7 @@ func TestSummarizeReadsALineLongerThanAScannerBuffer(t *testing.T) {
 {"Action":"fail","Package":"example.com/p"}
 `
 	var out bytes.Buffer
-	got, err := testreport.Summarize(strings.NewReader(input), &out, generated)
+	got, err := testreport.Summarize(strings.NewReader(input), &out, generated, fixtureSkips)
 	if !errors.Is(err, testreport.ErrFailed) {
 		t.Fatalf("Summarize error = %v, want ErrFailed", err)
 	}
@@ -235,7 +244,7 @@ var errWrite = errors.New("write refused")
 func (failingWriter) Write([]byte) (int, error) { return 0, errWrite }
 
 func TestSummarizeReportsAWriteFailure(t *testing.T) {
-	_, err := testreport.Summarize(bytes.NewReader(readFixture(t, "passing.jsonl")), failingWriter{}, generated)
+	_, err := testreport.Summarize(bytes.NewReader(readFixture(t, "passing.jsonl")), failingWriter{}, generated, fixtureSkips)
 	if !errors.Is(err, errWrite) {
 		t.Fatalf("Summarize error = %v, want the writer's", err)
 	}
@@ -249,13 +258,18 @@ func (failingReader) Read([]byte) (int, error) { return 0, errRead }
 
 func TestSummarizeReportsAReadFailureAfterAPass(t *testing.T) {
 	r := io.MultiReader(bytes.NewReader(readFixture(t, "passing.jsonl")), failingReader{})
-	got, err := testreport.Summarize(r, &bytes.Buffer{}, generated)
+	got, err := testreport.Summarize(r, &bytes.Buffer{}, generated, fixtureSkips)
 	if !errors.Is(err, errRead) {
 		t.Fatalf("Summarize error = %v, want the reader's", err)
 	}
 	if got.Packages != 1 {
 		t.Errorf("Packages = %d, want the passing package read before the failure", got.Packages)
 	}
+}
+
+// clean reports whether a summary counts nothing that may not pass.
+func clean(s testreport.Summary) bool {
+	return s.Packages > 0 && s == testreport.Summary{Events: s.Events, Packages: s.Packages, Skipped: s.Skipped}
 }
 
 func FuzzSummarize(f *testing.F) {
@@ -270,11 +284,11 @@ func FuzzSummarize(f *testing.F) {
 	f.Add([]byte("null\n"))
 	f.Fuzz(func(t *testing.T, input []byte) {
 		var out bytes.Buffer
-		got, err := testreport.Summarize(bytes.NewReader(input), &out, generated)
+		got, err := testreport.Summarize(bytes.NewReader(input), &out, generated, fixtureSkips)
 		if err != nil {
 			return
 		}
-		if got.Packages == 0 || got.FailedPackages != 0 || got.FailedTests != 0 || got.BuildFailures != 0 || got.NoTestsRun != 0 || got.NoTestFiles != 0 || got.Unfinished != 0 {
+		if !clean(got) {
 			t.Fatalf("Summarize passed %+v", got)
 		}
 		if !strings.HasSuffix(out.String(), " skipped\n") {
@@ -294,7 +308,7 @@ func TestSummarizeNamesEveryTestThatNeverEnded(t *testing.T) {
 {"Action":"pass","Package":"example.com/c"}
 `
 	var out bytes.Buffer
-	got, err := testreport.Summarize(strings.NewReader(input), &out, generated)
+	got, err := testreport.Summarize(strings.NewReader(input), &out, generated, fixtureSkips)
 	if !errors.Is(err, testreport.ErrUnfinished) {
 		t.Fatalf("Summarize error = %v, want ErrUnfinished", err)
 	}
@@ -320,7 +334,7 @@ func TestSummarizeNamesEveryPackageThatRanNoTest(t *testing.T) {
 {"Action":"output","Package":"example.com/c","Output":"ok  \texample.com/c\t0.1s [no tests to run]\n"}
 {"Action":"pass","Package":"example.com/c"}
 `
-	got, err := testreport.Summarize(strings.NewReader(input), &bytes.Buffer{}, generated)
+	got, err := testreport.Summarize(strings.NewReader(input), &bytes.Buffer{}, generated, fixtureSkips)
 	if !errors.Is(err, testreport.ErrNoTestsRun) {
 		t.Fatalf("Summarize error = %v, want ErrNoTestsRun", err)
 	}
@@ -339,7 +353,7 @@ func TestSummarizeCountsAnyRunEventAsATestRun(t *testing.T) {
 {"Action":"pass","Package":"example.com/p","Test":"` + name + `"}
 {"Action":"pass","Package":"example.com/p"}
 `
-			got, err := testreport.Summarize(strings.NewReader(input), &bytes.Buffer{}, generated)
+			got, err := testreport.Summarize(strings.NewReader(input), &bytes.Buffer{}, generated, fixtureSkips)
 			if err != nil {
 				t.Fatalf("Summarize: %v", err)
 			}

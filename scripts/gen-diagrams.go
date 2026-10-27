@@ -44,7 +44,7 @@ func main() {
 	if err != nil {
 		fail(fmt.Errorf("%s: %w", *out, err))
 	}
-	if err := os.WriteFile(*out, spliced, 0o644); err != nil {
+	if err := os.WriteFile(*out, spliced, 0o644); err != nil { //nolint:gosec // G306: a tracked file, world-readable as a checkout writes it
 		fail(fmt.Errorf("writing %s: %w", *out, err))
 	}
 }

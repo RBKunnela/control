@@ -29,11 +29,15 @@ python_env() {
   isolated=(-I -B -X "pycache_prefix=$1/pycache")
 }
 
+# The version is uv's whole word after "uv ", up to the next white space, as
+# scripts/bootstrap.sh reads its tools: a prerelease or build of the pinned
+# release, such as 0.12.9-beta.1, is another version.
 python_uv_pinned() {
-  local have
+  local have first
   command -v uv >/dev/null 2>&1 || { echo "uv is not on PATH; make bootstrap installs it" >&2; return 1; }
   have="$(uv --version 2>&1)" || { echo "uv --version exited non-zero" >&2; return 1; }
-  if [[ ! "${have}" =~ ^uv\ ([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+  first="${have%%$'\n'*}"
+  if [[ ! "${first}" =~ ^uv\ ([^[:space:]]+) ]]; then
     echo "no version in the output of uv --version: ${have}" >&2
     return 1
   fi

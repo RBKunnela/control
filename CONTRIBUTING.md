@@ -24,7 +24,8 @@ cannot be installed is a failure, never a skipped step.
 `make quality` is the whole gate, and `ci.yml` runs exactly that target on
 your pull request. Use `make quality-quick` while you work; running the whole
 gate yourself first saves a round trip. Fuzzing past the seeds runs each
-night and on a release commit, not on a pull request.
+night and on a release commit, not on a pull request. A test that skips
+fails the gate unless `scripts/expected-skips.txt` names it with its reason.
 
 ## Before you write code
 

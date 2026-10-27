@@ -156,3 +156,4 @@ with `make docs-gen`; an edit made here does not survive the next run.
 - [ADR-0060: pkg/contract exports what each effect class requires](adr/0060-pkg-contract-exports-what-each-effect-class-requires.md): accepted
 - [ADR-0061: An obligation's parameters are the catalogue's](adr/0061-an-obligations-parameters-are-the-catalogues.md): accepted
 - [ADR-0062: The gate is guarded at its entry points, and fuzzed at night](adr/0062-the-gate-is-guarded-at-its-entry-points-and-fuzzed-at-night.md): accepted
+- [ADR-0063: A skipped test fails the gate unless the repository expects it](adr/0063-a-skipped-test-fails-the-gate-unless-the-repository-expects-it.md): accepted

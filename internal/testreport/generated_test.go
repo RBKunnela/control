@@ -35,7 +35,7 @@ func TestSummarizePassesNoTestFilesOnlyUnderGenerated(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := testreport.Summarize(strings.NewReader(noTestFiles(tc.pkg)), &bytes.Buffer{}, tc.generated)
+			got, err := testreport.Summarize(strings.NewReader(noTestFiles(tc.pkg)), &bytes.Buffer{}, tc.generated, nil)
 			if tc.pass {
 				if err != nil || got.NoTestFiles != 0 {
 					t.Fatalf("Summarize = %+v, %v; want a pass", got, err)
@@ -57,7 +57,7 @@ func TestSummarizePassesNoTestFilesOnlyUnderGenerated(t *testing.T) {
 
 func TestSummarizeNamesEveryPackageWithNoTestFiles(t *testing.T) {
 	input := noTestFiles("example.com/m/a") + noTestFiles("example.com/m/api/gen/v1") + noTestFiles("example.com/m/b")
-	got, err := testreport.Summarize(strings.NewReader(input), &bytes.Buffer{}, "example.com/m/api/gen/")
+	got, err := testreport.Summarize(strings.NewReader(input), &bytes.Buffer{}, "example.com/m/api/gen/", nil)
 	if !errors.Is(err, testreport.ErrNoTestFiles) {
 		t.Fatalf("Summarize error = %v, want ErrNoTestFiles", err)
 	}

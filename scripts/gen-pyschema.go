@@ -50,7 +50,7 @@ func write(path string, table []byte) error {
 		}
 		return nil
 	}
-	if err := os.WriteFile(path, table, 0o644); err != nil {
+	if err := os.WriteFile(path, table, 0o644); err != nil { //nolint:gosec // G306: a tracked file, world-readable as a checkout writes it
 		return fmt.Errorf("writing %s: %w", path, err)
 	}
 	return nil

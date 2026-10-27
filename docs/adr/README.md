@@ -71,3 +71,4 @@ request with `Status: proposed`, and set it to `accepted` when it merges.
 | [0060](0060-pkg-contract-exports-what-each-effect-class-requires.md) | `pkg/contract` exports what each effect class requires |
 | [0061](0061-an-obligations-parameters-are-the-catalogues.md) | An obligation's parameters are the catalogue's |
 | [0062](0062-the-gate-is-guarded-at-its-entry-points-and-fuzzed-at-night.md) | The gate is guarded at its entry points, and fuzzed at night |
+| [0063](0063-a-skipped-test-fails-the-gate-unless-the-repository-expects-it.md) | A skipped test fails the gate unless the repository expects it |

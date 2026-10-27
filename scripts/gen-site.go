@@ -29,6 +29,20 @@ import (
 
 const config = "docs/docs.json"
 
+// inputs is everything the site is rendered from.
+type inputs struct {
+	page, readme, notes []byte
+	cfg                 docsconfig.Config
+	listed              []string
+}
+
+// site is everything the program writes: the landing page and the docs pages
+// by path.
+type site struct {
+	page  []byte
+	files map[string][]byte
+}
+
 func main() {
 	out := flag.String("o", "", "the page whose slots are rewritten in place (required)")
 	flag.Parse()
@@ -41,63 +55,95 @@ func main() {
 	if *out != sitedoc.Page {
 		fail(fmt.Errorf("%s is not %s, the one page this program rewrites", *out, sitedoc.Page))
 	}
-	page, err := os.ReadFile(*out)
-	if err != nil {
-		fail(fmt.Errorf("reading %s: %w", *out, err))
-	}
-	readme, err := os.ReadFile(sitedoc.Source)
-	if err != nil {
-		fail(fmt.Errorf("reading %s: %w", sitedoc.Source, err))
-	}
-	rendered, err := sitedoc.Render(page, readme)
-	if err != nil {
-		fail(fmt.Errorf("%s: %w", *out, err))
-	}
-	data, err := os.ReadFile(config)
-	if err != nil {
-		fail(fmt.Errorf("reading %s: %w", config, err))
-	}
-	cfg, err := docsconfig.Parse(data)
+	in, err := readInputs(*out)
 	if err != nil {
 		fail(err)
 	}
-	notes, err := os.ReadFile(sitedoc.Changelog)
+	rendered, err := render(*out, in)
 	if err != nil {
-		fail(fmt.Errorf("reading %s: %w", sitedoc.Changelog, err))
-	}
-	if err := sitedoc.Published(notes, cfg.Released); err != nil {
 		fail(err)
 	}
-	if rendered, err = sitedoc.FillRelease(rendered, cfg.Released); err != nil {
-		fail(fmt.Errorf("%s: %w", *out, err))
+	if err := write(*out, rendered); err != nil {
+		fail(err)
+	}
+}
+
+func readInputs(out string) (inputs, error) {
+	var in inputs
+	var err error
+	if in.page, err = readFile(out); err != nil {
+		return in, err
+	}
+	if in.readme, err = readFile(sitedoc.Source); err != nil {
+		return in, err
+	}
+	data, err := readFile(config)
+	if err != nil {
+		return in, err
+	}
+	if in.cfg, err = docsconfig.Parse(data); err != nil {
+		return in, err
+	}
+	if in.notes, err = readFile(sitedoc.Changelog); err != nil {
+		return in, err
 	}
 	listed, err := impact.RepositoryFiles(".", os.Environ())
 	if err != nil {
-		fail(err)
+		return in, err
 	}
-	files, err := docsite.Build(os.DirFS("."), impact.LeftOut(listed.Paths, cfg.Excludes), cfg.Released)
+	in.listed = listed.Paths
+	return in, nil
+}
+
+func readFile(name string) ([]byte, error) {
+	data, err := os.ReadFile(name) //nolint:gosec // G304: the program's own fixed inputs and the one page -o may name
 	if err != nil {
-		fail(err)
+		return nil, fmt.Errorf("reading %s: %w", name, err)
 	}
-	if err := os.WriteFile(*out, rendered, 0o644); err != nil {
-		fail(fmt.Errorf("writing %s: %w", *out, err))
+	return data, nil
+}
+
+func render(out string, in inputs) (site, error) {
+	rendered, err := sitedoc.Render(in.page, in.readme)
+	if err != nil {
+		return site{}, fmt.Errorf("%s: %w", out, err)
+	}
+	if err := sitedoc.Published(in.notes, in.cfg.Released); err != nil {
+		return site{}, err
+	}
+	if rendered, err = sitedoc.FillRelease(rendered, in.cfg.Released); err != nil {
+		return site{}, fmt.Errorf("%s: %w", out, err)
+	}
+	files, err := docsite.Build(os.DirFS("."), impact.LeftOut(in.listed, in.cfg.Excludes), in.cfg.Released)
+	if err != nil {
+		return site{}, err
+	}
+	return site{rendered, files}, nil
+}
+
+// write replaces the landing page, then removes the docs directory and writes
+// every page again, so a page whose source is gone goes with it.
+func write(out string, s site) error {
+	if err := os.WriteFile(out, s.page, 0o644); err != nil { //nolint:gosec // G306: a tracked file, world-readable as a checkout writes it
+		return fmt.Errorf("writing %s: %w", out, err)
 	}
 	if err := os.RemoveAll(docsite.Dir); err != nil {
-		fail(fmt.Errorf("removing %s: %w", docsite.Dir, err))
+		return fmt.Errorf("removing %s: %w", docsite.Dir, err)
 	}
-	names := make([]string, 0, len(files))
-	for name := range files {
+	names := make([]string, 0, len(s.files))
+	for name := range s.files {
 		names = append(names, name)
 	}
 	slices.Sort(names)
 	for _, name := range names {
-		if err := os.MkdirAll(filepath.Dir(name), 0o755); err != nil {
-			fail(err)
+		if err := os.MkdirAll(filepath.Dir(name), 0o755); err != nil { //nolint:gosec // G301: a tracked directory, world-readable as a checkout makes it
+			return err
 		}
-		if err := os.WriteFile(name, files[name], 0o644); err != nil {
-			fail(fmt.Errorf("writing %s: %w", name, err))
+		if err := os.WriteFile(name, s.files[name], 0o644); err != nil { //nolint:gosec // G306: a tracked file, world-readable as a checkout writes it
+			return fmt.Errorf("writing %s: %w", name, err)
 		}
 	}
+	return nil
 }
 
 func fail(err error) {

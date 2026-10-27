@@ -9,8 +9,8 @@
 #             and report two modules, with a go.work beside them naming the
 #             root alone and a go.mod under the nested module's testdata; test
 #             prints the reporter's transcript and its count of no skip
-#   skip      a skipping test in the nested module, which test passes while
-#             naming the test, its message and the count
+#   skip      a skipping test in the nested module, refused by name until the
+#             staged expected-skips.txt lists it, then passed with its message
 #   planted   one defect at a time in the nested module, and the target that
 #             answers for it must fail on that defect and name the module:
 #               vet         a format verb with the wrong argument
@@ -22,6 +22,7 @@
 #               lint        a gosec finding, with a .golangci.yml in the
 #                           module that switches gosec off, so a target that
 #                           discovered its configuration would pass
+#               lint        a gosec finding in a program under scripts/
 #               tidy-check  a direct requirement marked indirect
 #               fuzz-smoke  a fuzz target whose seed fails
 #               fuzz-smoke  a fuzz target in a file a build constraint
@@ -76,10 +77,13 @@ for file in Makefile .golangci.yml scripts/fuzz-smoke.sh; do
 done
 # make test pipes go test -json through scripts/test-report.go, whose logic is
 # internal/testreport; the staged root module carries both, under its own path,
-# and a test of the package, which the reporter refuses to pass without one.
+# the list of expected skips, and a test of the package, which the reporter
+# refuses to pass without one.
 mkdir -p "${copy}/internal/testreport"
 cp "${root}/internal/testreport/doc.go" "${root}/internal/testreport/report.go" \
-  "${root}/internal/testreport/generated.go" "${copy}/internal/testreport/"
+  "${root}/internal/testreport/generated.go" "${root}/internal/testreport/expected.go" \
+  "${copy}/internal/testreport/"
+cp "${root}/scripts/expected-skips.txt" "${copy}/scripts/expected-skips.txt"
 cat >"${copy}/internal/testreport/staged_test.go" <<'EOF'
 package testreport
 
@@ -90,7 +94,7 @@ import (
 )
 
 func TestStagedReporterRefusesAnEmptyStream(t *testing.T) {
-	if _, err := Summarize(strings.NewReader(""), io.Discard, ""); err == nil {
+	if _, err := Summarize(strings.NewReader(""), io.Discard, "", nil); err == nil {
 		t.Fatal("the staged reporter passed an empty stream")
 	}
 }
@@ -281,6 +285,7 @@ for target in vet test test-race lint tidy-check; do
   run pass "${target}"
   expect "${target}: module ${nested}"
   expect "${target}: 2 module(s)"
+  [[ "${target}" != lint ]] || expect "lint: 2 program(s) under scripts/ linted"
   if [[ "${target}" == test ]]; then
     expect_start "ok  "$'\t'"example.com/nested"
     expect_start "test: 0 skipped"
@@ -344,10 +349,16 @@ func TestProbeSkipped(t *testing.T) {
 	t.Skip("probe-skip-planted")
 }
 EOF
-run pass test "planted skip"
+run fail test "planted skip, not listed"
+expect_start "test: SKIP example.com/nested TestProbeSkipped: " "probe-skip-planted"
+expect "the expected skips do not name: example.com/nested TestProbeSkipped"
+expect "test: FAIL in module ${nested}"
+printf 'example.com/nested TestProbeSkipped probe-skip-planted\n' >>"${copy}/scripts/expected-skips.txt"
+run pass test "planted skip, listed"
 expect_start "test: SKIP example.com/nested TestProbeSkipped: " "probe-skip-planted"
 expect_start "test: 1 skipped"
 rm "${copy}/${nested}/zz_skip_test.go"
+cp "${root}/scripts/expected-skips.txt" "${copy}/scripts/expected-skips.txt"
 
 plant zz_race_test.go <<'EOF'
 package nested
@@ -406,6 +417,20 @@ run fail lint planted
 expect "zz_lint.go" "(gosec)"
 expect "lint: FAIL in module ${nested}"
 rm "${copy}/${nested}/zz_lint.go" "${copy}/${nested}/.golangci.yml"
+write scripts/gen-lint.go <<'EOF'
+//go:build ignore
+
+// Command gen-lint holds the planted gosec finding of a program.
+package main
+
+import "crypto/md5"
+
+func main() { _ = md5.Sum(nil) }
+EOF
+run fail lint "planted in a program under scripts/"
+expect "gen-lint.go" "(gosec)"
+expect "lint: FAIL in scripts/gen-lint.go"
+rm "${copy}/scripts/gen-lint.go"
 
 nested_gomod indirect
 run fail tidy-check planted

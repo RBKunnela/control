@@ -9,20 +9,25 @@
 //
 // Run it from the root module's directory: the packages of that module under
 // api/gen/, which is generated code, are the only ones that may have no test
-// files, and its go.mod names them.
+// files, and its go.mod names them. A skipped test fails the run unless
+// scripts/expected-skips.txt there names it.
 //
 // Everything this program decides lives in internal/testreport, which the gate
 // compiles, vets, lints and tests. It exits 1 on anything that does not prove a
-// pass, an empty or unreadable stream among them; the go test it reads from
-// keeps its own exit status, which a pipeline under pipefail does not lose.
+// pass, an empty or unreadable stream or list of expected skips among them;
+// the go test it reads from keeps its own exit status, which a pipeline under
+// pipefail does not lose.
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/guardana/control/internal/testreport"
 )
+
+const expectedSkips = "scripts/expected-skips.txt"
 
 func main() {
 	if len(os.Args) > 1 {
@@ -36,7 +41,18 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
-	if _, err := testreport.Summarize(os.Stdin, os.Stdout, generated); err != nil {
+	list, err := os.ReadFile(expectedSkips)
+	if err != nil {
+		fail(fmt.Errorf("reading the expected skips: %w", err))
+	}
+	expected, err := testreport.ParseExpectedSkips(list)
+	if err != nil {
+		fail(fmt.Errorf("%s: %w", expectedSkips, err))
+	}
+	if _, err := testreport.Summarize(os.Stdin, os.Stdout, generated, expected); err != nil {
+		if errors.Is(err, testreport.ErrUnexpectedSkip) {
+			err = fmt.Errorf("%w; a skip the gate allows is named in %s with text its skip line holds", err, expectedSkips)
+		}
 		fail(err)
 	}
 }

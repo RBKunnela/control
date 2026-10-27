@@ -19,9 +19,21 @@ verify one.
   fuzz each one for ten seconds. `docs-check` leaves `make quality`, whose
   tests run the same packages
   ([ADR-0062](docs/adr/0062-the-gate-is-guarded-at-its-entry-points-and-fuzzed-at-night.md)).
+- `make test` and `make test-race` fail on a skipped test that
+  `scripts/expected-skips.txt` does not name, or one whose skip message does
+  not say what the list says; the sixteen tests that skip on Linux or macOS
+  are named there
+  ([ADR-0063](docs/adr/0063-a-skipped-test-fails-the-gate-unless-the-repository-expects-it.md)).
+- `make lint` lints the generator programs under `scripts/` too, one at a
+  time, which no lint read before.
 
 ### Fixed
 
+- `scripts/publish-python-dist.sh` compared the release files' digests with
+  the build's before uploading, but a failing `sha256sum` gave an empty digest
+  on both sides; each digest is now checked to be 64 hex digits.
+- The uv version check every Python gate script calls took `uv 0.12.9-beta.1`
+  for a pin of 0.12.9; it now compares uv's whole version word.
 - A workflow step that wrote `SHELLOPTS=noexec` or `BASH_ENV` to
   `$GITHUB_ENV` could make a later step's bash, the quality gate's among them,
   run nothing and succeed. Every workflow now starts its steps in a bash that

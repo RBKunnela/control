@@ -27,18 +27,31 @@ die() {
   exit 1
 }
 
+# digest_of <file>; its SHA-256 as 64 lowercase hex digits. A sha256sum that
+# fails or prints anything else fails here, never as an empty digest that
+# both sides of the comparison would share.
+digest_of() {
+  local out sum
+  out="$(sha256sum <"$1")" || return 1
+  sum="${out%% *}"
+  [[ "${sum}" =~ ^[0-9a-f]{64}$ ]] || return 1
+  printf '%s\n' "${sum}"
+}
+
 # files_of <directory>; its one wheel and one source archive, and nothing
 # else, as "<name> <sha256>" in byte order, joined by commas.
 files_of() {
-  local wheels archives
+  local wheels archives f sum lines=""
   wheels=("$1"/*.whl)
   archives=("$1"/*.tar.gz)
   [[ ${#wheels[@]} -eq 1 && -f "${wheels[0]}" && ${#archives[@]} -eq 1 && -f "${archives[0]}" ]] ||
     die "$1 holds no single wheel and source archive"
   [[ "$(find "$1" -mindepth 1 | wc -l | tr -d ' ')" == 2 ]] || die "$1 holds more than the two files"
-  (cd "$1" && for f in *.whl *.tar.gz; do
-    printf '%s %s\n' "${f}" "$(sha256sum "${f}" | cut -d' ' -f1)"
-  done) | LC_ALL=C sort | paste -sd, -
+  for f in "${wheels[0]}" "${archives[0]}"; do
+    sum="$(digest_of "${f}")" || die "no SHA-256 digest of ${f}"
+    lines+="$(basename "${f}") ${sum}"$'\n'
+  done
+  printf '%s' "${lines}" | LC_ALL=C sort | paste -sd, -
 }
 
 if [[ "${1:-}" == --list ]]; then

@@ -1,0 +1,23 @@
+# The tests `make test` and `make test-race` may skip, read by
+# scripts/test-report.go: a skip this list does not name, or one whose message
+# does not hold the text named here, fails the run. One entry per line,
+# "<import path> <test name> <message>", one space between the fields and the
+# message the rest of the line. The list covers Linux and macOS under an
+# ordinary account; an entry that ran is printed, never refused. A run as root
+# skips other tests and is not covered.
+github.com/guardana/control/cmd/guardana-gateway TestHelperReportsItsEnvironment it runs in that child process alone
+github.com/guardana/control/cmd/guardana-gateway TestHelperServesAPlane it runs in that child process alone
+github.com/guardana/control/cmd/guardana-gateway TestHelperServesAStdioUpstream it runs in that child process alone
+github.com/guardana/control/internal/docscheck/sitedoc/mermaid TestHelperDrawsTheGoldens runs only as the fresh process of TestTheSameSourceDrawsTheSameBytes
+github.com/guardana/control/internal/evidence TestNoPayloadContentReachesTopLevelFields/Started this constructor takes no payload
+github.com/guardana/control/internal/evidence TestPayloadIsClonedNotAliased/Started this constructor takes no message
+github.com/guardana/control/internal/files TestReadOwnedRefusesAFileOfAnotherAccount needs root
+github.com/guardana/control/internal/gatewayconfig TestAConfigurationGivenAwayIsRefused needs root
+github.com/guardana/control/internal/gatewayconfig TestAFileWithASecondNameIsRefused/a_second_name_for_root's_file_in_a_sticky_directory this system refuses a second name for root's file
+github.com/guardana/control/internal/gatewayconfig TestAnotherSpellingOfALockedDirectoryIsRefused/a_spelling_that_differs_in_case this volume tells SPOOL from spool
+github.com/guardana/control/internal/gatewayconfig TestAReadOnlyMountIsSeen no read-only mount to open
+github.com/guardana/control/internal/holdjournal TestAnEntryAnotherAccountOwnsIsNotRead needs root
+github.com/guardana/control/internal/policykey TestReadPrivateRefusesAKeyOfAnotherAccount needs root
+github.com/guardana/control/internal/policystate TestHelperRaisesFromAnotherProcess run only as the other process of TestTwoProcessesAndTwoHandlesRaisingOneFloorNeverLowerIt
+github.com/guardana/control/internal/spool FuzzRecordAfter/seed#0 an offset outside the input leaves nothing to search
+github.com/guardana/control/internal/trailfile TestOpenRefusesAFileAnotherAccountOwns needs root

@@ -457,7 +457,7 @@ func FuzzRecordAfter(f *testing.F) {
 	f.Add([]byte{0, 0, 0, 1, 0, 0, 0, 0, 0}, 0)
 	f.Fuzz(func(t *testing.T, data []byte, from int) {
 		if len(data) == 0 || from < 0 || int64(from) >= int64(len(data)) {
-			t.Skip()
+			t.Skip("an offset outside the input leaves nothing to search")
 		}
 		got, err := recordAfter(bytes.NewReader(data), int64(from), int64(len(data)))
 		if errors.Is(err, errTailCost) {
