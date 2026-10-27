@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ADR-0062: The gate is guarded at its entry points, and fuzzed at night · Guardana Control</title>
+<meta name="description" content="Decision record, accepted."/>
+<link rel="canonical" href="https://control.guardana.dev/docs/adr/0062-the-gate-is-guarded-at-its-entry-points-and-fuzzed-at-night"/>
+<meta name="theme-color" content="#0B8F80"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="stylesheet" href="/assets/brand/v1/tokens.css"/>
+<link rel="stylesheet" href="/assets/control/control.css"/>
+<link rel="stylesheet" href="/assets/control/docs.css"/>
+</head>
+<body class="doc">
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap bar">
+  <a class="mark" href="/"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 4.5 5.6v6.1c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V5.6z"/><path d="M10.2 8.4v7.8M10.2 12.3h5.3"/></svg><span>Guardana <b>Control</b></span></a>
+  <a class="vlink" href="https://github.com/guardana/control/releases/tag/v0.14.0"><span class="ver">v0.14.0</span></a>
+  <nav aria-label="Primary">
+    <a href="/docs/">Docs</a>
+    <a href="/docs/status">Status</a>
+    <a class="hide-s" href="/docs/roadmap">Roadmap</a>
+    <a class="gh" href="https://github.com/guardana/control" aria-label="GitHub"><svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span class="hide-s">GitHub</span></a>
+  </nav>
+</div></header>
+<div class="wrap shell">
+<details class="mnav">
+<summary>Menu · <b>ADR-0062: The gate is guarded at its entry points, and fuzzed at night</b></summary>
+<nav class="inner" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</details>
+<main id="main" class="prose">
+<h1 id="adr-0062-the-gate-is-guarded-at-its-entry-points-and-fuzzed-at-night">ADR-0062: The gate is guarded at its entry points, and fuzzed at night</h1>
+<p>Status: accepted
+Date: 2026-10-27</p>
+<p>Amends <a href="/docs/adr/0052-a-change-is-gated-on-its-pull-request">ADR-0052</a>: the nightly
+run also fuzzes every target, and a pull request's gate checks only that each
+target compiles.</p>
+<h2 id="context">Context</h2>
+<p><code>make quality</code> refuses what the environment can set before any recipe runs: a
+dry run in <code>MAKEFLAGS</code>, <code>MAKEFILES</code>, <code>GOFLAGS</code>, the shell's startup files and
+options, a stand-in for make or go. Three releases added such guards, with a
+test that probes the make under test. Two ways around them remained, both on
+the command line: <code>MAKEOVERRIDES=</code> emptied the list the guard read, so <code>make quality MAKEOVERRIDES= SHELL=/usr/bin/true</code> ran nothing and exited 0; and
+<code>make -f Makefile -f later.mk quality</code>, where <code>later.mk</code> holds its own
+<code>quality</code> recipe, printed the pass line. No makefile can refuse a makefile
+read after it. Whoever writes make's command line can as well not run the
+gate.</p>
+<p>The exposure a pull request can use was elsewhere. A workflow step can write
+<code>SHELLOPTS=noexec</code> or <code>BASH_ENV</code> to <code>$GITHUB_ENV</code>, and the runner starts the
+next step's bash with it, before make reads anything: with <code>SHELLOPTS=noexec</code>
+the gate step runs nothing and succeeds. The workflow test read only the
+quality job, and other required checks run in jobs that write <code>$GITHUB_ENV</code>
+too.</p>
+<p>Of the gate's 29 minutes on a pull request, 15.6 were <code>fuzz-smoke</code>: ten
+seconds of fuzzing for each of 76 targets. Every target's seeds already run
+in <code>test</code> and <code>test-race</code>. <code>docs-check</code> ran its packages a third time.</p>
+<h2 id="decision">Decision</h2>
+<ul>
+<li><strong>The gate's result holds as its two entry points start it.</strong> CI starts
+every run step of every workflow, and of a composite action under
+<code>.github/actions</code>, in <code>bash --noprofile --norc -p -e -o pipefail {0}</code>: with
+<code>-p</code>, the step's bash reads neither <code>BASH_ENV</code> nor <code>ENV</code> and ignores
+<code>SHELLOPTS</code>, <code>BASHOPTS</code>, <code>CDPATH</code>, <code>GLOBIGNORE</code> and functions from the
+environment. The line starts with <code>bash</code>, the one first word under which
+actionlint shellchecks a run block. The gate step runs <code>/usr/bin/env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make quality GO=go</code>.
+<code>scripts/gate-commit.sh</code> starts make in an emptied environment, as before.</li>
+<li><strong>The Makefile keeps its guards on what an environment sets</strong>, and refuses
+every command-line variable but <code>GO</code> by its <code>$(origin)</code>, which a command
+line cannot change. It states that a makefile read after it is beyond any
+guard, and stops there: no further guard is added for an invocation outside
+the two entry points.</li>
+<li><strong>Fuzzing runs at night and on the release commit.</strong> <code>make quality</code> runs
+<code>fuzz-list</code>, which checks that every fuzz target declared in the source is
+compiled on the platform, and fuzzes nothing. The nightly workflow runs
+<code>make fuzz-smoke</code> on Linux, and a red night opens an issue as the race run
+does. <code>scripts/gate-commit.sh</code> runs <code>make fuzz-smoke</code> after <code>make quality</code>,
+so a release commit is fuzzed before it is tagged.</li>
+<li><code>docs-check</code> stays a target and leaves <code>quality</code>, whose <code>test</code> and
+<code>test-race</code> run the same packages.</li>
+</ul>
+<h2 id="security--compatibility-impact">Security / compatibility impact</h2>
+<p>No product code changes. A pull request is no longer fuzzed past its seeds: a
+change that makes a target find a failing input within ten seconds is caught
+by the next night's run or by the release commit's cold gate, not before it
+merges. The release workflow requires CI's run on <code>main</code>, which no longer
+fuzzes; the proof that a release commit was fuzzed is the cold gate's stamp,
+which <code>scripts/gate-commit.sh</code> writes only after <code>make fuzz-smoke</code> passes, as
+it already was for the gate on macOS.</p>
+<p>A step that writes the shell's startup files, options or functions to
+<code>$GITHUB_ENV</code> no longer changes what a later step's own bash runs. The
+variables stay in the environment, so a bash script the step starts in turn
+still reads them: the gate's make refuses them loudly, while another job's
+script, such as the wire compatibility check, does not, and the workflow
+test refuses an environment write in the quality job only. <code>PATH</code> stays
+trusted: a step can still put another <code>make</code> or <code>bash</code> first on it, as it
+always could. A caller who passes <code>-f</code> with another makefile can still
+replace any recipe, and the page says the result does not hold for such a
+run.</p>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>Keep extending the Makefile's guards: each make version reads its flags
+differently, the probes grow with each, and the makefile read after this
+one stays out of reach.</li>
+<li><code>/usr/bin/env -u BASH_ENV -u SHELLOPTS ... bash</code> as the shell line, so no
+process a step starts sees them: actionlint shellchecks a run block only
+under a line whose first word is <code>bash</code> or <code>sh</code>, so every inline script
+would go unchecked.</li>
+<li>Name <code>SHELLOPTS</code> and its kin in the workflow test's list of refused names:
+the allowed write to <code>$GITHUB_ENV</code> carries any text, and a name can be
+assembled from parts.</li>
+<li><code>env -i</code> in the workflow's shell: the runner does not expand <code>$PATH</code> there,
+and the gate needs the tools a step put on it.</li>
+<li>Fuzz for three seconds on each pull request: still seven minutes, and the
+seeds already cover what a short run reaches.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<p>A pull request's gate takes about half as long. The nightly workflow is the
+first place a fuzz finding shows on <code>main</code>. Every workflow carries the same
+shell line, and a step that needs another shell fails the workflow test until
+this record is amended.</p>
+<h2 id="validation">Validation</h2>
+<p><code>internal/docscheck</code>: <code>TestEveryWorkflowStartsItsShellClean</code> holds every
+workflow, <code>*.yml</code> and <code>*.yaml</code>, with a run step to the shell line, every run
+step of a composite action to it too, and refuses a <code>shell:</code> anywhere else and
+a step it cannot read; <code>TestTheShellIgnoresTheStartupStateOfTheEnvironment</code>
+runs that line, with the bash found on the path, over a script that exits 7
+under <code>SHELLOPTS=noexec</code>, <code>BASH_ENV</code> and an exported <code>echo</code>, after showing that
+GitHub's plain bash line is changed by each; <code>TestFuzzingRunsOutsideTheGate</code>
+holds the nightly schedule, the fuzz job with no condition, mask or
+environment of its own, the report job waiting on it under its condition, and
+the cold gate's <code>make fuzz-smoke</code> line;
+<code>TestTheGateRefusesALoosenedMake</code> refuses <code>MAKEOVERRIDES=</code> with a replaced
+shell; <code>TestQualityRunsTheWholeGate</code> holds <code>fuzz-list</code> in quality.
+<code>scripts/check-modules-probe.sh</code> runs <code>fuzz-list</code> clean and refuses a target a
+build constraint leaves out.</p>
+<p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/adr/0062-the-gate-is-guarded-at-its-entry-points-and-fuzzed-at-night.md">docs/adr/0062-the-gate-is-guarded-at-its-entry-points-and-fuzzed-at-night.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.14.0, and <a href="https://github.com/guardana/control/tree/v0.14.0/docs">its documentation</a> is in its tag.</p>
+</main>
+<nav class="side" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</div>
+<footer class="foot"><div class="wrap row">
+  <p>Guardana Control · Apache-2.0</p>
+  <ul>
+    <li><a href="https://github.com/guardana/control">GitHub</a></li>
+    <li><a href="https://github.com/guardana/control/releases">Releases</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/SECURITY.md">Security</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/LICENSE">Licence Apache-2.0</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/TRADEMARKS.md">Trademarks</a></li>
+  </ul>
+</div></footer>
+</body>
+</html>

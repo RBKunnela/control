@@ -2,7 +2,9 @@
 # shellcheck source-path=SCRIPTDIR
 # Runs the whole gate, cold, over exactly what a commit holds: `git archive` of
 # the commit into a scratch directory, never the working tree or the index,
-# which can differ from the commit by a file staged, deleted or left out. A
+# which can differ from the commit by a file staged, deleted or left out. After
+# make quality it fuzzes every target, which pull requests leave to the nightly
+# run (ADR-0062), so a release commit is fuzzed before it is tagged. A
 # green run leaves a stamp under the repository's git directory that
 # scripts/pre-push.sh requires before the commit is pushed to main or tagged as
 # a release.
@@ -166,6 +168,15 @@ last="$(tail -n 1 "${log}")"
 if [[ ${rc} -ne 0 || "${last}" != "quality: green" ]]; then
   grep -nE '^(FAIL|--- FAIL)|Error [0-9]|panic:|^test-report:' "${log}" | head -n 20 >&2 || true
   die "${sha} is not green (exit ${rc}, last line: ${last}); nothing stamped"
+fi
+
+printf 'gate-commit: %s: every fuzz target fuzzed on its archive\n' "${sha}" | tee -a "${log}"
+rc=0
+(cd "${tree}" && "${clean[@]}" make GO=go fuzz-smoke) >>"${log}" 2>&1 || rc=$?
+fuzzed="$(tail -n 1 "${log}")"
+if [[ ${rc} -ne 0 || ! "${fuzzed}" =~ ^fuzz-smoke:\ [1-9][0-9]*\ target\(s\)\ run\ for\  ]]; then
+  tail -n 20 "${log}" >&2
+  die "${sha}: the fuzz run is not green (exit ${rc}, last line: ${fuzzed}); nothing stamped"
 fi
 printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${last}" >"${stamps}/${sha}"
 printf 'gate-commit: %s green; stamped\n' "${sha}"

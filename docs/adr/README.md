@@ -70,3 +70,4 @@ request with `Status: proposed`, and set it to `accepted` when it merges.
 | [0059](0059-a-tools-classification-is-one-type-checked-when-it-loads.md) | A tool's classification is one type, checked when it loads |
 | [0060](0060-pkg-contract-exports-what-each-effect-class-requires.md) | `pkg/contract` exports what each effect class requires |
 | [0061](0061-an-obligations-parameters-are-the-catalogues.md) | An obligation's parameters are the catalogue's |
+| [0062](0062-the-gate-is-guarded-at-its-entry-points-and-fuzzed-at-night.md) | The gate is guarded at its entry points, and fuzzed at night |

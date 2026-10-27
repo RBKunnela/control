@@ -11,6 +11,10 @@ Amended by [ADR-0057](0057-an-external-mcp-client-runs-the-guide-on-every-pull-r
 a pull request is also gated on the external MCP client job, outside
 `make quality`, once the bootstrap applies the required checks.
 
+Amended by [ADR-0062](0062-the-gate-is-guarded-at-its-entry-points-and-fuzzed-at-night.md):
+the nightly run also fuzzes every target, and a pull request's gate checks
+only that each one compiles; the release commit's cold gate fuzzes too.
+
 ## Context
 
 ADR-0025 let the admin push to `main` directly. Each such commit was first

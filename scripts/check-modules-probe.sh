@@ -5,7 +5,7 @@
 # and scripts/fuzz-smoke.sh, a small root module and a nested module that
 # imports it through a replace, as a consumer example does, and runs the real
 # targets there with make:
-#   clean     vet, test, test-race, lint, tidy-check and fuzz-smoke each pass
+#   clean     vet, test, test-race, lint, tidy-check, fuzz-list and fuzz-smoke each pass
 #             and report two modules, with a go.work beside them naming the
 #             root alone and a go.mod under the nested module's testdata; test
 #             prints the reporter's transcript and its count of no skip
@@ -25,7 +25,8 @@
 #               tidy-check  a direct requirement marked indirect
 #               fuzz-smoke  a fuzz target whose seed fails
 #               fuzz-smoke  a fuzz target in a file a build constraint
-#                           leaves out, which go test passes unfuzzed
+#               and         leaves out, which go test passes unfuzzed
+#               fuzz-list
 #               fuzz-smoke  a fuzz target whose seed fails, with a comment
 #                           between func and its name, alone in its package
 #               fuzz-smoke  a test file the search cannot read, alone in its
@@ -289,6 +290,8 @@ run pass fuzz-smoke
 expect "fuzz-smoke: ./${nested} FuzzDouble for 1s"
 expect "fuzz-smoke: 2 module(s)"
 expect "fuzz-smoke: 2 target(s) run for 1s each"
+run pass fuzz-list
+expect "fuzz-smoke: 2 target(s) compiled on"
 
 plant zz_vet.go <<'EOF'
 package nested
@@ -442,6 +445,8 @@ EOF
 run fail fuzz-smoke "planted, left out by a build constraint"
 expect "fuzz-smoke: ./${nested} FuzzProbeConstrained is not compiled on"
 expect "fuzz-smoke: 1 of 3 target(s) not compiled on"
+run fail fuzz-list "planted, left out by a build constraint"
+expect "fuzz-smoke: 1 of 3 target(s) not compiled on"
 rm -f "${copy:?}/${nested:?}/zz_fuzz_constrained_test.go"
 
 mkdir -p "${copy}/${nested}/hidden"
@@ -483,7 +488,7 @@ fi
 chmod 0644 "${copy}/${nested}/unread/unread_test.go"
 rm -rf "${copy:?}/${nested:?}/unread"
 
-gate=(vet test test-race lint tidy-check fuzz-smoke)
+gate=(vet test test-race lint tidy-check fuzz-list fuzz-smoke)
 
 mv "${copy}/go.mod" "${copy}/go.mod.aside"
 for target in "${gate[@]}"; do

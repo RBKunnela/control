@@ -11,6 +11,27 @@ verify one.
 
 ## [Unreleased]
 
+### Changed
+
+- A pull request's gate no longer fuzzes: `make quality` runs the seeds of
+  every fuzz target in its tests and checks with `make fuzz-list` that each
+  target compiles, while the nightly run and the release commit's cold gate
+  fuzz each one for ten seconds. `docs-check` leaves `make quality`, whose
+  tests run the same packages
+  ([ADR-0062](docs/adr/0062-the-gate-is-guarded-at-its-entry-points-and-fuzzed-at-night.md)).
+
+### Fixed
+
+- A workflow step that wrote `SHELLOPTS=noexec` or `BASH_ENV` to
+  `$GITHUB_ENV` could make a later step's bash, the quality gate's among them,
+  run nothing and succeed. Every workflow now starts its steps in a bash that
+  ignores the shell's startup files, options and functions from the
+  environment; a script a step starts still reads them, and `make quality`
+  refuses them.
+- `make quality MAKEOVERRIDES= SHELL=/usr/bin/true` ran no check and exited 0:
+  the guard read the command line from `MAKEOVERRIDES`, which the command line
+  can empty. It now refuses every command-line variable but `GO` by its origin.
+
 ## [0.14.0] - 2026-10-25
 
 `supervise` no longer passes a run on evidence that may hide a call. A request

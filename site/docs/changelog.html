@@ -118,6 +118,27 @@
 signed and attested from its tag; <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a> shows how to
 verify one.</p>
 <h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.14.0...HEAD">Unreleased</a></h2>
+<h3 id="changed">Changed</h3>
+<ul>
+<li>A pull request's gate no longer fuzzes: <code>make quality</code> runs the seeds of
+every fuzz target in its tests and checks with <code>make fuzz-list</code> that each
+target compiles, while the nightly run and the release commit's cold gate
+fuzz each one for ten seconds. <code>docs-check</code> leaves <code>make quality</code>, whose
+tests run the same packages
+(<a href="/docs/adr/0062-the-gate-is-guarded-at-its-entry-points-and-fuzzed-at-night">ADR-0062</a>).</li>
+</ul>
+<h3 id="fixed">Fixed</h3>
+<ul>
+<li>A workflow step that wrote <code>SHELLOPTS=noexec</code> or <code>BASH_ENV</code> to
+<code>$GITHUB_ENV</code> could make a later step's bash, the quality gate's among them,
+run nothing and succeed. Every workflow now starts its steps in a bash that
+ignores the shell's startup files, options and functions from the
+environment; a script a step starts still reads them, and <code>make quality</code>
+refuses them.</li>
+<li><code>make quality MAKEOVERRIDES= SHELL=/usr/bin/true</code> ran no check and exited 0:
+the guard read the command line from <code>MAKEOVERRIDES</code>, which the command line
+can empty. It now refuses every command-line variable but <code>GO</code> by its origin.</li>
+</ul>
 <h2 id="0140---2026-10-25"><a href="https://github.com/guardana/control/releases/tag/v0.14.0">0.14.0</a> - 2026-10-25</h2>
 <p><code>supervise</code> no longer passes a run on evidence that may hide a call. A request
 whose trail is in doubt leaves not checked every rule that would read as
@@ -172,7 +193,7 @@ fingerprints were taken from; nothing this project ships uses them.</li>
 effect class
 (<a href="/docs/adr/0060-pkg-contract-exports-what-each-effect-class-requires">ADR-0060</a>).</li>
 </ul>
-<h3 id="fixed">Fixed</h3>
+<h3 id="fixed-1">Fixed</h3>
 <ul>
 <li><code>scripts/github-bootstrap.sh</code>'s preflight runs the docscheck test that
 holds <code>.github/CODEOWNERS</code> on every pull request, so it judges each file by
@@ -313,7 +334,7 @@ pass all 20 cases.</li>
 point's published metadata gives its identifier or evaluation endpoint as
 JSON <code>null</code>, as it does for any other value that is not a string.</li>
 </ul>
-<h3 id="changed">Changed</h3>
+<h3 id="changed-1">Changed</h3>
 <ul>
 <li>The <a href="/docs/reference/claude-code-hooks">built-in hook profile</a> is
 qualified on a newer release of its runtime too: all 20 cases passed on the
@@ -396,7 +417,7 @@ reference filesystem server, on every pull request
 The example now pins the server and its packages in a lockfile, and the
 guide installs it with <code>npm ci --ignore-scripts</code>.</li>
 </ul>
-<h3 id="fixed-1">Fixed</h3>
+<h3 id="fixed-2">Fixed</h3>
 <ul>
 <li>An enforcement receiver's <code>Serve</code> refuses any listener but the one its own
 <code>Listen</code> bound with the socket's lock held, and that one a second time, so
@@ -423,7 +444,7 @@ connections, so a second plane could remove its socket and take its clients
 Built for Solaris, illumos or AIX, which have no <code>flock</code>, the receiver now
 refuses to listen, and <code>doctor</code> checks the lock file as <code>run</code> would.</li>
 </ul>
-<h3 id="changed-1">Changed</h3>
+<h3 id="changed-2">Changed</h3>
 <ul>
 <li>A call is handed out only while the policy bundle it was decided under is
 still installed and fresh. A bundle replaced, or past its staleness budget,
@@ -478,7 +499,7 @@ to PyPI by trusted publishing, with no stored token, and reads the index
 back. The dry run uploads a development release to TestPyPI the same way,
 from <code>main</code>.</li>
 </ul>
-<h3 id="changed-2">Changed</h3>
+<h3 id="changed-3">Changed</h3>
 <ul>
 <li>A change reaches <code>main</code> as one squash-merged pull request whose gate is
 CI's <code>make quality</code>, a maintainer's own included; only a release commit is
@@ -496,7 +517,7 @@ for the commit a <code>v*</code> tag names, and for nothing else: a branch push 
 none. A <code>main</code> the remote does not hold yet counts every commit. The hook
 has a negative control, <code>make pre-push-probe</code>, in <code>make quality</code>.</li>
 </ul>
-<h3 id="fixed-2">Fixed</h3>
+<h3 id="fixed-3">Fixed</h3>
 <ul>
 <li>The enforcement receiver removes a socket left at its path only when a
 connection to it is refused. A timeout, a full backlog on Linux or a
@@ -588,7 +609,7 @@ qualifying coding-agent hooks, reviewing tool-definition changes,
 simulating candidate policies and reviewing findings with an incident
 export. None is built.</li>
 </ul>
-<h3 id="changed-3">Changed</h3>
+<h3 id="changed-4">Changed</h3>
 <ul>
 <li>On an <code>enforce_api</code> plane <code>/metrics</code> writes the enforcement API adapter's
 counts (<code>enforce_*</code>) and the flag <code>listener_enforce_api</code>, and leaves out the
@@ -633,7 +654,7 @@ and links to the policies and runnable example.</li>
 controlling how they act. The 1.0 goal is marked <code>planned</code> beside what the
 alpha does, and the declared repository description says the same.</li>
 </ul>
-<h3 id="fixed-3">Fixed</h3>
+<h3 id="fixed-4">Fixed</h3>
 <ul>
 <li><code>scripts/github-settings-check.sh</code> and the bootstrap, run by macOS's bash
 3.2 on a loaded machine, could build a declared ruleset as nothing and
@@ -734,7 +755,7 @@ a user writes or reads with the version this release writes, the versions it
 reads and its stability, held to the code's constants by a test. The wire
 contract's <code>1.0</code> is the one stable format; the product is still 0.x.</li>
 </ul>
-<h3 id="changed-4">Changed</h3>
+<h3 id="changed-5">Changed</h3>
 <ul>
 <li>The website names the published release, which <code>docs/docs.json</code> sets once a
 release is out, rather than the newest dated section of this file, and each
@@ -759,7 +780,7 @@ GitHub's <code>good first issue</code> and <code>help wanted</code>.</li>
 <li>CI's quality job may run 45 minutes; its fuzz smoke alone took 14 of the 30
 it had.</li>
 </ul>
-<h3 id="fixed-4">Fixed</h3>
+<h3 id="fixed-5">Fixed</h3>
 <ul>
 <li>A plane reading the pause file while a writer replaced it, as
 <code>guardana-control pause add</code> and <code>remove</code> and most editors do, turned the
@@ -844,7 +865,7 @@ line as well as colour. It shows each finding's calls and their neighbours,
 or with <code>--view-all</code> every call up to a bound
 (<a href="/docs/reference/run-view">run view</a>).</li>
 </ul>
-<h3 id="changed-5">Changed</h3>
+<h3 id="changed-6">Changed</h3>
 <ul>
 <li>Every reader of a route (<code>route sign</code>, <code>react</code>, a plane at start, <code>doctor</code> and
 the <code>stops</code> commands) refuses one that names a rule or a rule version outside
@@ -871,7 +892,7 @@ finding's id, so supervising a run again writes their findings as new
 records and alerts again. Neither may stop a run; the six that may stay at
 version <code>1</code>, so a route signed before still holds.</li>
 </ul>
-<h3 id="fixed-5">Fixed</h3>
+<h3 id="fixed-6">Fixed</h3>
 <ul>
 <li>A finding that rests on many events, such as ten thousand denials, was past
 the log's line bound and refused the whole write. It now cites ten
@@ -933,7 +954,7 @@ stopped run's children are not stopped. <code>doctor</code>, <code>/healthz</cod
 report the route and the list; <code>examples/refund-supervision/</code> stops one of
 two runs on a live plane and lifts the stop.</li>
 </ul>
-<h3 id="changed-6">Changed</h3>
+<h3 id="changed-7">Changed</h3>
 <ul>
 <li>The policy key and the freshness key, in the configuration and in
 <code>guardana-control policy renew</code>, are compared as points up to their sign:
@@ -965,7 +986,7 @@ the answer bound measures a slow client's progress in steps of that size.
 Linux grows a connection's buffer to megabytes, which cut off a client
 reading steadily but slowly.</li>
 </ul>
-<h3 id="fixed-6">Fixed</h3>
+<h3 id="fixed-7">Fixed</h3>
 <ul>
 <li>A plane whose policy floor is read back below the statement it confirmed,
 a copy restored from before its raise, counts the poll as refused under
@@ -1085,7 +1106,7 @@ suspected at most, and a skipped step is never confirmed. No plane reads a
 finding, and no finding stops a run. <code>examples/refund-supervision/</code> runs it
 on a live plane.</li>
 </ul>
-<h3 id="changed-7">Changed</h3>
+<h3 id="changed-8">Changed</h3>
 <ul>
 <li>An upstream's answer, wire error, listed item or tool definition that quotes
 a credential the plane sends reaches the agent as a fixed answer, never with
@@ -1100,7 +1121,7 @@ closing record keeps the upstream's outcome and hash, with <code>withheld:</code
 its protocol status. <code>doctor</code> names the values too short to scan, and
 <code>/metrics</code> counts withheld answers.</li>
 </ul>
-<h3 id="fixed-7">Fixed</h3>
+<h3 id="fixed-8">Fixed</h3>
 <ul>
 <li>A call that needs an approval, under a run an operator opened, was blocked
 with <code>EVIDENCE_UNAVAILABLE</code> on a live plane instead of held: the run's expiry
@@ -1154,7 +1175,7 @@ envelope's <code>trace_id</code> and <code>span_id</code>, so a trail can be joi
 runtime's traces. A missing or malformed value leaves both empty and changes
 nothing else.</li>
 </ul>
-<h3 id="changed-8">Changed</h3>
+<h3 id="changed-9">Changed</h3>
 <ul>
 <li>The plan follows <a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a>:
 MCP is one channel of several. The next milestone is one task under
@@ -1170,7 +1191,7 @@ release, which <code>make docs-gen</code> takes from this file. Documentation pa
 a menu above the content on narrow screens, and a wide table scrolls inside
 itself instead of breaking words.</li>
 </ul>
-<h3 id="fixed-8">Fixed</h3>
+<h3 id="fixed-9">Fixed</h3>
 <ul>
 <li>A stateful listener near its <code>listener.max_sessions</code> cap no longer refuses
 an open while the previous open's answer is still being written: a session
@@ -1302,7 +1323,7 @@ refuses the key. <code>/metrics</code> carries
 <li><code>guardana-control policy explain</code> prints a <code>clock</code> line: <code>usable</code>, or why
 the clock stopped the decision.</li>
 </ul>
-<h3 id="changed-9">Changed</h3>
+<h3 id="changed-10">Changed</h3>
 <ul>
 <li>
 <p><strong>Breaking:</strong> a plane's configuration needs five more keys:
@@ -1395,7 +1416,7 @@ seconds, which <code>doctor</code> now prints.</p>
 <code>policy.fail_open_read</code> lets a read run while the policy is unavailable.</p>
 </li>
 </ul>
-<h3 id="fixed-9">Fixed</h3>
+<h3 id="fixed-10">Fixed</h3>
 <ul>
 <li><code>runs list</code> and <code>runs close</code> no longer make an empty directory a runs
 directory; they refuse it, and only <code>runs open</code> makes one. A temporary file
@@ -1489,7 +1510,7 @@ use, and a profile for the MCP project's reference filesystem server that
 classifies its 14 tools and holds every write for approval
 (<a href="/docs/guides/connect-an-existing-mcp-setup">guides/connect-an-existing-mcp-setup.md</a>).</li>
 </ul>
-<h3 id="fixed-10">Fixed</h3>
+<h3 id="fixed-11">Fixed</h3>
 <ul>
 <li>A <code>tools/call</code> the plane blocked or held for a tool that declares an output
 schema reached the agent as a schema error from any client that checks
@@ -1542,12 +1563,12 @@ restart, and a held call resumes only from its own run. A refused token is
 answered with HTTP 401 or the JSON-RPC error <code>-31102</code>, and the refusals are
 counted by cause. A plane without <code>runs.dir</code> is unchanged.</li>
 </ul>
-<h3 id="changed-10">Changed</h3>
+<h3 id="changed-11">Changed</h3>
 <ul>
 <li>The release job waits for a maintainer to approve it in the <code>release</code>
 environment before it builds; <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a> has the step.</li>
 </ul>
-<h3 id="fixed-11">Fixed</h3>
+<h3 id="fixed-12">Fixed</h3>
 <ul>
 <li>A plane with a stdio listener wrote its start lines, the mode and the count
 of held calls lost to a restart among them, to standard output, which is the agent's protocol stream,
@@ -1564,7 +1585,7 @@ are a demo archive that runs without Go, an evidence export another program
 resumes by cursor, and the documentation on the website.
 <a href="/docs/status">docs/status.md</a> says what is <code>implemented</code> and what is
 <code>experimental</code>. Nothing here is a security boundary yet.</p>
-<h3 id="changed-11">Changed</h3>
+<h3 id="changed-12">Changed</h3>
 <ul>
 <li><code>mode</code> has no default: a configuration that names no enforcement mode is
 refused at load instead of starting a plane in <code>OBSERVE</code>, which stops nothing
@@ -1600,7 +1621,7 @@ cannot read, and a trailer; <code>examples/evidence-report</code> rebuilds each 
 lifecycle from it without importing the project's internals
 (<a href="/docs/adr/0035-a-versioned-evidence-export-and-a-bounded-query">ADR-0035</a>).</li>
 </ul>
-<h3 id="fixed-12">Fixed</h3>
+<h3 id="fixed-13">Fixed</h3>
 <ul>
 <li>A <code>restrict_resources</code> obligation with a <code>prefix</code> let a resource id such
 as <code>/srv/data/../../etc/passwd</code>, <code>/srv/data/%2e%2e/etc</code> or
@@ -1662,7 +1683,7 @@ and where it stops; what a record holds, where it goes and how long it
 stays (<a href="/docs/concepts/threat-model">docs/concepts/threat-model.md</a>,
 <a href="/docs/concepts/privacy">docs/concepts/privacy.md</a>).</li>
 </ul>
-<h3 id="changed-12">Changed</h3>
+<h3 id="changed-13">Changed</h3>
 <ul>
 <li>A stdio upstream no longer inherits the plane's environment. It gets
 <code>PATH</code>, <code>HOME</code>, <code>LANG</code>, <code>LC_ALL</code>, <code>TMPDIR</code> and <code>USER</code>, each where the
@@ -1679,7 +1700,7 @@ literal only, as <code>pdp.allow_plaintext</code> already did and as
 states. A plaintext endpoint on any other host, a name such as <code>localhost</code>
 included, is refused at start.</li>
 </ul>
-<h3 id="fixed-13">Fixed</h3>
+<h3 id="fixed-14">Fixed</h3>
 <ul>
 <li>A tool whose definition holds a fractional number, such as
 <code>&quot;default&quot;: 0.7</code>, is fingerprinted and can be classified, and a call

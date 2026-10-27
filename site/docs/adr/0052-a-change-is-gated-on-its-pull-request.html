@@ -118,6 +118,9 @@ changes reach <code>main</code>, where the gate runs, and when a release is cut.
 <p>Amended by <a href="/docs/adr/0057-an-external-mcp-client-runs-the-guide-on-every-pull-request">ADR-0057</a>:
 a pull request is also gated on the external MCP client job, outside
 <code>make quality</code>, once the bootstrap applies the required checks.</p>
+<p>Amended by <a href="/docs/adr/0062-the-gate-is-guarded-at-its-entry-points-and-fuzzed-at-night">ADR-0062</a>:
+the nightly run also fuzzes every target, and a pull request's gate checks
+only that each one compiles; the release commit's cold gate fuzzes too.</p>
 <h2 id="context">Context</h2>
 <p>ADR-0025 let the admin push to <code>main</code> directly. Each such commit was first
 gated on the maintainer's machine by <code>scripts/gate-commit.sh</code>: the whole

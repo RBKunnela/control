@@ -10,7 +10,12 @@ import (
 const (
 	ciWorkflowPath = ".github/workflows/ci.yml"
 	ciGateJob      = "quality"
-	ciGateCommand  = "env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make quality GO=go"
+	ciGateCommand  = "/usr/bin/env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make quality GO=go"
+	// ciShell is the shell every workflow's run steps start in: -p keeps the
+	// step's bash from reading the startup files, options and functions an
+	// earlier step can write through $GITHUB_ENV. Its first word is bash, the
+	// one actionlint shellchecks a run block under.
+	ciShell = "bash --noprofile --norc -p -e -o pipefail {0}"
 )
 
 // The keys the gate job and its gate step may carry. Anything else can skip
@@ -210,12 +215,12 @@ func workflowLevelProblems(root *yamlNode) []string {
 	for _, defaults := range root.children("defaults") {
 		for _, run := range defaults.kids {
 			for _, kid := range run.kids {
-				if run.key != "run" || kid.key != "shell" || kid.value != "bash" {
-					problems = append(problems, fmt.Sprintf("line %d: the workflow default %s.%s is %q, want only run.shell: bash", kid.line, run.key, kid.key, kid.value))
+				if run.key != "run" || kid.key != "shell" || kid.value != ciShell {
+					problems = append(problems, fmt.Sprintf("line %d: the workflow default %s.%s is %q, want only run.shell: %s", kid.line, run.key, kid.key, kid.value, ciShell))
 				}
 			}
 			if run.key != "run" || len(run.kids) == 0 {
-				problems = append(problems, fmt.Sprintf("line %d: the workflow default %s is not run.shell: bash", run.line, run.key))
+				problems = append(problems, fmt.Sprintf("line %d: the workflow default %s is not run.shell: %s", run.line, run.key, ciShell))
 			}
 		}
 	}
@@ -394,7 +399,7 @@ permissions:
 defaults:
   run:
     # a comment
-    shell: bash
+    shell: bash --noprofile --norc -p -e -o pipefail {0}
 
 jobs:
   quality:
@@ -413,7 +418,7 @@ jobs:
           printf '%s\n' "${pins}" >>"$GITHUB_ENV"
           if: this is script text, not a key
       - name: Run the quality gate
-        run: env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make quality GO=go
+        run: /usr/bin/env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make quality GO=go
 
   other:
     if: false
@@ -433,9 +438,10 @@ func TestCIGateProblems(t *testing.T) {
 	cases := map[string]struct{ old, replacement, want string }{
 		"the quick gate":                {gateRun + "\n", "run: make quality-quick\n\n", "no step of the quality job runs exactly \"" + ciGateCommand + "\""},
 		"the gate in the caller's env":  {gateRun + "\n", "run: make quality GO=go\n\n", "runs exactly"},
-		"the gate with MAKEFLAGS kept":  {gateRun + "\n", "run: env -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make quality GO=go\n\n", "runs exactly"},
-		"the gate with MAKEFILES kept":  {gateRun + "\n", "run: env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS make quality GO=go\n\n", "runs exactly"},
-		"the gate with GO from the env": {gateRun + "\n", "run: env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make quality\n\n", "runs exactly"},
+		"the gate with MAKEFLAGS kept":  {gateRun + "\n", "run: /usr/bin/env -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make quality GO=go\n\n", "runs exactly"},
+		"the gate with MAKEFILES kept":  {gateRun + "\n", "run: /usr/bin/env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS make quality GO=go\n\n", "runs exactly"},
+		"the gate with GO from the env": {gateRun + "\n", "run: /usr/bin/env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make quality\n\n", "runs exactly"},
+		"env from the path":             {gateRun + "\n", "run: env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make quality GO=go\n\n", "runs exactly"},
 		"the gate with a fallback":      {gateRun + "\n", "run: " + ciGateCommand + " || true\n\n", "runs exactly"},
 		"the gate in a block":           {gateRun + "\n", "run: |\n          " + ciGateCommand + "\n\n", "runs exactly"},
 		"the gate quoted":               {gateRun + "\n", "run: \"" + ciGateCommand + "\"\n\n", "runs exactly"},
@@ -454,7 +460,8 @@ func TestCIGateProblems(t *testing.T) {
 		"a quoted if on the job":        {jobHead, jobHead + "    'if': false\n", "the quality job carries 'if'"},
 		"a merge key on the job":        {jobHead, jobHead + "    <<: *skip\n", "an alias or merge key"},
 		"a job default shell":           {jobHead, jobHead + "    defaults:\n      run:\n        shell: true {0}\n", "the quality job carries defaults"},
-		"a workflow default shell":      {"    shell: bash\n", "    shell: true {0}\n", `the workflow default run.shell is "true {0}"`},
+		"a workflow default shell":      {"    shell: " + ciShell + "\n", "    shell: true {0}\n", `the workflow default run.shell is "true {0}"`},
+		"GitHub's own bash":             {"    shell: " + ciShell + "\n", "    shell: bash\n", `the workflow default run.shell is "bash"`},
 		"a workflow env":                {"permissions:\n", "env:\n  MAKEFLAGS: -i\npermissions:\n", "the workflow sets env"},
 		"no gate job":                   {"  quality:\n", "  quality-renamed:\n", "found 0 quality job(s)"},
 		"two gate jobs":                 {"  other:\n", "  quality:\n", "found 2 quality job(s)"},

@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # shellcheck source-path=SCRIPTDIR
-# Runs every fuzz target briefly, so a seed corpus that stops building is
-# caught by the ordinary gate rather than by a long fuzzing session.
+# Runs every fuzz target briefly, so a target that finds a failing input soon
+# is caught by the nightly run and the release commit's cold gate rather than
+# by a long fuzzing session. With --list it only checks that every target
+# declared in the source is compiled on this platform, fuzzes nothing and
+# writes nothing: that is the part `make quality` runs (fuzz-list), since the
+# seeds already run in its test targets.
 #
 # Not read-only on failure: `go test -fuzz` writes the minimized failing input
 # to <package>/testdata/fuzz/<FuzzName>/ inside the working tree, and the go
-# command has no flag to send it elsewhere. This target is therefore the one
-# step of `make quality` that can leave a new file behind. The failure message
-# below names the directory so the file is not found later by surprise.
+# command has no flag to send it elsewhere. The failure message below names
+# the directory so the file is not found later by surprise.
 set -euo pipefail
 
 _FUZZ_SMOKE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
@@ -25,6 +28,10 @@ cd "${root}"
 export GOWORK=off
 
 duration="${1:-10s}"
+list_only=false
+if [[ "${duration}" == --list ]]; then
+  list_only=true
+fi
 
 files="$(repo_files '*_test.go')"
 listed="$(go_modules)"
@@ -161,6 +168,12 @@ done
 if [[ ${missing} -ne 0 ]]; then
   printf 'fuzz-smoke: %d of %d target(s) not compiled on %s; refusing to count them as run\n' "${missing}" "${#declared[@]}" "${platform}" >&2
   exit 1
+fi
+
+if [[ "${list_only}" == true ]]; then
+  printf 'fuzz-smoke: %d module(s)\n' "${#modules[@]}"
+  printf 'fuzz-smoke: %d target(s) compiled on %s, none fuzzed\n' "${#targets[@]}" "${platform}"
+  exit 0
 fi
 
 for target in "${targets[@]}"; do

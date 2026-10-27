@@ -14,8 +14,11 @@ concurrency:
 
 defaults:
   run:
-    # GitHub's "bash" adds -o pipefail, which the bare default shell does not.
-    shell: bash
+    # -p keeps the step's bash from reading the startup files, options and
+    # functions an earlier step can set through $GITHUB_ENV; -o pipefail fails
+    # a step on a command that fails upstream of a pipe. The first word stays
+    # bash, which actionlint needs to shellcheck each run block (ADR-0062).
+    shell: bash --noprofile --norc -p -e -o pipefail {0}
 
 jobs:
   title:

@@ -48,7 +48,10 @@ endif
 # run; and GOFLAGS would change what every go command builds and tests. Each
 # is refused before any recipe, however it was set, since an earlier CI step
 # can set any of them through the environment. GO=go is the one command-line
-# variable allowed, so a caller can name the go it means.
+# variable allowed, so a caller can name the go it means. A command line can
+# also name a makefile read after this one, which can replace any recipe and
+# which no makefile can refuse: the gate's result holds as CI and
+# scripts/gate-commit.sh start make (ADR-0062).
 #
 # A variable from the environment reaches the recipes' shell as written, not
 # as make expands it, so these guards read each one's value unexpanded: a
@@ -69,8 +72,11 @@ endif
 ifneq ($(GO),go)
 $(error make quality runs go itself; GO is $(GO))
 endif
-ifneq ($(strip $(filter-out GO=go,$(MAKEOVERRIDES))),)
-$(error make quality sets no variable but GO=go: $(filter-out GO=go,$(MAKEOVERRIDES)))
+# By origin, not from MAKEOVERRIDES, which a command-line MAKEOVERRIDES=
+# empties while the variables it listed keep their values.
+command_line := $(sort $(filter-out GO,$(foreach v,$(.VARIABLES),$(if $(filter command line,$(origin $(v))),$(v)))))
+ifneq ($(strip $(command_line)),)
+$(error make quality sets no variable on the command line but GO=go: $(strip $(command_line)))
 endif
 ifneq ($(origin FUZZTIME) $(origin RANGE),file file)
 $(error make quality takes FUZZTIME and RANGE from this Makefile; FUZZTIME comes from the $(origin FUZZTIME), RANGE from the $(origin RANGE))
@@ -158,7 +164,7 @@ GO_SRC := . $(REPO_FILES); repo_files '*.go' | { grep -v '^api/gen/' || true; }
 # A bare `make` must not run bootstrap, which installs software.
 .DEFAULT_GOAL := quality-quick
 
-.PHONY: bootstrap fmt fmt-check vet lint test test-race fuzz-smoke security scan-repo-files-probe \
+.PHONY: bootstrap fmt fmt-check vet lint test test-race fuzz-list fuzz-smoke security scan-repo-files-probe \
         proto proto-check proto-breaking docs-check docs-gen docs-impact tidy-check check-brand \
         release-snapshot check-demo-archive scan-binaries scan-binaries-probe \
         check-imports check-imports-probe check-modules-probe check-sizes check-actions \
@@ -221,6 +227,12 @@ test:
 # otherwise return before m.Run and pass with no test run.
 test-race:
 	$(call each_module,$(GO) -C "$$dir" test -count=1 -race -json $$pkgs | $(GO) run scripts/test-report.go,test-race)
+
+# The seeds of every fuzz target run in test and test-race; quality checks
+# that every target declared is compiled, and the nightly run and the release
+# commit's cold gate fuzz each one (ADR-0062).
+fuzz-list:
+	$(CD) scripts/fuzz-smoke.sh --list
 
 fuzz-smoke:
 	$(CD) scripts/fuzz-smoke.sh $(FUZZTIME)
@@ -420,12 +432,13 @@ quality-quick: fmt-check vet test check-imports
 # MAKEFLAGS or GNUMAKEFLAGS) and would still print the pass line, and that
 # option never reaches a make started from a recipe. The second make starts
 # with no flags from this one. A makefile named after this one is read after
-# the guard, so the makefiles are counted again here.
+# the guard and can redefine a variable the recipes read, so the makefiles are
+# counted again here; one that replaces this recipe is beyond the count.
 quality:
 	@[ $(words $(MAKEFILE_LIST)) = 1 ] || { echo "make quality reads one makefile, this one; $(words $(MAKEFILE_LIST)) were read" >&2; exit 1; }
 	@MAKEFLAGS= GNUMAKEFLAGS= MFLAGS= $(MAKE) --no-print-directory -f "$$REPO_ROOT/$(notdir $(firstword $(MAKEFILE_LIST)))" \
-	  fmt-check vet lint test test-race fuzz-smoke security scan-repo-files-probe proto-check \
-	  docs-check tidy-check check-imports check-imports-probe check-modules-probe check-brand \
+	  fmt-check vet lint test test-race fuzz-list security scan-repo-files-probe proto-check \
+	  tidy-check check-imports check-imports-probe check-modules-probe check-brand \
 	  check-sizes check-actions check-shell scan-binaries-probe pre-push-probe check-python \
 	  check-python-probe
 	@echo "quality: green"

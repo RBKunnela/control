@@ -67,7 +67,8 @@ func TestTheGateRefusesALoosenedMake(t *testing.T) {
 		{"another go through the environment", []string{"-n", "quality"}, []string{"GO=true"}, "make quality runs go itself; GO is true"},
 		{"another go on the command line", []string{"-n", "quality", "GO=true"}, nil, "make quality runs go itself; GO is true"},
 		{"another make through the environment", []string{"-n", "quality"}, []string{"MAKE=true"}, "MAKE comes from the environment"},
-		{"a variable on the command line", []string{"-n", "quality", "PKGS=./cmd/..."}, nil, "sets no variable but GO=go: PKGS=./cmd/..."},
+		{"a variable on the command line", []string{"-n", "quality", "PKGS=./cmd/..."}, nil, "sets no variable on the command line but GO=go: PKGS"},
+		{"the overrides emptied and the shell replaced", []string{"quality", "MAKEOVERRIDES=", "SHELL=/usr/bin/true"}, nil, "sets no variable on the command line but GO=go: MAKEOVERRIDES SHELL"},
 		{"a fuzz time through the environment", []string{"-n", "quality"}, []string{"FUZZTIME=1ns"}, "FUZZTIME comes from the environment"},
 		{"a range through the environment", []string{"-n", "quality"}, []string{"RANGE=HEAD..HEAD"}, "RANGE from the environment"},
 		{"go named on the command line passes to the next check", []string{"-n", "quality", "GO=go"}, nil, "MAKEFLAGS asks for a dry run"},
@@ -218,7 +219,9 @@ func makeReadsExtraFile(t *testing.T, makeBin, flags string) bool {
 // never prints the gate's pass line. Environment overrides, an eval, and a
 // makefile read before or after this one are refused, and so are a
 // MAKECMDGOALS make did not set itself and a .DEFAULT_GOAL the Makefile did
-// not, for any goal. It runs in a stand-in
+// not, for any goal. A makefile read after this one that replaces quality's
+// recipe is beyond every guard (ADR-0062), so empty.mk defines nothing. It
+// runs in a stand-in
 // tree, so a broken gate cannot start the real checks. A make with no eval
 // option refuses the eval itself, and the case asserts only that.
 func TestTheGateRunsTheChecksMakeWasToldToSkip(t *testing.T) {

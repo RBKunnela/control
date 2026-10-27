@@ -11,6 +11,7 @@ on:
     paths:
       - .github/workflows/nightly.yml
       - scripts/test-race-loaded.sh
+      - scripts/fuzz-smoke.sh
 
 # Read-only by default. The one job that writes says so at job level.
 permissions:
@@ -22,8 +23,11 @@ concurrency:
 
 defaults:
   run:
-    # GitHub's "bash" adds -o pipefail, which the bare default shell does not.
-    shell: bash
+    # -p keeps the step's bash from reading the startup files, options and
+    # functions an earlier step can set through $GITHUB_ENV; -o pipefail fails
+    # a step on a command that fails upstream of a pipe. The first word stays
+    # bash, which actionlint needs to shellcheck each run block (ADR-0062).
+    shell: bash --noprofile --norc -p -e -o pipefail {0}
 
 jobs:
   race:
@@ -49,9 +53,29 @@ jobs:
       - name: Run the race tests with every processor busy
         run: env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS scripts/test-race-loaded.sh
 
+  fuzz:
+    name: Fuzz every target
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Fuzz each target for ten seconds
+        # The seeds run in make quality's tests on every pull request; this
+        # searches past them (ADR-0062).
+        run: /usr/bin/env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make fuzz-smoke
+
   report:
     name: Report a red night
-    needs: race
+    needs: [race, fuzz]
     # Only a scheduled run speaks for main; a pull request's or a manual run's
     # failure is read where it was started.
     if: ${{ failure() && github.event_name == 'schedule' }}
@@ -66,9 +90,11 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           HEAD_SHA: ${{ github.sha }}
+          RACE: ${{ needs.race.result }}
+          FUZZ: ${{ needs.fuzz.result }}
         run: |
-          title="The nightly race run under load is red"
-          body="The race tests failed under processor load on ${HEAD_SHA}: ${RUN_URL}
+          title="The nightly run is red"
+          body="On ${HEAD_SHA} the race tests under processor load ended ${RACE} and the fuzzing ${FUZZ}: ${RUN_URL}
 
           A failure here is reproduced and fixed like any defect; it is not rerun until it passes."
           open="$(gh issue list --state open --search "in:title \"${title}\"" --json number,title \
