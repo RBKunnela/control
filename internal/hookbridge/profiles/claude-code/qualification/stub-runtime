@@ -6,18 +6,18 @@ profile's fixtures describe it. Nothing it does is evidence about the
 runtime: a case that passes here shows only that the harness and the bridge
 agree with this model.
 
-It makes the one tool call it is given. It builds the PreToolUse event in the
-fixtures' shape and runs every matching hook of the settings: exit 2 blocks,
-a failure (another status, a signal, a timeout, a command that cannot start)
-blocks only under onFailure "block", and a JSON reply's updatedInput replaces
-the input. Each hook is handed the input the call was proposed with. An
-allowed call has its effect here (Write, Edit, Read, Bash, or an MCP tool
+It makes the tool calls it is given, one after another. For each it builds
+the PreToolUse event in the fixtures' shape and runs every matching hook of
+the settings: exit 2 blocks, a failure (another status, a signal, a timeout,
+a command that cannot start) blocks only under onFailure "block", and a JSON
+reply's updatedInput replaces the input. Each hook is handed the input the
+call was proposed with. An allowed call has its effect here (Write, Edit, Read, Bash, or an MCP tool
 through the server --mcp-config names), and PostToolUse or PostToolUseFailure
 hooks then get the input that ran. It writes one stream-json line per step,
 in the runtime's shape, so the harness reads both alike.
 
     stub-runtime --settings <file> --project <dir> --tool <name> --input <json>
-                 [--mcp-config <file>]
+                 [--tool <name> --input <json>]... [--mcp-config <file>]
     stub-runtime --version
 """
 
@@ -29,17 +29,24 @@ import signal
 import subprocess
 import sys
 import uuid
+from typing import Any
 
 VERSION = "stub-runtime 1 (a model of the hook protocol, not the runtime)"
 DEFAULT_TIMEOUT = 60
+# A hook exits with BLOCK to block a call; a status above SIGNALLED is a signal.
+BLOCK = 2
+SIGNALLED = 128
 
 
-def emit(line: dict) -> None:
+def emit(line: Any) -> None:
     sys.stdout.write(json.dumps(line) + "\n")
     sys.stdout.flush()
 
 
-def matches(matcher, tool: str) -> bool:
+Settings = dict[str, Any]
+
+
+def matches(matcher: Any, tool: str) -> bool:
     if matcher in (None, "", "*"):
         return True
     if re.fullmatch(r"[A-Za-z0-9_\-, |]+", matcher):
@@ -47,21 +54,21 @@ def matches(matcher, tool: str) -> bool:
     return re.search(matcher, tool) is not None
 
 
-def hooks_for(settings: dict, event: str, tool: str) -> list:
+def hooks_for(settings: Settings, event: str, tool: str) -> list[Any]:
     if settings.get("disableAllHooks") is True:
         return []
-    out = []
+    out: list[Any] = []
     for group in settings.get("hooks", {}).get(event, []):
         if matches(group.get("matcher"), tool):
             out.extend(h for h in group.get("hooks", []) if h.get("type") == "command")
     return out
 
 
-def run_hook(hook: dict, event: dict, cwd: str):
+def run_hook(hook: Any, event: Settings, cwd: str) -> tuple[int | None, bytes, bytes]:
     """Runs one hook; returns (status, stdout, stderr), status None when it did not finish."""
     timeout = hook.get("timeout", DEFAULT_TIMEOUT)
     try:
-        proc = subprocess.Popen(
+        proc = subprocess.Popen(  # noqa: S603
             ["/bin/sh", "-c", hook["command"]],
             cwd=cwd,
             stdin=subprocess.PIPE,
@@ -77,18 +84,18 @@ def run_hook(hook: dict, event: dict, cwd: str):
         os.killpg(proc.pid, signal.SIGKILL)
         proc.communicate()
         return None, b"", b"hook timed out"
-    if proc.returncode < 0 or proc.returncode > 128:
+    if proc.returncode < 0 or proc.returncode > SIGNALLED:
         return None, out, err
     return proc.returncode, out, err
 
 
-def admit(settings: dict, event: dict, cwd: str):
+def admit(settings: Settings, event: Settings, cwd: str) -> tuple[bool, Any, str]:
     """Runs the PreToolUse hooks; returns (allowed, input, reason)."""
     tool_input, reasons = event["tool_input"], []
     allowed = True
     for hook in hooks_for(settings, "PreToolUse", event["tool_name"]):
         status, out, err = run_hook(hook, event, cwd)
-        if status == 2:
+        if status == BLOCK:
             allowed = False
             reasons.append(err.decode("utf-8", "replace").strip())
             continue
@@ -96,7 +103,7 @@ def admit(settings: dict, event: dict, cwd: str):
             if hook.get("onFailure") == "block":
                 allowed = False
                 how = "timed out" if err == b"hook timed out" else "failed"
-                reasons.append('%s; blocking because onFailure is "block"' % how)
+                reasons.append(f'{how}; blocking because onFailure is "block"')
             continue
         if not out.strip().startswith(b"{"):
             continue
@@ -112,20 +119,26 @@ def admit(settings: dict, event: dict, cwd: str):
     return allowed, tool_input, "; ".join(reasons)
 
 
-def mcp_call(config: str, tool: str, arguments: dict) -> str:
+def mcp_call(config: str, tool: str, arguments: Any) -> str:
     _, server, name = tool.split("__", 2)
     with open(config, encoding="utf-8") as f:
         spec = json.load(f)["mcpServers"][server]
-    proc = subprocess.Popen(
-        [spec["command"], *spec.get("args", [])], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True
+    proc = subprocess.Popen(  # noqa: S603
+        [spec["command"], *spec.get("args", [])],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        text=True,
     )
+    stdin, stdout = proc.stdin, proc.stdout
+    if stdin is None or stdout is None:
+        raise RuntimeError("the MCP server's pipes were not made")
 
-    def send(msg: dict) -> None:
-        proc.stdin.write(json.dumps(msg) + "\n")
-        proc.stdin.flush()
+    def send(msg: Settings) -> None:
+        stdin.write(json.dumps(msg) + "\n")
+        stdin.flush()
 
-    def answer(want: int) -> dict:
-        for line in proc.stdout:
+    def answer(want: int) -> Any:
+        for line in stdout:
             msg = json.loads(line)
             if msg.get("id") == want:
                 return msg
@@ -133,21 +146,34 @@ def mcp_call(config: str, tool: str, arguments: dict) -> str:
 
     try:
         info = {"name": "stub-runtime", "version": "1"}
-        send({"jsonrpc": "2.0", "id": 1, "method": "initialize",
-              "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": info}})
+        send(
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": info},
+            }
+        )
         answer(1)
         send({"jsonrpc": "2.0", "method": "notifications/initialized"})
-        send({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": name, "arguments": arguments}})
+        send(
+            {
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/call",
+                "params": {"name": name, "arguments": arguments},
+            }
+        )
         result = answer(2)
     finally:
-        proc.stdin.close()
+        stdin.close()
         proc.wait(timeout=10)
     if "error" in result or result.get("result", {}).get("isError"):
         raise RuntimeError(json.dumps(result))
     return json.dumps(result["result"].get("content", []))
 
 
-def effect(tool: str, tool_input: dict, cwd: str, mcp_config) -> str:
+def effect(tool: str, tool_input: Any, cwd: str, mcp_config: str | None) -> str:
     """Has the call's effect; raises on a failed call."""
     if tool.startswith("mcp__"):
         if not mcp_config:
@@ -156,7 +182,7 @@ def effect(tool: str, tool_input: dict, cwd: str, mcp_config) -> str:
     if tool == "Write":
         with open(tool_input["file_path"], "w", encoding="utf-8") as f:
             f.write(tool_input["content"])
-        return "File created successfully at: " + tool_input["file_path"]
+        return f"File created successfully at: {tool_input['file_path']}"
     if tool == "Edit":
         with open(tool_input["file_path"], encoding="utf-8") as f:
             text = f.read()
@@ -169,11 +195,44 @@ def effect(tool: str, tool_input: dict, cwd: str, mcp_config) -> str:
         with open(tool_input["file_path"], encoding="utf-8") as f:
             return f.read()
     if tool == "Bash":
-        ran = subprocess.run(["/bin/sh", "-c", tool_input["command"]], cwd=cwd, capture_output=True, text=True, check=False)
+        ran = subprocess.run(  # noqa: S603
+            ["/bin/sh", "-c", tool_input["command"]],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
         if ran.returncode != 0:
-            raise RuntimeError("Exit code %d\n%s" % (ran.returncode, ran.stderr))
+            raise RuntimeError(f"Exit code {ran.returncode}\n{ran.stderr}")
         return ran.stdout
     raise RuntimeError("the stub runs no " + tool)
+
+
+def call(settings: Settings, base: Settings, tool: str, proposed: Any, mcp: str | None) -> None:
+    """Makes one tool call: its PreToolUse hooks, its effect when they allow
+    it, its completion hooks, and the stream lines of the call and its answer."""
+    session, cwd = base["session_id"], base["cwd"]
+    call_id = "toolu_stub_" + uuid.uuid4().hex[:24]
+    content = [{"type": "tool_use", "id": call_id, "name": tool, "input": proposed}]
+    emit({"type": "assistant", "session_id": session, "message": {"content": content}})
+
+    pre = dict(base, hook_event_name="PreToolUse", tool_name=tool, tool_input=proposed)
+    pre["tool_use_id"] = call_id
+    allowed, ran_input, reason = admit(settings, pre, cwd)
+    if not allowed:
+        result, failed = "PreToolUse hook blocked the call: " + reason, True
+    else:
+        post = dict(base, tool_name=tool, tool_input=ran_input, tool_use_id=call_id)
+        try:
+            result, failed = effect(tool, ran_input, cwd, mcp), False
+            post.update(hook_event_name="PostToolUse", tool_response={"output": result[:1000]})
+        except (OSError, RuntimeError, KeyError, ValueError) as e:
+            result, failed = str(e), True
+            post.update(hook_event_name="PostToolUseFailure", error=str(e), is_interrupt=False)
+        for hook in hooks_for(settings, post["hook_event_name"], tool):
+            run_hook(hook, post, cwd)
+    answer = {"type": "tool_result", "tool_use_id": call_id, "content": result, "is_error": failed}
+    emit({"type": "user", "session_id": session, "message": {"content": [answer]}})
 
 
 def main() -> int:
@@ -183,42 +242,25 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="stub-runtime")
     parser.add_argument("--settings", required=True)
     parser.add_argument("--project", required=True)
-    parser.add_argument("--tool", required=True)
-    parser.add_argument("--input", required=True)
+    parser.add_argument("--tool", action="append", required=True)
+    parser.add_argument("--input", action="append", required=True)
     parser.add_argument("--mcp-config")
     args = parser.parse_args()
+    if len(args.tool) != len(args.input):
+        parser.error("each --tool takes one --input")
     with open(args.settings, encoding="utf-8") as f:
         settings = json.load(f)
     cwd = os.path.realpath(args.project)
     session = str(uuid.uuid4())
-    call_id = "toolu_stub_" + uuid.uuid4().hex[:24]
     base = {
         "session_id": session,
         "transcript_path": os.path.join(cwd, ".stub-transcript.jsonl"),
         "cwd": cwd,
         "permission_mode": "default",
     }
-    proposed = json.loads(args.input)
     emit({"type": "system", "subtype": "init", "session_id": session, "cwd": cwd, "model": VERSION})
-    emit({"type": "assistant", "session_id": session,
-          "message": {"content": [{"type": "tool_use", "id": call_id, "name": args.tool, "input": proposed}]}})
-
-    pre = dict(base, hook_event_name="PreToolUse", tool_name=args.tool, tool_input=proposed, tool_use_id=call_id)
-    allowed, ran_input, reason = admit(settings, pre, cwd)
-    if not allowed:
-        result, failed = "PreToolUse hook blocked the call: " + reason, True
-    else:
-        post = dict(base, tool_name=args.tool, tool_input=ran_input, tool_use_id=call_id)
-        try:
-            result, failed = effect(args.tool, ran_input, cwd, args.mcp_config), False
-            post.update(hook_event_name="PostToolUse", tool_response={"output": result[:1000]})
-        except (OSError, RuntimeError, KeyError, ValueError) as e:
-            result, failed = str(e), True
-            post.update(hook_event_name="PostToolUseFailure", error=str(e), is_interrupt=False)
-        for hook in hooks_for(settings, post["hook_event_name"], args.tool):
-            run_hook(hook, post, cwd)
-    emit({"type": "user", "session_id": session,
-          "message": {"content": [{"type": "tool_result", "tool_use_id": call_id, "content": result, "is_error": failed}]}})
+    for tool, raw in zip(args.tool, args.input, strict=True):
+        call(settings, base, tool, json.loads(raw), args.mcp_config)
     emit({"type": "result", "subtype": "success", "session_id": session, "num_turns": 1})
     return 0
 

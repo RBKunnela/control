@@ -15,9 +15,10 @@ import json
 import os
 import subprocess
 import sys
+from typing import Any
 
 
-def slot(state: str, ev: dict) -> str:
+def slot(state: str, ev: dict[str, Any]) -> str:
     key = json.dumps([ev.get("session_id"), ev.get("tool_use_id")])
     return os.path.join(state, hashlib.sha256(key.encode()).hexdigest() + ".json")
 
@@ -44,7 +45,7 @@ def main() -> int:
             raw = json.dumps(ev).encode()
         except FileNotFoundError:
             pass
-    ran = subprocess.run(args.command, input=raw, capture_output=True, check=False)
+    ran = subprocess.run(args.command, input=raw, capture_output=True, check=False)  # noqa: S603
     sys.stdout.buffer.write(ran.stdout)
     sys.stderr.buffer.write(ran.stderr)
     return ran.returncode if ran.returncode >= 0 else 128 - ran.returncode

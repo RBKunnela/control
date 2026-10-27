@@ -33,6 +33,13 @@ verify one.
 
 ### Fixed
 
+- The hook profile's qualification passed four cases on evidence it did not
+  have: two approved retries with different inputs, a project it could not
+  list, and hooks disabled or MCP tools left out with no positive control in
+  the run. Each now needs its evidence or is unknown, a results file counts
+  only where its own controls passed, and the harness has 74 tests run by
+  `make check-python`. Judged again, the 2.1.310 run passes 19 of 20 cases:
+  `disabled` had no control invocation.
 - Statements on seventeen public pages that the code contradicted are
   corrected: among them an identical retry after a spent approval, which is
   refused until the approval expires, how many times expiry is judged, three

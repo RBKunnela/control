@@ -3,7 +3,9 @@
 # Runs the Python client's checks for make quality: its tests on the two
 # pinned interpreters, the linter, the formatter and the type checker on the
 # newer one, and a build of the wheel that is then inspected and imported on
-# the older.
+# the older. The hook profile's qualification harness, standard library only,
+# gets the same linter, formatter and type checker from the client's locked
+# tools, under its own project file, and its tests on both interpreters.
 #
 # uv and Python run in an emptied environment with uv's configuration off,
 # managed interpreters only, the lock enforced and no interpreter download, so
@@ -39,6 +41,16 @@ die() {
 root="$(repo_root)"
 project="${root}/clients/python"
 [[ -f "${project}/pyproject.toml" && -f "${project}/uv.lock" ]] || die "${project} holds no project and lock"
+# The one built-in hook profile with a qualification harness; a second one
+# is refused until this script loops over them.
+set -- "${root}"/internal/hookbridge/profiles/*/qualification
+[[ $# -eq 1 && -d "$1" ]] || die "want one qualification harness in internal/hookbridge/profiles, found: $*"
+harness="$1"
+harness_dir="${harness#"${root}/"}"
+[[ -f "${harness}/pyproject.toml" && -f "${harness}/run_tests.py" ]] || die "${harness} holds no project file and runner"
+# The harness's scripts without a .py suffix; the project file names them to
+# the linter, and each is a type checker's run of its own.
+harness_scripts=(record-hook stub-runtime controls/report-proposed)
 for key in UV_VERSION CLIENT_PYTHON_FLOOR_VERSION CLIENT_PYTHON_VERSION; do
   [[ -n "${!key-}" ]] || die "${key} is empty or missing in tool-versions.env"
 done
@@ -52,12 +64,14 @@ newer="${CLIENT_PYTHON_VERSION}"
 # (loaded before the source), and a directory the checkers skip by its name
 # while Python imports from it. Dot-names at the top are a developer's own
 # environment and caches, which no check reads.
-strays="$(cd "${project}" && find . -mindepth 1 -path './.*' -prune -o \( \
-  -name '.*' -o -type l -o -name '*.pyc' -o -name '*.pyi' -o -name '*.so' \
-  -o -type d \( -name node_modules -o -name site-packages \) \
-  \) -print)" || die "listing ${project} failed"
-[[ -z "${strays}" ]] ||
-  die "clients/python holds what would stand in for a source or hide from a check; remove: ${strays//$'\n'/ }"
+for dir in "${project}" "${harness}"; do
+  strays="$(cd "${dir}" && find . -mindepth 1 -path './.*' -prune -o \( \
+    -name '.*' -o -type l -o -name '*.pyc' -o -name '*.pyi' -o -name '*.so' \
+    -o -type d \( -name node_modules -o -name site-packages \) \
+    \) -print)" || die "listing ${dir} failed"
+  [[ -z "${strays}" ]] ||
+    die "${dir#"${root}/"} holds what would stand in for a source or hide from a check; remove: ${strays//$'\n'/ }"
+done
 
 command -v go >/dev/null 2>&1 || die "go is not on PATH"
 python_uv_pinned || die "uv is not the pinned one"
@@ -95,6 +109,14 @@ venv="${work}/venv-${newer}"
   die "ruff format would change files"
 (cd "${project}" && "${clean[@]}" "${venv}/bin/mypy" --cache-dir=/dev/null --config-file pyproject.toml) ||
   die "mypy found problems"
+(cd "${harness}" && "${clean[@]}" "${venv}/bin/ruff" check --no-cache --config pyproject.toml .) ||
+  die "ruff check found problems in the harness"
+(cd "${harness}" && "${clean[@]}" "${venv}/bin/ruff" format --check --no-cache --config pyproject.toml .) ||
+  die "ruff format would change files of the harness"
+for target in "" "${harness_scripts[@]}"; do
+  (cd "${harness}" && "${clean[@]}" "${venv}/bin/mypy" --cache-dir=/dev/null --config-file pyproject.toml ${target:+"${target}"}) ||
+    die "mypy found problems in the harness${target:+ (${target})}"
+done
 
 for version in "${floor}" "${newer}"; do
   log="${work}/tests-${version}.log"
@@ -107,9 +129,18 @@ for version in "${floor}" "${newer}"; do
   [[ "${last}" =~ ${verdict} ]] || die "python ${version}: the runner's last line is not its verdict: ${last}"
 done
 
+for version in "${floor}" "${newer}"; do
+  log="${work}/harness-${version}.log"
+  "${clean[@]}" "${work}/venv-${version}/bin/python" "${isolated[@]}" "${harness}/run_tests.py" 2>&1 |
+    tee "${log}" || die "python ${version}: the harness's tests failed"
+  last="$(tail -n 1 "${log}")"
+  verdict="^harness_tests: python ${version//./\\.}: [1-9][0-9]* tests, 0 skipped, every required test ran\$"
+  [[ "${last}" =~ ${verdict} ]] || die "python ${version}: the harness runner's last line is not its verdict: ${last}"
+done
+
 "${root}/scripts/build-python-dist.sh" "${work}/dist" || die "the client's release files do not build as they must"
 
-written="$(cd "${root}" && find clients/python -newer "${work}/before" -print)" ||
+written="$(cd "${root}" && find clients/python "${harness_dir}" -newer "${work}/before" -print)" ||
   die "listing the project failed"
 [[ -z "${written}" ]] || die "something was written into the tree during the checks: ${written//$'\n'/ }"
 [[ -z "$(ls -A "${work}/pycache")" ]] || die "bytecode was written although none should be"

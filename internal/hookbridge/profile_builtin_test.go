@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -75,16 +77,25 @@ const qualificationPrefix = "qualification/"
 type qualificationResults struct {
 	Runtime        string `json:"runtime"`
 	RuntimeVersion string `json:"runtime_version"`
+	BridgeCommit   string `json:"bridge_commit"`
+	TreeDirty      string `json:"tree_dirty"`
 	Cases          []struct {
 		ID      string `json:"id"`
 		Verdict string `json:"verdict"`
 	} `json:"cases"`
 }
 
+// positiveControls are the cases a results file must pass itself before any
+// other pass it records counts: the bridge lets a call run and blocks one
+// through the recorder, and a bridge that lets every call run is caught. A
+// rerun of a few cases holds none of them, so it backs nothing.
+var positiveControls = []string{"allow", "block", "control-allow-all"}
+
 // passedOn reads the results files in dir's qualification directory, named
 // for the runtime's version, and returns every case one of them records as
-// passed and none as failed. A file from the stub runtime, or for a version
-// tested does not list, is refused.
+// passed, with its positive controls passed in the same file, and none as
+// failed. A file from the stub runtime, for a version tested does not list,
+// from a tree with changes or from no named commit is refused.
 func passedOn(dir string, tested []string) (map[string]bool, error) {
 	paths, err := filepath.Glob(filepath.Join(dir, "qualification", "[0-9]*.json"))
 	if err != nil {
@@ -96,13 +107,17 @@ func passedOn(dir string, tested []string) (map[string]bool, error) {
 		if err != nil {
 			return nil, err
 		}
+		here := map[string]bool{}
 		for _, c := range r.Cases {
 			switch c.Verdict {
 			case "pass":
-				passed[c.ID] = true
+				here[c.ID] = true
 			case "fail":
 				failed[c.ID] = true
 			}
+		}
+		if !slices.ContainsFunc(positiveControls, func(id string) bool { return !here[id] }) {
+			maps.Copy(passed, here)
 		}
 	}
 	for id := range failed {
@@ -112,7 +127,8 @@ func passedOn(dir string, tested []string) (map[string]bool, error) {
 }
 
 // readResults reads one results file, refusing one that holds no case, comes
-// from the stub runtime or is for a version tested does not list.
+// from the stub runtime, is for a version tested does not list, or ran a
+// bridge built from a tree with changes or from no named commit.
 func readResults(path string, tested []string) (qualificationResults, error) {
 	var r qualificationResults
 	raw, err := os.ReadFile(path) //nolint:gosec // G304: a results file this package keeps
@@ -130,9 +146,15 @@ func readResults(path string, tested []string) (qualificationResults, error) {
 		return r, fmt.Errorf("%s is not a run on the runtime", path)
 	case !slices.Contains(tested, version):
 		return r, fmt.Errorf("%s is for version %q, which the profile does not list as tested", path, version)
+	case r.TreeDirty != "false":
+		return r, fmt.Errorf("%s ran a bridge from a tree whose changes were %q, not none", path, r.TreeDirty)
+	case !commitName.MatchString(r.BridgeCommit):
+		return r, fmt.Errorf("%s names the bridge's commit as %q", path, r.BridgeCommit)
 	}
 	return r, nil
 }
+
+var commitName = regexp.MustCompile(`^[0-9a-f]{40}$`)
 
 func passedOnTheRuntime(t *testing.T, dir string, tested []string) map[string]bool {
 	t.Helper()
@@ -144,7 +166,8 @@ func passedOnTheRuntime(t *testing.T, dir string, tested []string) map[string]bo
 }
 
 // A case backs a claim only when a run on the runtime, for a version the
-// profile lists as tested, passed it and no such run failed it.
+// profile lists as tested, of a clean tree at a named commit, passed it beside
+// its positive controls and no such run failed it.
 func TestOnlyACasePassedOnATestedRuntimeBacksAClaim(t *testing.T) {
 	write := func(t *testing.T, dir, name, body string) {
 		t.Helper()
@@ -155,21 +178,31 @@ func TestOnlyACasePassedOnATestedRuntimeBacksAClaim(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	const head = `{"runtime":"rt","runtime_version":"1.2.3 (Runtime)","cases":`
+	const (
+		commit   = `"bridge_commit":"0123456789abcdef0123456789abcdef01234567"`
+		head     = `{"runtime":"rt","runtime_version":"1.2.3 (Runtime)",` + commit + `,"tree_dirty":"false","cases":`
+		controls = `{"id":"allow","verdict":"pass"},{"id":"block","verdict":"pass"},{"id":"control-allow-all","verdict":"pass"},`
+	)
 	dir := t.TempDir()
-	write(t, dir, "1.2.3.json", head+`[{"id":"a","verdict":"pass"},{"id":"b","verdict":"pass"},{"id":"c","verdict":"unknown"}]}`)
-	write(t, dir, "1.2.3-rerun.json", head+`[{"id":"b","verdict":"fail"},{"id":"c","verdict":"pass"}]}`)
+	write(t, dir, "1.2.3.json", head+`[`+controls+`{"id":"a","verdict":"pass"},{"id":"b","verdict":"pass"},{"id":"c","verdict":"unknown"}]}`)
+	write(t, dir, "1.2.3-rerun.json", head+`[`+controls+`{"id":"b","verdict":"fail"},{"id":"c","verdict":"pass"}]}`)
+	write(t, dir, "1.2.3-few.json", head+`[{"id":"allow","verdict":"pass"},{"id":"block","verdict":"pass"},{"id":"d","verdict":"pass"}]}`)
 	write(t, dir, "settings.json", `{"hooks":{}}`)
 	passed, err := passedOn(dir, []string{"1.2.3"})
-	if err != nil || len(passed) != 2 || !passed["a"] || !passed["c"] {
-		t.Fatalf("passed %v, %v; want a and c: b failed on a rerun", passed, err)
+	want := map[string]bool{"allow": true, "block": true, "control-allow-all": true, "a": true, "c": true}
+	if err != nil || !maps.Equal(passed, want) {
+		t.Fatalf("passed %v, %v; want %v: b failed on a rerun, d passed where control-allow-all did not", passed, err, want)
 	}
 	for name, body := range map[string]string{
-		"a stub run":            `{"runtime":"stub","runtime_version":"1.2.3","cases":[{"id":"a","verdict":"pass"}]}`,
-		"an untested version":   `{"runtime":"rt","runtime_version":"9.9.9 (Runtime)","cases":[{"id":"a","verdict":"pass"}]}`,
-		"no runtime":            `{"runtime_version":"1.2.3","cases":[{"id":"a","verdict":"pass"}]}`,
+		"a stub run":            `{"runtime":"stub","runtime_version":"1.2.3",` + commit + `,"tree_dirty":"false","cases":[{"id":"a","verdict":"pass"}]}`,
+		"an untested version":   `{"runtime":"rt","runtime_version":"9.9.9 (Runtime)",` + commit + `,"tree_dirty":"false","cases":[{"id":"a","verdict":"pass"}]}`,
+		"no runtime":            `{"runtime_version":"1.2.3",` + commit + `,"tree_dirty":"false","cases":[{"id":"a","verdict":"pass"}]}`,
 		"no cases":              head + `[]}`,
 		"a file that is not it": `not json`,
+		"a tree with changes":   `{"runtime":"rt","runtime_version":"1.2.3",` + commit + `,"tree_dirty":"true","cases":[` + controls + `{"id":"a","verdict":"pass"}]}`,
+		"changes not known":     `{"runtime":"rt","runtime_version":"1.2.3",` + commit + `,"tree_dirty":"unknown","cases":[` + controls + `{"id":"a","verdict":"pass"}]}`,
+		"no tree state":         `{"runtime":"rt","runtime_version":"1.2.3",` + commit + `,"cases":[` + controls + `{"id":"a","verdict":"pass"}]}`,
+		"no commit":             `{"runtime":"rt","runtime_version":"1.2.3","bridge_commit":"unknown","tree_dirty":"false","cases":[` + controls + `{"id":"a","verdict":"pass"}]}`,
 	} {
 		dir := t.TempDir()
 		write(t, dir, "1.2.3.json", body)

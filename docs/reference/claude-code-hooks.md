@@ -21,7 +21,7 @@ endorsed by the publisher of Claude Code.
 | | |
 | --- | --- |
 | Label | decided, with failure gaps |
-| Qualified on the real runtime | 2.1.310: all 20 cases passed on the first run, in 22 invocations. 2.1.303: all 20 passed, two of them on a rerun once the tools table named `ToolSearch` and classed `Agent` as `EXECUTE`, and one on a rerun that recorded the hook's output |
+| Qualified on the real runtime | 2.1.310: 19 of 20 cases passed on the first run, in 22 invocations; `disabled` is unknown, since that run had none of the control invocations the judge now asks for. 2.1.303: 17 of 20 passed; its reruns back nothing, holding no controls of their own |
 | Events | `PreToolUse`, `PostToolUse`, `PostToolUseFailure` |
 | Fail-closed setting | `onFailure: "block"`, from Claude Code 2.1.295 |
 | Hook timeout the profile assumes | 30 seconds |
@@ -33,8 +33,8 @@ every CI run passes them through the bridge against a plane. The
 qualification ran Claude Code 2.1.303, and later 2.1.310, headless against a
 plane, case by case, and its results are in the profile's `qualification/`
 directory. What the first run observed is marked *(seen on 2.1.303)* below,
-and 2.1.310 passed the same cases; the rest is from the documentation and
-unverified. The label stays "decided, with failure gaps". It cannot become
+and each such case passed on 2.1.303 or 2.1.310; the rest is from the
+documentation and unverified. The label stays "decided, with failure gaps". It cannot become
 "decided, not enforced" until the fail-closed setting is in managed settings,
 the hook command is an absolute path to a binary the agent cannot replace and
 names this built-in profile, and the runtime's shell sandbox keeps the agent
@@ -94,12 +94,12 @@ not the plane, runs the call.
   that overruns the limit blocks the call under `onFailure: "block"`.
 - `onFailure: "block"` sits on `PreToolUse` only. With it, a hook that times
   out or crashes blocks the call; without it, the call runs, and so it does
-  after a hook that prints unreadable output and exits 0 *(seen on 2.1.303)*.
+  after a hook that prints unreadable output and exits 0 *(seen on 2.1.310)*.
   On the two completion events the call has already run, so there is nothing
   left to block.
 - The matcher leaves out tools named `mcp__<server>__<tool>`, which reach the
   plane through the gateway; it matched every other tool the qualification
-  used *(seen on 2.1.303)*. An MCP server that is not behind the gateway is
+  used *(seen on 2.1.310)*. An MCP server that is not behind the gateway is
   then seen by neither.
 - Put these hooks in managed settings. A user can turn off any hook outside
   them with `disableAllHooks` or by editing their own settings files, and
@@ -184,9 +184,9 @@ None of these is closed by the profile.
 - A mod handling `tool.check` can approve a call this hook blocked, unless
   the hook is in managed settings.
 - `--bare` skips the discovery of hooks.
-- `disableAllHooks` turns off every hook that is not managed; the
-  qualification saw it turn off hooks passed with `--settings` *(seen on
-  2.1.303)*.
+- `disableAllHooks` turns off every hook that is not managed; that it turns
+  off hooks passed with `--settings` is unverified, since its case has not
+  yet run beside its control.
 - A cancelled running tool starts no completion hook; the plane's sweep
   closes its handle as abandoned.
 - Another hook can replace the input after the bridge let the call run. Only

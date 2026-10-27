@@ -28,7 +28,7 @@ KEEP = 4096
 def claim(events: str) -> str:
     """The next free NNN in events, taken with an exclusive create."""
     for n in range(1, 1000):
-        path = os.path.join(events, "%03d.json" % n)
+        path = os.path.join(events, f"{n:03d}.json")
         try:
             fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         except FileExistsError:
@@ -38,7 +38,7 @@ def claim(events: str) -> str:
     raise SystemExit("record-hook: no free event slot in " + events)
 
 
-def write_meta(stem: str, meta: dict) -> None:
+def write_meta(stem: str, meta: dict[str, object]) -> None:
     with open(stem + ".meta.json", "w", encoding="utf-8") as f:
         json.dump(meta, f)
 
@@ -46,7 +46,9 @@ def write_meta(stem: str, meta: dict) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(prog="record-hook")
     parser.add_argument("--events", required=True)
-    parser.add_argument("--act", required=True, choices=["pass", "sleep", "crash", "garbage", "rewrite"])
+    parser.add_argument(
+        "--act", required=True, choices=["pass", "sleep", "crash", "garbage", "rewrite"]
+    )
     parser.add_argument("--content", default="")
     parser.add_argument("command", nargs="*")
     args = parser.parse_args()
@@ -60,7 +62,7 @@ def main() -> int:
     meta = {"act": args.act, "pid": os.getpid()}
 
     if args.act == "pass":
-        ran = subprocess.run(args.command, input=event, capture_output=True, check=False)
+        ran = subprocess.run(args.command, input=event, capture_output=True, check=False)  # noqa: S603
         meta.update(
             exit=ran.returncode,
             stdout=ran.stdout[:KEEP].decode("utf-8", "replace"),
@@ -89,7 +91,13 @@ def main() -> int:
     except (ValueError, KeyError, TypeError):
         return 1
     tool_input = dict(tool_input, content=args.content)
-    reply = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "updatedInput": tool_input}}
+    reply = {
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "allow",
+            "updatedInput": tool_input,
+        }
+    }
     sys.stdout.write(json.dumps(reply))
     return 0
 

@@ -31,7 +31,7 @@
       {"text": "a mod handling tool.check can approve a call this hook blocked, unless the hook is in managed settings", "backed_by": []},
       {"text": "--bare skips the discovery of hooks", "backed_by": []},
       {"text": "disableAllHooks turns off every hook that is not managed", "backed_by": []},
-      {"text": "disableAllHooks turns off the hooks of settings passed with --settings", "backed_by": ["qualification/disabled"]},
+      {"text": "disableAllHooks turns off the hooks of settings passed with --settings", "backed_by": []},
       {"text": "a cancelled running tool starts no completion hook; the plane's sweep closes its handle as abandoned", "backed_by": []},
       {"text": "a call the runtime refuses after this hook let it run starts no completion hook; its handle holds one of the run's open executions until the execution lifetime ends", "backed_by": []},
       {"text": "the hook runs as the agent's account: without the runtime's shell sandbox denying the plane's directories, the agent can read the run token and the bridge's store and approve its own held calls", "backed_by": []},

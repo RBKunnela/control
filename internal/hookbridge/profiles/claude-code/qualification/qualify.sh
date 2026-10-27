@@ -18,7 +18,10 @@
 # skipped and unknown. QUALIFY_ONLY, a space-separated list of case groups,
 # runs only those; every other case is unknown. Results go to --out, by default <runtime version>.json
 # beside this script for the runtime and results.json in the work directory
-# for the stub. Recorded events, which hold local paths, go to --events.
+# for the stub. Recorded events, which hold local paths, go to --events. A
+# scrubbed copy of what the judge read goes beside the results, in
+# <results>.observed/, once the judge reads it as it read the run; a copy of a
+# run on the runtime is kept only after a person has read it.
 #
 # Exit status: 0 every case passed, 1 one failed, 3 none failed and some are
 # unknown, 2 the harness itself could not run.
@@ -49,7 +52,7 @@ gateway="$(brand Gateway)"
 token_var="$(brand EnvPrefix)RUN_TOKEN"
 profile=claude-code
 model=claude-haiku-5-5
-planned=22
+planned=23
 cap=30
 
 say() { printf 'qualify: %s\n' "$*"; }
@@ -208,6 +211,8 @@ done
 open_group disabled
 settings run --disable
 once run Write "$(write_prompt disabled.txt ran)" Write "$(write_input disabled.txt ran)"
+settings control
+once control Write "$(write_prompt disabled-control.txt ran)" Write "$(write_input disabled-control.txt ran)"
 
 open_group rewrite
 settings run --extra-pre "$(record run rewrite "${replacement}")"
@@ -219,8 +224,8 @@ once run Write "$(write_prompt draft.txt hello)" Write "$(write_input draft.txt 
 
 open_group mcp-matcher
 settings run
-once run mcp__q__stamp 'Use the stamp tool of the q MCP server once. Do nothing else.' \
-  mcp__q__stamp '{}' "${work}/mcp/config.json"
+once run 'mcp__q__stamp Write' 'Use the stamp tool of the q MCP server once, then use the Write tool to create the file mcp-control.txt in the current directory containing exactly: ran. Do nothing else.' \
+  mcp__q__stamp '{}' "${work}/mcp/config.json" Write "$(write_input mcp-control.txt ran)"
 
 open_group subagent
 settings run
@@ -274,6 +279,12 @@ json.dump(doc, open(sys.argv[-1], "w"))
   "${used}" "${cap}" "${work}/meta.json"
 
 harness judge "${cases}" "${events}" >"${work}/results.jsonl" || die "the judge failed"
-say "events ${events} (they hold local paths; scrub them by hand before any becomes a fixture)"
+observed="${out%.json}.observed"
+harness scrub --cases "${cases}" --events "${events}" --work "${work}" --out "${observed}" ||
+  die "the scrubbed copy could not be written to ${observed}"
+harness rejudge "${observed}" "${work}/results.jsonl" ||
+  die "the scrubbed copy in ${observed} is not judged as the run was"
+say "events ${events} (they hold local paths)"
+say "scrubbed observations ${observed} (read them before they are kept)"
 say "results ${out}"
 harness report --results "${work}/results.jsonl" --meta "${work}/meta.json" --out "${out}"

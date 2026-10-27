@@ -1,0 +1,25 @@
+# The linter's, the formatter's and the type checker's only configuration for
+# the qualification harness; scripts/check-python.sh names it to each. The
+# rules are the Python client's. Only a dot-name is left out and no ignore
+# file is obeyed, and the scripts without a .py suffix are named.
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-include = ["record-hook", "stub-runtime", "controls/report-proposed"]
+exclude = [".*"]
+respect-gitignore = false
+
+[tool.ruff.lint]
+select = ["B", "C90", "E", "F", "I", "N", "PL", "RUF", "S", "SIM", "UP", "W"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
+
+[tool.mypy]
+strict = true
+python_version = "3.11"
+# Each script without a .py suffix is a module named __main__, so
+# check-python.sh hands each to its own run.
+files = ["."]
+mypy_path = ["."]
+exclude = ['(^|/)\.']

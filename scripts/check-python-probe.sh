@@ -14,6 +14,8 @@
 #             linter, and a nearer or differently named configuration of the
 #             linter, the formatter and the type checker
 #   runner    a runner that exits 0 without its verdict as the last line
+#   harness   a file of the qualification harness the linter refuses, and a
+#             failing test of the harness behind a client runner that passes
 # A case that must get past the checks to the runner uses a stand-in runner
 # that passes them and a stand-in go that writes two empty commands. Not
 # controlled here: that a locked tool is never built from source, that Python
@@ -30,8 +32,10 @@ die() {
 }
 
 root="$(repo_root)"
-[[ -f "${root}/scripts/check-python.sh" && -d "${root}/clients/python" ]] ||
-  die "the script or the project is missing"
+set -- "${root}"/internal/hookbridge/profiles/*/qualification
+harness_dir="${1#"${root}/"}"
+[[ -f "${root}/scripts/check-python.sh" && -d "${root}/clients/python" && -d "${root}/${harness_dir}" ]] ||
+  die "the script, the project or the harness is missing"
 command -v uv >/dev/null 2>&1 || die "uv is not on PATH; make bootstrap installs it"
 
 tmp="$(mktemp -d)"
@@ -63,10 +67,13 @@ stage() {
     "${root}/scripts/tool-versions.env" "${tmp}/tree/scripts/"
   cp -R "${root}/scripts/lib" "${tmp}/tree/scripts/lib"
   cp -R "${root}/clients/python" "${tmp}/tree/clients/python"
-  find "${tmp}/tree/clients/python" -mindepth 1 \( -name '.*' -o -name __pycache__ \) -prune \
-    -exec rm -rf {} +
+  mkdir -p "$(dirname "${tmp}/tree/${harness_dir}")"
+  cp -R "${root}/${harness_dir}" "${tmp}/tree/${harness_dir}"
+  find "${tmp}/tree/clients/python" "${tmp}/tree/${harness_dir}" -mindepth 1 \
+    \( -name '.*' -o -name __pycache__ \) -prune -exec rm -rf {} +
   tree="${tmp}/tree"
   project="${tree}/clients/python"
+  harness="${tree}/${harness_dir}"
 }
 
 # plant <path in the project> [<content>]
@@ -192,6 +199,17 @@ stops "${silent}" "a runner whose line begins as a verdict and ends otherwise"
 stage
 runner "run_tests: python {v}: ${pass}\\nand more\\n"
 stops "${silent}" "a runner that writes a line after its verdict"
+
+# The harness: its linter refuses a file, and a failing test of it fails the
+# target although the client's runner passed.
+stage
+printf '"""Planted."""\n\nimport os\n' >"${harness}/tests/planted.py"
+stops "ruff check found problems in the harness" "a harness file the linter refuses"
+stage
+runner "run_tests: python {v}: ${pass}\\n"
+printf '"""Planted."""\n\nimport unittest\n\n\nclass Planted(unittest.TestCase):\n    def test_planted(self) -> None:\n        self.fail("planted")\n' \
+  >"${harness}/tests/test_planted.py"
+stops "the harness's tests failed" "a failing test of the harness"
 
 [[ ${failed} -eq 0 ]] || die "${failed} of ${cases} cases did not go as named"
 printf 'check-python-probe: %d cases, each stopped as named\n' "${cases}"

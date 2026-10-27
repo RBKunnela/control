@@ -72,7 +72,8 @@ gather() {
   local d="${cases}/${group}/$1" status=0
   settle
   cp "${work}/healthz.json" "${d}/healthz.json"
-  harness snapshot "${proj}" "${d}/files.json"
+  # A snapshot that fails leaves none, and the invocation's cases are unknown.
+  harness snapshot "${proj}" "${d}/files.json" || say "${group}/$1: the project's snapshot failed"
   "${bin}/${gateway}" trail export --run "${run_id}" "${plane}/trail.jsonl" >"${d}/trail.jsonl" ||
     die "trail export failed for ${run_id}"
   grep -q '"end_reached":true' "${d}/trail.jsonl" || die "trail export did not reach the end for ${run_id}"
@@ -96,8 +97,10 @@ reserve() {
   used=$((used + n))
   curl -fsS "http://${health}/healthz" >"${d}/healthz.before.json" || die "the plane stopped answering /healthz"
 }
-# launch <invocation> <key> <allowed tools> <prompt> <tool> <input> [<mcp config>]
-# runs the runtime once from the project directory, bounded in time.
+# launch <invocation> <key> <allowed tools> <prompt> <tool> <input> [<mcp config> [<tool> <input>]]
+# runs the runtime once from the project directory, bounded in time. The tools
+# and inputs are the calls stub-runtime makes in the prompt's place; the
+# second pair is a call it makes after the first.
 launch() {
   local d="${cases}/${group}/$1" key="$2" allowed="$3" prompt="$4" tool="$5" input="$6" mcp="${7:-}"
   local -a cmd
@@ -108,6 +111,7 @@ launch() {
   else
     cmd=("${py[@]}" "${here}/stub-runtime" --settings "${settings_file}" --project "${proj}"
       --tool "${tool}" --input "${input}")
+    [[ $# -lt 9 ]] || cmd+=(--tool "$8" --input "$9")
   fi
   [[ -z "${mcp}" ]] || cmd+=(--mcp-config "${mcp}")
   # The token is set by builtins, so it never sits in a process's arguments.

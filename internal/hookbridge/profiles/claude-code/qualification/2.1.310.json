@@ -386,13 +386,15 @@
     {
       "id": "disabled",
       "invocations": 1,
-      "expected": "with disableAllHooks the Write runs and no hook event is recorded (a stated bypass)",
+      "expected": "with disableAllHooks the Write runs and no hook event is recorded (a stated bypass), where the same settings without it record the Write's PreToolUse",
       "observed": {
         "events_recorded": 0,
         "file": "ran",
+        "control_events": 0,
+        "unknown": "the runtime was not run for disabled/control",
         "pre_tool_use": []
       },
-      "verdict": "pass"
+      "verdict": "unknown"
     },
     {
       "id": "rewrite",
@@ -461,10 +463,13 @@
     {
       "id": "mcp-matcher",
       "invocations": 1,
-      "expected": "the matcher leaves the mcp__ tool out: no hook event for it, and the tool ran",
+      "expected": "the matcher leaves the mcp__ tool out: no hook event for it, and the tool ran, where another call of the same invocation reached the hook",
       "observed": {
         "mcp_events": [],
         "tool_ran": true,
+        "control_events": [
+          "ToolSearch"
+        ],
         "pre_tool_use": [
           [
             "ToolSearch",
@@ -552,5 +557,5 @@
       "verdict": "pass"
     }
   ],
-  "judged_at": "06faded6"
+  "judged_at": "ed3ea6d8"
 }
