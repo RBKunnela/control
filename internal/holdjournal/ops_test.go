@@ -3,6 +3,7 @@ package holdjournal_test
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 	"time"
 
@@ -44,6 +45,39 @@ func TestOneRequestTakesOneEntry(t *testing.T) {
 	if len(listing.Held) != 1 || listing.Held[0].IDs.RequestID != "req-1" || !listing.Complete {
 		t.Fatalf("after the record the listing is %+v", listing)
 	}
+}
+
+// TestARecordThatFailsAfterTheLinkMayHaveFiledTheEntry: once the entry is
+// linked, a directory that cannot be forced to disk is reported as an entry
+// that may be filed, and the entry stands for the caller to flip and forget,
+// counted against the bound until it does; a refusal before the link says
+// nothing was filed.
+func TestARecordThatFailsAfterTheLinkMayHaveFiledTheEntry(t *testing.T) {
+	ctx := context.Background()
+	j := openJournal(t, newDir(t), holdjournal.WithMaxEntries(3))
+	record(t, j, "req-1")
+	if err := j.Record(ctx, heldEntry("req-1")); !errors.Is(err, holdjournal.ErrRecorded) || errors.Is(err, holdjournal.ErrMaybeRecorded) {
+		t.Fatalf("a refusal at the link: %v, want ErrRecorded alone", err)
+	}
+	failed := errors.New("the directory cannot be forced to disk")
+	restore := holdjournal.SetDirSync(func(*os.File) error { return failed })
+	err := j.Record(ctx, heldEntry("req-2"))
+	restore()
+	if !errors.Is(err, holdjournal.ErrMaybeRecorded) || !errors.Is(err, failed) || errors.Is(err, holdjournal.ErrRecorded) {
+		t.Fatalf("a directory sync that failed after the link: %v, want ErrMaybeRecorded with its cause", err)
+	}
+	if names := entryFiles(t, j.Dir()); len(names) != 2 {
+		t.Fatalf("after the failed record the directory holds %v, want both entries", names)
+	}
+	record(t, j, "req-3")
+	if err := j.Record(ctx, heldEntry("req-4")); !errors.Is(err, holdjournal.ErrTooManyEntries) {
+		t.Fatalf("a fourth record under a bound of three, one of them maybe filed: %v, want ErrTooManyEntries", err)
+	}
+	mark(t, j, "req-2", holdjournal.StateClosing)
+	if err := j.Forget(ctx, "req-2"); err != nil {
+		t.Fatalf("forgetting the maybe-filed entry: %v", err)
+	}
+	record(t, j, "req-4")
 }
 
 // TestAnEntryLeavesHeldOnce: the flip an append is allowed after happens once,

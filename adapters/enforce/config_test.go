@@ -104,6 +104,36 @@ func TestNewRefusesAnIncompleteConfiguration(t *testing.T) {
 	}
 }
 
+// TestNewRefusesAToolWhoseEnvelopeKeyIsEmpty: a tool whose class needs, by
+// the contract's table, the environment is refused while Environment is
+// empty, and one that needs the resource's tenant while TenantID is, naming
+// the field; a read needs neither.
+func TestNewRefusesAToolWhoseEnvelopeKeyIsEmpty(t *testing.T) {
+	write := classify.Classification{Effect: controlv1.EffectClass_EFFECT_CLASS_WRITE, ResourceType: "account", ResourceFrom: "/account"}
+	for _, tc := range []struct {
+		name string
+		mut  func(*enforce.Config)
+		want string
+	}{
+		{"a write with every key", func(c *enforce.Config) { c.Tools[1].Classification = write }, ""},
+		{"a write with no environment", func(c *enforce.Config) { c.Tools[1].Classification = write; c.Environment = "" }, "tools[1]: WRITE needs Environment, which is empty"},
+		{"a transact with no tenant", func(c *enforce.Config) { c.TenantID = "" }, "tools[0]: TRANSACT needs TenantID, which is empty"},
+		{"a read with neither", func(c *enforce.Config) { c.Tools = c.Tools[1:2]; c.Environment, c.TenantID = "", "" }, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := validConfig()
+			tc.mut(&cfg)
+			_, err := enforce.New(cfg)
+			switch {
+			case tc.want == "" && err != nil:
+				t.Fatalf("New refused: %v", err)
+			case tc.want != "" && (!errors.Is(err, enforce.ErrTool) || !strings.Contains(err.Error(), tc.want)):
+				t.Fatalf("New = %v; want ErrTool saying %q", err, tc.want)
+			}
+		})
+	}
+}
+
 // TestANameOrProviderNoEnvelopeCarriesIsRefused: the two strings a tool puts
 // in an envelope beside its classification are held to the contract's string
 // rule, and the refusal names the key; one byte under the bound and an inner

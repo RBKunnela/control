@@ -682,7 +682,7 @@ func TestAStoreRefusalIsTheGatewaysOwnVocabulary(t *testing.T) {
 }
 
 // TestAJournalRefusalIsTheGatewaysOwnVocabulary is the same for the journal,
-// whose four refusals the pipeline names and whose others travel as themselves.
+// whose refusals the pipeline names and whose others travel as themselves.
 func TestAJournalRefusalIsTheGatewaysOwnVocabulary(t *testing.T) {
 	dir := t.TempDir()
 	journal, err := holdjournal.Open(dir)
@@ -713,6 +713,12 @@ func TestAJournalRefusalIsTheGatewaysOwnVocabulary(t *testing.T) {
 	}
 	if listing.Complete {
 		t.Error("a pass with no bound reported itself complete; it examined nothing")
+	}
+	// A record that failed after its link cannot be made to fail from here, so
+	// its refusal is translated directly.
+	maybe := fmt.Errorf("%w: the directory could not be forced to disk", holdjournal.ErrMaybeRecorded)
+	if err := journalError(maybe); !isGateway(err, gateway.ErrHoldMaybeRecorded) || !errors.Is(err, holdjournal.ErrMaybeRecorded) {
+		t.Errorf("a record that may have filed its entry answered %v, want %v beside the journal's own", err, gateway.ErrHoldMaybeRecorded)
 	}
 }
 

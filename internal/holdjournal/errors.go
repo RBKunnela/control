@@ -8,7 +8,7 @@ type Error string
 // Error returns the refusal's text.
 func (e Error) Error() string { return string(e) }
 
-// The four refusals the gateway's HoldJournal names, under this package's own
+// The refusals the gateway's HoldJournal names, under this package's own
 // vocabulary. Package documentation carries the translation.
 const (
 	// ErrEntry is an entry that cannot be recorded: one missing what closing
@@ -21,6 +21,10 @@ const (
 	// ErrFlip is a flip the journal refuses: out of a state that is not held,
 	// or into one that is neither resuming nor closing.
 	ErrFlip Error = "holdjournal: an entry leaves held once, for resuming or for closing"
+	// ErrMaybeRecorded is a write that failed after its file was linked: the
+	// file stands but may not survive a power loss, so the caller treats the
+	// entry as filed. Every other refusal of a record filed nothing.
+	ErrMaybeRecorded Error = "holdjournal: a write failed after its file was linked, so the file may stand"
 )
 
 // The vocabulary of the directory and of the handle.

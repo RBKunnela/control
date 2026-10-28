@@ -92,7 +92,7 @@ evidence.
 An entry is recorded after `APPROVAL_REQUESTED` is appended and before the
 agent is told pending, and every append that moves that trail further is
 preceded by a flip out of `held`. So an entry that reads `held` proves the
-trail stands at its request for an approval and can still be closed. At its
+trail stands at its request for approval and can still be closed. At its
 next start the plane reads the journal and closes each of those trails:
 
 | What the store says about the record | On the trail | Then |
@@ -117,11 +117,11 @@ counted on `/healthz`:
 | an entry that will not decode | nothing, and the pass is not complete | `holds_unmeasured`, `reconcile_incomplete` |
 | more journal entries than `approvals.reconcile_max` | the pass stops and reports itself unmeasured rather than done | `reconcile_incomplete` |
 
-A running plane that cannot write a held trail's closing record before
-hand-out leaves that trail open, keeps its request id reserved until the plane
-restarts so no other call writes under it, and counts it in
-`held_trails_left_open`; after hand-out it counts `sink_failures_after_effect`.
-The next start reports its journal entry, where there is one.
+A plane that cannot write a held trail's closing record before
+hand-out, or move a journal entry that may stand out of `held`, leaves that
+trail open, reserves its request id until restart so no other call writes under
+it, and counts it in `held_trails_left_open`; after hand-out it counts
+`sink_failures_after_effect`. The next start reports its entry, if any.
 
 **A plane configured without `approvals.hold_journal_dir` does not close a hold
 it loses.** That is the behaviour of a plane on the memory provider, it is
@@ -205,7 +205,7 @@ Sources: `internal/gateway/approve.go`, `internal/gateway/resume.go`,
 | it expired before a retry resumed it, answered or not | `APPROVAL_EXPIRED`, `ACTION_BLOCKED` with `DENY`, `APPROVAL_EXPIRED`; written by the next call that opens a trail, at most `maxSweep` holds per call, before the request id is freed | a retry after the expiry is a new request with a new hold |
 | a retry finds the approver rejected it | `APPROVAL_DECIDED` with the answer, `ACTION_BLOCKED` with `DENY`, `APPROVAL_REJECTED`; a rejection that fails a check below is recorded as the enforcement point's own approval, `APPROVAL_EXPIRED`; a rejection nobody retries after is closed at the expiry like an unanswered hold | that block |
 | the agent gave up on its retry before the approval was consumed or the call handed out | this call's own trail: `ACTION_PROPOSED`, `POLICY_DECIDED`, `ACTION_BLOCKED` with `INDETERMINATE`, `EVIDENCE_UNAVAILABLE`; nothing is spent and the hold stands; after the consume, the execution is aborted unsent and the approval is spent | nothing: the agent is gone |
-| the store would not keep the hold, or `MaxHeld` holds stand | `APPROVAL_EXPIRED`, `ACTION_BLOCKED` with `INDETERMINATE`, `EVIDENCE_UNAVAILABLE`: the window the enforcement point opened is closed first, since the chain lets nothing else follow a request for approval | that block |
+| the store would not keep the hold, or `MaxHeld` holds stand | `APPROVAL_EXPIRED`, `ACTION_BLOCKED` with `INDETERMINATE`, `EVIDENCE_UNAVAILABLE`: the window the enforcement point opened is closed first, since the chain lets nothing else follow a request for approval| that block |
 | the store cannot answer, or the hold was dropped or resumed between the lookup and the flip to running | this call's own trail: `ACTION_PROPOSED`, `POLICY_DECIDED`, `ACTION_BLOCKED` with `INDETERMINATE`, `EVIDENCE_UNAVAILABLE` | that block |
 | the trail cannot be written | nothing more: the block is not recorded either | `INDETERMINATE`, `EVIDENCE_UNAVAILABLE` |
 | the plane stopped while the request was held | at its next start: `APPROVAL_DECIDED` with the answer and `ACTION_BLOCKED` with `APPROVAL_NOT_RESUMED` or `APPROVAL_REJECTED`, or `APPROVAL_EXPIRED` and `ACTION_BLOCKED` with `APPROVAL_EXPIRED` or `APPROVAL_STATE_UNKNOWN`; nothing at all where no journal is configured | nothing: that connection was answered pending long ago, and a later identical call is held anew or, if the plane had spent the approval, refused `APPROVAL_ALREADY_USED` until it expires |

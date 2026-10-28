@@ -71,6 +71,7 @@ var everyRefusal = map[string]Error{
 	"ErrRecorded":       ErrRecorded,
 	"ErrNoEntry":        ErrNoEntry,
 	"ErrFlip":           ErrFlip,
+	"ErrMaybeRecorded":  ErrMaybeRecorded,
 	"ErrClosed":         ErrClosed,
 	"ErrReadOnly":       ErrReadOnly,
 	"ErrLocked":         ErrLocked,

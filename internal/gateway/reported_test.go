@@ -3,6 +3,7 @@ package gateway_test
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
@@ -68,6 +69,95 @@ func TestAReportedMismatchHaltsOnlyItsOwnRun(t *testing.T) {
 		if d := h.admitA(a); d.Action != core.Execute {
 			t.Errorf("%s of %s: %s %v, want Execute", a.Envelope.GetRequestId(), a.Run.ID, d.Decision.GetVerdict(), d.Decision.GetReasonCodes())
 		}
+	}
+}
+
+// shiftingAdapter answers Capabilities with what it holds at the moment it
+// is asked, which an adapter is not allowed to change after New.
+type shiftingAdapter struct {
+	mu   sync.Mutex
+	caps gateway.Capabilities
+}
+
+func (a *shiftingAdapter) Name() string { return "shifting" }
+
+func (a *shiftingAdapter) Capabilities() gateway.Capabilities {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.caps
+}
+
+func (a *shiftingAdapter) enforce(e gateway.Enforcement) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.caps.Enforcement = e
+}
+
+// TestTheScopeAMismatchHaltsIsTheAdaptersAtNew: an adapter whose answer
+// changes after New does not change what a reported mismatch halts. Checked
+// cooperative, it halts the run alone though it later says inline; checked
+// inline, it halts the plane though it later says cooperative.
+func TestTheScopeAMismatchHaltsIsTheAdaptersAtNew(t *testing.T) {
+	for _, c := range []struct {
+		name         string
+		atNew, after gateway.Enforcement
+		planeHalted  bool
+		runsHalted   int
+	}{
+		{"cooperative at New", gateway.EnforcementCooperative, gateway.EnforcementInline, false, 1},
+		{"inline at New", gateway.EnforcementInline, gateway.EnforcementCooperative, true, 0},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			adapter := &shiftingAdapter{}
+			h := build(t, modeEnforce, snapshot(t, allowReads, allowWrites), withRuns(newRuns("root-a")), func(cfg *gateway.Config) {
+				adapter.caps = cfg.Adapter.Capabilities()
+				adapter.caps.Enforcement = c.atNew
+				cfg.Adapter = adapter
+			})
+			adapter.enforce(c.after)
+			reportMismatch(t, h, "a-1", "run-a", "root-a")
+			if s := h.p.Stats(); s.Halted != c.planeHalted || s.RunsHalted != c.runsHalted || s.Mismatches != 1 {
+				t.Errorf("Stats = %+v; want the plane halted %v and %d run(s) halted on their own", s, c.planeHalted, c.runsHalted)
+			}
+		})
+	}
+}
+
+// firstAnswerAdapter answers Capabilities with first once and with later on
+// every call after, so a pipeline that asks again keeps a value never checked.
+type firstAnswerAdapter struct {
+	first, later gateway.Capabilities
+	asked        int
+}
+
+func (a *firstAnswerAdapter) Name() string { return "first-answer" }
+
+func (a *firstAnswerAdapter) Capabilities() gateway.Capabilities {
+	a.asked++
+	if a.asked == 1 {
+		return a.first
+	}
+	return a.later
+}
+
+// TestNewKeepsTheCapabilitiesItChecked: New asks the adapter once and keeps
+// that answer, so an adapter checked cooperative halts the run alone on a
+// reported mismatch though every later answer says inline.
+func TestNewKeepsTheCapabilitiesItChecked(t *testing.T) {
+	adapter := &firstAnswerAdapter{}
+	h := build(t, modeEnforce, snapshot(t, allowReads, allowWrites), withRuns(newRuns("root-a")), func(cfg *gateway.Config) {
+		adapter.first = cfg.Adapter.Capabilities()
+		adapter.first.Enforcement = gateway.EnforcementCooperative
+		adapter.later = adapter.first
+		adapter.later.Enforcement = gateway.EnforcementInline
+		cfg.Adapter = adapter
+	})
+	if adapter.asked != 1 {
+		t.Errorf("New asked the adapter for its capabilities %d times, want once", adapter.asked)
+	}
+	reportMismatch(t, h, "a-1", "run-a", "root-a")
+	if s := h.p.Stats(); s.Halted || s.RunsHalted != 1 {
+		t.Errorf("Stats = %+v; want the run halted alone, as the answer New checked says", s)
 	}
 }
 

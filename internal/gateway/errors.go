@@ -135,6 +135,9 @@ const (
 	// held, or into one that is not resuming or closing. An entry leaves held
 	// once, and what it leaves it for is what the plane is about to write.
 	ErrHoldFlip Error = "gateway: an entry leaves held once, for resuming or for closing"
+	// ErrHoldMaybeRecorded is a record that failed after its entry may have
+	// been filed: the caller treats the entry as filed.
+	ErrHoldMaybeRecorded Error = "gateway: the record failed, and the entry may be filed"
 )
 
 // ErrUnclassified is a translation that could build every part of an

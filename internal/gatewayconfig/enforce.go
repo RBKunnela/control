@@ -112,8 +112,8 @@ func (c *Config) checkEnforceListener() error {
 
 // checkTools refuses an empty table, which would leave every call
 // unclassified, an entry missing a key, a name or a provider no envelope can
-// carry, a classification classify.Parse refuses, and a second entry of one
-// name.
+// carry, a classification classify.Parse refuses, one whose envelope needs an
+// environment the plane leaves unset, and a second entry of one name.
 func (c *Config) checkTools() error {
 	if len(c.Tools) == 0 {
 		return fmt.Errorf("tools: no tool; an %s listener blocks every call to a tool it does not classify", ListenerEnforceAPI)
@@ -129,8 +129,14 @@ func (c *Config) checkTools() error {
 				return fmt.Errorf("tools.%d.%s: %w", i, f.key, err)
 			}
 		}
-		if _, err := t.Classification(); err != nil {
+		cls, err := t.Classification()
+		if err != nil {
 			return fmt.Errorf("tools.%d.%w", i, err)
+		}
+		// The resource's environment is the listener's too.
+		if err := unsetRequired(fmt.Sprintf("tools.%d.", i), t.Effect, cls.Effect, keySource{"environment", "environment", c.Environment},
+			keySource{"resource.environment", "environment", c.Environment}); err != nil {
+			return err
 		}
 		if first, ok := seen[t.Name]; ok {
 			return fmt.Errorf("tools.%d: the tool %s is classified by tools.%d already", i, quoteValue(t.Name), first)

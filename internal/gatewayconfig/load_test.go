@@ -51,6 +51,7 @@ export:
 upstreams:
   - name: orders
     endpoint: http://127.0.0.1:1/mcp
+    environment: prod
 `
 
 // write puts the document, with add appended, in a temporary directory and
@@ -190,8 +191,8 @@ func TestSourcesNameWhatSetEachKey(t *testing.T) {
 	if _, ok := sources["health.address"]; ok {
 		t.Error("health.address stands at its default and has a source")
 	}
-	if len(sources) != 25 {
-		t.Errorf("%d keys have a source, want the document's 24 and the variable", len(sources))
+	if len(sources) != 26 {
+		t.Errorf("%d keys have a source, want the document's 25 and the variable", len(sources))
 	}
 	sources["mode"] = "elsewhere"
 	if cfg.Sources()["mode"] == "elsewhere" {

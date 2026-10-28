@@ -128,7 +128,9 @@ request held in memory. An entry of <code>overrides</code> or <code>tools</code>
 an envelope the contract takes: <code>resource_type</code> is an identifier of at most 1024 bytes,
 <code>resource_from</code> an RFC 6901 pointer of at most 8 tokens of 64 bytes, an effect whose
 envelope needs a resource id (<code>WRITE</code>, <code>DELETE</code>, <code>TRANSACT</code>, <code>IDENTITY_OR_ACCESS</code> and <code>CONFIGURE</code>) needs <code>resource_from</code>, and
-<code>COMMUNICATE</code> needs <code>trust_zone</code>; a tool's <code>name</code> and <code>provider</code>, and an upstream's
+<code>COMMUNICATE</code> needs <code>trust_zone</code>; <code>WRITE</code>, <code>DELETE</code> and <code>CONFIGURE</code> need <code>environment</code> set, and in
+an override its upstream's <code>environment</code> too, and in an override <code>TRANSACT</code> and <code>IDENTITY_OR_ACCESS</code>
+need the upstream's <code>tenant_id</code>; a tool's <code>name</code> and <code>provider</code>, and an upstream's
 <code>name</code>, which is every call's <code>action.provider</code>, are identifiers of at most 1024 bytes too. An identifier is held to the contract's rule
 (<a href="/docs/contracts#decoding-and-validation">contracts</a>): invalid UTF-8 is refused, and so
 are White_Space at either end and, anywhere, a space other than U+0020, a code point in

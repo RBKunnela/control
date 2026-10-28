@@ -85,7 +85,7 @@ func (p *Pipeline) close(ctx context.Context, d Disposition, sent []byte, result
 
 // haltScope is the opened run a mismatch of ex halts, or empty for the plane.
 func (p *Pipeline) haltScope(ex *execution, reported bool) string {
-	if !reported || p.cfg.Adapter.Capabilities().Enforcement != EnforcementCooperative {
+	if !reported || p.caps.Enforcement != EnforcementCooperative {
 		return ""
 	}
 	return ex.runID

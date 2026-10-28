@@ -87,3 +87,59 @@ func TestAnUpstreamNameNoEnvelopeCarriesIsRefused(t *testing.T) {
 		}
 	}
 }
+
+// replaced is s with old replaced once by with; an s without old is fatal,
+// since the edit would change nothing.
+func replaced(t *testing.T, s, old, with string) string {
+	t.Helper()
+	out := strings.Replace(s, old, with, 1)
+	if out == s {
+		t.Fatalf("no %q to replace", old)
+	}
+	return out
+}
+
+// TestAClassificationWithoutTheKeysItsEnvelopeNeedsIsRefusedAtLoad: a class
+// whose envelope needs environment and resource.environment is refused when
+// the key that supplies either has no value, naming that key: the plane's
+// environment for both of a tool, and for an override the plane's and its own
+// upstream's. An override whose class needs resource.tenant_id is refused
+// while its upstream's tenant_id has no value. A class that needs none of
+// them loads without them.
+func TestAClassificationWithoutTheKeysItsEnvelopeNeedsIsRefusedAtLoad(t *testing.T) {
+	const second = "  - name: billing\n    endpoint: http://127.0.0.1:2/mcp\n"
+	withUpstreamEnv := document
+	noUpstreamEnv := replaced(t, document, "    environment: prod\n", "")
+	noPlaneEnv := func(doc string) string { return replaced(t, doc, "\nenvironment: dev\n", "\n") }
+	override := func(effect, upstream string) string {
+		return "\noverrides:\n  - upstream: " + upstream + "\n    tool: t\n    fingerprint: abc\n    effect: " + effect +
+			"\n    resource_type: order\n    resource_from: /id\n    trust_zone: PARTNER\n"
+	}
+	tool := func(effect string) string {
+		return replaced(t, replaced(t, enforceDocument, "effect: TRANSACT", "effect: "+effect), "    resource_from: /order_id\n", "    resource_from: /order_id\n    trust_zone: PARTNER\n")
+	}
+	for _, effect := range []string{"WRITE", "DELETE", "CONFIGURE"} {
+		t.Run(effect, func(t *testing.T) {
+			load(t, writeDocument(t, withUpstreamEnv+override(effect, "orders")))
+			load(t, writeDocument(t, tool(effect)))
+			refusedSaying(t, noPlaneEnv(withUpstreamEnv)+override(effect, "orders"), nil, "overrides.0.effect: "+effect+" needs environment, which has no value")
+			refusedSaying(t, noUpstreamEnv+override(effect, "orders"), nil, "overrides.0.effect: "+effect+" needs upstreams.0.environment, which has no value")
+			refusedSaying(t, noPlaneEnv(tool(effect)), nil, "tools.0.effect: "+effect+" needs environment, which has no value")
+			load(t, writeDocument(t, withUpstreamEnv+second+override(effect, "orders")))
+			refusedSaying(t, withUpstreamEnv+second+override(effect, "billing"), nil, "overrides.0.effect: "+effect+" needs upstreams.1.environment, which has no value")
+		})
+	}
+	withTenant := replaced(t, document, "    environment: prod\n", "    environment: prod\n    tenant_id: acme\n")
+	for _, effect := range []string{"TRANSACT", "IDENTITY_OR_ACCESS"} {
+		t.Run(effect, func(t *testing.T) {
+			load(t, writeDocument(t, noPlaneEnv(withTenant)+override(effect, "orders")))
+			refusedSaying(t, withUpstreamEnv+override(effect, "orders"), nil, "overrides.0.effect: "+effect+" needs upstreams.0.tenant_id, which has no value")
+		})
+	}
+	for _, effect := range []string{"READ", "EXECUTE", "COMMUNICATE"} {
+		t.Run(effect, func(t *testing.T) {
+			load(t, writeDocument(t, noPlaneEnv(noUpstreamEnv)+override(effect, "orders")))
+			load(t, writeDocument(t, noPlaneEnv(tool(effect))))
+		})
+	}
+}

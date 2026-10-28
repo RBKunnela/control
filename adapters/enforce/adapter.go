@@ -84,7 +84,9 @@ var _ gateway.Adapter = (*Adapter)(nil)
 // identity with no principal id or agent id, a nil run resolver, a tool table
 // that is empty or holds a repeated tool, one of a class that needs a
 // delegation, or one whose name, provider or classification no envelope could
-// carry, a negative bound, and a nil clock or id source.
+// carry, one of a class that needs an environment while Environment is empty
+// or the resource's tenant while TenantID is, a negative bound, and a nil
+// clock or id source.
 func New(cfg Config) (*Adapter, error) {
 	if err := checkConfig(cfg); err != nil {
 		return nil, err

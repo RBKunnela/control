@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
@@ -101,27 +102,34 @@ type Config struct {
 	AllowReadsUnrecorded bool
 }
 
-// checkConfig makes New's refusals of cfg but the decision point's.
-func checkConfig(cfg Config) error {
-	if err := checkAdapter(cfg.Mode, cfg.Adapter); err != nil {
-		return err
+// checkConfig makes New's refusals of cfg but the decision point's. It asks
+// the adapter for its capabilities once and returns that answer, so the
+// pipeline keeps the value that was checked.
+func checkConfig(cfg Config) (Capabilities, error) {
+	if cfg.Adapter == nil {
+		return Capabilities{}, ErrNoAdapter
 	}
-	if err := checkRuns(cfg); err != nil {
-		return err
+	caps := cfg.Adapter.Capabilities()
+	caps.Obligations = slices.Clone(caps.Obligations)
+	if err := checkAdapter(cfg.Mode, cfg.Adapter.Name(), caps); err != nil {
+		return Capabilities{}, err
+	}
+	if err := checkRuns(cfg, caps.PresentsRuns); err != nil {
+		return Capabilities{}, err
 	}
 	if err := checkSources(cfg); err != nil {
-		return err
+		return Capabilities{}, err
 	}
 	if _, disabled := cfg.Stops.(disabledStops); !disabled && cfg.Runs == nil {
-		return ErrStopsWithoutRuns
+		return Capabilities{}, ErrStopsWithoutRuns
 	}
 	if err := checkBounds(cfg); err != nil {
-		return err
+		return Capabilities{}, err
 	}
 	if first, second := cfg.NewID(), cfg.NewID(); first == "" || second == "" || first == second {
-		return ErrIDSource
+		return Capabilities{}, ErrIDSource
 	}
-	return nil
+	return caps, nil
 }
 
 // checkSources refuses a source cfg leaves nil.

@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -18,9 +19,15 @@ func catalogueAccepts(typ string, params map[string]string) bool {
 	return rules.CheckObligations(doc) == nil
 }
 
+// edgeValues sit at the grammars' bounds: the neighbours of the duration
+// bound, the empty value, and paths at the length bound.
+var edgeValues = []string{"9223372036854", "9223372036855", "0", "-0", "",
+	strings.Repeat("x", 1023) + "/", strings.Repeat("x", 1021) + "/..", strings.Repeat("x", 1020) + "/..", strings.Repeat("x", 1024),
+	"a/" + strings.Repeat("x", 1019) + "/.."}
+
 // paramValue draws a value near the edges of the adapter's grammars: any
-// string, a signed number around the duration bound, and paths built from
-// the pieces a resolver reads differently.
+// string, a signed number around the duration bound, the edge values, and
+// paths built from the pieces a resolver reads differently.
 func paramValue() *rapid.Generator[string] {
 	piece := rapid.SampledFrom([]string{
 		"a", "ord-1", "files", "/", ".", "..", " ", ",", "%", "%2F", ";", "?", "#", "\\", "é", "\x7f", "+", "-", "0", "9",
@@ -28,8 +35,7 @@ func paramValue() *rapid.Generator[string] {
 	return rapid.OneOf(
 		rapid.String(),
 		rapid.StringMatching(`[+-]?0*[0-9]{1,19}`),
-		rapid.SampledFrom([]string{"9223372036854", "9223372036855", "0", "-0", "",
-			strings.Repeat("x", 1023) + "/", strings.Repeat("x", 1021) + "/..", strings.Repeat("x", 1020) + "/..", strings.Repeat("x", 1024)}),
+		rapid.SampledFrom(edgeValues),
 		rapid.Custom(func(t *rapid.T) string { return strings.Join(rapid.SliceOfN(piece, 0, 8).Draw(t, "pieces"), "") }),
 	)
 }
@@ -83,19 +89,49 @@ func TestRestrictResourcesAppliesWhatTheCatalogueAccepts(t *testing.T) {
 				}
 			}
 		}
-		prefix := paramValue().Draw(t, "prefix")
-		params = map[string]string{paramPrefix: prefix}
-		if carriable(prefix) != nil || !catalogueAccepts(obligationRestrictResources, params) {
-			return
-		}
-		id := prefix + "x"
-		if len(prefix) >= contract.MaxStringBytes {
-			id = prefix
-		}
-		if carriable(id) != nil || !resourceAllowed(id, params) {
-			t.Fatalf("prefix %q is accepted and does not let %q through (%v)", prefix, id, carriable(id))
+		if _, err := checkPrefix(paramValue().Draw(t, "prefix")); err != nil {
+			t.Fatal(err)
 		}
 	})
+}
+
+// TestRestrictResourcesPrefixAtTheEdges holds every edge value to the prefix
+// property, which a seed's draws may never reach.
+func TestRestrictResourcesPrefixAtTheEdges(t *testing.T) {
+	applied := 0
+	for _, prefix := range edgeValues {
+		ok, err := checkPrefix(prefix)
+		if err != nil {
+			t.Error(err)
+		}
+		if ok {
+			applied++
+		}
+	}
+	if applied == 0 {
+		t.Fatal("no edge value is a prefix the catalogue accepts; the property examined nothing")
+	}
+}
+
+// checkPrefix reports whether prefix is one the catalogue accepts, of the
+// spelling and length the parser admits, and an error when such a prefix does
+// not let through an id an envelope can carry.
+func checkPrefix(prefix string) (bool, error) {
+	params := map[string]string{paramPrefix: prefix}
+	if applies := carriable(prefix) == nil && catalogueAccepts(obligationRestrictResources, params); !applies {
+		return false, nil
+	}
+	id := prefix + "x"
+	if len(prefix) >= contract.MaxStringBytes {
+		id = prefix
+	}
+	if err := carriable(id); err != nil {
+		return true, fmt.Errorf("prefix %q is accepted and %q cannot be carried: %w", prefix, id, err)
+	}
+	if !resourceAllowed(id, params) {
+		return true, fmt.Errorf("prefix %q is accepted and does not let %q through", prefix, id)
+	}
+	return true, nil
 }
 
 // carriable is what the contract requires of an envelope's resource id.

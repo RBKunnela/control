@@ -183,7 +183,7 @@ evidence.</p>
 <p>An entry is recorded after <code>APPROVAL_REQUESTED</code> is appended and before the
 agent is told pending, and every append that moves that trail further is
 preceded by a flip out of <code>held</code>. So an entry that reads <code>held</code> proves the
-trail stands at its request for an approval and can still be closed. At its
+trail stands at its request for approval and can still be closed. At its
 next start the plane reads the journal and closes each of those trails:</p>
 <table>
 <thead>
@@ -249,11 +249,11 @@ counted on <code>/healthz</code>:</p>
 </tr>
 </tbody>
 </table>
-<p>A running plane that cannot write a held trail's closing record before
-hand-out leaves that trail open, keeps its request id reserved until the plane
-restarts so no other call writes under it, and counts it in
-<code>held_trails_left_open</code>; after hand-out it counts <code>sink_failures_after_effect</code>.
-The next start reports its journal entry, where there is one.</p>
+<p>A plane that cannot write a held trail's closing record before
+hand-out, or move a journal entry that may stand out of <code>held</code>, leaves that
+trail open, reserves its request id until restart so no other call writes under
+it, and counts it in <code>held_trails_left_open</code>; after hand-out it counts
+<code>sink_failures_after_effect</code>. The next start reports its entry, if any.</p>
 <p><strong>A plane configured without <code>approvals.hold_journal_dir</code> does not close a hold
 it loses.</strong> That is the behaviour of a plane on the memory provider, it is
 named rather than hidden, and <code>doctor</code> and <code>/healthz</code> both say it out loud.</p>

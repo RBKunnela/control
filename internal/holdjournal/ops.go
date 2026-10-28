@@ -11,6 +11,8 @@ import (
 // Record files entry, which is in StateHeld, and returns only once it is
 // durable. It refuses an entry that is missing anything its trail's close
 // needs, or in another state, and a request id it holds an entry for already.
+// An error wrapping ErrMaybeRecorded means the entry may be filed; any other
+// means it was not.
 func (j *Journal) Record(ctx context.Context, entry Entry) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -37,6 +39,11 @@ func (j *Journal) Record(ctx context.Context, entry Entry) error {
 	if err := j.create(name, body); err != nil {
 		if errors.Is(err, errExists) {
 			return fmt.Errorf("%w: %q", ErrRecorded, cause(entry.IDs.RequestID))
+		}
+		if errors.Is(err, ErrMaybeRecorded) {
+			// The entry stands, so it counts against the bound until a
+			// Forget removes it or the next open counts the directory.
+			j.entries++
 		}
 		return err
 	}

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/guardana/control/internal/brand"
 	toolclass "github.com/guardana/control/internal/classify"
 	"github.com/guardana/control/internal/gatewayconfig"
+	"github.com/guardana/control/pkg/contract"
 )
 
 // classificationRefusals are classifications no envelope can carry, each as
@@ -69,7 +71,7 @@ func refusalKey(err error) string {
 func TestAClassificationIsRefusedAlikeAtEveryEntryPoint(t *testing.T) {
 	tr := newTree(t)
 	withConfig(t, tr, classifiedOverride)
-	base, err := gatewayconfig.Load(tr.config, nil)
+	base, err := gatewayconfig.Load(tr.config, []string{upstreamEnvironment})
 	if err != nil {
 		t.Fatalf("the control configuration is refused: %v", err)
 	}
@@ -79,7 +81,7 @@ func TestAClassificationIsRefusedAlikeAtEveryEntryPoint(t *testing.T) {
 	}
 	for _, row := range classificationRefusals {
 		t.Run(row.name, func(t *testing.T) {
-			var environ []string
+			environ := []string{upstreamEnvironment}
 			for key, value := range row.keys {
 				environ = append(environ, brand.Env(gatewayconfig.EnvName("overrides.0."+key))+"="+value)
 			}
@@ -105,6 +107,84 @@ func TestAClassificationIsRefusedAlikeAtEveryEntryPoint(t *testing.T) {
 	}
 }
 
+// upstreamEnvironment gives the fixture's one upstream the environment a
+// write's resource needs.
+var upstreamEnvironment = brand.Env(gatewayconfig.EnvName("upstreams.0.environment")) + "=prod"
+
+// TestAnUnsetEnvelopeKeyIsRefusedAlikeAtEveryEntryPoint: a class whose
+// envelope needs environment and resource.environment, or resource.tenant_id,
+// is refused by the loader and by both adapters' New when the value one is
+// read from is empty, and taken by each when all are set; a read needs none.
+// The enforcement adapter reads them from the plane's keys, so the upstream's
+// are not its to refuse.
+func TestAnUnsetEnvelopeKeyIsRefusedAlikeAtEveryEntryPoint(t *testing.T) {
+	tr := newTree(t)
+	withConfig(t, tr, classifiedOverride)
+	base, err := gatewayconfig.Load(tr.config, []string{upstreamEnvironment})
+	if err != nil {
+		t.Fatalf("the control configuration is refused: %v", err)
+	}
+	mcpConfig, err := adapterConfig(base, slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatalf("the control adapter configuration is refused: %v", err)
+	}
+	planeKey, upstreamKey := brand.Env(gatewayconfig.EnvName("environment")), brand.Env(gatewayconfig.EnvName("upstreams.0.environment"))
+	tenantKey := brand.Env(gatewayconfig.EnvName("upstreams.0.tenant_id"))
+	effectKey := brand.Env(gatewayconfig.EnvName("overrides.0.effect"))
+	for _, row := range []struct {
+		name                    string
+		effect                  string
+		plane, upstream, tenant string
+		loader, mcp, enforce    string
+	}{
+		{"a write with both", "WRITE", "dev", "prod", "", "", "", ""},
+		{"a write without the plane's", "WRITE", "", "prod", "", "overrides.0.effect: WRITE needs environment,", "needs Environment,", "needs Environment,"},
+		{"a write without the upstream's", "WRITE", "dev", "", "", "overrides.0.effect: WRITE needs upstreams.0.environment,", "needs Upstreams[0].Environment,", ""},
+		{"a delete without either", "DELETE", "", "", "", "overrides.0.effect: DELETE needs environment,", "needs Environment,", "needs Environment,"},
+		{"a transact with the upstream's tenant", "TRANSACT", "", "", "acme", "", "", ""},
+		{"a transact without the upstream's tenant", "TRANSACT", "", "", "", "overrides.0.effect: TRANSACT needs upstreams.0.tenant_id,", "needs Upstreams[0].TenantID,", ""},
+		{"a read without any", "READ", "", "", "", "", "", ""},
+	} {
+		t.Run(row.name, func(t *testing.T) {
+			_, err := gatewayconfig.Load(tr.config, []string{planeKey + "=" + row.plane, upstreamKey + "=" + row.upstream, tenantKey + "=" + row.tenant, effectKey + "=" + row.effect})
+			refusedNaming(t, "the configuration", err, nil, row.loader)
+
+			effect, err := contract.ParseEffect(row.effect)
+			if err != nil {
+				t.Fatal(err)
+			}
+			c := toolclass.Classification{Effect: effect, ResourceType: "order", ResourceFrom: "/id", TrustZone: controlv1.TrustZone_TRUST_ZONE_PARTNER}
+			cfg := mcpConfig
+			cfg.Environment = row.plane
+			cfg.Upstreams = slices.Clone(mcpConfig.Upstreams)
+			cfg.Upstreams[0].Environment = row.upstream
+			cfg.Upstreams[0].TenantID = row.tenant
+			cfg.Overrides = []adaptermcp.Override{{Upstream: "orders", Tool: "update_order", Fingerprint: "sha256:00", Classification: c}}
+			_, err = adaptermcp.New(cfg)
+			refusedNaming(t, "mcp.New", err, adaptermcp.ErrOverride, row.mcp)
+
+			ecfg := enforceConfig(t, enforce.Tool{Name: "update_order", Provider: "orders", Classification: c})
+			ecfg.Environment, ecfg.TenantID = row.plane, "acme"
+			_, err = enforce.New(ecfg)
+			refusedNaming(t, "enforce.New", err, enforce.ErrTool, row.enforce)
+		})
+	}
+}
+
+// refusedNaming reports err unless it is nil where want is empty, or wraps
+// sentinel and says want.
+func refusedNaming(t *testing.T, who string, err, sentinel error, want string) {
+	t.Helper()
+	switch {
+	case want == "" && err != nil:
+		t.Errorf("%s refused: %v", who, err)
+	case want != "" && err == nil:
+		t.Errorf("%s accepted; want a refusal naming %s", who, want)
+	case want != "" && ((sentinel != nil && !errors.Is(err, sentinel)) || !strings.Contains(err.Error(), want)):
+		t.Errorf("%s: %v does not name %s", who, err, want)
+	}
+}
+
 // enforceConfig is an enforcement adapter's configuration complete but for
 // its one tool. New binds nothing, so the socket's directory is only named;
 // it is a short one, since a test's own directory can be past what a socket
@@ -117,7 +197,7 @@ func enforceConfig(t *testing.T, tool enforce.Tool) enforce.Config {
 	}
 	t.Cleanup(func() { _ = os.RemoveAll(dir) })
 	return enforce.Config{
-		Socket: filepath.Join(dir, "s"), ExecutionLifetime: time.Minute,
+		Socket: filepath.Join(dir, "s"), ExecutionLifetime: time.Minute, Environment: "dev",
 		Identity: enforce.Identity{Principal: &controlv1.Principal{Id: "p"}, Agent: &controlv1.Agent{Id: "a"}},
 		Runs:     runsDir{}, Tools: []enforce.Tool{tool}, Clock: time.Now, NewID: newID,
 	}

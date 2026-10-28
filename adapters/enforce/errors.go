@@ -24,9 +24,10 @@ const (
 	// ErrNoRuns is a nil run resolver: every request presents a run token.
 	ErrNoRuns Error = "enforce: no run resolver"
 	// ErrTool is an empty tool table, a name another tool has, a name or a
-	// provider no envelope can carry, an effect class that needs a delegation,
-	// or a classification classify.Check refuses. A refusal of one key wraps
-	// a *classify.Error naming it.
+	// provider no envelope can carry, an effect class that needs a delegation
+	// or an environment Environment leaves empty, or a classification
+	// classify.Check refuses. A refusal of one key wraps a *classify.Error
+	// naming it.
 	ErrTool Error = "enforce: the tool table is empty, incomplete or out of bounds"
 	// ErrBound is a negative bound on kept handles, on a run's open
 	// executions, on a sweep or on a request's time.

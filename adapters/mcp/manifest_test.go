@@ -274,6 +274,47 @@ func TestNewRefusesEachMisconfiguration(t *testing.T) {
 	}
 }
 
+// TestNewRefusesAnOverrideWhoseEnvelopeKeyIsEmpty: an override whose class
+// needs, by the contract's table, the environment, the resource's environment
+// or the resource's tenant is refused while the field it is read from is
+// empty, naming that field; a read needs none of them.
+func TestNewRefusesAnOverrideWhoseEnvelopeKeyIsEmpty(t *testing.T) {
+	v := newVictim()
+	ct, _ := sdk.NewInMemoryTransports()
+	override := func(effect controlv1.EffectClass) []mcp.Override {
+		return []mcp.Override{{Upstream: "victim", Tool: "t", Fingerprint: "sha256:00",
+			Classification: classify.Classification{Effect: effect, ResourceType: "order", ResourceFrom: "/id"}}}
+	}
+	for _, tc := range []struct {
+		name   string
+		effect controlv1.EffectClass
+		mut    func(*mcp.Config)
+		want   string
+	}{
+		{"a write with every key", controlv1.EffectClass_EFFECT_CLASS_WRITE, func(*mcp.Config) {}, ""},
+		{"a write with no environment", controlv1.EffectClass_EFFECT_CLASS_WRITE, func(c *mcp.Config) { c.Environment = "" }, "needs Environment, which is empty"},
+		{"a delete with no upstream environment", controlv1.EffectClass_EFFECT_CLASS_DELETE, func(c *mcp.Config) { c.Upstreams[0].Environment = "" }, "needs Upstreams[0].Environment, which is empty"},
+		{"a transact with no upstream tenant", controlv1.EffectClass_EFFECT_CLASS_TRANSACT, func(c *mcp.Config) { c.Upstreams[0].TenantID = "" }, "needs Upstreams[0].TenantID, which is empty"},
+		{"an identity change with no upstream tenant", controlv1.EffectClass_EFFECT_CLASS_IDENTITY_OR_ACCESS, func(c *mcp.Config) { c.Upstreams[0].TenantID = "" }, "needs Upstreams[0].TenantID, which is empty"},
+		{"a read with none", controlv1.EffectClass_EFFECT_CLASS_READ, func(c *mcp.Config) {
+			c.Environment, c.Upstreams[0].Environment, c.Upstreams[0].TenantID = "", "", ""
+		}, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := newConfig(t, v, mcp.KindStdio, ct, rigOptions{})
+			cfg.Overrides = override(tc.effect)
+			tc.mut(&cfg)
+			_, err := mcp.New(cfg)
+			switch {
+			case tc.want == "" && err != nil:
+				t.Fatalf("New refused: %v", err)
+			case tc.want != "" && (!errors.Is(err, mcp.ErrOverride) || !strings.Contains(err.Error(), tc.want)):
+				t.Fatalf("New = %v; want ErrOverride saying %q", err, tc.want)
+			}
+		})
+	}
+}
+
 // TestNewRefusesASecondOverrideOfOneTool: a second classification of one
 // upstream's tool is refused, naming both, rather than replacing the first,
 // which would let a later READ entry turn a DELETE into a read. The same

@@ -106,8 +106,7 @@ func (r *RunRefusal) Unwrap() error { return r.Err }
 // checkRuns refuses a plane whose adapter hands in opened runs without a runs
 // directory to judge them, or one with a runs directory whose adapter hands in
 // none: either way a call would run under a run nobody checked, or under none.
-func checkRuns(cfg Config) error {
-	presents := cfg.Adapter.Capabilities().PresentsRuns
+func checkRuns(cfg Config, presents bool) error {
 	switch {
 	case presents && cfg.Runs == nil:
 		return fmt.Errorf("%w: %s presents runs and no runs directory is configured", ErrRunsMismatch, cfg.Adapter.Name())

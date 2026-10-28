@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -12,6 +13,7 @@ import (
 	"github.com/guardana/control/internal/classify"
 	"github.com/guardana/control/internal/gateway"
 	"github.com/guardana/control/internal/secretscan"
+	"github.com/guardana/control/pkg/contract"
 )
 
 // Kind is the transport a listener serves toward the agent.
@@ -172,7 +174,10 @@ func checkConfig(cfg Config) error {
 	if err != nil {
 		return err
 	}
-	return checkOverrides(cfg.Overrides, names)
+	if err := checkOverrides(cfg.Overrides, names); err != nil {
+		return err
+	}
+	return checkUpstreamKeys(cfg)
 }
 
 func checkListener(l Listener) error {
@@ -256,6 +261,27 @@ func checkOverrides(overrides []Override, names map[string]bool) error {
 		}
 		if err := o.Check(); err != nil {
 			return fmt.Errorf("%w: Overrides[%d]: %w", ErrOverride, i, err)
+		}
+	}
+	return nil
+}
+
+// checkUpstreamKeys refuses an override whose envelope needs, by the
+// contract's table, the environment, the resource's or the resource's tenant
+// while the value it is read from, the listener's or the override's
+// upstream's, is empty: every call to the tool would be refused, OBSERVE
+// included. checkOverrides has found each override's upstream.
+func checkUpstreamKeys(cfg Config) error {
+	for i, o := range cfg.Overrides {
+		required := contract.EffectRequires(o.Effect)
+		up := slices.IndexFunc(cfg.Upstreams, func(u Upstream) bool { return u.Name == o.Upstream })
+		switch {
+		case cfg.Environment == "" && slices.Contains(required, "environment"):
+			return fmt.Errorf("%w: Overrides[%d]: %s needs Environment, which is empty", ErrOverride, i, o.Effect)
+		case cfg.Upstreams[up].Environment == "" && slices.Contains(required, "resource.environment"):
+			return fmt.Errorf("%w: Overrides[%d]: %s needs Upstreams[%d].Environment, which is empty", ErrOverride, i, o.Effect, up)
+		case cfg.Upstreams[up].TenantID == "" && slices.Contains(required, "resource.tenant_id"):
+			return fmt.Errorf("%w: Overrides[%d]: %s needs Upstreams[%d].TenantID, which is empty", ErrOverride, i, o.Effect, up)
 		}
 	}
 	return nil

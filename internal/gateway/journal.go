@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"google.golang.org/protobuf/proto"
@@ -95,7 +96,9 @@ type HoldJournal interface {
 	// Record files entry, which is in HoldHeld. It refuses an entry missing
 	// anything its trail's close needs, or in another state, with
 	// ErrHoldEntry, and a request id it holds an entry for already with
-	// ErrHoldRecorded. It returns only after the entry is durable.
+	// ErrHoldRecorded. It returns only after the entry is durable. An error
+	// wrapping ErrHoldMaybeRecorded means the entry may be filed, and the
+	// caller treats it so; any other error means nothing was filed.
 	Record(ctx context.Context, entry HoldEntry) error
 	// Mark flips the entry of requestID out of HoldHeld into state, which is
 	// HoldResuming or HoldClosing. It refuses an entry it does not hold with
@@ -114,11 +117,26 @@ type HoldJournal interface {
 	List(ctx context.Context, bound int) (HoldListing, error)
 }
 
-// journalRecord files own as a held entry, and reports whether the hold may
-// stand. A pipeline with no journal keeps no entry and says so.
-func (p *Pipeline) journalRecord(ctx context.Context, own *heldRequest) bool {
+// recordOutcome is what journalRecord learned of the entry.
+type recordOutcome int
+
+const (
+	// entryFiled is an entry the journal holds, or no journal at all: the
+	// hold may stand.
+	entryFiled recordOutcome = iota
+	// entryNotFiled is a refusal that filed nothing.
+	entryNotFiled
+	// entryMaybeFiled is a refusal after which the entry may be filed, so the
+	// trail is closed only after the entry has left held.
+	entryMaybeFiled
+)
+
+// journalRecord files own as a held entry, and reports whether it is filed,
+// not filed, or may be. A pipeline with no journal keeps no entry and says
+// so.
+func (p *Pipeline) journalRecord(ctx context.Context, own *heldRequest) recordOutcome {
 	if p.cfg.Journal == nil {
-		return true
+		return entryFiled
 	}
 	entry := HoldEntry{
 		SchemaVersion: holdEntrySchemaVersion,
@@ -129,11 +147,15 @@ func (p *Pipeline) journalRecord(ctx context.Context, own *heldRequest) bool {
 		Approval:      proto.CloneOf(own.approval),
 		Expires:       own.expires,
 	}
-	if err := p.cfg.Journal.Record(ctx, entry); err != nil {
-		p.counts.add(func(s *Stats) *uint64 { return &s.JournalRefusals })
-		return false
+	err := p.cfg.Journal.Record(ctx, entry)
+	if err == nil {
+		return entryFiled
 	}
-	return true
+	p.counts.add(func(s *Stats) *uint64 { return &s.JournalRefusals })
+	if errors.Is(err, ErrHoldMaybeRecorded) {
+		return entryMaybeFiled
+	}
+	return entryNotFiled
 }
 
 // journalMark flips the entry of requestID into state and reports whether the

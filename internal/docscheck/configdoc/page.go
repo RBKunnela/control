@@ -119,7 +119,7 @@ func defaultOf(path string) (string, error) {
 // classificationRule is what an override or a tool is refused for beyond its
 // table: a classification whose every call the contract would refuse.
 func classificationRule() (string, error) {
-	var needsID, needsZone []string
+	var needsID, needsZone, needsEnv, needsTenant []string
 	for _, name := range classify.EffectNames() {
 		effect, err := contract.ParseEffect(name)
 		if err != nil {
@@ -132,12 +132,24 @@ func classificationRule() (string, error) {
 		if slices.Contains(requires, "destination.trust_zone") {
 			needsZone = append(needsZone, "`"+name+"`")
 		}
+		env, resourceEnv := slices.Contains(requires, "environment"), slices.Contains(requires, "resource.environment")
+		if env != resourceEnv {
+			return "", fmt.Errorf("configdoc: %s needs one of environment and resource.environment; the sentence names both", name)
+		}
+		if env {
+			needsEnv = append(needsEnv, "`"+name+"`")
+		}
+		if slices.Contains(requires, "resource.tenant_id") {
+			needsTenant = append(needsTenant, "`"+name+"`")
+		}
 	}
 	return "An entry of `overrides` or `tools` is refused when no call to its tool could carry\n" +
 		"an envelope the contract takes: `resource_type` is an identifier of at most " + strconv.Itoa(contract.MaxStringBytes) + " bytes,\n" +
 		"`resource_from` an RFC 6901 pointer of at most " + strconv.Itoa(classify.MaxPointerTokens) + " tokens of " + strconv.Itoa(classify.MaxPointerTokenSize) + " bytes, an effect whose\n" +
 		"envelope needs a resource id (" + joinAnd(needsID) + ") needs `resource_from`, and\n" +
-		joinAnd(needsZone) + " needs `trust_zone`; a tool's `name` and `provider`, and an upstream's\n" +
+		joinAnd(needsZone) + " needs `trust_zone`; " + joinAnd(needsEnv) + " need `environment` set, and in\n" +
+		"an override its upstream's `environment` too, and in an override " + joinAnd(needsTenant) + "\n" +
+		"need the upstream's `tenant_id`; a tool's `name` and `provider`, and an upstream's\n" +
 		"`name`, which is every call's `action.provider`, are identifiers of at most " + strconv.Itoa(contract.MaxStringBytes) + " bytes too. An identifier is held to the contract's rule\n" +
 		"([contracts](../contracts.md#decoding-and-validation)): invalid UTF-8 is refused, and so\n" +
 		"are White_Space at either end and, anywhere, a space other than U+0020, a code point in\n" +

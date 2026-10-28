@@ -160,6 +160,7 @@ var journalErrors = map[holdjournal.Error]gateway.Error{
 	holdjournal.ErrRecorded:      gateway.ErrHoldRecorded,
 	holdjournal.ErrNoEntry:       gateway.ErrNoHoldEntry,
 	holdjournal.ErrFlip:          gateway.ErrHoldFlip,
+	holdjournal.ErrMaybeRecorded: gateway.ErrHoldMaybeRecorded,
 }
 
 func journalError(err error) error {

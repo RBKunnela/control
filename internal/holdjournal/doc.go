@@ -30,6 +30,7 @@
 //	ErrRecorded                                                  -> ErrHoldRecorded
 //	ErrNoEntry                                                   -> ErrNoHoldEntry
 //	ErrFlip                                                      -> ErrHoldFlip
+//	ErrMaybeRecorded                                             -> ErrHoldMaybeRecorded
 //
 // Every other refusal travels as itself: the directory, the lock, a bound or a
 // file that will not decode are not the entry's fault, and an operator acts on

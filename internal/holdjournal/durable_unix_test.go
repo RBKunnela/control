@@ -48,12 +48,11 @@ func TestEveryFileTheJournalWritesIsItsOwnersAlone(t *testing.T) {
 	}
 }
 
-// TestARecordThatCannotBeMadeDurableIsNotFiled: the entry is linked, and then
-// the directory cannot be opened to force it to disk. Record reports the
-// failure, and the entry is gone with it, so a caller told the hold was not
-// journalled does not meet that hold at the next start without a power loss
-// in between.
-func TestARecordThatCannotBeMadeDurableIsNotFiled(t *testing.T) {
+// TestARecordThatCannotBeMadeDurableMayBeFiled: the entry is linked, and then
+// the directory cannot be opened to force it to disk. Record reports an entry
+// that may be filed, the entry stands and lists as held, so the caller can
+// move it out of held and forget it as it would a filed one.
+func TestARecordThatCannotBeMadeDurableMayBeFiled(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("the superuser opens a directory whatever its mode")
 	}
@@ -67,15 +66,19 @@ func TestARecordThatCannotBeMadeDurableIsNotFiled(t *testing.T) {
 	if chmodErr := os.Chmod(dir, 0o700); chmodErr != nil { //nolint:gosec // G302: as newDir leaves it
 		t.Fatal(chmodErr)
 	}
-	if !errors.Is(err, fs.ErrPermission) {
-		t.Fatalf("Record with a directory it cannot force to disk = %v, want fs.ErrPermission", err)
+	if !errors.Is(err, holdjournal.ErrMaybeRecorded) || !errors.Is(err, fs.ErrPermission) {
+		t.Fatalf("Record with a directory it cannot force to disk = %v, want ErrMaybeRecorded with fs.ErrPermission", err)
 	}
-	if names := entryFiles(t, dir); len(names) != 0 {
-		t.Fatalf("a failed record left %v", names)
+	if names := entryFiles(t, dir); len(names) != 1 {
+		t.Fatalf("a record that may be filed left %v, want its entry", names)
 	}
 	l, err := j.List(context.Background(), 10)
-	if err != nil || len(l.Held)+l.Interrupted+l.Unreadable != 0 || !l.Complete {
-		t.Fatalf("listing after a failed record: %+v, %v", l, err)
+	if err != nil || len(l.Held) != 1 || l.Interrupted+l.Unreadable != 0 || !l.Complete {
+		t.Fatalf("listing after a record that may be filed: %+v, %v", l, err)
+	}
+	mark(t, j, "req-1", holdjournal.StateClosing)
+	if err := j.Forget(context.Background(), "req-1"); err != nil {
+		t.Fatalf("forgetting the entry: %v", err)
 	}
 	record(t, j, "req-1")
 }

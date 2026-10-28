@@ -38,11 +38,10 @@ func tmpName() string {
 // create writes body under name, which must not be there: the link fails with
 // EEXIST rather than replacing an entry that exists already. The file is
 // forced to disk before the link and the directory after it, so a name that
-// was reported written survives a power loss. A failure after the link
-// unlinks the name again, and only a failure of that unlink too, which the
-// error carries, leaves the entry in place. Nothing forces that unlink to
-// disk, since forcing the directory is what failed, so a power loss can bring
-// the entry back.
+// was reported written survives a power loss. A failure after the link wraps
+// ErrMaybeRecorded and leaves the name in place: whether it survives a power
+// loss is unknown, and an unlink could not be forced to disk either, so the
+// caller moves the entry out of held and forgets it as it would a filed one.
 func (j *Journal) create(name string, body []byte) error {
 	tmp := tmpName()
 	if err := j.writeSynced(tmp, body); err != nil {
@@ -56,7 +55,7 @@ func (j *Journal) create(name string, body []byte) error {
 		return errors.Join(err, j.root.Remove(tmp))
 	}
 	if err := errors.Join(j.root.Remove(tmp), j.syncDir()); err != nil {
-		return errors.Join(err, j.root.Remove(name))
+		return fmt.Errorf("%w: %w", ErrMaybeRecorded, err)
 	}
 	return nil
 }
@@ -89,6 +88,10 @@ func (j *Journal) remove(name string) (bool, error) {
 	return true, j.syncDir()
 }
 
+// dirSync forces an open directory to disk; a test replaces it to make that
+// fail.
+var dirSync = (*os.File).Sync
+
 // syncDir forces the directory's entries to disk, so a name that was linked,
 // renamed or unlinked before a power loss is in that state after it.
 func (j *Journal) syncDir() error {
@@ -96,7 +99,7 @@ func (j *Journal) syncDir() error {
 	if err != nil {
 		return err
 	}
-	return errors.Join(d.Sync(), d.Close())
+	return errors.Join(dirSync(d), d.Close())
 }
 
 // openRegular opens name to read it, and refuses anything but a regular file

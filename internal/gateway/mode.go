@@ -56,23 +56,19 @@ func Requirements(mode controlv1.EnforcementMode) (Capabilities, error) {
 // declares an enforcement this build does not know, an adapter that declares
 // an obligation the catalogue lacks, and an adapter that binds an end user on
 // a listener that authenticates nobody.
-func checkAdapter(mode controlv1.EnforcementMode, a Adapter) error {
-	if a == nil {
-		return ErrNoAdapter
-	}
+func checkAdapter(mode controlv1.EnforcementMode, name string, caps Capabilities) error {
 	need, err := Requirements(mode)
 	if err != nil {
 		return err
 	}
-	caps := a.Capabilities()
 	if caps.Enforcement > EnforcementInline || !caps.covers(need) {
-		return fmt.Errorf("%w: %s under %s", ErrCapability, a.Name(), mode)
+		return fmt.Errorf("%w: %s under %s", ErrCapability, name, mode)
 	}
 	if err := checkObligations(caps.Obligations); err != nil {
 		return err
 	}
 	if caps.BindEndUser && !caps.Authenticates {
-		return fmt.Errorf("%w: %s", ErrUnauthenticatedBinding, a.Name())
+		return fmt.Errorf("%w: %s", ErrUnauthenticatedBinding, name)
 	}
 	return nil
 }

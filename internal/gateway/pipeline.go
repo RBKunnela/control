@@ -77,7 +77,10 @@ type Pending struct {
 // Pipeline is one plane's enforcement pipeline. New is the only way to make a
 // usable one; a nil or zero Pipeline blocks every admission.
 type Pipeline struct {
-	cfg    Config
+	cfg Config
+	// caps is the adapter's capabilities as New checked them, which the
+	// pipeline reads after New instead of asking the adapter again.
+	caps   Capabilities
 	kernel *core.Kernel
 	counts counters
 
@@ -118,7 +121,8 @@ type openTrail struct {
 // with the first of New's refusals in errors.go it meets, or with the kernel's
 // refusal of its options.
 func New(cfg Config) (*Pipeline, error) {
-	if err := checkConfig(cfg); err != nil {
+	caps, err := checkConfig(cfg)
+	if err != nil {
 		return nil, err
 	}
 	if err := checkDecisionPoint(cfg); err != nil {
@@ -127,7 +131,7 @@ func New(cfg Config) (*Pipeline, error) {
 	opts := cfg.KernelOptions
 	opts.Mode = modeEnforce
 	opts.DecisionPoint = cfg.DecisionPointID
-	opts.Applicable = append(append([]string(nil), rewriting...), cfg.Adapter.Capabilities().Obligations...)
+	opts.Applicable = append(append([]string(nil), rewriting...), caps.Obligations...)
 	if cfg.Mode == modeLockdown {
 		opts.FailOpenRead = false
 	}
@@ -138,7 +142,7 @@ func New(cfg Config) (*Pipeline, error) {
 	if cfg.MaxHeldPerRun == 0 {
 		cfg.MaxHeldPerRun = DefaultMaxHeldPerRun
 	}
-	return &Pipeline{cfg: cfg, kernel: kernel, open: make(map[string]*execution), trails: make(map[string]openTrail), runs: make(map[runKey]*run)}, nil
+	return &Pipeline{cfg: cfg, caps: caps, kernel: kernel, open: make(map[string]*execution), trails: make(map[string]openTrail), runs: make(map[runKey]*run)}, nil
 }
 
 // Admit decides one admission and says what to do about it. It has no error

@@ -76,14 +76,16 @@ func TestFieldsSpellTheTable(t *testing.T) {
 }
 
 // TestEveryEffectClassOfTheContractLoads: an override takes each of the
-// contract's nine classes, spelled as the contract parses it.
+// contract's nine classes, spelled as the contract parses it, on an upstream
+// with every key a class's envelope reads from it.
 func TestEveryEffectClassOfTheContractLoads(t *testing.T) {
+	withTenant := replaced(t, document, "    environment: prod\n", "    environment: prod\n    tenant_id: acme\n")
 	for _, name := range []string{
 		"READ", "WRITE", "DELETE", "EXECUTE", "COMMUNICATE", "TRANSACT",
 		"IDENTITY_OR_ACCESS", "CONFIGURE", "SPAWN_OR_DELEGATE",
 	} {
 		t.Run(name, func(t *testing.T) {
-			cfg := load(t, write(t, overrideEffect(name)))
+			cfg := load(t, writeDocument(t, withTenant+overrideEffect(name)))
 			if len(cfg.Overrides) != 1 || cfg.Overrides[0].Effect != name {
 				t.Errorf("the override loaded as %+v, want effect %s", cfg.Overrides, name)
 			}

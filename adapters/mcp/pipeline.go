@@ -45,8 +45,10 @@ const (
 	// with one name.
 	ErrUpstream Error = "mcp: an upstream lacks a transport or a name an envelope carries, or shares its name"
 	// ErrOverride is an override that names no known upstream, no tool or no
-	// fingerprint, classifies a tool another override does, or carries a
-	// classification classify.Check refuses, whose *classify.Error it wraps.
+	// fingerprint, classifies a tool another override does, carries a
+	// classification classify.Check refuses, whose *classify.Error it wraps,
+	// or is of a class that needs an environment the listener or its upstream
+	// leaves empty.
 	ErrOverride Error = "mcp: a manifest override is incomplete or out of bounds"
 	// ErrShaping is a list shaping this build does not know.
 	ErrShaping Error = "mcp: the list shaping is not one this build knows"

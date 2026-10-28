@@ -3,6 +3,7 @@ package gateway_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"sync"
 	"testing"
@@ -28,16 +29,28 @@ type journalDouble struct {
 	refuseMark   bool
 	unreadable   int
 	listErr      error
+	// maybeRecord answers Record with errMaybeRecorded, after filing the
+	// entry when fileOnMaybe says it was linked.
+	maybeRecord, fileOnMaybe bool
 }
 
 var errJournal = errors.New("journal: refused")
 
+// errMaybeRecorded is a record that failed after the entry may have been
+// filed.
+var errMaybeRecorded = fmt.Errorf("%w: the directory could not be forced to disk", gateway.ErrHoldMaybeRecorded)
+
 func (j *journalDouble) Record(ctx context.Context, entry gateway.HoldEntry) error {
 	j.mu.Lock()
-	refuse := j.refuseRecord
+	refuse, maybe, file := j.refuseRecord, j.maybeRecord, j.fileOnMaybe
 	j.mu.Unlock()
-	if refuse {
+	switch {
+	case refuse:
 		return errJournal
+	case maybe && file:
+		return errors.Join(j.MemoryHoldJournal.Record(ctx, entry), errMaybeRecorded)
+	case maybe:
+		return errMaybeRecorded
 	}
 	return j.MemoryHoldJournal.Record(ctx, entry)
 }
@@ -268,6 +281,67 @@ func TestAJournalThatRefusesAWriteBlocksRatherThanAppends(t *testing.T) {
 		h.admit(retry(t, "req-2"), refundArgs())
 		expectHeldAtItsRequest(t, h, j)
 	})
+}
+
+// TestARecordThatMayHaveFiledItsEntryClosesTheTrailOnce: a journal that
+// says the entry may be filed is taken at its word. The entry is flipped
+// before the trail is closed and forgotten after, so a restart finds nothing
+// to close; an entry that will not leave held keeps its trail at the request
+// for approval, which a restart closes once; and with no entry behind it the
+// trail stays open and counted, and nobody closes it twice.
+func TestARecordThatMayHaveFiledItsEntryClosesTheTrailOnce(t *testing.T) {
+	closed := []controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested, kindApprovalExpired, kindBlocked}
+	atRequest := []controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested}
+	for _, c := range []struct {
+		name            string
+		filed, markFail bool
+		trail           []controlv1.EventKind
+		refusals        uint64
+		leftOpen        uint64
+		reconciled      gateway.Reconciliation
+	}{
+		{"the entry was filed", true, false, closed, 1, 0, gateway.Reconciliation{Complete: true}},
+		{"the entry was filed and will not leave held", true, true, atRequest, 2, 1, gateway.Reconciliation{Closed: 1, Complete: true}},
+		{"no entry was filed", false, false, atRequest, 2, 1, gateway.Reconciliation{Complete: true}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			snap := snapshot(t, approveRefunds)
+			j := &journalDouble{maybeRecord: true, fileOnMaybe: c.filed, refuseMark: c.markFail}
+			first := build(t, modeEnforce, snap, func(cfg *gateway.Config) { cfg.Journal = j })
+			expectBlock(t, first.admit(refundEnvelope(t, refundArgs()), refundArgs()), verdictIndeterminate, codeEvidenceUnavailable, gateway.PDPType)
+			expectKinds(t, kindsOf(first.trailOf("req-1")), c.trail)
+			if state, kept := j.state("req-1"); kept != c.markFail || (kept && state != gateway.HoldHeld) {
+				t.Errorf("the entry of req-1 is %d, kept %v; want it kept held only while the flip is refused", state, kept)
+			}
+			if s := first.p.Stats(); s.Held != 0 || s.Pending != 0 || s.JournalRefusals != c.refusals || s.HeldTrailsLeftOpen != c.leftOpen {
+				t.Errorf("Stats = %+v; want nothing held or pending, %d refusal(s) and %d trail(s) left open", s, c.refusals, c.leftOpen)
+			}
+
+			j.refuse(false, false)
+			want := closed
+			if !c.filed {
+				want = atRequest
+			}
+			expectReconciledOnce(t, lost(t, snap, first, j), first, c.reconciled, want)
+		})
+	}
+}
+
+// expectReconciledOnce asserts a restart's first pass reports reconciled, a
+// second finds nothing left to close, and req-1's trail ends as want and
+// validates as one chain.
+func expectReconciledOnce(t *testing.T, next, first *harness, reconciled gateway.Reconciliation, want []controlv1.EventKind) {
+	t.Helper()
+	if r := next.p.Reconcile(context.Background()); r != reconciled {
+		t.Errorf("Reconcile = %+v; want %+v", r, reconciled)
+	}
+	if r := next.p.Reconcile(context.Background()); (r != gateway.Reconciliation{Complete: true}) {
+		t.Errorf("a second Reconcile = %+v; want nothing left to close", r)
+	}
+	expectKinds(t, kindsOf(first.trailOf("req-1")), want)
+	if err := evidence.ValidateChain(first.trailOf("req-1")); err != nil {
+		t.Errorf("ValidateChain over req-1: %v", err)
+	}
 }
 
 // expectHeldAtItsRequest asserts the held trail stands where its entry says:

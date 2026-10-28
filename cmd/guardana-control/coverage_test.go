@@ -57,6 +57,7 @@ export:
 upstreams:
   - name: orders
     endpoint: http://127.0.0.1:1/mcp
+    environment: dev
 
 overrides:
   - upstream: orders

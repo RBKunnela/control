@@ -120,6 +120,13 @@ verify one.</p>
 <h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.14.0...HEAD">Unreleased</a></h2>
 <h3 id="changed">Changed</h3>
 <ul>
+<li>A gateway configuration that classifies a tool <code>WRITE</code>, <code>DELETE</code> or
+<code>CONFIGURE</code> is refused when it loads unless <code>environment</code> is set and, for an
+MCP override, its upstream's <code>environment</code> too; an MCP override classified
+<code>TRANSACT</code> or <code>IDENTITY_OR_ACCESS</code> is refused unless its upstream's
+<code>tenant_id</code> is set. <code>mcp.New</code> and <code>enforce.New</code> refuse the same: the
+contract needs these on such a call's envelope, and every call to the tool
+was refused, <code>OBSERVE</code> included.</li>
 <li>The roadmap starts milestone 2 with the sensors independent of the agent
 (B21), then the port contracts and the TypeScript client (B12), and lists
 the open items of the 1.0 release bar as backlog tasks B29 to B34
@@ -140,6 +147,11 @@ time, which no lint read before.</li>
 </ul>
 <h3 id="fixed">Fixed</h3>
 <ul>
+<li>A hold journal write that failed after its entry was linked could leave the
+entry behind a trail the plane closed without it; the next start closed the
+trail again, forking its chain. The entry now stays, and such a hold is
+closed only once its entry has left held; when it cannot leave, the trail
+stays open for the next start to close from the entry.</li>
 <li>The hook profile's qualification passed four cases on evidence it did not
 have: two approved retries with different inputs, a project it could not
 list, and hooks disabled or MCP tools left out with no positive control in
