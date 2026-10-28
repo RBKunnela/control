@@ -22,6 +22,11 @@ from. The carried list keeps its stops at that version, the judge holds each to
 the rule's current version under the new route, and no writer appends one, so
 an upgrade drops no stop and brings no lifted one back.
 
+Amended by [ADR-0066](0066-each-decision-about-authority-is-a-port.md),
+which decides that a finding's source class comes from its detector's signed
+descriptor and that a route names the detectors it accepts;
+[status.md](../status.md) says how much of it a plane does today.
+
 ## Context
 
 ADR-0039 decided that a reaction turns a finding into a stop of one run's later

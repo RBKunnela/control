@@ -74,3 +74,4 @@ request with `Status: proposed`, and set it to `accepted` when it merges.
 | [0063](0063-a-skipped-test-fails-the-gate-unless-the-repository-expects-it.md) | A skipped test fails the gate unless the repository expects it |
 | [0064](0064-milestone-two-starts-with-an-independent-sensor.md) | Milestone 2 starts with an independent sensor, and the 1.0 bar is a list of tasks |
 | [0065](0065-a-requests-events-name-one-run.md) | A request's events name one run |
+| [0066](0066-each-decision-about-authority-is-a-port.md) | Each decision about authority is a port with a default, and none fails open |

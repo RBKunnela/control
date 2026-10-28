@@ -7,6 +7,10 @@ Amended by [ADR-0030](0030-a-static-website-drawn-from-the-repository.md): the
 website's IBM Plex fonts under `site/assets/brand/v1/fonts/` are third-party
 files under the SIL Open Font License 1.1, which ships beside them.
 
+Amended by [ADR-0066](0066-each-decision-about-authority-is-a-port.md),
+which decides that each pluggable part this record names is a port with a
+default, a closed kind and at most one remote kind.
+
 ## Context
 
 The project has to be complete and safe as a self-hosted open-source

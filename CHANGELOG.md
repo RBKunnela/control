@@ -24,6 +24,13 @@ verify one.
   (B21), then the port contracts and the TypeScript client (B12), and lists
   the open items of the 1.0 release bar as backlog tasks B29 to B34
   ([ADR-0064](docs/adr/0064-milestone-two-starts-with-an-independent-sensor.md)).
+- A record now decides that each decision about identity, authentication,
+  authorization, approval, the policy language, evidence, observation,
+  detection, reaction, the signature algorithm and keys sits behind a port.
+  Each port has a tested default that an operator may replace, in this
+  repository or through one remote kind, and each fails closed. Nothing a
+  plane does changes with it yet
+  ([ADR-0066](docs/adr/0066-each-decision-about-authority-is-a-port.md)).
 - A pull request's gate no longer fuzzes: `make quality` runs the seeds of
   every fuzz target in its tests and checks with `make fuzz-list` that each
   target compiles, while the nightly run and the release commit's cold gate

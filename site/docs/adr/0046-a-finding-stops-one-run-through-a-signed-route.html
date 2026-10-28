@@ -128,6 +128,10 @@ superseded, <code>REPEATED_DENIAL</code> <code>1</code>, is read only in the rou
 from. The carried list keeps its stops at that version, the judge holds each to
 the rule's current version under the new route, and no writer appends one, so
 an upgrade drops no stop and brings no lifted one back.</p>
+<p>Amended by <a href="/docs/adr/0066-each-decision-about-authority-is-a-port">ADR-0066</a>,
+which decides that a finding's source class comes from its detector's signed
+descriptor and that a route names the detectors it accepts;
+<a href="/docs/status">status.md</a> says how much of it a plane does today.</p>
 <h2 id="context">Context</h2>
 <p>ADR-0039 decided that a reaction turns a finding into a stop of one run's later
 calls, under a route signed with a key apart from the policy key, and that a

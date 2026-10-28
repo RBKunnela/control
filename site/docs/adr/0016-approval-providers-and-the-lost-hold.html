@@ -134,6 +134,11 @@ hand-out, is spent although nothing ran, so an identical call then reads
 lost hold whose answer the store cannot give, or gives in a form the checks
 refuse, is closed <code>INDETERMINATE</code> with <code>APPROVAL_STATE_UNKNOWN</code>, not
 <code>APPROVAL_EXPIRED</code>.</p>
+<p>Amended by <a href="/docs/adr/0066-each-decision-about-authority-is-a-port">ADR-0066</a>,
+which decides that only the plane marks an approval spent, in its own
+directory, and that an authenticated approver is recorded as
+<code>authn:&lt;issuer&gt;:&lt;subject&gt;</code>; <a href="/docs/status">status.md</a> says how much of it a
+plane does today.</p>
 <h2 id="context">Context</h2>
 <p>ADR-0013 fixed what the gateway does with a pending state and with an approved
 one, and left who may approve, and how, to the approval providers: this is that

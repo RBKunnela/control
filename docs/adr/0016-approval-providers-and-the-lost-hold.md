@@ -30,6 +30,12 @@ lost hold whose answer the store cannot give, or gives in a form the checks
 refuse, is closed `INDETERMINATE` with `APPROVAL_STATE_UNKNOWN`, not
 `APPROVAL_EXPIRED`.
 
+Amended by [ADR-0066](0066-each-decision-about-authority-is-a-port.md),
+which decides that only the plane marks an approval spent, in its own
+directory, and that an authenticated approver is recorded as
+`authn:<issuer>:<subject>`; [status.md](../status.md) says how much of it a
+plane does today.
+
 ## Context
 
 ADR-0013 fixed what the gateway does with a pending state and with an approved

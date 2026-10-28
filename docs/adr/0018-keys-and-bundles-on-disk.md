@@ -12,6 +12,11 @@ which decides that a serial floor on disk stops a rollback across a restart and
 that a freshness key signs the statements that keep a bundle current;
 [status.md](../status.md) says how much of it a plane does today.
 
+Amended by [ADR-0066](0066-each-decision-about-authority-is-a-port.md),
+which decides that a signer port may hold a key that never reaches the
+process and that a signed roster names each key's algorithm;
+[status.md](../status.md) says how much of it a plane does today.
+
 ## Context
 
 ADR-0011 fixed how a bundle is signed: Ed25519 over DSSE's pre-authentication

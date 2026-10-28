@@ -119,6 +119,10 @@ Date: 2026-09-24</p>
 which decides that a serial floor on disk stops a rollback across a restart and
 that a freshness key signs the statements that keep a bundle current;
 <a href="/docs/status">status.md</a> says how much of it a plane does today.</p>
+<p>Amended by <a href="/docs/adr/0066-each-decision-about-authority-is-a-port">ADR-0066</a>,
+which decides that a signer port may hold a key that never reaches the
+process and that a signed roster names each key's algorithm;
+<a href="/docs/status">status.md</a> says how much of it a plane does today.</p>
 <h2 id="context">Context</h2>
 <p>ADR-0011 fixed how a bundle is signed: Ed25519 over DSSE's pre-authentication
 encoding of the canonical bytes, <code>signature_alg</code> a fixed string, and <code>key_id</code>
