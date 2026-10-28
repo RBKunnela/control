@@ -30,7 +30,8 @@ type read struct {
 	// exportOf is the place in the input of the export each event was taken
 	// from.
 	exportOf map[*controlv1.Event]int
-	// doubtful holds the request ids an event id with two contents names.
+	// doubtful holds the request ids an event id with two contents names, and
+	// those of the run's project an event left out for its run names.
 	doubtful map[string]bool
 	project  string
 	obs      []*observev1.Observation
@@ -58,9 +59,12 @@ func newRead(runs map[string]bool, tenant string) *read {
 
 // takeEvents keeps the events of the runs read in their tenant, each event
 // id once. A second copy of an event is left out; a second content under one
-// event id puts both requests in doubt.
+// event id puts both requests in doubt, and so does an event of the tenant
+// left out for its run: the events of its request that are taken would read
+// as a whole trail.
 func (r *read) takeEvents(exports []Export) error {
 	seen := map[string]*controlv1.Event{}
+	elsewhere := map[projectRequest]bool{}
 	for i, x := range exports {
 		if x.Whole {
 			r.counts.ExportsWhole++
@@ -76,6 +80,9 @@ func (r *read) takeEvents(exports []Export) error {
 					r.doubtful[first.GetRequestId()], r.doubtful[ev.GetRequestId()] = true, true
 				}
 			}
+			if why == outAnotherRun && ev.GetTenantId() == r.tenant {
+				elsewhere[projectRequest{ev.GetProjectId(), ev.GetRequestId()}] = true
+			}
 			if why != "" {
 				r.counts.EventsLeftOut[why]++
 				continue
@@ -86,7 +93,25 @@ func (r *read) takeEvents(exports []Export) error {
 		}
 	}
 	r.counts.EventsTaken = uint64(len(r.events))
-	return r.takeProject()
+	if err := r.takeProject(); err != nil {
+		return err
+	}
+	r.doubtElsewhere(elsewhere)
+	return nil
+}
+
+// projectRequest names one request: a request id is unique only within a
+// project.
+type projectRequest struct{ project, request string }
+
+// doubtElsewhere puts in doubt each request of the run's project that an
+// event left out for its run names.
+func (r *read) doubtElsewhere(elsewhere map[projectRequest]bool) {
+	for k := range elsewhere {
+		if k.project == r.project {
+			r.doubtful[k.request] = true
+		}
+	}
 }
 
 func (r *read) eventOutside(ev *controlv1.Event) string {

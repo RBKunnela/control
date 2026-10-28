@@ -236,3 +236,42 @@ func TestRecordCursor(t *testing.T) {
 		}
 	}
 }
+
+// TestAFilteredExportIsNotWhole: a query naming a filter other than requests
+// leaves out the events it does not name, such as a trailing event of another
+// run, so a request it shows completed may not be. The report says so and
+// exits 1, as for a cut export. A filter that names only requests selects
+// whole requests, and exits 0 as the export without a filter does. A member
+// other than requests that the query states counts, even empty or null.
+func TestAFilteredExportIsNotWhole(t *testing.T) {
+	whole := newExport("1.0").event(chain("r1", allowed...)...).whole()
+	kinds := `"kind":["EVENT_KIND_ACTION_PROPOSED","EVENT_KIND_POLICY_DECIDED","EVENT_KIND_ACTION_STARTED","EVENT_KIND_ACTION_COMPLETED"]`
+	for name, tc := range map[string]struct {
+		filter string
+		split  bool
+	}{
+		"no filter":            {"", false},
+		"requests":             {`,"request":["r1"]`, false},
+		"a cursor":             {`,"after":"` + someCursor + `"`, false},
+		"a byte bound":         {`,"max_bytes":1000000`, false},
+		"a run":                {`,"run":["run-r1"]`, true},
+		"a kind":               {"," + kinds, true},
+		"requests and a run":   {`,"request":["r1"],"run":["run-r1"]`, true},
+		"requests and a kind":  {`,"request":["r1"],` + kinds, true},
+		"a tenant":             {`,"tenant":["t"]`, true},
+		"an empty run filter":  {`,"request":["r1"],"run":[]`, true},
+		"a run filter of null": {`,"request":["r1"],"run":null`, true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			in := strings.Replace(whole, `"limit":1000`, `"limit":1000`+tc.filter, 1)
+			if !tc.split {
+				check(t, reportCase{in: in, rows: []string{rowAllowed},
+					totals: oneCompleted + "gaps 0, duplicates 0, conflicting 0, refused 0" + endReached})
+				return
+			}
+			check(t, reportCase{in: in, rows: []string{rowAllowed},
+				totals: oneCompleted + "gaps 0, duplicates 0, conflicting 0, refused 0" + endReached,
+				code:   1, stderr: "the export's query names a filter other than requests"})
+		})
+	}
+}

@@ -43,8 +43,9 @@ message Event {
   string event_id = 1;
   EventKind kind = 2;
   // The stream this event belongs to, and the scope of prev_event_id below:
-  // events chain per request_id, within a project. run_id groups requests and
-  // is not the chain.
+  // events chain per request_id, within a project and a tenant. run_id groups
+  // requests and is not a link of the chain, and every event of a request
+  // names the run its first event names, or none for an action outside a run.
   string request_id = 3;
   string run_id = 4;
   string project_id = 5;

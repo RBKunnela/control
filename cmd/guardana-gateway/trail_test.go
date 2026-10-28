@@ -134,6 +134,26 @@ func TestTrailExitsOneWhenAnyTrailIsNotWhole(t *testing.T) {
 	}
 }
 
+// TestTrailFailsATrailWhoseRunChanges: a plane stamps one run on a whole
+// request, so a trail whose last event names another run fails at that event,
+// and one that names no run at all is whole.
+func TestTrailFailsATrailWhoseRunChanges(t *testing.T) {
+	outside := trailOf("a", kProposed, kDecided, kStarted, kCompleted)
+	moved := trailOf("b", kProposed, kDecided, kStarted, kCompleted)
+	for _, ev := range moved {
+		ev.RunId = "run-1"
+	}
+	moved[3].RunId = "run-2"
+	status, stdout, _ := trailCommand(t, trailFile(t, "", append(outside, moved...)...))
+	want := "request=a project=p1 tenant=t1 last=EVENT_KIND_ACTION_COMPLETED ok\n" +
+		`request=b project=p1 tenant=t1 last=EVENT_KIND_ACTION_COMPLETED failed: evidence: chain broken: event 3 belongs to run "run-2", not "run-1"` + "\n" +
+		"trails 2: ok 1, open 0, failed 1, indeterminate 0; lines 8, repeated lines collapsed 0, bytes after the last newline 0\n" +
+		shapeLine
+	if status != exitFail || stdout != want {
+		t.Errorf("trail answered %d with\n%s\nwant %d with\n%s", status, stdout, exitFail, want)
+	}
+}
+
 // TestTrailRefusesWhatItCannotRead: a file with no trail, a damaged one, one
 // that is not there and a second argument are each refused, never an empty
 // pass.

@@ -28,6 +28,9 @@ type walker struct {
 func walk(chain []*controlv1.Event) (string, string) {
 	w := walker{prevKind: startOfRequest, mode: chain[0].GetEnforcementMode(), end: endOpen}
 	for _, ev := range chain {
+		if note := runDefect(ev, chain[0].GetRunId()); note != "" {
+			return endUnknown, note
+		}
 		if note := w.take(ev); note != "" {
 			return endUnknown, note
 		}
@@ -104,6 +107,16 @@ func (w *walker) modeDefect(id string, mode controlv1.EnforcementMode) string {
 		return fmt.Sprintf("event %s names enforcement mode %d, which this reader does not declare", id, int32(mode))
 	case mode != w.mode:
 		return fmt.Sprintf("event %s names enforcement mode %s, and the request's first event %s", id, modeName(mode), modeName(w.mode))
+	}
+	return ""
+}
+
+// runDefect names an event of another run than the request's first event, an
+// empty run being none. A plane stamps one run on a whole request, so a
+// request naming two cannot say which run did what.
+func runDefect(ev *controlv1.Event, run string) string {
+	if got := ev.GetRunId(); got != run {
+		return fmt.Sprintf("event %s names run %s, and the request's first event %s", safe(ev.GetEventId()), safe(got), safe(run))
 	}
 	return ""
 }

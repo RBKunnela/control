@@ -266,6 +266,9 @@ func (s *followState) loadClosed(c closedJSON, inWindow map[eventKey]string) err
 		}
 		r.mode = controlv1.EnforcementMode(mode)
 	}
+	if c.Run != nil {
+		r.run, r.runKnown = *c.Run, true
+	}
 	s.closed[k] = r
 	return nil
 }

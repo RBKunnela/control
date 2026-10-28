@@ -83,8 +83,8 @@ or went past 100 000 records or 64 MiB: missing evidence is reported as
 unknown or open, never as completed; a timeout or an unknown outcome as
 `uncertain`, not `failed`. It reads no effect class, so it cannot
 tell whether a material call ran without the approval `APPROVE` asks for, or
-under `LOCKDOWN`. Export the whole file or one request: a filter on kinds
-cuts a request's links.
+under `LOCKDOWN`. Export the whole file or one request: any other filter
+exits 1.
 
 ### 4. Follow a trail and raise alerts
 

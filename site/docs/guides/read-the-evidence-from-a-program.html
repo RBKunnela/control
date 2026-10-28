@@ -169,8 +169,8 @@ or went past 100 000 records or 64 MiB: missing evidence is reported as
 unknown or open, never as completed; a timeout or an unknown outcome as
 <code>uncertain</code>, not <code>failed</code>. It reads no effect class, so it cannot
 tell whether a material call ran without the approval <code>APPROVE</code> asks for, or
-under <code>LOCKDOWN</code>. Export the whole file or one request: a filter on kinds
-cuts a request's links.</p>
+under <code>LOCKDOWN</code>. Export the whole file or one request: any other filter
+exits 1.</p>
 <h3 id="4-follow-a-trail-and-raise-alerts">4. Follow a trail and raise alerts</h3>
 <p>With <code>-state DIR</code> the example follows one trail from export to export. <code>-init</code>
 makes the directory, mode 0700, with an empty state and alert log;

@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	stateVersion = "1.1"
+	stateVersion = "1.2"
 	stateMajor   = 1
 	dedupScope   = "consumer-window"
 	// maxOpen is the most requests followed at once; past it the oldest is
@@ -65,6 +65,10 @@ type closedJSON struct {
 	// after its end has to name; empty when not known. A 1.0 state has no
 	// such member.
 	Mode string `json:"mode" added:"1.1"`
+	// Run is the request's run, which a finding or a reload after its end has
+	// to name: "" for a request outside any run, null when not known. A state
+	// before 1.2 has no such member.
+	Run *string `json:"run" added:"1.2"`
 }
 
 type tailGapJSON struct {
@@ -152,6 +156,10 @@ type closedRequest struct {
 	unknown      bool
 	// mode is the request's enforcement mode, unspecified when not known.
 	mode controlv1.EnforcementMode
+	// run is the request's run, and runKnown false when the state did not
+	// hold it.
+	run      string
+	runKnown bool
 }
 
 type queued struct {
@@ -187,7 +195,7 @@ func (s *followState) file(alertsBytes int64) stateFile {
 		f.Window = append(f.Window, seenJSON{e.key.tenant, e.key.project, e.request, e.key.id, e.hash})
 		k := requestKey{e.key.tenant, e.key.project, e.request}
 		if c := s.closed[k]; c != nil && c.tail == e.key.id {
-			f.Closed = append(f.Closed, closedJSON{k.tenant, k.project, k.request, c.tail, c.unknown, c.kernel, modeFile(c.mode)})
+			f.Closed = append(f.Closed, closedJSON{k.tenant, k.project, k.request, c.tail, c.unknown, c.kernel, modeFile(c.mode), runFile(c)})
 		}
 	}
 	return f
@@ -207,6 +215,15 @@ func modeFile(m controlv1.EnforcementMode) string {
 		return ""
 	}
 	return m.String()
+}
+
+// runFile spells a closed request's run, nil when it is not known.
+func runFile(c *closedRequest) *string {
+	if !c.runKnown {
+		return nil
+	}
+	run := c.run
+	return &run
 }
 
 func decisionFile(d *decisionFacts) *decisionJSON {

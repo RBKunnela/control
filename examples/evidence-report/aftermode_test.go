@@ -79,20 +79,21 @@ func TestTheFollowerTakesAnAnnotationAsTheWalkDoes(t *testing.T) {
 // TestALegacyStateIsReadAndItsClosedModesAreUnknown: a 1.0 state, whose
 // closed requests hold no mode, is read; a linked finding after the end of
 // such a request cannot be held to its mode and is unknown, and the state is
-// written back as 1.1.
+// written back as 1.2.
 func TestALegacyStateIsReadAndItsClosedModesAreUnknown(t *testing.T) {
 	trail := append(chain("r1", allowed...), findingIn(`"ENFORCEMENT_MODE_ENFORCE"`))
 	dir := newState(t)
 	if got := consume(t, dir, framed("a.trail", trail, 0, 4, 1000)); got.code != 0 {
 		t.Fatalf("the first export: exit %d, stderr %q", got.code, got.stderr)
 	}
-	inTurn(editState(`"schema_version":"1.1"`, `"schema_version":"1.0"`), editState(`,"mode":"ENFORCEMENT_MODE_ENFORCE"`, ``))(t, dir)
+	inTurn(editState(`"schema_version":"1.2"`, `"schema_version":"1.0"`), editState(`,"mode":"ENFORCEMENT_MODE_ENFORCE"`, ``),
+		editState(`,"run":"run-r1"`, ``))(t, dir)
 	got := consume(t, dir, framed("a.trail", trail, 4, 5, 1000))
 	note := "event r1-5 follows the end of a request whose enforcement mode the state does not hold"
 	if got.code != 1 || !strings.Contains(got.stderr, `"note":"`+note+`"`) {
 		t.Fatalf("after a 1.0 state: exit %d, stderr %q; want 1 and %s", got.code, got.stderr, note)
 	}
-	if s := stateOf(t, dir); !strings.HasPrefix(s, `{"schema_version":"1.1",`) {
-		t.Errorf("the state written back:\n%s\nwant 1.1", s)
+	if s := stateOf(t, dir); !strings.HasPrefix(s, `{"schema_version":"1.2",`) {
+		t.Errorf("the state written back:\n%s\nwant 1.2", s)
 	}
 }

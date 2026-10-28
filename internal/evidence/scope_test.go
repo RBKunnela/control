@@ -160,6 +160,18 @@ func TestValidateChainRefusesAnEventFromAnotherScope(t *testing.T) {
 			damage: func(e []*controlv1.Event) { e[2].RequestId = "" },
 			names:  []string{"event 2", "request"},
 		},
+		// A plane stamps one run on a whole request, so the event that names
+		// another run, or none where event 0 names one, is the one blamed.
+		{
+			name: "the last event belongs to another run", kinds: ranToCompletion(),
+			damage: func(e []*controlv1.Event) { e[3].RunId = "run-2" },
+			names:  []string{"event 3", `run "run-2"`, `"run-1"`},
+		},
+		{
+			name: "an event in the middle carries no run", kinds: ranToCompletion(),
+			damage: func(e []*controlv1.Event) { e[2].RunId = "" },
+			names:  []string{"event 2", `run ""`, `"run-1"`},
+		},
 		// The comparison is byte for byte. It folds no case, normalizes nothing
 		// and skips nothing a reader cannot see, so "Tenant-A" and "tenant-a"
 		// are two tenants. Each value is made from the one the trail carries,

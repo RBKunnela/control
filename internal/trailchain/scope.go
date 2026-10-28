@@ -9,27 +9,32 @@ import (
 )
 
 // trailScope is what every event of one trail shares: the request it accounts
-// for, and the project and tenant that request belongs to.
+// for, the project and tenant that request belongs to, and the run it was taken
+// in.
 //
 // The request alone is not the scope. request_id is unique only within a
 // project (action_envelope.proto), so two projects may each hold a req-1, and a
 // trail mixing them reads one request's outcome as another's. The tenant is
 // held the same way, because a reader that scopes a trail by its first event,
 // an exporter among them, would otherwise carry a second tenant's events under
-// the first one's name.
+// the first one's name. A plane stamps one run on a whole request, so a trail
+// whose run changes cannot say which run did what.
 type trailScope struct {
-	request, project, tenant string
+	request, project, tenant, run string
 }
 
-// scopeOf reads the scope from event 0 and refuses an empty value rather than
-// taking it as the scope. When no event carries one, every event equals event
-// 0, and the comparison in holds would join a trail that names no request, no
-// project or no tenant.
+// scopeOf reads the scope from event 0 and refuses an empty request, project
+// or tenant rather than taking it as the scope. When no event carries one,
+// every event equals event 0, and the comparison in holds would join a trail
+// that names no request, no project or no tenant. The run alone may be empty:
+// evidence.IDs lets an action be taken outside a run, and then no event of its
+// trail names one.
 func scopeOf(first *controlv1.Event) (trailScope, error) {
 	s := trailScope{
 		request: first.GetRequestId(),
 		project: first.GetProjectId(),
 		tenant:  first.GetTenantId(),
+		run:     first.GetRunId(),
 	}
 	for _, field := range [...]struct{ name, value string }{
 		{"request_id", s.request},
@@ -50,6 +55,7 @@ func (s trailScope) holds(i int, event *controlv1.Event) error {
 		{"request", event.GetRequestId(), s.request},
 		{"project", event.GetProjectId(), s.project},
 		{"tenant", event.GetTenantId(), s.tenant},
+		{"run", event.GetRunId(), s.run},
 	} {
 		if field.got != field.want {
 			return fmt.Errorf("%w: event %d belongs to %s %s, not %s",
@@ -132,6 +138,7 @@ func lengthDefect(i int, event *controlv1.Event) error {
 		{"request_id", event.GetRequestId()},
 		{"project_id", event.GetProjectId()},
 		{"tenant_id", event.GetTenantId()},
+		{"run_id", event.GetRunId()},
 		{"event_id", event.GetEventId()},
 		{"prev_event_id", event.GetPrevEventId()},
 		{"execution_id", event.GetExecutionId()},

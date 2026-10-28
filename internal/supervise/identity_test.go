@@ -11,32 +11,37 @@ import (
 // TestASourceOfAnotherIdentityIsRefused: a source is read under its
 // descriptor's tenant and project, so one that is not the run's would lend
 // the run its liveness and its doubt while none of its observations is taken.
+// A run of one event names its project as surely as a run of many.
 func TestASourceOfAnotherIdentityIsRefused(t *testing.T) {
 	p := procWith(t)
 	run := supervise.Run{ID: runID, Tenant: tenant}
-	for name, tc := range map[string]struct {
-		tenant, project string
-		names           []string
-	}{
-		"another tenant":  {"t2", proj, []string{`"s1"`, `tenant "t2"`, `"t1"`}},
-		"another project": {tenant, "p2", []string{`"s1"`, `project "p2"`, `"p1"`}},
-	} {
-		src := source()
-		src.Tenant, src.Project = tc.tenant, tc.project
-		_, err := supervise.Evaluate(supervise.Input{Procedure: p, Run: run,
-			Exports: []supervise.Export{export(conforming()...)}, Sources: []supervise.Source{source2(), src}})
-		if !errors.Is(err, supervise.ErrInput) {
-			t.Fatalf("%s: Evaluate = %v, want ErrInput", name, err)
-		}
-		for _, want := range tc.names {
-			if !strings.Contains(err.Error(), want) {
-				t.Errorf("%s: %q names no %s", name, err, want)
+	oneEvent := export(conforming()...)
+	oneEvent.Events = oneEvent.Events[:1]
+	for name, x := range map[string]supervise.Export{"the run": export(conforming()...), "a run of one event": oneEvent} {
+		for what, tc := range map[string]struct {
+			tenant, project string
+			names           []string
+		}{
+			"another tenant":  {"t2", proj, []string{`"s1"`, `tenant "t2"`, `"t1"`}},
+			"another project": {tenant, "p2", []string{`"s1"`, `project "p2"`, `"p1"`}},
+		} {
+			src := source()
+			src.Tenant, src.Project = tc.tenant, tc.project
+			_, err := supervise.Evaluate(supervise.Input{Procedure: p, Run: run,
+				Exports: []supervise.Export{x}, Sources: []supervise.Source{source2(), src}})
+			if !errors.Is(err, supervise.ErrInput) {
+				t.Fatalf("%s, %s: Evaluate = %v, want ErrInput", name, what, err)
+			}
+			for _, want := range tc.names {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("%s, %s: %q names no %s", name, what, err, want)
+				}
 			}
 		}
-	}
-	if _, err := supervise.Evaluate(supervise.Input{Procedure: p, Run: run,
-		Exports: []supervise.Export{export(conforming()...)}, Sources: []supervise.Source{source2(), source()}}); err != nil {
-		t.Fatalf("the run's own sources: Evaluate = %v", err)
+		if _, err := supervise.Evaluate(supervise.Input{Procedure: p, Run: run,
+			Exports: []supervise.Export{x}, Sources: []supervise.Source{source2(), source()}}); err != nil {
+			t.Fatalf("%s, the run's own sources: Evaluate = %v", name, err)
+		}
 	}
 }
 

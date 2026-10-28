@@ -116,8 +116,9 @@ type Event struct {
 	EventId string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
 	Kind    EventKind              `protobuf:"varint,2,opt,name=kind,proto3,enum=guardana.control.v1.EventKind" json:"kind,omitempty"`
 	// The stream this event belongs to, and the scope of prev_event_id below:
-	// events chain per request_id, within a project. run_id groups requests and
-	// is not the chain.
+	// events chain per request_id, within a project and a tenant. run_id groups
+	// requests and is not a link of the chain, and every event of a request
+	// names the run its first event names, or none for an action outside a run.
 	RequestId  string                 `protobuf:"bytes,3,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
 	RunId      string                 `protobuf:"bytes,4,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
 	ProjectId  string                 `protobuf:"bytes,5,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`

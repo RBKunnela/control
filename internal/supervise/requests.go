@@ -43,24 +43,12 @@ func requestsOf(events []*controlv1.Event, doubtful map[string]bool) []*request 
 	for _, rq := range out {
 		var chained bool
 		rq.events, chained = linked(rq.events)
-		rq.doubt = doubtful[rq.id] || !chained || !oneRun(rq.events) || trailchain.Validate(rq.events) != nil
+		rq.doubt = doubtful[rq.id] || !chained || trailchain.Validate(rq.events) != nil
 		for _, ev := range rq.events {
 			rq.note(ev)
 		}
 	}
 	return out
-}
-
-// oneRun reports whether every event of a request names the run its first
-// one does. A plane stamps one run on a whole trail, so a request that names
-// two runs cannot say which run did what.
-func oneRun(events []*controlv1.Event) bool {
-	for _, ev := range events {
-		if ev.GetRunId() != events[0].GetRunId() {
-			return false
-		}
-	}
-	return true
 }
 
 // linked is events in the order their links give, the event that links to

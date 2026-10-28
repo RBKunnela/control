@@ -13,7 +13,7 @@ import (
 
 var (
 	// ErrBroken reports a definite defect: a link that does not join, an event
-	// belonging to another request, project or tenant, an identifier or a mode
+	// belonging to another request, project, tenant or run, an identifier or a mode
 	// an event has to carry and does not, an identifier longer than the
 	// contract lets a string be, or a step the order does not allow.
 	ErrBroken = errors.New("evidence: chain broken")

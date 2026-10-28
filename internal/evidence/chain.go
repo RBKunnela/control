@@ -7,7 +7,7 @@ import (
 
 var (
 	// ErrChainBroken reports a definite defect: a link that does not join, an
-	// event belonging to another request, project or tenant, an identifier or
+	// event belonging to another request, project, tenant or run, an identifier or
 	// a mode an event has to carry and does not, an identifier longer than the
 	// contract lets a string be, or a step the order below does not allow.
 	ErrChainBroken = trailchain.ErrBroken
@@ -66,7 +66,9 @@ var (
 //
 // Beside the order, every event carries the trail's scope: the request_id,
 // project_id and tenant_id of event 0, none of them empty, because request_id
-// is unique only within a project. Every event names an enforcement mode.
+// is unique only within a project, and event 0's run_id, which is empty on
+// every event of an action taken outside a run. Every event names an
+// enforcement mode.
 // ACTION_STARTED, ACTION_COMPLETED and ACTION_FAILED each name an execution,
 // and the event that closes the action names the one that started it. No
 // identifier it reads is longer than contract.MaxStringBytes, the contract's

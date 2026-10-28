@@ -12,12 +12,12 @@
 // What it proves: every request it reports as completed, failed, aborted or
 // blocked has one unbroken prev_event_id chain in this export, from the event
 // that proposed an action to the one that ended it, in steps the plane's
-// chain validator allows, every event naming the same declared enforcement
-// mode, every decision's verdict one the contract declares, and a run ending
-// with a result that says how it ended. Under a mode that enforces, the
-// action ran only after a verdict that let it, or after REQUIRE_APPROVAL and
-// an approval answered yes; an approval never lifts a DENY or an
-// INDETERMINATE.
+// chain validator allows, every event naming the run the first one names and
+// the same declared enforcement mode, every decision's verdict one the
+// contract declares, and a run ending with a result that says how it ended.
+// Under a mode that enforces, the action ran only after a verdict that let it,
+// or after REQUIRE_APPROVAL and an approval answered yes; an approval never
+// lifts a DENY or an INDETERMINATE.
 //
 // What it cannot prove: that a record was not altered, since the link is an
 // ordering and not a digest; or that the plane recorded everything. A record
@@ -31,9 +31,10 @@
 //
 // It exits 0 when the export accounts for at least one request, every
 // request's lifecycle is complete, and nothing is missing: the trailer was
-// read, the file's end was reached, and no gap, conflicting event or refused
-// record was seen. It exits 1 when anything is missing, unknown, uncertain or
-// cut, or the export is refused, and 2 on a usage error. A run that timed out
+// read, the file's end was reached, the query named no filter but of
+// requests, and no gap, conflicting event or refused record was seen. It
+// exits 1 when anything is missing, unknown, uncertain, cut or filtered by
+// more than requests, or the export is refused, and 2 on a usage error. A run that timed out
 // or reported an unknown outcome ended uncertain, never failed: its effect may
 // have happened.
 //
@@ -188,6 +189,9 @@ func (x *export) missing(t totals) []string {
 		out = append(out, fmt.Sprintf("the trailer says %d bytes are still being written: export again once they end", x.trailer.tailBytes))
 	case x.trailer.tailBytes > 0:
 		out = append(out, fmt.Sprintf("the trailer says the %d bytes after the last newline are a cut line no writer holds: the file is damaged there", x.trailer.tailBytes))
+	}
+	if x.header.splits {
+		out = append(out, "the export's query names a filter other than requests: an event it does not name, such as one of another run, is not there, so no request is known to be whole")
 	}
 	if t.open > 0 || t.unknown > 0 {
 		out = append(out, fmt.Sprintf("not every request's lifecycle is complete: %d open, %d unknown", t.open, t.unknown))

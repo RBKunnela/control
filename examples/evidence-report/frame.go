@@ -15,6 +15,30 @@ type header struct {
 	// filtered is a query that names any filter, which cuts the links
 	// between a request's events.
 	filtered bool
+	// splits is a query that names a filter other than requests: one that
+	// may leave out some of a request's events and keep the others.
+	splits bool
+}
+
+// wholeRequestMembers are the query members that never leave out part of a
+// request: a request filter selects whole requests.
+var wholeRequestMembers = map[string]bool{"after": true, "limit": true, "max_bytes": true, "request": true}
+
+// splitsRequests reports whether the header's query states a member that is
+// not one of wholeRequestMembers, whatever its value, null or empty included.
+func splitsRequests(b []byte) bool {
+	var h struct {
+		Query map[string]json.RawMessage `json:"query"`
+	}
+	if json.Unmarshal(b, &h) != nil {
+		return true
+	}
+	for name := range h.Query {
+		if !wholeRequestMembers[name] {
+			return true
+		}
+	}
+	return false
 }
 
 func checkHeader(l rawLine) (header, error) {
@@ -54,7 +78,9 @@ func checkHeader(l rawLine) (header, error) {
 	if err != nil {
 		return header{}, err
 	}
-	return h.Query.facts(source), nil
+	facts := h.Query.facts(source)
+	facts.splits = splitsRequests(l.b)
+	return facts, nil
 }
 
 // sourceOf reads the header's source: the SHA-256 of the file's first line,

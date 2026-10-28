@@ -131,6 +131,91 @@ func TestARefusalQuotesAnIdentifierUpTo64Bytes(t *testing.T) {
 	}
 }
 
+// inRun stamps run on every event of a trail.
+func inRun(run string, events []*controlv1.Event) []*controlv1.Event {
+	for _, event := range events {
+		event.RunId = run
+	}
+	return events
+}
+
+// A plane stamps one run on a whole request, so a trail whose run changes
+// cannot say which run did what. A trail that names no run anywhere is an
+// action taken outside a run, which evidence.IDs allows.
+func TestValidateHoldsEveryEventToTheFirstEventsRun(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		events []*controlv1.Event
+		names  []string
+	}{
+		{"no event names a run", linked(proposed, decided, started, completed), nil},
+		{"every event names one run", inRun("run-1", linked(proposed, decided, started, completed)), nil},
+		{"the last event names another run",
+			func() []*controlv1.Event {
+				e := inRun("run-1", linked(proposed, decided, started, completed))
+				e[3].RunId = "run-2"
+				return e
+			}(),
+			[]string{"event 3", `run "run-2", not "run-1"`}},
+		{"a finding after the end names another run",
+			func() []*controlv1.Event {
+				e := inRun("run-1", linked(proposed, decided, blocked, found))
+				e[3].RunId = "run-2"
+				return e
+			}(),
+			[]string{"event 3", `run "run-2", not "run-1"`}},
+		{"only a later event names a run",
+			func() []*controlv1.Event {
+				e := linked(proposed, decided, started, completed)
+				e[2].RunId = "run-1"
+				return e
+			}(),
+			[]string{"event 2", `run "run-1", not ""`}},
+		{"a later event names no run",
+			func() []*controlv1.Event {
+				e := inRun("run-1", linked(proposed, decided, started, completed))
+				e[1].RunId = ""
+				return e
+			}(),
+			[]string{"event 1", `run "", not "run-1"`}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := trailchain.Validate(tc.events)
+			if tc.names == nil {
+				if err != nil {
+					t.Fatalf("Validate: %v", err)
+				}
+				return
+			}
+			if got := verdict(t, err); got != "broken" {
+				t.Fatalf("got %s (%v), want broken", got, err)
+			}
+			for _, want := range tc.names {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("%q names no %s", err, want)
+				}
+			}
+		})
+	}
+}
+
+func TestValidateBoundsARunIDAtMaxStringBytes(t *testing.T) {
+	for length, want := range map[int]string{
+		contract.MaxStringBytes:     "well formed",
+		contract.MaxStringBytes + 1: "broken",
+	} {
+		events := inRun(strings.Repeat("r", length), linked(proposed, decided, blocked))
+		err := trailchain.Validate(events)
+		if got := verdict(t, err); got != want {
+			t.Errorf("run_id of %d bytes: got %s, want %s", length, got, want)
+			continue
+		}
+		if want == "broken" && !strings.Contains(err.Error(), "run_id is") {
+			t.Errorf("run_id of %d bytes: %q is not the length refusal", length, err)
+		}
+	}
+}
+
 func TestTheSentinelsKeepTheirText(t *testing.T) {
 	if got := trailchain.ErrBroken.Error(); got != "evidence: chain broken" {
 		t.Errorf("ErrBroken reads %q", got)

@@ -911,11 +911,13 @@ is not an approval, or outlives the expiry the gateway minted.
 
 Whether a sequence of events is one coherent account of one request.
 
-Events chain per `request_id`, within one project and one tenant. `run_id`
-groups requests and is not the chain. The gateway writes there the run it
-minted for the listener's principal and agent, or, on a plane with a runs
-directory, the run the operator opened and the call's token named; never the
-envelope's own `context.run_id`. Eleven kinds are declared, plus
+Events chain per `request_id`, within one project, one tenant and one run.
+`run_id` groups requests, so every event of a request names the run its first
+event names, or none for an action taken outside a run
+([ADR-0065](adr/0065-a-requests-events-name-one-run.md)). The gateway writes
+there the run it minted for the listener's principal and agent, or, on a plane
+with a runs directory, the run the operator opened and the call's token named;
+never the envelope's own `context.run_id`. Eleven kinds are declared, plus
 `EVENT_KIND_UNSPECIFIED`.
 
 Nine of the eleven are the sequence. Each edge is one event kind, and each node
@@ -991,10 +993,12 @@ Three sequences are refused whatever state the walk is in:
 Beside the order, every event has to carry:
 
 - The trail's scope: the `request_id`, `project_id` and `tenant_id` of the
-  first event, none of them empty. A `request_id` is unique only within a
-  project, so the request alone does not name one request, and a trail that
+  first event, none of them empty, and its `run_id`, which is empty on every
+  event of an action taken outside a run. A `request_id` is unique only within
+  a project, so the request alone does not name one request, and a trail that
   mixed two projects or two tenants would read one request's outcome as
-  another's.
+  another's. A plane stamps one run on a whole request, so a trail whose run
+  changes cannot say which run did what.
 - An enforcement mode. `ENFORCEMENT_MODE_UNSPECIFIED` is refused: this plane
   never writes it, and in evidence it means that nothing is known to have been
   enforced. Each event names its own mode, and nothing requires two events to

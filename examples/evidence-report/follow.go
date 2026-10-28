@@ -156,6 +156,16 @@ func (c *closedRequest) modeDefect(id string, mode controlv1.EnforcementMode) st
 	return w.modeDefect(id, mode)
 }
 
+// runDefect holds an event after the end to the request's run, as the walk
+// holds every event of a request. A run the state does not hold cannot be
+// compared, so the event is not taken.
+func (c *closedRequest) runDefect(ev *controlv1.Event) string {
+	if !c.runKnown {
+		return fmt.Sprintf("event %s follows the end of a request whose run the state does not hold", safe(ev.GetEventId()))
+	}
+	return runDefect(ev, c.run)
+}
+
 func annotates(kind controlv1.EventKind) bool {
 	s, ok := steps[kind]
 	return ok && s.to == unchanged && follows(atEnded, s.from)
