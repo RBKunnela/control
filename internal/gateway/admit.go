@@ -57,6 +57,9 @@ type call struct {
 	// before the mode is applied to action. A resume leaves it as the retry's
 	// own; OBSERVE, its one reader, never holds a call to resume.
 	kernelAction core.EnforcementAction
+	// refusedInput: the kernel's decision stopped on the request itself,
+	// whatever the adapter's Admission said of it.
+	refusedInput bool
 	action       core.EnforcementAction
 	decision     *controlv1.Decision
 	material     bool
@@ -159,7 +162,7 @@ func (c *call) decideProposed(snap *policy.Snapshot, ask bool) {
 		out = c.p.kernel.Decide(c.ctx, req, snap)
 	}
 	c.kernel, c.decision, c.action, c.basis = out.Decision, out.Decision, out.Action, out.Basis
-	c.kernelAction = out.Action
+	c.kernelAction, c.refusedInput = out.Action, out.RefusedInput
 	c.reliedOnDecision(out.Decision, snap)
 	c.material = contract.IsMaterial(c.in.Envelope.GetAction().GetEffect())
 }
@@ -167,8 +170,8 @@ func (c *call) decideProposed(snap *policy.Snapshot, ask bool) {
 // applyMode applies the plane's causes and mode to the action and never to
 // the kernel's decision (ADR-0013). A call the plane named a cause of its own
 // to block is blocked whatever the mode, OBSERVE included, with every such
-// cause listed; otherwise OBSERVE lets the call through and APPROVE holds an
-// allowed material one.
+// cause listed; otherwise OBSERVE lets through every call but a refused one,
+// which the kernel blocked, and APPROVE holds an allowed material one.
 func (c *call) applyMode() {
 	if len(c.causes) > 0 {
 		c.blockOnCauses()
@@ -176,7 +179,9 @@ func (c *call) applyMode() {
 	}
 	switch c.p.cfg.Mode {
 	case modeObserve:
-		c.action = core.Execute
+		if c.observable() {
+			c.action = core.Execute
+		}
 	case modeApprove:
 		if c.material && (c.action == core.Execute || c.action == core.ExecuteWithObligations) {
 			c.action = core.AwaitApproval

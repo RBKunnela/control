@@ -743,8 +743,11 @@ func TestExportedFunctionSetIsClosed(t *testing.T) {
 		"DecodeJSON":      true,
 		"Validate":        true,
 		"CheckIdentifier": true,
-		"CheckHost":       true,
-		"CheckMapKey":     true,
+		// Validate's checks without the effect class's, for the receiver of
+		// an envelope nothing classified (ADR-0067).
+		"ValidateUnclassified": true,
+		"CheckHost":            true,
+		"CheckMapKey":          true,
 		// The predicates the matcher keys on.
 		"ParseEffect":        true,
 		"IsMaterial":         true,

@@ -58,10 +58,11 @@ const refund02 = `{"schema_version":"0.2","procedure_id":"refund","version":"2",
 
 // call is one request's trail: its events are req-e1, req-e2, ... one
 // second apart from at, in run, recorded by a plane in mode, its action of
-// protocol.
+// protocol, MCP when none is given; noProtocol names none.
 type call struct {
 	req, tool, upstream, run string
 	protocol                 string
+	noProtocol               bool
 	at                       time.Duration
 	// outcome is "" for completed, or deny, pause, fail or approved.
 	outcome string
@@ -129,7 +130,7 @@ func (c call) events() []*controlv1.Event {
 		switch kind {
 		case proposed:
 			env := &controlv1.ActionEnvelope{SchemaVersion: "1.0", RequestId: c.req, ProjectId: proj, TenantId: tenant,
-				Action: &controlv1.Action{Kind: "tool", Name: c.tool, Provider: c.upstream, Protocol: c.protocol}, Resource: c.res}
+				Action: &controlv1.Action{Kind: "tool", Name: c.tool, Provider: c.upstream, Protocol: protocolOf(c)}, Resource: c.res}
 			if c.hash != "" {
 				env.Arguments = &controlv1.Arguments{CanonicalHash: c.hash}
 			}
@@ -254,4 +255,15 @@ func strayRun(t *testing.T) (*supervise.Procedure, *supervise.Result) {
 		call{req: "r3", tool: "issue_refund", upstream: "pay", at: 20 * time.Second, run: childRun, res: order("42"), hash: hashOf('b')},
 		call{req: "l2", tool: "get_order", upstream: "shop", at: 30 * time.Second, run: childRun, res: order("77")},
 	)}})
+}
+
+// protocolOf is the protocol c's proposal names.
+func protocolOf(c call) string {
+	switch {
+	case c.noProtocol:
+		return ""
+	case c.protocol == "":
+		return "mcp"
+	}
+	return c.protocol
 }

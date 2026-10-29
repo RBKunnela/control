@@ -2,7 +2,6 @@ package gateway
 
 import (
 	"context"
-	"errors"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/pause"
@@ -80,6 +79,7 @@ func verdictOf(causes []cause) controlv1.Verdict {
 // clock as it takes them now.
 func (p *Pipeline) newCall(ctx context.Context, a Admission) *call {
 	c := &call{p: p, ctx: ctx, in: a}
+	c.checkTranslation()
 	c.takeStates()
 	return c
 }
@@ -138,7 +138,7 @@ func (c *call) planeState() planeState {
 	return planeState{
 		mode:         c.p.cfg.Mode,
 		material:     contract.IsMaterial(action.GetEffect()),
-		unclassified: errors.Is(c.in.Refusal, ErrUnclassified),
+		unclassified: translationOf(c.in) == translationUnclassified,
 		paused:       state == pause.Paused && c.pause.Covers(action.GetKind(), action.GetProvider(), action.GetName()),
 		pauseUnknown: state == pause.Unknown,
 		stopped:      stops == reaction.Stopped,

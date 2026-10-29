@@ -7,14 +7,7 @@ import (
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/gateway"
-	"github.com/guardana/control/internal/pause"
 )
-
-func TestActionKindToolIsTheEnvelopes(t *testing.T) {
-	if actionKindTool != pause.ActionTool {
-		t.Fatalf("a tool call's kind is %q here and %q in the envelope", actionKindTool, pause.ActionTool)
-	}
-}
 
 // TestModeClassAgreesWithTheGateway walks the contract's enum against the
 // plane's own table: a mode the plane can block in enforces, one it runs

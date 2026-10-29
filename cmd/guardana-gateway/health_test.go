@@ -14,6 +14,7 @@ import (
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/brand"
+	"github.com/guardana/control/internal/channel"
 	"github.com/guardana/control/internal/core"
 	"github.com/guardana/control/internal/gateway"
 )
@@ -278,7 +279,7 @@ func readEnvelope() *controlv1.ActionEnvelope {
 		OccurredAt:    timestamppb.New(time.Date(2026, time.September, 20, 9, 0, 0, 0, time.UTC)),
 		Principal:     &controlv1.Principal{Id: "agent-runner", Type: "service", TenantId: "acme"},
 		Agent:         &controlv1.Agent{Id: "orders-assistant"},
-		Action:        &controlv1.Action{Name: "orders.read", Effect: controlv1.EffectClass_EFFECT_CLASS_READ, Provider: "orders"},
+		Action:        &controlv1.Action{Kind: channel.KindTool, Name: "orders.read", Effect: controlv1.EffectClass_EFFECT_CLASS_READ, Provider: "orders", Protocol: channel.ProtocolMCP},
 		Resource:      &controlv1.Resource{Type: "order", Id: "ord-1", TenantId: "acme", Environment: "dev"},
 		Context:       &controlv1.RunContext{RunId: "run-1"},
 	}

@@ -61,7 +61,7 @@ func cleanRun(env *controlv1.ActionEnvelope) *controlv1.ActionEnvelope {
 }
 
 func (h *harness) admitA(a gateway.Admission) gateway.Disposition {
-	return h.p.Admit(context.Background(), a)
+	return h.p.Admit(context.Background(), h.onPlane(a))
 }
 
 // proposedTags are the run-context tags ACTION_PROPOSED of requestID recorded.

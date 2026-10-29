@@ -20,18 +20,15 @@ to a tool outside MCP, on a Unix socket; the gateway serves it under
 ([guides/decide-a-tool-of-your-own.md](../guides/decide-a-tool-of-your-own.md)). It builds each envelope from the run token and
 the operator's table of tools, never from what the client says about the
 call, and declares `Cooperative`: the client sends the bytes, so nothing the
-plane holds proves it obeyed. It applies no obligation of its own, aborts an
-execution whose rewritten bytes name another resource than the one decided
-on, or whose envelope the contract refused for more than an unnamed tool, in
-every mode, closes what a client reports with `CloseReported`, and closes with
-`Abandon` every execution nobody completed or aborted before its handle
-expired. Its receiver cases are files in
+plane holds proves it obeyed. It applies no obligation of its own, closes what
+a client reports with `CloseReported`, and closes with `Abandon` every
+execution nobody completed or aborted before its handle expired. Its receiver cases are files in
 [testdata/enforce/](../../testdata/enforce/README.md).
 
-Both adapters read a call's resource id, the resource rewritten bytes name
-and the run token through `internal/adapterkit`, so one call is never read
-two ways: a spelling one adapter normalised and the other did not would slip
-past a rule the first one enforces.
+Both adapters read a call's resource id and the run token, and build the
+refusal of a call nothing classifies, through `internal/adapterkit`, so one
+call is never read two ways: a spelling one adapter normalised and the other
+did not would slip past a rule the first one enforces.
 
 An adapter is the enforcement point among the five ports of
 [ADR-0039](../adr/0039-many-channels-into-one-core.md): it sees a call before
@@ -85,6 +82,28 @@ failing:
 | `Abandon(ctx, disposition) error` | nobody closed or aborted the execution before it expired. It is closed as `ACTION_FAILED` with status `UNKNOWN` and `EXECUTION_ABANDONED`, since nobody knows whether the call ran, and halts nothing; `ErrNotMinted` for an execution that is not open |
 | `Preview(ctx, Admission) *Decision` | the decision a listing shows: the kernel's, the mode's and the halts', without pauses, stops, run flow or the decision point. It records and holds nothing, and is what shaping a listing asks |
 
+What an adapter hands in, the pipeline holds it to, in every mode:
+
+- The action's kind is `tool`, `prompt` or `resource`, and its protocol is
+  the adapter's `Name()`, both spelled as `internal/channel` spells them.
+  Anything else is refused as `INVALID_FIELD_VALUE`.
+- `Refusal` says why the translation failed. `gateway.ErrUnclassified` alone,
+  on a chain of single wraps, says nothing classifies the call: `OBSERVE` runs
+  it and every other mode blocks it with `ACTION_UNCLASSIFIED`. Any other
+  refusal, a join that holds `ErrUnclassified` among others included, is
+  blocked in `OBSERVE` too, with the kernel's code for it.
+- The pipeline holds that claim to the envelope: no effect class,
+  `contract.ValidateUnclassified` passes, and any `canonical_hash` names the
+  arguments; otherwise the call is refused with the kernel's code for the
+  fault. `adapterkit.Unclassified` builds the refusal from the adapter's own
+  validation without joining the two.
+- `Classification` is the call's, and its `ResourceFrom` the RFC 6901
+  pointer the resource id was read at; another spelling is refused. Bytes a
+  rewrite changed so that the member there names
+  another resource are a `DENY` with `OBLIGATION_NOT_UNDERSTOOD`, and are
+  never handed out. An adapter that reads the resource id from the arguments
+  must set it, or no rewrite is held to the resource.
+
 An adapter that has an execution open closes or aborts it. An execution left
 open holds one of the plane's `MaxOpen` slots until the adapter abandons it or
 the process ends; the enforcement API abandons each execution whose handle
@@ -96,7 +115,7 @@ expired.
 | --- | --- |
 | `ObserveRequest` | Needed by every mode: without seeing the call there is nothing to decide |
 | `ObserveResult` | Needed by every mode: a trail with no closing record is an action nobody knows the end of |
-| `Enforcement` | How far the adapter keeps a call from its effect: `None` (the zero value) cannot; `Cooperative` hands the decision to a caller that enforces it, so the plane decides and records and nothing proves the caller obeyed; `Inline` holds the path to the effect, as the MCP adapter holds the upstream connection. `APPROVE`, `ENFORCE` and `LOCKDOWN` need at least `Cooperative`, and a value outside the three is refused at start |
+| `Enforcement` | How far the adapter keeps a call from its effect: `None` (the zero value) cannot; `Cooperative` hands the decision to a caller that enforces it, so the plane decides and records and nothing proves the caller obeyed; `Inline` holds the path to the effect, as the MCP adapter holds the upstream connection. `APPROVE`, `ENFORCE` and `LOCKDOWN` need at least `Cooperative`, and any value but the adapter's protocol's strength is refused at start |
 | `Authenticates` | The adapter's listener establishes an end user before a call is translated |
 | `BindEndUser` | The adapter carries that identity into the envelope's principal. Declared without `Authenticates`, it is refused at start: without authentication there is no user, only a claim |
 | `PresentsRuns` | The adapter resolves a run token on every call and hands the run in. Declared exactly when the plane has a runs directory, or the plane is refused at start (ADR-0034) |
@@ -117,7 +136,9 @@ adapter that observes while the operator believes it enforces.
    what only a credential may say, two upstreams with one name, an incomplete
    classification.
 2. **Build the plane.** `gateway.New` takes the adapter, reads its capabilities, checks them against the mode and builds the kernel with the applicable
-   obligations derived from them.
+   obligations derived from them. It refuses an adapter whose `Name()` is not
+   a protocol `internal/channel` lists, or whose `Enforcement` is not that
+   protocol's strength; a new adapter adds both there.
 3. **Start.** The adapter connects what it talks to and reads what it needs to
    classify calls. An upstream it cannot reach fails the start rather than
    serving without it.
@@ -142,7 +163,8 @@ An obligation the adapter cannot satisfy, including one carrying a parameter
 its type does not read, is skipped when it is marked advisory and the call
 proceeds, and nothing records the skip; a non-advisory one stops it,
 and the closing record says the obligation refused it. A rewrite that changes
-the member a tool's `resource_from` reads is aborted, not sent. The plane applies the rewriting types (`redact_fields`,
+the member a tool's `resource_from` reads is refused by the plane before it is
+handed out. The plane applies the rewriting types (`redact_fields`,
 `cap_amount`) itself, before the decision that is recorded, because they change
 the bytes the digest covers.
 
@@ -184,10 +206,11 @@ the gateway's name, a result larger than its bound, a call that cannot be routed
 ```go
 type Echo struct{}
 
-func (Echo) Name() string { return "echo" }
+// "echo", listed in internal/channel as StrengthInline.
+func (Echo) Name() string { return channel.ProtocolEcho }
 
 func (Echo) Capabilities() gateway.Capabilities {
-    return gateway.Capabilities{ObserveRequest: true, ObserveResult: true, Enforcement: gateway.EnforcementInline}
+    return gateway.Capabilities{ObserveRequest: true, ObserveResult: true, Enforcement: channel.StrengthOf(channel.ProtocolEcho)}
 }
 
 func (e Echo) Handle(ctx context.Context, p *gateway.Pipeline, in Request) Response {

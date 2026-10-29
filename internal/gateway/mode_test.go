@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"testing"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/channel"
 	"github.com/guardana/control/internal/core"
 	"github.com/guardana/control/internal/gateway"
 )
@@ -59,29 +59,42 @@ func TestBlockingModesNeedACooperatingAdapter(t *testing.T) {
 	}
 }
 
-// TestEachEnforcementIsHeldAgainstEachMode: through New, an adapter that
-// cannot keep a call from its effect runs only under OBSERVE, a cooperating
-// one and an inline one under every mode this build enforces, and a value
-// this build does not declare under none.
+// TestEachEnforcementIsHeldAgainstEachMode: through New, the cooperating
+// protocol and the inline one run under every mode this build enforces at
+// their own strength. An adapter that cannot keep a call from its effect is
+// refused under a blocking mode as lacking the capability, and under OBSERVE
+// as not its protocol's strength, since no protocol of this build is that
+// weak; a value this build does not declare is refused under every mode.
 func TestEachEnforcementIsHeldAgainstEachMode(t *testing.T) {
 	const undeclared = gateway.EnforcementInline + 1
-	accepted := map[gateway.Enforcement][]controlv1.EnforcementMode{
-		gateway.EnforcementNone:        {modeObserve},
-		gateway.EnforcementCooperative: {modeObserve, modeApprove, modeEnforce, modeLockdown},
-		gateway.EnforcementInline:      {modeObserve, modeApprove, modeEnforce, modeLockdown},
-		undeclared:                     nil,
+	every := func(err error) map[controlv1.EnforcementMode]error {
+		return map[controlv1.EnforcementMode]error{modeObserve: err, modeApprove: err, modeEnforce: err, modeLockdown: err}
 	}
-	for enforcement, modes := range accepted {
+	for _, c := range []struct {
+		protocol    string
+		enforcement gateway.Enforcement
+		want        map[controlv1.EnforcementMode]error
+	}{
+		{channel.ProtocolEnforce, gateway.EnforcementCooperative, every(nil)},
+		{channel.ProtocolMCP, gateway.EnforcementInline, every(nil)},
+		{channel.ProtocolMCP, gateway.EnforcementNone, map[controlv1.EnforcementMode]error{
+			modeObserve: gateway.ErrStrength, modeApprove: gateway.ErrCapability, modeEnforce: gateway.ErrCapability, modeLockdown: gateway.ErrCapability,
+		}},
+		{channel.ProtocolEnforce, gateway.EnforcementNone, map[controlv1.EnforcementMode]error{
+			modeObserve: gateway.ErrStrength, modeApprove: gateway.ErrCapability, modeEnforce: gateway.ErrCapability, modeLockdown: gateway.ErrCapability,
+		}},
+		{channel.ProtocolMCP, undeclared, every(gateway.ErrCapability)},
+	} {
 		for _, mode := range allModes {
 			cfg := validConfig(t)
 			cfg.Mode = mode
-			cfg.Adapter = fakeAdapter{name: "fake", caps: gateway.Capabilities{ObserveRequest: true, ObserveResult: true, Enforcement: enforcement}}
+			cfg.Adapter = fakeAdapter{name: c.protocol, caps: gateway.Capabilities{ObserveRequest: true, ObserveResult: true, Enforcement: c.enforcement}}
 			_, err := gateway.New(cfg)
-			switch want := slices.Contains(modes, mode); {
-			case want && err != nil:
-				t.Errorf("Enforcement %d under %s: New = %v, want it built", enforcement, mode, err)
-			case !want && !errors.Is(err, gateway.ErrCapability):
-				t.Errorf("Enforcement %d under %s: New = %v, want ErrCapability", enforcement, mode, err)
+			switch want := c.want[mode]; {
+			case want == nil && err != nil:
+				t.Errorf("%s at %d under %s: New = %v, want it built", c.protocol, c.enforcement, mode, err)
+			case want != nil && !errors.Is(err, want):
+				t.Errorf("%s at %d under %s: New = %v, want %v", c.protocol, c.enforcement, mode, err, want)
 			}
 		}
 	}

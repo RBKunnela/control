@@ -64,7 +64,7 @@ func TestAFlowTheRunCannotVouchForIsNeverAsked(t *testing.T) {
 					return
 				}
 				pdp := gateway.PDPType
-				if tc.code == codeInvalidFieldValue && mode == modeEnforce {
+				if tc.code == codeInvalidFieldValue {
 					pdp = kernelPDP
 				}
 				expectBlock(t, d, verdictIndeterminate, tc.code, pdp)

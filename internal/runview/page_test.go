@@ -200,19 +200,29 @@ func TestEnforcedNeedsACoherentTrailAndAModeThatActs(t *testing.T) {
 
 // TestAnEnforcementAPICallIsDecidedInEveryMode: a client of the enforcement
 // API runs the call itself, so its plane enforces nothing it decides, in
-// ENFORCE as in LOCKDOWN; an MCP call in ENFORCE is enforced.
+// ENFORCE as in LOCKDOWN; an MCP call in ENFORCE is enforced, and a call of no
+// protocol, or of one this build does not know, is decided.
 func TestAnEnforcementAPICallIsDecidedInEveryMode(t *testing.T) {
 	lockdown := controlv1.EnforcementMode_ENFORCEMENT_MODE_LOCKDOWN
 	p, res := judge(t, refund01, supervise.Input{Exports: []supervise.Export{export(
 		call{req: "r1", tool: "get_order", upstream: "shop", protocol: "mcp"},
 		call{req: "r2", tool: "issue_refund", upstream: "pay", at: 10 * time.Second, protocol: "enforce"},
-		call{req: "r3", tool: "send_mail", upstream: "mail", at: 20 * time.Second, protocol: "enforce", mode: lockdown})}})
+		call{req: "r3", tool: "send_mail", upstream: "mail", at: 20 * time.Second, protocol: "enforce", mode: lockdown},
+		call{req: "r4", tool: "get_order", upstream: "shop", at: 30 * time.Second, protocol: "a2a"},
+		call{req: "r5", tool: "get_order", upstream: "shop", at: 40 * time.Second, protocol: "MCP"},
+		call{req: "r6", tool: "get_order", upstream: "shop", at: 50 * time.Second, noProtocol: true})}})
 	page, err := runview.Page(p, res, runview.Options{All: true})
 	if err != nil {
 		t.Fatal(err)
 	}
-	sameMarks(t, "protocols", marks(string(page)), "r1 enforced", "r2 decided, not enforced", "r3 decided, not enforced")
-	if want := `<span class="mk-detail">a cooperating client enforces it</span>`; !strings.Contains(string(page), want) {
-		t.Errorf("the page holds no %s", want)
+	sameMarks(t, "protocols", marks(string(page)), "r1 enforced", "r2 decided, not enforced", "r3 decided, not enforced",
+		"r4 decided, not enforced", "r5 decided, not enforced", "r6 decided, not enforced")
+	for _, want := range []string{
+		`<span class="mk-detail">a cooperating client enforces it</span>`,
+		`<span class="mk-detail">no enforcement point holds the path</span>`,
+	} {
+		if !strings.Contains(string(page), want) {
+			t.Errorf("the page holds no %s", want)
+		}
 	}
 }

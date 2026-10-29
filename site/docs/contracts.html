@@ -428,11 +428,12 @@ test in <code>internal/docscheck</code> holds the table to the registry, and the
 own tests hold every code it emits to the registry and to the verdict of the
 step that emits it.</p>
 <h2 id="decoding-and-validation">Decoding and validation</h2>
-<p>What a receiver calls, and what it refuses. Six functions in
+<p>What a receiver calls, and what it refuses. Seven functions in
 <a href="https://github.com/guardana/control/tree/main/pkg/contract">pkg/contract</a>, all <code>implemented</code>:</p>
 <pre><code class="language-go">func Decode(b []byte) (*controlv1.ActionEnvelope, error)     // binary protobuf
 func DecodeJSON(b []byte) (*controlv1.ActionEnvelope, error) // protojson
 func Validate(env *controlv1.ActionEnvelope) error
+func ValidateUnclassified(env *controlv1.ActionEnvelope) error
 func CheckIdentifier(s string) error                         // the string rule below
 func CheckHost(host string) error                            // the host rule below
 func CheckMapKey(key string) error                           // the map-key rule below
@@ -445,6 +446,16 @@ matches, so a DENY on it never fires and nobody is told. Each checks what a
 value holds, not whether there is one: <code>&quot;&quot;</code> passes all three. Each refusal is
 a <code>ValidationError</code> with no field, wrapping <code>ErrInvalidValue</code>, and a test holds
 each function to <code>Validate</code>'s verdict and reason on the field it governs.</p>
+<p><code>ValidateUnclassified</code> applies every rule of <code>Validate</code>, from the same code and
+in the same order, except the effect class's presence and the fields a class
+requires (<code>EffectRequires</code>). It is for a receiver holding an envelope nothing
+classified: <code>Validate</code> refuses such an envelope at <code>action.effect</code> before it
+reads the delegation chain, the host, the labels and the arguments, so that
+refusal says nothing about the rest. The gateway holds every claim that a
+call is unclassified to it (<a href="/docs/adr/0067-the-pipeline-refuses-what-an-adapter-could-not-translate">ADR-0067</a>).
+<code>Validate</code>'s own result does not depend on it, and a test holds the two to
+the same refusal over every envelope with an effect class and what it
+requires.</p>
 <p>Use a decoder rather than parsing elsewhere and calling <code>Validate</code>. Some
 refusals exist only on a path that owns the parse: a message decoded with
 <code>DiscardUnknown</code> is indistinguishable from a clean one, so the unknown-field

@@ -158,9 +158,11 @@ one that was negotiated.</p>
 ends with <code>ACTION_BLOCKED</code> when the spool takes it, and is otherwise blocked as
 <code>EVIDENCE_UNAVAILABLE</code>, and the agent gets a tool result with <code>isError: true</code>
 carrying the reason codes, or a JSON-RPC error carrying them for a resource
-read or a prompt. The server is never called. A call the adapter refuses after
-an allow, such as one it could not translate, is aborted, and its trail ends
-with <code>ACTION_FAILED</code>.</p>
+read or a prompt. The server is never called. A call the adapter could not
+translate is blocked so in every mode, <code>OBSERVE</code> included, with the kernel's
+code for the refusal. A call the adapter refuses after an allow, such as one
+whose bytes the protocol cannot carry, is aborted, and its trail ends with
+<code>ACTION_FAILED</code>.</p>
 <h2 id="the-same-call-on-each-revision">The same call on each revision</h2>
 <p>The two revisions differ in what reaches the middleware and how. On
 <code>2026-07-28</code> a stateless listener takes every request on its own: the
@@ -300,7 +302,7 @@ bundle, and none of them knows the mode.</p>
 <tr>
 <td><code>OBSERVE</code></td>
 <td>recorded</td>
-<td>runs, with the proposed bytes, unclassified included when one upstream lists it or only one is configured, unless one of the plane's own causes (<a href="/docs/concepts/enforcement-modes">enforcement modes</a>) blocks it</td>
+<td>runs, with the proposed bytes, unclassified included when one upstream lists it or only one is configured, unless one of the plane's own causes (<a href="/docs/concepts/enforcement-modes">enforcement modes</a>) blocks it or the call could not be translated</td>
 <td>yes</td>
 </tr>
 <tr>

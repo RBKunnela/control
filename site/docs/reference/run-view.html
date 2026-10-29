@@ -154,12 +154,12 @@ reader. The legend at the foot of the page summarises this table.</p>
 <tr>
 <td>enforced</td>
 <td>filled square, solid</td>
-<td>A plane decided the call in <code>ENFORCE</code>, <code>APPROVE</code> or <code>LOCKDOWN</code> mode and its trail is one coherent chain.</td>
+<td>A plane decided an MCP call in <code>ENFORCE</code>, <code>APPROVE</code> or <code>LOCKDOWN</code> mode and its trail is one coherent chain.</td>
 </tr>
 <tr>
 <td>decided, not enforced</td>
 <td>triangle, dashed</td>
-<td>A plane decided the call in another mode or recorded no mode, the trail is in doubt, or the call came through the enforcement API (protocol <code>enforce</code>), whose client runs it, in any mode.</td>
+<td>A plane decided the call in another mode or recorded no mode, the trail is in doubt, the call came through the enforcement API (protocol <code>enforce</code>), whose client runs it, in any mode, or its trail names no protocol, or one this build does not know.</td>
 </tr>
 <tr>
 <td>observed</td>

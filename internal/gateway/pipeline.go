@@ -6,6 +6,7 @@ import (
 	"time"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/classify"
 	"github.com/guardana/control/internal/core"
 	"github.com/guardana/control/internal/evidence"
 	"github.com/guardana/control/internal/pause"
@@ -16,8 +17,10 @@ import (
 type Admission struct {
 	// Envelope is nil when nothing parsed.
 	Envelope *controlv1.ActionEnvelope
-	// Refusal is what the decoder returned, if anything. ErrUnclassified in
-	// it names a call nothing classifies.
+	// Refusal is what the decoder returned, if anything. ErrUnclassified on
+	// a chain of single wraps names a call nothing classifies; any other
+	// refusal, one that joins ErrUnclassified with another cause included,
+	// blocks the call in every mode.
 	Refusal error
 	// Arguments are the proposed arguments, as the bytes the digest covers.
 	Arguments []byte
@@ -30,6 +33,11 @@ type Admission struct {
 	// Run is the opened run the listener resolved for this call; nil on a
 	// plane without a runs directory.
 	Run *OpenedRun
+	// Classification is the one the adapter translated the call under; zero
+	// when nothing classified it. Bytes are handed out only while the member
+	// its ResourceFrom points at still names the resource the call was
+	// decided on.
+	Classification classify.Classification
 }
 
 // Disposition is what the plane does about an admission. The zero value
@@ -80,7 +88,10 @@ type Pipeline struct {
 	cfg Config
 	// caps is the adapter's capabilities as New checked them, which the
 	// pipeline reads after New instead of asking the adapter again.
-	caps   Capabilities
+	caps Capabilities
+	// name is the adapter's as New read it: the one protocol an envelope
+	// this pipeline takes may name.
+	name   string
 	kernel *core.Kernel
 	counts counters
 
@@ -121,7 +132,7 @@ type openTrail struct {
 // with the first of New's refusals in errors.go it meets, or with the kernel's
 // refusal of its options.
 func New(cfg Config) (*Pipeline, error) {
-	caps, err := checkConfig(cfg)
+	name, caps, err := checkConfig(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +153,7 @@ func New(cfg Config) (*Pipeline, error) {
 	if cfg.MaxHeldPerRun == 0 {
 		cfg.MaxHeldPerRun = DefaultMaxHeldPerRun
 	}
-	return &Pipeline{cfg: cfg, caps: caps, kernel: kernel, open: make(map[string]*execution), trails: make(map[string]openTrail), runs: make(map[runKey]*run)}, nil
+	return &Pipeline{cfg: cfg, caps: caps, name: name, kernel: kernel, open: make(map[string]*execution), trails: make(map[string]openTrail), runs: make(map[runKey]*run)}, nil
 }
 
 // Admit decides one admission and says what to do about it. It has no error
@@ -196,6 +207,7 @@ func (p *Pipeline) Preview(ctx context.Context, a Admission) *controlv1.Decision
 		p: p, ctx: ctx, in: withArguments(a), now: p.cfg.Clock(),
 		pause: pause.DisabledSnapshot(), stops: reaction.DisabledSnapshot(),
 	}
+	c.checkTranslation()
 	c.refuseFlowTags()
 	c.stampFlow()
 	c.causes = planeCauses(c.planeState())

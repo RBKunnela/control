@@ -5,7 +5,7 @@ import (
 
 	observev1 "github.com/guardana/control/api/gen/go/guardana/control/observe/v1alpha1"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
-	"github.com/guardana/control/internal/coverage"
+	"github.com/guardana/control/internal/channel"
 	"github.com/guardana/control/internal/supervise"
 )
 
@@ -69,8 +69,10 @@ var trustWords = map[observev1.Trust]string{
 
 // markOf marks a call from what supervise returned of it alone. Enforced
 // rests on a coherent trail whose decision a plane recorded in a mode that
-// acts on it, for a call the plane holds; anything less is decided, not
-// enforced. An enforcement API call is run by the client the plane answers.
+// acts on it, for a call of a protocol the plane holds inline; anything less
+// is decided, not enforced. An enforcement API call is run by the client the
+// plane answers, and a call of no protocol, or of one this build does not
+// know, by nothing the plane holds.
 func markOf(in supervise.Instance) markCell {
 	switch {
 	case in.Observation != "":
@@ -87,14 +89,23 @@ func markOf(in supervise.Instance) markCell {
 		return cell(markExcepted, "an exception taken")
 	case in.Approval == supervise.ApprovalGranted:
 		return cell(markExcepted, "approval granted")
-	case in.Protocol == coverage.EnforceProtocol:
-		return cell(markDecided, "a cooperating client enforces it")
+	case channel.StrengthOf(in.Protocol) != channel.StrengthInline:
+		return unheldMark(channel.StrengthOf(in.Protocol))
 	case in.Mode == controlv1.EnforcementMode_ENFORCEMENT_MODE_UNSPECIFIED:
 		return cell(markDecided, "no mode recorded")
 	case enforcing[in.Mode]:
 		return cell(markEnforced, "mode "+modeWord(in.Mode))
 	}
 	return cell(markDecided, "mode "+modeWord(in.Mode))
+}
+
+// unheldMark is the mark of a call whose protocol the plane does not hold
+// inline: a cooperating client's, or nothing's.
+func unheldMark(s channel.Strength) markCell {
+	if s == channel.StrengthCooperative {
+		return cell(markDecided, "a cooperating client enforces it")
+	}
+	return cell(markDecided, "no enforcement point holds the path")
 }
 
 func modeWord(m controlv1.EnforcementMode) string {

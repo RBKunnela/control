@@ -5,15 +5,8 @@ import (
 
 	observev1 "github.com/guardana/control/api/gen/go/guardana/control/observe/v1alpha1"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/channel"
 )
-
-// actionKindTool is how an envelope's action kind names a tool call. A prompt
-// or a resource read through the plane under a tool's name is not the call.
-const actionKindTool = "tool"
-
-// EnforceProtocol is how an envelope the enforcement API built names its
-// protocol.
-const EnforceProtocol = "enforce"
 
 // joiner checks one path's observations from one source against the exports
 // of the planes that count for it. It keeps each group's verdict: every span
@@ -179,15 +172,16 @@ func proposes(ev *controlv1.Event, o *observev1.Observation, path Path, need mod
 // names reports whether ev, a proposal carrying o's ids, names a call of
 // path's tool in o's tenant and project: on its upstream for an mcp_tool, and
 // through the enforcement API for an enforce_tool, whose provider is the
-// operator's word for it and no upstream. An empty tenant or project names
-// nothing: a refused envelope may lack both.
+// operator's word for it and no upstream. A prompt or a resource read through
+// the plane under a tool's name is not the call. An empty tenant or project
+// names nothing: a refused envelope may lack both.
 func names(ev *controlv1.Event, o *observev1.Observation, path Path) bool {
 	action := ev.GetProposed().GetAction()
-	if !sameScope(ev, ev.GetProposed(), o) || action.GetKind() != actionKindTool || action.GetName() != path.Tool {
+	if !sameScope(ev, ev.GetProposed(), o) || action.GetKind() != channel.KindTool || action.GetName() != path.Tool {
 		return false
 	}
 	if path.Kind == KindEnforceTool {
-		return action.GetProtocol() == EnforceProtocol
+		return action.GetProtocol() == channel.ProtocolEnforce
 	}
 	return action.GetProvider() == path.Upstream
 }

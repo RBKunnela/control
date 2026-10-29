@@ -22,6 +22,11 @@ classification is one type with an MCP override's, and a tool whose name,
 provider or classification no envelope could carry is refused when the
 configuration loads and by `enforce.New`.
 
+Amended by [ADR-0067](0067-the-pipeline-refuses-what-an-adapter-could-not-translate.md): the pipeline, not the adapter,
+refuses a translation it could not take and rewritten bytes that name another
+resource than the one decided on; strength is an enum whose zero is `None`,
+read from the protocol a call names.
+
 ## Context
 
 The pipeline in `internal/gateway` is protocol-neutral. `Admit` decides an

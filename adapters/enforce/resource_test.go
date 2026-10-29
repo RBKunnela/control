@@ -1,16 +1,12 @@
 package enforce_test
 
 import (
-	"context"
-	"errors"
 	"net/http"
 	"slices"
 	"testing"
 
 	"github.com/guardana/control/adapters/enforce"
-	enforcev1alpha1 "github.com/guardana/control/api/gen/go/guardana/control/enforce/v1alpha1"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
-	"github.com/guardana/control/internal/evidence"
 	"github.com/guardana/control/internal/gateway"
 )
 
@@ -20,9 +16,9 @@ func redactRefunds(field string) string {
 }
 
 // A rewrite that takes away the member naming the decided resource would hand
-// the client bytes about another resource, so the execution is aborted and
-// the client told BLOCK.
-func TestARewriteThatMovesTheResourceIsAbortedAndBlocked(t *testing.T) {
+// the client bytes about another resource, so the pipeline denies the call
+// before anything is handed out, and the client is told BLOCK.
+func TestARewriteThatMovesTheResourceIsBlocked(t *testing.T) {
 	o := defaults()
 	o.rules = []string{redactRefunds("account")}
 	r := newRig(t, o)
@@ -30,46 +26,16 @@ func TestARewriteThatMovesTheResourceIsAbortedAndBlocked(t *testing.T) {
 	if resp.GetOutcome() != outcomeBlock || resp.GetExecution() != nil || resp.GetDecision() == nil {
 		t.Fatalf("a rewrite that moved the resource answered %v", resp)
 	}
-	endsWithCode(t, resp, "OBLIGATION_NOT_UNDERSTOOD")
-	want := []controlv1.EventKind{kindProposed, kindDecided, kindStarted, kindFailed}
+	planeDeny(t, resp.GetDecision(), "OBLIGATION_NOT_UNDERSTOOD")
+	want := []controlv1.EventKind{kindProposed, kindDecided, kindBlocked}
 	if got := r.kinds(); !slices.Equal(got, want) {
 		t.Fatalf("trail %v, want %v", got, want)
 	}
-	res := r.closing(t).GetResult()
-	if res.GetStatus() != controlv1.ResultStatus_RESULT_STATUS_BLOCKED || res.GetToolProtocolStatus() != "OBLIGATION_NOT_UNDERSTOOD" {
-		t.Fatalf("the abort recorded as %v", res)
-	}
-	if s := r.a.Stats(); s.Open != 0 || s.Blocked != 1 || s.Executed != 0 || s.Aborted != 1 {
+	if s := r.a.Stats(); s.Open != 0 || s.Blocked != 1 || s.Executed != 0 || s.Aborted != 0 {
 		t.Fatalf("stats %+v", s)
 	}
 	if again := r.admit(t, runA, "refund", `{"account":"acct-1","amount":5}`, `,"requestKey":"k1"`); again.GetOutcome() != outcomeBlock {
 		t.Fatalf("the request key stayed taken: %v", again)
-	}
-}
-
-// refusesFailed is a sink that keeps every record but the closing one.
-type refusesFailed struct{ kept evidence.MemorySink }
-
-func (s *refusesFailed) Append(ctx context.Context, e *controlv1.Event) error {
-	if e.GetKind() == kindFailed {
-		return errors.New("sink: refused")
-	}
-	return s.kept.Append(ctx, e)
-}
-
-// An abort of a moved resource whose record the sink refuses is counted
-// apart, as no client is told of it, and the client is still told BLOCK.
-func TestAMovedResourceAbortTheSinkRefusesIsCounted(t *testing.T) {
-	o := defaults()
-	o.rules = []string{redactRefunds("account")}
-	o.plane = func(c *gateway.Config) { c.Sink = &refusesFailed{} }
-	r := newRig(t, o)
-	resp := r.admit(t, runA, "refund", `{"account":"acct-1","amount":5}`, "")
-	if resp.GetOutcome() != outcomeBlock || resp.GetExecution() != nil {
-		t.Fatalf("a rewrite that moved the resource answered %v", resp)
-	}
-	if s := r.a.Stats(); s.RecordsFailed != 1 || s.Aborted != 1 || s.Blocked != 1 || s.Open != 0 {
-		t.Fatalf("stats %+v", s)
 	}
 }
 
@@ -165,7 +131,8 @@ func TestTheTablesResultLabelsRaiseTheRun(t *testing.T) {
 
 // TestAnUntranslatedCallIsHandedOutInNoMode: an envelope the contract refuses,
 // here a transaction that names no account, is never handed out, OBSERVE
-// included: what could not be translated cannot be authorized, as over MCP.
+// included: the pipeline blocks it with the kernel's code for the refusal,
+// as over MCP, and nothing is recorded as started.
 func TestAnUntranslatedCallIsHandedOutInNoMode(t *testing.T) {
 	args := `{"amount":5}`
 	for _, mode := range []controlv1.EnforcementMode{controlv1.EnforcementMode_ENFORCEMENT_MODE_OBSERVE, modeEnforce} {
@@ -176,30 +143,30 @@ func TestAnUntranslatedCallIsHandedOutInNoMode(t *testing.T) {
 		if resp.GetOutcome() != outcomeBlock || resp.GetExecution() != nil {
 			t.Fatalf("%v: an untranslated call answered %v", mode, resp)
 		}
-		if s := r.a.Stats(); s.Open != 0 || s.Executed != 0 || s.Blocked != 1 {
+		if got := resp.GetDecision().GetReasonCodes(); !slices.Equal(got, []string{"REQUIRED_FIELD_ABSENT"}) {
+			t.Errorf("%v: the block names %v, want the kernel's REQUIRED_FIELD_ABSENT alone", mode, got)
+		}
+		if want := []controlv1.EventKind{kindProposed, kindDecided, kindBlocked}; !slices.Equal(r.kinds(), want) {
+			t.Errorf("%v: trail %v, want %v", mode, r.kinds(), want)
+		}
+		if s := r.a.Stats(); s.Open != 0 || s.Executed != 0 || s.Blocked != 1 || s.Aborted != 0 {
 			t.Fatalf("%v: stats %+v", mode, s)
 		}
 	}
+	// A tool the table does not name is the mode's to decide, and OBSERVE
+	// lets it run.
 	o := defaults()
 	o.mode = controlv1.EnforcementMode_ENFORCEMENT_MODE_OBSERVE
 	r := newRig(t, o)
-	resp := r.admit(t, runA, "refund", args, `,"requestKey":"k1"`)
-	endsWithCode(t, resp, "INVALID_FIELD_VALUE")
-	if res := r.closing(t).GetResult(); res.GetStatus() != controlv1.ResultStatus_RESULT_STATUS_BLOCKED || res.GetToolProtocolStatus() != "INVALID_FIELD_VALUE" {
-		t.Fatalf("the abort recorded as %v", res)
-	}
-	// A tool the table does not name is the mode's to decide, and OBSERVE
-	// lets it run.
 	if resp := r.admit(t, runA, "drop_database", `{"name":"x"}`, `,"requestKey":"k2"`); resp.GetOutcome() != outcomeExecute || resp.GetExecution().GetHandle() == "" {
 		t.Fatalf("an unclassified tool under OBSERVE answered %v", resp)
 	}
 }
 
-// endsWithCode fails t unless the answer's decision names code last, as the
-// code of the abort that ended its execution.
-func endsWithCode(t *testing.T, resp *enforcev1alpha1.AdmitResponse, code string) {
+// planeDeny fails t unless d is the plane's own DENY naming code alone.
+func planeDeny(t *testing.T, d *controlv1.Decision, code string) {
 	t.Helper()
-	if codes := resp.GetDecision().GetReasonCodes(); len(codes) == 0 || codes[len(codes)-1] != code {
-		t.Fatalf("the block's decision names %q, not %s last", codes, code)
+	if d.GetVerdict() != controlv1.Verdict_VERDICT_DENY || !slices.Equal(d.GetReasonCodes(), []string{code}) || d.GetPdpType() != gateway.PDPType {
+		t.Fatalf("the block's decision is %v, want the plane's DENY %s", d, code)
 	}
 }

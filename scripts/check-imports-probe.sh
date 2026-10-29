@@ -97,6 +97,7 @@ for tree in "${guarded[@]}"; do
   esac
 done
 reached_trees=(
+  internal/channel
   internal/observe
   internal/trailchain
 )

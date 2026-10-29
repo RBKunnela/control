@@ -14,6 +14,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/channel"
 	"github.com/guardana/control/internal/core"
 	"github.com/guardana/control/internal/evidence"
 	"github.com/guardana/control/internal/gateway"
@@ -383,7 +384,7 @@ func everyEffectClass() (effects []controlv1.EffectClass, allowAll, vetoAll stri
 func classEnvelope(t *testing.T, effect controlv1.EffectClass) *controlv1.ActionEnvelope {
 	t.Helper()
 	env := readEnvelope()
-	env.Action = &controlv1.Action{Name: "orders.act", Effect: effect, Provider: "orders"}
+	env.Action = &controlv1.Action{Kind: channel.KindTool, Name: "orders.act", Effect: effect, Provider: "orders", Protocol: testProtocol}
 	env.Arguments = &controlv1.Arguments{CanonicalHash: argumentsHash(t, []byte(`{}`))}
 	env.Destination = &controlv1.Destination{TrustZone: controlv1.TrustZone_TRUST_ZONE_TRUSTED_INTERNAL, Host: "orders.internal"}
 	env.Delegation = []*controlv1.Delegation{{
@@ -455,7 +456,7 @@ func TestADecisionPointCannotChangeWhatIsRecorded(t *testing.T) {
 // INDETERMINATE decision that names the cause.
 func TestObserveRunsASilentCallWithItsDecisionRecorded(t *testing.T) {
 	dp := &fakeDecisionPoint{answer: core.ExternalUnavailable()}
-	h := build(t, modeObserve, snapshot(t, allowWrites, vetoWrites), withDecisionPoint(dp), observer)
+	h := build(t, modeObserve, snapshot(t, allowWrites, vetoWrites), withDecisionPoint(dp))
 	d := h.admit(writeEnvelope(), []byte(`{"k":1}`))
 	if d.Action != core.Execute {
 		t.Fatalf("an unanswered write under OBSERVE: Action = %d", d.Action)

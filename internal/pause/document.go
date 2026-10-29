@@ -9,6 +9,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/guardana/control/internal/channel"
 	"github.com/guardana/control/pkg/contract"
 )
 
@@ -44,9 +45,9 @@ const (
 // The kinds of call an action scope names, as the envelope's action kind
 // spells them.
 const (
-	ActionTool     = "tool"
-	ActionPrompt   = "prompt"
-	ActionResource = "resource"
+	ActionTool     = channel.KindTool
+	ActionPrompt   = channel.KindPrompt
+	ActionResource = channel.KindResource
 )
 
 // Scope is the calls one entry pauses. Provider is an upstream by its
@@ -65,8 +66,9 @@ type Scope struct {
 // Matches reports whether s covers a call of the action kind, provider and
 // name the envelope carries. A field the call does not carry matches, as an
 // absent input restricts: a call nothing classifies carries no provider, so
-// every entry pauses it. A scope of a kind this build does not know matches
-// every call.
+// every entry pauses it. A kind outside the plane's vocabulary matches every
+// action scope, as an absent one does, and a scope of a kind this build does
+// not know matches every call.
 func (s Scope) Matches(kind, provider, name string) bool {
 	switch s.Kind {
 	case ScopeGlobal:
@@ -74,7 +76,7 @@ func (s Scope) Matches(kind, provider, name string) bool {
 	case ScopeProvider:
 		return absentOr(provider, s.Provider)
 	case ScopeAction:
-		return absentOr(kind, s.Action) && absentOr(provider, s.Provider) &&
+		return (!channel.KnownKind(kind) || kind == s.Action) && absentOr(provider, s.Provider) &&
 			(s.Name == "" || absentOr(name, s.Name))
 	}
 	return true

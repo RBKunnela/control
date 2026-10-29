@@ -243,34 +243,30 @@ func TestUnclassifiedIsThePipelinesToDecide(t *testing.T) {
 }
 
 // TestRefusedTranslationIsNeverSent: a call the adapter could not translate
-// into an envelope the contract accepts is not sent even when the mode let
-// it through, and the execution the pipeline opened is aborted.
+// into an envelope the contract accepts is blocked by the pipeline under
+// OBSERVE as under ENFORCE, with the kernel's code for the refusal, and its
+// trail never says it started.
 func TestRefusedTranslationIsNeverSent(t *testing.T) {
 	// delete_file is a DELETE, which needs a resource id; an argument
 	// document that names none leaves the envelope invalid.
-	r := newRig(t, mcp.KindStdio, rigOptions{mode: modeObserve, rules: []string{allowEverything}})
-	res, err := callTool(t, r.connect(t, "agent-a"), "delete_file", map[string]any{"other": "/x"})
-	if err != nil || !res.IsError {
-		t.Fatalf("a refused translation: %v %+v", err, res)
-	}
-	if n := r.victim.count("delete_file"); n != 0 {
-		t.Fatalf("victim ran %d times", n)
-	}
-	kinds := r.kindsOf(t, "")
-	if kinds[len(kinds)-1] != controlv1.EventKind_EVENT_KIND_ACTION_FAILED {
-		t.Fatalf("trail %v, want it to end in ACTION_FAILED", kinds)
-	}
-	// The closing record is an abort's: nothing ran, so it says BLOCKED, it
-	// carries no executed digest to compare, and its code is the one for a
-	// call the adapter could not express, never the one for bytes that
-	// disagreed.
-	events := r.events()
-	closing := events[len(events)-1].GetResult()
-	if closing.GetStatus() != controlv1.ResultStatus_RESULT_STATUS_BLOCKED || closing.GetExecutedActionDigest() != "" {
-		t.Errorf("the closing record %v", closing)
-	}
-	if got := closing.GetToolProtocolStatus(); got != "INVALID_FIELD_VALUE" {
-		t.Errorf("the closing record says %q, want INVALID_FIELD_VALUE", got)
+	for _, mode := range []controlv1.EnforcementMode{modeObserve, modeEnforce} {
+		t.Run(mode.String(), func(t *testing.T) {
+			r := newRig(t, mcp.KindStdio, rigOptions{mode: mode, rules: []string{allowEverything}})
+			res, err := callTool(t, r.connect(t, "agent-a"), "delete_file", map[string]any{"other": "/x"})
+			if err != nil || !res.IsError {
+				t.Fatalf("a refused translation: %v %+v", err, res)
+			}
+			if got := codesOf(t, res); !slices.Equal(got, []string{"REQUIRED_FIELD_ABSENT"}) {
+				t.Errorf("the block names %v, want the kernel's REQUIRED_FIELD_ABSENT alone", got)
+			}
+			if n := r.victim.count("delete_file"); n != 0 {
+				t.Fatalf("victim ran %d times", n)
+			}
+			want := []controlv1.EventKind{controlv1.EventKind_EVENT_KIND_ACTION_PROPOSED, controlv1.EventKind_EVENT_KIND_POLICY_DECIDED, controlv1.EventKind_EVENT_KIND_ACTION_BLOCKED}
+			if kinds := r.kindsOf(t, ""); !slices.Equal(kinds, want) {
+				t.Fatalf("trail %v, want %v", kinds, want)
+			}
+		})
 	}
 }
 

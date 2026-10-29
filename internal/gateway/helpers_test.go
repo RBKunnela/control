@@ -13,10 +13,12 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/canon"
+	"github.com/guardana/control/internal/channel"
 	"github.com/guardana/control/internal/core"
 	"github.com/guardana/control/internal/evidence"
 	"github.com/guardana/control/internal/gateway"
@@ -77,6 +79,11 @@ const (
 	approved = controlv1.ApprovalState_APPROVAL_STATE_APPROVED
 	rejected = controlv1.ApprovalState_APPROVAL_STATE_REJECTED
 )
+
+// testProtocol is the fake adapter's name, which every test envelope names
+// as its protocol: New takes an adapter only under a protocol the plane
+// knows, at that protocol's strength.
+const testProtocol = channel.ProtocolMCP
 
 type fakeAdapter struct {
 	name string
@@ -225,6 +232,8 @@ type harness struct {
 	ids    *atomic.Int64
 	// run is the opened run admit sends every call under; nil sends none.
 	run *gateway.OpenedRun
+	// protocol is the name of the adapter the plane was built over.
+	protocol string
 }
 
 func newIDs(n *atomic.Int64) func() string {
@@ -238,7 +247,7 @@ func validConfig(t *testing.T) gateway.Config {
 	var n atomic.Int64
 	return gateway.Config{
 		Mode:          modeEnforce,
-		Adapter:       fakeAdapter{name: "fake", caps: enforcing},
+		Adapter:       fakeAdapter{name: testProtocol, caps: enforcing},
 		KernelOptions: core.Options{MaxStale: time.Minute},
 		Policy:        &snapshotSource{},
 		Pause:         gateway.PauseDisabled(),
@@ -270,7 +279,7 @@ func build(t *testing.T, mode controlv1.EnforcementMode, snap *policy.Snapshot, 
 	caps.Obligations = []string{"cap_rate"}
 	cfg := gateway.Config{
 		Mode:          mode,
-		Adapter:       fakeAdapter{name: "fake", caps: caps},
+		Adapter:       fakeAdapter{name: testProtocol, caps: caps},
 		KernelOptions: core.Options{MaxStale: 10 * time.Minute},
 		Policy:        h.policy,
 		Pause:         h.pause,
@@ -292,14 +301,26 @@ func build(t *testing.T, mode controlv1.EnforcementMode, snap *policy.Snapshot, 
 	if err != nil {
 		t.Fatalf("New refused a configuration this test builds as valid: %v", err)
 	}
-	h.p = p
+	h.p, h.protocol = p, cfg.Adapter.Name()
 	return h
 }
 
 func (h *harness) admit(env *controlv1.ActionEnvelope, args []byte) gateway.Disposition {
 	a := admission(env, args)
 	a.Run = h.run
-	return h.p.Admit(context.Background(), a)
+	return h.p.Admit(context.Background(), h.onPlane(a))
+}
+
+// onPlane is a as the plane's own adapter hands it in: the envelopes these
+// helpers build name testProtocol, and a plane built over another protocol
+// takes them under its own. Any other protocol stays as the test wrote it.
+func (h *harness) onPlane(a gateway.Admission) gateway.Admission {
+	if h.protocol == testProtocol || a.Envelope.GetAction().GetProtocol() != testProtocol {
+		return a
+	}
+	a.Envelope = proto.CloneOf(a.Envelope)
+	a.Envelope.Action.Protocol = h.protocol
+	return a
 }
 
 func admission(env *controlv1.ActionEnvelope, args []byte) gateway.Admission {
@@ -347,7 +368,7 @@ func readEnvelope() *controlv1.ActionEnvelope {
 		OccurredAt:    timestamppb.New(time.Date(2026, time.September, 11, 11, 59, 0, 0, time.UTC)),
 		Principal:     &controlv1.Principal{Id: "user-1", TenantId: "tenant-1"},
 		Agent:         &controlv1.Agent{Id: "agent-1"},
-		Action:        &controlv1.Action{Name: "orders.read", Effect: controlv1.EffectClass_EFFECT_CLASS_READ, Provider: "orders"},
+		Action:        &controlv1.Action{Kind: channel.KindTool, Name: "orders.read", Effect: controlv1.EffectClass_EFFECT_CLASS_READ, Provider: "orders", Protocol: testProtocol},
 		Resource:      &controlv1.Resource{Type: "order", Id: "ord-1", TenantId: "tenant-1", Environment: "prod"},
 		Context:       &controlv1.RunContext{RunId: "run-1", SessionId: "sess-1"},
 	}
@@ -355,7 +376,7 @@ func readEnvelope() *controlv1.ActionEnvelope {
 
 func writeEnvelope() *controlv1.ActionEnvelope {
 	env := readEnvelope()
-	env.Action = &controlv1.Action{Name: "orders.update", Effect: controlv1.EffectClass_EFFECT_CLASS_WRITE, Provider: "orders"}
+	env.Action = &controlv1.Action{Kind: channel.KindTool, Name: "orders.update", Effect: controlv1.EffectClass_EFFECT_CLASS_WRITE, Provider: "orders", Protocol: testProtocol}
 	return env
 }
 
@@ -363,7 +384,7 @@ func writeEnvelope() *controlv1.ActionEnvelope {
 func refundEnvelope(t *testing.T, args []byte) *controlv1.ActionEnvelope {
 	t.Helper()
 	env := readEnvelope()
-	env.Action = &controlv1.Action{Name: "refund", Effect: controlv1.EffectClass_EFFECT_CLASS_TRANSACT, Provider: "payments"}
+	env.Action = &controlv1.Action{Kind: channel.KindTool, Name: "refund", Effect: controlv1.EffectClass_EFFECT_CLASS_TRANSACT, Provider: "payments", Protocol: testProtocol}
 	env.Arguments = &controlv1.Arguments{CanonicalHash: argumentsHash(t, args)}
 	return env
 }

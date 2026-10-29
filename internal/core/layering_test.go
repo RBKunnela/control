@@ -63,6 +63,7 @@ var guardedTrees = []string{
 // package of this module under neither list fails, and so does an entry here
 // that no guarded tree reaches any more.
 var reachedTrees = []string{
+	"internal/channel",
 	"internal/observe",
 	"internal/trailchain",
 }
@@ -829,12 +830,14 @@ func TestNameScopeVerdict(t *testing.T) {
 		{module + "/internal/supervise", false},
 		{module + "/internal/observe", false},
 		{module + "/internal/trailchain", false},
+		{module + "/internal/channel", false},
 		{module + "/api/gen/go/x/v1", false},
 		{"time", false},
 		{"google.golang.org/protobuf/types/known/timestamppb", false},
 		{module + "/internal/probehelper", true},
 		{module + "/internal/observer", true},
 		{module + "/internal/trailchainx", true},
+		{module + "/internal/channels", true},
 		{module + "/internal/docscheck", true},
 		{module + "/adapters/mcp", true},
 	}

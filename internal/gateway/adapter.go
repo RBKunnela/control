@@ -3,6 +3,7 @@ package gateway
 import (
 	"fmt"
 
+	"github.com/guardana/control/internal/channel"
 	"github.com/guardana/control/internal/policy/rules"
 )
 
@@ -37,20 +38,15 @@ type Capabilities struct {
 	Obligations []string
 }
 
-// Enforcement is how far an adapter can keep a call from its effect. The
-// values are ordered: each one can do what the one before it does.
-type Enforcement uint8
+// Enforcement is how far an adapter can keep a call from its effect, in the
+// one vocabulary every reader takes it from; its zero value enforces nothing.
+type Enforcement = channel.Strength
 
+// The three strengths, under the names the adapters declare them by.
 const (
-	// EnforcementNone is an adapter that cannot keep a call from its effect.
-	EnforcementNone Enforcement = iota
-	// EnforcementCooperative is an adapter that hands each decision to a
-	// caller that enforces it: the plane decides, holds and records, and
-	// nothing it holds proves the caller obeyed.
-	EnforcementCooperative
-	// EnforcementInline is an adapter that holds the path to the effect and
-	// sends only what the plane authorized.
-	EnforcementInline
+	EnforcementNone        = channel.StrengthNone
+	EnforcementCooperative = channel.StrengthCooperative
+	EnforcementInline      = channel.StrengthInline
 )
 
 // Adapter is the seam between the pipeline and a protocol. It translates; the

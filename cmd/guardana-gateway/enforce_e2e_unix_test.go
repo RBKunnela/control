@@ -16,7 +16,7 @@ import (
 
 	enforcev1alpha1 "github.com/guardana/control/api/gen/go/guardana/control/enforce/v1alpha1"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
-	"github.com/guardana/control/internal/coverage"
+	"github.com/guardana/control/internal/channel"
 	"github.com/guardana/control/internal/enforceclient"
 )
 
@@ -198,8 +198,8 @@ func blockBoth(t *testing.T, collector *acceptingCollector, cooperating *enforce
 		if hasKind(trail, kindStarted) {
 			t.Errorf("the trail of %s shows ACTION_STARTED", id)
 		}
-		if p := trail[0].GetProposed().GetAction().GetProtocol(); p != coverage.EnforceProtocol {
-			t.Errorf("the enforcement API records protocol %q, the coverage join reads %q", p, coverage.EnforceProtocol)
+		if p := trail[0].GetProposed().GetAction().GetProtocol(); p != channel.ProtocolEnforce {
+			t.Errorf("the enforcement API records protocol %q, the coverage join reads %q", p, channel.ProtocolEnforce)
 		}
 	}
 	if len(tool.ran) != 1 || string(tool.ran[0]) != `{"id":"ord-2"}` {

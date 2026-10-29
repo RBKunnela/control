@@ -22,11 +22,11 @@ The kernel's decision is recorded untouched whatever the mode did with it.
 ```mermaid
 flowchart TD
     accTitle: Where the mode is applied
-    accDescr: A call the enforcement point blocks for its own causes is blocked in every mode; otherwise OBSERVE executes the proposed bytes, APPROVE holds an allowed material call, ENFORCE applies the kernel's action, and the trail is written before anything runs.
+    accDescr: A call the enforcement point blocks for its own causes is blocked in every mode; otherwise OBSERVE executes the proposed bytes unless the call could not be translated, APPROVE holds an allowed material call, ENFORCE applies the kernel's action, and the trail is written before anything runs.
     K["The kernel's decision and its action, for the proposed bytes"] --> P{"Blocked by the enforcement point itself?"}
     P -->|a pause, an unreadable pause state, a halt or LOCKDOWN on a material call, a call nothing classifies outside OBSERVE, arguments it cannot hash, or a run state or evidence it cannot keep| B["Block, with a decision the enforcement point minted listing every cause"]
     P -->|no| M{"Mode"}
-    M -->|OBSERVE| X["Execute the proposed bytes, whatever the verdict"]
+    M -->|OBSERVE, the call translated or only unclassified| X["Execute the proposed bytes, whatever the verdict"]
     M -->|APPROVE, allowed material call| A["AwaitApproval"]
     M -->|ENFORCE, and every case above that did not match| D["The kernel's action, as it is"]
     X --> W["Write the trail, then run or block as the action says"]
@@ -64,7 +64,9 @@ runs, `INDETERMINATE` goes to the fail-closed table, see
 `OBSERVE` enforces nothing the decision says, so it executes the proposed
 bytes without applying a rewriting obligation, and it takes a call nothing
 classifies; it is how an operator learns which tools exist before classifying
-them. What the enforcement point refuses on its own account, in the table
+them. It never takes a call the adapter could not translate for any other
+reason, nor one whose envelope names a kind or a protocol outside the plane's
+vocabulary: the kernel's `INDETERMINATE` blocks it, as in every other mode. What the enforcement point refuses on its own account, in the table
 below, it refuses in `OBSERVE` too: it writes the trail first, and an event the
 sink will not take blocks the call, unless the read is let through unrecorded
 under the explicit evidence setting. A bundle replaced or stale by the time a
@@ -89,6 +91,7 @@ them:
 | a material call after the sink refused the closing event of a call that was sent | `INDETERMINATE` | `EVIDENCE_UNAVAILABLE` | an append succeeds |
 | a call with no opened run of its identity where runs are presented, one whose run's state cannot be read, or one whose run the id source cannot name | `INDETERMINATE` | `EVIDENCE_UNAVAILABLE` | the run resolves and its state reads, or the id source names it |
 | a call whose producer sent a run-context tag under the reserved `flow.v` prefix, `OBSERVE` included, after the mode | `INDETERMINATE` | the code of the call's refusal, `INVALID_FIELD_VALUE` for the tag alone | the producer stops sending it |
+| a call the adapter could not translate for more than nothing classifying it, or whose action kind is not `tool`, `prompt` or `resource` or whose protocol is not the adapter's, `OBSERVE` included: the kernel's decision | `INDETERMINATE` | the code of the refusal, `INVALID_FIELD_VALUE` for the kind or the protocol | the adapter translates it |
 | an execution whose opened run expired before it started, or whose run's state cannot be raised, after the mode | `INDETERMINATE` | `EVIDENCE_UNAVAILABLE` | a run that is open, and a raise that succeeds |
 | a request id whose trail is still open in this enforcement point, unless the call resumes that trail | `INDETERMINATE` | `INVALID_FIELD_VALUE` | that trail closes |
 | an event the sink will not take before the effect, for a material call, or for a read without `AllowReadsUnrecorded` | `INDETERMINATE` | `EVIDENCE_UNAVAILABLE` | the sink takes events again |

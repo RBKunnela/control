@@ -157,6 +157,13 @@ type Outcome struct {
 	// Basis is what the decision stood on, for Recheck at hand-out; the zero
 	// value on a kernel nobody built.
 	Basis Basis
+	// RefusedInput is whether the decision stopped on the request itself,
+	// before any rule ran: the refusal handed in, Validate's refusal of the
+	// envelope, arguments that cannot be digested, or a hash naming other
+	// bytes. A cause found later, an undetermined rule or a one-sided tenant,
+	// leaves it unset. A kernel nobody built reads no request and leaves it
+	// unset too; it blocks whatever it is asked.
+	RefusedInput bool
 }
 
 // Decide returns a decision for req against snap, and what to enforce

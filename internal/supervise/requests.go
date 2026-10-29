@@ -3,6 +3,7 @@ package supervise
 import (
 	findingv1alpha1 "github.com/guardana/control/api/gen/go/guardana/control/finding/v1alpha1"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/channel"
 	"github.com/guardana/control/internal/policy/reasons"
 	"github.com/guardana/control/internal/trailchain"
 )
@@ -106,16 +107,13 @@ func (rq *request) note(ev *controlv1.Event) {
 	}
 }
 
-// actionKindTool is how an envelope's action kind names a tool call. A prompt
-// or a resource read carries a name the agent chose on the upstream the plane
-// routed it to, so it is never a step, an allowed tool or a call outside them.
-const actionKindTool = "tool"
-
 // tool is the tool and upstream the request proposed; ok is false when its
-// proposal was not read or is not a tool call.
+// proposal was not read or is not a tool call. A prompt or a resource read
+// carries a name the agent chose on the upstream the plane routed it to, so it
+// is never a step, an allowed tool or a call outside them.
 func (rq *request) tool() ([2]string, bool) {
 	a := rq.proposal.GetProposed().GetAction()
-	return [2]string{a.GetName(), a.GetProvider()}, rq.proposal != nil && a.GetKind() == actionKindTool
+	return [2]string{a.GetName(), a.GetProvider()}, rq.proposal != nil && a.GetKind() == channel.KindTool
 }
 
 // failed reports a request that ended blocked or failed. One still open, such

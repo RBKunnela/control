@@ -230,9 +230,7 @@ func TestLockdownTurnsFailOpenReadsOff(t *testing.T) {
 // proposed bytes, nothing the decision says is enforced, and the DENY is in
 // the trail.
 func TestObserveRecordsADenyAndExecutes(t *testing.T) {
-	h := build(t, modeObserve, snapshot(t, denyWrites), func(c *gateway.Config) {
-		c.Adapter = fakeAdapter{name: "observer", caps: gateway.Capabilities{ObserveRequest: true, ObserveResult: true}}
-	})
+	h := build(t, modeObserve, snapshot(t, denyWrites))
 	args := []byte(`{"k": 1}`)
 	d := h.admit(writeEnvelope(), args)
 	if d.Action != core.Execute || !bytes.Equal(d.AuthorizedArgs, args) {
@@ -243,9 +241,7 @@ func TestObserveRecordsADenyAndExecutes(t *testing.T) {
 	}
 	expectKinds(t, h.kinds(), []controlv1.EventKind{kindProposed, kindDecided, kindStarted})
 	// A rewriting obligation is not applied under OBSERVE either.
-	h = build(t, modeObserve, snapshot(t, cappedRefunds), func(c *gateway.Config) {
-		c.Adapter = fakeAdapter{name: "observer", caps: gateway.Capabilities{ObserveRequest: true, ObserveResult: true}}
-	})
+	h = build(t, modeObserve, snapshot(t, cappedRefunds))
 	d = h.admit(refundEnvelope(t, refundArgs()), refundArgs())
 	if d.Action != core.Execute || !bytes.Equal(d.AuthorizedArgs, refundArgs()) || d.Obligations != nil {
 		t.Errorf("under OBSERVE with obligations: Action = %d, args %q, obligations %v", d.Action, d.AuthorizedArgs, d.Obligations)

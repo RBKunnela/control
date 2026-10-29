@@ -103,33 +103,33 @@ type Config struct {
 }
 
 // checkConfig makes New's refusals of cfg but the decision point's. It asks
-// the adapter for its capabilities once and returns that answer, so the
-// pipeline keeps the value that was checked.
-func checkConfig(cfg Config) (Capabilities, error) {
+// the adapter for its name and capabilities once and returns both, so the
+// pipeline keeps the values that were checked.
+func checkConfig(cfg Config) (string, Capabilities, error) {
 	if cfg.Adapter == nil {
-		return Capabilities{}, ErrNoAdapter
+		return "", Capabilities{}, ErrNoAdapter
 	}
-	caps := cfg.Adapter.Capabilities()
+	name, caps := cfg.Adapter.Name(), cfg.Adapter.Capabilities()
 	caps.Obligations = slices.Clone(caps.Obligations)
-	if err := checkAdapter(cfg.Mode, cfg.Adapter.Name(), caps); err != nil {
-		return Capabilities{}, err
+	if err := checkAdapter(cfg.Mode, name, caps); err != nil {
+		return "", Capabilities{}, err
 	}
 	if err := checkRuns(cfg, caps.PresentsRuns); err != nil {
-		return Capabilities{}, err
+		return "", Capabilities{}, err
 	}
 	if err := checkSources(cfg); err != nil {
-		return Capabilities{}, err
+		return "", Capabilities{}, err
 	}
 	if _, disabled := cfg.Stops.(disabledStops); !disabled && cfg.Runs == nil {
-		return Capabilities{}, ErrStopsWithoutRuns
+		return "", Capabilities{}, ErrStopsWithoutRuns
 	}
 	if err := checkBounds(cfg); err != nil {
-		return Capabilities{}, err
+		return "", Capabilities{}, err
 	}
 	if first, second := cfg.NewID(), cfg.NewID(); first == "" || second == "" || first == second {
-		return Capabilities{}, ErrIDSource
+		return "", Capabilities{}, ErrIDSource
 	}
-	return caps, nil
+	return name, caps, nil
 }
 
 // checkSources refuses a source cfg leaves nil.

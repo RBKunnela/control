@@ -45,8 +45,8 @@ reader. The legend at the foot of the page summarises this table.
 
 | Mark | Shape and line | Means |
 | --- | --- | --- |
-| enforced | filled square, solid | A plane decided the call in `ENFORCE`, `APPROVE` or `LOCKDOWN` mode and its trail is one coherent chain. |
-| decided, not enforced | triangle, dashed | A plane decided the call in another mode or recorded no mode, the trail is in doubt, or the call came through the enforcement API (protocol `enforce`), whose client runs it, in any mode. |
+| enforced | filled square, solid | A plane decided an MCP call in `ENFORCE`, `APPROVE` or `LOCKDOWN` mode and its trail is one coherent chain. |
+| decided, not enforced | triangle, dashed | A plane decided the call in another mode or recorded no mode, the trail is in doubt, the call came through the enforcement API (protocol `enforce`), whose client runs it, in any mode, or its trail names no protocol, or one this build does not know. |
 | observed | circle, dotted | Only a source reported the call, with the trust its descriptor declared. |
 | exception or approval | diamond, dash and dot | An exception waived the call, or the approvals store granted it. |
 | blocked | cross, long dashes | The call's coherent trail ends blocked: the policy's `DENY`, a pause, a stop, an approval refused or expired, or a verdict such as `INDETERMINATE`. |

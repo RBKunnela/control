@@ -283,13 +283,14 @@ step that emits it.
 
 ## Decoding and validation
 
-What a receiver calls, and what it refuses. Six functions in
+What a receiver calls, and what it refuses. Seven functions in
 [pkg/contract](../pkg/contract/), all `implemented`:
 
 ```go
 func Decode(b []byte) (*controlv1.ActionEnvelope, error)     // binary protobuf
 func DecodeJSON(b []byte) (*controlv1.ActionEnvelope, error) // protojson
 func Validate(env *controlv1.ActionEnvelope) error
+func ValidateUnclassified(env *controlv1.ActionEnvelope) error
 func CheckIdentifier(s string) error                         // the string rule below
 func CheckHost(host string) error                            // the host rule below
 func CheckMapKey(key string) error                           // the map-key rule below
@@ -303,6 +304,17 @@ matches, so a DENY on it never fires and nobody is told. Each checks what a
 value holds, not whether there is one: `""` passes all three. Each refusal is
 a `ValidationError` with no field, wrapping `ErrInvalidValue`, and a test holds
 each function to `Validate`'s verdict and reason on the field it governs.
+
+`ValidateUnclassified` applies every rule of `Validate`, from the same code and
+in the same order, except the effect class's presence and the fields a class
+requires (`EffectRequires`). It is for a receiver holding an envelope nothing
+classified: `Validate` refuses such an envelope at `action.effect` before it
+reads the delegation chain, the host, the labels and the arguments, so that
+refusal says nothing about the rest. The gateway holds every claim that a
+call is unclassified to it ([ADR-0067](adr/0067-the-pipeline-refuses-what-an-adapter-could-not-translate.md)).
+`Validate`'s own result does not depend on it, and a test holds the two to
+the same refusal over every envelope with an effect class and what it
+requires.
 
 Use a decoder rather than parsing elsewhere and calling `Validate`. Some
 refusals exist only on a path that owns the parse: a message decoded with

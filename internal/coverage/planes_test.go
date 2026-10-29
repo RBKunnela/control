@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/channel"
 	"github.com/guardana/control/internal/coverage"
 )
 
@@ -98,9 +99,9 @@ func TestMapRefusesAnUndeclaredModeOrEffect(t *testing.T) {
 		"an undeclared mode":    plane("a", controlv1.EnforcementMode(99), false, override(effectWrite)),
 		"an unspecified effect": plane("a", modeEnforce, false, override(controlv1.EffectClass_EFFECT_CLASS_UNSPECIFIED)),
 		"an undeclared effect":  plane("a", modeEnforce, false, override(controlv1.EffectClass(99))),
-		"a tool of an unspecified effect": {Name: "a", Mode: modeEnforce, Cooperative: true,
+		"a tool of an unspecified effect": {Name: "a", Mode: modeEnforce, Strength: channel.StrengthCooperative,
 			Tools: []coverage.Tool{{Name: "refund", Effect: controlv1.EffectClass_EFFECT_CLASS_UNSPECIFIED}}},
-		"a tool of an undeclared effect": {Name: "a", Mode: modeEnforce, Cooperative: true,
+		"a tool of an undeclared effect": {Name: "a", Mode: modeEnforce, Strength: channel.StrengthCooperative,
 			Tools: []coverage.Tool{{Name: "refund", Effect: controlv1.EffectClass(99)}}},
 	}
 	for name, pl := range cases {

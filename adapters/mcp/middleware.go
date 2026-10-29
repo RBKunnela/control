@@ -3,7 +3,6 @@ package mcp
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/canon"
+	"github.com/guardana/control/internal/channel"
 	"github.com/guardana/control/internal/core"
 	"github.com/guardana/control/internal/gateway"
 )
@@ -66,13 +66,13 @@ func (a *Adapter) middleware(next mcp.MethodHandler) mcp.MethodHandler {
 			return a.callTool(ctx, c, toolSender(r.Params.Name))
 		case methodReadResource:
 			r := req.(*mcp.ReadResourceRequest)
-			c := a.read(req, r.Params.Meta, kindResource, r.Params.URI, []byte(noArguments), nil)
+			c := a.read(req, r.Params.Meta, channel.KindResource, r.Params.URI, []byte(noArguments), nil)
 			c.admission.Run = run
 			return a.readThrough(ctx, c, resourceSender(r.Params.URI))
 		case methodGetPrompt:
 			r := req.(*mcp.GetPromptRequest)
 			args, err := promptArguments(r.Params.Arguments)
-			c := a.read(req, r.Params.Meta, kindPrompt, r.Params.Name, args, err)
+			c := a.read(req, r.Params.Meta, channel.KindPrompt, r.Params.Name, args, err)
 			c.admission.Run = run
 			return a.readThrough(ctx, c, promptSender(r.Params.Name))
 		case methodListResources, methodListTemplates, methodListPrompts:
@@ -200,11 +200,6 @@ func (a *Adapter) run(ctx context.Context, c call, send sender) (outcome, error)
 		a.blocked.Add(1)
 		return outcome{decision: d.Decision, blocked: true}, nil
 	}
-	if refusal := c.admission.Refusal; refusal != nil && !errors.Is(refusal, gateway.ErrUnclassified) {
-		// A translation the adapter refused is not sent, whatever the mode
-		// let through; what could not be translated cannot be authorized.
-		return a.abort(ctx, p, d, gateway.AbortUntranslatable, []string{c.code()}, refusal), nil
-	}
 	cs := sessions[c.upstream]
 	if cs == nil {
 		return a.abort(ctx, p, d, gateway.AbortUnroutable, []string{codeUnclassified}, ErrUnroutable), nil
@@ -213,7 +208,7 @@ func (a *Adapter) run(ctx context.Context, c call, send sender) (outcome, error)
 	if err != nil || got != d.AuthorizedDigest {
 		return a.abort(ctx, p, d, gateway.AbortArgsMismatch, []string{codeExecutedArgsMismatch}, nil), nil
 	}
-	obl, err := authorizedSend(&c, d)
+	obl, err := applyObligations(&c, d.Obligations)
 	if err != nil {
 		codes := append(append([]string(nil), d.Decision.GetReasonCodes()...), codeObligationNotApplied)
 		return a.abort(ctx, p, d, gateway.AbortObligation, codes, err), nil

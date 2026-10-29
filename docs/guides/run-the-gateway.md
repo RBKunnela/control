@@ -182,7 +182,7 @@ complete. Then change the mode and restart.
 
 | Mode | What the plane does with the kernel's decision |
 | --- | --- |
-| `OBSERVE` | Records; executes every recordable call one upstream lists, unclassified included, unless one of the plane's own causes blocks it ([enforcement modes](../concepts/enforcement-modes.md)); applies no obligation |
+| `OBSERVE` | Records; executes every translated call one upstream lists, unclassified included, unless one of the plane's own causes blocks it ([enforcement modes](../concepts/enforcement-modes.md)); applies no obligation |
 | `APPROVE` | Enforces, and holds an allowed material call for an approval. It needs `approvals.provider: file`: nothing outside the process answers a hold kept in memory |
 | `ENFORCE` | Enforces the decision: blocks a `DENY` and an `INDETERMINATE` save a fail-open read, applies the obligations, holds what needs an approval |
 | `LOCKDOWN` | Blocks every material call whatever the policy said, recording a decision; enforces a read with fail-open reads off |

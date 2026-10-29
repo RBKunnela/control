@@ -199,9 +199,10 @@ func joinRead(current, read controlv1.Sensitivity) controlv1.Sensitivity {
 
 // takeFlow takes the call's flow state and stamps it on a copy of its
 // envelope, before anything decides the call. A call its producer forged a
-// flow tag on reads no run. A call that carries a refusal mints none, since
-// the plane blocks it in every mode but OBSERVE, which hands it out and so
-// needs its run to take in what it returns.
+// flow tag on reads no run. A call whose translation was refused mints none,
+// since every mode blocks it, and neither does an unclassified one outside
+// OBSERVE, the one mode that hands it out and so needs its run to take in
+// what it returns.
 func (c *call) takeFlow() {
 	c.refuseFlowTags()
 	switch {
@@ -210,7 +211,8 @@ func (c *call) takeFlow() {
 	case c.p.cfg.Runs != nil || c.in.Run != nil:
 		c.flow = c.p.openedFlow(c.ctx, c.in)
 	default:
-		c.flow = c.p.flowOf(c.in.Envelope, c.in.Refusal == nil || c.p.cfg.Mode == modeObserve)
+		t := translationOf(c.in)
+		c.flow = c.p.flowOf(c.in.Envelope, t == translationComplete || t == translationUnclassified && c.p.cfg.Mode == modeObserve)
 	}
 	c.stampFlow()
 }
@@ -249,6 +251,13 @@ func (c *call) stampFlow() {
 	}
 	out.Context.Tags = append(slices.DeleteFunc(out.Context.Tags, isFlowTag), c.flow.tags()...)
 	c.in.Envelope = out
+	// The kernel validates a classified envelope after the stamp and never an
+	// unclassified one, so the stamped copy is held to the contract's bounds here.
+	if translationOf(c.in) == translationUnclassified {
+		if err := contract.ValidateUnclassified(out); err != nil {
+			c.in.Refusal = err
+		}
+	}
 }
 
 // refuseFlow blocks, in every mode, a call whose producer sent a tag under the

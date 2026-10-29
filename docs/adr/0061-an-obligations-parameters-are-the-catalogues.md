@@ -6,6 +6,10 @@ Date: 2026-10-24
 Amends [ADR-0012](0012-policy-kernel-semantics.md) on what a policy document
 an author signs may say about an obligation.
 
+Amended by [ADR-0067](0067-the-pipeline-refuses-what-an-adapter-could-not-translate.md): rewritten bytes that move the
+member a tool's `resource_from` reads are a DENY of the pipeline's own,
+`OBLIGATION_NOT_UNDERSTOOD`, for every adapter.
+
 ## Context
 
 A rule names an obligation by a type of the catalogue in

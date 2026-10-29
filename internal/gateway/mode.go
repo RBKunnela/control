@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/channel"
 )
 
 // modeRow is what one enforcement mode needs from the adapter, and whether
@@ -53,9 +54,10 @@ func Requirements(mode controlv1.EnforcementMode) (Capabilities, error) {
 }
 
 // checkAdapter refuses, at start, an adapter that cannot enforce mode or
-// declares an enforcement this build does not know, an adapter that declares
-// an obligation the catalogue lacks, and an adapter that binds an end user on
-// a listener that authenticates nobody.
+// declares an enforcement this build does not know, an adapter named after no
+// protocol or declaring another strength than its protocol's, an adapter that
+// declares an obligation the catalogue lacks, and an adapter that binds an end
+// user on a listener that authenticates nobody.
 func checkAdapter(mode controlv1.EnforcementMode, name string, caps Capabilities) error {
 	need, err := Requirements(mode)
 	if err != nil {
@@ -63,6 +65,12 @@ func checkAdapter(mode controlv1.EnforcementMode, name string, caps Capabilities
 	}
 	if caps.Enforcement > EnforcementInline || !caps.covers(need) {
 		return fmt.Errorf("%w: %s under %s", ErrCapability, name, mode)
+	}
+	if !channel.KnownProtocol(name) {
+		return fmt.Errorf("%w: %q", ErrProtocol, name)
+	}
+	if caps.Enforcement != channel.StrengthOf(name) {
+		return fmt.Errorf("%w: %s", ErrStrength, name)
 	}
 	if err := checkObligations(caps.Obligations); err != nil {
 		return err

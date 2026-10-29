@@ -13,6 +13,7 @@ import (
 
 	"github.com/guardana/control/internal/adapterkit"
 	"github.com/guardana/control/internal/brand"
+	"github.com/guardana/control/internal/channel"
 	"github.com/guardana/control/internal/gateway"
 )
 
@@ -172,7 +173,7 @@ func New(cfg Config) (*Adapter, error) {
 }
 
 // Name is the protocol's.
-func (*Adapter) Name() string { return "mcp" }
+func (*Adapter) Name() string { return channel.ProtocolMCP }
 
 // Capabilities declares what the adapter does, each backed by a conformance
 // test in this package. Authenticates and BindEndUser hold only for a
@@ -183,7 +184,7 @@ func (a *Adapter) Capabilities() gateway.Capabilities {
 	return gateway.Capabilities{
 		ObserveRequest: true,
 		ObserveResult:  true,
-		Enforcement:    gateway.EnforcementInline,
+		Enforcement:    channel.StrengthOf(channel.ProtocolMCP),
 		Authenticates:  authenticates,
 		BindEndUser:    authenticates,
 		PresentsRuns:   a.cfg.Listener.Runs != nil,

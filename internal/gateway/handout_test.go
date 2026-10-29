@@ -210,7 +210,8 @@ const adviseReads = `{"id":"advise-reads","effect":"ALLOW_WITH_OBLIGATIONS","obl
 
 // TestObserveCountsOnlyWhatEnforceWouldHandOut: of the calls whose bundle
 // goes stale before the hand-out, OBSERVE counts only those the kernel let
-// run, a read the fail-closed table opened among them.
+// run, a read the fail-closed table opened among them. A call whose
+// translation was refused is not handed out at all.
 func TestObserveCountsOnlyWhatEnforceWouldHandOut(t *testing.T) {
 	for name, c := range map[string]struct {
 		rule    string
@@ -218,7 +219,7 @@ func TestObserveCountsOnlyWhatEnforceWouldHandOut(t *testing.T) {
 		counted uint64
 	}{
 		"held when decided":                  {approveReads, nil, 0},
-		"undecided when decided":             {allowReads, contract.ErrMissingField, 0},
+		"refused when decided":               {allowReads, contract.ErrMissingField, 0},
 		"allowed with an obligation":         {adviseReads, nil, 1},
 		"allowed, as the control of the set": {allowReads, nil, 1},
 	} {
@@ -227,7 +228,12 @@ func TestObserveCountsOnlyWhatEnforceWouldHandOut(t *testing.T) {
 			h.sink.hook(kindDecided, func() { h.clock.set(base().Add(handOutBudget + time.Second)) })
 			a := admission(readEnvelope(), nil)
 			a.Refusal = c.refusal
-			expectRuns(t, h.p.Admit(context.Background(), a))
+			d := h.p.Admit(context.Background(), a)
+			if c.refusal != nil {
+				expectBlock(t, d, verdictIndeterminate, codeRequiredFieldAbsent, "builtin")
+			} else {
+				expectRuns(t, d)
+			}
 			if s := h.p.Stats(); s.StaleHandedOut != c.counted {
 				t.Errorf("StaleHandedOut %d, want %d: only a call ENFORCE would have handed out counts", s.StaleHandedOut, c.counted)
 			}

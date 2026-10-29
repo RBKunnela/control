@@ -7,6 +7,7 @@ import (
 
 	observev1 "github.com/guardana/control/api/gen/go/guardana/control/observe/v1alpha1"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/channel"
 )
 
 // Exit statuses of the coverage command.
@@ -40,10 +41,11 @@ type Plane struct {
 	Upstreams []string
 	// Overrides are the configuration's classified tools.
 	Overrides []Override
-	// Cooperative says the plane's adapter hands each decision to a client
-	// that enforces it, as the enforcement API does: the plane cannot keep a
-	// call from its effect, so nothing it classifies is enforced.
-	Cooperative bool
+	// Strength is how far the plane's adapter keeps a call from its effect,
+	// as the protocol table states it for the listener's protocol. Only an
+	// inline plane enforces; a cooperative one hands each decision to a
+	// client that enforces it, and the zero value, None, enforces nothing.
+	Strength channel.Strength
 	// Tools are what an enforcement API listener's tool table classifies.
 	Tools []Tool
 	// Export is this plane's evidence export for the join; nil when none was

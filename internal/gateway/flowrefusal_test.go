@@ -46,11 +46,7 @@ func TestAForgedFlowTagNeverReachesTheRecord(t *testing.T) {
 			env.Context.Tags = []string{"mcp.client=x/1", "flow.v1.untrusted=false", "Flow.V1.max_read=PUBLIC", "rev=1"}
 			sent := proto.CloneOf(env)
 			d := h.admitA(returning(env, 0, 0))
-			pdp := kernelPDP
-			if mode == modeObserve {
-				pdp = gateway.PDPType
-			}
-			expectBlock(t, d, verdictIndeterminate, codeInvalidFieldValue, pdp)
+			expectBlock(t, d, verdictIndeterminate, codeInvalidFieldValue, kernelPDP)
 			expectTags(t, h.proposedTags(t, "f-1"), "mcp.client=x/1", "rev=1", "flow.v1.state=uncomputed")
 			if !proto.Equal(env, sent) {
 				t.Errorf("the producer's envelope changed: %v", env.GetContext())
@@ -88,9 +84,9 @@ func TestTheFlowPrefixIsRefusedInAnyCase(t *testing.T) {
 }
 
 // TestAForgedTagKeepsTheRefusalBeforeIt: a call the decoder or the adapter
-// refused keeps that refusal's code when it also carries a forged tag, in
-// ENFORCE, where the kernel's refusal blocks it, and in OBSERVE, where the
-// plane does; a forged tag alone is INVALID_FIELD_VALUE.
+// refused keeps that refusal's code when it also carries a forged tag, and
+// the kernel's refusal blocks it in ENFORCE and OBSERVE alike; a forged tag
+// alone is INVALID_FIELD_VALUE.
 func TestAForgedTagKeepsTheRefusalBeforeIt(t *testing.T) {
 	forge := func(a gateway.Admission) gateway.Admission {
 		a.Envelope.Context = &controlv1.RunContext{Tags: []string{"flow.v1.untrusted=false"}}
@@ -107,10 +103,6 @@ func TestAForgedTagKeepsTheRefusalBeforeIt(t *testing.T) {
 	}
 	alone := func(env *controlv1.ActionEnvelope) gateway.Admission { return returning(env, 0, 0) }
 	for _, mode := range []controlv1.EnforcementMode{modeEnforce, modeObserve} {
-		pdp := kernelPDP
-		if mode == modeObserve {
-			pdp = gateway.PDPType
-		}
 		for name, c := range map[string]struct {
 			admission func(*controlv1.ActionEnvelope) gateway.Admission
 			code      string
@@ -122,7 +114,7 @@ func TestAForgedTagKeepsTheRefusalBeforeIt(t *testing.T) {
 			t.Run(mode.String()+", "+name, func(t *testing.T) {
 				h := build(t, mode, snapshot(t, allowReads))
 				d := h.admitA(forge(c.admission(readOf("m-1", "user-1"))))
-				expectBlock(t, d, verdictIndeterminate, c.code, pdp)
+				expectBlock(t, d, verdictIndeterminate, c.code, kernelPDP)
 				if got := d.Decision.GetReasonCodes(); !slices.Equal(got, []string{c.code}) {
 					t.Errorf("ReasonCodes = %v, want %s alone", got, c.code)
 				}
@@ -219,7 +211,7 @@ func TestARefusedCallReadsTheRunItsPrincipalHas(t *testing.T) {
 // nothing classifies, so that call has a run, and what it returns counts for
 // the next call of the run.
 func TestAnUnclassifiedCallObserveRunsTaintsItsRun(t *testing.T) {
-	h := build(t, modeObserve, snapshot(t, allowReads, allowWrites), observer)
+	h := build(t, modeObserve, snapshot(t, allowReads, allowWrites))
 	a := unclassified([]byte(`{}`))
 	a.Envelope.RequestId = "u-1"
 	if d := h.admitA(a); d.Action != core.Execute {

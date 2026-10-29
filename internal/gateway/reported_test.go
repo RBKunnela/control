@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/channel"
 	"github.com/guardana/control/internal/core"
 	"github.com/guardana/control/internal/evidence"
 	"github.com/guardana/control/internal/gateway"
@@ -22,7 +23,7 @@ func writeIn(requestID, id, root string, args []byte) gateway.Admission {
 func cooperative(c *gateway.Config) {
 	caps := c.Adapter.Capabilities()
 	caps.Enforcement = gateway.EnforcementCooperative
-	c.Adapter = fakeAdapter{name: "fake", caps: caps}
+	c.Adapter = fakeAdapter{name: channel.ProtocolEnforce, caps: caps}
 }
 
 // readIn is a read named requestID under the opened run id of root.
@@ -43,7 +44,7 @@ func reportMismatch(t *testing.T, h *harness, requestID, id, root string) {
 		t.Fatalf("CloseReported with other bytes = %v, want ErrExecutedArgsMismatch", err)
 	}
 	trail := h.trailOf(requestID)
-	expectMismatchRecord(t, trail[len(trail)-1], sent, d.Decision.GetActionDigest())
+	expectMismatchRecord(t, h.onPlane(admission(writeEnvelope(), nil)).Envelope, trail[len(trail)-1], sent, d.Decision.GetActionDigest())
 	if err := evidence.ValidateChain(trail); err != nil {
 		t.Errorf("ValidateChain: %v", err)
 	}
@@ -76,10 +77,11 @@ func TestAReportedMismatchHaltsOnlyItsOwnRun(t *testing.T) {
 // is asked, which an adapter is not allowed to change after New.
 type shiftingAdapter struct {
 	mu   sync.Mutex
+	name string
 	caps gateway.Capabilities
 }
 
-func (a *shiftingAdapter) Name() string { return "shifting" }
+func (a *shiftingAdapter) Name() string { return a.name }
 
 func (a *shiftingAdapter) Capabilities() gateway.Capabilities {
 	a.mu.Lock()
@@ -100,15 +102,16 @@ func (a *shiftingAdapter) enforce(e gateway.Enforcement) {
 func TestTheScopeAMismatchHaltsIsTheAdaptersAtNew(t *testing.T) {
 	for _, c := range []struct {
 		name         string
+		protocol     string
 		atNew, after gateway.Enforcement
 		planeHalted  bool
 		runsHalted   int
 	}{
-		{"cooperative at New", gateway.EnforcementCooperative, gateway.EnforcementInline, false, 1},
-		{"inline at New", gateway.EnforcementInline, gateway.EnforcementCooperative, true, 0},
+		{"cooperative at New", channel.ProtocolEnforce, gateway.EnforcementCooperative, gateway.EnforcementInline, false, 1},
+		{"inline at New", channel.ProtocolMCP, gateway.EnforcementInline, gateway.EnforcementCooperative, true, 0},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			adapter := &shiftingAdapter{}
+			adapter := &shiftingAdapter{name: c.protocol}
 			h := build(t, modeEnforce, snapshot(t, allowReads, allowWrites), withRuns(newRuns("root-a")), func(cfg *gateway.Config) {
 				adapter.caps = cfg.Adapter.Capabilities()
 				adapter.caps.Enforcement = c.atNew
@@ -130,7 +133,7 @@ type firstAnswerAdapter struct {
 	asked        int
 }
 
-func (a *firstAnswerAdapter) Name() string { return "first-answer" }
+func (a *firstAnswerAdapter) Name() string { return channel.ProtocolEnforce }
 
 func (a *firstAnswerAdapter) Capabilities() gateway.Capabilities {
 	a.asked++

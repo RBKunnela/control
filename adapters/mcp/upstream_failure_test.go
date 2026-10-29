@@ -180,8 +180,26 @@ func TestAnOverlongNameStaysOffTheTrail(t *testing.T) {
 	}
 	got := r.pipe.admitted()
 	expectOffTheTrail(t, got[len(got)-1].a, "an overlong client name")
-	if n := r.victim.count("read_file"); n != 0 {
-		t.Errorf("the victim ran read_file %d time(s) for a refused call", n)
+}
+
+// TestAnOverlongClientNameIsNotSent: on the real pipeline, a call from a
+// client that names itself past the contract's bound is blocked as too large
+// in OBSERVE as in ENFORCE, and the upstream is never called.
+func TestAnOverlongClientNameIsNotSent(t *testing.T) {
+	for _, mode := range []controlv1.EnforcementMode{modeObserve, modeEnforce} {
+		t.Run(mode.String(), func(t *testing.T) {
+			r := newRig(t, mcp.KindStdio, rigOptions{mode: mode, rules: []string{allowEverything}})
+			res, err := callTool(t, r.connect(t, strings.Repeat("c", evidence.MaxLineBytes)), "read_file", map[string]any{"path": "/x"})
+			if err != nil || !res.IsError {
+				t.Fatalf("a call from an overlong client name: %v %+v", err, res)
+			}
+			if got := codesOf(t, res); !slices.Equal(got, []string{"LIMIT_EXCEEDED"}) {
+				t.Errorf("the block names %v, want the kernel's LIMIT_EXCEEDED alone", got)
+			}
+			if n := r.victim.count("read_file"); n != 0 {
+				t.Errorf("the victim ran read_file %d time(s) for an overlong client name", n)
+			}
+		})
 	}
 }
 
@@ -201,29 +219,33 @@ func expectOffTheTrail(t *testing.T, a gateway.Admission, what string) {
 	}
 }
 
-// TestABytesRewriteThatMovesTheResourceIsNotSent: authorized bytes whose
-// member naming the resource no longer names the one the envelope was decided
-// on are aborted as an obligation that cannot hold, and nothing is sent;
-// rewritten bytes that still name it are sent.
-func TestABytesRewriteThatMovesTheResourceIsNotSent(t *testing.T) {
-	r := newRig(t, mcp.KindStdio, rigOptions{})
-	agent := r.connect(t, "agent-a")
-	r.pipe.decide = authorize(`{"path":"/other"}`)
-	res, err := callTool(t, agent, "read_file", map[string]any{"path": "/x"})
-	if err != nil || !res.IsError || !slices.Contains(codesOf(t, res), "OBLIGATION_NOT_UNDERSTOOD") {
-		t.Fatalf("a call whose resource moved: %v %+v", err, res)
+// TestARewriteThatMovesTheResourceIsNotSent: the pipeline refuses rewritten
+// bytes whose member at the classification's pointer no longer names the
+// decided resource, so nothing is sent and nothing started; a rewrite that
+// leaves the member alone is sent.
+func TestARewriteThatMovesTheResourceIsNotSent(t *testing.T) {
+	redact := func(field string) string {
+		return `{"id":"redact","effect":"ALLOW_WITH_OBLIGATIONS","obligations":[{"type":"redact_fields","params":{"fields":"` + field +
+			`"}}],"when":{"action":{"name":["read_file"]}}}`
 	}
-	if aborts := r.pipe.aborted(); len(aborts) != 1 || aborts[0].cause != gateway.AbortObligation {
-		t.Errorf("aborts %+v, want one for an obligation", aborts)
+	r := newRig(t, mcp.KindStdio, rigOptions{mode: modeEnforce, rules: []string{redact("path")}})
+	res, err := callTool(t, r.connect(t, "agent-a"), "read_file", map[string]any{"path": "/x", "note": "n"})
+	if err != nil || !res.IsError || !slices.Equal(codesOf(t, res), []string{"OBLIGATION_NOT_UNDERSTOOD"}) {
+		t.Fatalf("a call whose resource moved: %v %+v", err, res)
 	}
 	if n := r.victim.count("read_file"); n != 0 {
 		t.Errorf("the victim ran read_file %d time(s) on a moved resource", n)
 	}
-	r.pipe.decide = authorize(`{"path":"/x","extra":1}`)
-	if res, err := callTool(t, agent, "read_file", map[string]any{"path": "/x"}); err != nil || res.IsError {
+	for _, e := range r.events() {
+		if e.GetKind() == controlv1.EventKind_EVENT_KIND_ACTION_STARTED {
+			t.Errorf("a call whose resource moved was recorded as started")
+		}
+	}
+	r = newRig(t, mcp.KindStdio, rigOptions{mode: modeEnforce, rules: []string{redact("note")}})
+	if res, err := callTool(t, r.connect(t, "agent-a"), "read_file", map[string]any{"path": "/x", "note": "n"}); err != nil || res.IsError {
 		t.Fatalf("a rewrite that keeps the resource: %v %+v", err, res)
 	}
-	if got := r.victim.args("read_file"); len(got) != 1 || string(got[0]) != `{"path":"/x","extra":1}` {
+	if got := r.victim.args("read_file"); len(got) != 1 || string(got[0]) != `{"path":"/x"}` {
 		t.Errorf("the victim received %s, want the rewritten bytes once", got)
 	}
 }

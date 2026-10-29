@@ -121,17 +121,14 @@ to a tool outside MCP, on a Unix socket; the gateway serves it under
 (<a href="/docs/guides/decide-a-tool-of-your-own">guides/decide-a-tool-of-your-own.md</a>). It builds each envelope from the run token and
 the operator's table of tools, never from what the client says about the
 call, and declares <code>Cooperative</code>: the client sends the bytes, so nothing the
-plane holds proves it obeyed. It applies no obligation of its own, aborts an
-execution whose rewritten bytes name another resource than the one decided
-on, or whose envelope the contract refused for more than an unnamed tool, in
-every mode, closes what a client reports with <code>CloseReported</code>, and closes with
-<code>Abandon</code> every execution nobody completed or aborted before its handle
-expired. Its receiver cases are files in
+plane holds proves it obeyed. It applies no obligation of its own, closes what
+a client reports with <code>CloseReported</code>, and closes with <code>Abandon</code> every
+execution nobody completed or aborted before its handle expired. Its receiver cases are files in
 <a href="https://github.com/guardana/control/blob/main/testdata/enforce/README.md">testdata/enforce/</a>.</p>
-<p>Both adapters read a call's resource id, the resource rewritten bytes name
-and the run token through <code>internal/adapterkit</code>, so one call is never read
-two ways: a spelling one adapter normalised and the other did not would slip
-past a rule the first one enforces.</p>
+<p>Both adapters read a call's resource id and the run token, and build the
+refusal of a call nothing classifies, through <code>internal/adapterkit</code>, so one
+call is never read two ways: a spelling one adapter normalised and the other
+did not would slip past a rule the first one enforces.</p>
 <p>An adapter is the enforcement point among the five ports of
 <a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a>: it sees a call before
 its effect. Sensors, detectors, reactions and notifiers run as separate
@@ -200,6 +197,28 @@ failing:</p>
 </tr>
 </tbody>
 </table>
+<p>What an adapter hands in, the pipeline holds it to, in every mode:</p>
+<ul>
+<li>The action's kind is <code>tool</code>, <code>prompt</code> or <code>resource</code>, and its protocol is
+the adapter's <code>Name()</code>, both spelled as <code>internal/channel</code> spells them.
+Anything else is refused as <code>INVALID_FIELD_VALUE</code>.</li>
+<li><code>Refusal</code> says why the translation failed. <code>gateway.ErrUnclassified</code> alone,
+on a chain of single wraps, says nothing classifies the call: <code>OBSERVE</code> runs
+it and every other mode blocks it with <code>ACTION_UNCLASSIFIED</code>. Any other
+refusal, a join that holds <code>ErrUnclassified</code> among others included, is
+blocked in <code>OBSERVE</code> too, with the kernel's code for it.</li>
+<li>The pipeline holds that claim to the envelope: no effect class,
+<code>contract.ValidateUnclassified</code> passes, and any <code>canonical_hash</code> names the
+arguments; otherwise the call is refused with the kernel's code for the
+fault. <code>adapterkit.Unclassified</code> builds the refusal from the adapter's own
+validation without joining the two.</li>
+<li><code>Classification</code> is the call's, and its <code>ResourceFrom</code> the RFC 6901
+pointer the resource id was read at; another spelling is refused. Bytes a
+rewrite changed so that the member there names
+another resource are a <code>DENY</code> with <code>OBLIGATION_NOT_UNDERSTOOD</code>, and are
+never handed out. An adapter that reads the resource id from the arguments
+must set it, or no rewrite is held to the resource.</li>
+</ul>
 <p>An adapter that has an execution open closes or aborts it. An execution left
 open holds one of the plane's <code>MaxOpen</code> slots until the adapter abandons it or
 the process ends; the enforcement API abandons each execution whose handle
@@ -223,7 +242,7 @@ expired.</p>
 </tr>
 <tr>
 <td><code>Enforcement</code></td>
-<td>How far the adapter keeps a call from its effect: <code>None</code> (the zero value) cannot; <code>Cooperative</code> hands the decision to a caller that enforces it, so the plane decides and records and nothing proves the caller obeyed; <code>Inline</code> holds the path to the effect, as the MCP adapter holds the upstream connection. <code>APPROVE</code>, <code>ENFORCE</code> and <code>LOCKDOWN</code> need at least <code>Cooperative</code>, and a value outside the three is refused at start</td>
+<td>How far the adapter keeps a call from its effect: <code>None</code> (the zero value) cannot; <code>Cooperative</code> hands the decision to a caller that enforces it, so the plane decides and records and nothing proves the caller obeyed; <code>Inline</code> holds the path to the effect, as the MCP adapter holds the upstream connection. <code>APPROVE</code>, <code>ENFORCE</code> and <code>LOCKDOWN</code> need at least <code>Cooperative</code>, and any value but the adapter's protocol's strength is refused at start</td>
 </tr>
 <tr>
 <td><code>Authenticates</code></td>
@@ -263,7 +282,9 @@ before anything runs: a transport it does not serve, an identity that claims
 what only a credential may say, two upstreams with one name, an incomplete
 classification.</li>
 <li><strong>Build the plane.</strong> <code>gateway.New</code> takes the adapter, reads its capabilities, checks them against the mode and builds the kernel with the applicable
-obligations derived from them.</li>
+obligations derived from them. It refuses an adapter whose <code>Name()</code> is not
+a protocol <code>internal/channel</code> lists, or whose <code>Enforcement</code> is not that
+protocol's strength; a new adapter adds both there.</li>
 <li><strong>Start.</strong> The adapter connects what it talks to and reads what it needs to
 classify calls. An upstream it cannot reach fails the start rather than
 serving without it.</li>
@@ -310,7 +331,8 @@ reads:</p>
 its type does not read, is skipped when it is marked advisory and the call
 proceeds, and nothing records the skip; a non-advisory one stops it,
 and the closing record says the obligation refused it. A rewrite that changes
-the member a tool's <code>resource_from</code> reads is aborted, not sent. The plane applies the rewriting types (<code>redact_fields</code>,
+the member a tool's <code>resource_from</code> reads is refused by the plane before it is
+handed out. The plane applies the rewriting types (<code>redact_fields</code>,
 <code>cap_amount</code>) itself, before the decision that is recorded, because they change
 the bytes the digest covers.</p>
 <h2 id="the-bytes-are-not-the-adapters-to-choose">The bytes are not the adapter's to choose</h2>
@@ -375,10 +397,11 @@ the gateway's name, a result larger than its bound, a call that cannot be routed
 <h2 id="a-minimal-adapter">A minimal adapter</h2>
 <pre><code class="language-go">type Echo struct{}
 
-func (Echo) Name() string { return &#34;echo&#34; }
+// &#34;echo&#34;, listed in internal/channel as StrengthInline.
+func (Echo) Name() string { return channel.ProtocolEcho }
 
 func (Echo) Capabilities() gateway.Capabilities {
-    return gateway.Capabilities{ObserveRequest: true, ObserveResult: true, Enforcement: gateway.EnforcementInline}
+    return gateway.Capabilities{ObserveRequest: true, ObserveResult: true, Enforcement: channel.StrengthOf(channel.ProtocolEcho)}
 }
 
 func (e Echo) Handle(ctx context.Context, p *gateway.Pipeline, in Request) Response {

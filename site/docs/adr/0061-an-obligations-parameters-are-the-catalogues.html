@@ -114,6 +114,9 @@
 Date: 2026-10-24</p>
 <p>Amends <a href="/docs/adr/0012-policy-kernel-semantics">ADR-0012</a> on what a policy document
 an author signs may say about an obligation.</p>
+<p>Amended by <a href="/docs/adr/0067-the-pipeline-refuses-what-an-adapter-could-not-translate">ADR-0067</a>: rewritten bytes that move the
+member a tool's <code>resource_from</code> reads are a DENY of the pipeline's own,
+<code>OBLIGATION_NOT_UNDERSTOOD</code>, for every adapter.</p>
 <h2 id="context">Context</h2>
 <p>A rule names an obligation by a type of the catalogue in
 <code>internal/policy/rules</code> and gives it string parameters. The parser held a

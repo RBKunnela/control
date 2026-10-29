@@ -51,7 +51,7 @@ func TestCloseRecordsAMismatchAndHaltsMaterialCalls(t *testing.T) {
 		t.Fatalf("Close with other bytes = %v, want ErrExecutedArgsMismatch", err)
 	}
 	events := h.events()
-	expectMismatchRecord(t, events[len(events)-1], sent, d.Decision.GetActionDigest())
+	expectMismatchRecord(t, writeEnvelope(), events[len(events)-1], sent, d.Decision.GetActionDigest())
 	if err := evidence.ValidateChain(events); err != nil {
 		t.Errorf("ValidateChain: %v", err)
 	}
@@ -73,11 +73,11 @@ func TestCloseRecordsAMismatchAndHaltsMaterialCalls(t *testing.T) {
 }
 
 // expectMismatchRecord asserts closing is ACTION_FAILED naming the mismatch,
-// with the action digest of the write with sent, which is not decided, and
+// with the action digest of decidedOn with sent, which is not decided, and
 // the upstream's own status.
-func expectMismatchRecord(t *testing.T, closing *controlv1.Event, sent []byte, decided string) {
+func expectMismatchRecord(t *testing.T, decidedOn *controlv1.ActionEnvelope, closing *controlv1.Event, sent []byte, decided string) {
 	t.Helper()
-	executed, err := canon.DigestV1(writeEnvelope(), sent)
+	executed, err := canon.DigestV1(decidedOn, sent)
 	if err != nil {
 		t.Fatalf("DigestV1: %v", err)
 	}

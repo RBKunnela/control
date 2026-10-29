@@ -74,6 +74,12 @@ classification is one type with the enforcement API's, checked once when the
 configuration loads and again by `mcp.New`; one no envelope could carry is
 refused there, in every mode.
 
+Amended by [ADR-0067](0067-the-pipeline-refuses-what-an-adapter-could-not-translate.md): a translation the adapter refused,
+for anything but nothing classifying it, is blocked in `OBSERVE` too, and so is
+an envelope the kernel refuses whatever the adapter reported; the pipeline
+refuses an action kind outside `tool`, `prompt` and `resource` and a protocol
+other than its adapter's name.
+
 ## Context
 
 The kernel decides and nothing calls it. The first protocol target is the Model

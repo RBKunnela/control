@@ -178,11 +178,11 @@ func TestAProviderPauseBlocksACallNothingClassifies(t *testing.T) {
 		a.Envelope.Action.Kind = "tool"
 		return a
 	}
-	h := build(t, modeObserve, snapshot(t, allowWrites), observer)
+	h := build(t, modeObserve, snapshot(t, allowWrites))
 	if d := h.p.Admit(context.Background(), loose()); d.Action != core.Execute {
 		t.Fatalf("with nothing paused, an unclassified call under OBSERVE: Action = %d", d.Action)
 	}
-	h = build(t, modeObserve, snapshot(t, allowWrites), observer)
+	h = build(t, modeObserve, snapshot(t, allowWrites))
 	h.pause.set(paused(t, pausePayments))
 	expectPlaneBlock(t, h, h.p.Admit(context.Background(), loose()), verdictDeny, codePaused)
 }
@@ -222,6 +222,7 @@ func TestAnEntryNoUpstreamServesPausesOnlyCallsWithNoProvider(t *testing.T) {
 	unlisted := func(name string) gateway.Admission {
 		env := tool(readEnvelope())
 		env.Action.Provider, env.Action.Name = "", name
+		env.Action.Effect = controlv1.EffectClass_EFFECT_CLASS_UNSPECIFIED
 		a := admission(env, []byte(`{}`))
 		a.Refusal = fmt.Errorf("adapter: tool %q: %w: no upstream lists it", name, gateway.ErrUnclassified)
 		return a

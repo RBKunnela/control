@@ -60,9 +60,11 @@ A blocked call stops in the pipeline: the disposition says block, the trail
 ends with `ACTION_BLOCKED` when the spool takes it, and is otherwise blocked as
 `EVIDENCE_UNAVAILABLE`, and the agent gets a tool result with `isError: true`
 carrying the reason codes, or a JSON-RPC error carrying them for a resource
-read or a prompt. The server is never called. A call the adapter refuses after
-an allow, such as one it could not translate, is aborted, and its trail ends
-with `ACTION_FAILED`.
+read or a prompt. The server is never called. A call the adapter could not
+translate is blocked so in every mode, `OBSERVE` included, with the kernel's
+code for the refusal. A call the adapter refuses after an allow, such as one
+whose bytes the protocol cannot carry, is aborted, and its trail ends with
+`ACTION_FAILED`.
 
 ## The same call on each revision
 
@@ -171,7 +173,7 @@ bundle, and none of them knows the mode.
 
 | Mode | The decision | The call | Built |
 | --- | --- | --- | --- |
-| `OBSERVE` | recorded | runs, with the proposed bytes, unclassified included when one upstream lists it or only one is configured, unless one of the plane's own causes ([enforcement modes](enforcement-modes.md)) blocks it | yes |
+| `OBSERVE` | recorded | runs, with the proposed bytes, unclassified included when one upstream lists it or only one is configured, unless one of the plane's own causes ([enforcement modes](enforcement-modes.md)) blocks it or the call could not be translated | yes |
 | `APPROVE` | recorded | an allowed material call is held for an approval | yes; the `file` provider takes an approver's answer, and the plane refuses to start in `APPROVE` without it |
 | `ENFORCE` | recorded | blocked, rewritten, held or run, as decided | yes |
 | `LOCKDOWN` | recorded, made for a material call without asking the decision point, with the plane's own `LOCKDOWN` decision on the block | every material call blocked; a read enforced with fail-open reads off | yes |

@@ -10,6 +10,7 @@ import (
 	observev1 "github.com/guardana/control/api/gen/go/guardana/control/observe/v1alpha1"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/brand"
+	"github.com/guardana/control/internal/channel"
 	"github.com/guardana/control/internal/coverage"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -112,7 +113,7 @@ func override(effect controlv1.EffectClass) coverage.Override {
 }
 
 func plane(name string, mode controlv1.EnforcementMode, failOpenRead bool, o ...coverage.Override) coverage.Plane {
-	return coverage.Plane{Name: name, Mode: mode, FailOpenRead: failOpenRead, Overrides: o}
+	return coverage.Plane{Name: name, Mode: mode, FailOpenRead: failOpenRead, Overrides: o, Strength: channel.StrengthInline}
 }
 
 // listing is p configured with the given upstreams.

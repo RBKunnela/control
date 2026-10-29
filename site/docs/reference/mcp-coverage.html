@@ -350,8 +350,8 @@ so the closing record's <code>result_hash</code> is the upstream's. Reads, promp
 and undecided answers carry neither.</p>
 <h2 id="reason-codes-in-the-gateways-answers">Reason codes in the gateway's answers</h2>
 <p>A kernel decision comes back as written;
-<a href="/docs/reference/reason-codes">reference/reason-codes</a> lists every code. The codes below are the enforcement
-point's own.</p>
+<a href="/docs/reference/reason-codes">reference/reason-codes</a> lists every code; an untranslatable call is the kernel's
+block in every mode. The codes below are the enforcement point's own.</p>
 <table>
 <thead>
 <tr>
@@ -409,8 +409,8 @@ point's own.</p>
 <td>a non-advisory obligation the plane cannot apply, or whose parameters it cannot read, or a rewrite changed the member <code>resource_from</code> reads</td>
 </tr>
 <tr>
-<td><code>INVALID_FIELD_VALUE</code>, <code>MALFORMED_INPUT</code></td>
-<td>the call, classified or not, could not be translated into a valid envelope; <code>INVALID_FIELD_VALUE</code> also when its request id names a trail still open in the gateway</td>
+<td><code>INVALID_FIELD_VALUE</code></td>
+<td>the request id names a trail still open in the gateway, or the protocol cannot carry the bytes</td>
 </tr>
 <tr>
 <td><code>POLICY_STALE</code></td>

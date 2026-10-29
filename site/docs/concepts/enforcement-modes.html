@@ -120,13 +120,13 @@ call whatever the decision said and runs a read as <code>ENFORCE</code> would wi
 fail-open reads off (<a href="/docs/adr/0013-mcp-interception-approvals-and-modes">ADR-0013</a>).
 The kernel's decision is recorded untouched whatever the mode did with it.</p>
 <h2 id="where-the-mode-is-applied">Where the mode is applied</h2>
-<figure class="dg-text" id="diagram-1"><figcaption>Where the mode is applied</figcaption><p>A call the enforcement point blocks for its own causes is blocked in every mode; otherwise OBSERVE executes the proposed bytes, APPROVE holds an allowed material call, ENFORCE applies the kernel&#39;s action, and the trail is written before anything runs. <a href="https://github.com/guardana/control/blob/main/docs/concepts/enforcement-modes.md">Drawn on GitHub</a>.</p><details><summary>The diagram's source</summary><pre><code class="language-mermaid">flowchart TD
+<figure class="dg-text" id="diagram-1"><figcaption>Where the mode is applied</figcaption><p>A call the enforcement point blocks for its own causes is blocked in every mode; otherwise OBSERVE executes the proposed bytes unless the call could not be translated, APPROVE holds an allowed material call, ENFORCE applies the kernel&#39;s action, and the trail is written before anything runs. <a href="https://github.com/guardana/control/blob/main/docs/concepts/enforcement-modes.md">Drawn on GitHub</a>.</p><details><summary>The diagram's source</summary><pre><code class="language-mermaid">flowchart TD
     accTitle: Where the mode is applied
-    accDescr: A call the enforcement point blocks for its own causes is blocked in every mode; otherwise OBSERVE executes the proposed bytes, APPROVE holds an allowed material call, ENFORCE applies the kernel&#39;s action, and the trail is written before anything runs.
+    accDescr: A call the enforcement point blocks for its own causes is blocked in every mode; otherwise OBSERVE executes the proposed bytes unless the call could not be translated, APPROVE holds an allowed material call, ENFORCE applies the kernel&#39;s action, and the trail is written before anything runs.
     K[&#34;The kernel&#39;s decision and its action, for the proposed bytes&#34;] --&gt; P{&#34;Blocked by the enforcement point itself?&#34;}
     P --&gt;|a pause, an unreadable pause state, a halt or LOCKDOWN on a material call, a call nothing classifies outside OBSERVE, arguments it cannot hash, or a run state or evidence it cannot keep| B[&#34;Block, with a decision the enforcement point minted listing every cause&#34;]
     P --&gt;|no| M{&#34;Mode&#34;}
-    M --&gt;|OBSERVE| X[&#34;Execute the proposed bytes, whatever the verdict&#34;]
+    M --&gt;|OBSERVE, the call translated or only unclassified| X[&#34;Execute the proposed bytes, whatever the verdict&#34;]
     M --&gt;|APPROVE, allowed material call| A[&#34;AwaitApproval&#34;]
     M --&gt;|ENFORCE, and every case above that did not match| D[&#34;The kernel&#39;s action, as it is&#34;]
     X --&gt; W[&#34;Write the trail, then run or block as the action says&#34;]
@@ -199,7 +199,9 @@ runs, <code>INDETERMINATE</code> goes to the fail-closed table, see
 <p><code>OBSERVE</code> enforces nothing the decision says, so it executes the proposed
 bytes without applying a rewriting obligation, and it takes a call nothing
 classifies; it is how an operator learns which tools exist before classifying
-them. What the enforcement point refuses on its own account, in the table
+them. It never takes a call the adapter could not translate for any other
+reason, nor one whose envelope names a kind or a protocol outside the plane's
+vocabulary: the kernel's <code>INDETERMINATE</code> blocks it, as in every other mode. What the enforcement point refuses on its own account, in the table
 below, it refuses in <code>OBSERVE</code> too: it writes the trail first, and an event the
 sink will not take blocks the call, unless the read is let through unrecorded
 under the explicit evidence setting. A bundle replaced or stale by the time a
@@ -273,6 +275,12 @@ them:</p>
 <td><code>INDETERMINATE</code></td>
 <td>the code of the call's refusal, <code>INVALID_FIELD_VALUE</code> for the tag alone</td>
 <td>the producer stops sending it</td>
+</tr>
+<tr>
+<td>a call the adapter could not translate for more than nothing classifying it, or whose action kind is not <code>tool</code>, <code>prompt</code> or <code>resource</code> or whose protocol is not the adapter's, <code>OBSERVE</code> included: the kernel's decision</td>
+<td><code>INDETERMINATE</code></td>
+<td>the code of the refusal, <code>INVALID_FIELD_VALUE</code> for the kind or the protocol</td>
+<td>the adapter translates it</td>
 </tr>
 <tr>
 <td>an execution whose opened run expired before it started, or whose run's state cannot be raised, after the mode</td>

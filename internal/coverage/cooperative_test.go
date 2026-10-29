@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/channel"
 	"github.com/guardana/control/internal/coverage"
 )
 
@@ -20,7 +21,7 @@ func enforceInventory(t testing.TB) *coverage.Inventory {
 // cooperative is an enforcement API plane classifying tools by name, each a
 // transaction.
 func cooperative(name string, mode controlv1.EnforcementMode, failOpenRead bool, tools ...string) coverage.Plane {
-	p := coverage.Plane{Name: name, Mode: mode, FailOpenRead: failOpenRead, Cooperative: true}
+	p := coverage.Plane{Name: name, Mode: mode, FailOpenRead: failOpenRead, Strength: channel.StrengthCooperative}
 	for _, tool := range tools {
 		p.Tools = append(p.Tools, coverage.Tool{Name: tool, Effect: controlv1.EffectClass_EFFECT_CLASS_TRANSACT})
 	}
@@ -116,17 +117,34 @@ func TestACooperativePlaneNeverEnforces(t *testing.T) {
 // path enforced, and it weakens a path an inline plane enforces.
 func TestACooperativePlaneCapsWhatItsOverridesWouldEnforce(t *testing.T) {
 	coop := plane("api", modeEnforce, false, override(effectWrite))
-	coop.Cooperative = true
+	coop.Strength = channel.StrengthCooperative
 	p := mustMap(t, coverage.Input{Inventory: toolInventory(t), Planes: []coverage.Plane{coop}}).Paths[0]
 	if p.State != coverage.Decided || len(p.Planes) != 1 || !strings.Contains(p.Planes[0].Basis, "a cooperating client enforces the decision") {
 		t.Fatalf("%v with %+v; want decided, not enforced, naming the cooperating client", p.State, p.Planes)
 	}
 	listed := listing(plane("api", modeLockdown, false), "github")
-	listed.Cooperative = true
+	listed.Strength = channel.StrengthCooperative
 	p = mustMap(t, coverage.Input{Inventory: toolInventory(t), Planes: []coverage.Plane{
 		plane("inline", modeEnforce, false, override(effectWrite)), listed}}).Paths[0]
 	if p.State != coverage.Decided || p.Basis != "planes inline, api" || p.Planes[0].State != coverage.Enforced || p.Planes[1].State != coverage.Decided {
 		t.Fatalf("%v (%q) with %+v; want the inline plane enforced, the cooperative one decided, the path decided", p.State, p.Basis, p.Planes)
+	}
+}
+
+// TestAPlaneOfNoStatedStrengthEnforcesNothing: a plane whose strength is the
+// zero value, or a number no protocol has, decides what an inline plane in
+// its mode would enforce, and says why.
+func TestAPlaneOfNoStatedStrengthEnforcesNothing(t *testing.T) {
+	for name, strength := range map[string]channel.Strength{"none": channel.StrengthNone, "undeclared": channel.Strength(9)} {
+		pl := plane("bare", modeEnforce, false, override(effectWrite))
+		pl.Strength = strength
+		p := mustMap(t, coverage.Input{Inventory: toolInventory(t), Planes: []coverage.Plane{pl}}).Paths[0]
+		if p.State != coverage.Decided || len(p.Planes) != 1 || !strings.HasSuffix(p.Planes[0].Basis, "; no enforcement point holds the path") {
+			t.Errorf("%s: %v with %+v; want decided, naming no enforcement point", name, p.State, p.Planes)
+		}
+	}
+	if p := mustMap(t, coverage.Input{Inventory: toolInventory(t), Planes: []coverage.Plane{plane("inline", modeEnforce, false, override(effectWrite))}}).Paths[0]; p.State != coverage.Enforced {
+		t.Errorf("an inline plane: %v, want enforced", p.State)
 	}
 }
 
@@ -181,11 +199,11 @@ func TestAnEnforceProposalJoinsAnEnforceToolPath(t *testing.T) {
 		p    proposal
 		want coverage.Join
 	}{
-		{"the enforcement API's proposal", proposal{trace: traceA, span: spanA, tool: "refund", upstream: "payments", protocol: coverage.EnforceProtocol}, coverage.Joined},
+		{"the enforcement API's proposal", proposal{trace: traceA, span: spanA, tool: "refund", upstream: "payments", protocol: channel.ProtocolEnforce}, coverage.Joined},
 		{"an MCP proposal of the tool's name", proposal{trace: traceA, span: spanA, tool: "refund", upstream: "payments", protocol: "mcp"}, coverage.JoinAround},
 		{"no protocol", proposal{trace: traceA, span: spanA, tool: "refund", upstream: "payments"}, coverage.JoinAround},
-		{"another tool", proposal{trace: traceA, span: spanA, tool: "refunds", upstream: "payments", protocol: coverage.EnforceProtocol}, coverage.JoinAround},
-		{"a prompt", proposal{trace: traceA, span: spanA, tool: "refund", kind: "prompt", protocol: coverage.EnforceProtocol}, coverage.JoinAround},
+		{"another tool", proposal{trace: traceA, span: spanA, tool: "refunds", upstream: "payments", protocol: channel.ProtocolEnforce}, coverage.JoinAround},
+		{"a prompt", proposal{trace: traceA, span: spanA, tool: "refund", kind: "prompt", protocol: channel.ProtocolEnforce}, coverage.JoinAround},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

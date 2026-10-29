@@ -8,6 +8,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/channel"
 	"github.com/guardana/control/internal/gateway"
 	"github.com/guardana/control/internal/secretscan"
 )
@@ -139,9 +140,9 @@ func definitionWithheld(v secretscan.Verdict) string {
 // methodOf is the method a call of kind was received as.
 func methodOf(kind string) string {
 	switch kind {
-	case kindResource:
+	case channel.KindResource:
 		return methodReadResource
-	case kindPrompt:
+	case channel.KindPrompt:
 		return methodGetPrompt
 	}
 	return methodCallTool

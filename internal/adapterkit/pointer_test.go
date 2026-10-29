@@ -63,41 +63,6 @@ func TestResourceIDFollowsThePointer(t *testing.T) {
 	}
 }
 
-// TestSameResourceHoldsTheAuthorizedBytesToTheDecidedMember: rewritten bytes
-// keep the resource only when the member reads as the decided id and is the
-// proposed member in canonical form; an object, a list or a boolean there
-// reads as no id on either side, so a rewrite inside it is caught by the
-// second test alone.
-func TestSameResourceHoldsTheAuthorizedBytesToTheDecidedMember(t *testing.T) {
-	for _, tc := range []struct {
-		name, proposed, authorized, pointer, decided string
-		same                                         bool
-	}{
-		{"a string kept", `{"path":"a","x":1}`, `{"path":"a"}`, "/path", "a", true},
-		{"a string moved", `{"path":"a"}`, `{"path":"b"}`, "/path", "a", false},
-		{"a member kept that is not the decided id", `{"path":"a"}`, `{"path":"a"}`, "/path", "b", false},
-		{"a string redacted away", `{"path":"a","x":1}`, `{"x":1}`, "/path", "a", false},
-		{"a number respelled", `{"n":42}`, `{"n":4.2e1}`, "/n", "42", true},
-		{"a number moved", `{"n":42}`, `{"n":43}`, "/n", "42", false},
-		{"a number turned string", `{"n":42}`, `{"n":"42"}`, "/n", "42", false},
-		{"an object rewritten inside", `{"path":{"a":"/x"}}`, `{"path":{"a":"/etc/shadow"}}`, "/path", "", false},
-		{"an object kept and respelled", `{"path":{"a":"/x","b":2}}`, `{"path":{"b":2.0,"a":"/x"},"extra":1}`, "/path", "", true},
-		{"a boolean flipped", `{"path":true}`, `{"path":false}`, "/path", "", false},
-		{"a list rewritten", `{"path":["/x"]}`, `{"path":["/etc/shadow"]}`, "/path", "", false},
-		{"an absent member made present", `{"other":1}`, `{"path":{"a":"/etc/shadow"}}`, "/path", "", false},
-		{"an absent member left absent", `{"other":1}`, `{"other":2}`, "/path", "", true},
-		{"a null member removed", `{"path":null}`, `{}`, "/path", "", false},
-		{"authorized bytes that are not JSON", `{"path":"a"}`, `not json`, "/path", "a", false},
-		{"proposed bytes that are not JSON", `not json`, `{"path":"a"}`, "/path", "a", false},
-		{"no pointer, no id", `{"a":1}`, `{"a":2}`, "", "", true},
-		{"no pointer, an id", `{"a":1}`, `{"a":1}`, "", "a", false},
-	} {
-		if got := adapterkit.SameResource([]byte(tc.proposed), []byte(tc.authorized), tc.pointer, tc.decided); got != tc.same {
-			t.Errorf("%s: SameResource = %v, want %v", tc.name, got, tc.same)
-		}
-	}
-}
-
 func TestAPlaceholderTiesTheRecordToTheOriginal(t *testing.T) {
 	if got := adapterkit.Placeholder(""); got != "" {
 		t.Errorf("Placeholder of nothing = %q", got)

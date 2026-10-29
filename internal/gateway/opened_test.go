@@ -72,7 +72,7 @@ func withRuns(m *memRuns) func(*gateway.Config) {
 	return func(c *gateway.Config) {
 		caps := c.Adapter.Capabilities()
 		caps.PresentsRuns = true
-		c.Adapter = fakeAdapter{name: "fake", caps: caps}
+		c.Adapter = fakeAdapter{name: c.Adapter.Name(), caps: caps}
 		c.Runs = m
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/channel"
 )
 
 // modeClass is what a plane in one mode does with a path it classifies. The
@@ -88,14 +89,14 @@ func planeCoverage(planes []Plane, path Path) (State, []PlaneLine, []Plane) {
 }
 
 // planeLine is one plane's state for path, never more than decided for a
-// cooperative plane.
+// plane that is not inline.
 func planeLine(p Plane, path Path) (PlaneLine, bool, bool) {
 	if path.Kind == KindEnforceTool {
 		return toolTableLine(p, path)
 	}
 	line, classifies, inFront := mcpLine(p, path)
-	if p.Cooperative && line.State > Decided {
-		line.State, line.Basis = Decided, line.Basis+"; "+cooperating
+	if why := notInline(p.Strength); why != "" && line.State > Decided {
+		line.State, line.Basis = Decided, line.Basis+"; "+why
 	}
 	return line, classifies, inFront
 }
@@ -103,6 +104,22 @@ func planeLine(p Plane, path Path) (PlaneLine, bool, bool) {
 // cooperating is why a plane whose adapter hands its decisions to a client
 // enforces nothing it decides (ADR-0051).
 const cooperating = "a cooperating client enforces the decision, which the plane cannot keep from the effect"
+
+// unheld is why a plane whose strength is none, or one this build does not
+// know, enforces nothing it decides.
+const unheld = "no enforcement point holds the path"
+
+// notInline is why a plane of strength s enforces nothing it decides, or
+// nothing for an inline one.
+func notInline(s channel.Strength) string {
+	switch s {
+	case channel.StrengthInline:
+		return ""
+	case channel.StrengthCooperative:
+		return cooperating
+	}
+	return unheld
+}
 
 // toolTableLine is a plane's state for an enforce_tool path. A plane stands
 // in front of it when its tool table names the tool, and decides it in every

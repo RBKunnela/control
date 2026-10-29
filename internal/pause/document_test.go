@@ -177,7 +177,8 @@ func TestAnErrorNeverEchoesAReason(t *testing.T) {
 }
 
 // TestScopeMatches: a scope matches when every field it names equals the
-// call's, and a field the call does not carry matches.
+// call's, and a field the call does not carry matches, as does a kind the
+// plane does not name, however close its spelling.
 func TestScopeMatches(t *testing.T) {
 	tool := pause.Scope{Kind: "action", Action: "tool", Provider: "orders", Name: "refund"}
 	resource := pause.Scope{Kind: "action", Action: "resource", Provider: "files"}
@@ -209,6 +210,12 @@ func TestScopeMatches(t *testing.T) {
 		{prompt, "prompt", "payments", "summary", false},
 		{prompt, "tool", "orders", "summary", false},
 		{pause.Scope{Kind: "tenant"}, "tool", "orders", "refund", true},
+		{tool, "Tool", "orders", "refund", true},
+		{tool, "tool ", "orders", "refund", true},
+		{tool, "function", "orders", "refund", true},
+		{tool, "function", "payments", "refund", false},
+		{resource, "Resource", "files", "file:///a", true},
+		{prompt, "prompts", "orders", "summary", true},
 	}
 	for _, c := range cases {
 		if got := c.scope.Matches(c.kind, c.provider, c.name); got != c.want {

@@ -128,6 +128,10 @@ rewrite, such as a coding runtime's hook, aborts it and denies the call.</p>
 classification is one type with an MCP override's, and a tool whose name,
 provider or classification no envelope could carry is refused when the
 configuration loads and by <code>enforce.New</code>.</p>
+<p>Amended by <a href="/docs/adr/0067-the-pipeline-refuses-what-an-adapter-could-not-translate">ADR-0067</a>: the pipeline, not the adapter,
+refuses a translation it could not take and rewritten bytes that name another
+resource than the one decided on; strength is an enum whose zero is <code>None</code>,
+read from the protocol a call names.</p>
 <h2 id="context">Context</h2>
 <p>The pipeline in <code>internal/gateway</code> is protocol-neutral. <code>Admit</code> decides an
 envelope with its argument bytes and answers with a disposition: block, hold

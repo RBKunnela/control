@@ -27,10 +27,12 @@ type decision struct {
 
 	codes  []string
 	denied bool // a matched DENY or one of the kernel's own
-	causes undecided
-	digest string
-	inputs match.Inputs
-	result match.Result
+	// refused: steps 1 and 2 refused the request itself.
+	refused bool
+	causes  undecided
+	digest  string
+	inputs  match.Inputs
+	result  match.Result
 	// needsExternal is whether a rule's value turns on the external answer;
 	// consulted, whether there was an answer for it to turn on.
 	needsExternal bool
@@ -112,6 +114,7 @@ func (d *decision) admit() bool {
 // refuse stops the decision; field is what an explanation names, if anything.
 func (d *decision) refuse(code, field string) bool {
 	d.add(code)
+	d.refused = true
 	d.causes.input = true
 	if d.explain != nil {
 		d.explain.Refusal = &Refusal{Field: field}
@@ -291,6 +294,7 @@ func (d *decision) outcome(k *Kernel) Outcome {
 		instance = k.decisionPoint
 	}
 	return Outcome{
+		RefusedInput: d.refused,
 		Decision: &controlv1.Decision{
 			SchemaVersion:      schemaVersion,
 			DecisionId:         k.newID(),

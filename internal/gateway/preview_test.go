@@ -59,7 +59,7 @@ func TestAnUnclassifiedCallIsBlockedInEveryModeButObserve(t *testing.T) {
 // digest of the bytes sent, which the refused decision does not carry; a nil
 // envelope still blocks.
 func TestAnUnclassifiedCallRunsUnderObserve(t *testing.T) {
-	h := build(t, modeObserve, snapshot(t, allowWrites), observer)
+	h := build(t, modeObserve, snapshot(t, allowWrites))
 	args := []byte(`{"k": 1}`)
 	a := unclassified(args)
 	d := h.p.Admit(context.Background(), a)
@@ -94,10 +94,6 @@ func expectSentDigestOnly(t *testing.T, events []*controlv1.Event, sent string) 
 		t.Errorf("the refused decision carries digest %q and the closing %s carries %q; want none on the decision and the sent bytes' on %s",
 			decided.GetDecision().GetActionDigest(), closing.GetKind(), closing.GetResult().GetExecutedActionDigest(), kindCompleted)
 	}
-}
-
-func observer(c *gateway.Config) {
-	c.Adapter = fakeAdapter{name: "observer", caps: gateway.Capabilities{ObserveRequest: true, ObserveResult: true}}
 }
 
 // TestPreviewDecidesWithoutActing: the kernel's decision, the mode's block

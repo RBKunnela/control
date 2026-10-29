@@ -169,6 +169,11 @@ another opened run is held anew.</p>
 classification is one type with the enforcement API's, checked once when the
 configuration loads and again by <code>mcp.New</code>; one no envelope could carry is
 refused there, in every mode.</p>
+<p>Amended by <a href="/docs/adr/0067-the-pipeline-refuses-what-an-adapter-could-not-translate">ADR-0067</a>: a translation the adapter refused,
+for anything but nothing classifying it, is blocked in <code>OBSERVE</code> too, and so is
+an envelope the kernel refuses whatever the adapter reported; the pipeline
+refuses an action kind outside <code>tool</code>, <code>prompt</code> and <code>resource</code> and a protocol
+other than its adapter's name.</p>
 <h2 id="context">Context</h2>
 <p>The kernel decides and nothing calls it. The first protocol target is the Model
 Context Protocol, and its two live revisions are different protocols. <code>2026-07-28</code>

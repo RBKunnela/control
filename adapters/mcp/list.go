@@ -12,6 +12,7 @@ import (
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/brand"
+	"github.com/guardana/control/internal/channel"
 	"github.com/guardana/control/internal/gateway"
 )
 
@@ -267,7 +268,7 @@ func (s *shaping) shape(e *Entry) *mcp.Tool {
 func (a *Adapter) preview(ctx context.Context, p Pipeline, req mcp.Request, e *Entry, principal *controlv1.Principal, agent *controlv1.Agent) *controlv1.Decision {
 	up := a.upstreamConfig(e.Upstream)
 	env := a.base(req, nil, principal, agent, a.cfg.NewID())
-	env.Action = &controlv1.Action{Kind: kindTool, Name: e.Tool.Name, Protocol: protocolName, Effect: e.Effect, Provider: e.Upstream}
+	env.Action = &controlv1.Action{Kind: channel.KindTool, Name: e.Tool.Name, Protocol: channel.ProtocolMCP, Effect: e.Effect, Provider: e.Upstream}
 	env.Resource = &controlv1.Resource{Type: e.ResourceType, TenantId: up.TenantID, Environment: up.Environment}
 	if e.TrustZone != controlv1.TrustZone_TRUST_ZONE_UNSPECIFIED {
 		env.Destination = &controlv1.Destination{TrustZone: e.TrustZone}

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/guardana/control/internal/brand"
+	"github.com/guardana/control/internal/channel"
 	"github.com/guardana/control/internal/coverage"
 	ondisk "github.com/guardana/control/internal/files"
 	"github.com/guardana/control/internal/gatewayconfig"
@@ -176,8 +177,8 @@ func readInventoryFile(path string) (*coverage.Inventory, error) {
 
 // readPlane loads a plane's configuration with no environment: the shell
 // running this command is not the plane's, so its variables say nothing of
-// how the plane runs. A plane serving the enforcement API is cooperative, and
-// its tool table names the tools it decides.
+// how the plane runs. Its strength is its listener's protocol's, and the tool
+// table of a plane serving the enforcement API names the tools it decides.
 func readPlane(path string) (coverage.Plane, error) {
 	cfg, err := gatewayconfig.Load(path, nil)
 	if err != nil {
@@ -187,7 +188,11 @@ func readPlane(path string) (coverage.Plane, error) {
 	if err != nil {
 		return coverage.Plane{}, refusedInput("plane", path, err)
 	}
-	p := coverage.Plane{Name: path, Mode: mode, FailOpenRead: cfg.Policy.FailOpenRead, Cooperative: cfg.Listener.Kind == gatewayconfig.ListenerEnforceAPI}
+	protocol, err := gatewayconfig.ProtocolOf(cfg.Listener.Kind)
+	if err != nil {
+		return coverage.Plane{}, refusedInput("plane", path, err)
+	}
+	p := coverage.Plane{Name: path, Mode: mode, FailOpenRead: cfg.Policy.FailOpenRead, Strength: channel.StrengthOf(protocol)}
 	for i := range cfg.Tools {
 		c, err := cfg.Tools[i].Classification()
 		if err != nil {

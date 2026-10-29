@@ -75,6 +75,23 @@ func DecodeJSON(b []byte) (*controlv1.ActionEnvelope, error) {
 // Pure, and the order of the checks is fixed, so the same bytes always name the
 // same field.
 func Validate(env *controlv1.ActionEnvelope) error {
+	return validate(env, true)
+}
+
+// ValidateUnclassified refuses what Validate refuses of an envelope, in the
+// same order, except an absent effect class and the fields an effect class
+// requires. It is for a receiver that holds an envelope nothing classified:
+// Validate stops at the missing effect before the values it checks after it,
+// such as the delegation chain, the host, the labels and the arguments, so its
+// refusal there says nothing about the rest. An envelope that does carry an
+// effect is not held to what that effect requires either.
+func ValidateUnclassified(env *controlv1.ActionEnvelope) error {
+	return validate(env, false)
+}
+
+// validate is Validate's order of checks; classified is whether the effect
+// class and what it requires are among them.
+func validate(env *controlv1.ActionEnvelope, classified bool) error {
 	if env == nil {
 		return &ValidationError{Err: ErrMissingField}
 	}
@@ -91,10 +108,10 @@ func Validate(env *controlv1.ActionEnvelope) error {
 	if err := walk(env.ProtoReflect(), "", 0); err != nil {
 		return err
 	}
-	return checkSemantics(env)
+	return checkSemantics(env, classified)
 }
 
-func checkSemantics(env *controlv1.ActionEnvelope) error {
+func checkSemantics(env *controlv1.ActionEnvelope, classified bool) error {
 	for _, path := range []string{"request_id", "project_id", "tenant_id", "principal.id", "action.name", "occurred_at"} {
 		if err := requirePresent(env, path); err != nil {
 			return err
@@ -104,6 +121,17 @@ func checkSemantics(env *controlv1.ActionEnvelope) error {
 	if ts := env.GetOccurredAt(); ts.GetSeconds() == 0 && ts.GetNanos() == 0 {
 		return &ValidationError{Field: "occurred_at", Err: ErrMissingField}
 	}
+	if classified {
+		if err := checkEffect(env); err != nil {
+			return err
+		}
+	}
+	return checkValues(env)
+}
+
+// checkEffect refuses an envelope with no effect class, or without a field
+// its effect class requires.
+func checkEffect(env *controlv1.ActionEnvelope) error {
 	effect := env.GetAction().GetEffect()
 	if effect == controlv1.EffectClass_EFFECT_CLASS_UNSPECIFIED {
 		return &ValidationError{Field: "action.effect", Err: ErrMissingField}
@@ -113,7 +141,7 @@ func checkSemantics(env *controlv1.ActionEnvelope) error {
 			return err
 		}
 	}
-	return checkValues(env)
+	return nil
 }
 
 // tooLarge refuses the message rather than a field, so Field stays empty.

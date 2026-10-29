@@ -15,16 +15,13 @@ import (
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/adapterkit"
 	"github.com/guardana/control/internal/canon"
+	"github.com/guardana/control/internal/channel"
 	"github.com/guardana/control/internal/gateway"
 	"github.com/guardana/control/pkg/contract"
 )
 
 const (
 	schemaVersion = "1.0"
-	protocolName  = "mcp"
-	kindTool      = "tool"
-	kindResource  = "resource"
-	kindPrompt    = "prompt"
 	// noArguments is what a call with no arguments is decided and sent as:
 	// the empty document, never null and never nothing.
 	noArguments = "{}"
@@ -41,15 +38,6 @@ type call struct {
 	entry     *Entry // nil for a resource read, a prompt get and a tool no upstream lists
 	upstream  string
 	requestID string
-}
-
-// code is the registry code the refusal names, or the kernel's own fallback
-// for a refusal that names none.
-func (c *call) code() string {
-	if errors.Is(c.admission.Refusal, gateway.ErrUnclassified) {
-		return codeUnclassified
-	}
-	return "MALFORMED_INPUT"
 }
 
 // arguments are the bytes the digest covers for a tools/call: what the agent
@@ -144,15 +132,16 @@ func (a *Adapter) toolCall(req *mcp.CallToolRequest) call {
 		return c
 	}
 	env := a.base(req, req.Params.Meta, principal, agent, c.requestID)
-	env.Action = &controlv1.Action{Kind: kindTool, Name: req.Params.Name, Protocol: protocolName}
+	env.Action = &controlv1.Action{Kind: channel.KindTool, Name: req.Params.Name, Protocol: channel.ProtocolMCP}
 	c.admission.Envelope = env
 	entry, err := a.manifest.route(req.Params.Name)
 	c.entry = entry
 	c.upstream = a.route(entry)
 	if err != nil {
-		c.admission.Refusal = unclassified(env, args, err)
+		c.admission.Refusal = adapterkit.Unclassified(a.finish(env, args), err)
 		return c
 	}
+	c.admission.Classification = entry.Classification
 	up := a.upstreamConfig(entry.Upstream)
 	env.Action.Effect = entry.Effect
 	env.Action.Provider = entry.Upstream
@@ -198,20 +187,20 @@ func (a *Adapter) read(req mcp.Request, meta map[string]any, kind, name string, 
 	}
 	env := a.base(req, meta, principal, agent, c.requestID)
 	c.admission.Envelope = env
-	env.Action = &controlv1.Action{Kind: kind, Name: name, Protocol: protocolName}
+	env.Action = &controlv1.Action{Kind: kind, Name: name, Protocol: channel.ProtocolMCP}
 	if argErr != nil {
 		c.admission.Refusal = argErr
 		return c
 	}
 	if len(a.names) != 1 {
-		c.admission.Refusal = unclassified(env, args,
+		c.admission.Refusal = adapterkit.Unclassified(a.finish(env, args),
 			fmt.Errorf("%w: %d upstreams serve %ss", gateway.ErrUnclassified, len(a.names), kind))
 		return c
 	}
 	up := a.upstreamConfig(c.upstream)
 	env.Action.Effect = controlv1.EffectClass_EFFECT_CLASS_READ
 	env.Action.Provider = c.upstream
-	env.Resource = &controlv1.Resource{Type: protocolName + "." + kind, Id: name, TenantId: up.TenantID, Environment: up.Environment}
+	env.Resource = &controlv1.Resource{Type: channel.ProtocolMCP + "." + kind, Id: name, TenantId: up.TenantID, Environment: up.Environment}
 	c.admission.Refusal = a.finish(env, args)
 	return c
 }
@@ -223,29 +212,6 @@ func (a *Adapter) finish(env *controlv1.ActionEnvelope, args []byte) error {
 		return err
 	}
 	return recordable(env, contract.Validate(env))
-}
-
-// unclassified is the refusal of an envelope nothing classifies: why, unless
-// Validate refuses the envelope for more than the effect class it lacks, and
-// then Validate's refusal, so a call nothing classifies is held to every other
-// rule of the contract a classified one is.
-func unclassified(env *controlv1.ActionEnvelope, args []byte, why error) error {
-	if err := adapterkit.HashInto(env, args); err != nil {
-		return errors.Join(err, why)
-	}
-	err := recordable(env, contract.Validate(env))
-	if err == nil || lacksEffect(err) {
-		return why
-	}
-	return err
-}
-
-// lacksEffect reports whether err is Validate's refusal of an envelope with
-// no effect class, which it reaches only once the bounds, the schema version
-// and every field each envelope needs have passed.
-func lacksEffect(err error) bool {
-	var ve *contract.ValidationError
-	return errors.As(err, &ve) && ve.Field == "action.effect" && errors.Is(err, contract.ErrMissingField)
 }
 
 // recordable takes the strings an agent chose off an envelope Validate

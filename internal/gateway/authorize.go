@@ -14,7 +14,9 @@ import (
 // authorize produces the bytes execution may send: the proposed bytes as
 // they are, or the rewritten document when a rewriting obligation applies,
 // and the obligations left for the adapter. OBSERVE executes the proposed
-// bytes and enforces nothing.
+// bytes and enforces nothing. Bytes whose member at the classification's
+// pointer no longer names the decided resource are a DENY: the call would act
+// on a resource no decision covered.
 //
 // A rewrite that changed the arguments makes the call another action, so the
 // kernel decides the authorized envelope with the rewritten bytes against
@@ -32,6 +34,10 @@ func (c *call) authorize(snap *policy.Snapshot) {
 			return
 		}
 		c.args, c.rest = args, rest
+	}
+	if c.resourceMoved() {
+		c.decide(verdictDeny, codeObligationNotApplied)
+		return
 	}
 	digest, err := canon.ArgumentsHashV1(c.args)
 	if err != nil {
@@ -59,6 +65,14 @@ func (c *call) authorize(snap *policy.Snapshot) {
 	}
 }
 
+// resourceMoved reports whether the bytes to send hold, at the pointer the
+// classification read the resource id at, another member than the one the
+// call was decided on. With no pointer no member names the resource.
+func (c *call) resourceMoved() bool {
+	p := c.in.Classification.ResourceFrom
+	return p != "" && !sameResource(c.in.Arguments, c.args, p, c.in.Envelope.GetResource().GetId())
+}
+
 // decideAuthorized asks the kernel about the authorized envelope and bytes,
 // applies the mode to its answer, and reports whether the call may go on. It
 // reuses the decision point's answer about the proposed call, since the
@@ -68,7 +82,7 @@ func (c *call) decideAuthorized(snap *policy.Snapshot) bool {
 		Envelope: c.env, Refusal: c.in.Refusal, AuthorizedArgs: c.args, Flow: c.flow.state, External: c.external,
 	}, snap)
 	c.kernel, c.decision, c.action, c.basis = out.Decision, out.Decision, out.Action, out.Basis
-	c.kernelAction = out.Action
+	c.kernelAction, c.refusedInput = out.Action, out.RefusedInput
 	c.reliedOnDecision(out.Decision, snap)
 	c.applyMode()
 	if c.action == core.Block {

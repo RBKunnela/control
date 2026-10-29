@@ -32,7 +32,7 @@ func TestNewRefusesRunsOnOneSideOnly(t *testing.T) {
 	presenting.PresentsRuns = true
 	cases := map[string]func(*gateway.Config){
 		"an adapter that presents runs, no runs directory": func(c *gateway.Config) {
-			c.Adapter = fakeAdapter{name: "fake", caps: presenting}
+			c.Adapter = fakeAdapter{name: testProtocol, caps: presenting}
 		},
 		"a runs directory, an adapter that presents none": func(c *gateway.Config) {
 			c.Runs = refusingRuns{}
@@ -48,7 +48,7 @@ func TestNewRefusesRunsOnOneSideOnly(t *testing.T) {
 		})
 	}
 	cfg := validConfig(t)
-	cfg.Adapter = fakeAdapter{name: "fake", caps: presenting}
+	cfg.Adapter = fakeAdapter{name: testProtocol, caps: presenting}
 	cfg.Runs = refusingRuns{}
 	if _, err := gateway.New(cfg); err != nil {
 		t.Errorf("New with runs on both sides = %v, want nil", err)

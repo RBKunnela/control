@@ -11,6 +11,7 @@ import (
 	enforcev1alpha1 "github.com/guardana/control/api/gen/go/guardana/control/enforce/v1alpha1"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/adapterkit"
+	"github.com/guardana/control/internal/channel"
 	"github.com/guardana/control/internal/gateway"
 )
 
@@ -112,7 +113,7 @@ func orDefault[T int | int64 | time.Duration](v, def T) T {
 }
 
 // Name is the protocol's.
-func (*Adapter) Name() string { return "enforce" }
+func (*Adapter) Name() string { return channel.ProtocolEnforce }
 
 // Capabilities declares what the adapter does, each backed by a test in this
 // package: it sees the call and the reported result, hands the decision to a
@@ -122,7 +123,7 @@ func (*Adapter) Capabilities() gateway.Capabilities {
 	return gateway.Capabilities{
 		ObserveRequest: true,
 		ObserveResult:  true,
-		Enforcement:    gateway.EnforcementCooperative,
+		Enforcement:    channel.StrengthOf(channel.ProtocolEnforce),
 		PresentsRuns:   true,
 		SeeResourceIDs: true,
 	}
