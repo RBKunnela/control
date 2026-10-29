@@ -231,6 +231,12 @@ func TestATreeItCannotJudgeIsRefused(t *testing.T) {
 		"the tree as given": {inheritProc(t), nil, family(), false},
 		"a member of another tenant": {inheritProc(t), nil,
 			edit(func(r []supervise.Run) []supervise.Run { r[2].Tenant = "t2"; return r }), true},
+		"a tree of the events' project": {inheritProc(t), nil,
+			edit(func(r []supervise.Run) []supervise.Run { return ofProject(r, proj, proj, proj) }), false},
+		"a member of another project": {inheritProc(t), nil,
+			edit(func(r []supervise.Run) []supervise.Run { return ofProject(r, proj, proj, "p2") }), true},
+		"a member that names no project": {inheritProc(t), nil,
+			edit(func(r []supervise.Run) []supervise.Run { return ofProject(r, proj, proj, "") }), true},
 		"a member before its parent": {inheritProc(t), nil,
 			edit(func(r []supervise.Run) []supervise.Run { r[1], r[2] = r[2], r[1]; return r }), true},
 		"a member whose parent is outside": {inheritProc(t), nil,
@@ -260,6 +266,14 @@ func TestATreeItCannotJudgeIsRefused(t *testing.T) {
 			}
 		})
 	}
+}
+
+// ofProject gives each run of tree the project at its place in projects.
+func ofProject(tree []supervise.Run, projects ...string) []supervise.Run {
+	for i := range tree {
+		tree[i].Project = projects[i]
+	}
+	return tree
 }
 
 // TestA01ProcedureJudgesOneRootRun: a 0.1 procedure takes neither a tree

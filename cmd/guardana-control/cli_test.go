@@ -340,10 +340,12 @@ func TestEveryFlagShowsInItsForm(t *testing.T) {
 }
 
 // namesFlag reports whether form names --name as a whole word: followed by a
-// space, by the bracket that closes an optional flag, or by nothing.
+// space, by the bracket that closes an optional flag, by the line break of a
+// wrapped form, or by nothing.
 func namesFlag(form, name string) bool {
 	flagWord := "--" + name
-	return strings.Contains(form, flagWord+" ") || strings.Contains(form, flagWord+"]") || strings.HasSuffix(form, flagWord)
+	return strings.Contains(form, flagWord+" ") || strings.Contains(form, flagWord+"]") ||
+		strings.Contains(form, flagWord+"\n") || strings.HasSuffix(form, flagWord)
 }
 
 func TestNamesFlagMatchesWholeWordsOnly(t *testing.T) {
@@ -354,6 +356,8 @@ func TestNamesFlagMatchesWholeWordsOnly(t *testing.T) {
 		{"--out <dir>", "out", true},
 		{"[--until-stdin-closes]", "until-stdin-closes", true},
 		{"<f> --global", "global", true},
+		{"--agent\n      --ttl", "agent", true},
+		{"--agents\n      --ttl", "agent", false},
 		{"--outer <dir>", "out", false},
 		{"[--until-stdin-closes-x]", "until-stdin-closes", false},
 		{"--global-x", "global", false},

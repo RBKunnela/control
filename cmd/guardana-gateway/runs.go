@@ -23,12 +23,27 @@ const maxRunTokenBytes = 256
 
 // runsDir serves the pipeline and the listener from a runs directory
 // (ADR-0034), translating its types; the directory imports no gateway.
-type runsDir struct{ plane *runs.Plane }
+// project is the plane's own project_id, which no listener names: a run
+// resolves only under it, so a token of another project's run is refused
+// as another identity even where two planes share a directory and a
+// listener identity.
+type runsDir struct {
+	plane   *runs.Plane
+	project string
+}
 
 var _ gateway.Runs = runsDir{}
 
+// planeRuns is the runs directory plane serves cfg's project from.
+func planeRuns(cfg *gatewayconfig.Config, plane *runs.Plane) runsDir {
+	return runsDir{plane: plane, project: cfg.ProjectID}
+}
+
 func (d runsDir) Resolve(ctx context.Context, token string, who gateway.RunIdentity, now time.Time) (gateway.OpenedRun, error) {
-	run, err := d.plane.Resolve(ctx, token, runs.Identity(who), now)
+	run, err := d.plane.Resolve(ctx, token, runs.Identity{
+		ProjectID: d.project, TenantID: who.TenantID,
+		PrincipalType: who.PrincipalType, PrincipalID: who.PrincipalID, AgentID: who.AgentID,
+	}, now)
 	if err != nil {
 		var refusal *runs.Refusal
 		if errors.As(err, &refusal) {
@@ -36,7 +51,9 @@ func (d runsDir) Resolve(ctx context.Context, token string, who gateway.RunIdent
 		}
 		return gateway.OpenedRun{}, err
 	}
-	return gateway.OpenedRun{ID: run.ID, Root: run.Root, Who: gateway.RunIdentity(run.Who), Expires: run.Expires}, nil
+	return gateway.OpenedRun{ID: run.ID, Root: run.Root, Expires: run.Expires, Who: gateway.RunIdentity{
+		TenantID: run.Who.TenantID, PrincipalType: run.Who.PrincipalType, PrincipalID: run.Who.PrincipalID, AgentID: run.Who.AgentID,
+	}}, nil
 }
 
 func (d runsDir) State(ctx context.Context, root string) (gateway.RunState, error) {
@@ -84,7 +101,7 @@ func openRuns(cfg *gatewayconfig.Config, tokenPath string) (*runs.Plane, string,
 	}
 	token, err := readRunToken(tokenPath)
 	if err == nil {
-		_, err = runsDir{plane}.Resolve(context.Background(), token, listenerRunIdentity(cfg), time.Now())
+		_, err = planeRuns(cfg, plane).Resolve(context.Background(), token, listenerRunIdentity(cfg), time.Now())
 	}
 	if err != nil {
 		return nil, "", errors.Join(fmt.Errorf("--run-token-file: %w", err), plane.Close())

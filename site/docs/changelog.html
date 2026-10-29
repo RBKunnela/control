@@ -126,6 +126,19 @@ classified. <code>Validate</code> does not change (<a href="/docs/adr/0067-the-p
 </ul>
 <h3 id="changed">Changed</h3>
 <ul>
+<li><strong>Breaking:</strong> a run belongs to one project. A run record is <code>2.0</code> and
+carries <code>project_id</code>, <code>runs open</code> needs <code>--project</code> and refuses a parent of
+another project, and <code>runs list</code> prints <code>project_id</code>. A plane resolves a
+token only under its own <code>project_id</code>, so a token of another project's run
+gets 401 even on a shared runs directory and listener identity. A run
+tree refuses a member of another project, <code>supervise</code> refuses evidence of
+another project than the run's record, <code>react</code> never stops a run for a
+finding of another project, and <code>doctor</code> lists a stop of another project's
+run as unheld. A <code>1.0</code> record names no project and is refused: open each
+live run again in a new, empty directory, under a new task, since a
+reopened run starts with a clean flow state
+(<a href="/docs/reference/runs#runs-an-earlier-release-opened">runs.md</a>,
+<a href="/docs/adr/0068-a-run-belongs-to-one-project">ADR-0068</a>).</li>
 <li>Under <code>OBSERVE</code>, a call the adapter could not translate, for anything but
 nothing classifying it, is now blocked with the kernel's <code>INDETERMINATE</code>
 and the refusal's code, on the trail <code>ENFORCE</code> writes, and counts as

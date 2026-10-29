@@ -19,7 +19,11 @@ type Run struct {
 	// ID is "run-" and 32 lowercase hex digits.
 	ID     string
 	Tenant string
-	Closed bool
+	// Project is the project the run's record names, or empty when no record
+	// names one. When given, every event of the run read and every run of the
+	// tree must be of it.
+	Project string
+	Closed  bool
 	// Parent is the run this one was opened under, or empty for a root.
 	Parent string
 }
@@ -112,8 +116,9 @@ type Result struct {
 // Evaluate checks one run against its procedure. It refuses a run id that is
 // not an opened run's with ErrRunID, and a procedure ReadProcedure did not
 // make, a run with no tenant, a tree its procedure does not read, a source
-// given twice, a run whose events name two projects, or a source of another
-// tenant or project than the run's with ErrInput.
+// given twice, a run whose events name two projects or another than its
+// record, or a source of another tenant or project than the run's with
+// ErrInput.
 func Evaluate(in Input) (*Result, error) {
 	e, err := prepare(in)
 	if err != nil {
@@ -138,7 +143,7 @@ func RunProject(in Input) (string, error) {
 	if err := checkInput(in); err != nil {
 		return "", err
 	}
-	rd := newRead(judged(in), in.Run.Tenant)
+	rd := newRead(judged(in), in.Run.Tenant, in.Run.Project)
 	if err := rd.takeEvents(in.Exports); err != nil {
 		return "", err
 	}
@@ -150,7 +155,7 @@ func prepare(in Input) (*evaluation, error) {
 	if err := checkInput(in); err != nil {
 		return nil, err
 	}
-	rd := newRead(judged(in), in.Run.Tenant)
+	rd := newRead(judged(in), in.Run.Tenant, in.Run.Project)
 	if err := rd.takeEvents(in.Exports); err != nil {
 		return nil, err
 	}
@@ -190,7 +195,7 @@ func treeOf(in Input) []Run {
 }
 
 // checkTree holds the tree to the procedure's children mode: Run first and
-// every run of Run's tenant, given once. Under inherit Run is a root and
+// every run of Run's tenant and project, given once. Under inherit Run is a root and
 // every other run comes after its parent; under separate every other run is
 // Run's child; a 0.1 procedure reads a root run alone.
 func checkTree(in Input) error {
@@ -226,6 +231,8 @@ func checkMember(run Run, mode Children, r Run, listed map[string]bool) error {
 		return ErrRunID
 	case r.Tenant != run.Tenant:
 		return ErrInput.with("a run of the tree belongs to another tenant")
+	case r.Project != run.Project:
+		return ErrInput.with("a run of the tree belongs to another project")
 	case listed[r.ID]:
 		return ErrInput.with("a run of the tree is given twice")
 	case mode == ChildrenSeparate && r.Parent != run.ID:

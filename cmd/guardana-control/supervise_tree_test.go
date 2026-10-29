@@ -49,10 +49,16 @@ func (tr supTree) family(t *testing.T) supFamily {
 // without the operator's lock or its checks of a parent.
 func plantRun(t *testing.T, dir, id, tenant, root, parent string) {
 	t.Helper()
-	body := fmt.Sprintf(`{"schema_version":"1.0","run_id":%q,"tenant_id":%q,"principal_type":"user",`+
+	plantRunOf(t, dir, id, who.ProjectID, tenant, root, parent)
+}
+
+// plantRunOf is plantRun under project.
+func plantRunOf(t *testing.T, dir, id, project, tenant, root, parent string) {
+	t.Helper()
+	body := fmt.Sprintf(`{"schema_version":"2.0","run_id":%q,"project_id":%q,"tenant_id":%q,"principal_type":"user",`+
 		`"principal_id":"p","agent_id":"a","root":%q,"parent":%q,"opened_at":"2026-03-01T12:00:00Z",`+
 		`"expires_at":"2026-03-01T13:00:00Z","closed_at":"","secret_sha256":%q}`,
-		id, tenant, root, parent, strings.Repeat("0", 64))
+		id, project, tenant, root, parent, strings.Repeat("0", 64))
 	writeFixture(t, filepath.Join(dir, id+".run.json"), body)
 }
 
@@ -90,7 +96,8 @@ func TestSuperviseInputReadsTheTreeTheProcedureAsksFor(t *testing.T) {
 			if err != nil {
 				t.Fatalf("readRun: %v", err)
 			}
-			if run.ID != c.run || run.Tenant != who.TenantID || run.Closed || !slices.Equal(treeOf(tree), c.want) {
+			if run.ID != c.run || run.Tenant != who.TenantID || run.Project != "orders" || run.Closed ||
+				!slices.Equal(treeOf(tree), c.want) {
 				t.Fatalf("readRun = %+v, %v; want %s and tree %v", run, treeOf(tree), c.run, c.want)
 			}
 		})
@@ -114,7 +121,7 @@ func TestSuperviseInputUnderInheritTakesARootOnly(t *testing.T) {
 }
 
 // TestSuperviseInputRefusesATreeItCannotVouchFor: a run of the tree of
-// another tenant, one whose parents never reach the root, and a tree one past
+// another tenant or project, one whose parents never reach the root, and a tree one past
 // MaxTreeRuns are refused; a tree of MaxTreeRuns is read.
 func TestSuperviseInputRefusesATreeItCannotVouchFor(t *testing.T) {
 	for name, c := range map[string]struct {
@@ -124,6 +131,9 @@ func TestSuperviseInputRefusesATreeItCannotVouchFor(t *testing.T) {
 		"another tenant": {func(t *testing.T, tr supTree) {
 			plantRun(t, tr.runs, plantedRun(1), "other", tr.run, tr.run)
 		}, runs.ErrTreeTenant},
+		"another project": {func(t *testing.T, tr supTree) {
+			plantRunOf(t, tr.runs, plantedRun(1), "billing", who.TenantID, tr.run, tr.run)
+		}, runs.ErrTreeProject},
 		"a parent in no tree": {func(t *testing.T, tr supTree) {
 			plantRun(t, tr.runs, plantedRun(1), who.TenantID, tr.run, plantedRun(2))
 		}, runs.ErrTreeBroken},

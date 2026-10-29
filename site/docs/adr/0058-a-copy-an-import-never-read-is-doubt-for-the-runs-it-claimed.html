@@ -118,6 +118,9 @@ runs its refusals put in doubt. Amends
 <a href="/docs/adr/0045-one-run-is-supervised-against-its-procedure">ADR-0045</a>: a run in
 doubt at its source leaves the two rules that read a source's reports not
 checked, and a finding citing such a run's observation is <code>INDETERMINATE</code>.</p>
+<p>Amended by <a href="/docs/adr/0068-a-run-belongs-to-one-project">ADR-0068</a>: a run whose record
+names its project holds every source to that project, even when no event of
+the run was read.</p>
 <h2 id="context">Context</h2>
 <p>An import counted the spans it refused and the observations the log refused
 for an id it already held with other content, and nothing read the counts.

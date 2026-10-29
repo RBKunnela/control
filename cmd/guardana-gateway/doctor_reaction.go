@@ -64,7 +64,8 @@ func (d *examination) reaction(context.Context) (string, string, string) {
 }
 
 // printStops prints each listed active stop and, where the runs directory can
-// be read, each naming a run it does not hold, which that stop never matches.
+// be read, each naming a run it does not hold for the plane's project, which
+// that stop never matches.
 // It reports false when a stop's run could not be checked: the directory did
 // not open or close, or a record did not read.
 func (d *examination) printStops(entries []reaction.Entry) (checked bool) {
@@ -85,13 +86,13 @@ func (d *examination) printStops(entries []reaction.Entry) (checked bool) {
 			}()
 		}
 	}
-	unheld, unread := unheldRuns(dir, entries)
+	unheld, unread := unheldRuns(dir, d.cfg.ProjectID, entries)
 	for _, e := range entries {
 		writeLine(d.out, fmt.Sprintf("       stop %s of run %s for finding %s under rule %s, until %s",
 			oneLine(e.EntryID), oneLine(e.RunID), oneLine(e.FindingID), oneLine(e.RuleID), e.ExpiresAt.UTC().Format(time.RFC3339)))
 	}
 	for _, id := range unheld {
-		writeLine(d.out, fmt.Sprintf("       stop of run %s: the runs directory holds no such run, so the stop matches no call", oneLine(id)))
+		writeLine(d.out, fmt.Sprintf("       stop of run %s: the runs directory holds no such run of this plane's project, so the stop matches no call", oneLine(id)))
 	}
 	if dir != nil {
 		for _, id := range unread {

@@ -14,16 +14,16 @@ var now = time.Date(2026, 10, 6, 12, 0, 0, 0, time.UTC)
 func eligibleFacts() (reaction.FindingFacts, reaction.RunFacts) {
 	return reaction.FindingFacts{
 		Source: controlv1.FindingSource_FINDING_SOURCE_DETERMINISTIC, Verdict: controlv1.FindingVerdict_FINDING_VERDICT_CONFIRMED,
-		TenantID: "acme", RunID: runID,
+		TenantID: "acme", ProjectID: "orders", RunID: runID,
 	}, reaction.RunFacts{
-		RunID: runID, TenantID: "acme", Open: true, ExpiresAt: now.Add(time.Hour),
+		RunID: runID, TenantID: "acme", ProjectID: "orders", Open: true, ExpiresAt: now.Add(time.Hour),
 	}
 }
 
 func eligibleRefusals() []error {
 	return []error{
 		reaction.ErrFindingSource, reaction.ErrFindingVerdict, reaction.ErrRunUnknown, reaction.ErrRunTenant,
-		reaction.ErrRunClosed, reaction.ErrRunExpired, reaction.ErrRunExpiry, reaction.ErrClock,
+		reaction.ErrRunProject, reaction.ErrRunClosed, reaction.ErrRunExpired, reaction.ErrRunExpiry, reaction.ErrClock,
 	}
 }
 
@@ -70,6 +70,9 @@ func TestEligibleRefusesARunItCannotStop(t *testing.T) {
 		{"a finding naming no run", func(f *reaction.FindingFacts, r *reaction.RunFacts) { f.RunID, r.RunID = "", "" }, now, reaction.ErrRunUnknown},
 		{"another tenant's run", func(_ *reaction.FindingFacts, r *reaction.RunFacts) { r.TenantID = "other" }, now, reaction.ErrRunTenant},
 		{"no tenant on either", func(f *reaction.FindingFacts, r *reaction.RunFacts) { f.TenantID, r.TenantID = "", "" }, now, reaction.ErrRunTenant},
+		{"another project's run", func(_ *reaction.FindingFacts, r *reaction.RunFacts) { r.ProjectID = "billing" }, now, reaction.ErrRunProject},
+		{"a finding of another project", func(f *reaction.FindingFacts, _ *reaction.RunFacts) { f.ProjectID = "billing" }, now, reaction.ErrRunProject},
+		{"no project on either", func(f *reaction.FindingFacts, r *reaction.RunFacts) { f.ProjectID, r.ProjectID = "", "" }, now, reaction.ErrRunProject},
 		{"a closed run", func(_ *reaction.FindingFacts, r *reaction.RunFacts) { r.Open = false }, now, reaction.ErrRunClosed},
 		{"a run expiring now", func(_ *reaction.FindingFacts, r *reaction.RunFacts) { r.ExpiresAt = now }, now, reaction.ErrRunExpired},
 		{"a run with no expiry copied", func(_ *reaction.FindingFacts, r *reaction.RunFacts) { r.ExpiresAt = time.Time{} }, now, reaction.ErrRunExpiry},

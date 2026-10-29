@@ -252,7 +252,8 @@ class Plane(unittest.TestCase):
                 self.control,
                 "runs",
                 "open",
-                *("--tenant", TENANT, "--principal-type", "service", "--principal", PRINCIPAL),
+                *("--project", "orders", "--tenant", TENANT),
+                *("--principal-type", "service", "--principal", PRINCIPAL),
                 *("--agent", AGENT, "--ttl", "1h", "runs"),
             )
         )

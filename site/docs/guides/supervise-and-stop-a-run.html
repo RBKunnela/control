@@ -205,7 +205,7 @@ answering /healthz, /metrics and /brand on 127.0.0.1:8081
 <h3 id="5-open-two-runs">5. Open two runs</h3>
 <p>Every call needs a run the operator opened (<a href="/docs/reference/runs">runs.md</a>).
 Open one for the agent and a second to show that a stop stays in its run:</p>
-<pre><code>$ guardana-control runs open --tenant acme --principal-type service --principal agent-runner --agent refund-assistant --ttl 1h state/runs
+<pre><code>$ guardana-control runs open --project refunds --tenant acme --principal-type service --principal agent-runner --agent refund-assistant --ttl 1h state/runs
 run_id: run-9d9ad942e8427a0e36f6abd3fa8ced08
 …
 token: run-9d9ad942e8427a0e36f6abd3fa8ced08.2sz2oVvp-yKBaXtfq47Gb133ucR_keAinwKSnlBvQkQ

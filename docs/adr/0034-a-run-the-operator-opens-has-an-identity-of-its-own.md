@@ -18,6 +18,10 @@ call's run is judged expired once more, by the plane's clock, right before
 the call is handed out; a run closed after its call passed the listener is
 not seen there, and that call runs.
 
+Amended by [ADR-0068](0068-a-run-belongs-to-one-project.md):
+a run record names its project, a plane resolves a token only under its own
+`project_id`, and a record of major 1 is refused.
+
 ## Context
 
 ADR-0021 keys a run by the listener and the principal and agent it resolves.

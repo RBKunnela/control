@@ -225,7 +225,7 @@ func (p *plane) newMCPAdapter() (*adaptermcp.Adapter, error) {
 		return nil, err
 	}
 	if p.runsDir != nil {
-		adapterConfig.Listener.Runs = runsDir{p.runsDir}
+		adapterConfig.Listener.Runs = planeRuns(p.cfg, p.runsDir)
 		adapterConfig.Listener.RunToken = p.runToken
 	}
 	return adaptermcp.New(adapterConfig)

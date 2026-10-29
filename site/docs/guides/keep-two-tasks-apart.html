@@ -135,12 +135,12 @@ stdio plane.</li>
 approvals directory, the hold journal and the pause file's directory. The
 first <code>runs open</code> makes it a runs directory; a plane refuses it before that.</p>
 <h3 id="2-open-a-run-per-task">2. Open a run per task</h3>
-<pre><code>guardana-control runs open --tenant acme --principal-type service \
+<pre><code>guardana-control runs open --project orders --tenant acme --principal-type service \
   --principal agent-runner --agent orders-assistant --ttl 8h /var/lib/guardana/runs
 </code></pre>
-<p>The identity is your listener's: <code>listener.principal.tenant_id</code>, or
-<code>tenant_id</code> when it is unset, <code>listener.principal.type</code>,
-<code>listener.principal.id</code> and <code>listener.agent.id</code>. The command prints <code>run_id</code>,
+<p>The project is your plane's <code>project_id</code>, and the identity is your
+listener's: <code>listener.principal.tenant_id</code>, or <code>tenant_id</code> when it is unset,
+<code>listener.principal.type</code>, <code>listener.principal.id</code> and <code>listener.agent.id</code>. The command prints <code>run_id</code>,
 <code>root</code>, <code>expires_at</code> and <code>token</code>; the token is printed this once. A task that
 spawns another opens the child with <code>--parent &lt;run id&gt;</code>, so the two share what
 they take in; the child expires no later than its parent, and closing the

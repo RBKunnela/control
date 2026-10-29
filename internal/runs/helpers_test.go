@@ -16,7 +16,7 @@ import (
 // opened is the clock reading every run in these tests opens at.
 var opened = time.Date(2026, time.March, 1, 12, 0, 0, 0, time.UTC)
 
-var alice = runs.Identity{TenantID: "tenant-a", PrincipalType: "user", PrincipalID: "alice", AgentID: "agent-1"}
+var alice = runs.Identity{ProjectID: "project-a", TenantID: "tenant-a", PrincipalType: "user", PrincipalID: "alice", AgentID: "agent-1"}
 
 // newDir is an empty directory only its owner may write.
 func newDir(t *testing.T) string {

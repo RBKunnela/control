@@ -101,7 +101,8 @@ as the list stands under its lock, if:
 
 - the finding is `DETERMINISTIC` and `CONFIRMED`; a suspected, indeterminate
   or model's finding stops nothing, and no setting changes that;
-- its run is an opened run of its tenant, open and unexpired, a child included;
+- its run is an opened run of its tenant and project, open and unexpired, a
+  child included;
 - the route permits it: its tenant, procedure and rule are a rule's.
 
 A finding the list names in any line writes nothing again, so a lift holds:
@@ -155,8 +156,8 @@ decision point is asked, in this order of the plane's causes: `PAUSED`,
 `doctor` reads the route, the floor and the list as a start would, takes no
 lock and leaves the floor as it was; what the start refuses fails. It prints
 the route's id, serial and digest, the floor, the list's id, state and age,
-the count of active stops and the first 64 of them, each of those naming a run
-the runs directory does not hold, and each rule whose lifetime ends a stop
+the count of active stops and the first 64 of them, the stops among them naming
+no run of the plane's project, and each rule whose lifetime ends a stop
 before its run can end; a listed stop whose run's record cannot be read leaves it unknown. `/healthz` answers the same,
 rule lifetimes apart, under `stops`, with the unknown state's cause, the
 list's use of its bounds and its reads; an unknown state answers `503`, and a list past nine

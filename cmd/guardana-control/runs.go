@@ -19,7 +19,7 @@ const (
 	runsOpenName  = "runs open"
 	runsCloseName = "runs close"
 	runsListName  = "runs list"
-	runsOpenForm  = "--tenant --principal-type --principal --agent --ttl [--parent] <dir>"
+	runsOpenForm  = "--project --tenant --principal-type --principal --agent\n      --ttl [--parent] <dir>"
 	runsCloseForm = "<dir> <run-id>"
 )
 
@@ -53,17 +53,18 @@ type openFlagValues struct {
 // requiredOpenFlags are the flags runs open refuses to run without. An empty
 // value given is not a missing flag: internal/runs refuses it as the identity
 // it is.
-var requiredOpenFlags = [...]string{"tenant", "principal-type", "principal", "agent", "ttl"}
+var requiredOpenFlags = [...]string{"project", "tenant", "principal-type", "principal", "agent", "ttl"}
 
 func runsOpenFlags(command string, out io.Writer) (*flag.FlagSet, *openFlagValues) {
 	flags := commandFlags(command, out)
 	var v openFlagValues
+	flags.StringVar(&v.who.ProjectID, "project", "", "the project whose planes the token resolves on: their project_id")
 	flags.StringVar(&v.who.TenantID, "tenant", "", "the tenant the run is for")
 	flags.StringVar(&v.who.PrincipalType, "principal-type", "", "the type of the principal the run acts for")
 	flags.StringVar(&v.who.PrincipalID, "principal", "", "the principal the run acts for")
 	flags.StringVar(&v.who.AgentID, "agent", "", "the agent that presents the token")
 	flags.DurationVar(&v.ttl, "ttl", 0, "how long the run lives, from one minute to 720 hours")
-	flags.StringVar(&v.parent, "parent", "", "the open run of the same tenant to open this one under")
+	flags.StringVar(&v.parent, "parent", "", "the open run of the same project and tenant to open this one under")
 	return flags, &v
 }
 
@@ -186,8 +187,8 @@ func printRuns(admin *runs.Admin, stdout, stderr io.Writer) int {
 	now := time.Now()
 	var b strings.Builder
 	for _, r := range l.Records {
-		fmt.Fprintf(&b, "%s %s root %s tenant_id %s principal_type %s principal_id %s agent_id %s opened_at %s expires_at %s\n",
-			oneLine(r.ID), runState(r, now), oneLine(r.Root), oneLine(r.Who.TenantID), oneLine(r.Who.PrincipalType),
+		fmt.Fprintf(&b, "%s %s root %s project_id %s tenant_id %s principal_type %s principal_id %s agent_id %s opened_at %s expires_at %s\n",
+			oneLine(r.ID), runState(r, now), oneLine(r.Root), oneLine(r.Who.ProjectID), oneLine(r.Who.TenantID), oneLine(r.Who.PrincipalType),
 			oneLine(r.Who.PrincipalID), oneLine(r.Who.AgentID), stampOf(r.OpenedAt), stampOf(r.ExpiresAt))
 	}
 	if len(l.Records) == 0 {

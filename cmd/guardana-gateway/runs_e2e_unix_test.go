@@ -5,6 +5,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"os"
@@ -110,6 +111,109 @@ func TestARunsPlaneRefusesATokenThatDoesNotResolveAtTheRequest(t *testing.T) {
 	}
 	if ran := rp.up.count(toolSendMail); ran != 1 {
 		t.Errorf("the upstream ran send_mail %d time(s), want 1", ran)
+	}
+}
+
+// TestARunOfAnotherProjectIsRefusedOnASharedDirectory: planes of two
+// projects share one runs directory and one listener identity. A token of
+// one project's run is answered 401 on the other's plane, counted as another
+// identity, and leaves nothing in that plane's trail; each plane runs a call
+// under its own project's run.
+func TestARunOfAnotherProjectIsRefusedOnASharedDirectory(t *testing.T) {
+	orders := newRunsPlane(t, "stateless_http")
+	billing := newRunsPlaneOver(t, "stateless_http", "billing", orders.runs)
+	ordersRun, billingRun := orders.open(), billing.open()
+	planes := map[*runsPlane]*servingPlane{orders: orders.start(), billing: billing.start()}
+
+	for _, c := range []struct {
+		name    string
+		on      *runsPlane
+		foreign openedRun
+		own     openedRun
+	}{
+		{"an orders run on the billing plane", billing, ordersRun, billingRun},
+		{"a billing run on the orders plane", orders, billingRun, ordersRun},
+	} {
+		plane := planes[c.on]
+		status, challenge := postCall(t, plane.listen, http.Header{adaptermcp.RunTokenHeader: {c.foreign.token}})
+		if status != http.StatusUnauthorized || challenge != adaptermcp.RunTokenHeader {
+			t.Errorf("%s: answered %d with WWW-Authenticate %q, want 401 with %q", c.name, status, challenge, adaptermcp.RunTokenHeader)
+		}
+		runs, _ := runsHealth(t, plane.health)
+		expectCounts(t, refusedAt(t, runs, "refused_at_request"),
+			map[string]float64{"missing": 0, "malformed": 0, "unknown": 0, "identity": 1, "closed": 0, "expired": 0, "unreadable": 0})
+
+		expectRan(t, c.name+": the plane's own run", callTool(t, agentUnder(t, plane.listen, c.own.token), toolSendMail))
+		trails := c.on.settled(1)
+		for _, trail := range trails {
+			for _, e := range trail {
+				if e.GetRunId() != c.own.id {
+					t.Errorf("%s: the trail holds %s of run %q; only %s was admitted", c.name, e.GetKind(), e.GetRunId(), c.own.id)
+				}
+			}
+		}
+		if len(trails) != 1 {
+			t.Errorf("%s: the trail holds %d request(s), want the own run's one", c.name, len(trails))
+		}
+		if ran := c.on.up.count(toolSendMail); ran != 1 {
+			t.Errorf("%s: the upstream ran send_mail %d time(s), want the own run's one", c.name, ran)
+		}
+	}
+}
+
+// TestARecordOfMajorOneResolvesOnNoPlane: a run record of major 1, which
+// names no project, is refused as unreadable at the request, and nothing of
+// it reaches the trail or the upstream.
+func TestARecordOfMajorOneResolvesOnNoPlane(t *testing.T) {
+	rp := newRunsPlane(t, "stateless_http")
+	old, good := rp.open(), rp.open()
+	asMajorOne(t, rp.runs, old.id)
+	plane := rp.start()
+
+	status, challenge := postCall(t, plane.listen, http.Header{adaptermcp.RunTokenHeader: {old.token}})
+	if status != http.StatusUnauthorized || challenge != adaptermcp.RunTokenHeader {
+		t.Errorf("a major-1 run's token: answered %d with WWW-Authenticate %q, want 401 with %q", status, challenge, adaptermcp.RunTokenHeader)
+	}
+	runs, _ := runsHealth(t, plane.health)
+	expectCounts(t, refusedAt(t, runs, "refused_at_request"),
+		map[string]float64{"missing": 0, "malformed": 0, "unknown": 0, "identity": 0, "closed": 0, "expired": 0, "unreadable": 1})
+	expectRan(t, "a call under a run of major 2", callTool(t, agentUnder(t, plane.listen, good.token), toolSendMail))
+	for _, trail := range rp.settled(1) {
+		for _, e := range trail {
+			if e.GetRunId() != good.id {
+				t.Errorf("the trail holds %s of run %q; only %s was admitted", e.GetKind(), e.GetRunId(), good.id)
+			}
+		}
+	}
+	if ran := rp.up.count(toolSendMail); ran != 1 {
+		t.Errorf("the upstream ran send_mail %d time(s), want 1", ran)
+	}
+}
+
+// asMajorOne rewrites a run's record as a release that wrote major 1 left
+// it: no project, and that version.
+func asMajorOne(t *testing.T, dir, id string) {
+	t.Helper()
+	path := filepath.Join(dir, id+".run.json")
+	raw, err := os.ReadFile(path) //nolint:gosec // G304: a record under the test's own directory
+	if err != nil {
+		t.Fatalf("reading the record: %v", err)
+	}
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatalf("decoding the record: %v", err)
+	}
+	if _, ok := m["project_id"]; !ok {
+		t.Fatalf("the record holds no project_id to remove: %s", raw)
+	}
+	delete(m, "project_id")
+	m["schema_version"] = json.RawMessage(`"1.0"`)
+	out, err := json.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, out, 0o600); err != nil {
+		t.Fatalf("writing the record: %v", err)
 	}
 }
 
@@ -286,12 +390,15 @@ func (rp *runsPlane) startRefused(tokenFile string) (int, string) {
 // whose token its file holds; a second process with the same token reaches
 // the state the first left, while another run's process starts clean. Each
 // process holds the spool alone, so one stops before the next starts. A
-// token file another user could read and a closed run's token each refuse
-// the start.
+// token file another user could read, a closed run's token, a token of
+// another project's run in the same directory and a record of major 1 each
+// refuse the start.
 func TestAStdioPlaneServesTheRunItsTokenFileNames(t *testing.T) {
 	rp := newRunsPlane(t, "stdio")
-	tainted, clean, closed := rp.open(), rp.open(), rp.open()
+	tainted, clean, closed, old := rp.open(), rp.open(), rp.open(), rp.open()
 	rp.closeRun(closed.id)
+	asMajorOne(t, rp.runs, old.id)
+	foreign := rp.open("--project", "billing")
 	tokens := t.TempDir()
 	taintedFile := writeToken(t, tokens, "tainted.token", tainted.token, 0o600)
 
@@ -313,13 +420,15 @@ func TestAStdioPlaneServesTheRunItsTokenFileNames(t *testing.T) {
 	refusals := []struct{ name, file, says string }{
 		{"a token file others can read", writeToken(t, tokens, "shared.token", clean.token, 0o644), "--run-token-file: files: the mode gives access the caller forbids"},
 		{"a closed run's token", writeToken(t, tokens, "closed.token", closed.token, 0o600), "--run-token-file: run refused: closed"},
+		{"another project's run", writeToken(t, tokens, "foreign.token", foreign.token, 0o600), "--run-token-file: run refused: identity"},
+		{"a record of major 1", writeToken(t, tokens, "old.token", old.token, 0o600), "one of major 1 names no project: open the run again"},
 	}
 	for _, c := range refusals {
 		status, out := rp.startRefused(c.file)
 		if status != exitFail || !strings.Contains(out, c.says) {
 			t.Errorf("%s: exit %d, output %q; want 1 naming %s", c.name, status, out, c.says)
 		}
-		if strings.Contains(out, clean.token) || strings.Contains(out, closed.token) {
+		if strings.Contains(out, clean.token) || strings.Contains(out, closed.token) || strings.Contains(out, foreign.token) || strings.Contains(out, old.token) {
 			t.Errorf("%s: the refusal repeats the token: %q", c.name, out)
 		}
 	}
@@ -340,7 +449,7 @@ func TestDoctorSaysWhereRunsComeFrom(t *testing.T) {
 	if err := os.Mkdir(dir, 0o700); err != nil {
 		t.Fatalf("making the runs directory: %v", err)
 	}
-	if raw, err := runBinary(controlBin, "runs", "open", "--tenant", "acme", "--principal-type", "service",
+	if raw, err := runBinary(controlBin, "runs", "open", "--project", "orders", "--tenant", "acme", "--principal-type", "service",
 		"--principal", "agent-runner", "--agent", "orders-assistant", "--ttl", "1h", dir); err != nil {
 		t.Fatalf("runs open: %v\n%s", err, raw)
 	}

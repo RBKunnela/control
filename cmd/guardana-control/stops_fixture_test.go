@@ -40,7 +40,7 @@ const stopRouteDoc = `{"kind":"reaction-route/v1alpha1","route_id":"refund-stops
 	`"rule_id":"STEP_OUTSIDE_PROCEDURE","rule_version":"1"}]}`
 
 // otherTenant opens the run of a tenant the route does not name.
-var otherTenant = runs.Identity{TenantID: "globex", PrincipalType: "user", PrincipalID: "bob", AgentID: "planner"}
+var otherTenant = runs.Identity{ProjectID: "orders", TenantID: "globex", PrincipalType: "user", PrincipalID: "bob", AgentID: "planner"}
 
 // seeded is a key whose seed is one byte repeated, derived at run time so
 // no key text is in the tree.

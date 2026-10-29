@@ -20,7 +20,7 @@ open_group() {
   settings_file="${work}/settings/${group}.json"
   mkdir -p "${proj}" "${work}/settings" "${work}/state" "${cases}/${group}"
   mkdir -m 700 "${state}"
-  opened="$("${bin}/${control}" runs open --tenant local --principal-type service --principal operator \
+  opened="$("${bin}/${control}" runs open --project hooks --tenant local --principal-type service --principal operator \
     --agent coder --ttl 2h "${plane}/runs")" || die "runs open failed: ${opened}"
   token="$(sed -n 's/^token: //p' <<<"${opened}")"
   run_id="$(sed -n 's/^run_id: //p' <<<"${opened}")"

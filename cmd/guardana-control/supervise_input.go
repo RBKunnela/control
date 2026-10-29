@@ -45,7 +45,8 @@ func readRun(dir, id string, mode supervise.Children) (supervise.Run, []supervis
 	}
 	tree := make([]supervise.Run, 0, len(recs))
 	for _, r := range recs {
-		tree = append(tree, supervise.Run{ID: r.ID, Tenant: r.Who.TenantID, Closed: r.Closed(), Parent: r.Parent})
+		tree = append(tree, supervise.Run{ID: r.ID, Tenant: r.Who.TenantID, Project: r.Who.ProjectID,
+			Closed: r.Closed(), Parent: r.Parent})
 	}
 	if mode == supervise.ChildrenUnstated {
 		return tree[0], nil, nil

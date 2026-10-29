@@ -1500,11 +1500,13 @@ the root whose state a call was decided under. <code>experimental</code>, in
 <code>internal/runs/</code> (<a href="/docs/adr/0034-a-run-the-operator-opens-has-an-identity-of-its-own">ADR-0034</a>).
 Only <code>guardana-control runs</code> writes a record, and a plane writes only a root's
 state.</p>
-<p>Both files are one JSON object of <code>schema_version</code> major <code>1</code>. Every key is
-required, none has a default, a key given twice or one this build cannot name
-is refused, and another major is refused, as is a string that is not valid
-UTF-8 or holds an unpaired surrogate escape. Times are RFC 3339 in UTC. A file
-is always replaced whole, never edited in place.</p>
+<p>Both files are one JSON object, a record of <code>schema_version</code> major <code>2</code> and a
+state of major <code>1</code>. Every key is required, none has a default, a key given
+twice or one this build cannot name is refused, and another major is refused,
+as is a string that is not valid UTF-8 or holds an unpaired surrogate escape.
+A record of major <code>1</code> names no project and is refused, never read as any
+project's. Times are RFC 3339 in UTC. A file is always replaced whole, never
+edited in place.</p>
 <table>
 <thead>
 <tr>
@@ -1515,15 +1517,19 @@ is always replaced whole, never edited in place.</p>
 <tbody>
 <tr>
 <td><code>schema_version</code></td>
-<td><code>1.0</code></td>
+<td><code>2.0</code></td>
 </tr>
 <tr>
 <td><code>run_id</code></td>
 <td><code>run-</code> and 32 lower-case hex digits; the file's own name</td>
 </tr>
 <tr>
+<td><code>project_id</code></td>
+<td>the project whose planes the run's token resolves on: a plane's own <code>project_id</code>, never a listener's</td>
+</tr>
+<tr>
 <td><code>tenant_id</code>, <code>principal_type</code>, <code>principal_id</code>, <code>agent_id</code></td>
-<td>who the run is for; a token resolves only for this identity</td>
+<td>who the run is for; a token resolves only for this identity and the project</td>
 </tr>
 <tr>
 <td><code>root</code></td>

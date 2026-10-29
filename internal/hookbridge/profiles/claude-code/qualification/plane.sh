@@ -123,7 +123,7 @@ EOF
 
 # runs open makes an empty directory a runs directory, which the plane
 # needs before it starts; this first run is never used.
-"${bin}/${control}" runs open --tenant local --principal-type service --principal operator \
+"${bin}/${control}" runs open --project hooks --tenant local --principal-type service --principal operator \
   --agent coder --ttl 1m "${plane}/runs" >/dev/null || die "the runs directory could not be made"
 
 say "the collector and the plane"

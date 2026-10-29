@@ -13,9 +13,13 @@ import (
 	"github.com/guardana/control/internal/policy/strictjson"
 )
 
-// SchemaVersion is the version this build writes into every file. A reader
-// takes any minor of major 1 and refuses another major.
+// SchemaVersion is the version this build writes into the marker and into a
+// root's state. A reader takes any minor of major 1 and refuses another major.
 const SchemaVersion = "1.0"
+
+// RecordVersion is the version this build writes into a run's record. A
+// reader takes any minor of major 2 and refuses another major.
+const RecordVersion = "2.0"
 
 // fields reads raw as exactly one JSON object holding each of keys once and
 // nothing else. Keys are matched exactly: encoding/json would take a key in
@@ -105,6 +109,17 @@ func boolField(f map[string]json.RawMessage, key string) (bool, error) {
 func checkSchemaVersion(v string) error {
 	if !strictjson.IsVersion(v, "1") {
 		return fmt.Errorf("%w: %q", ErrSchemaVersion, clip(v))
+	}
+	return nil
+}
+
+// checkRecordVersion refuses a record whose major this build does not read.
+// A record of major 1 names no project, so reading it would hand its run to
+// whichever project asked.
+func checkRecordVersion(v string) error {
+	if !strictjson.IsVersion(v, "2") {
+		return fmt.Errorf("%w: %q; a record is read at major 2, and one of major 1 names no project: open the run again",
+			ErrSchemaVersion, clip(v))
 	}
 	return nil
 }

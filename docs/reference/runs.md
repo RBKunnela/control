@@ -38,19 +38,21 @@ a record.
 ## runs open
 
 ```
-guardana-control runs open --tenant acme --principal-type service --principal agent-runner --agent orders-assistant --ttl 8h <dir>
+guardana-control runs open --project orders --tenant acme --principal-type service --principal agent-runner --agent orders-assistant --ttl 8h <dir>
 ```
 
-Every flag but `--parent` is required. `--tenant`, `--principal-type`,
-`--principal` and `--agent` must be what the plane's listener resolves:
-`listener.principal.tenant_id`, or else `tenant_id`, `listener.principal.type`,
-`listener.principal.id` and `listener.agent.id`. A token presented for any
-other identity is refused. `--ttl` is a duration from `1m` to `720h`, with no
+Every flag but `--parent` is required. `--project` must be the plane's
+`project_id`, and `--tenant`, `--principal-type`, `--principal` and `--agent`
+what its listener resolves: `listener.principal.tenant_id`, or else
+`tenant_id`, `listener.principal.type`, `listener.principal.id` and
+`listener.agent.id`. A token presented for any other identity is refused, so
+planes of two projects that share a directory and a listener identity never
+serve each other's runs. `--ttl` is a duration from `1m` to `720h`, with no
 default.
 
-`--parent <run id>` opens the run under an open run of the same tenant. The
-two then share the parent's root and its flow state, because data moves
-between a parent and the runs it spawned in ways the plane does not see.
+`--parent <run id>` opens the run under an open run of the same project and
+tenant. The two then share the parent's root and its flow state, because data
+moves between a parent and the runs it spawned in ways the plane does not see.
 A child ends no later than its parent: a `--ttl` that would pass the parent's
 `expires_at` exits 1 naming both times. Closing a parent closes none of its
 children.
@@ -78,7 +80,7 @@ a stop from a confirmed finding refuses the run's later calls `RUN_STOPPED`
 until it expires or is lifted ([reaction.md](reaction.md)).
 
 `runs list <dir>` prints one run a line: its id, `open`, `closed` or `expired`
-by this machine's clock, then `root`, `tenant_id`, `principal_type`,
+by this machine's clock, then `root`, `project_id`, `tenant_id`, `principal_type`,
 `principal_id`, `agent_id`, `opened_at` and `expires_at`, each followed by its
 value. It prints no token and no hash. Past 1000 runs it stops, says so on
 stderr and exits 1.
@@ -111,3 +113,25 @@ run of the same principal and agent can read the session's stream or end it by
 its id.
 
 `dev` and `scenario run` serve local runs only; `dev` refuses `runs.dir`.
+
+## Runs an earlier release opened
+
+A record from before `project_id` is of `schema_version` `1.0` and names no
+project. It is never read as any project's run: its token is refused as
+`unreadable`, a stdio plane given it refuses the start saying the record names
+no project, `runs list` refuses the directory while it holds one, and
+`runs close`, `runs open --parent` and `react`, for a finding that names it,
+refuse that run.
+
+Move to a new, empty directory, never into the old one: while one `1.0`
+record is left in a directory, `runs list` refuses that whole directory, and
+so does `supervise` of every run under a procedure that reads children. Open
+each run again there with `runs open --project`, point `runs.dir` at it, and
+remove the old directory once no plane names it. No run lives past 720 hours,
+so nothing in the old directory outlives that.
+
+A reopened run starts with a clean flow state. An agent that took in
+untrusted or confidential data under the old run would carry it into the new
+one unmarked, and a flow rule would not see it. End each agent's task and
+start a new one under the new run; never hand a new token to an agent in the
+middle of a task.

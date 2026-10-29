@@ -154,7 +154,8 @@ usage:
   guardana-control pause add --provider <p> [--action <k> [--name <n>]]|--global [--reason <r>] <f>
   guardana-control pause remove <file> <id>
   guardana-control pause list <file>
-  guardana-control runs open --tenant --principal-type --principal --agent --ttl [--parent] <dir>
+  guardana-control runs open --project --tenant --principal-type --principal --agent
+      --ttl [--parent] <dir>
   guardana-control runs close <dir> <run-id>
   guardana-control runs list <dir>
   guardana-control observe import --source <file> --log <dir> <file>

@@ -86,6 +86,7 @@ const (
 	ErrFindingVerdict Error = "reaction: the finding's verdict is not CONFIRMED"
 	ErrRunUnknown     Error = "reaction: the finding names no opened run the runs directory holds"
 	ErrRunTenant      Error = "reaction: the finding's tenant is not its run's"
+	ErrRunProject     Error = "reaction: the finding's project is not its run's"
 	ErrRunClosed      Error = "reaction: the finding's run is closed"
 	ErrRunExpired     Error = "reaction: the finding's run is expired at the time given"
 	ErrRunExpiry      Error = "reaction: the finding's run holds no usable expiry"

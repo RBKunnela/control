@@ -31,7 +31,7 @@ func TestSuperviseRefusesASourceOfAnotherProject(t *testing.T) {
 	x := tr.export(t, tr.run, supBase, conformingCalls()...)
 	tr.closeRun(t, tr.run)
 	supRefused(t, tr.args("--evidence", x, "--source", elsewhere, "--log", log),
-		`source "agent-runtime" is of project "elsewhere", the run's events of project "orders"`)
+		`source "agent-runtime" is of project "elsewhere", the run's record of project "orders"`)
 	code, stdout, stderr := invoke(t, tr.args("--evidence", x, "--source", descriptor, "--log", log)...)
 	if code != exitFail || stderr != "" {
 		t.Fatalf("the run's own descriptor: exit %d, stderr %q, stdout\n%s\nwant 1", code, stderr, stdout)
@@ -53,6 +53,23 @@ func TestSuperviseRefusesASourceOfAnotherTenant(t *testing.T) {
 	tr.closeRun(t, tr.run)
 	supRefused(t, tr.args("--evidence", x, "--source", other, "--log", log),
 		`source "agent-runtime" is of tenant "tenant-b", the run of tenant "acme"`)
+}
+
+// TestSuperviseRefusesEvidenceOfAnotherProject: the run's record names
+// project billing and the export's events of the run name orders, so the
+// evidence is refused as a source of another tenant is, and nothing is
+// logged.
+func TestSuperviseRefusesEvidenceOfAnotherProject(t *testing.T) {
+	tr := newSupTree(t)
+	billing := who
+	billing.ProjectID = "billing"
+	tr.run = openRun(t, tr.runs, billing, "1h").runID
+	x := tr.export(t, tr.run, supBase, conformingCalls()...)
+	tr.closeRun(t, tr.run)
+	supRefused(t, tr.args("--evidence", x), `an event of the run is of project "orders", the run's record of project "billing"`)
+	if entries, err := os.ReadDir(tr.findings); err != nil || len(entries) != 0 {
+		t.Fatalf("findings directory holds %d entries, %v; want none", len(entries), err)
+	}
 }
 
 // descriptorAs writes descriptor with from replaced by to once, as name in

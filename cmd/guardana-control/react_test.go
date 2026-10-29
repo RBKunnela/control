@@ -107,6 +107,9 @@ func TestAStopNeverOutlivesItsRun(t *testing.T) {
 func TestReactWritesNothingForAFindingThatMayNotStop(t *testing.T) {
 	tr := newStopTree(t)
 	alienChild := openRun(t, tr.runs, otherTenant, "30m", "--parent", tr.alien).runID
+	billing := who
+	billing.ProjectID = "billing"
+	otherProject := openRun(t, tr.runs, billing, "1h").runID
 	now := time.Now()
 	with := func(f *findingv1alpha1.FindingRecord, change func(*findingv1alpha1.FindingRecord)) *findingv1alpha1.FindingRecord {
 		change(f)
@@ -126,6 +129,8 @@ func TestReactWritesNothingForAFindingThatMayNotStop(t *testing.T) {
 		{"another tenant's run", finding(1, tr.alien, denial, confirmed), now},
 		{"another tenant's child run", finding(1, alienChild, denial, confirmed), now},
 		{"another tenant", with(finding(1, tr.alien, denial, confirmed), func(f *findingv1alpha1.FindingRecord) { f.TenantId = "globex" }), now},
+		{"another project's run", finding(1, otherProject, denial, confirmed), now},
+		{"another project", with(finding(1, tr.open, denial, confirmed), func(f *findingv1alpha1.FindingRecord) { f.ProjectId = "billing" }), now},
 		{"a procedure digest the route does not list", with(finding(1, tr.open, denial, confirmed), func(f *findingv1alpha1.FindingRecord) {
 			f.Procedure.Digest = strings.Repeat("e", 64)
 		}), now},

@@ -1249,17 +1249,20 @@ the root whose state a call was decided under. `experimental`, in
 Only `guardana-control runs` writes a record, and a plane writes only a root's
 state.
 
-Both files are one JSON object of `schema_version` major `1`. Every key is
-required, none has a default, a key given twice or one this build cannot name
-is refused, and another major is refused, as is a string that is not valid
-UTF-8 or holds an unpaired surrogate escape. Times are RFC 3339 in UTC. A file
-is always replaced whole, never edited in place.
+Both files are one JSON object, a record of `schema_version` major `2` and a
+state of major `1`. Every key is required, none has a default, a key given
+twice or one this build cannot name is refused, and another major is refused,
+as is a string that is not valid UTF-8 or holds an unpaired surrogate escape.
+A record of major `1` names no project and is refused, never read as any
+project's. Times are RFC 3339 in UTC. A file is always replaced whole, never
+edited in place.
 
 | `<id>.run.json` key | Meaning |
 | --- | --- |
-| `schema_version` | `1.0` |
+| `schema_version` | `2.0` |
 | `run_id` | `run-` and 32 lower-case hex digits; the file's own name |
-| `tenant_id`, `principal_type`, `principal_id`, `agent_id` | who the run is for; a token resolves only for this identity |
+| `project_id` | the project whose planes the run's token resolves on: a plane's own `project_id`, never a listener's |
+| `tenant_id`, `principal_type`, `principal_id`, `agent_id` | who the run is for; a token resolves only for this identity and the project |
 | `root` | the run whose state this run shares: its own id, or its parent's root |
 | `parent` | the run it was opened under, or empty |
 | `opened_at`, `expires_at` | its lifetime, at least one minute and at most 720 hours |

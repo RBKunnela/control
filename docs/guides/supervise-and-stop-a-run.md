@@ -135,7 +135,7 @@ Every call needs a run the operator opened ([runs.md](../reference/runs.md)).
 Open one for the agent and a second to show that a stop stays in its run:
 
 ```
-$ guardana-control runs open --tenant acme --principal-type service --principal agent-runner --agent refund-assistant --ttl 1h state/runs
+$ guardana-control runs open --project refunds --tenant acme --principal-type service --principal agent-runner --agent refund-assistant --ttl 1h state/runs
 run_id: run-9d9ad942e8427a0e36f6abd3fa8ced08
 …
 token: run-9d9ad942e8427a0e36f6abd3fa8ced08.2sz2oVvp-yKBaXtfq47Gb133ucR_keAinwKSnlBvQkQ

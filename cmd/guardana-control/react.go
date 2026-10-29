@@ -202,7 +202,8 @@ var errNotStopping = errors.New("the finding does not stop at the clock read und
 // facts and the route permits it.
 func (r *reactor) stopping(fr *findingv1alpha1.FindingRecord, run reaction.RunFacts, now time.Time) (reaction.StopClaim, bool) {
 	f := fr.GetFinding()
-	facts := reaction.FindingFacts{Source: f.GetSource(), Verdict: f.GetVerdict(), TenantID: fr.GetTenantId(), RunID: f.GetRunId()}
+	facts := reaction.FindingFacts{Source: f.GetSource(), Verdict: f.GetVerdict(), TenantID: fr.GetTenantId(),
+		ProjectID: fr.GetProjectId(), RunID: f.GetRunId()}
 	if reaction.Eligible(facts, run, now) != nil {
 		return reaction.StopClaim{}, false
 	}
@@ -223,7 +224,7 @@ func (r *reactor) run(id string) (reaction.RunFacts, error) {
 	case err != nil:
 		return reaction.RunFacts{}, fmt.Errorf("--runs: run %s: %w", oneLine(id), err)
 	}
-	facts := reaction.RunFacts{RunID: rec.ID, TenantID: rec.Who.TenantID,
+	facts := reaction.RunFacts{RunID: rec.ID, TenantID: rec.Who.TenantID, ProjectID: rec.Who.ProjectID,
 		Open: rec.ID != "" && !rec.Closed(), ExpiresAt: rec.ExpiresAt}
 	r.runFacts[id] = facts
 	return facts, nil

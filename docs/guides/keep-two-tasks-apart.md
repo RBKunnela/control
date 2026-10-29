@@ -41,13 +41,13 @@ first `runs open` makes it a runs directory; a plane refuses it before that.
 ### 2. Open a run per task
 
 ```
-guardana-control runs open --tenant acme --principal-type service \
+guardana-control runs open --project orders --tenant acme --principal-type service \
   --principal agent-runner --agent orders-assistant --ttl 8h /var/lib/guardana/runs
 ```
 
-The identity is your listener's: `listener.principal.tenant_id`, or
-`tenant_id` when it is unset, `listener.principal.type`,
-`listener.principal.id` and `listener.agent.id`. The command prints `run_id`,
+The project is your plane's `project_id`, and the identity is your
+listener's: `listener.principal.tenant_id`, or `tenant_id` when it is unset,
+`listener.principal.type`, `listener.principal.id` and `listener.agent.id`. The command prints `run_id`,
 `root`, `expires_at` and `token`; the token is printed this once. A task that
 spawns another opens the child with `--parent <run id>`, so the two share what
 they take in; the child expires no later than its parent, and closing the

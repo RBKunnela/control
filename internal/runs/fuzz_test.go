@@ -36,7 +36,7 @@ func withoutEachKey(t testing.TB, raw []byte) [][]byte {
 func FuzzDecodeRecord(f *testing.F) {
 	open := strings.Replace(literalRecord, `"2026-03-01T12:30:00Z"`, `""`, 1)
 	root := strings.Replace(strings.Replace(open, `"root":"`+literalParent, `"root":"`+literalID, 1), `"parent":"`+literalParent, `"parent":"`, 1)
-	for _, seed := range []string{literalRecord, open, root, `{}`, `null`, `{"schema_version":"1.0"}`} {
+	for _, seed := range []string{literalRecord, literalRecordV1, open, root, `{}`, `null`, `{"schema_version":"2.0"}`} {
 		f.Add([]byte(seed))
 	}
 	for _, s := range withoutEachKey(f, []byte(literalRecord)) {

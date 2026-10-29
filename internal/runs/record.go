@@ -2,6 +2,7 @@ package runs
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/guardana/control/pkg/contract"
@@ -18,15 +19,17 @@ const (
 // under the bound every read holds a file to.
 const MaxIdentityBytes = 256
 
-// Identity is who a run is for: a tenant, a principal and an agent.
+// Identity is who a run is for: a project, a tenant, a principal and an
+// agent.
 type Identity struct {
-	TenantID, PrincipalType, PrincipalID, AgentID string
+	ProjectID, TenantID, PrincipalType, PrincipalID, AgentID string
 }
 
 // check refuses an identity with an empty field, one over MaxIdentityBytes, or
 // one no contract identifier may hold.
 func (w Identity) check() error {
 	for _, f := range [...]struct{ name, v string }{
+		{"project_id", w.ProjectID},
 		{"tenant_id", w.TenantID},
 		{"principal_type", w.PrincipalType},
 		{"principal_id", w.PrincipalID},
@@ -133,6 +136,7 @@ func checkTTL(ttl time.Duration) error {
 type recordFile struct {
 	SchemaVersion string `json:"schema_version"`
 	RunID         string `json:"run_id"`
+	ProjectID     string `json:"project_id"`
 	TenantID      string `json:"tenant_id"`
 	PrincipalType string `json:"principal_type"`
 	PrincipalID   string `json:"principal_id"`
@@ -146,9 +150,12 @@ type recordFile struct {
 }
 
 var recordKeys = []string{
-	"schema_version", "run_id", "tenant_id", "principal_type", "principal_id", "agent_id",
+	"schema_version", "run_id", "project_id", "tenant_id", "principal_type", "principal_id", "agent_id",
 	"root", "parent", "opened_at", "expires_at", "closed_at", "secret_sha256",
 }
+
+// recordKeysV1 is what a record of major 1 holds: no project.
+var recordKeysV1 = slices.DeleteFunc(slices.Clone(recordKeys), func(k string) bool { return k == "project_id" })
 
 // encodeRecord is a method of the operator's handle and of nothing else, so
 // a binary that never names Admin holds no code that writes a record.
@@ -161,8 +168,9 @@ func (*Admin) encodeRecord(r Record) ([]byte, error) {
 		closed = formatTime(r.ClosedAt)
 	}
 	return encode(recordFile{
-		SchemaVersion: SchemaVersion,
+		SchemaVersion: RecordVersion,
 		RunID:         r.ID,
+		ProjectID:     r.Who.ProjectID,
 		TenantID:      r.Who.TenantID,
 		PrincipalType: r.Who.PrincipalType,
 		PrincipalID:   r.Who.PrincipalID,
@@ -176,8 +184,30 @@ func (*Admin) encodeRecord(r Record) ([]byte, error) {
 	})
 }
 
+// refuseWithoutProject refuses a record holding the keys of major 1, which
+// lack project_id, by its version where that is refused, so the operator
+// reads why rather than that a field is missing. It is nil for any other
+// file.
+func refuseWithoutProject(raw []byte) error {
+	old, unlike := fields(raw, recordKeysV1)
+	if unlike != nil {
+		return nil //nolint:nilerr // a file without major 1's keys is the full decoder's to judge
+	}
+	v, err := stringField(old, "schema_version")
+	if err != nil {
+		return err
+	}
+	if err := checkRecordVersion(v); err != nil {
+		return err
+	}
+	return fmt.Errorf("%w: %q", ErrMissingField, "project_id")
+}
+
 // decodeRecord reads one record and holds it to check.
 func decodeRecord(raw []byte) (Record, error) {
+	if err := refuseWithoutProject(raw); err != nil {
+		return Record{}, err
+	}
 	f, err := fields(raw, recordKeys)
 	if err != nil {
 		return Record{}, err
@@ -188,12 +218,12 @@ func decodeRecord(raw []byte) (Record, error) {
 			return Record{}, err
 		}
 	}
-	if err := checkSchemaVersion(s["schema_version"]); err != nil {
+	if err := checkRecordVersion(s["schema_version"]); err != nil {
 		return Record{}, err
 	}
 	r := Record{
 		ID:           s["run_id"],
-		Who:          Identity{TenantID: s["tenant_id"], PrincipalType: s["principal_type"], PrincipalID: s["principal_id"], AgentID: s["agent_id"]},
+		Who:          Identity{ProjectID: s["project_id"], TenantID: s["tenant_id"], PrincipalType: s["principal_type"], PrincipalID: s["principal_id"], AgentID: s["agent_id"]},
 		Root:         s["root"],
 		Parent:       s["parent"],
 		SecretSHA256: s["secret_sha256"],

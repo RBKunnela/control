@@ -113,10 +113,16 @@ func versionSpecs() map[string]versionSpec {
 				{"internal/hookbridge/store.go#parseEntry/major", readsMajor},
 			},
 		},
-		"Runs directory": {
+		"Runs directory marker and root state": {
 			cites: []versionCite{
 				{"internal/runs/strict.go#SchemaVersion", writes},
 				{"internal/runs/strict.go#checkSchemaVersion/major", readsMajor},
+			},
+		},
+		"Run record": {
+			cites: []versionCite{
+				{"internal/runs/strict.go#RecordVersion", writes},
+				{"internal/runs/strict.go#checkRecordVersion/major", readsMajor},
 			},
 		},
 		"Enforcement API": {

@@ -276,7 +276,7 @@ func TestIndexedRetriesAgreeWithEveryPair(t *testing.T) {
 	seen := map[controlv1.FindingVerdict]int{}
 	for round := range 400 {
 		in := fuzzInput(t, &g, 6+g.pick(30))
-		rd := newRead(judged(in), "t")
+		rd := newRead(judged(in), "t", "")
 		if err := rd.takeEvents(in.Exports); err != nil {
 			t.Fatal(err)
 		}

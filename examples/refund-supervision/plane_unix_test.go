@@ -159,7 +159,7 @@ type openedRun struct{ id, token, expiresAt string }
 // openRun opens a run for the listener's identity.
 func (tr tree) openRun(t *testing.T) openedRun {
 	t.Helper()
-	v := values(must(t, tr.dir, tr.control, "runs", "open", "--tenant", tenant, "--principal-type", "service",
+	v := values(must(t, tr.dir, tr.control, "runs", "open", "--project", "refunds", "--tenant", tenant, "--principal-type", "service",
 		"--principal", principal, "--agent", agent, "--ttl", "1h", "state/runs"))
 	if !strings.HasPrefix(v["token"], v["run_id"]+".") || v["expires_at"] == "" {
 		t.Fatalf("runs open printed no run, token and expiry: %q", v)

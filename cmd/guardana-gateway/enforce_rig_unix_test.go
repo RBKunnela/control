@@ -133,7 +133,7 @@ func (tr enforceTree) openRun(t *testing.T) string {
 	}
 	defer func() { _ = admin.Close() }()
 	_, token, err := admin.Open(context.Background(), runs.OpenRequest{
-		Who: runs.Identity{TenantID: runsTenant, PrincipalType: "service", PrincipalID: runsPrincipal, AgentID: runsAgent},
+		Who: runs.Identity{ProjectID: runsProject, TenantID: runsTenant, PrincipalType: "service", PrincipalID: runsPrincipal, AgentID: runsAgent},
 		TTL: time.Hour, Now: time.Now(),
 	})
 	if err != nil {

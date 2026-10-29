@@ -26,7 +26,7 @@ func TestResolveReturnsTheRunItsTokenNames(t *testing.T) {
 	want := runs.Run{
 		ID:      id,
 		Root:    id,
-		Who:     runs.Identity{TenantID: "tenant-a", PrincipalType: "user", PrincipalID: "alice", AgentID: "agent-1"},
+		Who:     runs.Identity{ProjectID: "project-a", TenantID: "tenant-a", PrincipalType: "user", PrincipalID: "alice", AgentID: "agent-1"},
 		Expires: time.Date(2026, time.March, 1, 13, 0, 0, 0, time.UTC),
 	}
 	if got != want {
@@ -72,6 +72,10 @@ func TestResolveRefusesEachCauseInOrder(t *testing.T) {
 		{"wrong secret", id + "." + otherSecret, alice, at, runs.CauseUnknown},
 		{"wrong secret, other agent", id + "." + otherSecret, otherAgent, at, runs.CauseUnknown},
 		{"wrong secret, closed", idOf(t, closedToken) + "." + otherSecret, alice, at, runs.CauseUnknown},
+		{"wrong secret, other project", id + "." + otherSecret, with(func(w *runs.Identity) { w.ProjectID = "project-b" }), at, runs.CauseUnknown},
+		{"other project", token, with(func(w *runs.Identity) { w.ProjectID = "project-b" }), at, runs.CauseIdentity},
+		{"no project", token, with(func(w *runs.Identity) { w.ProjectID = "" }), at, runs.CauseIdentity},
+		{"closed, other project", closedToken, with(func(w *runs.Identity) { w.ProjectID = "project-b" }), at, runs.CauseIdentity},
 		{"other tenant", token, with(func(w *runs.Identity) { w.TenantID = "tenant-b" }), at, runs.CauseIdentity},
 		{"other principal type", token, with(func(w *runs.Identity) { w.PrincipalType = "service" }), at, runs.CauseIdentity},
 		{"other principal", token, with(func(w *runs.Identity) { w.PrincipalID = "bob" }), at, runs.CauseIdentity},
@@ -104,7 +108,14 @@ func TestResolveOfARecordThatDoesNotDecodeIsUnreadable(t *testing.T) {
 	cases := map[string]func(map[string]json.RawMessage){
 		"absent key":     func(m map[string]json.RawMessage) { delete(m, "closed_at") },
 		"unknown key":    func(m map[string]json.RawMessage) { m["note"] = json.RawMessage(`"x"`) },
-		"schema major 2": func(m map[string]json.RawMessage) { m["schema_version"] = json.RawMessage(`"2.0"`) },
+		"schema major 1": func(m map[string]json.RawMessage) { m["schema_version"] = json.RawMessage(`"1.0"`) },
+		"schema major 1, no project": func(m map[string]json.RawMessage) {
+			m["schema_version"] = json.RawMessage(`"1.0"`)
+			delete(m, "project_id")
+		},
+		"schema major 3": func(m map[string]json.RawMessage) { m["schema_version"] = json.RawMessage(`"3.0"`) },
+		"no project":     func(m map[string]json.RawMessage) { delete(m, "project_id") },
+		"empty project":  func(m map[string]json.RawMessage) { m["project_id"] = json.RawMessage(`""`) },
 		"null field":     func(m map[string]json.RawMessage) { m["closed_at"] = json.RawMessage(`null`) },
 		"another run id": func(m map[string]json.RawMessage) {
 			m["run_id"] = json.RawMessage(`"run-` + strings.Repeat("1", 32) + `"`)
@@ -121,6 +132,58 @@ func TestResolveOfARecordThatDoesNotDecodeIsUnreadable(t *testing.T) {
 				t.Fatalf("cause %q, want unreadable (err %v)", cause, err)
 			}
 		})
+	}
+}
+
+// Two runs of one tenant, principal and agent in one directory, opened for
+// two projects: each token resolves for its own project and is refused as
+// another identity for the other, whichever project asks first.
+func TestResolveHoldsARunToItsProject(t *testing.T) {
+	_, a, p := setup(t)
+	other := alice
+	other.ProjectID = "project-b"
+	_, tokenA := openUnder(t, a, "", alice)
+	_, tokenB := openUnder(t, a, "", other)
+	at := opened.Add(time.Minute)
+	for _, c := range []struct {
+		name, token string
+		who         runs.Identity
+		resolves    bool
+	}{
+		{"A's run for project B", tokenA, other, false},
+		{"A's run for project A", tokenA, alice, true},
+		{"B's run for project A", tokenB, alice, false},
+		{"B's run for project B", tokenB, other, true},
+	} {
+		run, err := p.Resolve(t.Context(), c.token, c.who, at)
+		switch {
+		case c.resolves && (err != nil || run.ID != idOf(t, c.token) || run.Who.ProjectID != c.who.ProjectID):
+			t.Errorf("%s: %+v, %v; want the run", c.name, run, err)
+		case !c.resolves && causeOf(t, err) != runs.CauseIdentity:
+			t.Errorf("%s: %v; want a refusal as another identity", c.name, err)
+		}
+	}
+}
+
+// A record of major 1 on disk resolves for nobody: refused as unreadable,
+// with its version named, for every project that could ask.
+func TestResolveOfARecordOfMajorOneIsUnreadableForEveryProject(t *testing.T) {
+	dir, a, p := setup(t)
+	_, token := openRoot(t, a)
+	rewrite(t, dir, idOf(t, token)+".run.json", func(m map[string]json.RawMessage) {
+		m["schema_version"] = json.RawMessage(`"1.0"`)
+		delete(m, "project_id")
+	})
+	for _, project := range []string{"project-a", "project-b", ""} {
+		who := alice
+		who.ProjectID = project
+		_, err := p.Resolve(t.Context(), token, who, opened)
+		if cause := causeOf(t, err); cause != runs.CauseUnreadable || !errors.Is(err, runs.ErrSchemaVersion) {
+			t.Errorf("project %q: cause %q, err %v; want unreadable and ErrSchemaVersion", project, cause, err)
+		}
+	}
+	if _, err := p.Lookup(t.Context(), idOf(t, token)); !errors.Is(err, runs.ErrSchemaVersion) {
+		t.Errorf("Lookup of a major-1 record: %v, want ErrSchemaVersion", err)
 	}
 }
 

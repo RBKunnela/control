@@ -35,7 +35,8 @@ version. [status.md](../status.md) is the inventory.
 | Hold journal (`schema_version`) | `1.0` | `1.x` | `experimental` | [approvals](../concepts/approvals-and-the-held-call.md#a-hold-the-plane-loses) |
 | Hook profile (`kind`) | — | `hook-profile/v1alpha1` | `experimental` | [runtime-profiles](../extending/runtime-profiles.md#the-profile) |
 | Hook bridge handles (`version`) | `1.0` | `1.x` | `experimental` | [runtime-profiles](../extending/runtime-profiles.md#what-the-bridge-does) |
-| Runs directory (`schema_version`) | `1.0` | `1.x` | `experimental` | [contracts.md](../contracts.md#the-runs-directory) |
+| Runs directory marker and root state (`schema_version`) | `1.0` | `1.x` | `experimental` | [contracts.md](../contracts.md#the-runs-directory) |
+| Run record (`schema_version`) | `2.0` | `2.x` | `experimental` | [contracts.md](../contracts.md#the-runs-directory) |
 | Observation records and log (`guardana.control.observe.v1alpha1`) | `0.1`, `0.2` | `0.1`, `0.2` | `experimental` | [observations.md](observations.md#the-log) |
 | Source descriptor (`schema_version`) | — | `0.1` | `experimental` | [observations.md](observations.md#the-source-descriptor) |
 | OpenTelemetry GenAI spans, imported | — | conventions `1.41.0`, OTLP `1.11.1` | `experimental` | [observations.md](observations.md#what-an-import-keeps) |
@@ -61,11 +62,14 @@ one quoted key per line, carries none either.
 
 ## Reading files an older release wrote
 
-- **Wire messages, the evidence export, the runs directory, the approvals
-  directory, the hold journal and the floor directories.** Any minor of
-  major 1 is read. A member the reader does not know is refused, so a file a
-  later minor extended is refused when that member arrives, never read with
-  it dropped.
+- **Wire messages, the evidence export, the runs directory's marker and
+  root states, the approvals directory, the hold journal and the floor
+  directories.** Any minor of major 1 is read. A member the reader does not
+  know is refused, so a file a later minor extended is refused when that
+  member arrives, never read with it dropped.
+- **Run record.** Any minor of major 2 is read. A record of major 1 names no
+  project, so it is refused, never read as any project's run: open the run
+  again ([runs.md](runs.md#runs-an-earlier-release-opened)).
 - **Policy document, scenario, reaction route, freshness statement and
   lift.** One exact `kind` is read; another is refused, never read as this
   one.

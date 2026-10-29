@@ -83,6 +83,8 @@ const (
 	ErrParentExpired Error = "runs: the parent run has expired"
 	// ErrParentTenant is a parent opened for another tenant.
 	ErrParentTenant Error = "runs: the parent run belongs to another tenant"
+	// ErrParentProject is a parent opened for another project.
+	ErrParentProject Error = "runs: the parent run belongs to another project"
 	// ErrParentOutlived is a run whose expiry would pass its parent's. An
 	// *OutlivesParentError carries it.
 	ErrParentOutlived Error = "runs: the run would outlive its parent"
@@ -101,6 +103,9 @@ const (
 	// ErrTreeTenant is a run of a tree opened for another tenant than its
 	// root, which only a writer of the directory can make.
 	ErrTreeTenant Error = "runs: a run of the tree belongs to another tenant"
+	// ErrTreeProject is a run of a tree opened for another project than its
+	// root, which only a writer of the directory can make.
+	ErrTreeProject Error = "runs: a run of the tree belongs to another project"
 	// ErrTreeBroken is a run whose chain of parents does not reach its
 	// tree's root within the tree.
 	ErrTreeBroken Error = "runs: a run's parents do not reach its root"
@@ -139,7 +144,8 @@ const (
 	// match the record's. The two are one cause, so a caller without the
 	// secret learns nothing about which ids exist.
 	CauseUnknown Cause = "unknown"
-	// CauseIdentity is a record for another tenant, principal or agent.
+	// CauseIdentity is a record for another project, tenant, principal or
+	// agent.
 	CauseIdentity Cause = "identity"
 	// CauseClosed is a run the operator closed.
 	CauseClosed Cause = "closed"

@@ -89,8 +89,8 @@ func (a *Admin) Close() error {
 // OpenRequest is a run the operator asks for.
 type OpenRequest struct {
 	Who Identity
-	// Parent is the open run of the same tenant this run is spawned under,
-	// or empty for a root run.
+	// Parent is the open run of the same project and tenant this run is
+	// spawned under, or empty for a root run.
 	Parent string
 	// TTL is how long the run lives, between MinTTL and MaxTTL.
 	TTL time.Duration
@@ -106,8 +106,9 @@ type OpenRequest struct {
 // child gets only its record and shares its root's state. Open refuses a zero
 // Now with ErrZeroTime, a lifetime out of bounds with ErrTTL, an identity
 // with ErrIdentity, a parent that does not exist, is closed, is expired at Now
-// or is another tenant's with the ErrParent sentinel saying which, and a run
-// that would expire after its parent with an *OutlivesParentError.
+// or is another tenant's or project's with the ErrParent sentinel saying
+// which, and a run that would expire after its parent with an
+// *OutlivesParentError.
 func (a *Admin) Open(ctx context.Context, req OpenRequest) (_ Record, _ string, err error) {
 	if err := req.check(); err != nil {
 		return Record{}, "", err
@@ -164,7 +165,7 @@ func (req OpenRequest) check() error {
 
 // rootFor is the root a new run shares: its own id with no parent, else its
 // parent's root once the parent is shown open, unexpired, the tenant's and
-// expiring no earlier than the new run would.
+// the project's, and expiring no earlier than the new run would.
 func (a *Admin) rootFor(id string, req OpenRequest) (string, error) {
 	if req.Parent == "" {
 		return id, nil
@@ -184,6 +185,8 @@ func (a *Admin) rootFor(id string, req OpenRequest) (string, error) {
 		return "", fmt.Errorf("%w: %s", ErrParentExpired, req.Parent)
 	case parent.Who.TenantID != req.Who.TenantID:
 		return "", fmt.Errorf("%w: %s", ErrParentTenant, req.Parent)
+	case parent.Who.ProjectID != req.Who.ProjectID:
+		return "", fmt.Errorf("%w: %s", ErrParentProject, req.Parent)
 	}
 	if expires := canonTime(req.Now).Add(req.TTL); expires.After(parent.ExpiresAt) {
 		return "", &OutlivesParentError{Parent: req.Parent, ExpiresAt: expires, ParentExpiresAt: parent.ExpiresAt}

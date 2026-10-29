@@ -210,9 +210,16 @@ version. <a href="/docs/status">status.md</a> is the inventory.</p>
 <td><a href="/docs/extending/runtime-profiles#what-the-bridge-does">runtime-profiles</a></td>
 </tr>
 <tr>
-<td>Runs directory (<code>schema_version</code>)</td>
+<td>Runs directory marker and root state (<code>schema_version</code>)</td>
 <td><code>1.0</code></td>
 <td><code>1.x</code></td>
+<td><code>experimental</code></td>
+<td><a href="/docs/contracts#the-runs-directory">contracts.md</a></td>
+</tr>
+<tr>
+<td>Run record (<code>schema_version</code>)</td>
+<td><code>2.0</code></td>
+<td><code>2.x</code></td>
 <td><code>experimental</code></td>
 <td><a href="/docs/contracts#the-runs-directory">contracts.md</a></td>
 </tr>
@@ -319,11 +326,14 @@ wrote is not promised readable. <code>notify</code>'s <code>--state</code> list 
 one quoted key per line, carries none either.</p>
 <h2 id="reading-files-an-older-release-wrote">Reading files an older release wrote</h2>
 <ul>
-<li><strong>Wire messages, the evidence export, the runs directory, the approvals
-directory, the hold journal and the floor directories.</strong> Any minor of
-major 1 is read. A member the reader does not know is refused, so a file a
-later minor extended is refused when that member arrives, never read with
-it dropped.</li>
+<li><strong>Wire messages, the evidence export, the runs directory's marker and
+root states, the approvals directory, the hold journal and the floor
+directories.</strong> Any minor of major 1 is read. A member the reader does not
+know is refused, so a file a later minor extended is refused when that
+member arrives, never read with it dropped.</li>
+<li><strong>Run record.</strong> Any minor of major 2 is read. A record of major 1 names no
+project, so it is refused, never read as any project's run: open the run
+again (<a href="/docs/reference/runs#runs-an-earlier-release-opened">runs.md</a>).</li>
 <li><strong>Policy document, scenario, reaction route, freshness statement and
 lift.</strong> One exact <code>kind</code> is read; another is refused, never read as this
 one.</li>

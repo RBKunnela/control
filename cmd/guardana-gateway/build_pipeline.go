@@ -43,7 +43,7 @@ func (p *plane) pipelineConfig(adapter gateway.Adapter, mode controlv1.Enforceme
 		AllowReadsUnrecorded: p.cfg.Evidence.OnUnwritable == gatewayconfig.UnwritableAllowReads,
 	}
 	if p.runsDir != nil {
-		c.Runs = runsDir{p.runsDir}
+		c.Runs = planeRuns(p.cfg, p.runsDir)
 	}
 	withDecisionPoint(&c, pdp, p.cfg.PDP.Timeout)
 	return c

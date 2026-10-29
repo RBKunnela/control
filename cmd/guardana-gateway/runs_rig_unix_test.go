@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -34,8 +35,10 @@ const runsDocument = `{"apiVersion":"agent-policy/v1alpha1",
       "when":{"destination":{"trustZone":["UNTRUSTED_EXTERNAL"]},"flow":{"toxicAtLeast":"CONFIDENTIAL"}}}
   ]}`
 
-// The identity every run of these cases is opened for: the listener's.
+// The identity every run of these cases is opened for: the listener's, and
+// the project of the plane newRunsPlane lays out.
 const (
+	runsProject   = "orders"
 	runsTenant    = "acme"
 	runsPrincipal = "agent-runner"
 	runsAgent     = "orders-assistant"
@@ -99,26 +102,37 @@ type runsPlane struct {
 	t                *testing.T
 	gateway, control string
 	dir, runs        string
+	project          string
 	config           string
 	up               *runsUpstream
 	collector        *acceptingCollector
 }
 
-// newRunsPlane lays out a plane whose listener is kind, with an empty runs
-// directory, and writes its configuration. Nothing starts.
+// newRunsPlane lays out a plane of runsProject whose listener is kind, with
+// an empty runs directory, and writes its configuration. Nothing starts.
 func newRunsPlane(t *testing.T, kind string) *runsPlane {
+	t.Helper()
+	return newRunsPlaneOver(t, kind, runsProject, "")
+}
+
+// newRunsPlaneOver lays out a plane of project over the runs directory runs,
+// or over an empty one of its own where runs is empty, with a spool, a
+// collector and an upstream of its own.
+func newRunsPlaneOver(t *testing.T, kind, project, runs string) *runsPlane {
 	t.Helper()
 	gatewayBin, controlBin := builtBinaries(t)
 	rp := &runsPlane{
-		t: t, gateway: gatewayBin, control: controlBin, dir: t.TempDir(),
+		t: t, gateway: gatewayBin, control: controlBin, dir: t.TempDir(), runs: runs, project: project,
 		up: newRunsUpstream(t), collector: newAcceptingCollector(t),
 	}
-	rp.runs = filepath.Join(rp.dir, "runs")
 	if err := os.MkdirAll(filepath.Join(rp.dir, "spool"), 0o750); err != nil {
 		t.Fatalf("making the spool: %v", err)
 	}
-	if err := os.Mkdir(rp.runs, 0o700); err != nil {
-		t.Fatalf("making the runs directory: %v", err)
+	if rp.runs == "" {
+		rp.runs = filepath.Join(rp.dir, "runs")
+		if err := os.Mkdir(rp.runs, 0o700); err != nil {
+			t.Fatalf("making the runs directory: %v", err)
+		}
 	}
 	writeBundle(t, filepath.Join(rp.dir, "policy.bundle"), runsDocument)
 	rp.config = filepath.Join(rp.dir, "plane.yaml")
@@ -139,7 +153,7 @@ func (rp *runsPlane) planeConfig(kind string) string {
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, `mode: ENFORCE
-project_id: orders
+project_id: %s
 tenant_id: %s
 environment: dev
 listener:
@@ -154,7 +168,7 @@ listener:
   key_id: %s
   public_key: %s
 %sruns:
-  dir: runs
+  dir: %s
 evidence:
   dir: spool
 export:
@@ -168,7 +182,8 @@ upstreams:
     tenant_id: %s
     environment: dev
 overrides:
-`, runsTenant, kind, address, runsPrincipal, runsAgent, health, fixtureKeyID, fixturePublicKey(), freshnessKeys(rp.t, rp.dir, "runs-fixture"), rp.collector.url, rp.up.url, runsTenant)
+`, rp.project, runsTenant, kind, address, runsPrincipal, runsAgent, health, fixtureKeyID, fixturePublicKey(),
+		freshnessKeys(rp.t, rp.dir, "runs-fixture"), strconv.Quote(rp.runs), rp.collector.url, rp.up.url, runsTenant)
 	classes := map[string]string{
 		toolReadTicket: "    effect: READ\n    resource_type: ticket\n    resource_from: /id\n    trust_zone: TRUSTED_INTERNAL\n" +
 			"    returns:\n      trust: UNTRUSTED_EXTERNAL\n      sensitivity: CONFIDENTIAL\n",
@@ -215,13 +230,17 @@ func (rp *runsPlane) start() *servingPlane {
 type openedRun struct{ id, root, token string }
 
 // open opens a run with the built approver binary, for the listener's
-// identity unless args name another flag value first.
+// identity and the plane's project unless args name another agent or
+// project.
 func (rp *runsPlane) open(args ...string) openedRun {
 	rp.t.Helper()
 	full := append([]string{"runs", "open", "--tenant", runsTenant, "--principal-type", "service",
 		"--principal", runsPrincipal, "--ttl", "1h"}, args...)
 	if !hasFlag(args, "--agent") {
 		full = append(full, "--agent", runsAgent)
+	}
+	if !hasFlag(args, "--project") {
+		full = append(full, "--project", rp.project)
 	}
 	out, err := runBinary(rp.control, append(full, rp.runs)...)
 	if err != nil {

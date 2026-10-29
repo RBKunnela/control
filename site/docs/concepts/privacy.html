@@ -237,7 +237,7 @@ to the plane, no field of the contract holds it, and no adapter reads it.</p>
 </tr>
 <tr>
 <td>the runs directory, <code>runs.dir</code></td>
-<td>each run's record, its tenant, principal, agent, lifetime and the SHA-256 of its token's secret, and each root run's flow state</td>
+<td>each run's record, its project, tenant, principal, agent, lifetime and the SHA-256 of its token's secret, and each root run's flow state</td>
 <td>the operator's account, in a directory only it may write, until the operator removes them</td>
 </tr>
 <tr>
@@ -292,7 +292,7 @@ to the plane, no field of the contract holds it, and no adapter reads it.</p>
 </tr>
 <tr>
 <td><code>/metrics</code> and <code>/healthz</code></td>
-<td>counts and states; <code>/healthz</code> also the mode, the bundle's id, version, digest and serial, its confirmation and expiry times, and the ids of pause entries that match no listed tool; with a route, also the route's id, serial and digest, its floor's serial and digest, the stop list's <code>list_id</code>, state and age, and, for each active stop up to 64, its entry id, run id, finding id, rule id and expiry, and the run ids of those stops the runs directory does not hold or cannot read. No metric label carries an identifier, a digest or free text; <code>pipeline_blocks_total</code> is labelled with a reason code (<a href="/docs/reference/metrics">reference/metrics</a>)</td>
+<td>counts and states; <code>/healthz</code> also the mode, the bundle's id, version, digest and serial, its confirmation and expiry times, and the ids of pause entries that match no listed tool; with a route, also the route's id, serial and digest, its floor's serial and digest, the stop list's <code>list_id</code>, state and age, and, for each active stop up to 64, its entry id, run id, finding id, rule id and expiry, and the run ids of those stops the runs directory does not hold for the plane's project or cannot read. No metric label carries an identifier, a digest or free text; <code>pipeline_blocks_total</code> is labelled with a reason code (<a href="/docs/reference/metrics">reference/metrics</a>)</td>
 <td>anyone who reaches <code>health.address</code>, which takes no credential</td>
 </tr>
 <tr>

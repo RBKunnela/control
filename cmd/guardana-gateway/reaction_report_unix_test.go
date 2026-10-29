@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -19,6 +20,7 @@ import (
 	"github.com/guardana/control/internal/reaction"
 	"github.com/guardana/control/internal/reaction/stoplist"
 	"github.com/guardana/control/internal/reaction/stopwrite"
+	"github.com/guardana/control/internal/runs"
 )
 
 // unheldRun is a run id in the runs directory's spelling that no record
@@ -114,6 +116,61 @@ func TestDoctorCannotSayWhetherAStoppedRunIsHeld(t *testing.T) {
 	if !strings.Contains(line, "whether each listed stop's run is held is unknown") {
 		t.Errorf("the reaction line is %q", line)
 	}
+}
+
+// TestAStopOfAnotherProjectsRunIsUnheld: the runs directory holds a run of
+// the plane's project and one of another; a stop of the other's run matches
+// no call of this plane, so doctor and /healthz list it as unheld and the
+// stop of the plane's own run as held.
+func TestAStopOfAnotherProjectsRunIsUnheld(t *testing.T) {
+	tr := newTree(t)
+	route := tr.withReaction(t)
+	own := openRunOf(t, filepath.Join(tr.dir, "runs"), "orders")
+	other := openRunOf(t, filepath.Join(tr.dir, "runs"), "billing")
+	for i, id := range []string{own, other} {
+		finding := fmt.Sprintf("finding-%d", i+1)
+		stopAt := func(now time.Time) (reaction.Stop, error) { return stopOf(id, finding, now), nil }
+		if _, _, covered, err := stopwrite.AppendFinding(context.Background(), filepath.Join(tr.dir, "stops"), route, time.Now, stopAt); err != nil || covered {
+			t.Fatalf("appending the stop of %s: covered %v, %v", id, covered, err)
+		}
+	}
+	var stdout, stderr bytes.Buffer
+	doctor(context.Background(), tr.config, &stdout, &stderr)
+	out := stdout.String()
+	if want := "stop of run " + other + ": the runs directory holds no such run"; !strings.Contains(out, want) {
+		t.Errorf("doctor does not say %q:\n%s", want, out)
+	}
+	if strings.Contains(out, "stop of run "+own+":") {
+		t.Errorf("doctor lists the stop of the plane's own run as unheld:\n%s", out)
+	}
+	p, err := buildServing(t, tr)
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+	p.stops.poller.Poll()
+	answer, _ := p.health(p.pauseSource(), time.Now)
+	if s := answer.Stops; s.Active != 2 || !slices.Equal(s.UnheldRuns, []string{other}) || len(s.UnreadRuns) != 0 {
+		t.Errorf("/healthz lists %d active, unheld %v, unread %v; want 2 and %s alone unheld", s.Active, s.UnheldRuns, s.UnreadRuns, other)
+	}
+}
+
+// openRunOf opens a run of project in the listener's tenant in dir and
+// returns its id.
+func openRunOf(t *testing.T, dir, project string) string {
+	t.Helper()
+	admin, err := runs.OpenAdmin(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = admin.Close() }()
+	rec, _, err := admin.Open(context.Background(), runs.OpenRequest{
+		Who: runs.Identity{ProjectID: project, TenantID: runsTenant, PrincipalType: "service", PrincipalID: runsPrincipal, AgentID: runsAgent},
+		TTL: time.Hour, Now: time.Now(),
+	})
+	if err != nil {
+		t.Fatalf("opening a run of %s: %v", project, err)
+	}
+	return rec.ID
 }
 
 // TestDoctorFailsARouteBelowItsFloor: what the start refuses, doctor fails.

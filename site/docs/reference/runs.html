@@ -135,17 +135,19 @@ that root's own lock file, and takes no lock on the directory, so several
 planes may share one. The <code>guardana-gateway</code> binary holds no code that writes
 a record.</p>
 <h2 id="runs-open">runs open</h2>
-<pre><code>guardana-control runs open --tenant acme --principal-type service --principal agent-runner --agent orders-assistant --ttl 8h &lt;dir&gt;
+<pre><code>guardana-control runs open --project orders --tenant acme --principal-type service --principal agent-runner --agent orders-assistant --ttl 8h &lt;dir&gt;
 </code></pre>
-<p>Every flag but <code>--parent</code> is required. <code>--tenant</code>, <code>--principal-type</code>,
-<code>--principal</code> and <code>--agent</code> must be what the plane's listener resolves:
-<code>listener.principal.tenant_id</code>, or else <code>tenant_id</code>, <code>listener.principal.type</code>,
-<code>listener.principal.id</code> and <code>listener.agent.id</code>. A token presented for any
-other identity is refused. <code>--ttl</code> is a duration from <code>1m</code> to <code>720h</code>, with no
+<p>Every flag but <code>--parent</code> is required. <code>--project</code> must be the plane's
+<code>project_id</code>, and <code>--tenant</code>, <code>--principal-type</code>, <code>--principal</code> and <code>--agent</code>
+what its listener resolves: <code>listener.principal.tenant_id</code>, or else
+<code>tenant_id</code>, <code>listener.principal.type</code>, <code>listener.principal.id</code> and
+<code>listener.agent.id</code>. A token presented for any other identity is refused, so
+planes of two projects that share a directory and a listener identity never
+serve each other's runs. <code>--ttl</code> is a duration from <code>1m</code> to <code>720h</code>, with no
 default.</p>
-<p><code>--parent &lt;run id&gt;</code> opens the run under an open run of the same tenant. The
-two then share the parent's root and its flow state, because data moves
-between a parent and the runs it spawned in ways the plane does not see.
+<p><code>--parent &lt;run id&gt;</code> opens the run under an open run of the same project and
+tenant. The two then share the parent's root and its flow state, because data
+moves between a parent and the runs it spawned in ways the plane does not see.
 A child ends no later than its parent: a <code>--ttl</code> that would pass the parent's
 <code>expires_at</code> exits 1 naming both times. Closing a parent closes none of its
 children.</p>
@@ -166,7 +168,7 @@ still runs. A plane with a route also stops an open run without closing it:
 a stop from a confirmed finding refuses the run's later calls <code>RUN_STOPPED</code>
 until it expires or is lifted (<a href="/docs/reference/reaction">reaction.md</a>).</p>
 <p><code>runs list &lt;dir&gt;</code> prints one run a line: its id, <code>open</code>, <code>closed</code> or <code>expired</code>
-by this machine's clock, then <code>root</code>, <code>tenant_id</code>, <code>principal_type</code>,
+by this machine's clock, then <code>root</code>, <code>project_id</code>, <code>tenant_id</code>, <code>principal_type</code>,
 <code>principal_id</code>, <code>agent_id</code>, <code>opened_at</code> and <code>expires_at</code>, each followed by its
 value. It prints no token and no hash. Past 1000 runs it stops, says so on
 stderr and exits 1.</p>
@@ -209,6 +211,24 @@ each call in it is judged under the token it presents, but a token of another
 run of the same principal and agent can read the session's stream or end it by
 its id.</p>
 <p><code>dev</code> and <code>scenario run</code> serve local runs only; <code>dev</code> refuses <code>runs.dir</code>.</p>
+<h2 id="runs-an-earlier-release-opened">Runs an earlier release opened</h2>
+<p>A record from before <code>project_id</code> is of <code>schema_version</code> <code>1.0</code> and names no
+project. It is never read as any project's run: its token is refused as
+<code>unreadable</code>, a stdio plane given it refuses the start saying the record names
+no project, <code>runs list</code> refuses the directory while it holds one, and
+<code>runs close</code>, <code>runs open --parent</code> and <code>react</code>, for a finding that names it,
+refuse that run.</p>
+<p>Move to a new, empty directory, never into the old one: while one <code>1.0</code>
+record is left in a directory, <code>runs list</code> refuses that whole directory, and
+so does <code>supervise</code> of every run under a procedure that reads children. Open
+each run again there with <code>runs open --project</code>, point <code>runs.dir</code> at it, and
+remove the old directory once no plane names it. No run lives past 720 hours,
+so nothing in the old directory outlives that.</p>
+<p>A reopened run starts with a clean flow state. An agent that took in
+untrusted or confidential data under the old run would carry it into the new
+one unmarked, and a flow rule would not see it. End each agent's task and
+start a new one under the new run; never hand a new token to an agent in the
+middle of a task.</p>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/reference/runs.md">docs/reference/runs.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.14.0, and <a href="https://github.com/guardana/control/tree/v0.14.0/docs">its documentation</a> is in its tag.</p>
 </main>
 <nav class="side" aria-label="Documentation">

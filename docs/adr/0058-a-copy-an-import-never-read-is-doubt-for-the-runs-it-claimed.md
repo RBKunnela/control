@@ -10,6 +10,10 @@ runs its refusals put in doubt. Amends
 doubt at its source leaves the two rules that read a source's reports not
 checked, and a finding citing such a run's observation is `INDETERMINATE`.
 
+Amended by [ADR-0068](0068-a-run-belongs-to-one-project.md): a run whose record
+names its project holds every source to that project, even when no event of
+the run was read.
+
 ## Context
 
 An import counted the spans it refused and the observations the log refused

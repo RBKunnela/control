@@ -28,8 +28,9 @@ func (a *Admin) Lookup(ctx context.Context, id string) (_ Record, err error) {
 // refuses a bound that is not positive with ErrBound, a run no record names
 // with ErrNoRun, a run opened under another with ErrNotRoot, a tree past
 // bound with ErrTreeBound, a member of another tenant than root's with
-// ErrTreeTenant, a member whose parents do not reach root within the tree
-// with ErrTreeBroken, and, as List does, a record that does not decode.
+// ErrTreeTenant, one of another project with ErrTreeProject, a member whose
+// parents do not reach root within the tree with ErrTreeBroken, and, as List
+// does, a record that does not decode.
 func (a *Admin) Tree(ctx context.Context, root string, bound int) ([]Record, error) {
 	return a.family(ctx, root, bound, func(head, r Record) bool { return r.Root == head.ID }, func(head Record) error {
 		if head.Root != head.ID {
@@ -80,7 +81,7 @@ func (a *Admin) family(ctx context.Context, id string, bound int, keep func(head
 }
 
 // members reads every record but head's and keeps those keep takes, each of
-// head's tenant and root, at most bound-1 of them.
+// head's tenant, project and root, at most bound-1 of them.
 func (d *dir) members(head Record, bound int, keep func(head, r Record) bool) ([]Record, error) {
 	entries, err := d.readDir()
 	if err != nil {
@@ -103,6 +104,8 @@ func (d *dir) members(head Record, bound int, keep func(head, r Record) bool) ([
 			continue
 		case r.Who.TenantID != head.Who.TenantID:
 			return nil, fmt.Errorf("%w: %s", ErrTreeTenant, r.ID)
+		case r.Who.ProjectID != head.Who.ProjectID:
+			return nil, fmt.Errorf("%w: %s", ErrTreeProject, r.ID)
 		case r.Root != head.Root:
 			return nil, fmt.Errorf("%w: %s names root %s", ErrTreeBroken, r.ID, r.Root)
 		case len(out)+2 > bound:

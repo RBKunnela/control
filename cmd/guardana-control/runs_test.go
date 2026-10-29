@@ -16,7 +16,7 @@ import (
 )
 
 // who is the identity the fixtures open runs for.
-var who = runs.Identity{TenantID: "acme", PrincipalType: "user", PrincipalID: "alice", AgentID: "planner"}
+var who = runs.Identity{ProjectID: "orders", TenantID: "acme", PrincipalType: "user", PrincipalID: "alice", AgentID: "planner"}
 
 var runIDShape = regexp.MustCompile(`^run-[0-9a-f]{32}$`)
 
@@ -32,7 +32,7 @@ func runsDir(t *testing.T) string {
 
 // openFlags names every flag runs open requires.
 func openFlags(w runs.Identity, ttl string) []string {
-	return []string{"--tenant", w.TenantID, "--principal-type", w.PrincipalType, "--principal", w.PrincipalID, "--agent", w.AgentID, "--ttl", ttl}
+	return []string{"--project", w.ProjectID, "--tenant", w.TenantID, "--principal-type", w.PrincipalType, "--principal", w.PrincipalID, "--agent", w.AgentID, "--ttl", ttl}
 }
 
 // openArgs is a whole runs open call: the required flags, then extra flags,
@@ -126,9 +126,12 @@ func TestTheTokenResolvesForItsIdentityAlone(t *testing.T) {
 	dir := runsDir(t)
 	o := openRun(t, dir, who, "1h")
 	for name, other := range map[string]runs.Identity{
-		"another tenant":         {TenantID: "globex", PrincipalType: who.PrincipalType, PrincipalID: who.PrincipalID, AgentID: who.AgentID},
-		"another principal type": {TenantID: who.TenantID, PrincipalType: "service", PrincipalID: who.PrincipalID, AgentID: who.AgentID},
-		"principal and agent":    {TenantID: who.TenantID, PrincipalType: who.PrincipalType, PrincipalID: who.AgentID, AgentID: who.PrincipalID},
+		"another project":        {ProjectID: "billing", TenantID: who.TenantID, PrincipalType: who.PrincipalType, PrincipalID: who.PrincipalID, AgentID: who.AgentID},
+		"no project":             {TenantID: who.TenantID, PrincipalType: who.PrincipalType, PrincipalID: who.PrincipalID, AgentID: who.AgentID},
+		"project and tenant":     {ProjectID: who.TenantID, TenantID: who.ProjectID, PrincipalType: who.PrincipalType, PrincipalID: who.PrincipalID, AgentID: who.AgentID},
+		"another tenant":         {ProjectID: who.ProjectID, TenantID: "globex", PrincipalType: who.PrincipalType, PrincipalID: who.PrincipalID, AgentID: who.AgentID},
+		"another principal type": {ProjectID: who.ProjectID, TenantID: who.TenantID, PrincipalType: "service", PrincipalID: who.PrincipalID, AgentID: who.AgentID},
+		"principal and agent":    {ProjectID: who.ProjectID, TenantID: who.TenantID, PrincipalType: who.PrincipalType, PrincipalID: who.AgentID, AgentID: who.PrincipalID},
 	} {
 		var refusal *runs.Refusal
 		if _, err := resolve(t, dir, o.token, other); !errors.As(err, &refusal) || refusal.Cause != runs.CauseIdentity {
@@ -204,9 +207,9 @@ func leaks(out, secret string) bool {
 // TestRunsOpenRefusesAndWritesNothing: every refusal leaves the directory with
 // the records it had. A missing flag or a malformed value is a usage error; a
 // lifetime one step past either bound, an identity, a parent that is unknown,
-// closed or another tenant's, and a child that would outlive its parent are
-// refusals of the input, each naming what was refused. Each bound also lets
-// its own value through.
+// closed, another tenant's or another project's, and a child that would
+// outlive its parent are refusals of the input, each naming what was
+// refused. Each bound also lets its own value through.
 func TestRunsOpenRefusesAndWritesNothing(t *testing.T) {
 	dir := runsDir(t)
 	parent := openRun(t, dir, who, "1h")
@@ -229,6 +232,8 @@ func TestRunsOpenRefusesAndWritesNothing(t *testing.T) {
 		"a ttl of zero":          {openArgs(dir, who, "0s"), exitFail, "lifetime is outside its bounds"},
 		"a ttl that is no time":  {openArgs(dir, who, "soon"), exitUsage, `invalid value "soon" for flag -ttl`},
 		"an empty principal":     {openArgs(dir, who, "1h", "--principal", ""), exitFail, "the identity has an empty"},
+		"an empty project":       {openArgs(dir, who, "1h", "--project", ""), exitFail, "project_id is 0 bytes"},
+		"another project's":      {openArgs(dir, who, "1h", "--project", "billing", "--parent", parent.runID), exitFail, "belongs to another project"},
 		"an unknown parent":      {openArgs(dir, who, "1h", "--parent", unknown), exitFail, "the parent run does not exist: " + unknown},
 		"a closed parent":        {openArgs(dir, who, "1h", "--parent", closed.runID), exitFail, "the parent run is closed"},
 		"another tenant's":       {openArgs(dir, who, "1h", "--parent", foreign.runID), exitFail, "belongs to another tenant"},
@@ -237,7 +242,7 @@ func TestRunsOpenRefusesAndWritesNothing(t *testing.T) {
 		"no directory":           {append([]string{"runs", "open"}, openFlags(who, "1h")...), exitUsage, "takes the runs directory"},
 		"a flag after the dir":   {append(openArgs(dir, who, "1h"), "--parent", parent.runID), exitUsage, "takes the runs directory"},
 	}
-	for i, name := range []string{"--tenant", "--principal-type", "--principal", "--agent", "--ttl"} {
+	for i, name := range []string{"--project", "--tenant", "--principal-type", "--principal", "--agent", "--ttl"} {
 		flags := openFlags(who, "1h")
 		args := append(append([]string{"runs", "open"}, append(flags[:2*i:2*i], flags[2*i+2:]...)...), dir)
 		cases["no "+name] = struct {
@@ -338,7 +343,7 @@ func TestRunsListPrintsEachField(t *testing.T) {
 		t.Fatal(err)
 	}
 	opened := expires.Add(-3 * time.Hour).Format(time.RFC3339Nano)
-	want := o.runID + " open root " + o.runID + " tenant_id acme principal_type user principal_id alice agent_id planner" +
+	want := o.runID + " open root " + o.runID + " project_id orders tenant_id acme principal_type user principal_id alice agent_id planner" +
 		" opened_at " + opened + " expires_at " + o.expiresAt + "\n"
 	if code, stdout, stderr := invoke(t, "runs", "list", dir); code != exitOK || stdout != want || stderr != "" {
 		t.Errorf("list answered %d, %q, %q; want %q", code, stdout, stderr, want)

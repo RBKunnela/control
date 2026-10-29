@@ -45,13 +45,14 @@
 //
 // Both files are one JSON object whose keys are all required and matched
 // exactly: an absent, unknown or repeated key is refused, never defaulted. A
-// schema_version of major 1 is read, any other refused. A record holds
-// schema_version, run_id, tenant_id, principal_type, principal_id, agent_id,
-// root, parent (empty for a root run), opened_at, expires_at, closed_at
-// (empty while open) and secret_sha256, times in UTC RFC 3339. A state holds
-// schema_version, root, untrusted and max_read, a sensitivity's name without
-// its prefix or UNKNOWN. A run id or root inside a file must equal the one in
-// its name.
+// record's schema_version is read at major 2 and a state's at major 1, any
+// other refused; a record of major 1 names no project, so it is refused, never
+// read as any project's. A record holds schema_version, run_id, project_id,
+// tenant_id, principal_type, principal_id, agent_id, root, parent (empty for a
+// root run), opened_at, expires_at, closed_at (empty while open) and
+// secret_sha256, times in UTC RFC 3339. A state holds schema_version, root,
+// untrusted and max_read, a sensitivity's name without its prefix or UNKNOWN.
+// A run id or root inside a file must equal the one in its name.
 //
 // Nothing here reads a clock: every time is the caller's.
 package runs

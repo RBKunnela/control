@@ -54,6 +54,8 @@ func TestOpenRefusesAZeroClockAndAnIncompleteIdentity(t *testing.T) {
 		t.Fatalf("zero now: %v", err)
 	}
 	for name, edit := range map[string]func(*runs.Identity){
+		"project":        func(w *runs.Identity) { w.ProjectID = "" },
+		"project not id": func(w *runs.Identity) { w.ProjectID = "project\x00" },
 		"tenant":         func(w *runs.Identity) { w.TenantID = "" },
 		"principal type": func(w *runs.Identity) { w.PrincipalType = "" },
 		"principal":      func(w *runs.Identity) { w.PrincipalID = "" },
@@ -129,7 +131,7 @@ func TestAChildSharesItsRootAndOutlivesItsParent(t *testing.T) {
 	dir, a, p := setup(t)
 	root, _ := openRoot(t, a)
 	child, childToken := openUnder(t, a, root.ID, alice)
-	grandchild, _ := openUnder(t, a, child.ID, runs.Identity{TenantID: "tenant-a", PrincipalType: "user", PrincipalID: "bob", AgentID: "agent-9"})
+	grandchild, _ := openUnder(t, a, child.ID, runs.Identity{ProjectID: "project-a", TenantID: "tenant-a", PrincipalType: "user", PrincipalID: "bob", AgentID: "agent-9"})
 	if child.Root != root.ID || child.Parent != root.ID || grandchild.Root != root.ID || grandchild.Parent != child.ID {
 		t.Fatalf("roots: child %+v, grandchild %+v", child, grandchild)
 	}
@@ -158,6 +160,8 @@ func TestOpenRefusesAParentThatIsNotAnOpenRunOfTheTenant(t *testing.T) {
 	}
 	other := alice
 	other.TenantID = "tenant-b"
+	otherProject := alice
+	otherProject.ProjectID = "project-b"
 	expires := opened.Add(time.Hour)
 	cases := []struct {
 		name   string
@@ -167,6 +171,7 @@ func TestOpenRefusesAParentThatIsNotAnOpenRunOfTheTenant(t *testing.T) {
 		want   error
 	}{
 		{"another tenant", parent.ID, other, opened, runs.ErrParentTenant},
+		{"another project", parent.ID, otherProject, opened, runs.ErrParentProject},
 		{"closed", closed.ID, alice, opened, runs.ErrParentClosed},
 		{"expired at now", parent.ID, alice, expires, runs.ErrParentExpired},
 		{"expired before now", parent.ID, alice, expires.Add(time.Second), runs.ErrParentExpired},

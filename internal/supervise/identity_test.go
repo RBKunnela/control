@@ -71,6 +71,27 @@ func TestWithNoEventReadOnlyTheTenantIsHeld(t *testing.T) {
 	}
 }
 
+// TestWithNoEventReadTheRecordHoldsTheSourcesProject: a record that names its
+// project holds every source to it even when no event of the run was read.
+func TestWithNoEventReadTheRecordHoldsTheSourcesProject(t *testing.T) {
+	other := conforming()
+	for i := range other {
+		other[i].run = "run-ffffffffffffffffffffffffffffffff"
+	}
+	in := supervise.Input{Procedure: procWith(t), Run: supervise.Run{ID: runID, Tenant: tenant, Project: proj},
+		Exports: []supervise.Export{export(other...)}}
+	src := source()
+	src.Project = "p2"
+	in.Sources = []supervise.Source{src}
+	if _, err := supervise.Evaluate(in); !errors.Is(err, supervise.ErrInput) || !strings.Contains(err.Error(), `record of project "`+proj+`"`) {
+		t.Fatalf("a source of another project than the record: Evaluate = %v, want ErrInput naming the record's project", err)
+	}
+	in.Sources = []supervise.Source{source()}
+	if _, err := supervise.Evaluate(in); err != nil {
+		t.Fatalf("a source of the record's project: Evaluate = %v", err)
+	}
+}
+
 // source2 is source under the id s2.
 func source2() supervise.Source {
 	s := source()
@@ -94,6 +115,42 @@ func TestAnEventOfTheRunWithNoProjectIsRefused(t *testing.T) {
 		_, err := supervise.Evaluate(supervise.Input{Procedure: p, Run: run, Exports: []supervise.Export{x}, Sources: []supervise.Source{source()}})
 		if !errors.Is(err, supervise.ErrInput) || !strings.Contains(err.Error(), "names no project") {
 			t.Errorf("the %s event with no project: Evaluate = %v, want ErrInput naming it", at, err)
+		}
+	}
+}
+
+// TestEventsOfAnotherProjectThanTheRecordAreRefused: the run's record names
+// its project, so an export whose events of the run name another is refused
+// as a source of another tenant is, and RunProject refuses it too. A run whose
+// record names no project takes the events' project.
+func TestEventsOfAnotherProjectThanTheRecordAreRefused(t *testing.T) {
+	p := procWith(t)
+	oneEvent := export(conforming()...)
+	oneEvent.Events = oneEvent.Events[:1]
+	for name, x := range map[string]supervise.Export{"the run": export(conforming()...), "a run of one event": oneEvent} {
+		in := supervise.Input{Procedure: p, Run: supervise.Run{ID: runID, Tenant: tenant, Project: "p2"},
+			Exports: []supervise.Export{x}}
+		_, err := supervise.Evaluate(in)
+		if !errors.Is(err, supervise.ErrInput) {
+			t.Fatalf("%s: Evaluate = %v, want ErrInput", name, err)
+		}
+		for _, want := range []string{`project "p1"`, `record of project "p2"`} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("%s: %q names no %s", name, err, want)
+			}
+		}
+		if got, err := supervise.RunProject(in); !errors.Is(err, supervise.ErrInput) || got != "" {
+			t.Errorf("%s: RunProject = %q, %v; want ErrInput", name, got, err)
+		}
+		for _, project := range []string{proj, ""} {
+			in.Run.Project = project
+			res, err := supervise.Evaluate(in)
+			if err != nil || res.Report.GetRead().GetEventsTaken() != uint64(len(x.Events)) {
+				t.Fatalf("%s, a record of project %q: Evaluate = %v", name, project, err)
+			}
+			if got, err := supervise.RunProject(in); err != nil || got != "p1" {
+				t.Fatalf("%s, a record of project %q: RunProject = %q, %v; want p1", name, project, got, err)
+			}
 		}
 	}
 }

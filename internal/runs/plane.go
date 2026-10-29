@@ -55,8 +55,10 @@ type Run struct {
 	Expires time.Time
 }
 
-// Resolve returns the run token names when it is open for who at now. Every
-// refusal is a *Refusal. The causes are judged in an order that tells a caller
+// Resolve returns the run token names when it is open for who at now, its
+// project included: planes of two projects that share a directory and a
+// listener identity never resolve each other's runs. Every refusal is a
+// *Refusal. The causes are judged in an order that tells a caller
 // nothing it cannot already prove: the token's shape, then whether its
 // secret is right, and only then whose run it is and whether it is still
 // open. A zero now is expired, since it would leave every run unexpired.

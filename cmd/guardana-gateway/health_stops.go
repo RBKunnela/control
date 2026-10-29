@@ -13,8 +13,8 @@ import (
 // (ADR-0046): the route and its floor as the start left them, the list's id,
 // the state and why an unknown one is unknown, how old the read is, the
 // active stops, at most reaction.MaxListedEntries of them, the list's use of
-// its bounds, the active stops naming a run the runs directory does not hold,
-// and what the reader counted. A plane with no route says only disabled.
+// its bounds, the active stops naming a run the runs directory does not hold
+// for the plane's project, and what the reader counted. A plane with no route says only disabled.
 type stopsAnswer struct {
 	State  string       `json:"state"`
 	Cause  string       `json:"cause,omitempty"`
@@ -31,7 +31,8 @@ type stopsAnswer struct {
 	// emitter can write no more stops.
 	Degraded bool `json:"degraded"`
 	// UnheldRuns are the listed stops' runs the runs directory holds no
-	// record of, and UnreadRuns those whose record could not be read.
+	// record of for the plane's project, and UnreadRuns those whose record
+	// could not be read.
 	UnheldRuns []string       `json:"unheld_runs"`
 	UnreadRuns []string       `json:"unread_runs"`
 	Polls      map[string]any `json:"polls,omitempty"`
@@ -89,7 +90,7 @@ func (p *plane) stopsAnswer(snap reaction.Snapshot, now time.Time) stopsAnswer {
 			ExpiresAt: e.ExpiresAt.UTC().Format(time.RFC3339),
 		})
 	}
-	out.UnheldRuns, out.UnreadRuns = unheldRuns(p.runsDir, entries)
+	out.UnheldRuns, out.UnreadRuns = unheldRuns(p.runsDir, p.cfg.ProjectID, entries)
 	if u := held.Usage(); u != (reaction.Usage{}) {
 		out.Usage = &usageAnswer{Bytes: u.Bytes, MaxBytes: reaction.MaxListBytes, Lines: u.Lines, MaxLines: reaction.MaxListLines}
 		out.Degraded = u.Degraded()
@@ -123,21 +124,24 @@ func heldActive(held reaction.List, now time.Time) ([]reaction.Entry, int) {
 }
 
 // unheldRuns names, in order, the runs of entries the runs directory holds no
-// record of, and those whose record it could not read: a stop of a run that
-// is not there stops nothing, and one that cannot be read is not known to.
-func unheldRuns(dir *runs.Plane, entries []reaction.Entry) (unheld, unread []string) {
+// record of under project, and those whose record it could not read: a stop
+// of a run that is not there, or is another project's, matches no call of a
+// plane of project, and one that cannot be read is not known to.
+func unheldRuns(dir *runs.Plane, project string, entries []reaction.Entry) (unheld, unread []string) {
 	unheld, unread = []string{}, []string{}
 	for _, e := range entries {
 		if dir == nil {
 			unread = append(unread, e.RunID)
 			continue
 		}
-		_, err := dir.Lookup(context.Background(), e.RunID)
+		rec, err := dir.Lookup(context.Background(), e.RunID)
 		switch {
 		case errors.Is(err, runs.ErrNoRun):
 			unheld = append(unheld, e.RunID)
 		case err != nil:
 			unread = append(unread, e.RunID)
+		case rec.Who.ProjectID != project:
+			unheld = append(unheld, e.RunID)
 		}
 	}
 	return unheld, unread
