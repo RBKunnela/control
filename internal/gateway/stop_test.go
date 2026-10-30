@@ -178,12 +178,13 @@ func TestTheListingUnderAStopIsTheListingUnderNone(t *testing.T) {
 	type preview struct {
 		verdict controlv1.Verdict
 		codes   []string
+		listing gateway.Listing
 	}
 	of := func(h *harness, env *controlv1.ActionEnvelope) preview {
 		a := admission(env, nil)
 		a.Run = h.run
-		d := h.p.Preview(context.Background(), a)
-		return preview{d.GetVerdict(), d.GetReasonCodes()}
+		p := h.p.Preview(context.Background(), a)
+		return preview{p.Decision.GetVerdict(), p.Decision.GetReasonCodes(), p.Listing}
 	}
 	rules := []string{allowReads, denyWrites}
 	none := build(t, modeLockdown, snapshot(t, rules...))
@@ -193,7 +194,7 @@ func TestTheListingUnderAStopIsTheListingUnderNone(t *testing.T) {
 		h := stopPlane(t, modeLockdown, rules, newStopSource(snap))
 		for _, env := range []func() *controlv1.ActionEnvelope{readEnvelope, writeEnvelope} {
 			got, want := of(h, tool(env())), of(none, tool(env()))
-			if got.verdict != want.verdict || !slices.Equal(got.codes, want.codes) {
+			if got.verdict != want.verdict || !slices.Equal(got.codes, want.codes) || got.listing != want.listing {
 				t.Errorf("%s: %s previews as %v, want %v", name, env().GetAction().GetName(), got, want)
 			}
 		}

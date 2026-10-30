@@ -8,6 +8,7 @@ import (
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/policy"
+	"github.com/guardana/control/internal/policy/match"
 	"github.com/guardana/control/internal/policy/rules"
 	"github.com/guardana/control/pkg/contract"
 )
@@ -164,6 +165,14 @@ type Outcome struct {
 	// leaves it unset. A kernel nobody built reads no request and leaves it
 	// unset too; it blocks whatever it is asked.
 	RefusedInput bool
+	// UnknownAllows are the ALLOW rules whose match was unknown and the
+	// inputs each lacked, in document order. Such a rule is no match and is on
+	// no field of the decision. It is empty wherever evaluation did not run.
+	UnknownAllows []match.UnknownAllow
+	// NoRuleMatched is whether the decision is DENY for no matching rule and
+	// nothing else: evaluation ran, no rule matched or was undetermined, and
+	// no other step named a cause or consulted an answer.
+	NoRuleMatched bool
 }
 
 // Decide returns a decision for req against snap, and what to enforce

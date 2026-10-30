@@ -66,11 +66,11 @@ when it is not `none` in a mode that does not enforce.
 | `annotate` | refused at start | each tool carries the verdict a call to it would get, under the gateway's `_meta` key |
 | `hide` | refused at start | a tool the preview denies, and every unclassified tool, is omitted |
 
-A preview decides a tool with no arguments, so with no resource id. A tool the
-policy decides without that id carries its verdict. One whose effect class or
-rules need the id stays in the list, marked `DECIDED_PER_CALL` under
-`annotate` unless a rule denies it without its arguments, and kept under
-`hide`: shaping subtracts what policy denies, never what it could not decide.
+A preview carries no arguments, so no resource id. A tool whose effect class
+needs the id is no verdict at preview and stays listed; one whose only `ALLOW`
+reads the id stays listed, marked `DECIDED_PER_CALL` under `annotate`, unless
+a rule denies it without its arguments. Shaping subtracts what policy denies,
+never what it could not decide.
 
 ## The codes the adapter mints
 
@@ -113,7 +113,7 @@ and undecided answers carry neither.
 
 ## Reason codes in the gateway's answers
 
-A kernel decision comes back as written;
+A kernel decision comes back as written, with the kernel's codes such as `NO_MATCHING_RULE`;
 [reference/reason-codes](reason-codes.md) lists every code; an untranslatable call is the kernel's
 block in every mode. The codes below are the enforcement point's own.
 

@@ -273,11 +273,11 @@ when it is not <code>none</code> in a mode that does not enforce.</p>
 </tr>
 </tbody>
 </table>
-<p>A preview decides a tool with no arguments, so with no resource id. A tool the
-policy decides without that id carries its verdict. One whose effect class or
-rules need the id stays in the list, marked <code>DECIDED_PER_CALL</code> under
-<code>annotate</code> unless a rule denies it without its arguments, and kept under
-<code>hide</code>: shaping subtracts what policy denies, never what it could not decide.</p>
+<p>A preview carries no arguments, so no resource id. A tool whose effect class
+needs the id is no verdict at preview and stays listed; one whose only <code>ALLOW</code>
+reads the id stays listed, marked <code>DECIDED_PER_CALL</code> under <code>annotate</code>, unless
+a rule denies it without its arguments. Shaping subtracts what policy denies,
+never what it could not decide.</p>
 <h2 id="the-codes-the-adapter-mints">The codes the adapter mints</h2>
 <p>A <code>tools/call</code> answers a block and a pending state as a tool result with
 <code>isError: true</code>, the fields below in its <code>_meta</code> under <code>&lt;ns&gt;/</code> and no
@@ -351,7 +351,7 @@ on its own trail names that. The ids are added after the result is hashed,
 so the closing record's <code>result_hash</code> is the upstream's. Reads, prompts, lists
 and undecided answers carry neither.</p>
 <h2 id="reason-codes-in-the-gateways-answers">Reason codes in the gateway's answers</h2>
-<p>A kernel decision comes back as written;
+<p>A kernel decision comes back as written, with the kernel's codes such as <code>NO_MATCHING_RULE</code>;
 <a href="/docs/reference/reason-codes">reference/reason-codes</a> lists every code; an untranslatable call is the kernel's
 block in every mode. The codes below are the enforcement point's own.</p>
 <table>

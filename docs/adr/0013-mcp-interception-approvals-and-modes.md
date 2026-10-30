@@ -80,6 +80,12 @@ an envelope the kernel refuses whatever the adapter reported; the pipeline
 refuses an action kind outside `tool`, `prompt` and `resource` and a protocol
 other than its adapter's name.
 
+Amended by [ADR-0070](0070-a-listing-hides-only-what-no-call-could-be-allowed.md),
+which decides that `hide` keeps a tool only when a call to it could be allowed:
+the kernel's `DENY` for no matching rule alone, beside an `ALLOW` rule that
+lacked nothing but the resource id the tool's classification points at or the
+run's flow.
+
 ## Context
 
 The kernel decides and nothing calls it. The first protocol target is the Model

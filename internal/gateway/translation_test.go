@@ -279,7 +279,7 @@ func TestAnUnclassifiedClaimIsHeldToTheContract(t *testing.T) {
 					t.Errorf("event %s carries the raw preview, or does not encode (%v)", e.GetKind(), err)
 				}
 			}
-			if p := h.p.Preview(context.Background(), c.admit()); p.GetVerdict() != verdictIndeterminate || !slices.Equal(p.GetReasonCodes(), []string{c.code}) {
+			if p := h.p.Preview(context.Background(), c.admit()).Decision; p.GetVerdict() != verdictIndeterminate || !slices.Equal(p.GetReasonCodes(), []string{c.code}) {
 				t.Errorf("Preview = %s %v, want INDETERMINATE with %s", p.GetVerdict(), p.GetReasonCodes(), c.code)
 			}
 		})

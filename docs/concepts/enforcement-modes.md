@@ -223,8 +223,8 @@ configuration refuses `annotate` and `hide` in a mode that does not enforce
 | Shaping | What the agent sees | What the mode changes |
 | --- | --- | --- |
 | `none` | the upstream's list without [withheld](mcp-gateway.md#an-answer-that-quotes-a-credential) definitions | nothing |
-| `annotate` | each classified tool marked with the verdict of its preview under the enum's own name, `VERDICT_ALLOW` or `VERDICT_DENY` for instance; `DECIDED_PER_CALL` when the preview is `INDETERMINATE`, as it is when the call's arguments, its run or the decision point's answer decide; `ACTION_UNCLASSIFIED` on a tool nobody classified | under `LOCKDOWN` a material tool is marked `VERDICT_DENY`, the enforcement point's own; under `APPROVE` the mark is the kernel's verdict, because the mode changes the action and not the decision, so an allowed material tool is marked `VERDICT_ALLOW` and held when called |
-| `hide` | a tool the preview denies, and every unclassified tool, is omitted; a tool the preview cannot decide stays | under `LOCKDOWN` every material tool is omitted |
+| `annotate` | each classified tool marked with the verdict of its preview under the enum's own name, `VERDICT_ALLOW` or `VERDICT_DENY` for instance; `DECIDED_PER_CALL` when the preview is `INDETERMINATE`, as it is when the call's arguments, its run or the decision point's answer decide, and when it is the kernel's `DENY` for no matching rule alone while an `ALLOW` rule lacked nothing but the resource id the tool's classification points at or the run's flow ([ADR-0070](../adr/0070-a-listing-hides-only-what-no-call-could-be-allowed.md)); `ACTION_UNCLASSIFIED` on a tool nobody classified | under `LOCKDOWN` a material tool is marked `VERDICT_DENY`, the enforcement point's own; under `APPROVE` the mark is the kernel's verdict, because the mode changes the action and not the decision, so an allowed material tool is marked `VERDICT_ALLOW` and held when called |
+| `hide` | a tool the preview denies whatever its call carries, and every unclassified tool, is omitted; a tool the preview cannot decide stays | under `LOCKDOWN` every material tool is omitted |
 
 ## Why
 

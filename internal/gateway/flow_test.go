@@ -281,7 +281,7 @@ func TestAProducersFlowTagIsRefused(t *testing.T) {
 			env.Context.Tags = []string{"mcp.client=x/1", "flow.v1.untrusted=false"}
 			d := h.admitA(returning(env, 0, 0))
 			expectBlock(t, d, verdictIndeterminate, codeInvalidFieldValue, d.Decision.GetPdpType())
-			if got := h.p.Preview(context.Background(), returning(env, 0, 0)); got.GetVerdict() != verdictIndeterminate {
+			if got := h.p.Preview(context.Background(), returning(env, 0, 0)).Decision; got.GetVerdict() != verdictIndeterminate {
 				t.Errorf("Preview of a forged tag: %s %v", got.GetVerdict(), got.GetReasonCodes())
 			}
 		})
@@ -357,7 +357,7 @@ func TestTheStampedTagsAreAValidRecord(t *testing.T) {
 func TestPreviewNeverReadsARun(t *testing.T) {
 	h := build(t, modeEnforce, snapshot(t, allowReads, denyToxic))
 	preview := func() *controlv1.Decision {
-		return h.p.Preview(context.Background(), returning(readOf("p-1", "user-1"), 0, 0))
+		return h.p.Preview(context.Background(), returning(readOf("p-1", "user-1"), 0, 0)).Decision
 	}
 	clean := preview()
 	h.admitA(returning(readOf("r-1", "user-1"), 0, sensSecret))

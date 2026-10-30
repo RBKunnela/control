@@ -55,10 +55,46 @@ func TestAddingADenyRuleNeverPermitsMore(t *testing.T) {
 	})
 }
 
+// TestAddingAnUnknownAllowMovesNoVerdict: an ALLOW rule inserted anywhere and
+// built to be unknown is no match. Every list but UnknownAllows is what it was
+// without it, and UnknownAllows is what it was with the rule's id at its place
+// in document order (invariant 4: an unknown never becomes a permit).
+func TestAddingAnUnknownAllowMovesNoVerdict(t *testing.T) {
+	rapid.Check(t, func(rt *rapid.T) {
+		base := drawDocument(rt)
+		added := drawAnchor(rt, "unknown-allow", allow)
+		added.value = unknown
+		at := rapid.IntRange(0, len(base)).Draw(rt, "position")
+		grown := slices.Insert(slices.Clone(base), at, added.spec)
+		env, in := drawEnvelope(rt), drawInputs(rt)
+		added.set(env)
+
+		before := mustCompile(rt, base.build()).Evaluate(env, in)
+		after := mustCompile(rt, grown.build()).Evaluate(env, in)
+
+		withAdded := after
+		withAdded.UnknownAllows = before.UnknownAllows
+		assertSame(rt, "an unknown ALLOW moved the result", before, withAdded)
+		var want []string
+		for _, s := range grown {
+			if s.id == added.spec.id || slices.Contains(unknownIDs(before), s.id) {
+				want = append(want, s.id)
+			}
+		}
+		if got := unknownIDs(after); !slices.Equal(got, want) {
+			rt.Fatalf("UnknownAllows name %q, want %q: the earlier ones and %s at its place", got, want, added.spec.id)
+		}
+		at = slices.Index(unknownIDs(after), added.spec.id)
+		if u := after.UnknownAllows[at]; !slices.Equal(u.Needs, []string{"principal.type"}) {
+			rt.Fatalf("the added rule lacked %q, want only principal.type", u.Needs)
+		}
+	})
+}
+
 // TestRemovingAnAllowRuleNeverPermitsMore: without one of its ALLOW rules a
 // document permits no more, and an ALLOW rule that did not match changes
-// nothing when it goes. The anchor is an ALLOW rule, which may be the one
-// removed.
+// nothing when it goes but its place among the unknown allows. The anchor is
+// an ALLOW rule, which may be the one removed.
 func TestRemovingAnAllowRuleNeverPermitsMore(t *testing.T) {
 	rapid.Check(t, func(rt *rapid.T) {
 		base := drawDocument(rt)
@@ -81,6 +117,7 @@ func TestRemovingAnAllowRuleNeverPermitsMore(t *testing.T) {
 
 		extra.check(rt, before)
 		if !slices.Contains(before.RuleIDs, removed) {
+			before.UnknownAllows = slices.DeleteFunc(before.UnknownAllows, func(u match.UnknownAllow) bool { return u.ID == removed })
 			assertSame(rt, "without an ALLOW rule that did not match", before, after)
 		}
 		assertNoMorePermissive(rt, before, after)
@@ -205,14 +242,16 @@ func (a anchor) set(env *controlv1.ActionEnvelope) {
 
 // check holds a result to what ADR-0012 makes of the anchor. Held, it is
 // matched, and a matched DENY decides. Unknown and restrictive, it is
-// indeterminate, and the call is blocked. Otherwise it is listed nowhere: it
-// failed, or it is an unknown ALLOW, which is no match.
+// indeterminate, and the call is blocked. An unknown ALLOW is no match and is
+// listed among the unknown allows alone. A failed rule is listed nowhere.
 func (a anchor) check(f failer, got match.Result) {
 	f.Helper()
 	id := a.spec.id
 	matched := a.value == holds
 	undetermined := a.value == unknown && a.spec.effect != allow
-	if slices.Contains(got.RuleIDs, id) != matched || slices.Contains(got.Indeterminate, id) != undetermined {
+	unknownAllow := a.value == unknown && a.spec.effect == allow
+	if slices.Contains(got.RuleIDs, id) != matched || slices.Contains(got.Indeterminate, id) != undetermined ||
+		slices.Contains(unknownIDs(got), id) != unknownAllow {
 		f.Fatalf("%s rule %s, built to %s, gave %s", a.spec.effect, id, map[truth]string{holds: "hold", unknown: "be unknown", fails: "fail"}[a.value], summary(got))
 	}
 	if matched && a.spec.effect == deny && (got.Verdict != deny || got.Determinate != deny) {

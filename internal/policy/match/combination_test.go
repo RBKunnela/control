@@ -173,16 +173,30 @@ func TestUnknownOnEachEffect(t *testing.T) {
 		doc  []rules.Rule
 		want want
 	}{
-		{"an unknown ALLOW alone matches nothing",
+		{"an unknown ALLOW alone matches nothing and is reported",
 			[]rules.Rule{{ID: "unknown-allow", Effect: allow, When: unknownWhen()}},
-			want{verdict: deny, determinate: deny, codes: list(noMatchingRule)}},
+			want{verdict: deny, determinate: deny, codes: list(noMatchingRule), unknownAllows: list("unknown-allow")}},
 		{"an unknown ALLOW changes nothing beside a matched rule",
 			[]rules.Rule{
 				{ID: "unknown-allow", Effect: allow, When: unknownWhen()},
 				{ID: "oblige", Effect: withObligations, When: actionNamed("refund"), Obligations: capAmount()},
 			},
 			want{verdict: withObligations, determinate: withObligations, ids: list("oblige"), codes: list(attached),
-				obligations: []*controlv1.Obligation{{Type: "cap_amount", Params: map[string]string{"max": "100"}}}}},
+				obligations:   []*controlv1.Obligation{{Type: "cap_amount", Params: map[string]string{"max": "100"}}},
+				unknownAllows: list("unknown-allow")}},
+		{"a matched DENY decides beside an unknown ALLOW",
+			[]rules.Rule{
+				{ID: "unknown-allow", Effect: allow, When: unknownWhen()},
+				{ID: "deny", Effect: deny, When: actionNamed("refund")},
+			},
+			want{verdict: deny, determinate: deny, ids: list("deny"), codes: list(ruleDeny), unknownAllows: list("unknown-allow")}},
+		{"unknown ALLOWs are reported in document order, a false one not at all",
+			[]rules.Rule{
+				{ID: "second", Effect: allow, When: unknownWhen()},
+				{ID: "false-allow", Effect: allow, When: actionNamed("archive")},
+				{ID: "first", Effect: allow, When: unknownWhen()},
+			},
+			want{verdict: deny, determinate: deny, codes: list(noMatchingRule), unknownAllows: list("second", "first")}},
 		{"an unknown REQUIRE_APPROVAL beside a matched ALLOW",
 			[]rules.Rule{
 				{ID: "allow", Effect: allow, When: actionNamed("refund")},

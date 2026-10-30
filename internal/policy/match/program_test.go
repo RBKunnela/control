@@ -191,7 +191,8 @@ func TestProgramNobodyCompiled(t *testing.T) {
 }
 
 // TestNoEnvelope: every field is absent, so a restrictive rule over any of them
-// is indeterminate and an ALLOW over any of them matches nothing.
+// is indeterminate and an ALLOW over any of them matches nothing and is
+// reported unknown.
 func TestNoEnvelope(t *testing.T) {
 	p := compile(t,
 		rules.Rule{ID: "allow-refunds", Effect: allow, When: actionNamed("refund")},
@@ -199,6 +200,7 @@ func TestNoEnvelope(t *testing.T) {
 	)
 	assertResult(t, p.Evaluate(nil, match.Inputs{}), want{
 		verdict: indeterminate, determinate: deny, undetermined: list("deny-bob"), codes: list(ruleUndetermined),
+		unknownAllows: list("allow-refunds"),
 	})
 }
 

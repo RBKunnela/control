@@ -211,7 +211,7 @@ type aborted struct {
 // pipeline.
 type fakePipeline struct {
 	decide   func(gateway.Admission) gateway.Disposition
-	preview  func(gateway.Admission) *controlv1.Decision
+	preview  func(gateway.Admission) gateway.Previewed
 	probe    func() int
 	closeErr error
 	abortErr error
@@ -253,11 +253,25 @@ func (f *fakePipeline) Abort(_ context.Context, d gateway.Disposition, cause gat
 	return f.abortErr
 }
 
-func (f *fakePipeline) Preview(_ context.Context, a gateway.Admission) *controlv1.Decision {
+func (f *fakePipeline) Preview(_ context.Context, a gateway.Admission) gateway.Previewed {
 	if f.preview != nil {
 		return f.preview(a)
 	}
-	return f.decide(a).Decision
+	return previewOf(f.decide(a).Decision)
+}
+
+// previewOf is d as the fake previews it: a DENY is denied to the listing, a
+// verdict that lets the call proceed or wait is decided, and anything else is
+// decided per call.
+func previewOf(d *controlv1.Decision) gateway.Previewed {
+	listing := gateway.ListingPerCall
+	switch d.GetVerdict() {
+	case controlv1.Verdict_VERDICT_DENY:
+		listing = gateway.ListingDenied
+	case controlv1.Verdict_VERDICT_ALLOW, controlv1.Verdict_VERDICT_ALLOW_WITH_OBLIGATIONS, controlv1.Verdict_VERDICT_REQUIRE_APPROVAL:
+		listing = gateway.ListingDecided
+	}
+	return gateway.Previewed{Decision: d, Listing: listing}
 }
 
 func (f *fakePipeline) aborted() []aborted {

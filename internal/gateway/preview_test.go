@@ -100,21 +100,21 @@ func expectSentDigestOnly(t *testing.T, events []*controlv1.Event, sent string) 
 // on top of it, and nothing written, held, rewritten or counted.
 func TestPreviewDecidesWithoutActing(t *testing.T) {
 	locked := build(t, modeLockdown, snapshot(t, allowReads, allowWrites))
-	if d := locked.p.Preview(context.Background(), admission(writeEnvelope(), nil)); d.GetVerdict() != verdictDeny ||
+	if d := locked.p.Preview(context.Background(), admission(writeEnvelope(), nil)).Decision; d.GetVerdict() != verdictDeny ||
 		!slices.Equal(d.GetReasonCodes(), []string{codeLockdown}) || d.GetPdpType() != gateway.PDPType {
 		t.Errorf("a write under LOCKDOWN previews as %+v; want the plane's LOCKDOWN", d)
 	}
-	if d := locked.p.Preview(context.Background(), admission(readEnvelope(), nil)); d.GetVerdict() != verdictAllow {
+	if d := locked.p.Preview(context.Background(), admission(readEnvelope(), nil)).Decision; d.GetVerdict() != verdictAllow {
 		t.Errorf("a read under LOCKDOWN previews as %+v; want the kernel's ALLOW", d)
 	}
 	h := build(t, modeEnforce, snapshot(t, denyWrites, approveRefunds, allowReads))
-	if d := h.p.Preview(context.Background(), admission(writeEnvelope(), nil)); d.GetVerdict() != verdictDeny || d.GetPdpType() != "builtin" {
+	if d := h.p.Preview(context.Background(), admission(writeEnvelope(), nil)).Decision; d.GetVerdict() != verdictDeny || d.GetPdpType() != "builtin" {
 		t.Errorf("a denied write previews as %+v", d)
 	}
-	if d := h.p.Preview(context.Background(), admission(refundEnvelope(t, nil), nil)); d.GetVerdict() != verdictApproval {
+	if d := h.p.Preview(context.Background(), admission(refundEnvelope(t, nil), nil)).Decision; d.GetVerdict() != verdictApproval {
 		t.Errorf("a refund previews as %+v; want the kernel's REQUIRE_APPROVAL", d)
 	}
-	if d := h.p.Preview(context.Background(), unclassified(nil)); !slices.Equal(d.GetReasonCodes(), []string{codeActionUnclassified}) {
+	if d := h.p.Preview(context.Background(), unclassified(nil)).Decision; !slices.Equal(d.GetReasonCodes(), []string{codeActionUnclassified}) {
 		t.Errorf("an unclassified call previews as %+v", d)
 	}
 	for name, p := range map[string]*harness{"lockdown": locked, "enforce": h} {
@@ -137,7 +137,7 @@ func expectUntouched(t *testing.T, name string, h *harness) {
 // decision of a kernel nobody built.
 func TestAnUnbuiltPipelinePreviewsTheUnbuiltDecision(t *testing.T) {
 	for name, p := range map[string]*gateway.Pipeline{"nil": nil, "zero": new(gateway.Pipeline)} {
-		d := p.Preview(context.Background(), admission(readEnvelope(), nil))
+		d := p.Preview(context.Background(), admission(readEnvelope(), nil)).Decision
 		if d.GetVerdict() != verdictIndeterminate || !slices.Equal(d.GetReasonCodes(), []string{codePolicyUnavailable}) {
 			t.Errorf("%s pipeline previews as %+v", name, d)
 		}

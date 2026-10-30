@@ -190,9 +190,9 @@ func TestANewBundleReshapesACachedList(t *testing.T) {
 func TestAListShapedUnderNoBundleIsNotCached(t *testing.T) {
 	var previews atomic.Int64
 	r := newRig(t, mcp.KindStatelessHTTP, rigOptions{shaping: mcp.ShapeHide, listTTL: time.Minute})
-	r.pipe.preview = func(gateway.Admission) *controlv1.Decision {
+	r.pipe.preview = func(gateway.Admission) gateway.Previewed {
 		previews.Add(1)
-		return decision(controlv1.Verdict_VERDICT_ALLOW)
+		return previewOf(decision(controlv1.Verdict_VERDICT_ALLOW))
 	}
 	for id := range 2 {
 		if _, body := rawPost(t, r.url, nil, listBody(id)); !bytes.Contains(body, []byte(`"read_file"`)) {
@@ -211,17 +211,17 @@ func TestAListShapedUnderNoBundleIsNotCached(t *testing.T) {
 func TestAListShapedAcrossTwoBundlesIsNotCached(t *testing.T) {
 	var previews atomic.Int64
 	r := newRig(t, mcp.KindStatelessHTTP, rigOptions{shaping: mcp.ShapeHide, listTTL: time.Minute})
-	r.pipe.preview = func(gateway.Admission) *controlv1.Decision {
+	r.pipe.preview = func(gateway.Admission) gateway.Previewed {
 		// The second to the fifth preview of the first list run under a
 		// bundle that denies everything.
 		if n := previews.Add(1); n > 1 && n <= 5 {
 			d := decision(controlv1.Verdict_VERDICT_DENY)
 			d.PolicyBundleDigest = "sha256:second"
-			return d
+			return previewOf(d)
 		}
 		d := decision(controlv1.Verdict_VERDICT_ALLOW)
 		d.PolicyBundleDigest = "sha256:first"
-		return d
+		return previewOf(d)
 	}
 	for id := range 3 {
 		_, body := rawPost(t, r.url, nil, listBody(id))

@@ -283,6 +283,16 @@ time, which no lint read before.</li>
 </ul>
 <h3 id="fixed">Fixed</h3>
 <ul>
+<li><code>tools/list</code> under <code>hide</code> left out a tool whose only <code>ALLOW</code> rule reads
+the resource id its classification points at, and <code>annotate</code> marked it
+<code>VERDICT_DENY</code>, though a call naming an allowed id ran. A tool previewed as
+the <code>DENY</code> of no matching rule alone now stays listed, marked
+<code>DECIDED_PER_CALL</code>, when an <code>ALLOW</code> rule lacked nothing but that resource id
+or the run's flow. An <code>ALLOW</code> unknown on anything else, a matched <code>DENY</code>
+rule, <code>LOCKDOWN</code> and a halt still leave it out. A tool whose preview is not
+a verdict stays listed, as before: one that needs a resource id, whose
+preview the contract refuses, and one an undetermined rule decides
+(<a href="/docs/adr/0070-a-listing-hides-only-what-no-call-could-be-allowed">ADR-0070</a>).</li>
 <li><code>OBSERVE</code> handed out a call whose refusal joined &quot;nothing classifies it&quot;
 with another cause, such as arguments canon refused: such a refusal read as
 unclassified alone. Unclassified is now that one cause, on a chain of single

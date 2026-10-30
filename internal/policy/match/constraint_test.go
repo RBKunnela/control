@@ -35,7 +35,8 @@ type constraintCase struct {
 // checkConstraints reads each constraint's value through the verdicts ADR-0012
 // gives it. A lone REQUIRE_APPROVAL rule is REQUIRE_APPROVAL when it holds, no
 // match when it fails and INDETERMINATE when it cannot be told; a lone ALLOW
-// rule is ALLOW when it holds and no match otherwise.
+// rule is ALLOW when it holds, no match otherwise, and reported among the
+// unknown allows when it cannot be told.
 func checkConstraints(t *testing.T, cases []constraintCase) {
 	t.Helper()
 	for _, c := range cases {
@@ -52,7 +53,7 @@ func checkConstraints(t *testing.T, cases []constraintCase) {
 				restrictive, permissive = nothing, nothing
 			case unknown:
 				restrictive = want{verdict: indeterminate, determinate: deny, undetermined: list("under-test"), codes: list(ruleUndetermined)}
-				permissive = nothing
+				permissive = want{verdict: deny, determinate: deny, codes: list(noMatchingRule), unknownAllows: list("under-test")}
 			default:
 				t.Fatal("the row states no value")
 			}

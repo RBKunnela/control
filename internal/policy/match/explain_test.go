@@ -49,6 +49,7 @@ func TestEveryTraceAgreesWithItsValue(t *testing.T) {
 		fixed.set(env)
 		result, traces := mustCompile(rt, spec.build()).Explain(env, in)
 		var matched, undetermined []string
+		var unknownAllows []match.UnknownAllow
 		for _, tr := range traces {
 			assertTraceAgrees(rt, tr)
 			switch {
@@ -56,10 +57,22 @@ func TestEveryTraceAgreesWithItsValue(t *testing.T) {
 				matched = append(matched, tr.ID)
 			case tr.Value == match.ValueUnknown && tr.Effect != allow:
 				undetermined = append(undetermined, tr.ID)
+			case tr.Value == match.ValueUnknown:
+				var needs []string
+				for _, u := range tr.Unknown {
+					for _, n := range u.Needs {
+						if !slices.Contains(needs, n) {
+							needs = append(needs, n)
+						}
+					}
+				}
+				unknownAllows = append(unknownAllows, match.UnknownAllow{ID: tr.ID, Needs: needs})
 			}
 		}
-		if !slices.Equal(matched, result.RuleIDs) || !slices.Equal(undetermined, result.Indeterminate) {
-			rt.Fatalf("traces give matched %q and undetermined %q, the result %s", matched, undetermined, summary(result))
+		if !slices.Equal(matched, result.RuleIDs) || !slices.Equal(undetermined, result.Indeterminate) ||
+			!sameUnknownAllows(unknownAllows, result.UnknownAllows) {
+			rt.Fatalf("traces give matched %q, undetermined %q and unknown allows %+v, the result %s",
+				matched, undetermined, unknownAllows, summary(result))
 		}
 	})
 }

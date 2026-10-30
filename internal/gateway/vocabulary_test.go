@@ -54,7 +54,7 @@ func TestAnEnvelopeOutsideTheVocabularyIsRefused(t *testing.T) {
 				if slices.Contains(h.kinds(), kindStarted) {
 					t.Errorf("a refused envelope was recorded as started: %v", h.kinds())
 				}
-				if p := h.p.Preview(context.Background(), a); p.GetVerdict() != verdictIndeterminate {
+				if p := h.p.Preview(context.Background(), a).Decision; p.GetVerdict() != verdictIndeterminate {
 					t.Errorf("Preview = %s %v, want the refusal's INDETERMINATE", p.GetVerdict(), p.GetReasonCodes())
 				}
 			})
@@ -166,7 +166,7 @@ func TestAMalformedResourcePointerIsRefused(t *testing.T) {
 					if slices.Contains(h.kinds(), kindStarted) {
 						t.Errorf("a call with a malformed pointer was recorded as started: %v", h.kinds())
 					}
-					if p := h.p.Preview(context.Background(), a); p.GetVerdict() != verdictIndeterminate {
+					if p := h.p.Preview(context.Background(), a).Decision; p.GetVerdict() != verdictIndeterminate {
 						t.Errorf("Preview = %s %v, want the refusal's INDETERMINATE", p.GetVerdict(), p.GetReasonCodes())
 					}
 				})

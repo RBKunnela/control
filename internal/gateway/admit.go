@@ -9,6 +9,7 @@ import (
 	"github.com/guardana/control/internal/evidence"
 	"github.com/guardana/control/internal/pause"
 	"github.com/guardana/control/internal/policy"
+	"github.com/guardana/control/internal/policy/match"
 	"github.com/guardana/control/internal/reaction"
 	"github.com/guardana/control/pkg/contract"
 )
@@ -60,9 +61,14 @@ type call struct {
 	// refusedInput: the kernel's decision stopped on the request itself,
 	// whatever the adapter's Admission said of it.
 	refusedInput bool
-	action       core.EnforcementAction
-	decision     *controlv1.Decision
-	material     bool
+	// unknownAllows and noRuleMatched are the kernel's ALLOW rules it could
+	// not tell, with what each lacked, and whether its decision is DENY for
+	// no matching rule alone; only a preview reads them.
+	unknownAllows []match.UnknownAllow
+	noRuleMatched bool
+	action        core.EnforcementAction
+	decision      *controlv1.Decision
+	material      bool
 	// external is the decision point's answer about this call, asked at
 	// most once; the zero value when it was not asked.
 	external core.External
@@ -163,6 +169,7 @@ func (c *call) decideProposed(snap *policy.Snapshot, ask bool) {
 	}
 	c.kernel, c.decision, c.action, c.basis = out.Decision, out.Decision, out.Action, out.Basis
 	c.kernelAction, c.refusedInput = out.Action, out.RefusedInput
+	c.unknownAllows, c.noRuleMatched = out.UnknownAllows, out.NoRuleMatched
 	c.reliedOnDecision(out.Decision, snap)
 	c.material = contract.IsMaterial(c.in.Envelope.GetAction().GetEffect())
 }

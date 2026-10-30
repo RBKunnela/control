@@ -80,7 +80,7 @@ failing:
 | `CloseReported(ctx, disposition, sent, result) error` | `Close` for bytes a cooperating caller reports it sent. A mismatch halts the material calls of that execution's opened run only, until restart; with no opened run, past `MaxRuns` halted runs, or through an adapter that is not cooperative, it halts the plane as `Close` does |
 | `Abort(ctx, disposition, cause) error` | the call did not go, and the cause says why: the adapter's own pre-send check, an obligation it applies, a call it cannot route, a call its protocol cannot express |
 | `Abandon(ctx, disposition) error` | nobody closed or aborted the execution before it expired. It is closed as `ACTION_FAILED` with status `UNKNOWN` and `EXECUTION_ABANDONED`, since nobody knows whether the call ran, and halts nothing; `ErrNotMinted` for an execution that is not open |
-| `Preview(ctx, Admission) *Decision` | the decision a listing shows: the kernel's, the mode's and the halts', without pauses, stops, run flow or the decision point. It records and holds nothing, and is what shaping a listing asks |
+| `Preview(ctx, Admission) Previewed` | what a listing shows: the kernel's, the mode's and the halts' decision, without pauses, stops, run flow or the decision point, and its `Listing`, whose zero keeps the tool. It records and holds nothing |
 
 What an adapter hands in, the pipeline holds it to, in every mode:
 

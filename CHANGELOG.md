@@ -174,6 +174,16 @@ verify one.
 
 ### Fixed
 
+- `tools/list` under `hide` left out a tool whose only `ALLOW` rule reads
+  the resource id its classification points at, and `annotate` marked it
+  `VERDICT_DENY`, though a call naming an allowed id ran. A tool previewed as
+  the `DENY` of no matching rule alone now stays listed, marked
+  `DECIDED_PER_CALL`, when an `ALLOW` rule lacked nothing but that resource id
+  or the run's flow. An `ALLOW` unknown on anything else, a matched `DENY`
+  rule, `LOCKDOWN` and a halt still leave it out. A tool whose preview is not
+  a verdict stays listed, as before: one that needs a resource id, whose
+  preview the contract refuses, and one an undetermined rule decides
+  ([ADR-0070](docs/adr/0070-a-listing-hides-only-what-no-call-could-be-allowed.md)).
 - `OBSERVE` handed out a call whose refusal joined "nothing classifies it"
   with another cause, such as arguments canon refused: such a refusal read as
   unclassified alone. Unclassified is now that one cause, on a chain of single

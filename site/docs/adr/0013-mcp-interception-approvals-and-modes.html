@@ -176,6 +176,11 @@ for anything but nothing classifying it, is blocked in <code>OBSERVE</code> too,
 an envelope the kernel refuses whatever the adapter reported; the pipeline
 refuses an action kind outside <code>tool</code>, <code>prompt</code> and <code>resource</code> and a protocol
 other than its adapter's name.</p>
+<p>Amended by <a href="/docs/adr/0070-a-listing-hides-only-what-no-call-could-be-allowed">ADR-0070</a>,
+which decides that <code>hide</code> keeps a tool only when a call to it could be allowed:
+the kernel's <code>DENY</code> for no matching rule alone, beside an <code>ALLOW</code> rule that
+lacked nothing but the resource id the tool's classification points at or the
+run's flow.</p>
 <h2 id="context">Context</h2>
 <p>The kernel decides and nothing calls it. The first protocol target is the Model
 Context Protocol, and its two live revisions are different protocols. <code>2026-07-28</code>

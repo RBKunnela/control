@@ -52,6 +52,7 @@ const (
 	codeApprovalBundleMismatch  = "APPROVAL_BUNDLE_MISMATCH"
 	codeMalformedInput          = "MALFORMED_INPUT"
 	codePolicyStale             = "POLICY_STALE"
+	codeNoMatchingRule          = "NO_MATCHING_RULE"
 )
 
 const (

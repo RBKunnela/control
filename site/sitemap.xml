@@ -72,6 +72,7 @@
   <url><loc>https://control.guardana.dev/docs/adr/0067-the-pipeline-refuses-what-an-adapter-could-not-translate</loc></url>
   <url><loc>https://control.guardana.dev/docs/adr/0068-a-run-belongs-to-one-project</loc></url>
   <url><loc>https://control.guardana.dev/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor</loc></url>
+  <url><loc>https://control.guardana.dev/docs/adr/0070-a-listing-hides-only-what-no-call-could-be-allowed</loc></url>
   <url><loc>https://control.guardana.dev/docs/backlog</loc></url>
   <url><loc>https://control.guardana.dev/docs/changelog</loc></url>
   <url><loc>https://control.guardana.dev/docs/concepts/approvals-and-the-held-call</loc></url>

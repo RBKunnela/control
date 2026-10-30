@@ -17,7 +17,7 @@ type Pipeline interface {
 	Admit(ctx context.Context, a gateway.Admission) gateway.Disposition
 	Close(ctx context.Context, d gateway.Disposition, sent []byte, result *controlv1.ActionResult) error
 	Abort(ctx context.Context, d gateway.Disposition, cause gateway.AbortCause) error
-	Preview(ctx context.Context, a gateway.Admission) *controlv1.Decision
+	Preview(ctx context.Context, a gateway.Admission) gateway.Previewed
 }
 
 var _ Pipeline = (*gateway.Pipeline)(nil)

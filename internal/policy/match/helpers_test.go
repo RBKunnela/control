@@ -107,6 +107,7 @@ type want struct {
 	ids, undetermined, codes []string
 	obligations              []*controlv1.Obligation
 	external                 []string
+	unknownAllows            []string
 }
 
 // assertResult compares; it never computes an expectation.
@@ -133,6 +134,22 @@ func assertResult(t testing.TB, got match.Result, w want) {
 	if !slices.Equal(got.ReadExternal, w.external) {
 		t.Errorf("ReadExternal = %q, want %q", got.ReadExternal, w.external)
 	}
+	if got := unknownIDs(got); !slices.Equal(got, w.unknownAllows) {
+		t.Errorf("UnknownAllows name %q, want %q", got, w.unknownAllows)
+	}
+}
+
+// unknownIDs are the ids UnknownAllows lists, in its order.
+func unknownIDs(r match.Result) []string {
+	var out []string
+	for _, u := range r.UnknownAllows {
+		out = append(out, u.ID)
+	}
+	return out
+}
+
+func sameUnknownAllows(a, b []match.UnknownAllow) bool {
+	return slices.EqualFunc(a, b, func(x, y match.UnknownAllow) bool { return x.ID == y.ID && slices.Equal(x.Needs, y.Needs) })
 }
 
 func sameObligations(a, b []*controlv1.Obligation) bool {
@@ -152,8 +169,8 @@ func describe(obs []*controlv1.Obligation) string {
 }
 
 func summary(r match.Result) string {
-	return fmt.Sprintf("{%s determinate=%s ids=%q undetermined=%q codes=%q obligations=%s external=%q}",
-		r.Verdict, r.Determinate, r.RuleIDs, r.Indeterminate, r.ReasonCodes, describe(r.Obligations), r.ReadExternal)
+	return fmt.Sprintf("{%s determinate=%s ids=%q undetermined=%q codes=%q obligations=%s external=%q unknown-allows=%+v}",
+		r.Verdict, r.Determinate, r.RuleIDs, r.Indeterminate, r.ReasonCodes, describe(r.Obligations), r.ReadExternal, r.UnknownAllows)
 }
 
 // failer is what *testing.T and *rapid.T both offer, so one assertion serves a
@@ -168,7 +185,7 @@ func assertSame(f failer, what string, a, b match.Result) {
 	if a.Verdict != b.Verdict || a.Determinate != b.Determinate ||
 		!slices.Equal(a.RuleIDs, b.RuleIDs) || !slices.Equal(a.Indeterminate, b.Indeterminate) ||
 		!slices.Equal(a.ReasonCodes, b.ReasonCodes) || !sameObligations(a.Obligations, b.Obligations) ||
-		!slices.Equal(a.ReadExternal, b.ReadExternal) {
+		!slices.Equal(a.ReadExternal, b.ReadExternal) || !sameUnknownAllows(a.UnknownAllows, b.UnknownAllows) {
 		f.Fatalf("%s: %s, and before it %s", what, summary(b), summary(a))
 	}
 }
@@ -204,6 +221,7 @@ func assertWellFormed(f failer, order []string, effects map[string]controlv1.Ver
 	inOrder(f, "RuleIDs", got.RuleIDs, order)
 	inOrder(f, "Indeterminate", got.Indeterminate, order)
 	inOrder(f, "ReadExternal", got.ReadExternal, order)
+	assertUnknownAllowsWellFormed(f, order, effects, got)
 	for _, id := range got.ReadExternal {
 		if effects[id] != deny {
 			f.Fatalf("%s rule %s reads the external answer; only a DENY rule may", effects[id], id)
@@ -222,6 +240,25 @@ func assertWellFormed(f failer, order []string, effects map[string]controlv1.Ver
 	}
 	assertCodesWellFormed(f, effects, got)
 	assertObligationsWellFormed(f, got)
+}
+
+// assertUnknownAllowsWellFormed: UnknownAllows lists ALLOW rules alone, in
+// document order, none of them matched or indeterminate, each lacking at
+// least one input and naming each once.
+func assertUnknownAllowsWellFormed(f failer, order []string, effects map[string]controlv1.Verdict, got match.Result) {
+	f.Helper()
+	inOrder(f, "UnknownAllows", unknownIDs(got), order)
+	for _, u := range got.UnknownAllows {
+		if effects[u.ID] != allow {
+			f.Fatalf("%s rule %s is listed as an unknown ALLOW", effects[u.ID], u.ID)
+		}
+		if slices.Contains(got.RuleIDs, u.ID) || slices.Contains(got.Indeterminate, u.ID) {
+			f.Fatalf("unknown ALLOW rule %s is also matched or indeterminate: %s", u.ID, summary(got))
+		}
+		if len(u.Needs) == 0 || len(slices.Compact(slices.Sorted(slices.Values(u.Needs)))) != len(u.Needs) {
+			f.Fatalf("unknown ALLOW rule %s lacked %q: none, or one twice", u.ID, u.Needs)
+		}
+	}
 }
 
 func matchedDeny(effects map[string]controlv1.Verdict, got match.Result) bool {

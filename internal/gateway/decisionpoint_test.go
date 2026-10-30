@@ -260,7 +260,7 @@ func TestTheRewritePathAsksNothingMore(t *testing.T) {
 func TestPreviewAsksNothing(t *testing.T) {
 	dp := &fakeDecisionPoint{answer: core.ExternalAllowed()}
 	h := build(t, modeEnforce, snapshot(t, allowWrites, vetoWrites), withDecisionPoint(dp))
-	d := h.p.Preview(context.Background(), admission(writeEnvelope(), nil))
+	d := h.p.Preview(context.Background(), admission(writeEnvelope(), nil)).Decision
 	if d.GetVerdict() != verdictIndeterminate || !slices.Contains(d.GetReasonCodes(), codeRuleUndetermined) || d.GetPdpInstance() != "" {
 		t.Errorf("a vetoed write previews as %+v; want INDETERMINATE with the veto undetermined", d)
 	}

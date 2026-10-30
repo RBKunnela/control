@@ -199,7 +199,7 @@ listed in the decision, in order, once each.</p>
 </tr>
 <tr>
 <td>Rules</td>
-<td>every rule is true, false or unknown; an unknown <code>ALLOW</code> does not match, an unknown rule of any other effect makes the verdict <code>INDETERMINATE</code> with a cause in the request unless a <code>DENY</code> matched; nothing matched is <code>DENY</code></td>
+<td>every rule is true, false or unknown; an unknown <code>ALLOW</code> does not match and is reported beside the decision with the inputs it lacked, so a listing keeps a tool a call could be allowed, an unknown rule of any other effect makes the verdict <code>INDETERMINATE</code> with a cause in the request unless a <code>DENY</code> matched; nothing matched is <code>DENY</code></td>
 <td>each matched rule's reason, then <code>RULE_UNDETERMINED</code>, or <code>NO_MATCHING_RULE</code></td>
 </tr>
 <tr>

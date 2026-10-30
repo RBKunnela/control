@@ -91,6 +91,23 @@ func (r *rule) trace(env *controlv1.ActionEnvelope, in *Inputs, v truth) RuleTra
 	return t
 }
 
+// lacked is the inputs the rule's unknown constraints lacked, once each in
+// the rule's order. An ALLOW rule reads no external answer, so none is named.
+func (r *rule) lacked(env *controlv1.ActionEnvelope, in *Inputs) []string {
+	var out []string
+	for i, c := range r.constraints {
+		if v := c(env, in); v == yes || v == no {
+			continue
+		}
+		for _, need := range r.parts[i].needs(env, in) {
+			if !slices.Contains(out, need) {
+				out = append(out, need)
+			}
+		}
+	}
+	return out
+}
+
 func valueOf(v truth) Value {
 	switch v {
 	case yes:

@@ -199,9 +199,14 @@ func withArguments(a Admission) Admission {
 // It reads no run either: a listing is cached per principal and outlives any
 // flow state, so a flow rule is undetermined here. A nil or zero Pipeline
 // answers the decision of a kernel nobody built.
-func (p *Pipeline) Preview(ctx context.Context, a Admission) *controlv1.Decision {
+//
+// The listing is denied for every DENY but one a call can lift: the kernel's
+// DENY for no matching rule alone, beside an ALLOW rule whose every unknown
+// input is one the call brings and the preview lacks. That tool is decided
+// per call.
+func (p *Pipeline) Preview(ctx context.Context, a Admission) Previewed {
 	if p == nil || p.kernel == nil {
-		return unbuilt(ctx, a).Decision
+		return Previewed{Decision: unbuilt(ctx, a).Decision}
 	}
 	c := &call{
 		p: p, ctx: ctx, in: withArguments(a), now: p.cfg.Clock(),
@@ -214,7 +219,7 @@ func (p *Pipeline) Preview(ctx context.Context, a Admission) *controlv1.Decision
 	c.decideProposed(p.cfg.Policy.Current(), false)
 	c.applyMode()
 	c.refuseFlow()
-	return c.decision
+	return Previewed{Decision: c.decision, Listing: listingOf(c.decision, c.kernel, c.noRuleMatched, c.unknownAllows, c.in)}
 }
 
 // Stats returns what the pipeline counted so far. A nil or zero Pipeline

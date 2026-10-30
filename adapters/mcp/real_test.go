@@ -63,7 +63,7 @@ func (r *realPipeline) admitted() []string {
 	return slices.Clone(r.proposed)
 }
 
-func (r *realPipeline) Preview(ctx context.Context, a gateway.Admission) *controlv1.Decision {
+func (r *realPipeline) Preview(ctx context.Context, a gateway.Admission) gateway.Previewed {
 	r.previews.Add(1)
 	return r.Pipeline.Preview(ctx, a)
 }

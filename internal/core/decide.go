@@ -27,6 +27,9 @@ type decision struct {
 
 	codes  []string
 	denied bool // a matched DENY or one of the kernel's own
+	// own: a DENY of the kernel's own, a refused chain, two tenants or an
+	// obligation it cannot apply.
+	own bool
 	// refused: steps 1 and 2 refused the request itself.
 	refused bool
 	causes  undecided
@@ -153,7 +156,7 @@ func digestCode(err error) string {
 func (d *decision) checkDelegation() {
 	effective, err := delegation.Check(d.env.GetDelegation(), d.now)
 	if err != nil {
-		d.denied = true
+		d.denied, d.own = true, true
 		var refused *delegation.Error
 		code := ""
 		if errors.As(err, &refused) {
@@ -185,7 +188,7 @@ func (d *decision) checkTenant() {
 	switch {
 	case principal != "" && resource != "" && principal != resource:
 		d.add(codeTenantMismatch)
-		d.denied = true
+		d.denied, d.own = true, true
 	case (principal == "") != (resource == "") && contract.IsMaterial(d.env.GetAction().GetEffect()):
 		d.add(codeTenantUndetermined)
 		d.causes.input = true
@@ -246,7 +249,7 @@ func (d *decision) evaluate(applicable map[string]bool) {
 	for _, o := range d.result.Obligations {
 		if !o.GetAdvisory() && !applicable[o.GetType()] {
 			d.add(codeObligationNotUnderstood)
-			d.denied = true
+			d.denied, d.own = true, true
 			return
 		}
 	}
@@ -315,8 +318,18 @@ func (d *decision) outcome(k *Kernel) Outcome {
 		},
 		Action:        action,
 		NeedsExternal: d.needsExternal,
+		UnknownAllows: d.result.UnknownAllows,
+		NoRuleMatched: d.noRuleMatched(verdict, opened),
 		Basis:         Basis{set: true, digest: d.snap.Ref().GetDigest(), fresh: !d.stale(), opened: opened},
 	}
+}
+
+// noRuleMatched is Outcome.NoRuleMatched, read off each step's own flag
+// rather than off the codes, which a later step may extend.
+func (d *decision) noRuleMatched(verdict controlv1.Verdict, opened bool) bool {
+	return verdict == controlv1.Verdict_VERDICT_DENY && d.result.Verdict == controlv1.Verdict_VERDICT_DENY &&
+		len(d.result.RuleIDs) == 0 && len(d.result.Indeterminate) == 0 &&
+		!d.own && !d.refused && !d.causes.input && !d.causes.availability && !d.consulted && !opened
 }
 
 // decidedAt is the reading as a Timestamp, or none for a reading no record

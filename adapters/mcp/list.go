@@ -171,7 +171,7 @@ type shaping struct {
 	// probe is the entry bundle previewed, and probed its decision, which
 	// shaping that entry takes instead of asking again.
 	probe  *Entry
-	probed *controlv1.Decision
+	probed gateway.Previewed
 	digest string
 	// mixed is a preview decided under a bundle other than probed's: the list
 	// straddles two bundles and is cached under neither.
@@ -190,7 +190,7 @@ func (s *shaping) bundle(entries []Entry) (string, bool) {
 		if previewed(&entries[i]) {
 			s.probe = &entries[i]
 			s.probed = s.a.preview(s.ctx, s.p, s.req, s.probe, s.principal, s.agent)
-			s.digest = s.probed.GetPolicyBundleDigest()
+			s.digest = s.probed.Decision.GetPolicyBundleDigest()
 			return s.digest, s.digest != ""
 		}
 	}
@@ -198,12 +198,12 @@ func (s *shaping) bundle(entries []Entry) (string, bool) {
 }
 
 // decide is the preview of e, read once for the probe.
-func (s *shaping) decide(e *Entry) *controlv1.Decision {
+func (s *shaping) decide(e *Entry) gateway.Previewed {
 	if e == s.probe {
 		return s.probed
 	}
 	d := s.a.preview(s.ctx, s.p, s.req, e, s.principal, s.agent)
-	if s.probe != nil && d.GetPolicyBundleDigest() != s.digest {
+	if s.probe != nil && d.Decision.GetPolicyBundleDigest() != s.digest {
 		s.mixed = true
 	}
 	return d
@@ -228,10 +228,10 @@ func (a *Adapter) ttlMs() int { return int(a.cfg.ListTTL / time.Millisecond) }
 
 // shape returns the tool as the principal may see it, or nil to omit it.
 // Shaping only subtracts: none shows the upstream's tool, annotate marks it,
-// hide omits what the preview denies and what nobody classified. A tool the
-// preview cannot decide without the call's arguments stays, because the call
-// is decided when it is made. A definition the scan withheld is omitted under
-// every shaping.
+// hide omits what the preview's listing denies and what nobody classified.
+// Which previews deny the listing is the pipeline's rule; a tool decided per
+// call stays, because the call is decided when it is made. A definition the
+// scan withheld is omitted under every shaping.
 func (s *shaping) shape(e *Entry) *mcp.Tool {
 	if e.withheld {
 		return nil
@@ -242,14 +242,14 @@ func (s *shaping) shape(e *Entry) *mcp.Tool {
 	}
 	mark := codeUnclassified
 	if previewed(e) {
-		switch v := s.decide(e).GetVerdict(); v {
-		case controlv1.Verdict_VERDICT_DENY:
+		switch d := s.decide(e); d.Listing {
+		case gateway.ListingDenied:
 			if shapingKind == ShapeHide {
 				return nil
 			}
-			mark = v.String()
-		case controlv1.Verdict_VERDICT_ALLOW, controlv1.Verdict_VERDICT_ALLOW_WITH_OBLIGATIONS, controlv1.Verdict_VERDICT_REQUIRE_APPROVAL:
-			mark = v.String()
+			mark = d.Decision.GetVerdict().String()
+		case gateway.ListingDecided:
+			mark = d.Decision.GetVerdict().String()
 		default:
 			mark = markDecidedPerCall
 		}
@@ -264,8 +264,9 @@ func (s *shaping) shape(e *Entry) *mcp.Tool {
 
 // preview asks the pipeline what a call to the tool with no arguments would
 // be decided, for this principal, without recording anything, so it names no
-// trace.
-func (a *Adapter) preview(ctx context.Context, p Pipeline, req mcp.Request, e *Entry, principal *controlv1.Principal, agent *controlv1.Agent) *controlv1.Decision {
+// trace. The classification tells the pipeline where a call's resource id
+// would come from.
+func (a *Adapter) preview(ctx context.Context, p Pipeline, req mcp.Request, e *Entry, principal *controlv1.Principal, agent *controlv1.Agent) gateway.Previewed {
 	up := a.upstreamConfig(e.Upstream)
 	env := a.base(req, nil, principal, agent, a.cfg.NewID())
 	env.Action = &controlv1.Action{Kind: channel.KindTool, Name: e.Tool.Name, Protocol: channel.ProtocolMCP, Effect: e.Effect, Provider: e.Upstream}
@@ -274,7 +275,7 @@ func (a *Adapter) preview(ctx context.Context, p Pipeline, req mcp.Request, e *E
 		env.Destination = &controlv1.Destination{TrustZone: e.TrustZone}
 	}
 	args := []byte(noArguments)
-	return p.Preview(ctx, gateway.Admission{Envelope: env, Refusal: a.finish(env, args), Arguments: args})
+	return p.Preview(ctx, gateway.Admission{Envelope: env, Refusal: a.finish(env, args), Arguments: args, Classification: e.Classification})
 }
 
 // present is the tool as the agent sees it: its _meta without the gateway's

@@ -194,13 +194,13 @@ func TestPreviewSkipsThePause(t *testing.T) {
 	h := build(t, modeEnforce, snapshot(t, allowReads, denyWrites))
 	want := map[string][]string{}
 	for name, env := range map[string]*controlv1.ActionEnvelope{"read": tool(readEnvelope()), "write": tool(writeEnvelope())} {
-		want[name] = h.p.Preview(context.Background(), admission(env, []byte(`{}`))).GetReasonCodes()
+		want[name] = h.p.Preview(context.Background(), admission(env, []byte(`{}`))).Decision.GetReasonCodes()
 	}
 	for _, snap := range []pause.Snapshot{paused(t, pauseGlobal), {}} {
 		h.pause.set(snap)
 		before := h.pause.calls.Load()
 		for name, env := range map[string]*controlv1.ActionEnvelope{"read": tool(readEnvelope()), "write": tool(writeEnvelope())} {
-			got := h.p.Preview(context.Background(), admission(env, []byte(`{}`)))
+			got := h.p.Preview(context.Background(), admission(env, []byte(`{}`))).Decision
 			if !slices.Equal(got.GetReasonCodes(), want[name]) {
 				t.Errorf("%s under %s: %v, want %v", name, snap.State(), got.GetReasonCodes(), want[name])
 			}

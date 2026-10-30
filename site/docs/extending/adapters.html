@@ -194,8 +194,8 @@ failing:</p>
 <td>nobody closed or aborted the execution before it expired. It is closed as <code>ACTION_FAILED</code> with status <code>UNKNOWN</code> and <code>EXECUTION_ABANDONED</code>, since nobody knows whether the call ran, and halts nothing; <code>ErrNotMinted</code> for an execution that is not open</td>
 </tr>
 <tr>
-<td><code>Preview(ctx, Admission) *Decision</code></td>
-<td>the decision a listing shows: the kernel's, the mode's and the halts', without pauses, stops, run flow or the decision point. It records and holds nothing, and is what shaping a listing asks</td>
+<td><code>Preview(ctx, Admission) Previewed</code></td>
+<td>what a listing shows: the kernel's, the mode's and the halts' decision, without pauses, stops, run flow or the decision point, and its <code>Listing</code>, whose zero keeps the tool. It records and holds nothing</td>
 </tr>
 </tbody>
 </table>

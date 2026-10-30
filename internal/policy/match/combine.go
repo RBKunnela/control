@@ -8,16 +8,19 @@ import (
 
 // tally is what one evaluation found, in document order.
 type tally struct {
-	matched      []*rule
-	undetermined []*rule
-	external     []*rule
+	matched       []*rule
+	undetermined  []*rule
+	external      []*rule
+	unknownAllows []UnknownAllow
 }
 
 // record files a rule's value, and the rule when that value turns on the
-// external answer. An unknown ALLOW is no match. An unknown rule of any other
-// effect restricts, and a call that leaves out the field it reads must not
-// slip past it onto a broader allow (ADR-0012).
-func (t *tally) record(r *rule, v truth, turnsOnExternal bool) {
+// external answer. An unknown ALLOW is no match, and is kept apart so a
+// caller can tell "nothing could allow this" from "a field the call left out
+// decides it". An unknown rule of any other effect restricts, and a call
+// that leaves out the field it reads must not slip past it onto a broader
+// allow (ADR-0012).
+func (t *tally) record(r *rule, v truth, turnsOnExternal bool, env *controlv1.ActionEnvelope, in *Inputs) {
 	if turnsOnExternal {
 		t.external = append(t.external, r)
 	}
@@ -26,6 +29,8 @@ func (t *tally) record(r *rule, v truth, turnsOnExternal bool) {
 		t.matched = append(t.matched, r)
 	case v == unknown && r.effect != controlv1.Verdict_VERDICT_ALLOW:
 		t.undetermined = append(t.undetermined, r)
+	case v == unknown:
+		t.unknownAllows = append(t.unknownAllows, UnknownAllow{ID: r.id, Needs: r.lacked(env, in)})
 	}
 }
 
@@ -39,6 +44,7 @@ func (t *tally) result() Result {
 		ReasonCodes:   t.reasonCodes(),
 		Obligations:   t.obligations(verdict),
 		ReadExternal:  ids(t.external),
+		UnknownAllows: t.unknownAllows,
 	}
 }
 
