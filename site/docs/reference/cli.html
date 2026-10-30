@@ -285,6 +285,7 @@ profile's statuses, <a href="/docs/extending/runtime-profiles">extending/runtime
 
 Write access to the approvals directory is the approval authority:
 --approver-id is a claim recorded as given, never an identity.
+An id that could read as authn:, mixes scripts or holds a hidden or restyled character is refused.
 Write access to the pause file is the authority to pause a call and to lift a pause.
 Write access to the runs directory is the authority to open and to close a run;
 a token acts as its run until it expires or is closed, and runs open prints it once.

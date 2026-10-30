@@ -236,14 +236,30 @@ func (s *store) readRecord(id string, hint state) (Record, state, error) {
 	return Record{}, hint, fs.ErrNotExist
 }
 
+// readListed reads a record a scan listed, as readRecord does, except for a
+// record whose approver id the claim rule refuses: that record comes back
+// beside the refusal, which the caller answers with only for a lookup of the
+// record's own approval. Every other error refuses the lookup.
+func (s *store) readListed(id string, hint state) (rec Record, st state, refusal, err error) {
+	rec, st, err = s.readRecord(id, hint)
+	if own, refused := refusedOnlyItself(err); refused {
+		return own, st, err, nil
+	}
+	return rec, st, nil, err
+}
+
 // decodeAt decodes raw and holds it to the name it was read under. A record
 // whose inner identifier or resolution disagrees with its name is refused,
 // never read as if the two agreed: the name is how the store finds it and the
 // content is what it answers from.
 func (s *store) decodeAt(id string, st state, raw []byte) (Record, error) {
 	rec, err := decodeRecord(raw, s.opts.maxRecordBytes, s.opts.maxApprovalWindow)
-	if err != nil {
+	own, refused := refusedOnlyItself(err)
+	if err != nil && !refused {
 		return Record{}, fmt.Errorf("record %q: %w", cause(id+st.suffix()), err)
+	}
+	if refused {
+		rec = own
 	}
 	if rec.ApprovalID != id {
 		return Record{}, fmt.Errorf("%w: %q holds approval %q",
@@ -252,6 +268,9 @@ func (s *store) decodeAt(id string, st state, raw []byte) (Record, error) {
 	if rec.Resolution != st.resolution() {
 		return Record{}, fmt.Errorf("%w: %q holds resolution %s",
 			ErrNameMismatch, cause(id+st.suffix()), rec.Resolution)
+	}
+	if refused {
+		return Record{}, fmt.Errorf("record %q: %w", cause(id+st.suffix()), err)
 	}
 	return rec, nil
 }

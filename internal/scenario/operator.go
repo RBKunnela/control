@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/guardana/control/internal/approvals"
+	"github.com/guardana/control/internal/core/approval"
 	"github.com/guardana/control/internal/pause"
 	"github.com/guardana/control/internal/policykey"
 )
@@ -31,6 +32,9 @@ func (st *steps) approval(n *node, at path) (*Approval, *Refusal) {
 	st.answered[a.Step] = true
 	if a.Approver, r = identifier(f["approver"], at.key("approver"), approvals.MaxApproverIDBytes); r != nil {
 		return nil, r
+	}
+	if err := approval.CheckClaimedApproverID(a.Approver); err != nil {
+		return nil, refuse(at.key("approver"), ErrValue, err.Error())
 	}
 	if r := noKeyText(a.Approver, at.key("approver")); r != nil {
 		return nil, r

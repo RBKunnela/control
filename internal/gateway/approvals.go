@@ -254,13 +254,17 @@ func (m *MemoryApprovals) Resolve(ctx context.Context, binding approval.Binding,
 
 // Answer decides the held approval approvalID: APPROVED with an approver, or
 // REJECTED, at decidedAt. It refuses an unknown id with ErrNoApproval, any
-// other answer with ErrApprovalAnswer, and an approval answered or consumed
-// already with ErrApprovalAnswered.
+// other answer or an approver that claims the reserved authn: prefix with
+// ErrApprovalAnswer, and an approval answered or consumed already with
+// ErrApprovalAnswered.
 func (m *MemoryApprovals) Answer(approvalID string, state controlv1.ApprovalState, approverID, reason string, decidedAt time.Time) error {
 	approved := state == controlv1.ApprovalState_APPROVAL_STATE_APPROVED && approverID != ""
 	rejected := state == controlv1.ApprovalState_APPROVAL_STATE_REJECTED
 	if !approved && !rejected {
 		return fmt.Errorf("%w: got %s with approver %q", ErrApprovalAnswer, state, approverID)
+	}
+	if err := approval.CheckClaimedApproverID(approverID); err != nil {
+		return fmt.Errorf("%w: %w", ErrApprovalAnswer, err)
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()

@@ -15,16 +15,16 @@ import (
 )
 
 // TestProductionImportsOnlyCanonAndTheContract: from this module the package
-// needs the canonical form and the generated contract, and nothing else. The
-// reason-code registry least of all, since nothing on the decision path
-// imports it (ADR-0012).
+// needs the canonical form, the generated contract and the contract's
+// identifier rule, and nothing else. The reason-code registry least of all,
+// since nothing on the decision path imports it (ADR-0012).
 func TestProductionImportsOnlyCanonAndTheContract(t *testing.T) {
 	self := reflect.TypeFor[approval.Binding]().PkgPath()
 	module := strings.TrimSuffix(self, "/internal/core/approval")
 	if module == self {
 		t.Fatalf("cannot find the module path in %q", self)
 	}
-	allowed := []string{reflect.TypeFor[controlv1.ActionEnvelope]().PkgPath(), module + "/internal/canon"}
+	allowed := []string{reflect.TypeFor[controlv1.ActionEnvelope]().PkgPath(), module + "/internal/canon", module + "/pkg/contract"}
 	for _, imp := range productionImports(t) {
 		if (imp == module || strings.HasPrefix(imp, module+"/")) && !slices.Contains(allowed, imp) {
 			t.Errorf("the package imports %s; only %q are allowed from this module", imp, allowed)

@@ -214,7 +214,7 @@ literal <code>${</code> cannot be sent, and a reference in a member name is refu
 <tbody>
 <tr>
 <td><code>approve</code>, <code>reject</code></td>
-<td><code>step</code>, the pending call step to answer, once; <code>approver</code>, an identifier of at most 128 bytes; <code>reason</code>, optional, at most 1024 bytes.</td>
+<td><code>step</code>, the pending call step to answer, once; <code>approver</code>, an identifier of at most 128 bytes held to the approvers' rule: it may not begin with or read as the reserved <code>authn:</code> prefix, mix scripts, or hold an invisible or restyled character; <code>reason</code>, optional, at most 1024 bytes.</td>
 </tr>
 <tr>
 <td><code>pause</code></td>

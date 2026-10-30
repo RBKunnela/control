@@ -29,7 +29,8 @@ const (
 // who may answer an approval. Whoever can write the directory can approve; the
 // approver id is recorded beside the answer and nothing authenticates it.
 const approvalAuthority = "Write access to the approvals directory is the approval authority:\n" +
-	"--approver-id is a claim recorded as given, never an identity."
+	"--approver-id is a claim recorded as given, never an identity.\n" +
+	"An id that could read as authn:, mixes scripts or holds a hidden or restyled character is refused."
 
 // answerForm is how the two answering commands spell what follows their two
 // words. The flags come first because the flag package stops reading them at

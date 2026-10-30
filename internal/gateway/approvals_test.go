@@ -341,3 +341,23 @@ func TestConsumeIsOneCompareAndSwap(t *testing.T) {
 		t.Errorf("%d consumers won and %d lost; want 1 and 31", winners, losers)
 	}
 }
+
+// TestMemoryApprovalsRefuseAClaimOfTheReservedPrefix: an answer whose
+// approver reads as the reserved prefix is refused, approving or rejecting,
+// and leaves the approval pending, so a plain name can still answer it.
+func TestMemoryApprovalsRefuseAClaimOfTheReservedPrefix(t *testing.T) {
+	binding := approval.Binding("sha256:0")
+	var store gateway.MemoryApprovals
+	mustHold(t, &store, held(binding, "a-1", "req-1"))
+	for _, id := range []string{"authn:okta:alice", "AUTHN:okta:alice", "\ua4ee\ua4f4\ua4d4\ua4e7\ua4e0:okta:alice"} {
+		for _, state := range []controlv1.ApprovalState{approved, rejected} {
+			err := store.Answer("a-1", state, id, "", base())
+			if !errors.Is(err, gateway.ErrApprovalAnswer) || !errors.Is(err, approval.ErrReservedApproverID) {
+				t.Errorf("%s by %+q = %v, want ErrApprovalAnswer and ErrReservedApproverID", state, id, err)
+			}
+		}
+	}
+	expectConsume(t, &store, binding, "req-1", "a-1", base(), gateway.ErrNoApproval)
+	mustAnswer(t, &store, "a-1")
+	expectConsume(t, &store, binding, "req-1", "a-1", base(), nil)
+}

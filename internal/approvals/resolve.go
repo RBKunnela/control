@@ -34,7 +34,9 @@ import (
 //
 // A record that will not decode, and a directory past its bound, refuse the
 // whole call. What the caller loses is a resume; what it is spared is an
-// answer about a directory it did not read.
+// answer about a directory it did not read. A record whose approver id the
+// claim rule refuses is the exception: it refuses only a call about its own
+// approval, which a plane closes as unknown.
 func (p *Plane) Find(ctx context.Context, binding approval.Binding, now time.Time) ([]Record, error) {
 	if err := p.beginAt(ctx, now); err != nil {
 		return nil, err
@@ -85,18 +87,18 @@ func (p *Plane) matching(binding approval.Binding, requestID string, want func(s
 	}
 	var found []Record
 	for _, id := range l.ids {
-		rec, st, err := p.s.readRecord(id, l.state[id])
+		rec, st, refusal, err := p.s.readListed(id, l.state[id])
 		if errors.Is(err, fs.ErrNotExist) {
 			continue
 		}
 		if err != nil {
 			return nil, err
 		}
-		if !want(st) || rec.Binding != binding {
+		if !want(st) || rec.Binding != binding || (requestID != "" && rec.RequestID != requestID) {
 			continue
 		}
-		if requestID != "" && rec.RequestID != requestID {
-			continue
+		if refusal != nil {
+			return nil, refusal
 		}
 		found = append(found, rec)
 	}
@@ -203,7 +205,7 @@ func (p *Plane) resolvedAs(binding approval.Binding, requestID string) (state, b
 	}
 	furthest, found := stateHeld, false
 	for _, id := range l.ids {
-		rec, st, err := p.s.readRecord(id, l.state[id])
+		rec, st, refusal, err := p.s.readListed(id, l.state[id])
 		if errors.Is(err, fs.ErrNotExist) {
 			continue
 		}
@@ -212,6 +214,9 @@ func (p *Plane) resolvedAs(binding approval.Binding, requestID string) (state, b
 		}
 		if st <= stateAnswered || rec.Binding != binding || rec.RequestID != requestID {
 			continue
+		}
+		if refusal != nil {
+			return stateHeld, false, refusal
 		}
 		if !found || st > furthest {
 			furthest, found = st, true

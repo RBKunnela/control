@@ -135,13 +135,44 @@ var wireKeys = []string{"schema_version", "approval_id", "request_id", "binding"
 // downstream reads payloads, so what an answer is held to on the way in is
 // what a record is held to on the way back.
 func (r Record) check(maxWindow time.Duration) error {
+	if err := r.checkStanding(maxWindow); err != nil {
+		return err
+	}
+	return r.checkApprover()
+}
+
+// checkStanding is every check but the approver id's: what a record has to
+// pass before what it says about its own approval can be trusted.
+func (r Record) checkStanding(maxWindow time.Duration) error {
 	if err := r.checkIdentity(); err != nil {
 		return err
 	}
-	if err := r.checkText(); err != nil {
+	if err := checkReason(r.Approval.GetReason()); err != nil {
 		return err
 	}
 	return r.checkTimes(maxWindow)
+}
+
+// refusedApprover is a record that passes every check but its approver id's,
+// which the claim rule refuses. An earlier release wrote such ids legally, so
+// the record refuses its own approval and no other: it still says which
+// approval it is, under which binding, and when it expires.
+type refusedApprover struct {
+	rec Record
+	err error
+}
+
+func (e *refusedApprover) Error() string { return e.err.Error() }
+func (e *refusedApprover) Unwrap() error { return e.err }
+
+// refusedOnlyItself returns the record behind err when err refuses that
+// record's own approval and nothing else.
+func refusedOnlyItself(err error) (Record, bool) {
+	var r *refusedApprover
+	if errors.As(err, &r) {
+		return r.rec, true
+	}
+	return Record{}, false
 }
 
 // checkIdentity holds the record's names and digests to each other.
@@ -271,7 +302,13 @@ func decodeRecord(data []byte, maxBody int, maxWindow time.Duration) (Record, er
 		Resolution:    resolution,
 		Approval:      a,
 	}
-	if err := r.check(maxWindow); err != nil {
+	if err := r.checkStanding(maxWindow); err != nil {
+		return Record{}, err
+	}
+	if err := r.checkApprover(); err != nil {
+		if errors.Is(err, approval.ErrReservedApproverID) {
+			return Record{}, &refusedApprover{rec: r, err: err}
+		}
 		return Record{}, err
 	}
 	return r, nil

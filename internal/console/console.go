@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/guardana/control/internal/approvals"
-	"github.com/guardana/control/pkg/contract"
 )
 
 // TokenHeader carries a token on every API request. A header, unlike a
@@ -124,16 +123,11 @@ func New(o Options) (http.Handler, error) {
 }
 
 // CheckApproverID holds an approver id to what the approvals store holds an
-// answer's approver to, so a page never starts with an id every answer would
-// be refused under. The store checks it again on every answer.
+// answer's approver to, the reserved authn: prefix included, so a page never
+// starts with an id every answer would be refused under. The store checks it
+// again on every answer.
 func CheckApproverID(id string) error {
-	if id == "" || len(id) > approvals.MaxApproverIDBytes {
-		return fmt.Errorf("%w: %d bytes, limit %d", approvals.ErrApproverID, len(id), approvals.MaxApproverIDBytes)
-	}
-	if err := contract.CheckIdentifier(id); err != nil {
-		return fmt.Errorf("%w: %w", approvals.ErrApproverID, err)
-	}
-	return nil
+	return approvals.CheckApproverID(id)
 }
 
 type page struct {

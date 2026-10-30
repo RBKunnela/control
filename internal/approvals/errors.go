@@ -58,8 +58,9 @@ const (
 	// plane's proof that an execution happened.
 	ErrResolution Error = "approvals: a store resolves a record as not resumed and nothing else"
 	// ErrApproverID is an approver id that is empty, over MaxApproverIDBytes,
-	// or holds a code point no identifier may hold.
-	ErrApproverID Error = "approvals: the approver id is empty, too long, or holds a refused code point"
+	// holds a code point no identifier may hold, or reads as the reserved
+	// authn: prefix, with approval.ErrReservedApproverID beside it.
+	ErrApproverID Error = "approvals: the approver id is empty, too long, holds a refused code point, or spells the reserved authn: prefix"
 	// ErrReason is a reason over MaxReasonBytes, or one holding a control
 	// character or invalid UTF-8.
 	ErrReason Error = "approvals: the reason is too long, or holds a control character"

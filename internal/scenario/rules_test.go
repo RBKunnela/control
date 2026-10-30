@@ -215,8 +215,9 @@ func TestNoCallExpectsAnEvent(t *testing.T) {
 }
 
 // TestApprovalRefusals: an approve or a reject answers an earlier pending
-// call, names an approver the approvals store would take, and gives a reason
-// it would take or none.
+// call, names an approver the approvals store would take, the reserved authn:
+// prefix refused as the store refuses it, and gives a reason it would take or
+// none.
 func TestApprovalRefusals(t *testing.T) {
 	ap := func(body string) string { return doc(pending(), `{"approve":`+body+`}`) }
 	runRefusals(t, []refusalCase{
@@ -235,6 +236,9 @@ func TestApprovalRefusals(t *testing.T) {
 		{"approver 129", ap(`{"step":0,"approver":"` + strings.Repeat("a", 129) + `"}`), scenario.ErrBound, "steps[1].approve.approver"},
 		{"approver space at end", ap(`{"step":0,"approver":"alice "}`), scenario.ErrValue, "steps[1].approve.approver"},
 		{"approver control", ap(`{"step":0,"approver":"al\tice"}`), scenario.ErrValue, "steps[1].approve.approver"},
+		{"approver reserved prefix", ap(`{"step":0,"approver":"authn:x"}`), scenario.ErrValue, "steps[1].approve.approver"},
+		{"approver reserved prefix in capitals", ap(`{"step":0,"approver":"AUTHN:okta:alice"}`), scenario.ErrValue, "steps[1].approve.approver"},
+		{"reject approver reserved prefix", doc(pending(), `{"reject":{"step":0,"approver":"authn\u0903x"}}`), scenario.ErrValue, "steps[1].reject.approver"},
 		{"reason empty", ap(`{"step":0,"approver":"a","reason":""}`), scenario.ErrBound, "steps[1].approve.reason"},
 		{"reason 1025", ap(`{"step":0,"approver":"a","reason":"` + strings.Repeat("r", 1025) + `"}`), scenario.ErrBound, "steps[1].approve.reason"},
 		{"reason line feed", ap(`{"step":0,"approver":"a","reason":"one\ntwo"}`), scenario.ErrValue, "steps[1].approve.reason"},

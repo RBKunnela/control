@@ -239,12 +239,12 @@ func checkAnswer(approvalID string, answer controlv1.ApprovalState, approverID, 
 	}
 	switch answer {
 	case controlv1.ApprovalState_APPROVAL_STATE_APPROVED:
-		if err := checkApproverID(approverID); err != nil {
+		if err := CheckApproverID(approverID); err != nil {
 			return err
 		}
 	case controlv1.ApprovalState_APPROVAL_STATE_REJECTED:
 		if approverID != "" {
-			if err := checkApproverID(approverID); err != nil {
+			if err := CheckApproverID(approverID); err != nil {
 				return err
 			}
 		}

@@ -143,7 +143,8 @@ func heldRecord(h Hold, maxWindow time.Duration) (Record, error) {
 // roomFor refuses a hold the directory has no room for, and one whose request
 // or approval id is there already. The scan reads every record, so a record
 // that will not decode refuses the hold rather than leaving it to be found by
-// the retry that matters.
+// the retry that matters. A record whose approver id the claim rule refuses
+// still says which request it holds, and is judged by that.
 func (p *Plane) roomFor(rec Record, now time.Time) error {
 	l, err := p.s.scan()
 	if err != nil {
@@ -159,6 +160,9 @@ func (p *Plane) roomFor(rec Record, now time.Time) error {
 		other, _, err := p.s.readRecord(id, l.state[id])
 		if errors.Is(err, fs.ErrNotExist) {
 			continue
+		}
+		if own, refused := refusedOnlyItself(err); refused {
+			other, err = own, nil
 		}
 		if err != nil {
 			return err
@@ -224,6 +228,9 @@ func expired(a *controlv1.Approval, now time.Time) bool {
 // A directory past its bound is read only as far as the bound. What that pass
 // read is pruned, and ErrTooManyRecords beside the count says the sweep did
 // not reach the rest.
+//
+// A record whose approver id the claim rule refuses is pruned like any other
+// once it expires; every other record that will not decode stops the sweep.
 func (p *Plane) Prune(ctx context.Context, now time.Time) (int, error) {
 	if err := p.beginAt(ctx, now); err != nil {
 		return 0, err
@@ -238,6 +245,9 @@ func (p *Plane) Prune(ctx context.Context, now time.Time) (int, error) {
 		rec, _, err := p.s.readRecord(id, l.state[id])
 		if errors.Is(err, fs.ErrNotExist) {
 			continue
+		}
+		if own, refused := refusedOnlyItself(err); refused {
+			rec, err = own, nil
 		}
 		if err != nil {
 			return pruned, err
