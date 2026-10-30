@@ -28,3 +28,20 @@ func lockDir(root *os.Root, dir string) (func() error, error) {
 	}
 	return d.Close, nil
 }
+
+// shareDir takes a shared lock on the directory root holds, named dir in
+// errors, so that no spool opens it while the lock is held, and returns what
+// releases it. held is true, with nothing taken, when a spool holds it already.
+func shareDir(root *os.Root, dir string) (release func() error, held bool, err error) {
+	d, err := root.Open(".")
+	if err != nil {
+		return nil, false, fmt.Errorf("spool: %w", err)
+	}
+	if err := syscall.Flock(int(d.Fd()), syscall.LOCK_SH|syscall.LOCK_NB); err != nil {
+		if errors.Is(err, syscall.EWOULDBLOCK) {
+			return nil, true, d.Close()
+		}
+		return nil, false, errors.Join(fmt.Errorf("spool: asking whether a spool holds %q: %w", dir, err), d.Close())
+	}
+	return d.Close, false, nil
+}

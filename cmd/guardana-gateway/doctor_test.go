@@ -211,9 +211,17 @@ func TestDoctorRefusesAMissingSpoolDirectory(t *testing.T) {
 // TestDoctorRefusesASpoolDirectoryItCannotWriteIn is the other half of the
 // evidence check: the directory lock is taken on a directory this process may
 // only read, so the lock alone would report a spool that cannot take a record.
+// The same directory with its write permission back is writable, so the
+// check answers both ways.
 func TestDoctorRefusesASpoolDirectoryItCannotWriteIn(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root writes in a directory whatever its mode, so no directory here is one it cannot write in")
+	}
 	tr := newTree(t)
 	dir := filepath.Join(tr.dir, "spool")
+	if err := writable(dir); err != nil {
+		t.Fatalf("the spool directory the tree made is not writable: %v", err)
+	}
 	if err := os.Chmod(dir, 0o500); err != nil { //nolint:gosec // G302: the point of the test is a directory this process cannot write in
 		t.Fatalf("taking write permission off the directory: %v", err)
 	}
@@ -223,7 +231,7 @@ func TestDoctorRefusesASpoolDirectoryItCannotWriteIn(t *testing.T) {
 		}
 	})
 	if err := writable(dir); err == nil {
-		t.Skip("this process writes in a directory with no write permission; the check cannot be exercised here")
+		t.Error("a directory of mode 0500 is reported writable")
 	}
 	var out bytes.Buffer
 	if status := doctor(context.Background(), tr.config, &out, &out); status == exitOK {

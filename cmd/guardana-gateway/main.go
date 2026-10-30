@@ -109,13 +109,29 @@ func printVersion(stdout, stderr io.Writer) int {
 const statusLine = "docs/status.md says what this build enforces and what it does not"
 
 // subcommand is one thing the binary does: the name run dispatches and the
-// help lists, what follows the name on the usage line, and what declares its
-// flags and returns the command they configure.
+// help lists, what follows the name on the usage line, what declares its
+// flags and returns the command they configure, and what it may do to the
+// state it is pointed at.
 type subcommand struct {
 	name    string
 	form    string
 	declare declareFunc
+	effect  effect
 }
+
+// effect is what a command may do to the files it is pointed at. The zero
+// value classifies nothing, and a test refuses a command left at it.
+type effect uint8
+
+const (
+	_ effect = iota
+	// inspects leaves the bytes, mode, modification time, link count and
+	// owner of everything it reads as they were, whether or not a writer
+	// holds it; a test holds every such command to that over a damaged tree.
+	inspects
+	// writes may change what it is pointed at.
+	writes
+)
 
 // declareFunc declares a command's flags on the set and returns the command,
 // which reads them once they are parsed and takes the arguments left over.
@@ -128,12 +144,12 @@ type commandFunc func(ctx context.Context, args []string, stdout, stderr io.Writ
 // commands is the one listing: the usage line, the help and the dispatch are
 // all rendered from it, in this order.
 var commands = []subcommand{
-	{"run", "--config <file> [--run-token-file <file>]", declareRun},
-	{"doctor", "--config <file>", configured(doctor)},
-	{"collect", "--listen <addr> --out <file>", declareCollect},
-	{"trail", trailForm, declareTrail},
-	{"scenario", scenarioForm, declareScenario},
-	{"dev", devForm, declareDev},
+	{"run", "--config <file> [--run-token-file <file>]", declareRun, writes},
+	{"doctor", "--config <file>", configured(doctor), inspects},
+	{"collect", "--listen <addr> --out <file>", declareCollect, writes},
+	{"trail", trailForm, declareTrail, inspects},
+	{"scenario", scenarioForm, declareScenario, writes},
+	{"dev", devForm, declareDev, writes},
 }
 
 // commandFlags is one command's empty flag set, writing to out.

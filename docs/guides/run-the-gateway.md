@@ -111,8 +111,8 @@ upstreams:
   #     - FILES_ROOT
 ```
 
-The listener in this build authenticates nobody, so every request on it is
-made by the principal configured here ([status.md](../status.md)).
+This build's listener authenticates nobody: every request on it is made by
+the principal configured here ([status.md](../status.md)).
 
 A statement confirms its bundle from its `issuedAt` for the smaller of
 `policy.max_stale` and the document's `maxStaleSeconds`. Without one, only
@@ -132,8 +132,9 @@ line per check, up to the first it cannot make. The `policy` line
 fails for a statement missing, expired, dated ahead or naming another bundle,
 or a bundle below its floor, which it never raises; like `run`'s first
 line, it names `policy.fail_open_read`. An unclassified tool is
-printed with its fingerprint for step 5. `doctor` locks the spool, cuts a
-torn tail and writes a probe file.
+printed with its fingerprint for step 5. `doctor` writes nothing; access(2)
+misses MAC path rules, FUSE without `default_permissions`, full disks and
+setuid.
 
 ### 4. Run in OBSERVE
 

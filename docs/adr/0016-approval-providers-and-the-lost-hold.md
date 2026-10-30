@@ -15,6 +15,11 @@ and that open cuts a torn tail, which doctor's evidence line now names in bytes;
 the validation's "doctor writes nothing" holds for the approvals directory and
 the hold journal, not for a torn spool tail.
 
+Amended again when inspection was held to change nothing: doctor reads the
+spool without opening it, names in bytes the torn tail a start would cut and
+leaves it in place, writes no probe file and builds its plane over no spool,
+so "doctor writes nothing" holds for the spool too.
+
 Amended by [ADR-0023](0023-a-local-page-answers-through-the-directory.md): both
 handles open the directory once and reach every file through it, and judge it
 again at every call, not only at `Open`, refusing one that changed since.

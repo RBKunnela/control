@@ -17,30 +17,16 @@ import (
 // torn tail of the last segment and of the quarantine, the only changes Open
 // makes on disk.
 func (s *Spool) load() error {
-	if err := s.listSegments(); err != nil {
-		return err
-	}
-	var lastSize int64
-	for i, seg := range s.segments {
-		size, err := s.scanSegment(seg, i == len(s.segments)-1)
-		if err != nil {
-			return err
-		}
-		lastSize = size
-	}
-	if err := s.checkSequence(); err != nil {
-		return err
-	}
-	quarantined, err := s.loadQuarantine()
+	sizes, err := s.read()
 	if err != nil {
 		return err
 	}
 	if n := len(s.segments); n > 0 {
-		if err := s.cutTail(s.segments[n-1], lastSize); err != nil {
+		if err := s.cutTail(s.segments[n-1], sizes.last); err != nil {
 			return err
 		}
 	}
-	if err := s.cutQuarantineTail(quarantined); err != nil {
+	if err := s.cutQuarantineTail(sizes.quarantine); err != nil {
 		return err
 	}
 	// Nothing on disk is acknowledged: a segment acknowledged whole is deleted.
@@ -49,6 +35,35 @@ func (s *Spool) load() error {
 		s.ack = Cursor{Segment: s.segments[0].seq}
 	}
 	return nil
+}
+
+// fileSizes are the sizes on disk of the last segment and of the quarantine,
+// whose bytes past the records that check are their torn tails.
+type fileSizes struct{ last, quarantine int64 }
+
+// read is load's first pass, the one Inspect makes too: it lists and scans
+// every segment and the quarantine and changes nothing on disk.
+func (s *Spool) read() (fileSizes, error) {
+	var sizes fileSizes
+	if err := s.listSegments(); err != nil {
+		return sizes, err
+	}
+	for i, seg := range s.segments {
+		size, err := s.scanSegment(seg, i == len(s.segments)-1)
+		if err != nil {
+			return sizes, err
+		}
+		sizes.last = size
+	}
+	if err := s.checkSequence(); err != nil {
+		return sizes, err
+	}
+	quarantined, err := s.loadQuarantine()
+	if err != nil {
+		return sizes, err
+	}
+	sizes.quarantine = quarantined
+	return sizes, nil
 }
 
 // listSegments names every segment in the spool's directory in log order: the

@@ -27,6 +27,11 @@ import (
 type plane struct {
 	cfg    *gatewayconfig.Config
 	logger *slog.Logger
+	role   role
+	// spool is the spool a serving plane opened. A plane that inspects holds
+	// the zero spool, which refuses every record and every read, and its
+	// exporter the zero reader, which reads nothing, so the exporter's
+	// options are still refused as run's are.
 	spool  *spool.Spool
 	holder *policy.Holder
 	// policy holds the holder's floor directory and the refresher that keeps
@@ -80,10 +85,11 @@ type plane struct {
 
 // role says what the plane being built is for. It is a parameter and not a
 // default because both commands call this one function: `run` opens the
-// durable approval directories, which takes their locks and makes a directory
-// nobody has used yet a store; `doctor` opens neither, so a command that
-// serves nothing holds no lock an approver's probe can read as a plane, and
-// writes nothing in either (ADR-0016).
+// spool and the durable approval directories, which takes their locks, cuts
+// a torn tail and makes a directory nobody has used yet a store; `doctor`
+// opens none of them, so a command that serves nothing holds no lock an
+// approver's probe can read as a plane, and writes nothing in any of them
+// (ADR-0016).
 type role int
 
 const (
@@ -91,8 +97,8 @@ const (
 	// configuration names.
 	roleServe role = iota
 	// roleInspect is the plane a check builds to make the refusals of the
-	// adapter, the kernel and the pipeline. Its approval store touches no
-	// directory and it keeps no hold journal.
+	// adapter, the exporter, the kernel and the pipeline. It holds no spool,
+	// its approval store touches no directory and it keeps no hold journal.
 	roleInspect
 )
 
@@ -107,12 +113,15 @@ func build(cfg *gatewayconfig.Config, logger *slog.Logger, now time.Time, r role
 	if err != nil {
 		return nil, err
 	}
-	p := &plane{cfg: cfg, logger: logger, holder: pp.holder, policy: pp, started: now, grace: shutdownGrace, callBound: callBound(cfg)}
+	p := &plane{cfg: cfg, logger: logger, role: r, holder: pp.holder, policy: pp, started: now, grace: shutdownGrace, callBound: callBound(cfg)}
 	if p.poller, err = openPause(cfg, logger, p.strayIDs); err != nil {
 		return nil, errors.Join(err, p.close())
 	}
-	if p.spool, err = openSpool(cfg); err != nil {
-		return nil, errors.Join(err, p.close())
+	p.spool = new(spool.Spool)
+	if r == roleServe {
+		if p.spool, err = openSpool(cfg); err != nil {
+			return nil, errors.Join(err, p.close())
+		}
 	}
 	if err := p.open(r, tokenPath); err != nil {
 		return nil, errors.Join(err, p.close())
@@ -195,9 +204,11 @@ func (p *plane) wire() error {
 	if err != nil {
 		return explainDecisionPoint(err)
 	}
-	reader, err := p.spool.Reader(spool.Cursor{})
-	if err != nil {
-		return err
+	reader := new(spool.Reader)
+	if p.role == roleServe {
+		if reader, err = p.spool.Reader(spool.Cursor{}); err != nil {
+			return err
+		}
 	}
 	exporter, err := otel.New(otel.Options{
 		Endpoint:       p.cfg.Export.Endpoint,
@@ -249,7 +260,7 @@ func (p *plane) close() error {
 	if p.reader != nil {
 		errs = append(errs, p.reader.Close())
 	}
-	if p.spool != nil {
+	if p.role == roleServe && p.spool != nil {
 		errs = append(errs, p.spool.Close())
 	}
 	if p.journal != nil {

@@ -31,3 +31,17 @@ func lockDir(root *os.Root, dir string) (func() error, error) {
 	}
 	return func() error { return root.Remove(lockFile) }, nil
 }
+
+// shareDir reports whether a spool holds the directory root holds, named dir
+// in errors, by its lock file. It takes nothing, since a lock here is a file
+// it would have to create, so a spool may open the directory meanwhile.
+func shareDir(root *os.Root, dir string) (release func() error, held bool, err error) {
+	_, err = root.Lstat(lockFile)
+	switch {
+	case err == nil:
+		return nil, true, nil
+	case errors.Is(err, fs.ErrNotExist):
+		return func() error { return nil }, false, nil
+	}
+	return nil, false, fmt.Errorf("spool: asking whether a spool holds %q: %w", dir, err)
+}

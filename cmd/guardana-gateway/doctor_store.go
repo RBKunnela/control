@@ -10,48 +10,42 @@ import (
 	"github.com/guardana/control/internal/approvals"
 	"github.com/guardana/control/internal/gatewayconfig"
 	"github.com/guardana/control/internal/holdjournal"
+	"github.com/guardana/control/internal/spool"
 )
 
-// evidence opens the spool where it will run: the directory has to exist, take
-// the lock, take a file, and whatever is already in it has to check. Opening
-// cuts a torn tail, as a start would, and the line names what that cut.
+// evidence reads the spool where it will run, as `run` would open it, and
+// changes nothing there: the directory has to exist, be writable and hold
+// nothing that does not check. A torn tail a start would cut is named and
+// left in place, and a directory a running spool holds is refused, since
+// `run` would be refused it too.
 func (d *examination) evidence(context.Context) (string, string, string) {
 	dir := d.cfg.Resolve(d.cfg.Evidence.Dir)
-	sp, err := openSpool(d.cfg)
-	if err != nil {
-		return verdictFail, "evidence", err.Error()
-	}
-	stats, statsErr := sp.Stats()
-	closeErr := sp.Close()
+	found, err := spool.Inspect(evidenceOptions(d.cfg))
 	switch {
-	case statsErr != nil:
-		return verdictUnknown, "evidence", "the spool opened and cannot answer its stats: " + statsErr.Error()
-	case closeErr != nil:
-		return verdictUnknown, "evidence", "the spool opened and did not close: " + closeErr.Error()
+	case err != nil:
+		return verdictFail, "evidence", "evidence: " + err.Error()
+	case found.Held:
+		return verdictFail, "evidence", fmt.Sprintf("%s: %v, so run with this configuration would be refused; nothing in it was read",
+			filepath.ToSlash(dir), spool.ErrLocked)
 	}
 	if err := writable(dir); err != nil {
 		return verdictFail, "evidence", err.Error()
 	}
-	return verdictOK, "evidence", fmt.Sprintf("%s locks and is writable; %d segment(s), %d byte(s) unacknowledged, %d reserved, %d quarantined; "+
-		"opening it cut a torn tail of %d byte(s); on_unwritable %s",
-		filepath.ToSlash(dir), stats.Segments, stats.Unacknowledged, stats.Reserved, stats.QuarantinedRecords, stats.Truncated,
+	return verdictOK, "evidence", fmt.Sprintf("access(2), which reads mode bits, a read-only mount and the ACLs the kernel applies, "+
+		"lets this account create a file in %s; %d segment(s), %d byte(s) unacknowledged, %d quarantined; "+
+		"a start would cut a torn tail of %d byte(s), which this check left in place; on_unwritable %s",
+		filepath.ToSlash(dir), found.Segments, found.Unacknowledged, found.QuarantinedRecords, found.Torn,
 		d.cfg.Evidence.OnUnwritable)
 }
 
-// writable proves the directory takes a file and gives it back, because the
-// lock alone does not: on unix it is taken on the directory, which a process
-// with no permission to write in it can still open.
+// writable asks access(2) whether this process may create a file in dir,
+// without creating one, because the spool's lock does not prove it: on unix it
+// is taken on the directory, which a process with no permission to write in it
+// can still open. access(2) does not see a rule a security module applies to
+// paths, a file system that answers it without checking, or a full disk.
 func writable(dir string) error {
-	probe, err := os.CreateTemp(dir, ".writable-*")
-	if err != nil {
+	if err := mayWrite(dir); err != nil {
 		return fmt.Errorf("the directory is not writable: %w", err)
-	}
-	name := probe.Name()
-	if err := probe.Close(); err != nil {
-		return fmt.Errorf("the write probe did not close: %w", err)
-	}
-	if err := os.Remove(filepath.Clean(name)); err != nil {
-		return fmt.Errorf("the write probe was left behind: %w", err)
 	}
 	return nil
 }

@@ -66,8 +66,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 // subcommand is one thing the binary does: the words run dispatches and the
 // help lists, the form of what follows them as the help spells it, the flag
-// set the command parses, and the function those words reach. A command with
-// an empty name is reached by its group word alone.
+// set the command parses, the function those words reach, and what that may
+// do to what it is pointed at. A command with an empty name is reached by its
+// group word alone.
 type subcommand struct {
 	group, name, arguments string
 	// flags declares the command's flags, writing the flag package's own
@@ -80,7 +81,23 @@ type subcommand struct {
 	// and a command with one parses what it was given itself. Either way it
 	// returns an exit status and writes every diagnostic itself.
 	run func(args []string, stdout, stderr io.Writer) int
+	// effect is what the command may do to the files it is pointed at.
+	effect effect
 }
+
+// effect is what a command may do to the files it is pointed at. The zero
+// value classifies nothing, and a test refuses a command left at it.
+type effect uint8
+
+const (
+	_ effect = iota
+	// inspects leaves the bytes, mode, modification time, link count and
+	// owner of everything it reads as they were, whether or not a writer
+	// holds it; a test holds every such command to that over a damaged tree.
+	inspects
+	// writes may change what it is pointed at.
+	writes
+)
 
 // words is what reaches the command and what it reports itself under.
 func (c subcommand) words() string {
@@ -99,39 +116,39 @@ func (c subcommand) reachedBy(args []string) bool {
 // commands is the one listing: the help and the dispatch are both rendered
 // from it, in this order.
 var commands = []subcommand{
-	{"policy", "lint", "<file>", nil, func(args []string, _, stderr io.Writer) int { return lint(args[0], stderr) }},
-	{"policy", "test", "<dir>", nil, func(args []string, stdout, stderr io.Writer) int { return policyTest(args[0], stdout, stderr) }},
-	{"policy", "explain", "<case>", nil, func(args []string, stdout, stderr io.Writer) int { return policyExplain(args[0], stdout, stderr) }},
-	{"policy", "keygen", keygenForm, keygenFlagSet, keygenCommand},
-	{"policy", "sign", signForm, signFlagSet, signCommand},
-	{"policy", "renew", renewForm, renewFlagSet, renewCommand},
-	{"policy", "state init", stateInitForm, stateInitFlagSet, stateInitCommand},
-	{"policy", "state reset", stateResetForm, stateResetFlagSet, stateResetCommand},
-	{"approvals", "list", "<dir>", nil, func(args []string, stdout, stderr io.Writer) int { return approvalsList(args[0], stdout, stderr) }},
-	{"approvals", "approve", answerForm, answerFlagSet, approveCommand},
-	{"approvals", "reject", answerForm, answerFlagSet, rejectCommand},
-	{"pause", "init", "<file>", nil, pauseInitCommand},
-	{"pause", "add", pauseAddForm, pauseAddFlagSet, pauseAddCommand},
-	{"pause", "remove", pauseRemoveForm, pauseRemoveFlagSet, pauseRemoveCommand},
-	{"pause", "list", "<file>", nil, pauseListCommand},
-	{"runs", "open", runsOpenForm, runsOpenFlagSet, runsOpenCommand},
-	{"runs", "close", runsCloseForm, runsCloseFlagSet, runsCloseCommand},
-	{"runs", "list", "<dir>", nil, runsListCommand},
-	{"observe", "import", observeImportForm, observeImportFlagSet, observeImportCommand},
-	{"observe", "export", observeExportForm, observeExportFlagSet, observeExportCommand},
-	{"coverage", "", coverageForm, coverageFlagSet, coverageCommand},
-	{"procedure", "lint", "<file>", nil, func(args []string, stdout, stderr io.Writer) int { return procedureLint(args[0], stdout, stderr) }},
-	{"procedure", "test", "<cases>", nil, func(args []string, stdout, stderr io.Writer) int { return procedureTest(args[0], stdout, stderr) }},
-	{"supervise", "", superviseForm, superviseFlagSet, superviseCommand},
-	{"notify", "", notifyForm, notifyFlagSet, notifyCommand},
-	{"findings", "export", findingsExportForm, findingsExportFlagSet, findingsExportCommand},
-	{"route", "sign", routeSignForm, routeSignFlagSet, routeSignCommand},
-	{"stops", "init", stopsInitForm, stopsInitFlagSet, stopsInitCommand},
-	{"stops", "lift", stopsLiftForm, stopsLiftFlagSet, stopsLiftCommand},
-	{"stops", "list", stopsListForm, stopsListFlagSet, stopsListCommand},
-	{"react", "", reactForm, reactFlagSet, reactCommand},
-	{"hook", "", hookForm, hookFlagSet, hookCommand},
-	{"console", "", consoleForm, consoleFlagSet, consoleCommand},
+	{"policy", "lint", "<file>", nil, func(args []string, _, stderr io.Writer) int { return lint(args[0], stderr) }, inspects},
+	{"policy", "test", "<dir>", nil, func(args []string, stdout, stderr io.Writer) int { return policyTest(args[0], stdout, stderr) }, inspects},
+	{"policy", "explain", "<case>", nil, func(args []string, stdout, stderr io.Writer) int { return policyExplain(args[0], stdout, stderr) }, inspects},
+	{"policy", "keygen", keygenForm, keygenFlagSet, keygenCommand, writes},
+	{"policy", "sign", signForm, signFlagSet, signCommand, writes},
+	{"policy", "renew", renewForm, renewFlagSet, renewCommand, writes},
+	{"policy", "state init", stateInitForm, stateInitFlagSet, stateInitCommand, writes},
+	{"policy", "state reset", stateResetForm, stateResetFlagSet, stateResetCommand, writes},
+	{"approvals", "list", "<dir>", nil, func(args []string, stdout, stderr io.Writer) int { return approvalsList(args[0], stdout, stderr) }, inspects},
+	{"approvals", "approve", answerForm, answerFlagSet, approveCommand, writes},
+	{"approvals", "reject", answerForm, answerFlagSet, rejectCommand, writes},
+	{"pause", "init", "<file>", nil, pauseInitCommand, writes},
+	{"pause", "add", pauseAddForm, pauseAddFlagSet, pauseAddCommand, writes},
+	{"pause", "remove", pauseRemoveForm, pauseRemoveFlagSet, pauseRemoveCommand, writes},
+	{"pause", "list", "<file>", nil, pauseListCommand, inspects},
+	{"runs", "open", runsOpenForm, runsOpenFlagSet, runsOpenCommand, writes},
+	{"runs", "close", runsCloseForm, runsCloseFlagSet, runsCloseCommand, writes},
+	{"runs", "list", "<dir>", nil, runsListCommand, inspects},
+	{"observe", "import", observeImportForm, observeImportFlagSet, observeImportCommand, writes},
+	{"observe", "export", observeExportForm, observeExportFlagSet, observeExportCommand, inspects},
+	{"coverage", "", coverageForm, coverageFlagSet, coverageCommand, inspects},
+	{"procedure", "lint", "<file>", nil, func(args []string, stdout, stderr io.Writer) int { return procedureLint(args[0], stdout, stderr) }, inspects},
+	{"procedure", "test", "<cases>", nil, func(args []string, stdout, stderr io.Writer) int { return procedureTest(args[0], stdout, stderr) }, inspects},
+	{"supervise", "", superviseForm, superviseFlagSet, superviseCommand, writes},
+	{"notify", "", notifyForm, notifyFlagSet, notifyCommand, writes},
+	{"findings", "export", findingsExportForm, findingsExportFlagSet, findingsExportCommand, inspects},
+	{"route", "sign", routeSignForm, routeSignFlagSet, routeSignCommand, writes},
+	{"stops", "init", stopsInitForm, stopsInitFlagSet, stopsInitCommand, writes},
+	{"stops", "lift", stopsLiftForm, stopsLiftFlagSet, stopsLiftCommand, writes},
+	{"stops", "list", stopsListForm, stopsListFlagSet, stopsListCommand, inspects},
+	{"react", "", reactForm, reactFlagSet, reactCommand, writes},
+	{"hook", "", hookForm, hookFlagSet, hookCommand, writes},
+	{"console", "", consoleForm, consoleFlagSet, consoleCommand, writes},
 }
 
 func printVersion(stdout, stderr io.Writer) int {

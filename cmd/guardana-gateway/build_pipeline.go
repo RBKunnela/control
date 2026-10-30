@@ -83,22 +83,28 @@ func openPause(cfg *gatewayconfig.Config, logger *slog.Logger, unlisted func([]p
 }
 
 func openSpool(cfg *gatewayconfig.Config) (*spool.Spool, error) {
+	sp, err := spool.Open(evidenceOptions(cfg))
+	if err != nil {
+		return nil, fmt.Errorf("evidence: %w", err)
+	}
+	return sp, nil
+}
+
+// evidenceOptions is the spool cfg names, as run opens it and doctor
+// inspects it.
+func evidenceOptions(cfg *gatewayconfig.Config) spool.Options {
 	fsync := spool.FsyncEveryRecord
 	if cfg.Evidence.Fsync == gatewayconfig.FsyncInterval {
 		fsync = spool.FsyncInterval
 	}
-	sp, err := spool.Open(spool.Options{
+	return spool.Options{
 		Dir:            cfg.Resolve(cfg.Evidence.Dir),
 		MaxBytes:       cfg.Evidence.MaxBytes,
 		SegmentBytes:   cfg.Evidence.SegmentBytes,
 		ClosingReserve: cfg.Evidence.ClosingReserve,
 		Fsync:          fsync,
 		Interval:       cfg.Evidence.FsyncInterval,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("evidence: %w", err)
 	}
-	return sp, nil
 }
 
 // newID names decisions, events, approvals and executions. Every call returns

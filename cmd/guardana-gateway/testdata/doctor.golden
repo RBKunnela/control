@@ -79,7 +79,7 @@ ok      configuration <tree>/doctor.yaml parses, 24 key(s) set, the rest at thei
        upstreams.0                  orders -> http://127.0.0.1:1/mcp
 ok      mode          OBSERVE needs observe_request, observe_result from the adapter; list shaping none
 ok      policy        bundle gateway-fixture version 2026-09-20.1 serial 1 verifies under key k1, digest sha256:0766ec8e242e7e98c0b9a2513c830762cbae6b3dbd1bffba33f2cf59b74d9e1e, staleness budget 10m0s; a statement under key f1 issued <time> confirms it until <time>; the floor holds no serial yet; policy.fail_open_read false, so a read fails closed while the policy is unavailable
-ok      evidence      <tree>/spool locks and is writable; 0 segment(s), 0 byte(s) unacknowledged, 0 reserved, 0 quarantined; opening it cut a torn tail of 0 byte(s); on_unwritable block
+ok      evidence      access(2), which reads mode bits, a read-only mount and the ACLs the kernel applies, lets this account create a file in <tree>/spool; 0 segment(s), 0 byte(s) unacknowledged, 0 quarantined; a start would cut a torn tail of 0 byte(s), which this check left in place; on_unwritable block
 ok      approvals     held requests are kept in process memory under the memory provider: nothing outside this process answers one, and a hold lost to a restart is never closed
 ok      pause         disabled: pause.file is not set, so no call can be paused without a restart
 ok      runs          local: one run per principal and agent, kept in memory, so a new process starts clean (ADR-0021)

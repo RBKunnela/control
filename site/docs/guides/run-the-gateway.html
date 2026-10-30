@@ -200,8 +200,8 @@ upstreams:
   #   env:
   #     - FILES_ROOT
 </code></pre>
-<p>The listener in this build authenticates nobody, so every request on it is
-made by the principal configured here (<a href="/docs/status">status.md</a>).</p>
+<p>This build's listener authenticates nobody: every request on it is made by
+the principal configured here (<a href="/docs/status">status.md</a>).</p>
 <p>A statement confirms its bundle from its <code>issuedAt</code> for the smaller of
 <code>policy.max_stale</code> and the document's <code>maxStaleSeconds</code>. Without one, only
 the floor's own bundle, or any while the floor has no serial, starts, with every
@@ -216,8 +216,9 @@ line per check, up to the first it cannot make. The <code>policy</code> line
 fails for a statement missing, expired, dated ahead or naming another bundle,
 or a bundle below its floor, which it never raises; like <code>run</code>'s first
 line, it names <code>policy.fail_open_read</code>. An unclassified tool is
-printed with its fingerprint for step 5. <code>doctor</code> locks the spool, cuts a
-torn tail and writes a probe file.</p>
+printed with its fingerprint for step 5. <code>doctor</code> writes nothing; access(2)
+misses MAC path rules, FUSE without <code>default_permissions</code>, full disks and
+setuid.</p>
 <h3 id="4-run-in-observe">4. Run in OBSERVE</h3>
 <pre><code>guardana-gateway run --config gateway.yaml
 </code></pre>

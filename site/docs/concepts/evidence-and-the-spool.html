@@ -325,6 +325,11 @@ the exporter work in records from there.</p>
 <td><code>ErrLocked</code> for a directory another spool holds; <code>ErrCorrupt</code> for a record that does not check anywhere but those tails, or a segment out of sequence, with nothing deleted; <code>ErrForeignFile</code> for a file that is not the spool's, a segment or quarantine with a second name, another account's, or one the group or others may write among them</td>
 </tr>
 <tr>
+<td>Inspect</td>
+<td><code>doctor</code>'s read: every segment and the quarantine are read and checked as Open reads them, under a shared lock that keeps a spool from opening the directory meanwhile, and what Open would cut is counted and left on disk; nothing is created, cut or removed</td>
+<td>what Open refuses, with nothing changed; a directory a spool holds is reported held and not read</td>
+</tr>
+<tr>
 <td>Break</td>
 <td>an I/O failure a repair cannot undo latches: the segment is cut back to its committed length and the cut synced when that works, and when it does not, every later operation fails with the same error</td>
 <td>a broken spool refuses everything, so a later append never lands behind a tail nobody can vouch for</td>

@@ -169,6 +169,15 @@ classified. <code>Validate</code> does not change (<a href="/docs/adr/0067-the-p
 </ul>
 <h3 id="changed">Changed</h3>
 <ul>
+<li><code>doctor</code> no longer changes the evidence spool it checks. It reads the spool
+through <code>spool.Inspect</code>, which cuts nothing: a torn tail stays in place, and
+the line says &quot;a start would cut a torn tail of N byte(s), which this check
+left in place&quot;; a torn tail whose file its owner may not write fails the
+check, as it fails a start. It asks access(2) whether the directory takes a
+file instead of writing a probe, and no longer prints a reserved count.
+Every command is marked as one that inspects or one that writes, and each
+that inspects is tested to change nothing
+(<a href="/docs/adr/0016-approval-providers-and-the-lost-hold">ADR-0016</a>).</li>
 <li><strong>Breaking:</strong> a run belongs to one project. A run record is <code>2.0</code> and
 carries <code>project_id</code>, <code>runs open</code> needs <code>--project</code> and refuses a parent of
 another project, and <code>runs list</code> prints <code>project_id</code>. A plane resolves a

@@ -95,9 +95,10 @@ func (d *examination) check(ctx context.Context, stderr io.Writer) int {
 }
 
 // examination is one run of the checks. The plane it builds is the one `run`
-// would build, so whatever the pipeline, the adapter and the spool refuse is
-// refused here too; it is closed again before doctor returns, and it binds no
-// address.
+// would build but for the spool and the durable approval directories, so
+// whatever the pipeline, the adapter and the exporter refuse is refused here
+// too, and the evidence check reads the spool as `run` would open it; the
+// plane is closed again before doctor returns, and it binds no address.
 type examination struct {
 	cfg   *gatewayconfig.Config
 	out   io.Writer
@@ -169,9 +170,9 @@ func (d *examination) export(context.Context) (string, string, string) {
 		u.Scheme, u.Host, u.EscapedPath(), len(d.cfg.Export.Headers), d.cfg.Export.MaxBatch, d.cfg.Export.InFlight)
 }
 
-// seams builds every seam `run` builds but the durable approval directories:
-// no address is bound, no upstream is connected, and no directory is locked or
-// created. It is where the pipeline's own refusals are made, the adapter's
+// seams builds every seam `run` builds but the spool and the durable approval
+// directories: no address is bound, no upstream is connected, and no directory
+// is locked or created. It is where the pipeline's own refusals are made, the adapter's
 // declared capabilities against the mode among them.
 func (d *examination) seams(context.Context) (string, string, string) {
 	p, err := build(d.cfg, slog.New(slog.DiscardHandler), time.Now(), roleInspect, "")
