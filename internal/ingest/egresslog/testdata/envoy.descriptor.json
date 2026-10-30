@@ -1,0 +1,26 @@
+{
+  "schema_version": "0.2",
+  "source_id": "egress-envoy",
+  "kind": "egress-access-log",
+  "trust": "TRUST_INDEPENDENT",
+  "egress_access_log": {
+    "format": "json-lines",
+    "fields": {
+      "time": "start_time",
+      "time_format": "TIME_FORMAT_RFC3339",
+      "destination": "authority",
+      "destination_form": "DESTINATION_FORM_AUTHORITY",
+      "port": "upstream_remote_port",
+      "method": "method",
+      "status": "response_code",
+      "bytes_sent": "bytes_sent",
+      "bytes_received": "bytes_received",
+      "caller": "downstream_remote_address"
+    },
+    "caller_basis": "CALLER_BASIS_ADDRESS"
+  },
+  "sampling": "SAMPLING_COMPLETE",
+  "heartbeat_seconds": 300,
+  "tenant_id": "tenant-a",
+  "project_id": "project-a"
+}

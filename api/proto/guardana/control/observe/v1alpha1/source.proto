@@ -1,6 +1,6 @@
-// Unstable observation contract; schema_version is "0.1". Outside the v1
-// promise: a reader takes exactly the minors it knows. See ADR-0039 and
-// ADR-0040.
+// Unstable observation contract. Outside the v1 promise: a reader takes
+// exactly the minors it knows. A source descriptor is "0.2" exactly when it
+// carries egress_access_log and "0.1" otherwise. See ADR-0039 and ADR-0040.
 //
 // An unspecified enum, or a number a reader does not know, reads as its most
 // restrictive meaning, written beside each enum.
@@ -36,6 +36,67 @@ message Convention {
   string version = 2;
 }
 
+// How a proxy's access log knows who made a connection. It comes from the
+// operator's descriptor, never from the data. Unspecified reads as none.
+enum CallerBasis {
+  CALLER_BASIS_UNSPECIFIED = 0;
+  // The caller is a name with nothing behind it.
+  CALLER_BASIS_NONE = 1;
+  // The caller is the network address the connection came from.
+  CALLER_BASIS_ADDRESS = 2;
+  // The proxy authenticated the caller before it forwarded the connection.
+  CALLER_BASIS_AUTHENTICATED = 3;
+}
+
+// How the destination member of an access log line names the host.
+// Unspecified names no form, so no destination can be read under it.
+enum DestinationForm {
+  DESTINATION_FORM_UNSPECIFIED = 0;
+  // A host alone: a name or an IP address, never with a port.
+  DESTINATION_FORM_HOST = 1;
+  // An authority as a CONNECT request names it: host:port, or [v6]:port.
+  DESTINATION_FORM_AUTHORITY = 2;
+}
+
+// How a time member of an access log line is spelled. Unspecified names no
+// spelling, so no time can be read under it.
+enum TimeFormat {
+  TIME_FORMAT_UNSPECIFIED = 0;
+  TIME_FORMAT_RFC3339 = 1;
+  TIME_FORMAT_UNIX_SECONDS = 2;
+  TIME_FORMAT_UNIX_MILLISECONDS = 3;
+}
+
+// The members of one access log line a connection is read from. Each value
+// names a top-level member of the line, never a path into it; an empty value
+// maps nothing, and a member the mapping does not name is never read.
+message EgressFields {
+  string time = 1;
+  TimeFormat time_format = 2;
+  // The host the connection was made to.
+  string destination = 3;
+  string port = 4;
+  string method = 5;
+  string status = 6;
+  string bytes_sent = 7;
+  string bytes_received = 8;
+  string caller = 9;
+  // How destination names the host. Under DESTINATION_FORM_AUTHORITY its port
+  // is the connection's when port maps nothing or the line leaves it unset;
+  // a port given both ways must agree.
+  DestinationForm destination_form = 10;
+}
+
+// How an egress proxy's access log is read. Owned by kind
+// "egress-access-log"; a descriptor of any other kind carrying it is refused.
+message EgressAccessLog {
+  // "json-lines" is the one format.
+  string format = 1;
+  EgressFields fields = 2;
+  // What the mapped caller rests on; taken from here, never from the data.
+  CallerBasis caller_basis = 3;
+}
+
 // Which records of an input belong to the source.
 message Selector {
   // Matched exactly against a resource's service.name.
@@ -47,9 +108,13 @@ message Selector {
 message SourceDescriptor {
   string schema_version = 1;
   string source_id = 2;
-  // "otel-genai-traces" is the one kind this version reads.
+  // "otel-genai-traces" or "egress-access-log". The kind decides which of
+  // the members below the descriptor carries; a member of another kind is
+  // refused.
   string kind = 3;
   Trust trust = 4;
+  // convention, otlp_version, select and run_attribute are owned by kind
+  // "otel-genai-traces".
   Convention convention = 5;
   // The OTLP version whose JSON encoding the input is read under.
   string otlp_version = 6;
@@ -61,4 +126,6 @@ message SourceDescriptor {
   string project_id = 11;
   // The attribute a span names its run in; empty when the source names none.
   string run_attribute = 12;
+  // The mapping of kind "egress-access-log"; absent for every other kind.
+  EgressAccessLog egress_access_log = 13;
 }

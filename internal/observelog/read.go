@@ -13,24 +13,25 @@ import (
 )
 
 // readIndex reads r as whole log lines and returns the index of the
-// observations every import report closes, with the length up to the end of
-// the last report. The observations after it are a write a crash cut before
+// observations every import report closes and the kind of each source those
+// writes name, with the length up to the end of the last report. The observations after it are a write a crash cut before
 // its report, so they are read and judged but not indexed. A line that is not
 // one record this build reads in the form the codec writes it, a carriage
 // return, and an observation id carried with two contents are ErrDamaged: a
 // writer of this package leaves none of them.
-func readIndex(r io.Reader) (index, int64, error) {
-	ids, committed, err := scanLog(r, nil)
+func readIndex(r io.Reader) (index, sourceKinds, int64, error) {
+	kinds := sourceKinds{}
+	ids, committed, err := scanLog(r, kinds.note)
 	var fault *lineFault
 	switch {
 	case errors.As(err, &fault) && errors.Is(fault.cause, bufio.ErrBufferFull):
-		return nil, 0, fmt.Errorf("%w: line %d is over %d bytes", ErrDamaged, fault.number, observe.MaxLineBytes)
+		return nil, nil, 0, fmt.Errorf("%w: line %d is over %d bytes", ErrDamaged, fault.number, observe.MaxLineBytes)
 	case errors.As(err, &fault):
-		return nil, 0, fmt.Errorf("%w: line %d: %w", ErrDamaged, fault.number, fault.cause)
+		return nil, nil, 0, fmt.Errorf("%w: line %d: %w", ErrDamaged, fault.number, fault.cause)
 	case err != nil:
-		return nil, 0, err
+		return nil, nil, 0, err
 	}
-	return ids, committed, nil
+	return ids, kinds, committed, nil
 }
 
 // lineFault is a line the log's reader refuses: over observe.MaxLineBytes, or

@@ -164,7 +164,7 @@ func TestCoverageOfAPathNothingCoversExitsOne(t *testing.T) {
 	}
 	for _, want := range []string{
 		"orders.read-file observed, self_reported: sources agent-runtime\n",
-		"egress.api not covered: no plane classifies it and no live source observed it\n",
+		"egress.api not covered: no live source observed it; no plane decides egress\n",
 	} {
 		if !strings.Contains(stdout, want) {
 			t.Errorf("stdout does not hold %q:\n%s", want, stdout)

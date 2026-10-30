@@ -27,6 +27,7 @@ with `make docs-gen`; an edit made here does not survive the next run.
 - [Supervise and stop a run](guides/supervise-and-stop-a-run.md): Run the refund example by hand on a live plane, supervise the run against its procedure, read its page, and stop it on a confirmed finding.
 - [Test a procedure](guides/test-a-procedure.md): Lint a procedure document, then prove what supervise finds with cases that state a run, its evidence and every expected finding.
 - [Watch a plane without a collector](guides/watch-a-plane-without-a-collector.md): Run the collector the gateway binary ships, point a plane's export at it, and check each request's trail in the file it writes.
+- [Watch an egress proxy](guides/watch-an-egress-proxy.md): Have Envoy or Squid write their access log as JSON lines, import it as observations, and see in the coverage map the destinations the proxy logged.
 - [Write and test a policy](guides/write-and-test-a-policy.md): Write an agent-policy/v1alpha1 document, lint it, prove what it decides with cases, sign it into the bundle a plane loads, and vouch that the bundle is current.
 
 ## Concepts
@@ -50,13 +51,14 @@ with `make docs-gen`; an edit made here does not survive the next run.
 - [Command line](reference/cli.md): The two binaries, what each prints as its help, and the exit statuses they share.
 - [Configuration](reference/configuration.md): Every key the gateway reads, with its environment variable, kind, default, whether it is required and the spellings it takes.
 - [The approvals page](reference/console.md): What guardana-control console serves, what it prints, what it refuses and what it cannot tell you.
-- [Coverage](reference/coverage.md): What guardana-control coverage reads, the inventory it takes, the state it gives each declared path, the join with a plane's evidence, and its exit status.
+- [Coverage](reference/coverage.md): What guardana-control coverage reads, its inventory, the state of each declared path and each undeclared egress host, the join, and its exit status.
 - [Dev mode](reference/dev.md): What guardana-gateway dev lays out, refuses, prints and stops, and how --scenario runs each scenario on a plane of its own.
+- [Egress access log](reference/egress-access-log.md): The descriptor of an egress proxy's access log, how its lines map to connection observations, what is never read, each refusal, and the trust it claims.
 - [Failure modes](reference/failure-modes.md): What a plane does when its collector, spool, decision point, upstream, pause file, stop list, freshness statement or clock fails, or it is killed holding calls.
 - [MCP enforcement coverage](reference/mcp-coverage.md): Per revision, transport and method, what the gateway enforces today and what it does not.
 - [Metrics](reference/metrics.md): Every metric a plane answers on /metrics, with its type, its label, the statistic it reads and what it counts.
 - [Obligations](reference/obligations.md): The catalogue of obligation types a policy rule may name, the parameters each takes, and what the tree does with one.
-- [Observations](reference/observations.md): The source descriptor, what an import of OpenTelemetry GenAI spans keeps and drops, the observation log and its export.
+- [Observations](reference/observations.md): The source descriptor and its kinds, what an import of OpenTelemetry GenAI spans keeps and drops, the observation log and its export.
 - [Policy explain](reference/policy-explain.md): What `guardana-control policy explain` reads, every line it prints, which rule decided and which input a rule could not read, and its bounds.
 - [Policy document format](reference/policy-format.md): Every member of an agent-policy/v1alpha1 document, the values each admits, the bounds, and the members of a policy test case.
 - [Reaction](reference/reaction.md): The signed route, the stop list and the commands that write them, and how a plane refuses a stopped run's calls and reports its stops.
@@ -162,3 +164,4 @@ with `make docs-gen`; an edit made here does not survive the next run.
 - [ADR-0066: Each decision about authority is a port with a default, and none fails open](adr/0066-each-decision-about-authority-is-a-port.md): accepted
 - [ADR-0067: The pipeline refuses what an adapter could not translate](adr/0067-the-pipeline-refuses-what-an-adapter-could-not-translate.md): accepted
 - [ADR-0068: A run belongs to one project](adr/0068-a-run-belongs-to-one-project.md): accepted
+- [ADR-0069: An egress proxy's access log is an independent sensor on a kind-neutral descriptor](adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor.md): accepted

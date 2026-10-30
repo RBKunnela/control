@@ -30,8 +30,8 @@ func at(offset time.Duration) *timestamppb.Timestamp { return timestamppb.New(no
 func rfc(offset time.Duration) string { return now.Add(offset).Format(time.RFC3339Nano) }
 
 func descriptor(id string, trust observev1.Trust) *observev1.SourceDescriptor {
-	return &observev1.SourceDescriptor{SchemaVersion: "0.1", SourceId: id, Trust: trust, HeartbeatSeconds: 300,
-		TenantId: "t1", ProjectId: "p1"}
+	return &observev1.SourceDescriptor{SchemaVersion: "0.1", SourceId: id, Kind: "otel-genai-traces", Trust: trust,
+		HeartbeatSeconds: 300, TenantId: "t1", ProjectId: "p1"}
 }
 
 // report is an import report of source received at received, whose newest

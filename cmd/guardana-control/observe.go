@@ -12,7 +12,8 @@ import (
 
 	observev1 "github.com/guardana/control/api/gen/go/guardana/control/observe/v1alpha1"
 	ondisk "github.com/guardana/control/internal/files"
-	"github.com/guardana/control/internal/ingest/otelgenai"
+	"github.com/guardana/control/internal/ingest"
+	"github.com/guardana/control/internal/ingest/egresslog"
 	"github.com/guardana/control/internal/observe"
 	"github.com/guardana/control/internal/observelog"
 )
@@ -24,7 +25,7 @@ const (
 	observeExportForm = "[--after] [--limit] [--max-bytes] <file>"
 )
 
-// maxDescriptorBytes bounds the descriptor read; observe.ReadDescriptor
+// maxDescriptorBytes bounds the descriptor read; ingest.ReadDescriptor
 // refuses more than this anyway.
 const maxDescriptorBytes = 64 << 10
 
@@ -60,25 +61,31 @@ func observeExportFlagSet(command string, out io.Writer) *flag.FlagSet {
 	return flags
 }
 
-// observeImportCommand imports one OTLP/JSON file of a source's spans into an
-// observation log. It exits 0 when every span read was imported, skipped or
+// observeImportCommand imports one input file of a source into an
+// observation log, through the importer of the descriptor's kind: OTLP/JSON
+// trace lines for otel-genai-traces, an access log's JSON lines for
+// egress-access-log. It exits 0 when everything read was imported, skipped or
 // already in the log, 1 when a line or a span was refused or an observation
 // conflicted with the log, and 2 when the import did not complete; the error
 // says whether it was written.
 func observeImportCommand(args []string, stdout, stderr io.Writer) int {
 	flags, source, logDir := observeImportFlags(observeImportName, io.Discard)
 	if err := flags.Parse(args); err != nil || flags.NArg() != 1 || *source == "" || *logDir == "" {
-		return usageError(stderr, observeImportName, "takes --source and --log, and one file of OTLP/JSON trace lines")
+		return usageError(stderr, observeImportName, "takes --source and --log, and one input file of the source's kind")
 	}
 	raw, err := ondisk.ReadOwned(*source, maxDescriptorBytes, descriptorForbidden, os.Geteuid())
 	if err != nil {
 		return usageError(stderr, observeImportName, "--source: "+err.Error())
 	}
-	desc, err := observe.ReadDescriptor(raw)
+	desc, err := ingest.ReadDescriptor(raw)
 	if err != nil {
 		return usageError(stderr, observeImportName, "--source: "+err.Error())
 	}
-	batch, err := importFile(flags.Arg(0), desc, observe.DescriptorSHA256(raw))
+	kind, ok := ingest.Lookup(desc.GetKind())
+	if !ok {
+		return usageError(stderr, observeImportName, "--source: kind "+strconv.Quote(desc.GetKind())+" has no importer in this build")
+	}
+	batch, err := importFile(flags.Arg(0), kind, desc, observe.DescriptorSHA256(raw))
 	if err != nil {
 		return usageError(stderr, observeImportName, err.Error())
 	}
@@ -94,7 +101,7 @@ func observeImportCommand(args []string, stdout, stderr io.Writer) int {
 	case closeErr != nil:
 		return usageError(stderr, observeImportName, "--log: the import was written; closing the log failed: "+closeErr.Error())
 	}
-	return printImport(batch.Report.GetCounts(), written, stdout, stderr)
+	return printImport(kind.Labels, batch.Report.GetCounts(), written, stdout, stderr)
 }
 
 // maxInputBytes bounds one import's input, which is read whole.
@@ -105,29 +112,27 @@ const maxInputBytes = 256 << 20
 var inputBound int64 = maxInputBytes
 
 // importFile reads the input as a regular file, so a pipe or a device put at
-// its name cannot hold the command, and maps it at this moment's clock.
-func importFile(path string, desc *observev1.SourceDescriptor, descriptorSHA256 string) (otelgenai.Batch, error) {
-	raw, err := ondisk.ReadRegular(path, inputBound, 0)
+// its name cannot hold the command, and maps it with the kind's importer at
+// this moment's clock. Under independent trust the input may not be writable
+// by group or others: the trust states that the agent cannot write it.
+func importFile(path string, kind ingest.Kind, desc *observev1.SourceDescriptor, descriptorSHA256 string) (ingest.Batch, error) {
+	raw, err := ondisk.ReadRegular(path, inputBound, egresslog.InputForbidden(desc))
 	if err != nil {
-		return otelgenai.Batch{}, err
+		return ingest.Batch{}, fmt.Errorf("input %s: %w", strconv.Quote(path), err)
 	}
-	return otelgenai.Import(bytes.NewReader(raw), desc, descriptorSHA256, time.Now().UTC())
+	return kind.Import(bytes.NewReader(raw), desc, descriptorSHA256, time.Now().UTC())
 }
 
-// printImport writes one line per count and returns the exit status the
-// counts call for.
-func printImport(c *observev1.ImportCounts, w observelog.Written, stdout, stderr io.Writer) int {
-	var skipped uint64
-	for _, n := range c.GetSkipped() {
-		skipped += n
-	}
+// printImport writes one line per count, under the kind's labels, and
+// returns the exit status the counts call for.
+func printImport(labels ingest.Labels, c *observev1.ImportCounts, w observelog.Written, stdout, stderr io.Writer) int {
 	u := func(n uint64) string { return strconv.FormatUint(n, 10) }
 	lines := [][2]string{
-		{"spans_read", u(c.GetRead())}, {"observed", u(c.GetObserved())}, {"written", strconv.Itoa(w.Observations)},
-		{"duplicate", strconv.Itoa(w.Duplicates)}, {"conflict", strconv.Itoa(w.Conflicts)}, {"other_resource", u(c.GetOtherResource())},
-		{"refused", u(c.GetRefused())}, {"content_attributes_dropped", u(c.GetContentAttributesDropped())},
-		{"reasoning_parts_dropped", u(c.GetReasoningPartsDropped())}, {"content_unparsed", u(c.GetContentUnparsed())},
-		{"run_ids_dropped", u(c.GetRunIdsDropped())}, {"strings_dropped", u(c.GetStringsDropped())}, {"skipped", u(skipped)},
+		{labels.Read, u(c.GetRead())}, {"observed", u(c.GetObserved())}, {"written", strconv.Itoa(w.Observations)},
+		{"duplicate", strconv.Itoa(w.Duplicates)}, {"conflict", strconv.Itoa(w.Conflicts)},
+	}
+	for _, n := range labels.Counts {
+		lines = append(lines, [2]string{n.Label, u(n.Of(c))})
 	}
 	out := ""
 	for _, l := range lines {

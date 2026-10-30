@@ -13,9 +13,9 @@ import (
 )
 
 func TestTheFixtureDescriptorReads(t *testing.T) {
-	d, err := observe.ReadDescriptor(readTestdata(t, "descriptor.json"))
+	d, err := observe.ReadNeutral(readTestdata(t, "descriptor.json"))
 	if err != nil {
-		t.Fatalf("ReadDescriptor(fixture): %v", err)
+		t.Fatalf("ReadNeutral(fixture): %v", err)
 	}
 	want := &observev1.SourceDescriptor{
 		SchemaVersion:    "0.1",
@@ -32,7 +32,7 @@ func TestTheFixtureDescriptorReads(t *testing.T) {
 		RunAttribute:     "app.run_id",
 	}
 	if !proto.Equal(d, want) {
-		t.Fatalf("ReadDescriptor(fixture) = %v\nwant %v", d, want)
+		t.Fatalf("ReadNeutral(fixture) = %v\nwant %v", d, want)
 	}
 }
 
@@ -47,18 +47,9 @@ func TestDescriptorSHA256(t *testing.T) {
 }
 
 func TestTheConstantsArePinned(t *testing.T) {
-	if observe.KindOTelGenAI != "otel-genai-traces" || observe.ConventionName != "opentelemetry.gen_ai" ||
-		observe.ConventionVersion != "1.41.0" || observe.OTLPVersion != "1.11.1" ||
+	if observe.KindOTelGenAI != "otel-genai-traces" || observe.KindEgressAccessLog != "egress-access-log" ||
 		observe.MaxHeartbeatSeconds != 604800 || observe.MaxLineBytes != 65536 || observe.MaxTextBytes != 256 {
 		t.Fatal("a pinned constant moved")
-	}
-	want := []string{
-		"gen_ai.input.messages", "gen_ai.output.messages", "gen_ai.system_instructions",
-		"gen_ai.tool.call.arguments", "gen_ai.tool.call.result", "gen_ai.tool.definitions",
-		"gen_ai.prompt", "gen_ai.completion",
-	}
-	if strings.Join(observe.ContentAttributes, ",") != strings.Join(want, ",") {
-		t.Fatalf("ContentAttributes = %q, want %q", observe.ContentAttributes, want)
 	}
 }
 
@@ -82,7 +73,7 @@ func runDescriptorCases(t *testing.T, cases []descriptorCase) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			doc := jsonEdit(t, fixture, c.edit)
-			_, err := observe.ReadDescriptor(doc)
+			_, err := observe.ReadNeutral(doc)
 			if c.member == "" {
 				if err != nil {
 					t.Fatalf("refused %s: %v", doc, err)
@@ -90,7 +81,7 @@ func runDescriptorCases(t *testing.T, cases []descriptorCase) {
 				return
 			}
 			if !errors.Is(err, observe.ErrDescriptor) {
-				t.Fatalf("ReadDescriptor(%s) = %v, want ErrDescriptor", doc, err)
+				t.Fatalf("ReadNeutral(%s) = %v, want ErrDescriptor", doc, err)
 			}
 			if !strings.Contains(err.Error(), c.member) {
 				t.Fatalf("refusal %q does not name %q", err, c.member)
@@ -101,7 +92,7 @@ func runDescriptorCases(t *testing.T, cases []descriptorCase) {
 
 var top []string
 
-func TestDescriptorIdentityAndPins(t *testing.T) {
+func TestDescriptorIdentity(t *testing.T) {
 	runDescriptorCases(t, []descriptorCase{
 		{"version absent", drop(top, "schema_version"), "schema_version"},
 		{"version next minor", set(top, "schema_version", "0.2"), "schema_version"},
@@ -115,12 +106,8 @@ func TestDescriptorIdentityAndPins(t *testing.T) {
 		{"source_id 129", set(top, "source_id", strings.Repeat("s", 129)), "source_id"},
 		{"kind absent", drop(top, "kind"), "kind"},
 		{"kind other", set(top, "kind", "otel-genai-logs"), "kind"},
-		{"convention absent", drop(top, "convention"), "convention.name"},
-		{"convention name", set([]string{"convention"}, "name", "opentelemetry.genai"), "convention.name"},
-		{"convention version", set([]string{"convention"}, "version", "1.40.0"), "convention.version"},
-		{"convention version absent", drop([]string{"convention"}, "version"), "convention.version"},
+		{"convention absent", drop(top, "convention"), "convention: required for kind"},
 		{"otlp absent", drop(top, "otlp_version"), "otlp_version"},
-		{"otlp other", set(top, "otlp_version", "1.11.0"), "otlp_version"},
 		{"tenant absent", drop(top, "tenant_id"), "tenant_id"},
 		{"tenant slash", set(top, "tenant_id", "a/b"), "tenant_id"},
 		{"tenant 128", set(top, "tenant_id", strings.Repeat("t", 128)), ""},
@@ -152,27 +139,11 @@ func TestDescriptorTrustAndSampling(t *testing.T) {
 	})
 }
 
-func TestDescriptorSelectHeartbeatAndRunAttribute(t *testing.T) {
-	sel := []string{"select"}
-	cases := []descriptorCase{
-		{"select absent", drop(top, "select"), "select.service_name"},
-		{"service_name absent", drop(sel, "service_name"), "select.service_name"},
-		{"service_name empty", set(sel, "service_name", ""), "select.service_name"},
-		{"service_name 256", set(sel, "service_name", strings.Repeat("n", 256)), ""},
-		{"service_name 257", set(sel, "service_name", strings.Repeat("n", 257)), "select.service_name"},
-		{"service_name 256 bytes of runes", set(sel, "service_name", strings.Repeat("\u00e9", 128)), ""},
-		{"service_name 258 bytes of runes", set(sel, "service_name", strings.Repeat("\u00e9", 129)), "select.service_name"},
-		{"service_name tab", set(sel, "service_name", "a\tb"), "select.service_name"},
-		{"service_name DEL", set(sel, "service_name", "a\u007fb"), "select.service_name"},
-		{"service_name NEL", set(sel, "service_name", "a\u0085b"), "select.service_name"},
-		{"service_name space", set(sel, "service_name", "support agent"), ""},
-		{"service_name zero-width space", set(sel, "service_name", "a\u200bb"), "select.service_name"},
-		{"service_name bidi override", set(sel, "service_name", "x\u202ey"), "select.service_name"},
-		{"service_name byte order mark", set(sel, "service_name", "\ufeffsupport"), "select.service_name"},
-		{"service_name a space", set(sel, "service_name", " "), "select.service_name"},
-		{"service_name a tab", set(sel, "service_name", "\t"), "select.service_name"},
-		{"service_name an ideographic space", set(sel, "service_name", "\u3000"), "select.service_name"},
-		{"service_name non-ASCII", set(sel, "service_name", "agent-\u00e9"), ""},
+// The values of select and run_attribute are the importer's to judge; this
+// package holds only that select is there.
+func TestDescriptorSelectAndHeartbeat(t *testing.T) {
+	runDescriptorCases(t, []descriptorCase{
+		{"select absent", drop(top, "select"), "select: required for kind"},
 		{"heartbeat absent", drop(top, "heartbeat_seconds"), "heartbeat_seconds"},
 		{"heartbeat 0", set(top, "heartbeat_seconds", 0), "heartbeat_seconds"},
 		{"heartbeat 1", set(top, "heartbeat_seconds", 1), ""},
@@ -180,19 +151,7 @@ func TestDescriptorSelectHeartbeatAndRunAttribute(t *testing.T) {
 		{"heartbeat 604801", set(top, "heartbeat_seconds", 604801), "heartbeat_seconds"},
 		{"heartbeat negative", set(top, "heartbeat_seconds", -1), "heartbeat"},
 		{"run_attribute absent", drop(top, "run_attribute"), ""},
-		{"run_attribute a neighbour of content", set(top, "run_attribute", "gen_ai.conversation.id"), ""},
-		{"run_attribute 256", set(top, "run_attribute", strings.Repeat("r", 256)), ""},
-		{"run_attribute 257", set(top, "run_attribute", strings.Repeat("r", 257)), "run_attribute"},
-		{"run_attribute control", set(top, "run_attribute", "run\u0000id"), "run_attribute"},
-		{"run_attribute zero-width space", set(top, "run_attribute", "a\u200bb"), "run_attribute"},
-		{"run_attribute bidi override", set(top, "run_attribute", "x\u202ey"), "run_attribute"},
-		{"run_attribute a space", set(top, "run_attribute", " "), "run_attribute"},
-		{"run_attribute a tab", set(top, "run_attribute", "\t"), "run_attribute"},
-	}
-	for _, attr := range observe.ContentAttributes {
-		cases = append(cases, descriptorCase{"run_attribute " + attr, set(top, "run_attribute", attr), "run_attribute"})
-	}
-	runDescriptorCases(t, cases)
+	})
 }
 
 func TestDescriptorStrictJSON(t *testing.T) {
@@ -218,8 +177,8 @@ func TestDescriptorStrictJSON(t *testing.T) {
 		"truncated":                        string(fixture[:len(fixture)/2]),
 		"invalid UTF-8 in a text member":   strings.Replace(string(fixture), "support-agent", "support\xffagent", 1),
 	} {
-		if _, err := observe.ReadDescriptor([]byte(doc)); !errors.Is(err, observe.ErrDescriptor) {
-			t.Errorf("%s: ReadDescriptor = %v, want ErrDescriptor", name, err)
+		if _, err := observe.ReadNeutral([]byte(doc)); !errors.Is(err, observe.ErrDescriptor) {
+			t.Errorf("%s: ReadNeutral = %v, want ErrDescriptor", name, err)
 		}
 	}
 }
@@ -233,10 +192,10 @@ func TestDescriptorSizeBound(t *testing.T) {
 	pad := func(n int) []byte {
 		return append(bytes.Repeat([]byte(" "), n-compact.Len()), compact.Bytes()...)
 	}
-	if _, err := observe.ReadDescriptor(pad(65536)); err != nil {
+	if _, err := observe.ReadNeutral(pad(65536)); err != nil {
 		t.Fatalf("a descriptor of 65536 bytes is refused: %v", err)
 	}
-	_, err := observe.ReadDescriptor(pad(65537))
+	_, err := observe.ReadNeutral(pad(65537))
 	if !errors.Is(err, observe.ErrDescriptor) || !strings.Contains(err.Error(), "65537 bytes") {
 		t.Fatalf("a descriptor of 65537 bytes: %v, want a size refusal", err)
 	}

@@ -1,6 +1,6 @@
-// Unstable observation contract; schema_version is "0.1". Outside the v1
-// promise: a reader takes exactly the minors it knows. See ADR-0039 and
-// ADR-0040.
+// Unstable observation contract. Outside the v1 promise: a reader takes
+// exactly the minors it knows. A source descriptor is "0.2" exactly when it
+// carries egress_access_log and "0.1" otherwise. See ADR-0039 and ADR-0040.
 //
 // An unspecified enum, or a number a reader does not know, reads as its most
 // restrictive meaning, written beside each enum.
@@ -137,6 +137,170 @@ func (Sampling) EnumDescriptor() ([]byte, []int) {
 	return file_guardana_control_observe_v1alpha1_source_proto_rawDescGZIP(), []int{1}
 }
 
+// How a proxy's access log knows who made a connection. It comes from the
+// operator's descriptor, never from the data. Unspecified reads as none.
+type CallerBasis int32
+
+const (
+	CallerBasis_CALLER_BASIS_UNSPECIFIED CallerBasis = 0
+	// The caller is a name with nothing behind it.
+	CallerBasis_CALLER_BASIS_NONE CallerBasis = 1
+	// The caller is the network address the connection came from.
+	CallerBasis_CALLER_BASIS_ADDRESS CallerBasis = 2
+	// The proxy authenticated the caller before it forwarded the connection.
+	CallerBasis_CALLER_BASIS_AUTHENTICATED CallerBasis = 3
+)
+
+// Enum value maps for CallerBasis.
+var (
+	CallerBasis_name = map[int32]string{
+		0: "CALLER_BASIS_UNSPECIFIED",
+		1: "CALLER_BASIS_NONE",
+		2: "CALLER_BASIS_ADDRESS",
+		3: "CALLER_BASIS_AUTHENTICATED",
+	}
+	CallerBasis_value = map[string]int32{
+		"CALLER_BASIS_UNSPECIFIED":   0,
+		"CALLER_BASIS_NONE":          1,
+		"CALLER_BASIS_ADDRESS":       2,
+		"CALLER_BASIS_AUTHENTICATED": 3,
+	}
+)
+
+func (x CallerBasis) Enum() *CallerBasis {
+	p := new(CallerBasis)
+	*p = x
+	return p
+}
+
+func (x CallerBasis) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (CallerBasis) Descriptor() protoreflect.EnumDescriptor {
+	return file_guardana_control_observe_v1alpha1_source_proto_enumTypes[2].Descriptor()
+}
+
+func (CallerBasis) Type() protoreflect.EnumType {
+	return &file_guardana_control_observe_v1alpha1_source_proto_enumTypes[2]
+}
+
+func (x CallerBasis) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use CallerBasis.Descriptor instead.
+func (CallerBasis) EnumDescriptor() ([]byte, []int) {
+	return file_guardana_control_observe_v1alpha1_source_proto_rawDescGZIP(), []int{2}
+}
+
+// How the destination member of an access log line names the host.
+// Unspecified names no form, so no destination can be read under it.
+type DestinationForm int32
+
+const (
+	DestinationForm_DESTINATION_FORM_UNSPECIFIED DestinationForm = 0
+	// A host alone: a name or an IP address, never with a port.
+	DestinationForm_DESTINATION_FORM_HOST DestinationForm = 1
+	// An authority as a CONNECT request names it: host:port, or [v6]:port.
+	DestinationForm_DESTINATION_FORM_AUTHORITY DestinationForm = 2
+)
+
+// Enum value maps for DestinationForm.
+var (
+	DestinationForm_name = map[int32]string{
+		0: "DESTINATION_FORM_UNSPECIFIED",
+		1: "DESTINATION_FORM_HOST",
+		2: "DESTINATION_FORM_AUTHORITY",
+	}
+	DestinationForm_value = map[string]int32{
+		"DESTINATION_FORM_UNSPECIFIED": 0,
+		"DESTINATION_FORM_HOST":        1,
+		"DESTINATION_FORM_AUTHORITY":   2,
+	}
+)
+
+func (x DestinationForm) Enum() *DestinationForm {
+	p := new(DestinationForm)
+	*p = x
+	return p
+}
+
+func (x DestinationForm) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DestinationForm) Descriptor() protoreflect.EnumDescriptor {
+	return file_guardana_control_observe_v1alpha1_source_proto_enumTypes[3].Descriptor()
+}
+
+func (DestinationForm) Type() protoreflect.EnumType {
+	return &file_guardana_control_observe_v1alpha1_source_proto_enumTypes[3]
+}
+
+func (x DestinationForm) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use DestinationForm.Descriptor instead.
+func (DestinationForm) EnumDescriptor() ([]byte, []int) {
+	return file_guardana_control_observe_v1alpha1_source_proto_rawDescGZIP(), []int{3}
+}
+
+// How a time member of an access log line is spelled. Unspecified names no
+// spelling, so no time can be read under it.
+type TimeFormat int32
+
+const (
+	TimeFormat_TIME_FORMAT_UNSPECIFIED       TimeFormat = 0
+	TimeFormat_TIME_FORMAT_RFC3339           TimeFormat = 1
+	TimeFormat_TIME_FORMAT_UNIX_SECONDS      TimeFormat = 2
+	TimeFormat_TIME_FORMAT_UNIX_MILLISECONDS TimeFormat = 3
+)
+
+// Enum value maps for TimeFormat.
+var (
+	TimeFormat_name = map[int32]string{
+		0: "TIME_FORMAT_UNSPECIFIED",
+		1: "TIME_FORMAT_RFC3339",
+		2: "TIME_FORMAT_UNIX_SECONDS",
+		3: "TIME_FORMAT_UNIX_MILLISECONDS",
+	}
+	TimeFormat_value = map[string]int32{
+		"TIME_FORMAT_UNSPECIFIED":       0,
+		"TIME_FORMAT_RFC3339":           1,
+		"TIME_FORMAT_UNIX_SECONDS":      2,
+		"TIME_FORMAT_UNIX_MILLISECONDS": 3,
+	}
+)
+
+func (x TimeFormat) Enum() *TimeFormat {
+	p := new(TimeFormat)
+	*p = x
+	return p
+}
+
+func (x TimeFormat) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TimeFormat) Descriptor() protoreflect.EnumDescriptor {
+	return file_guardana_control_observe_v1alpha1_source_proto_enumTypes[4].Descriptor()
+}
+
+func (TimeFormat) Type() protoreflect.EnumType {
+	return &file_guardana_control_observe_v1alpha1_source_proto_enumTypes[4]
+}
+
+func (x TimeFormat) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TimeFormat.Descriptor instead.
+func (TimeFormat) EnumDescriptor() ([]byte, []int) {
+	return file_guardana_control_observe_v1alpha1_source_proto_rawDescGZIP(), []int{4}
+}
+
 // An outside convention the data was written under, pinned to one version.
 type Convention struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -190,6 +354,193 @@ func (x *Convention) GetVersion() string {
 	return ""
 }
 
+// The members of one access log line a connection is read from. Each value
+// names a top-level member of the line, never a path into it; an empty value
+// maps nothing, and a member the mapping does not name is never read.
+type EgressFields struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Time       string                 `protobuf:"bytes,1,opt,name=time,proto3" json:"time,omitempty"`
+	TimeFormat TimeFormat             `protobuf:"varint,2,opt,name=time_format,json=timeFormat,proto3,enum=guardana.control.observe.v1alpha1.TimeFormat" json:"time_format,omitempty"`
+	// The host the connection was made to.
+	Destination   string `protobuf:"bytes,3,opt,name=destination,proto3" json:"destination,omitempty"`
+	Port          string `protobuf:"bytes,4,opt,name=port,proto3" json:"port,omitempty"`
+	Method        string `protobuf:"bytes,5,opt,name=method,proto3" json:"method,omitempty"`
+	Status        string `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
+	BytesSent     string `protobuf:"bytes,7,opt,name=bytes_sent,json=bytesSent,proto3" json:"bytes_sent,omitempty"`
+	BytesReceived string `protobuf:"bytes,8,opt,name=bytes_received,json=bytesReceived,proto3" json:"bytes_received,omitempty"`
+	Caller        string `protobuf:"bytes,9,opt,name=caller,proto3" json:"caller,omitempty"`
+	// How destination names the host. Under DESTINATION_FORM_AUTHORITY its port
+	// is the connection's when port maps nothing or the line leaves it unset;
+	// a port given both ways must agree.
+	DestinationForm DestinationForm `protobuf:"varint,10,opt,name=destination_form,json=destinationForm,proto3,enum=guardana.control.observe.v1alpha1.DestinationForm" json:"destination_form,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *EgressFields) Reset() {
+	*x = EgressFields{}
+	mi := &file_guardana_control_observe_v1alpha1_source_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EgressFields) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EgressFields) ProtoMessage() {}
+
+func (x *EgressFields) ProtoReflect() protoreflect.Message {
+	mi := &file_guardana_control_observe_v1alpha1_source_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EgressFields.ProtoReflect.Descriptor instead.
+func (*EgressFields) Descriptor() ([]byte, []int) {
+	return file_guardana_control_observe_v1alpha1_source_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *EgressFields) GetTime() string {
+	if x != nil {
+		return x.Time
+	}
+	return ""
+}
+
+func (x *EgressFields) GetTimeFormat() TimeFormat {
+	if x != nil {
+		return x.TimeFormat
+	}
+	return TimeFormat_TIME_FORMAT_UNSPECIFIED
+}
+
+func (x *EgressFields) GetDestination() string {
+	if x != nil {
+		return x.Destination
+	}
+	return ""
+}
+
+func (x *EgressFields) GetPort() string {
+	if x != nil {
+		return x.Port
+	}
+	return ""
+}
+
+func (x *EgressFields) GetMethod() string {
+	if x != nil {
+		return x.Method
+	}
+	return ""
+}
+
+func (x *EgressFields) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *EgressFields) GetBytesSent() string {
+	if x != nil {
+		return x.BytesSent
+	}
+	return ""
+}
+
+func (x *EgressFields) GetBytesReceived() string {
+	if x != nil {
+		return x.BytesReceived
+	}
+	return ""
+}
+
+func (x *EgressFields) GetCaller() string {
+	if x != nil {
+		return x.Caller
+	}
+	return ""
+}
+
+func (x *EgressFields) GetDestinationForm() DestinationForm {
+	if x != nil {
+		return x.DestinationForm
+	}
+	return DestinationForm_DESTINATION_FORM_UNSPECIFIED
+}
+
+// How an egress proxy's access log is read. Owned by kind
+// "egress-access-log"; a descriptor of any other kind carrying it is refused.
+type EgressAccessLog struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// "json-lines" is the one format.
+	Format string        `protobuf:"bytes,1,opt,name=format,proto3" json:"format,omitempty"`
+	Fields *EgressFields `protobuf:"bytes,2,opt,name=fields,proto3" json:"fields,omitempty"`
+	// What the mapped caller rests on; taken from here, never from the data.
+	CallerBasis   CallerBasis `protobuf:"varint,3,opt,name=caller_basis,json=callerBasis,proto3,enum=guardana.control.observe.v1alpha1.CallerBasis" json:"caller_basis,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EgressAccessLog) Reset() {
+	*x = EgressAccessLog{}
+	mi := &file_guardana_control_observe_v1alpha1_source_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EgressAccessLog) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EgressAccessLog) ProtoMessage() {}
+
+func (x *EgressAccessLog) ProtoReflect() protoreflect.Message {
+	mi := &file_guardana_control_observe_v1alpha1_source_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EgressAccessLog.ProtoReflect.Descriptor instead.
+func (*EgressAccessLog) Descriptor() ([]byte, []int) {
+	return file_guardana_control_observe_v1alpha1_source_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *EgressAccessLog) GetFormat() string {
+	if x != nil {
+		return x.Format
+	}
+	return ""
+}
+
+func (x *EgressAccessLog) GetFields() *EgressFields {
+	if x != nil {
+		return x.Fields
+	}
+	return nil
+}
+
+func (x *EgressAccessLog) GetCallerBasis() CallerBasis {
+	if x != nil {
+		return x.CallerBasis
+	}
+	return CallerBasis_CALLER_BASIS_UNSPECIFIED
+}
+
 // Which records of an input belong to the source.
 type Selector struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -201,7 +552,7 @@ type Selector struct {
 
 func (x *Selector) Reset() {
 	*x = Selector{}
-	mi := &file_guardana_control_observe_v1alpha1_source_proto_msgTypes[1]
+	mi := &file_guardana_control_observe_v1alpha1_source_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -213,7 +564,7 @@ func (x *Selector) String() string {
 func (*Selector) ProtoMessage() {}
 
 func (x *Selector) ProtoReflect() protoreflect.Message {
-	mi := &file_guardana_control_observe_v1alpha1_source_proto_msgTypes[1]
+	mi := &file_guardana_control_observe_v1alpha1_source_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -226,7 +577,7 @@ func (x *Selector) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Selector.ProtoReflect.Descriptor instead.
 func (*Selector) Descriptor() ([]byte, []int) {
-	return file_guardana_control_observe_v1alpha1_source_proto_rawDescGZIP(), []int{1}
+	return file_guardana_control_observe_v1alpha1_source_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *Selector) GetServiceName() string {
@@ -242,9 +593,13 @@ type SourceDescriptor struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SchemaVersion string                 `protobuf:"bytes,1,opt,name=schema_version,json=schemaVersion,proto3" json:"schema_version,omitempty"`
 	SourceId      string                 `protobuf:"bytes,2,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
-	// "otel-genai-traces" is the one kind this version reads.
-	Kind       string      `protobuf:"bytes,3,opt,name=kind,proto3" json:"kind,omitempty"`
-	Trust      Trust       `protobuf:"varint,4,opt,name=trust,proto3,enum=guardana.control.observe.v1alpha1.Trust" json:"trust,omitempty"`
+	// "otel-genai-traces" or "egress-access-log". The kind decides which of
+	// the members below the descriptor carries; a member of another kind is
+	// refused.
+	Kind  string `protobuf:"bytes,3,opt,name=kind,proto3" json:"kind,omitempty"`
+	Trust Trust  `protobuf:"varint,4,opt,name=trust,proto3,enum=guardana.control.observe.v1alpha1.Trust" json:"trust,omitempty"`
+	// convention, otlp_version, select and run_attribute are owned by kind
+	// "otel-genai-traces".
 	Convention *Convention `protobuf:"bytes,5,opt,name=convention,proto3" json:"convention,omitempty"`
 	// The OTLP version whose JSON encoding the input is read under.
 	OtlpVersion string    `protobuf:"bytes,6,opt,name=otlp_version,json=otlpVersion,proto3" json:"otlp_version,omitempty"`
@@ -255,14 +610,16 @@ type SourceDescriptor struct {
 	TenantId         string `protobuf:"bytes,10,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	ProjectId        string `protobuf:"bytes,11,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// The attribute a span names its run in; empty when the source names none.
-	RunAttribute  string `protobuf:"bytes,12,opt,name=run_attribute,json=runAttribute,proto3" json:"run_attribute,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	RunAttribute string `protobuf:"bytes,12,opt,name=run_attribute,json=runAttribute,proto3" json:"run_attribute,omitempty"`
+	// The mapping of kind "egress-access-log"; absent for every other kind.
+	EgressAccessLog *EgressAccessLog `protobuf:"bytes,13,opt,name=egress_access_log,json=egressAccessLog,proto3" json:"egress_access_log,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *SourceDescriptor) Reset() {
 	*x = SourceDescriptor{}
-	mi := &file_guardana_control_observe_v1alpha1_source_proto_msgTypes[2]
+	mi := &file_guardana_control_observe_v1alpha1_source_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -274,7 +631,7 @@ func (x *SourceDescriptor) String() string {
 func (*SourceDescriptor) ProtoMessage() {}
 
 func (x *SourceDescriptor) ProtoReflect() protoreflect.Message {
-	mi := &file_guardana_control_observe_v1alpha1_source_proto_msgTypes[2]
+	mi := &file_guardana_control_observe_v1alpha1_source_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -287,7 +644,7 @@ func (x *SourceDescriptor) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SourceDescriptor.ProtoReflect.Descriptor instead.
 func (*SourceDescriptor) Descriptor() ([]byte, []int) {
-	return file_guardana_control_observe_v1alpha1_source_proto_rawDescGZIP(), []int{2}
+	return file_guardana_control_observe_v1alpha1_source_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *SourceDescriptor) GetSchemaVersion() string {
@@ -374,6 +731,13 @@ func (x *SourceDescriptor) GetRunAttribute() string {
 	return ""
 }
 
+func (x *SourceDescriptor) GetEgressAccessLog() *EgressAccessLog {
+	if x != nil {
+		return x.EgressAccessLog
+	}
+	return nil
+}
+
 var File_guardana_control_observe_v1alpha1_source_proto protoreflect.FileDescriptor
 
 const file_guardana_control_observe_v1alpha1_source_proto_rawDesc = "" +
@@ -382,9 +746,27 @@ const file_guardana_control_observe_v1alpha1_source_proto_rawDesc = "" +
 	"\n" +
 	"Convention\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
-	"\aversion\x18\x02 \x01(\tR\aversion\"-\n" +
+	"\aversion\x18\x02 \x01(\tR\aversion\"\x95\x03\n" +
+	"\fEgressFields\x12\x12\n" +
+	"\x04time\x18\x01 \x01(\tR\x04time\x12N\n" +
+	"\vtime_format\x18\x02 \x01(\x0e2-.guardana.control.observe.v1alpha1.TimeFormatR\n" +
+	"timeFormat\x12 \n" +
+	"\vdestination\x18\x03 \x01(\tR\vdestination\x12\x12\n" +
+	"\x04port\x18\x04 \x01(\tR\x04port\x12\x16\n" +
+	"\x06method\x18\x05 \x01(\tR\x06method\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\x12\x1d\n" +
+	"\n" +
+	"bytes_sent\x18\a \x01(\tR\tbytesSent\x12%\n" +
+	"\x0ebytes_received\x18\b \x01(\tR\rbytesReceived\x12\x16\n" +
+	"\x06caller\x18\t \x01(\tR\x06caller\x12]\n" +
+	"\x10destination_form\x18\n" +
+	" \x01(\x0e22.guardana.control.observe.v1alpha1.DestinationFormR\x0fdestinationForm\"\xc5\x01\n" +
+	"\x0fEgressAccessLog\x12\x16\n" +
+	"\x06format\x18\x01 \x01(\tR\x06format\x12G\n" +
+	"\x06fields\x18\x02 \x01(\v2/.guardana.control.observe.v1alpha1.EgressFieldsR\x06fields\x12Q\n" +
+	"\fcaller_basis\x18\x03 \x01(\x0e2..guardana.control.observe.v1alpha1.CallerBasisR\vcallerBasis\"-\n" +
 	"\bSelector\x12!\n" +
-	"\fservice_name\x18\x01 \x01(\tR\vserviceName\"\xb8\x04\n" +
+	"\fservice_name\x18\x01 \x01(\tR\vserviceName\"\x98\x05\n" +
 	"\x10SourceDescriptor\x12%\n" +
 	"\x0eschema_version\x18\x01 \x01(\tR\rschemaVersion\x12\x1b\n" +
 	"\tsource_id\x18\x02 \x01(\tR\bsourceId\x12\x12\n" +
@@ -401,7 +783,8 @@ const file_guardana_control_observe_v1alpha1_source_proto_rawDesc = "" +
 	" \x01(\tR\btenantId\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\v \x01(\tR\tprojectId\x12#\n" +
-	"\rrun_attribute\x18\f \x01(\tR\frunAttribute*b\n" +
+	"\rrun_attribute\x18\f \x01(\tR\frunAttribute\x12^\n" +
+	"\x11egress_access_log\x18\r \x01(\v22.guardana.control.observe.v1alpha1.EgressAccessLogR\x0fegressAccessLog*b\n" +
 	"\x05Trust\x12\x15\n" +
 	"\x11TRUST_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13TRUST_SELF_REPORTED\x10\x01\x12\x12\n" +
@@ -410,7 +793,22 @@ const file_guardana_control_observe_v1alpha1_source_proto_rawDesc = "" +
 	"\bSampling\x12\x18\n" +
 	"\x14SAMPLING_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11SAMPLING_COMPLETE\x10\x01\x12\x14\n" +
-	"\x10SAMPLING_PARTIAL\x10\x02B\xb5\x02\n" +
+	"\x10SAMPLING_PARTIAL\x10\x02*|\n" +
+	"\vCallerBasis\x12\x1c\n" +
+	"\x18CALLER_BASIS_UNSPECIFIED\x10\x00\x12\x15\n" +
+	"\x11CALLER_BASIS_NONE\x10\x01\x12\x18\n" +
+	"\x14CALLER_BASIS_ADDRESS\x10\x02\x12\x1e\n" +
+	"\x1aCALLER_BASIS_AUTHENTICATED\x10\x03*n\n" +
+	"\x0fDestinationForm\x12 \n" +
+	"\x1cDESTINATION_FORM_UNSPECIFIED\x10\x00\x12\x19\n" +
+	"\x15DESTINATION_FORM_HOST\x10\x01\x12\x1e\n" +
+	"\x1aDESTINATION_FORM_AUTHORITY\x10\x02*\x83\x01\n" +
+	"\n" +
+	"TimeFormat\x12\x1b\n" +
+	"\x17TIME_FORMAT_UNSPECIFIED\x10\x00\x12\x17\n" +
+	"\x13TIME_FORMAT_RFC3339\x10\x01\x12\x1c\n" +
+	"\x18TIME_FORMAT_UNIX_SECONDS\x10\x02\x12!\n" +
+	"\x1dTIME_FORMAT_UNIX_MILLISECONDS\x10\x03B\xb5\x02\n" +
 	"%com.guardana.control.observe.v1alpha1B\vSourceProtoP\x01ZXgithub.com/guardana/control/api/gen/go/guardana/control/observe/v1alpha1;observev1alpha1\xa2\x02\x03GCO\xaa\x02!Guardana.Control.Observe.V1alpha1\xca\x02!Guardana\\Control\\Observe\\V1alpha1\xe2\x02-Guardana\\Control\\Observe\\V1alpha1\\GPBMetadata\xea\x02$Guardana::Control::Observe::V1alpha1b\x06proto3"
 
 var (
@@ -425,25 +823,35 @@ func file_guardana_control_observe_v1alpha1_source_proto_rawDescGZIP() []byte {
 	return file_guardana_control_observe_v1alpha1_source_proto_rawDescData
 }
 
-var file_guardana_control_observe_v1alpha1_source_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_guardana_control_observe_v1alpha1_source_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_guardana_control_observe_v1alpha1_source_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
+var file_guardana_control_observe_v1alpha1_source_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_guardana_control_observe_v1alpha1_source_proto_goTypes = []any{
 	(Trust)(0),               // 0: guardana.control.observe.v1alpha1.Trust
 	(Sampling)(0),            // 1: guardana.control.observe.v1alpha1.Sampling
-	(*Convention)(nil),       // 2: guardana.control.observe.v1alpha1.Convention
-	(*Selector)(nil),         // 3: guardana.control.observe.v1alpha1.Selector
-	(*SourceDescriptor)(nil), // 4: guardana.control.observe.v1alpha1.SourceDescriptor
+	(CallerBasis)(0),         // 2: guardana.control.observe.v1alpha1.CallerBasis
+	(DestinationForm)(0),     // 3: guardana.control.observe.v1alpha1.DestinationForm
+	(TimeFormat)(0),          // 4: guardana.control.observe.v1alpha1.TimeFormat
+	(*Convention)(nil),       // 5: guardana.control.observe.v1alpha1.Convention
+	(*EgressFields)(nil),     // 6: guardana.control.observe.v1alpha1.EgressFields
+	(*EgressAccessLog)(nil),  // 7: guardana.control.observe.v1alpha1.EgressAccessLog
+	(*Selector)(nil),         // 8: guardana.control.observe.v1alpha1.Selector
+	(*SourceDescriptor)(nil), // 9: guardana.control.observe.v1alpha1.SourceDescriptor
 }
 var file_guardana_control_observe_v1alpha1_source_proto_depIdxs = []int32{
-	0, // 0: guardana.control.observe.v1alpha1.SourceDescriptor.trust:type_name -> guardana.control.observe.v1alpha1.Trust
-	2, // 1: guardana.control.observe.v1alpha1.SourceDescriptor.convention:type_name -> guardana.control.observe.v1alpha1.Convention
-	3, // 2: guardana.control.observe.v1alpha1.SourceDescriptor.select:type_name -> guardana.control.observe.v1alpha1.Selector
-	1, // 3: guardana.control.observe.v1alpha1.SourceDescriptor.sampling:type_name -> guardana.control.observe.v1alpha1.Sampling
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	4, // 0: guardana.control.observe.v1alpha1.EgressFields.time_format:type_name -> guardana.control.observe.v1alpha1.TimeFormat
+	3, // 1: guardana.control.observe.v1alpha1.EgressFields.destination_form:type_name -> guardana.control.observe.v1alpha1.DestinationForm
+	6, // 2: guardana.control.observe.v1alpha1.EgressAccessLog.fields:type_name -> guardana.control.observe.v1alpha1.EgressFields
+	2, // 3: guardana.control.observe.v1alpha1.EgressAccessLog.caller_basis:type_name -> guardana.control.observe.v1alpha1.CallerBasis
+	0, // 4: guardana.control.observe.v1alpha1.SourceDescriptor.trust:type_name -> guardana.control.observe.v1alpha1.Trust
+	5, // 5: guardana.control.observe.v1alpha1.SourceDescriptor.convention:type_name -> guardana.control.observe.v1alpha1.Convention
+	8, // 6: guardana.control.observe.v1alpha1.SourceDescriptor.select:type_name -> guardana.control.observe.v1alpha1.Selector
+	1, // 7: guardana.control.observe.v1alpha1.SourceDescriptor.sampling:type_name -> guardana.control.observe.v1alpha1.Sampling
+	7, // 8: guardana.control.observe.v1alpha1.SourceDescriptor.egress_access_log:type_name -> guardana.control.observe.v1alpha1.EgressAccessLog
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_guardana_control_observe_v1alpha1_source_proto_init() }
@@ -456,8 +864,8 @@ func file_guardana_control_observe_v1alpha1_source_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_guardana_control_observe_v1alpha1_source_proto_rawDesc), len(file_guardana_control_observe_v1alpha1_source_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   3,
+			NumEnums:      5,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

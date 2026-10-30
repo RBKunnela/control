@@ -77,3 +77,4 @@ request with `Status: proposed`, and set it to `accepted` when it merges.
 | [0066](0066-each-decision-about-authority-is-a-port.md) | Each decision about authority is a port with a default, and none fails open |
 | [0067](0067-the-pipeline-refuses-what-an-adapter-could-not-translate.md) | The pipeline refuses what an adapter could not translate |
 | [0068](0068-a-run-belongs-to-one-project.md) | A run belongs to one project |
+| [0069](0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor.md) | An egress proxy's access log is an independent sensor on a kind-neutral descriptor |

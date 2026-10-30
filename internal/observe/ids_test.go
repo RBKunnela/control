@@ -130,6 +130,7 @@ var mutations = map[string]func(o *observev1.Observation){
 	"project_id":                 func(o *observev1.Observation) { o.ProjectId = "project-b" },
 	"source.source_id":           func(o *observev1.Observation) { o.Source.SourceId = "other" },
 	"source.trust":               func(o *observev1.Observation) { o.Source.Trust = observev1.Trust_TRUST_PLATFORM },
+	"source.kind":                func(o *observev1.Observation) { o.Source.Kind = observe.KindEgressAccessLog },
 	"source.convention.name":     func(o *observev1.Observation) { o.Source.Convention.Name = "x" },
 	"source.convention.version":  func(o *observev1.Observation) { o.Source.Convention.Version = "1.40.0" },
 	"event_time":                 func(o *observev1.Observation) { o.EventTime.Nanos++ },
@@ -147,6 +148,15 @@ var mutations = map[string]func(o *observev1.Observation){
 	"correlation.span_id":        func(o *observev1.Observation) { o.Correlation.SpanId = strings.Repeat("1", 16) },
 	"correlation.parent_span_id": func(o *observev1.Observation) { o.Correlation.ParentSpanId = "" },
 	"content_attributes_dropped": func(o *observev1.Observation) { o.ContentAttributesDropped = 3 },
+	"connection.port":            func(o *observev1.Observation) { o.Connection = &observev1.Connection{Port: 443} },
+	"connection.method":          func(o *observev1.Observation) { o.Connection = &observev1.Connection{Method: "GET"} },
+	"connection.http_status":     func(o *observev1.Observation) { o.Connection = &observev1.Connection{HttpStatus: 200} },
+	"connection.bytes_sent":      func(o *observev1.Observation) { o.Connection = &observev1.Connection{BytesSent: 1} },
+	"connection.bytes_received":  func(o *observev1.Observation) { o.Connection = &observev1.Connection{BytesReceived: 1} },
+	"connection.caller":          func(o *observev1.Observation) { o.Connection = &observev1.Connection{Caller: "c"} },
+	"connection.caller_basis": func(o *observev1.Observation) {
+		o.Connection = &observev1.Connection{CallerBasis: observev1.CallerBasis_CALLER_BASIS_NONE}
+	},
 }
 
 func TestContentDigestSeesEveryOtherField(t *testing.T) {

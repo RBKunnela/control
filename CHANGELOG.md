@@ -13,6 +13,47 @@ verify one.
 
 ### Added
 
+- `observe import` reads an egress proxy's access log. A source of kind
+  `egress-access-log` names which top-level member of each JSON line holds
+  the time, host, port, method, status, byte counts and caller, and each line
+  becomes one connection observation; no other member is read, so a path,
+  query, header or body is never copied unless the mapping names it.
+  Fixtures cover Envoy's `json_format`, as a forward proxy and as a TLS
+  listener, and a Squid `logformat`. The mapping's `destination_form` reads
+  the destination as a host alone or as a proxy request's authority, `host`,
+  `host:port`, `[v6]` or `[v6]:port`, whose port, when it names one, must
+  agree with a mapped port; any other destination is refused, and each
+  refused line is counted under its reason in the import report's
+  `refused_by`. Under an address basis the caller must
+  be an IP address, or it is dropped and counted in `callers_dropped`. Hosts
+  and addresses are written in one spelling, an IPv4-mapped IPv6 address as
+  its IPv4 address. Such a source may declare `TRUST_INDEPENDENT` on an unsigned
+  descriptor, and names no run
+  ([ADR-0069](docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor.md)).
+- Source descriptor schema `0.2`, which carries the egress mapping; a `0.1`
+  descriptor reads as before, with the same digest. Which members and which
+  trust a descriptor may carry is now decided by its kind
+  ([ADR-0069](docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor.md)).
+- Observation record schema `0.3`, for a connection, for an import report
+  with refusals by reason or callers dropped, and for a record naming its
+  source's kind, which every egress record does. A source's liveness and
+  doubt are read from reports of its kind alone, and `observe import` refuses,
+  with exit 2, a write of another kind into a log holding the source's
+  records. A connection's id is derived from its content, so
+  importing a grown or rotated log again writes only what is new
+  ([ADR-0069](docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor.md)).
+- `coverage` reads an egress path as observed by the connections of the
+  sources it names, ends every egress line with `no plane decides egress`,
+  prints `independent` trust as `independent (unsigned descriptor)`, and adds
+  a row for each host an egress source reached that no path declares, at most
+  256 with a line counting the rest, then a row for each egress source whose
+  import refused a line, with the count by reason, then a row for each egress
+  source given that is not live, since its connections since its last import
+  are unseen. Any such row, or that line, makes the exit 1. An absent egress
+  descriptor whose log holds egress records is refused, with exit 2, and so is
+  a log whose egress records no egress descriptor given with that log names:
+  one replaced by another kind or renamed, or another source's log sharing
+  the directory ([ADR-0069](docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor.md)).
 - `pkg/contract.ValidateUnclassified`: every rule of `Validate` but the
   effect class's presence and what a class requires, for an envelope nothing
   classified. `Validate` does not change ([ADR-0067](docs/adr/0067-the-pipeline-refuses-what-an-adapter-could-not-translate.md)).
@@ -32,6 +73,23 @@ verify one.
   reopened run starts with a clean flow state
   ([runs.md](docs/reference/runs.md#runs-an-earlier-release-opened),
   [ADR-0068](docs/adr/0068-a-run-belongs-to-one-project.md)).
+- The coverage inventory refuses an egress `host`, or an egress path's
+  source `name`, that is not a host in the one spelling a connection's host
+  is written in, and names that spelling: `https://x/` and a non-ASCII letter
+  are refused, and so are `Example.COM`, written `example.com`, and
+  `::ffff:203.0.113.7`, written `203.0.113.7`. It refuses
+  `server_address` on an egress path's source. Neither could match before
+  ([ADR-0069](docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor.md)).
+- `supervise` refuses, with exit 2, a `--source` of a kind whose
+  observations name no run, such as an egress access log, and one with no
+  kind ([ADR-0069](docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor.md)).
+- `observe import` refuses an input the group or others can write when the
+  descriptor declares `TRUST_INDEPENDENT`
+  ([ADR-0069](docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor.md)).
+- A log that holds a `0.3` line cannot be read by 0.14: its `observe import`
+  and `coverage` refuse the log as damaged, and its `observe export` counts
+  each such line as an `unsupported_version` gap
+  ([ADR-0069](docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor.md)).
 - Under `OBSERVE`, a call the adapter could not translate, for anything but
   nothing classifying it, is now blocked with the kernel's `INDETERMINATE`
   and the refusal's code, on the trail `ENFORCE` writes, and counts as

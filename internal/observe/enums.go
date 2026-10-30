@@ -36,3 +36,12 @@ func SamplingOf(s observev1.Sampling) observev1.Sampling {
 	}
 	return s
 }
+
+// CallerBasisOf reads a connection's caller basis: unspecified or undeclared
+// is none.
+func CallerBasisOf(b observev1.CallerBasis) observev1.CallerBasis {
+	if b == observev1.CallerBasis_CALLER_BASIS_UNSPECIFIED || declared(b) != nil {
+		return observev1.CallerBasis_CALLER_BASIS_NONE
+	}
+	return b
+}

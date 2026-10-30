@@ -59,7 +59,7 @@ func TestASourceNamedButNotReadPutsAnAbsenceInDoubt(t *testing.T) {
 // never heard; s4, heard after the event, was live as of it.
 func TestASourceIsSilentOnlyPastItsHeartbeat(t *testing.T) {
 	heard := func(id string, at time.Duration, ok bool) supervise.Source {
-		return supervise.Source{SourceID: id, Tenant: tenant, Project: proj, HeartbeatSeconds: 300, LastHeard: t0.Add(at), Heard: ok}
+		return supervise.Source{SourceID: id, Kind: otelKind, Tenant: tenant, Project: proj, HeartbeatSeconds: 300, LastHeard: t0.Add(at), Heard: ok}
 	}
 	res := evaluate(t, supervise.Input{Procedure: procWith(t), Run: supervise.Run{Closed: true},
 		Exports: []supervise.Export{export(conforming()...)},

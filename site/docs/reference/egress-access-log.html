@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Egress access log · Guardana Control</title>
+<meta name="description" content="The descriptor of an egress proxy&#39;s access log, how its lines map to connection observations, what is never read, each refusal, and the trust it claims."/>
+<link rel="canonical" href="https://control.guardana.dev/docs/reference/egress-access-log"/>
+<meta name="theme-color" content="#0B8F80"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="stylesheet" href="/assets/brand/v1/tokens.css"/>
+<link rel="stylesheet" href="/assets/control/control.css"/>
+<link rel="stylesheet" href="/assets/control/docs.css"/>
+</head>
+<body class="doc">
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap bar">
+  <a class="mark" href="/"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 4.5 5.6v6.1c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V5.6z"/><path d="M10.2 8.4v7.8M10.2 12.3h5.3"/></svg><span>Guardana <b>Control</b></span></a>
+  <a class="vlink" href="https://github.com/guardana/control/releases/tag/v0.14.0"><span class="ver">v0.14.0</span></a>
+  <nav aria-label="Primary">
+    <a href="/docs/">Docs</a>
+    <a href="/docs/status">Status</a>
+    <a class="hide-s" href="/docs/roadmap">Roadmap</a>
+    <a class="gh" href="https://github.com/guardana/control" aria-label="GitHub"><svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span class="hide-s">GitHub</span></a>
+  </nav>
+</div></header>
+<div class="wrap shell">
+<details class="mnav">
+<summary>Menu · <b>Egress access log</b></summary>
+<nav class="inner" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/egress-access-log" aria-current="page">Egress access log</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</details>
+<main id="main" class="prose">
+<h1 id="egress-access-log">Egress access log</h1>
+<p>A source of kind <code>egress-access-log</code> is an egress proxy's access log, written
+as JSON lines. Each line the importer accepts becomes one connection
+observation: the host the proxy recorded, not the one the agent reported. It is
+<code>experimental</code>; <a href="/docs/status">status.md</a> is the inventory and
+<a href="/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor">ADR-0069</a>
+the record. <a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a> sets
+one up.</p>
+<h2 id="the-descriptor">The descriptor</h2>
+<p>A descriptor of this kind is schema <code>0.2</code> and carries the members every kind
+shares (<a href="/docs/reference/observations#the-source-descriptor">observations</a>) and one of its
+own, <code>egress_access_log</code>. It may not carry <code>convention</code>, <code>otlp_version</code>,
+<code>select</code> or <code>run_attribute</code>.</p>
+<pre><code class="language-json">{&#34;schema_version&#34;: &#34;0.2&#34;, &#34;source_id&#34;: &#34;egress-envoy&#34;, &#34;kind&#34;: &#34;egress-access-log&#34;,
+ &#34;trust&#34;: &#34;TRUST_INDEPENDENT&#34;, &#34;sampling&#34;: &#34;SAMPLING_COMPLETE&#34;, &#34;heartbeat_seconds&#34;: 300,
+ &#34;tenant_id&#34;: &#34;tenant-a&#34;, &#34;project_id&#34;: &#34;project-a&#34;,
+ &#34;egress_access_log&#34;: {&#34;format&#34;: &#34;json-lines&#34;,
+   &#34;fields&#34;: {&#34;time&#34;: &#34;start_time&#34;, &#34;time_format&#34;: &#34;TIME_FORMAT_RFC3339&#34;,
+              &#34;destination&#34;: &#34;authority&#34;, &#34;destination_form&#34;: &#34;DESTINATION_FORM_AUTHORITY&#34;,
+              &#34;port&#34;: &#34;upstream_remote_port&#34;}}}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Required</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>format</code></td>
+<td>yes</td>
+<td><code>json-lines</code>, the one format</td>
+</tr>
+<tr>
+<td><code>fields.time</code>, <code>fields.destination</code></td>
+<td>yes</td>
+<td>the member of a line that holds the time and the host</td>
+</tr>
+<tr>
+<td><code>fields.time_format</code></td>
+<td>yes</td>
+<td><code>TIME_FORMAT_RFC3339</code>, <code>TIME_FORMAT_UNIX_SECONDS</code> or <code>TIME_FORMAT_UNIX_MILLISECONDS</code></td>
+</tr>
+<tr>
+<td><code>fields.destination_form</code></td>
+<td>yes</td>
+<td><code>DESTINATION_FORM_HOST</code>, a host alone, or <code>DESTINATION_FORM_AUTHORITY</code>, <code>host</code>, <code>host:port</code>, <code>[v6]</code> or <code>[v6]:port</code> as a forward proxy's request names its target</td>
+</tr>
+<tr>
+<td><code>fields.port</code>, <code>method</code>, <code>status</code>, <code>bytes_sent</code>, <code>bytes_received</code>, <code>caller</code></td>
+<td>no</td>
+<td>the member that holds each value</td>
+</tr>
+<tr>
+<td><code>caller_basis</code></td>
+<td>when <code>caller</code> is mapped, and only then</td>
+<td><code>CALLER_BASIS_NONE</code>, <code>CALLER_BASIS_ADDRESS</code> (the address the connection came from) or <code>CALLER_BASIS_AUTHENTICATED</code> (the proxy authenticated the caller)</td>
+</tr>
+</tbody>
+</table>
+<p>A mapped name is a top-level member of the line, never a path into it. The
+names are distinct, at most 128 bytes (<code>MaxMemberNameBytes</code> in
+<code>internal/ingest/egresslog/descriptor.go</code>), and hold the text rules every
+descriptor string keeps. The caller's basis comes from the descriptor, never
+from the data.</p>
+<p>Invariant 9 rests on the mapping: the importer copies the members it names
+and no other. A mapping that names a path or a header member as <code>caller</code>
+copies that member, within the caller's rules below.</p>
+<h2 id="what-a-line-becomes">What a line becomes</h2>
+<table>
+<thead>
+<tr>
+<th>Observation field</th>
+<th>From the line</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>subject</code></td>
+<td>kind <code>SUBJECT_KIND_CONNECTION</code>, name the destination host</td>
+</tr>
+<tr>
+<td><code>event_time</code></td>
+<td>the mapped time; a time after the import's clock is kept as read</td>
+</tr>
+<tr>
+<td><code>connection.port</code></td>
+<td>1 to 65535: the port member's, or the authority's when that member is unset or not mapped; neither is 0, read as unknown</td>
+</tr>
+<tr>
+<td><code>connection.method</code></td>
+<td>kept only when it is one of <code>CONNECT</code>, <code>GET</code>, <code>HEAD</code>, <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>, <code>OPTIONS</code>, <code>TRACE</code>, exactly as spelled</td>
+</tr>
+<tr>
+<td><code>connection.http_status</code></td>
+<td>100 to 599, or 0, which the proxy writes when it has none</td>
+</tr>
+<tr>
+<td><code>connection.bytes_sent</code>, <code>bytes_received</code></td>
+<td>an unsigned 64-bit count</td>
+</tr>
+<tr>
+<td><code>connection.caller</code>, <code>caller_basis</code></td>
+<td>under <code>CALLER_BASIS_ADDRESS</code>, an IP address with or without a port, in its one spelling; under another basis, the caller as the proxy wrote it, at most 256 bytes (<code>observe.MaxTextBytes</code>); and the descriptor's basis. With no caller the basis is <code>CALLER_BASIS_NONE</code></td>
+</tr>
+<tr>
+<td><code>stage</code></td>
+<td><code>STAGE_INDIRECT</code></td>
+</tr>
+<tr>
+<td><code>correlation</code></td>
+<td>basis <code>BASIS_NONE</code>, with no trace, span or run: a connection names no run</td>
+</tr>
+</tbody>
+</table>
+<p>A port, status or count may be written as a JSON number or a decimal string,
+never with a sign, a fraction or an exponent. <code>null</code>, <code>&quot;&quot;</code> and <code>-</code> say nothing: an unset
+optional value is left empty and counts as nothing. An RFC 3339 time needs its
+zone. Unix seconds take at most nine fractional digits; Unix milliseconds take
+none.</p>
+<p>A host has one spelling, <code>Host</code> in <code>internal/netname</code>, and the coverage
+inventory uses the same one. A name is lowercased and held to labels of 1
+to 63 letters, digits and hyphens, not starting or ending with a hyphen, at
+most 253 bytes in all (<code>observe.MaxHostBytes</code>), with no trailing dot. An
+A-label (<code>xn--</code>) is taken as written; a name in Unicode is refused, since this
+build carries no IDNA tables. An IPv4 address is a dotted quad; an IPv6
+address is written as <code>net/netip</code> writes it, without brackets or a zone, and
+one that maps an IPv4 address is that IPv4 address. A caller address is
+spelled the same way, <code>[v6]:port</code> with a port. Under the authority form the
+port is optional, since a forward proxy's plain HTTP request often names the
+host alone; an IPv6 address still needs its brackets, and a colon needs a port
+after it.</p>
+<h2 id="what-is-never-read">What is never read</h2>
+<p>A line is checked to be valid JSON, and only the mapped members are decoded;
+every other value is stepped over unread. A path, query, header, user agent or
+body the proxy also logged is never copied unless the descriptor maps its
+member to one of the fields above (invariant 9). A destination that is a URL,
+or holds a path, a query, a fragment, user information or whitespace, is
+refused whole and never parsed down to its host: mapping a URL member is the
+operator's mistake, and guessing the host from it would hide that. Under the
+host form a port is refused too; under the authority form a port is split
+off.</p>
+<h2 id="refusals-and-drops">Refusals and drops</h2>
+<p>A refused line becomes no observation. It is counted in <code>refused</code>, and under
+its reason in the report's <code>refused_by</code>. <code>observe import</code> prints <code>lines_read</code>
+and the total refused, not each reason, and any refusal makes it exit 1.</p>
+<table>
+<thead>
+<tr>
+<th><code>refused_by</code> key</th>
+<th>The line</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>line_too_long</code></td>
+<td>is over 64 KiB (<code>MaxLineBytes</code> in <code>internal/ingest/egresslog/lines.go</code>); it is never held in memory, and the next line is read whole</td>
+</tr>
+<tr>
+<td><code>not_an_object</code></td>
+<td>is not one JSON object, or not UTF-8</td>
+</tr>
+<tr>
+<td><code>duplicate_member</code></td>
+<td>names a member twice, mapped or not, however the name is escaped</td>
+</tr>
+<tr>
+<td><code>time</code></td>
+<td>has no time, or one its format cannot read</td>
+</tr>
+<tr>
+<td><code>destination</code></td>
+<td>has no destination, or one that is not a host alone or an authority, as the form says</td>
+</tr>
+<tr>
+<td><code>port</code></td>
+<td>has a port that is not a number from 1 to 65535, or one its authority contradicts</td>
+</tr>
+</tbody>
+</table>
+<p>A malformed optional value, such as a method off the list, a status outside
+its range or a caller with a control character, is dropped and counted in
+<code>strings_dropped</code>, and the line is kept. Under <code>CALLER_BASIS_ADDRESS</code> a caller
+that is not an IP address, such as a name or a path, is dropped and counted
+in <code>callers_dropped</code> instead. The log's codec holds the method, status and
+caller to these rules when it reads a connection back, and under an address
+basis the caller to the characters an address is written with, not to an
+address: <code>cafe</code> or <code>[[::</code> reads back from a log another writer wrote. Only the
+importer reads a caller as an address, since the codec's tree may not import
+<code>net/netip</code>. Bytes after the last newline are not
+a line: the proxy may still be writing them, so they are neither read nor
+refused, and the next import reads them.</p>
+<p>A refused line names no run, so the report sets <code>every_run_doubted</code>. That
+weighs on nothing: <code>supervise</code> refuses a source of this kind
+(<a href="/docs/reference/supervision">supervision</a>). <code>coverage</code> prints a row for every source
+whose reports count a refusal, and one for every source given that is not
+live, and exits 1 on either. It refuses a log holding this kind's records
+that no descriptor of this kind given with that log names
+(<a href="/docs/reference/coverage">coverage</a>).</p>
+<p>Importing a log again refuses its bad line again and writes another report
+counting it, so a log that ever held one exits 1 on every import, and keeps
+<code>coverage</code> at 1 until the observation log is rotated by hand
+(<a href="/docs/reference/observations">observations</a>). An input is read whole, up to 256 MiB,
+before a line is mapped, and the import holds every observation it made in
+memory until it writes them.</p>
+<h2 id="identity-and-the-log">Identity and the log</h2>
+<p>An observation's id is <code>obs-</code> and the first 32 hex digits of SHA-256 under
+the domain <code>observation-id:connection:1</code>, over the tenant, project, source,
+event time, host, port, method, status, both byte counts and the caller, each
+prefixed by its length (<code>ConnectionID</code> in <code>internal/observe/connection.go</code>).
+Importing a file again, grown or rotated, writes only what is new; two
+connections alike in all of these are one duplicate. Trust and the caller's
+basis are not in the id, so importing a connection again after the
+descriptor changed its trust or its caller basis is a conflict. Every record this kind writes is schema <code>0.3</code>
+and names the kind in <code>source.kind</code> (<a href="/docs/reference/versions">versions</a>). A log holds
+one kind per source: <code>observe import</code> refuses a write whose kind is not that
+of the records the log already holds for its source, tenant and project.</p>
+<h2 id="trust">Trust</h2>
+<p>This kind may declare <code>TRUST_INDEPENDENT</code> with an unsigned descriptor. It is
+the operator's statement that the agent can write neither the log nor the
+descriptor; nothing here checks which account writes either. Under it,
+<code>observe import</code> refuses an input whose mode bits let the group or others
+write it, as it refuses such a descriptor under any trust. The check reads
+the mode bits only, not an access control list, which can grant write to
+another account behind a mode of <code>0644</code>, and not which account owns the
+file. <code>coverage</code> prints the trust as
+<code>independent (unsigned descriptor)</code>.</p>
+<p>A forged line can make a destination look observed, and deleting its lines can
+make it look not observed, never covered. A line is the proxy's account of a
+request, not proof that a connection succeeded. <code>supervise</code> refuses this kind;
+a finding may rest on this trust only once the descriptor is signed.</p>
+<p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/reference/egress-access-log.md">docs/reference/egress-access-log.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.14.0, and <a href="https://github.com/guardana/control/tree/v0.14.0/docs">its documentation</a> is in its tag.</p>
+</main>
+<nav class="side" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/egress-access-log" aria-current="page">Egress access log</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</div>
+<footer class="foot"><div class="wrap row">
+  <p>Guardana Control · Apache-2.0</p>
+  <ul>
+    <li><a href="https://github.com/guardana/control">GitHub</a></li>
+    <li><a href="https://github.com/guardana/control/releases">Releases</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/SECURITY.md">Security</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/LICENSE">Licence Apache-2.0</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/TRADEMARKS.md">Trademarks</a></li>
+  </ul>
+</div></footer>
+</body>
+</html>

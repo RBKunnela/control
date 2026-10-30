@@ -20,7 +20,7 @@ the complete product model and today's limits.
 
 | Area | Target for 1.0 | Delivery path |
 | --- | --- | --- |
-| Observe | Join tool and API evidence with runtime, proxy and process observations; show coverage, sampling and silence. | B21, B12 |
+| Observe | Join tool and API evidence with runtime, proxy and process observations; show coverage, sampling and silence. | B21, B35, B12 |
 | Supervise | Check procedures, permissions, resources, exceptions and child runs; report deviations and uncertain outcomes. | Existing supervision, B12, B26, B28 |
 | React | Inform, alert, request review, approve one exact action, pause calls or stop later actions within authenticated run, agent or principal scopes. | Existing controls, B12–B14, B26, B28 |
 | Integrate | MCP and custom tools share policy, approvals and evidence; publish each integration's enforcement and bypasses. | Existing hook bridge, B11, B12 |
@@ -42,12 +42,12 @@ preview, explicit apply and undo are B23; setup never silently widens authority.
 
 ## 2. Integrations without a fork
 
-Add proxy and process sensors independent of the agent first (B21). Then
+Add proxy and process sensors independent of the agent first (B21, B35). Then
 publish port contracts with language-neutral conformance suites once two
 consumers use each, with a TypeScript client (B12); continuous supervision
 (B28) builds on both. A framework integration (B11) follows when an adopter
-picks one. Tool-definition review and policy comparison (B25, B27) go beside
-them and block nothing. A public Go seam needs its own record.
+picks one. Tool-definition review and policy comparison (B25, B27) block
+nothing. A public Go seam needs its own record.
 
 ## 3. A small team
 

@@ -81,7 +81,7 @@ func TestARepeatedObservationIsCountedAndAConflictingOneIsInDoubt(t *testing.T) 
 func TestAFindingIsTheWeakestOfWhatItRestsOn(t *testing.T) {
 	p := procWith(t)
 	live := source(ob{id: "obs-1", name: "drop_table", span: "1000000000000001", at: 40 * time.Second})
-	silent := supervise.Source{SourceID: "s2", Tenant: tenant, Project: proj, HeartbeatSeconds: 300, LastHeard: t0.Add(-time.Hour), Heard: true,
+	silent := supervise.Source{SourceID: "s2", Kind: otelKind, Tenant: tenant, Project: proj, HeartbeatSeconds: 300, LastHeard: t0.Add(-time.Hour), Heard: true,
 		Observations: []*observev1.Observation{
 			ob{id: "obs-2", source: "s2", name: "drop_table", span: "1000000000000002", at: 41 * time.Second}.obs(),
 		}}

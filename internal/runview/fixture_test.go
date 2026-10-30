@@ -174,7 +174,7 @@ func report(id, name, run string, at time.Duration) *observev1.Observation {
 
 // heard is source s1, heard an hour after t0, holding obs.
 func heard(obs ...*observev1.Observation) supervise.Source {
-	return supervise.Source{SourceID: "s1", Tenant: tenant, Project: proj, HeartbeatSeconds: 300, LastHeard: t0.Add(time.Hour), Heard: true, Observations: obs}
+	return supervise.Source{SourceID: "s1", Kind: "otel-genai-traces", Tenant: tenant, Project: proj, HeartbeatSeconds: 300, LastHeard: t0.Add(time.Hour), Heard: true, Observations: obs}
 }
 
 func order(id string) *controlv1.Resource {

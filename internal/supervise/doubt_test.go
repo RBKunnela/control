@@ -217,7 +217,7 @@ func doubtedIn(t *testing.T, s1, s2 supervise.Source) map[string]string {
 }
 
 func doubting(every bool, runs ...string) supervise.Source {
-	return supervise.Source{Tenant: tenant, Project: proj, EveryRunDoubted: every, DoubtedRuns: runs}
+	return supervise.Source{Kind: otelKind, Tenant: tenant, Project: proj, EveryRunDoubted: every, DoubtedRuns: runs}
 }
 
 // TestARefusedCopyOfARunJudgedLeavesTheRulesThatReadReportsNotChecked: a

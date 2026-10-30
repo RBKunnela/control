@@ -66,7 +66,8 @@ func TestARecordIsSchema02ExactlyWhenItCarriesAMemberOf02(t *testing.T) {
 		"0.1 doubting every run": {report("0.1", true), `every_run_doubted: not a member of schema "0.1"`},
 		"0.2 naming no run":      {report("0.2", false), `schema_version: "0.2" on a record with no member of "0.2"`},
 		"an observation of 0.2":  {obsRecord(observation), `schema_version: "0.2" on a record with no member of "0.2"`},
-		"0.3 naming a run":       {report("0.3", false, runN(1)), "minor"},
+		"0.3 naming a run":       {report("0.3", false, runN(1)), `schema_version: "0.3" on a record with no member of "0.3"`},
+		"0.4 naming a run":       {report("0.4", false, runN(1)), "minor"},
 	} {
 		checkBothWays(t, name, c.r, c.member)
 	}
@@ -148,8 +149,8 @@ func TestADoubtOfNoRunOrPastItsBoundIsEveryRun(t *testing.T) {
 
 // TestDoubtedRunsReadsEveryReport: the runs of every report of the source add
 // up; one of every run, or one that counts a refusal or a conflict and names
-// no run, puts every run in doubt. A report of another source, tenant or
-// project puts none of this source's runs in doubt.
+// no run, puts every run in doubt. A report of another source, tenant,
+// project or kind puts none of this source's runs in doubt.
 func TestDoubtedRunsReadsEveryReport(t *testing.T) {
 	of := func(source, tenant, project string, counts *observev1.ImportCounts, every bool, runs ...string) *observev1.Record {
 		return reportRecord(&observev1.ImportReport{
@@ -176,6 +177,10 @@ func TestDoubtedRunsReadsEveryReport(t *testing.T) {
 			of("s2", "t1", "p1", refused, false), of("s2", "t1", "p1", conflict, false, runN(3))}, false, []string{runN(1)}},
 		"another tenant's":  {[]*observev1.Record{of("s1", "t2", "p1", nil, true), of("s1", "t2", "p1", refused, false, runN(3))}, false, nil},
 		"another project's": {[]*observev1.Record{of("s1", "t1", "p2", nil, true), of("s1", "t1", "p2", refused, false, runN(3))}, false, nil},
+		"another kind's": {[]*observev1.Record{report(nil, false, runN(1)), reportRecord(&observev1.ImportReport{
+			Source:   &observev1.SourceRef{SourceId: "s1", DescriptorSha256: strings.Repeat("a", 64), Kind: observe.KindEgressAccessLog},
+			TenantId: "t1", ProjectId: "p1", Counts: refused, EveryRunDoubted: true,
+		})}, false, []string{runN(1)}},
 		"an older descriptor's": {[]*observev1.Record{reportRecord(&observev1.ImportReport{
 			Source: &observev1.SourceRef{SourceId: "s1", DescriptorSha256: strings.Repeat("b", 64)}, TenantId: "t1", ProjectId: "p1", EveryRunDoubted: true,
 		})}, true, nil},

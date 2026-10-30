@@ -101,7 +101,7 @@ the format does not have is refused:
 - `evidence` holds exports, each either `{"path": "<export file>"}`, a file
   the gateway's trail export wrote, or `{"whole": <bool>, "events": [...]}`
   with the events as that export writes them.
-- `sources`, if given, are observation sources: `source_id`,
+- `sources`, if given, are sources of an agent runtime's spans: `source_id`,
   `heartbeat_seconds`, `last_heard` (left out for a source never heard) and
   `observations`. `sources_not_read` names sources given and not found.
 - Every time comes from the events and the sources, written in UTC with `Z`.

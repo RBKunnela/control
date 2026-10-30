@@ -43,6 +43,7 @@
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
 </ul>
 <h2>Concepts</h2><ul>
@@ -66,6 +67,7 @@
 <li><a href="/docs/reference/console">The approvals page</a></li>
 <li><a href="/docs/reference/coverage">Coverage</a></li>
 <li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/egress-access-log">Egress access log</a></li>
 <li><a href="/docs/reference/failure-modes">Failure modes</a></li>
 <li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
 <li><a href="/docs/reference/metrics">Metrics</a></li>
@@ -123,12 +125,14 @@ the operator declares, how much of it anyone can see. Supervision compares one
 run with its procedure and raises findings. A stop turns one confirmed finding
 into a refusal of that run's next call. None of them changes a decision the
 plane made, and only the stop reaches a plane at all.</p>
-<figure class="dg-text" id="diagram-1"><figcaption>How the four parts fit together</figcaption><p>An agent&#39;s calls pass a plane, which writes evidence; the agent&#39;s runtime reports spans, which observe import keeps as observations. coverage reads the evidence and the observations and maps each declared path. supervise reads them with the procedure and writes findings. notify hands alerts to a program; react reads findings with a signed route and writes the stop list, which the plane reads. <a href="https://github.com/guardana/control/blob/main/docs/concepts/observations-coverage-and-supervision.md">Drawn on GitHub</a>.</p><details><summary>The diagram's source</summary><pre><code class="language-mermaid">flowchart LR
+<figure class="dg-text" id="diagram-1"><figcaption>How the four parts fit together</figcaption><p>An agent&#39;s calls pass a plane, which writes evidence; the agent&#39;s runtime reports spans, and an egress proxy logs its connections, which observe import keeps as observations. coverage reads the evidence and the observations and maps each declared path. supervise reads them with the procedure and writes findings. notify hands alerts to a program; react reads findings with a signed route and writes the stop list, which the plane reads. <a href="https://github.com/guardana/control/blob/main/docs/concepts/observations-coverage-and-supervision.md">Drawn on GitHub</a>.</p><details><summary>The diagram's source</summary><pre><code class="language-mermaid">flowchart LR
     accTitle: How the four parts fit together
-    accDescr: An agent&#39;s calls pass a plane, which writes evidence; the agent&#39;s runtime reports spans, which observe import keeps as observations. coverage reads the evidence and the observations and maps each declared path. supervise reads them with the procedure and writes findings. notify hands alerts to a program; react reads findings with a signed route and writes the stop list, which the plane reads.
+    accDescr: An agent&#39;s calls pass a plane, which writes evidence; the agent&#39;s runtime reports spans, and an egress proxy logs its connections, which observe import keeps as observations. coverage reads the evidence and the observations and maps each declared path. supervise reads them with the procedure and writes findings. notify hands alerts to a program; react reads findings with a signed route and writes the stop list, which the plane reads.
     AG[Agent] --&gt;|tool calls| PL[Plane]
     PL --&gt;|evidence export| EV[(Evidence)]
     AG -.-&gt;|spans, through observe import| OL[(Observations)]
+    AG -.-&gt;|connections| PX[Egress proxy]
+    PX -.-&gt;|access log, through observe import| OL
     EV --&gt; CO[coverage]
     OL --&gt; CO
     EV --&gt; SV[supervise]
@@ -141,7 +145,7 @@ plane made, and only the stop reaches a plane at all.</p>
     RE --&gt; SL[(Stop list)]
     SL --&gt; PL
 </code></pre></details></figure>
-<p>Sources: <code>cmd/guardana-control/observe.go</code>, <code>cmd/guardana-control/coverage.go</code>,
+<p>Sources: <code>cmd/guardana-control/observe.go</code>, <code>internal/ingest/ingest.go</code>, <code>cmd/guardana-control/coverage.go</code>,
 <code>cmd/guardana-control/supervise.go</code>, <code>cmd/guardana-control/react.go</code>,
 <code>internal/reaction/stoplist/poller.go</code>.</p>
 <h2 id="what-each-promises-and-what-it-does-not">What each promises, and what it does not</h2>
@@ -157,11 +161,11 @@ plane made, and only the stop reaches a plane at all.</p>
 <tr>
 <td>An observation</td>
 <td>what one source reported, with the source and the trust its descriptor declares; kept apart from the plane's evidence, and without content</td>
-<td>that the call happened as reported, or at all: a runtime that writes its own spans can omit, sample or invent them</td>
+<td>that the call happened as reported, or at all: a runtime that writes its own spans can omit, sample or invent them, and a proxy's log is only as independent as the account that writes it</td>
 </tr>
 <tr>
 <td>The coverage map</td>
-<td>one state per declared path: enforced, decided not enforced, observed, unknown or not covered</td>
+<td>one state per declared path: enforced, decided not enforced, observed, unknown or not covered; a row per egress host a source saw that no path declares</td>
 <td>that a plane runs the configuration it read, or that an undeclared path does not exist; it reads files and contacts no plane</td>
 </tr>
 <tr>
@@ -254,6 +258,7 @@ rules, <code>internal/findinglog/</code> the findings log and its export, and
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
 </ul>
 <h2>Concepts</h2><ul>
@@ -277,6 +282,7 @@ rules, <code>internal/findinglog/</code> the findings log and its export, and
 <li><a href="/docs/reference/console">The approvals page</a></li>
 <li><a href="/docs/reference/coverage">Coverage</a></li>
 <li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/egress-access-log">Egress access log</a></li>
 <li><a href="/docs/reference/failure-modes">Failure modes</a></li>
 <li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
 <li><a href="/docs/reference/metrics">Metrics</a></li>

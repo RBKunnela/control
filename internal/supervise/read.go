@@ -150,14 +150,20 @@ func (r *read) takeProject() error {
 	return nil
 }
 
-// checkSources refuses a source whose tenant is not the run's, or whose
-// project is not the one the run's record or its events name: observations
-// are taken under the run's identity and liveness and doubt read under the
-// source's, so the two must be one. With no event read and no project
-// recorded, only the tenant is held.
+// checkSources refuses a source of a kind whose observations name no run,
+// and one of no kind: its liveness and the doubt its refusals cast would
+// weigh on every run while none of its observations could be the run's. It
+// refuses a source whose tenant is not the run's, or whose project is not
+// the one the run's record or its events name: observations are taken under
+// the run's identity and liveness and doubt read under the source's, so the
+// two must be one. With no event read and no project recorded, only the
+// tenant is held.
 func (r *read) checkSources(sources []Source) error {
 	for _, s := range sources {
 		switch {
+		case !observe.LookupKind(s.Kind).ClaimsRuns:
+			return ErrInput.with(fmt.Sprintf("source %s is of kind %s, whose observations name no run; supervise reads none",
+				strconv.Quote(s.SourceID), strconv.Quote(s.Kind)))
 		case s.Tenant != r.tenant:
 			return ErrInput.with(fmt.Sprintf("source %s is of tenant %s, the run of tenant %s",
 				strconv.Quote(s.SourceID), strconv.Quote(s.Tenant), strconv.Quote(r.tenant)))

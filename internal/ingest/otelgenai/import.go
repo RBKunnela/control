@@ -12,15 +12,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-var (
-	// ErrDescriptor reports a descriptor this importer cannot serve: one
-	// observe.ReadDescriptor would refuse, which covers the kind and every
-	// pinned version, or a digest that is not lowercase hex SHA-256.
-	ErrDescriptor = errors.New("otelgenai: descriptor not served")
-	// ErrReceived reports a receive time no record can carry.
-	ErrReceived = errors.New("otelgenai: received time refused")
-)
-
 // Batch is what one import yields: the observations in input order and the
 // report that accounts for every span read.
 type Batch struct {
@@ -66,6 +57,9 @@ func Import(r io.Reader, desc *observev1.SourceDescriptor, descriptorSHA256 stri
 	return Batch{Observations: im.observations, Report: im.report(in)}, nil
 }
 
+// checkDescriptor is what Import serves: the descriptor as its bytes read
+// again through both halves of its checks, and a digest in the one form a
+// record carries.
 func checkDescriptor(desc *observev1.SourceDescriptor, sha string) error {
 	if desc == nil {
 		return fmt.Errorf("%w: none", ErrDescriptor)
@@ -74,8 +68,12 @@ func checkDescriptor(desc *observev1.SourceDescriptor, sha string) error {
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrDescriptor, err)
 	}
-	if _, err := observe.ReadDescriptor(b); err != nil {
+	read, err := observe.ReadNeutral(b)
+	if err != nil {
 		return fmt.Errorf("%w: %w", ErrDescriptor, err)
+	}
+	if err := Check(read); err != nil {
+		return err
 	}
 	if len(sha) != 64 || !lowerHex(sha) {
 		return fmt.Errorf("%w: descriptor digest is not 64 lowercase hex digits", ErrDescriptor)

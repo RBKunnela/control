@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"sync"
@@ -41,6 +42,7 @@ type Log struct {
 	// was synced; limit is the length no write may take it past.
 	size, limit int64
 	ids         index
+	kinds       sourceKinds
 	failed      error
 	closed      bool
 	ops         fileOps
@@ -118,7 +120,7 @@ func (l *Log) claim() error {
 	if err != nil {
 		return err
 	}
-	ids, committed, err := readIndex(io.NewSectionReader(l.f, 0, end))
+	ids, kinds, committed, err := readIndex(io.NewSectionReader(l.f, 0, end))
 	if err != nil {
 		return err
 	}
@@ -127,7 +129,7 @@ func (l *Log) claim() error {
 			return fmt.Errorf("cutting what follows the last import report: %w", err)
 		}
 	}
-	l.ids, l.size = ids, committed
+	l.ids, l.kinds, l.size = ids, kinds, committed
 	return nil
 }
 
@@ -151,8 +153,10 @@ func judgedSize(f *os.File) (int64, error) {
 // conflicts claim to the runs it puts in doubt.
 //
 // An observation or a report the codec refuses, or none for report, refuses
-// the whole call as ErrRecord, and a write that would take the file past
-// MaxLogBytes is ErrTooLarge; neither writes anything. A write that fails
+// the whole call as ErrRecord; one naming a source the log holds records of
+// under another kind, or two kinds for one source, refuses it as ErrKind;
+// and a write that would take the file past MaxLogBytes is ErrTooLarge; none
+// of them writes anything. A write that fails
 // leaves the file as it was before it, and is ErrWrite; when the file cannot
 // be cut back, the log refuses every later write with ErrFailed. Before the
 // write and after the sync, the log file's name must still name the file the
@@ -175,6 +179,10 @@ func (l *Log) Write(obs []*observev1.Observation, report *observev1.ImportReport
 	if err != nil {
 		return Written{}, err
 	}
+	kinds, err := l.kinds.admit(batchRecords(obs, report))
+	if err != nil {
+		return Written{}, err
+	}
 	buf := append(b.lines, line...)
 	if end := l.size + int64(len(buf)); end > l.limit {
 		return Written{}, fmt.Errorf("%w: the write would take it to %d bytes, limit %d", ErrTooLarge, end, l.limit)
@@ -190,6 +198,7 @@ func (l *Log) Write(obs []*observev1.Observation, report *observev1.ImportReport
 	}
 	l.size += int64(len(buf))
 	l.ids.add(b.added)
+	maps.Copy(l.kinds, kinds)
 	return b.found, nil
 }
 

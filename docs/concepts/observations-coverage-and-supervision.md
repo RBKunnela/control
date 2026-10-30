@@ -2,7 +2,7 @@
 title: Observations, coverage, supervision and a stop
 summary: How what a source reports, the coverage map, the supervisor's findings and a stop of one run fit together, and what each promises and does not.
 type: explanation
-covers: [internal/observe/**, internal/coverage/**, internal/supervise/**, internal/reaction/**, cmd/guardana-control/observe.go, cmd/guardana-control/coverage.go, cmd/guardana-control/supervise.go, cmd/guardana-control/react.go]
+covers: [internal/observe/**, internal/ingest/**, internal/coverage/**, internal/supervise/**, internal/reaction/**, cmd/guardana-control/observe.go, cmd/guardana-control/coverage.go, cmd/guardana-control/supervise.go, cmd/guardana-control/react.go]
 ---
 
 # Observations, coverage, supervision and a stop
@@ -25,10 +25,12 @@ plane made, and only the stop reaches a plane at all.
 ```mermaid
 flowchart LR
     accTitle: How the four parts fit together
-    accDescr: An agent's calls pass a plane, which writes evidence; the agent's runtime reports spans, which observe import keeps as observations. coverage reads the evidence and the observations and maps each declared path. supervise reads them with the procedure and writes findings. notify hands alerts to a program; react reads findings with a signed route and writes the stop list, which the plane reads.
+    accDescr: An agent's calls pass a plane, which writes evidence; the agent's runtime reports spans, and an egress proxy logs its connections, which observe import keeps as observations. coverage reads the evidence and the observations and maps each declared path. supervise reads them with the procedure and writes findings. notify hands alerts to a program; react reads findings with a signed route and writes the stop list, which the plane reads.
     AG[Agent] -->|tool calls| PL[Plane]
     PL -->|evidence export| EV[(Evidence)]
     AG -.->|spans, through observe import| OL[(Observations)]
+    AG -.->|connections| PX[Egress proxy]
+    PX -.->|access log, through observe import| OL
     EV --> CO[coverage]
     OL --> CO
     EV --> SV[supervise]
@@ -42,7 +44,7 @@ flowchart LR
     SL --> PL
 ```
 
-Sources: `cmd/guardana-control/observe.go`, `cmd/guardana-control/coverage.go`,
+Sources: `cmd/guardana-control/observe.go`, `internal/ingest/ingest.go`, `cmd/guardana-control/coverage.go`,
 `cmd/guardana-control/supervise.go`, `cmd/guardana-control/react.go`,
 `internal/reaction/stoplist/poller.go`.
 
@@ -50,8 +52,8 @@ Sources: `cmd/guardana-control/observe.go`, `cmd/guardana-control/coverage.go`,
 
 | Part | Promises | Does not promise |
 | --- | --- | --- |
-| An observation | what one source reported, with the source and the trust its descriptor declares; kept apart from the plane's evidence, and without content | that the call happened as reported, or at all: a runtime that writes its own spans can omit, sample or invent them |
-| The coverage map | one state per declared path: enforced, decided not enforced, observed, unknown or not covered | that a plane runs the configuration it read, or that an undeclared path does not exist; it reads files and contacts no plane |
+| An observation | what one source reported, with the source and the trust its descriptor declares; kept apart from the plane's evidence, and without content | that the call happened as reported, or at all: a runtime that writes its own spans can omit, sample or invent them, and a proxy's log is only as independent as the account that writes it |
+| The coverage map | one state per declared path: enforced, decided not enforced, observed, unknown or not covered; a row per egress host a source saw that no path declares | that a plane runs the configuration it read, or that an undeclared path does not exist; it reads files and contacts no plane |
 | Supervision | each finding cites its evidence and takes the weakest verdict of it; what it could not check is reported as not checked or indeterminate | that a run without findings followed its procedure: it sees only the exports and logs it is given, when an operator runs it |
 | A stop | a plane with the route refuses the stopped run's next call `RUN_STOPPED`, and every call while it cannot read or trust the list | that a call already running is cut, or that any run other than the one named stops: a stop names one run, a root or a child, never its tree, agent or principal |
 

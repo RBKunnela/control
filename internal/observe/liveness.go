@@ -25,17 +25,16 @@ const (
 
 // LastHeard is the newest event time an import report of the source names,
 // each taken no later than its report's receive time, and false when none
-// does. A report counts only when it names the descriptor's source, tenant
-// and project and carries both times: a report another tenant's import
-// wrote is not this source heard.
+// does. A report counts only when it names the descriptor's source, tenant,
+// project and kind and carries both times: a report another tenant's import,
+// or an import of another kind, wrote is not this source heard.
 func LastHeard(d *observev1.SourceDescriptor, records []*observev1.Record) (time.Time, bool) {
 	var last time.Time
 	heard := false
 	for _, r := range records {
 		rep := r.GetImportReport()
 		latest, received := rep.GetLatestEventTime(), rep.GetReceivedTime()
-		if rep.GetSource().GetSourceId() != d.GetSourceId() || rep.GetTenantId() != d.GetTenantId() ||
-			rep.GetProjectId() != d.GetProjectId() || !latest.IsValid() || !received.IsValid() {
+		if !Reports(d, rep) || !latest.IsValid() || !received.IsValid() {
 			continue
 		}
 		t := latest.AsTime()
@@ -61,4 +60,12 @@ func LivenessAt(last time.Time, heard bool, heartbeatSeconds uint32, at time.Tim
 		return Lapsed
 	}
 	return Live
+}
+
+// Reports reports whether r is an import report of d's source: one naming its
+// source id, tenant, project and kind, under whichever descriptor digest
+// wrote it.
+func Reports(d *observev1.SourceDescriptor, r *observev1.ImportReport) bool {
+	return r != nil && r.GetSource().GetSourceId() == d.GetSourceId() && r.GetTenantId() == d.GetTenantId() &&
+		r.GetProjectId() == d.GetProjectId() && RecordKind(r.GetSource()) == d.GetKind()
 }

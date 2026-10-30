@@ -1,0 +1,3 @@
+{"time":1791108000.250,"client":"10.0.0.7","user":"alice","method":"CONNECT","host":"api.example.com","port":"443","status":"200","reply_bytes":"52011","request_bytes":"1834","url":"api.example.com:443"}
+{"time":1791108001.500,"client":"10.0.0.8","user":"-","method":"GET","host":"registry.example.org","port":"80","status":"200","reply_bytes":"4096","request_bytes":"312","url":"http://registry.example.org/v2/private-repo/manifests/latest"}
+{"time":1791108002.000,"client":"10.0.0.9","user":"bob","method":"PROPFIND","host":"dav.example.net","port":"443","status":"207","reply_bytes":"610","request_bytes":"190","url":"https://dav.example.net/files/"}

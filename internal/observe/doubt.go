@@ -62,23 +62,19 @@ func (d *Doubt) Fill(r *observev1.ImportReport) {
 	if !d.every && len(d.runs) > 0 {
 		r.DoubtedRunIds = slices.Sorted(maps.Keys(d.runs))
 	}
-	if added02(r) != "" {
-		r.SchemaVersion = SchemaVersion02
-	}
+	r.SchemaVersion, _ = schemaOf(&observev1.Record{Record: &observev1.Record_ImportReport{ImportReport: r}})
 }
 
 // DoubtedRuns reads what the import reports of d's source among records put
 // in doubt: every run, or the runs they name in ascending order. A report
-// counts when it names d's source, tenant and project, as LastHeard reads
-// them, under whichever descriptor digest wrote it. A 0.1 report names no
+// counts when Reports says it is one of d's source, as LastHeard reads them. A 0.1 report names no
 // run, so one that counts a refused span or a conflict puts every run in
 // doubt.
 func DoubtedRuns(d *observev1.SourceDescriptor, records []*observev1.Record) (bool, []string) {
 	runs := map[string]bool{}
 	for _, rec := range records {
 		r := rec.GetImportReport()
-		if r == nil || r.GetSource().GetSourceId() != d.GetSourceId() || r.GetTenantId() != d.GetTenantId() ||
-			r.GetProjectId() != d.GetProjectId() {
+		if !Reports(d, r) {
 			continue
 		}
 		if doubtsEveryRun(r) {

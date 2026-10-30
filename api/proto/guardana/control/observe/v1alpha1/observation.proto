@@ -1,5 +1,7 @@
-// Unstable observation contract; schema_version is "0.1". See source.proto
-// for the version and enum rules, and ADR-0040.
+// Unstable observation contract. A record is "0.3" exactly when it carries
+// connection, refused_by, callers_dropped or a source's kind, "0.2" when it
+// carries a member of 0.2 and no member of 0.3, and "0.1" otherwise. See source.proto for the enum rules,
+// ADR-0040 and ADR-0058.
 
 syntax = "proto3";
 
@@ -26,6 +28,8 @@ enum SubjectKind {
   SUBJECT_KIND_TOOL = 1;
   SUBJECT_KIND_MODEL = 2;
   SUBJECT_KIND_AGENT = 3;
+  // A network connection; the subject's name is the host it was made to.
+  SUBJECT_KIND_CONNECTION = 4;
 }
 
 // The status the source sent, as sent. Unset is the source saying nothing.
@@ -55,11 +59,14 @@ message SourceRef {
   string descriptor_sha256 = 2;
   Trust trust = 3;
   Convention convention = 4;
+  // The descriptor's kind. Empty is "otel-genai-traces", the one kind a
+  // record before "0.3" can come from, and that kind is never spelled.
+  string kind = 5;
 }
 
 message Subject {
   SubjectKind kind = 1;
-  // The tool's, model's or agent's name.
+  // The tool's, model's or agent's name, or a connection's host.
   string name = 2;
   // The convention's operation, such as execute_tool or chat.
   string operation = 3;
@@ -82,12 +89,32 @@ message Correlation {
   string parent_span_id = 5;
 }
 
+// What a proxy said about one connection. A zero number is the log saying
+// nothing, never a port, status or count of zero.
+message Connection {
+  uint32 port = 1;
+  // One of CONNECT, GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS and TRACE,
+  // or empty.
+  string method = 2;
+  uint32 http_status = 3;
+  uint64 bytes_sent = 4;
+  uint64 bytes_received = 5;
+  // Who the proxy says made the connection, as it wrote it; empty when the
+  // mapping names no caller.
+  string caller = 6;
+  // What caller rests on, from the descriptor. Unspecified reads as none, and
+  // a basis other than none needs a caller.
+  CallerBasis caller_basis = 7;
+}
+
 // What one source said happened. Testimony, never a decision: it names no
 // mode, verdict or decision, and carries no content.
 message Observation {
   string schema_version = 1;
   // "obs-" and 32 lowercase hex digits derived from tenant, project, source,
-  // trace and span, so a re-import yields the same id.
+  // trace and span, so a re-import yields the same id. A connection's is
+  // derived from its content instead: tenant, project, source, event time,
+  // host and every member of connection but caller_basis.
   string observation_id = 2;
   string tenant_id = 3;
   string project_id = 4;
@@ -103,6 +130,9 @@ message Observation {
   Correlation correlation = 11;
   // Content attributes the record held and this one does not.
   uint32 content_attributes_dropped = 12;
+  // Set exactly when the subject is a connection, which names no trace, span
+  // or run: its basis is none and its stage indirect.
+  Connection connection = 13;
 }
 
 // The counts of one import, so that what was skipped is told apart from what
@@ -121,6 +151,12 @@ message ImportCounts {
   uint64 content_unparsed = 10;
   uint64 run_ids_dropped = 11;
   uint64 strings_dropped = 12;
+  // The lines refused, by reason; refused is their sum. Absent from a report
+  // whose importer gives no reason.
+  map<string, uint64> refused_by = 13;
+  // Callers dropped because they are not in the form the caller basis
+  // names, such as a network address that is not an IP address.
+  uint64 callers_dropped = 14;
 }
 
 // One import into a log: what was read and what became of it.

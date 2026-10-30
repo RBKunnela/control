@@ -21,6 +21,11 @@ a path a `Cooperative` plane serves, such as a tool behind the enforcement
 API, is decided, not enforced, in every mode; only a plane that holds the path
 to the effect can make it enforced.
 
+Amended by [ADR-0069](0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor.md),
+which decides that a connection observes an egress path, that no plane decides
+one, and that an egress host a source observed and no path declares is a row
+of its own that makes the exit 1.
+
 ## Context
 
 An operator needs to know, for each thing an agent can do, whether a plane

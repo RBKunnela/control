@@ -128,6 +128,7 @@ func readSupervisedSource(descriptor, logDir string) (supervise.Source, bool, er
 	}
 	out := supervise.Source{
 		SourceID:         src.Descriptor.GetSourceId(),
+		Kind:             src.Descriptor.GetKind(),
 		Tenant:           src.Descriptor.GetTenantId(),
 		Project:          src.Descriptor.GetProjectId(),
 		HeartbeatSeconds: src.Descriptor.GetHeartbeatSeconds(),

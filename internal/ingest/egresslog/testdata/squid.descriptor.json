@@ -1,0 +1,26 @@
+{
+  "schema_version": "0.2",
+  "source_id": "egress-squid",
+  "kind": "egress-access-log",
+  "trust": "TRUST_PLATFORM",
+  "egress_access_log": {
+    "format": "json-lines",
+    "fields": {
+      "time": "time",
+      "time_format": "TIME_FORMAT_UNIX_SECONDS",
+      "destination": "host",
+      "destination_form": "DESTINATION_FORM_HOST",
+      "port": "port",
+      "method": "method",
+      "status": "status",
+      "bytes_sent": "reply_bytes",
+      "bytes_received": "request_bytes",
+      "caller": "user"
+    },
+    "caller_basis": "CALLER_BASIS_AUTHENTICATED"
+  },
+  "sampling": "SAMPLING_COMPLETE",
+  "heartbeat_seconds": 300,
+  "tenant_id": "tenant-a",
+  "project_id": "project-a"
+}

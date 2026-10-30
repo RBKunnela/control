@@ -2,7 +2,7 @@
 title: Format versions
 summary: Every versioned file and message a user writes or reads, the version this tree writes, the versions it reads, and how stable each is.
 type: reference
-covers: [internal/evidence/event.go, internal/evidence/version.go, internal/core/codes.go, adapters/mcp/translate.go, adapters/enforce/**, internal/gateway/decisions.go, internal/gateway/journal.go, internal/trailfile/export.go, internal/coverage/export.go, internal/coverage/inventory.go, internal/policy/rules/rules.go, internal/policy/statement.go, internal/scenario/scenario.go, internal/supervise/ruletable.go, internal/supervise/evaluate.go, internal/supervise/record.go, internal/supervise/report.go, cmd/guardana-control/procedure_cases.go, internal/findinglog/**, internal/observe/version.go, internal/observe/descriptor.go, internal/observelog/export.go, internal/runs/strict.go, internal/reaction/**, internal/pause/document.go, internal/approvals/record.go, internal/holdjournal/**, internal/policystate/format.go, internal/hookbridge/**, internal/enforceclient/client.go, internal/policy/bundle/bundle.go, internal/spool/frame.go]
+covers: [internal/evidence/event.go, internal/evidence/version.go, internal/core/codes.go, adapters/mcp/translate.go, adapters/enforce/**, internal/gateway/decisions.go, internal/gateway/journal.go, internal/trailfile/export.go, internal/coverage/export.go, internal/coverage/inventory.go, internal/policy/rules/rules.go, internal/policy/statement.go, internal/scenario/scenario.go, internal/supervise/ruletable.go, internal/supervise/evaluate.go, internal/supervise/record.go, internal/supervise/report.go, cmd/guardana-control/procedure_cases.go, internal/findinglog/**, internal/observe/version.go, internal/ingest/*/descriptor.go, internal/observelog/export.go, internal/runs/strict.go, internal/reaction/**, internal/pause/document.go, internal/approvals/record.go, internal/holdjournal/**, internal/policystate/format.go, internal/hookbridge/**, internal/enforceclient/client.go, internal/policy/bundle/bundle.go, internal/spool/frame.go]
 generated: go test ./internal/docscheck -run TestVersionsPageIsTheCode
 ---
 
@@ -37,9 +37,10 @@ version. [status.md](../status.md) is the inventory.
 | Hook bridge handles (`version`) | `1.0` | `1.x` | `experimental` | [runtime-profiles](../extending/runtime-profiles.md#what-the-bridge-does) |
 | Runs directory marker and root state (`schema_version`) | `1.0` | `1.x` | `experimental` | [contracts.md](../contracts.md#the-runs-directory) |
 | Run record (`schema_version`) | `2.0` | `2.x` | `experimental` | [contracts.md](../contracts.md#the-runs-directory) |
-| Observation records and log (`guardana.control.observe.v1alpha1`) | `0.1`, `0.2` | `0.1`, `0.2` | `experimental` | [observations.md](observations.md#the-log) |
-| Source descriptor (`schema_version`) | — | `0.1` | `experimental` | [observations.md](observations.md#the-source-descriptor) |
+| Observation records and log (`guardana.control.observe.v1alpha1`) | `0.1`, `0.2`, `0.3` | `0.1`, `0.2`, `0.3` | `experimental` | [observations.md](observations.md#the-log) |
+| Source descriptor (`schema_version`) | — | `0.1`, `0.2` | `experimental` | [observations.md](observations.md#the-source-descriptor) |
 | OpenTelemetry GenAI spans, imported | — | conventions `1.41.0`, OTLP `1.11.1` | `experimental` | [observations.md](observations.md#what-an-import-keeps) |
+| Egress access log, imported | — | `json-lines` under the descriptor's mapping, no version of its own | `experimental` | [egress-access-log.md](egress-access-log.md#the-descriptor) |
 | Observation export (`guardana.control.observation-export`) | `0.1` | — | `experimental` | [observations.md](observations.md#commands) |
 | Coverage inventory (`schema_version`) | — | `0.1` | `experimental` | [coverage.md](coverage.md#the-inventory) |
 | Procedure (`schema_version`) | — | `0.1`, `0.2` | `experimental` | [supervision.md](supervision.md#the-procedure) |
@@ -83,12 +84,17 @@ one quoted key per line, carries none either.
   trailer's `identity` says which.
 - **Observation records and the source descriptor.** Only the minors in the
   reader's table are read; another `0.x` is refused rather than read as the
-  nearest one. An import report is `0.2` exactly when it names runs in doubt
-  or sets `every_run_doubted`, and a reader of `0.1` alone, such as an
-  earlier release's, refuses that line. The observation export carries each
-  report's line as the log holds it, so its reader meets `0.2` import
-  reports inside an export whose own version stays `0.1`; an earlier
-  release's export counts such a line as an `unsupported_version` gap.
+  nearest one. A record is `0.3` exactly when it carries a connection,
+  refusals by reason, callers dropped or its source's kind, and an import
+  report `0.2` exactly when it names runs
+  in doubt or sets `every_run_doubted` and carries neither. A descriptor is
+  `0.2` exactly when it maps an egress access log, and every `0.1` descriptor
+  keeps its digest. A release whose table lacks a version refuses its lines:
+  0.14's `observe import` and `coverage` refuse a log holding a `0.3` line as
+  damaged. The observation export carries each record's line as the log
+  holds it, so its reader meets `0.2` and `0.3` lines inside an export whose
+  own version stays `0.1`; an earlier release's export counts such a line as
+  an `unsupported_version` gap.
 
 `internal/docscheck/versions_test.go` holds the table to the constants and
 readers in the code. It fails when a version changes there, when a format is

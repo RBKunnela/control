@@ -42,7 +42,9 @@ type Export struct {
 }
 
 // Source is one observation source with the observations of its log, read
-// under one identity: its descriptor's source id, tenant and project.
+// under one identity: its descriptor's source id, tenant and project. Kind is
+// its descriptor's kind; a source of a kind whose observations name no run,
+// or of no kind, is refused.
 // LastHeard and Heard are what observe.LastHeard reads from its import
 // reports, and EveryRunDoubted and DoubtedRuns what observe.DoubtedRuns
 // reads: a span an import refused, or an observation the log refused for an
@@ -50,6 +52,7 @@ type Export struct {
 // run, when EveryRunDoubted, or of a run DoubtedRuns names.
 type Source struct {
 	SourceID         string
+	Kind             string
 	Tenant, Project  string
 	HeartbeatSeconds uint32
 	LastHeard        time.Time

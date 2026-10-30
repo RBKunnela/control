@@ -12,7 +12,7 @@ import (
 var heardBase = time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
 
 func liveDescriptor() *observev1.SourceDescriptor {
-	return &observev1.SourceDescriptor{SourceId: "s1", TenantId: "t1", ProjectId: "p1", HeartbeatSeconds: 60}
+	return &observev1.SourceDescriptor{SourceId: "s1", Kind: observe.KindOTelGenAI, TenantId: "t1", ProjectId: "p1", HeartbeatSeconds: 60}
 }
 
 // heardReport is an import report of source in tenant and project whose
@@ -29,8 +29,14 @@ func heardReport(source, tenant, project string, latest, received time.Duration)
 	return &observev1.Record{Record: &observev1.Record_ImportReport{ImportReport: rep}}
 }
 
+// kindReport is rec with its source naming kind.
+func kindReport(rec *observev1.Record, kind string) *observev1.Record {
+	rec.GetImportReport().Source.Kind = kind
+	return rec
+}
+
 // TestLastHeardCountsOnlyTheSourcesOwnReports: a report of another source,
-// tenant or project, or one without both times, is not the source heard; an
+// tenant, project or kind, or one without both times, is not the source heard; an
 // event time after its receive time is taken as the receive time.
 func TestLastHeardCountsOnlyTheSourcesOwnReports(t *testing.T) {
 	cases := []struct {
@@ -46,6 +52,7 @@ func TestLastHeardCountsOnlyTheSourcesOwnReports(t *testing.T) {
 		{"another project", heardReport("s1", "t1", "p2", 10*time.Second, 20*time.Second), false, 0},
 		{"no event time", heardReport("s1", "t1", "p1", -1, 20*time.Second), false, 0},
 		{"no receive time", heardReport("s1", "t1", "p1", 10*time.Second, -1), false, 0},
+		{"another kind's report", kindReport(heardReport("s1", "t1", "p1", 10*time.Second, 20*time.Second), observe.KindEgressAccessLog), false, 0},
 		{"an observation", &observev1.Record{Record: &observev1.Record_Observation{Observation: &observev1.Observation{}}}, false, 0},
 	}
 	for _, c := range cases {

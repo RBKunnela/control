@@ -16,6 +16,7 @@ import (
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/coverage"
 	ondisk "github.com/guardana/control/internal/files"
+	"github.com/guardana/control/internal/observe"
 	"github.com/guardana/control/internal/policy/strictjson"
 	"github.com/guardana/control/internal/supervise"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -273,13 +274,14 @@ func (c *casesReader) exportFile(path, where string) supervise.Export {
 }
 
 // source reads one observation source: last_heard left out is a source
-// never heard.
+// never heard. A case's observations are an agent runtime's spans, so its
+// source is of kind otel-genai-traces.
 func (c *casesReader) source(raw json.RawMessage, where string) supervise.Source {
 	m := c.object(raw, where, []string{"source_id", "heartbeat_seconds", "observations"}, []string{"last_heard"})
 	if c.err != nil {
 		return supervise.Source{}
 	}
-	s := supervise.Source{SourceID: c.string(m, where, "source_id")}
+	s := supervise.Source{SourceID: c.string(m, where, "source_id"), Kind: observe.KindOTelGenAI}
 	if hb := m["heartbeat_seconds"]; isNull(hb) || bytes.HasPrefix(bytes.TrimSpace(hb), []byte(`"`)) ||
 		json.Unmarshal(hb, &s.HeartbeatSeconds) != nil {
 		c.refuse(where, "heartbeat_seconds", errors.New("want a whole number of seconds"))

@@ -43,6 +43,7 @@
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
 </ul>
 <h2>Concepts</h2><ul>
@@ -66,6 +67,7 @@
 <li><a href="/docs/reference/console">The approvals page</a></li>
 <li><a href="/docs/reference/coverage">Coverage</a></li>
 <li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/egress-access-log">Egress access log</a></li>
 <li><a href="/docs/reference/failure-modes">Failure modes</a></li>
 <li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
 <li><a href="/docs/reference/metrics">Metrics</a></li>
@@ -120,6 +122,47 @@ verify one.</p>
 <h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.14.0...HEAD">Unreleased</a></h2>
 <h3 id="added">Added</h3>
 <ul>
+<li><code>observe import</code> reads an egress proxy's access log. A source of kind
+<code>egress-access-log</code> names which top-level member of each JSON line holds
+the time, host, port, method, status, byte counts and caller, and each line
+becomes one connection observation; no other member is read, so a path,
+query, header or body is never copied unless the mapping names it.
+Fixtures cover Envoy's <code>json_format</code>, as a forward proxy and as a TLS
+listener, and a Squid <code>logformat</code>. The mapping's <code>destination_form</code> reads
+the destination as a host alone or as a proxy request's authority, <code>host</code>,
+<code>host:port</code>, <code>[v6]</code> or <code>[v6]:port</code>, whose port, when it names one, must
+agree with a mapped port; any other destination is refused, and each
+refused line is counted under its reason in the import report's
+<code>refused_by</code>. Under an address basis the caller must
+be an IP address, or it is dropped and counted in <code>callers_dropped</code>. Hosts
+and addresses are written in one spelling, an IPv4-mapped IPv6 address as
+its IPv4 address. Such a source may declare <code>TRUST_INDEPENDENT</code> on an unsigned
+descriptor, and names no run
+(<a href="/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor">ADR-0069</a>).</li>
+<li>Source descriptor schema <code>0.2</code>, which carries the egress mapping; a <code>0.1</code>
+descriptor reads as before, with the same digest. Which members and which
+trust a descriptor may carry is now decided by its kind
+(<a href="/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor">ADR-0069</a>).</li>
+<li>Observation record schema <code>0.3</code>, for a connection, for an import report
+with refusals by reason or callers dropped, and for a record naming its
+source's kind, which every egress record does. A source's liveness and
+doubt are read from reports of its kind alone, and <code>observe import</code> refuses,
+with exit 2, a write of another kind into a log holding the source's
+records. A connection's id is derived from its content, so
+importing a grown or rotated log again writes only what is new
+(<a href="/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor">ADR-0069</a>).</li>
+<li><code>coverage</code> reads an egress path as observed by the connections of the
+sources it names, ends every egress line with <code>no plane decides egress</code>,
+prints <code>independent</code> trust as <code>independent (unsigned descriptor)</code>, and adds
+a row for each host an egress source reached that no path declares, at most
+256 with a line counting the rest, then a row for each egress source whose
+import refused a line, with the count by reason, then a row for each egress
+source given that is not live, since its connections since its last import
+are unseen. Any such row, or that line, makes the exit 1. An absent egress
+descriptor whose log holds egress records is refused, with exit 2, and so is
+a log whose egress records no egress descriptor given with that log names:
+one replaced by another kind or renamed, or another source's log sharing
+the directory (<a href="/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor">ADR-0069</a>).</li>
 <li><code>pkg/contract.ValidateUnclassified</code>: every rule of <code>Validate</code> but the
 effect class's presence and what a class requires, for an envelope nothing
 classified. <code>Validate</code> does not change (<a href="/docs/adr/0067-the-pipeline-refuses-what-an-adapter-could-not-translate">ADR-0067</a>).</li>
@@ -139,6 +182,23 @@ live run again in a new, empty directory, under a new task, since a
 reopened run starts with a clean flow state
 (<a href="/docs/reference/runs#runs-an-earlier-release-opened">runs.md</a>,
 <a href="/docs/adr/0068-a-run-belongs-to-one-project">ADR-0068</a>).</li>
+<li>The coverage inventory refuses an egress <code>host</code>, or an egress path's
+source <code>name</code>, that is not a host in the one spelling a connection's host
+is written in, and names that spelling: <code>https://x/</code> and a non-ASCII letter
+are refused, and so are <code>Example.COM</code>, written <code>example.com</code>, and
+<code>::ffff:203.0.113.7</code>, written <code>203.0.113.7</code>. It refuses
+<code>server_address</code> on an egress path's source. Neither could match before
+(<a href="/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor">ADR-0069</a>).</li>
+<li><code>supervise</code> refuses, with exit 2, a <code>--source</code> of a kind whose
+observations name no run, such as an egress access log, and one with no
+kind (<a href="/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor">ADR-0069</a>).</li>
+<li><code>observe import</code> refuses an input the group or others can write when the
+descriptor declares <code>TRUST_INDEPENDENT</code>
+(<a href="/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor">ADR-0069</a>).</li>
+<li>A log that holds a <code>0.3</code> line cannot be read by 0.14: its <code>observe import</code>
+and <code>coverage</code> refuse the log as damaged, and its <code>observe export</code> counts
+each such line as an <code>unsupported_version</code> gap
+(<a href="/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor">ADR-0069</a>).</li>
 <li>Under <code>OBSERVE</code>, a call the adapter could not translate, for anything but
 nothing classifying it, is now blocked with the kernel's <code>INDETERMINATE</code>
 and the refusal's code, on the trail <code>ENFORCE</code> writes, and counts as
@@ -1918,6 +1978,7 @@ independence of this project from Guardana
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
 </ul>
 <h2>Concepts</h2><ul>
@@ -1941,6 +2002,7 @@ independence of this project from Guardana
 <li><a href="/docs/reference/console">The approvals page</a></li>
 <li><a href="/docs/reference/coverage">Coverage</a></li>
 <li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/egress-access-log">Egress access log</a></li>
 <li><a href="/docs/reference/failure-modes">Failure modes</a></li>
 <li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
 <li><a href="/docs/reference/metrics">Metrics</a></li>

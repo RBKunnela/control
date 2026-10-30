@@ -4,8 +4,6 @@ import (
 	"errors"
 	"slices"
 	"strings"
-
-	"github.com/guardana/control/internal/observe"
 )
 
 const (
@@ -20,7 +18,7 @@ func messagesKey(key string) bool { return key == inputMessages || key == output
 // contentKey reports a key the record never holds unless the allowlist
 // copies it: every GenAI attribute and every named content attribute.
 func contentKey(key string) bool {
-	return strings.HasPrefix(key, "gen_ai.") || slices.Contains(observe.ContentAttributes, key)
+	return strings.HasPrefix(key, "gen_ai.") || slices.Contains(ContentAttributes, key)
 }
 
 // tally is the content one or more attribute lists held: the content keys,

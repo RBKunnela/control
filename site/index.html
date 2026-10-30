@@ -59,7 +59,7 @@
         <div class="card"><span class="k">MCP gateway <span class="tag">experimental</span></span><span class="d">decides each call before it runs</span></div>
         <div class="card"><span class="k">Custom tools <span class="tag">experimental</span></span><span class="d">ask the Enforcement API; a cooperating client or a coding runtime's hooks obey its decision, and framework hooks are planned</span></div>
         <div class="card"><span class="k">Runtime traces <span class="tag">experimental</span></span><span class="d">what an agent's OpenTelemetry spans say it did, kept as testimony</span></div>
-        <div class="card later"><span class="k">Proxy logs and process sources <span class="tag planned">planned</span></span><span class="d">observations independent of the agent's own account</span></div>
+        <div class="card"><span class="k">Proxy access logs <span class="tag">experimental</span></span><span class="d">where agents' traffic went, as an egress proxy logged it; process sources are planned</span></div>
       </div></div>
       <div class="arrow" aria-hidden="true"></div>
       <div><p class="colhead">What it concludes</p>
@@ -173,7 +173,7 @@
     <li data-status="Model Context Protocol (MCP) gateway"><span class="st">experimental</span><span class="t">Model Context Protocol (MCP) gateway</span></li>
     <li data-status="External policy decision point (PDP) over AuthZEN, able to veto"><span class="st">experimental</span><span class="t">External policy decision point (PDP) over AuthZEN, able to veto</span></li>
     <li data-status="Enforcement API receiver"><span class="st">experimental</span><span class="t">Enforcement API receiver</span></li>
-    <li data-status="Observations from sensors: an observation record, a source descriptor and one importer of OpenTelemetry GenAI traces"><span class="st">experimental</span><span class="t">Observations from sensors: an observation record, a source descriptor and one importer of OpenTelemetry GenAI traces</span></li>
+    <li data-status="Observations from sensors: an observation record, a source descriptor and importers of OpenTelemetry GenAI traces and of an egress proxy's access log"><span class="st">experimental</span><span class="t">Observations from sensors: an observation record, a source descriptor and importers of OpenTelemetry GenAI traces and of an egress proxy's access log</span></li>
     <li data-status="Coverage map per declared path"><span class="st">experimental</span><span class="t">Coverage map per declared path</span></li>
     <li data-status="Supervision of one opened run against its procedure, and a notifier"><span class="st">experimental</span><span class="t">Supervision of one opened run against its procedure, and a notifier</span></li>
     <li data-status="A confirmed finding stops one opened run, through a signed route"><span class="st">experimental</span><span class="t">A confirmed finding stops one opened run, through a signed route</span></li>
@@ -189,7 +189,7 @@
   <p class="lede">All tasks below are <code>planned</code>. They name work to do, not capabilities to claim.</p>
   <ul class="items">
     <li data-backlog="B11"><span class="id">B11</span><span class="tx"><span class="t">Ship one framework integration</span><span class="d">so an agent framework you choose uses the same policy</span></span></li>
-    <li data-backlog="B21"><span class="id">B21</span><span class="tx"><span class="t">Add sensors independent of the agent</span><span class="d">so you see where its traffic went, from a source it cannot influence</span></span></li>
+    <li data-backlog="B35"><span class="id">B35</span><span class="tx"><span class="t">Add a process sensor independent of the agent</span><span class="d">so you see what ran on the agent's host, from a source it cannot influence</span></span></li>
     <li data-backlog="B12"><span class="id">B12</span><span class="tx"><span class="t">Publish the port contracts and add TypeScript</span><span class="d">so your own sensors and alerts plug in through published contracts</span></span></li>
     <li data-backlog="B13"><span class="id">B13</span><span class="tx"><span class="t">Authenticate operators and scope authority</span><span class="d">so a small team works with one gateway, each person with their own rights</span></span></li>
     <li data-backlog="B26"><span class="id">B26</span><span class="tx"><span class="t">Review findings and export an incident package</span><span class="d">scoped review and an evidence package, without changing a verdict or lifting a stop</span></span></li>

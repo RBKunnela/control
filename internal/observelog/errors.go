@@ -44,6 +44,10 @@ const (
 	// ErrRecord is an observation or a report the codec will not write, or
 	// none given where one is required. Nothing of the call is written.
 	ErrRecord Error = "observelog: a record the log will not write"
+	// ErrKind is a write naming a source, tenant and project the log holds
+	// records of under another source kind: one source's liveness and doubt
+	// are read from one kind's reports. Nothing of the call is written.
+	ErrKind Error = "observelog: the log holds this source's records under another kind"
 	// ErrClosed is a write to a log that is closed.
 	ErrClosed Error = "observelog: the log is closed"
 	// ErrWrite is a write that did not reach the disk. The file is cut back

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/guardana/control/internal/observe"
+	"github.com/guardana/control/internal/ingest"
 	"github.com/guardana/control/internal/reaction"
 	"github.com/guardana/control/internal/supervise"
 )
@@ -45,7 +45,7 @@ func TestTheExamplesFilesAgree(t *testing.T) {
 			t.Errorf("step %s names %s on %s, which plane.yaml does not classify", s.ID, s.Tool, s.Upstream)
 		}
 	}
-	d, err := observe.ReadDescriptor([]byte(readFile(t, "runtime.source.json")))
+	d, err := ingest.ReadDescriptor([]byte(readFile(t, "runtime.source.json")))
 	if err != nil {
 		t.Fatalf("the source descriptor is refused: %v", err)
 	}

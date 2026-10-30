@@ -19,6 +19,12 @@ Amended by [ADR-0058](0058-a-copy-an-import-never-read-is-doubt-for-the-runs-it-
 the reader's table below holds `0.1` and `0.2`. An `ImportReport` naming the
 runs its refused copies claimed is `0.2`; every other record stays `0.1`.
 
+Amended by [ADR-0069](0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor.md),
+which decides that a table of source kinds holds which members and which trust
+each kind may declare, that the descriptor is `0.2` when it carries an egress
+proxy's mapping and a record `0.3` when it carries a connection or refusals by
+reason, and that a connection's id is derived from its content.
+
 ## Context
 
 ADR-0039 fixed what an observation says and left its shape open. The first

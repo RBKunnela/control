@@ -268,7 +268,7 @@ itself, which the gate checks. See
 
 This section is `planned`, in the order [ROADMAP.md](../../ROADMAP.md) gives,
 and [ADR-0039](../adr/0039-many-channels-into-one-core.md) records its shape;
-the enforcement API, the observation log and its importer, the coverage map,
+the enforcement API, the observation log and its importers, the coverage map,
 supervision of one run, a local notifier and a stop of one run from a finding
 are built
 ([status.md](../status.md)). The
@@ -391,7 +391,7 @@ Sources: `ROADMAP.md`, `internal/gateway/pause.go`, `adapters/authzen/client.go`
 | `pkg/`, the other three packages | The rest of the public Go surface | `planned` |
 | `adapters/mcp/`, `adapters/otel/`, `adapters/authzen/` | The MCP adapter, the OTLP exporter and collector, and the AuthZEN client | `experimental` |
 | `adapters/`, the rest | Other protocol and framework adapters | `planned` |
-| `internal/ingest/`, `internal/coverage/` | The importer of observations and the coverage map, [ADR-0040](../adr/0040-observations-a-record-a-log-and-one-importer.md), [ADR-0044](../adr/0044-coverage-judges-each-plane-and-joins-only-a-whole-export.md) | `experimental` |
+| `internal/ingest/`, `internal/coverage/` | The importers of observations and the coverage map, [ADR-0040](../adr/0040-observations-a-record-a-log-and-one-importer.md), [ADR-0069](../adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor.md), [ADR-0044](../adr/0044-coverage-judges-each-plane-and-joins-only-a-whole-export.md) | `experimental` |
 | `internal/supervise/`, `internal/findinglog/`, `internal/notify/` | One run checked against its procedure, the findings log and the notifier, [ADR-0045](../adr/0045-one-run-is-supervised-against-its-procedure.md) | `experimental` |
 
 Per component, including what is planned elsewhere, see [status.md](../status.md).

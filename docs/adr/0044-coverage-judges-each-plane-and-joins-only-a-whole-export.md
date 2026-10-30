@@ -9,6 +9,11 @@ plane evidence although its call around the plane needs it, and
 [ADR-0035](0035-a-versioned-evidence-export-and-a-bounded-query.md) and
 [ADR-0040](0040-observations-a-record-a-log-and-one-importer.md).
 
+Amended by [ADR-0069](0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor.md),
+which decides that no plane decides an egress path, whatever its configuration
+lists, and that an undeclared egress host, or a cut of those rows, makes the
+exit 1.
+
 ## Context
 
 ADR-0041 shows an observation of an enforced path that no plane event joins

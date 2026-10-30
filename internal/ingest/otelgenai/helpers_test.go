@@ -39,8 +39,11 @@ func readTestdata(t testing.TB, name string) []byte {
 
 func descriptor(t testing.TB) *observev1.SourceDescriptor {
 	t.Helper()
-	d, err := observe.ReadDescriptor(readTestdata(t, "descriptor.json"))
+	d, err := observe.ReadNeutral(readTestdata(t, "descriptor.json"))
 	if err != nil {
+		t.Fatalf("descriptor: %v", err)
+	}
+	if err := otelgenai.Check(d); err != nil {
 		t.Fatalf("descriptor: %v", err)
 	}
 	return d

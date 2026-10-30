@@ -24,8 +24,15 @@ func weaker(a, b observev1.Trust) observev1.Trust {
 	return a
 }
 
+// trustName is a trust as a line prints it, with its basis where the name
+// alone would read as more: independent rests on a descriptor nobody signed.
 func trustName(t observev1.Trust) string {
-	return strings.ToLower(strings.TrimPrefix(observe.TrustOf(t).String(), "TRUST_"))
+	t = observe.TrustOf(t)
+	name := strings.ToLower(strings.TrimPrefix(t.String(), "TRUST_"))
+	if t == observev1.Trust_TRUST_INDEPENDENT {
+		name += " (unsigned descriptor)"
+	}
+	return name
 }
 
 // ownedBy reports whether a record naming source, tenant and project is the
@@ -35,16 +42,14 @@ func ownedBy(src *Source, source, tenant, project string) bool {
 	return source == d.GetSourceId() && tenant == d.GetTenantId() && project == d.GetProjectId()
 }
 
-// observationsOf are the source's own observations that name the path as ps
-// says: a tool of that name, at that server address when one is given.
-func observationsOf(src *Source, ps PathSource) []*observev1.Observation {
+// observationsOf are the source's own observations that name a path of kind
+// as ps says: on an egress path a connection to that host, and on any other a tool of that name, at that server address when
+// one is given.
+func observationsOf(src *Source, kind string, ps PathSource) []*observev1.Observation {
 	var out []*observev1.Observation
 	for _, r := range src.Records {
 		o := r.GetObservation()
-		subject := o.GetSubject()
-		if o == nil || !ownedBy(src, o.GetSource().GetSourceId(), o.GetTenantId(), o.GetProjectId()) ||
-			subject.GetKind() != observev1.SubjectKind_SUBJECT_KIND_TOOL || subject.GetName() != ps.Name ||
-			ps.ServerAddress != "" && subject.GetServerAddress() != ps.ServerAddress {
+		if o == nil || !ownedBy(src, o.GetSource().GetSourceId(), o.GetTenantId(), o.GetProjectId()) || !namesPath(o.GetSubject(), kind, ps) {
 			continue
 		}
 		out = append(out, o)
@@ -52,17 +57,25 @@ func observationsOf(src *Source, ps PathSource) []*observev1.Observation {
 	return out
 }
 
+func namesPath(subject *observev1.Subject, kind string, ps PathSource) bool {
+	if kind == KindEgress {
+		return subject.GetKind() == observev1.SubjectKind_SUBJECT_KIND_CONNECTION && subject.GetName() == ps.Name
+	}
+	return subject.GetKind() == observev1.SubjectKind_SUBJECT_KIND_TOOL && subject.GetName() == ps.Name &&
+		(ps.ServerAddress == "" || subject.GetServerAddress() == ps.ServerAddress)
+}
+
 // sourceLine is one source's state for a path: observed when it is live
 // within its heartbeat of now and holds an observation of the path, unknown
 // when it is not live, not covered when it was not given or saw nothing.
-func sourceLine(ps PathSource, src *Source, now time.Time, absent []string) SourceLine {
+func sourceLine(kind string, ps PathSource, src *Source, now time.Time, absent []string) SourceLine {
 	line := SourceLine{SourceID: ps.SourceID}
 	if src == nil {
 		line.Basis = notGiven(absent)
 		return line
 	}
 	last, heard := observe.LastHeard(src.Descriptor, src.Records)
-	when := fmt.Sprintf("last heard %s, heartbeat %d s", last.UTC().Format(time.RFC3339), src.Descriptor.GetHeartbeatSeconds())
+	when := heardAt(last, src.Descriptor.GetHeartbeatSeconds())
 	switch observe.LivenessAt(last, heard, src.Descriptor.GetHeartbeatSeconds(), now) {
 	case observe.NeverHeard:
 		line.State, line.Basis = Unknown, "never heard: no import report with an event time"
@@ -74,7 +87,7 @@ func sourceLine(ps PathSource, src *Source, now time.Time, absent []string) Sour
 		line.State, line.Basis = Unknown, "past its heartbeat: "+when
 		return line
 	}
-	seen := observationsOf(src, ps)
+	seen := observationsOf(src, kind, ps)
 	if len(seen) == 0 {
 		line.Basis = "live, and no observation of the path: " + when
 		return line
@@ -86,6 +99,10 @@ func sourceLine(ps PathSource, src *Source, now time.Time, absent []string) Sour
 		line.Trust = weaker(line.Trust, o.GetSource().GetTrust())
 	}
 	return line
+}
+
+func heardAt(last time.Time, heartbeatSeconds uint32) string {
+	return fmt.Sprintf("last heard %s, heartbeat %d s", last.UTC().Format(time.RFC3339), heartbeatSeconds)
 }
 
 // notGiven is why a source no Source carries covers nothing: no descriptor

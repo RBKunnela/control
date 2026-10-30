@@ -170,7 +170,7 @@ func TestEveryContentAttributeIsDropped(t *testing.T) {
 		t.Fatalf("content reached a record:\n%s", lines)
 	}
 	withCapture := strings.Replace(string(readTestdata(t, "descriptor.json")), `"run_attribute"`, `"capture": {"content": true}, "run_attribute"`, 1)
-	if _, err := observe.ReadDescriptor([]byte(withCapture)); err == nil {
+	if _, err := observe.ReadNeutral([]byte(withCapture)); err == nil {
 		t.Fatal("a descriptor asking for capture was read")
 	}
 }

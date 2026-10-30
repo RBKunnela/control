@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ADR-0069: An egress proxy&#39;s access log is an independent sensor on a kind-neutral descriptor · Guardana Control</title>
+<meta name="description" content="Decision record, accepted."/>
+<link rel="canonical" href="https://control.guardana.dev/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor"/>
+<meta name="theme-color" content="#0B8F80"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="stylesheet" href="/assets/brand/v1/tokens.css"/>
+<link rel="stylesheet" href="/assets/control/control.css"/>
+<link rel="stylesheet" href="/assets/control/docs.css"/>
+</head>
+<body class="doc">
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap bar">
+  <a class="mark" href="/"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 4.5 5.6v6.1c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V5.6z"/><path d="M10.2 8.4v7.8M10.2 12.3h5.3"/></svg><span>Guardana <b>Control</b></span></a>
+  <a class="vlink" href="https://github.com/guardana/control/releases/tag/v0.14.0"><span class="ver">v0.14.0</span></a>
+  <nav aria-label="Primary">
+    <a href="/docs/">Docs</a>
+    <a href="/docs/status">Status</a>
+    <a class="hide-s" href="/docs/roadmap">Roadmap</a>
+    <a class="gh" href="https://github.com/guardana/control" aria-label="GitHub"><svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span class="hide-s">GitHub</span></a>
+  </nav>
+</div></header>
+<div class="wrap shell">
+<details class="mnav">
+<summary>Menu · <b>ADR-0069: An egress proxy&#39;s access log is an independent sensor on a kind-neutral descriptor</b></summary>
+<nav class="inner" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/egress-access-log">Egress access log</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</details>
+<main id="main" class="prose">
+<h1 id="adr-0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor">ADR-0069: An egress proxy's access log is an independent sensor on a kind-neutral descriptor</h1>
+<p>Status: accepted
+Date: 2026-10-28</p>
+<p>Amends <a href="/docs/adr/0040-observations-a-record-a-log-and-one-importer">ADR-0040</a>: a
+table of source kinds, a descriptor at <code>0.2</code>, records at <code>0.3</code>, a
+connection's identity, and independent trust decided per kind. Amends
+<a href="/docs/adr/0041-coverage-per-declared-path">ADR-0041</a> and
+<a href="/docs/adr/0044-coverage-judges-each-plane-and-joins-only-a-whole-export">ADR-0044</a>:
+an egress path is observed by a connection, an egress host no path declares
+is a row of its own, and either kind of row makes the exit 1. Amends
+<a href="/docs/adr/0045-one-run-is-supervised-against-its-procedure">ADR-0045</a>: <code>supervise</code>
+refuses a source of a kind whose observations name no run. Builds on
+<a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a> and
+<a href="/docs/adr/0064-milestone-two-starts-with-an-independent-sensor">ADR-0064</a>, which
+put this sensor first in milestone 2.</p>
+<h2 id="context">Context</h2>
+<p>Every observation came from the agent's own runtime. The source descriptor
+accepted one kind, <code>otel-genai-traces</code>, required its convention, OTLP version
+and selector, and refused <code>TRUST_INDEPENDENT</code> for every source, so no source
+the agent cannot write could be declared at all. The record codec refused an
+observation without a trace and span id, so a connection could not be
+written. The inventory already declared <code>egress</code> paths, and nothing could
+ever observe one.</p>
+<p>A second kind could not be added without editing the descriptor's checks, and
+a third would need the same edit again. Which kind may claim independent
+trust is policy, and it must not move into an importer (invariant 7).</p>
+<h2 id="decision">Decision</h2>
+<ol>
+<li>
+<p><strong>A table of kinds in <code>internal/observe</code>.</strong> Each row names a kind, the
+descriptor members it owns, those it requires, whether it may declare
+<code>TRUST_INDEPENDENT</code>, and whether its observations can name a run.
+<code>observe.CheckNeutral</code> refuses an unknown kind, a member another kind owns,
+a trust the kind refuses and a missing required member; it does not judge
+the values of a kind's own members. A kind the table does not know reads
+as a row that owns nothing, refuses independent trust and names no run.</p>
+<table>
+<thead>
+<tr>
+<th>Kind</th>
+<th>Members</th>
+<th>Independent</th>
+<th>Names runs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>otel-genai-traces</code></td>
+<td><code>convention</code>, <code>otlp_version</code>, <code>select</code>, <code>run_attribute</code></td>
+<td>refused</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>egress-access-log</code></td>
+<td><code>egress_access_log</code></td>
+<td>allowed</td>
+<td>no</td>
+</tr>
+</tbody>
+</table>
+</li>
+<li>
+<p><strong>One reader through a registry.</strong> <code>internal/ingest</code> holds, per kind, the
+check of its members, its importer and the counts <code>observe import</code>
+prints. <code>ingest.ReadDescriptor</code> runs the neutral checks, then the kind's;
+a kind with no entry is refused. <code>observe.ReadDescriptor</code> is removed, so no
+caller stops at the neutral half. <code>observe import</code>, <code>coverage</code> and
+<code>supervise</code> read descriptors through it.</p>
+</li>
+<li>
+<p><strong>Versions.</strong> A descriptor is <code>0.2</code> exactly when it carries
+<code>egress_access_log</code>; the reader takes <code>0.1</code> and <code>0.2</code>. A record is <code>0.3</code>
+exactly when it carries <code>connection</code> or <code>refused_by</code>; the reader takes
+<code>0.1</code> to <code>0.3</code>. Every <code>0.1</code> descriptor keeps its bytes and its digest.</p>
+</li>
+<li>
+<p><strong>The egress importer</strong> (<code>internal/ingest/egresslog</code>) reads JSON lines
+under a mapping the descriptor declares: the top-level member that holds
+each of time, destination, port, method, status, bytes sent, bytes
+received and caller. Time and destination are required. It reads no
+member the mapping does not name, so a path, query, header or body the
+proxy logged is never copied unless the mapping names it (invariant 9).
+The mapping's <code>destination_form</code> is <code>host</code> or <code>authority</code>. An authority
+is <code>host</code>, <code>host:port</code>, <code>[v6]</code> or <code>[v6]:port</code>, as a forward proxy's
+request names its target. The port member gives the port; without one,
+the authority's port does; without either, the port is unknown. A line
+whose two ports disagree is refused. A destination in neither form is
+refused, never parsed down to its host. A method outside a fixed list of
+nine is dropped and counted. Under <code>CALLER_BASIS_ADDRESS</code> the caller is an
+IP address, with a port or without one, or it is dropped and counted in
+<code>callers_dropped</code>; under another basis it is opaque text within its bound.
+Each refused line is counted under its reason in <code>refused_by</code>.
+<code>internal/netname</code>, outside the guarded trees since <code>internal/observe</code> may
+not reach <code>net/netip</code>, holds the one spelling of a host and of a caller
+address: names lowered, IPv6 as <code>net/netip</code> writes it, an IPv4-mapped
+address as its IPv4 address. The importer writes hosts in it, and the
+inventory refuses a host in any other spelling, naming the one to write.</p>
+</li>
+<li>
+<p><strong>A connection's identity is its content</strong>: <code>obs-</code> and 32 hex digits of
+SHA-256 under the domain <code>observation-id:connection:1</code>, over the tenant,
+project, source, event time, host, port, method, status, both byte counts
+and the caller. A re-import of a grown or rotated file yields the same ids,
+and two lines alike in all of these are one duplicate, even when the proxy
+handled two requests. The codec
+holds a connection to one form: no trace, span or run, basis
+<code>BASIS_NONE</code>, stage <code>STAGE_INDIRECT</code>, an event time, a listed method, a
+status of 0 or 100 to 599, a caller of copyable text, of an address's
+characters under an address basis, and this id. A record names its
+source's kind in <code>source.kind</code>, empty for <code>otel-genai-traces</code>; a
+connection comes from an egress source and only a connection does. A
+source's liveness and doubt are read from reports of its kind alone, and a
+log refuses a write of another kind under a source, tenant and project it
+holds records of.</p>
+</li>
+<li>
+<p><strong>Trust.</strong> An egress descriptor may declare <code>TRUST_INDEPENDENT</code>, unsigned.
+It is the operator's statement that the agent can write neither the log
+nor the descriptor. Under it <code>observe import</code> refuses an input the group or
+others can write. <code>coverage</code> prints such trust as <code>independent (unsigned descriptor)</code>. A finding that rests on it needs a signed descriptor
+(ADR-0039) before continuous supervision uses it.</p>
+</li>
+<li>
+<p><strong>No connection names a run in this release.</strong> The caller is kept, an
+address in its one spelling and any other caller as the proxy wrote it,
+with the basis the descriptor declares (none, address or authenticated),
+for a later join. <code>supervise</code> refuses, as an input error, a
+<code>--source</code> whose kind names no run, and one with no kind.</p>
+</li>
+<li>
+<p><strong>Coverage.</strong> An egress path is observed when a live source it names holds
+a connection whose host is the name the path gives that source; the port
+is not compared.
+The inventory refuses an egress host or source name that is not a host in
+its one spelling, and <code>server_address</code> on an egress path's source. No
+plane decides egress, and every egress line says so. Each host an egress
+source observed that no egress path declares is a row after the declared
+paths, sorted by its bytes, at most 256, with one line counting the rest;
+the line names no digest of the hosts cut. Each egress source whose own
+import reports count a refused line is a row after those, with the count
+by reason. Each egress source given that is not live is a row after
+those, whether a path names it or not, since the connections since its
+last import are unseen. Any of these rows, or a cut, makes the exit 1. An
+absent egress descriptor whose log holds an egress source's records is
+refused, since its hosts would go unprinted, and so is a log whose egress
+records no egress descriptor given with that directory names, whatever
+kind or id the descriptor given with it has.</p>
+</li>
+</ol>
+<h2 id="security--compatibility-impact">Security / compatibility impact</h2>
+<p>No language model and no plane reads any of it; the plane is unchanged. The
+independent claim is only as good as the deployment: nothing checks which
+account writes the proxy's log, and the check that an independent input is
+not writable by others reads its mode bits, not an access control list or
+its owner. The undeclared rows' cut follows the hosts' bytes, which an agent
+chooses, so it can push a host past the cut; the cut still exits 1. A forged
+line can make a destination look observed, and deleting its lines can make it
+look not observed, never covered. A line is the proxy's account of a request,
+not proof that a connection succeeded.</p>
+<p>A log holding a <code>0.3</code> line cannot be read by 0.14: its <code>observe import</code> and
+<code>coverage</code> refuse the log as damaged, and its <code>observe export</code> counts each
+such line as an <code>unsupported_version</code> gap. The inventory refuses two things
+<code>0.1</code> accepted, an egress host that is not a host and <code>server_address</code> on an
+egress path's source; neither could ever match before. A connection
+re-imported after its descriptor's trust or caller basis changed is a
+conflict, since neither is part of the id.</p>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>A <code>oneof</code> per kind with the OpenTelemetry members moved inside: it
+renumbers a released alpha contract, and <code>kind</code> and the case could
+disagree.</li>
+<li>An opaque per-kind object: another language gets nothing to compile
+against, which ADR-0039 already rejected.</li>
+<li>Egress members at the top level: the message grows with each kind, and the
+table of owners is still needed.</li>
+<li>Envoy's native format only, or Squid's native text: one proxy per release,
+or a positional parser for a format nobody pins.</li>
+<li>An id from the time and a request id: a client can set <code>x-request-id</code>, and
+not every proxy has one. An id from the input's first line and a line
+number breaks on rotation.</li>
+<li>Signing the descriptor now: no signing tool or key exists, and it would
+cost a release. Never independent until signed: coverage would get no trust
+stronger than today's.</li>
+<li>An operator's caller-to-run map, or runs inferred by time: a proxy's caller
+is a workload and a run is a task, so concurrent runs would be confused.</li>
+<li><code>supervise</code> ignoring an egress source: its silence and its refusals would
+still weigh on every run.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<p>Backlog task B21, the egress access log, is this record; B35, process events
+from the host, is a second importer and its own checks, with no edit of
+<code>internal/observe</code> beyond a row of the table. Of B21's acceptance,
+&quot;an unattributed connection stays unknown&quot; holds, and &quot;attributed to a run as
+well as the proxy identifies its caller&quot; does not: every connection is
+unattributed. <code>observe import</code> prints the total refused, not each reason; the
+import report in the log holds them. Importing a proxy's file again refuses
+its bad lines again and writes another report counting them, so a file that
+holds one exits 1 on every import, and <code>coverage</code> stays at 1 until the
+observation log is rotated by hand, as observations.md says.
+An input is read whole, up to 256 MiB, and its observations are held in
+memory until they are written.</p>
+<h2 id="validation">Validation</h2>
+<ul>
+<li><code>internal/observe/kinds_test.go</code>: <code>TestTheKindTableIsPinned</code>,
+<code>TestEveryDescriptorMemberHasOneOwner</code>, <code>TestCheckNeutralOnTheEgressKind</code>,
+<code>TestCheckNeutralOnTheOTelKind</code>, <code>TestTheDescriptorVersionFollowsItsMembers</code>.</li>
+<li><code>internal/observe/connection_test.go</code>: <code>TestTheCodecChecksAConnection</code>,
+<code>TestTheCodecChecksAConnectionsHost</code>, <code>TestConnectionIDIsPinned</code>,
+<code>TestConnectionIDSeesEveryKeyField</code>, <code>TestAConnectionOnlyOnAConnection</code>,
+<code>TestARecordIsSchema03ExactlyWhenItCarriesAMemberOf03</code>,
+<code>TestTheEarlierGoldensAreUnchanged</code>.</li>
+<li><code>internal/ingest/kinds_test.go</code>: <code>TestEveryKindHasExactlyOneEntry</code>,
+<code>TestEachOwnedMemberIsCheckedByItsKind</code>,
+<code>TestIndependentTrustIsTheTablesRule</code>; <code>internal/ingest/reads_test.go</code>:
+<code>TestNoDescriptorIsReadOutsideTheEntryPoint</code>.</li>
+<li><code>internal/observe/liveness_test.go</code>, <code>doubt_test.go</code>: another kind's report
+is not the source heard and puts none of its runs in doubt;
+<code>internal/observelog/kind_unix_test.go</code>: <code>TestALogHoldsOneKindPerSource</code>;
+<code>internal/netname/</code>: <code>TestHost</code>, <code>TestAuthority</code>, <code>TestAddress</code> and their
+refusals, <code>TestHostIsAFixedPoint</code>.</li>
+<li><code>internal/ingest/egresslog/</code>: <code>TestEnvoyFixture</code>, <code>TestEnvoySNIFixture</code>,
+<code>TestAnAuthorityIsSplit</code>, <code>TestAnAuthorityIsRefusedWhole</code>,
+<code>TestAnAddressCallerIsAnAddress</code>, <code>TestSquidFixture</code>,
+<code>TestRefusals</code>, <code>TestKept</code>, <code>TestLineBound</code>, <code>TestNothingUnmappedIsCopied</code>,
+<code>TestEveryLineLandsInOneCount</code>, <code>TestReimportYieldsOnlyDuplicates</code>,
+<code>TestRotatedFile</code>, <code>TestInputForbidden</code>.</li>
+<li><code>internal/coverage/egress_test.go</code>: <code>TestAnEgressPathIsNeverDecidedByAPlane</code>,
+<code>TestAToolObservationNeverObservesAnEgressPath</code>,
+<code>TestTheInventoryTakesTheOneSpelling</code>, <code>TestUndeclaredRowsAreSortedAndCut</code>,
+<code>TestACutAloneMakesTheExitOne</code>, <code>TestReadInventoryHoldsEgressToHosts</code>;
+<code>internal/coverage/refused_test.go</code>: <code>TestRefusedLinesAreARowOfTheirOwn</code>,
+<code>TestARefusedRowAddsTheSourcesOwnReports</code>,
+<code>TestAnEgressReportNeverMakesAnotherKindLive</code>;
+<code>internal/coverage/unseen_test.go</code>: <code>TestAnEgressSourceNotLiveIsARow</code>,
+<code>TestAnEgressPathKeepsItsStateBesideTheUnseenRow</code>.</li>
+<li><code>internal/supervise/source_kind_test.go</code>:
+<code>TestASourceOfAKindThatNamesNoRunIsRefused</code>.</li>
+<li><code>cmd/guardana-control/observe_kinds_test.go</code>:
+<code>TestObserveImportRefusesAnIndependentInputOthersCanWrite</code>,
+<code>TestSuperviseRefusesASourceWhoseObservationsNameNoRun</code>,
+<code>TestCoverageOfAnImportedEgressLog</code>,
+<code>TestObserveImportRefusesAnotherKindUnderOneSource</code>,
+<code>TestCoverageRefusesAnAbsentDescriptorOverConnections</code>;
+<code>cmd/guardana-control/coverage_egress_test.go</code>:
+<code>TestCoverageRefusesEgressRecordsNoGivenDescriptorNames</code>,
+<code>TestCoverageRefusesALogSharedWithEgressRecords</code>,
+<code>TestCoverageRowsAnEgressSourceNotLive</code>.</li>
+</ul>
+<p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor.md">docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.14.0, and <a href="https://github.com/guardana/control/tree/v0.14.0/docs">its documentation</a> is in its tag.</p>
+</main>
+<nav class="side" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/egress-access-log">Egress access log</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</div>
+<footer class="foot"><div class="wrap row">
+  <p>Guardana Control · Apache-2.0</p>
+  <ul>
+    <li><a href="https://github.com/guardana/control">GitHub</a></li>
+    <li><a href="https://github.com/guardana/control/releases">Releases</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/SECURITY.md">Security</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/LICENSE">Licence Apache-2.0</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/TRADEMARKS.md">Trademarks</a></li>
+  </ul>
+</div></footer>
+</body>
+</html>

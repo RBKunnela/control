@@ -214,10 +214,14 @@ func (o ob) obs() *observev1.Observation {
 	return out
 }
 
-// source is s1 of t1 and p1, heard an hour after t0 with a heartbeat of
-// 300 s.
+// otelKind is the kind of a source of an agent runtime's spans, whose
+// observations name a run.
+const otelKind = "otel-genai-traces"
+
+// source is s1 of t1 and p1, of kind otelKind, heard an hour after t0 with a
+// heartbeat of 300 s.
 func source(obs ...ob) supervise.Source {
-	s := supervise.Source{SourceID: "s1", Tenant: tenant, Project: proj, HeartbeatSeconds: 300, LastHeard: t0.Add(time.Hour), Heard: true}
+	s := supervise.Source{SourceID: "s1", Kind: otelKind, Tenant: tenant, Project: proj, HeartbeatSeconds: 300, LastHeard: t0.Add(time.Hour), Heard: true}
 	for _, o := range obs {
 		s.Observations = append(s.Observations, o.obs())
 	}

@@ -10,28 +10,31 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// FuzzReadDescriptor: a descriptor that reads, written again by protojson,
-// reads to the same descriptor, and a refusal is always ErrDescriptor.
-func FuzzReadDescriptor(f *testing.F) {
-	fixture := readTestdata(f, "descriptor.json")
-	f.Add(fixture)
-	f.Add(bytes.Replace(fixture, []byte(`"source_id"`), []byte(`"sourceId"`), 1))
-	f.Add(bytes.Replace(fixture, []byte(`"TRUST_SELF_REPORTED"`), []byte(`3`), 1))
-	f.Add([]byte(`{"source_id":"a","sourceId":"b"}`))
-	f.Add([]byte(`{"select":null}`))
+// FuzzReadNeutral: a descriptor that reads neutrally, written again by
+// protojson, reads to the same descriptor and passes CheckNeutral, and a
+// refusal is always ErrDescriptor.
+func FuzzReadNeutral(f *testing.F) {
+	for _, name := range []string{"descriptor.json", "descriptor-egress.json"} {
+		f.Add(readTestdata(f, name))
+	}
+	f.Add([]byte(`{"schema_version":"0.2","kind":"egress-access-log","select":{}}`))
+	f.Add([]byte(`{"schema_version":"0.1","kind":"otel-genai-traces","egress_access_log":{}}`))
 	f.Fuzz(func(t *testing.T, b []byte) {
-		d, err := observe.ReadDescriptor(b)
+		d, err := observe.ReadNeutral(b)
 		if err != nil {
 			if !errors.Is(err, observe.ErrDescriptor) || d != nil {
 				t.Fatalf("refusal %v with %v, want ErrDescriptor and nothing", err, d)
 			}
 			return
 		}
+		if err := observe.CheckNeutral(d); err != nil {
+			t.Fatalf("a descriptor ReadNeutral took fails CheckNeutral: %v", err)
+		}
 		again, err := protojson.Marshal(d)
 		if err != nil {
 			t.Fatalf("an accepted descriptor does not encode: %v", err)
 		}
-		d2, err := observe.ReadDescriptor(again)
+		d2, err := observe.ReadNeutral(again)
 		if err != nil || !proto.Equal(d, d2) {
 			t.Fatalf("an accepted descriptor written again reads as %v, %v", d2, err)
 		}
@@ -42,9 +45,11 @@ func FuzzReadDescriptor(f *testing.F) {
 // line is in the writer's form and reads back to the same record; a refusal
 // is always a codec error.
 func FuzzUnmarshalLine(f *testing.F) {
-	for _, line := range fixtureLines(f) {
-		f.Add(line)
-		f.Add(bytes.TrimSuffix(line, []byte("\n")))
+	for _, name := range []string{"records.jsonl", "connection.jsonl"} {
+		for _, line := range bytes.SplitAfter(readTestdata(f, name), []byte("\n")) {
+			f.Add(line)
+			f.Add(bytes.TrimSuffix(line, []byte("\n")))
+		}
 	}
 	f.Add([]byte(`{"observation":null}`))
 	f.Add([]byte(`{}`))

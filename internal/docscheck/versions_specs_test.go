@@ -3,6 +3,7 @@ package docscheck
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -19,6 +20,8 @@ import (
 	"github.com/guardana/control/internal/evidence"
 	"github.com/guardana/control/internal/findinglog"
 	"github.com/guardana/control/internal/hookbridge"
+	"github.com/guardana/control/internal/ingest"
+	"github.com/guardana/control/internal/ingest/egresslog"
 	"github.com/guardana/control/internal/observe"
 	"github.com/guardana/control/internal/observelog"
 	"github.com/guardana/control/internal/pause"
@@ -137,22 +140,30 @@ func versionSpecs() map[string]versionSpec {
 			cites: []versionCite{
 				{"internal/observe/version.go#SchemaVersion", writes | reads},
 				{"internal/observe/version.go#SchemaVersion02", writes | reads},
+				{"internal/observe/version.go#SchemaVersion03", writes | reads},
 				{"internal/observe/version.go#checkVersion/major", readsMajor},
 			},
 			refuses: func(v string) (bool, error) { return errors.Is(observe.CheckVersion(v), observe.ErrVersion), nil },
 		},
 		"Source descriptor": {
-			cites: []versionCite{{"internal/observe/version.go#checkVersion/major", readsMajor}},
+			cites: []versionCite{
+				{"internal/observe/version.go#descriptorSchema01", reads},
+				{"internal/observe/version.go#descriptorSchema02", reads},
+				{"internal/observe/version.go#checkVersion/major", readsMajor},
+			},
 			refuses: func(v string) (bool, error) {
-				_, err := observe.ReadDescriptor([]byte(`{"schema_version":` + strconv.Quote(v) + `}`))
+				_, err := ingest.ReadDescriptor([]byte(`{"schema_version":` + strconv.Quote(v) + `}`))
 				return errors.Is(err, observe.ErrVersion), nil
 			},
 		},
 		"OpenTelemetry GenAI spans, imported": {
 			cites: []versionCite{
-				{"internal/observe/descriptor.go#ConventionVersion", reads},
-				{"internal/observe/descriptor.go#OTLPVersion", reads},
+				{"internal/ingest/otelgenai/descriptor.go#ConventionVersion", reads},
+				{"internal/ingest/otelgenai/descriptor.go#OTLPVersion", reads},
 			},
+		},
+		"Egress access log, imported": {
+			refuses: egressFormatRefuses,
 		},
 		"Observation export": {
 			name:  func() string { return observelog.ExportFormat },
@@ -240,6 +251,27 @@ func evidenceExportRefuses(v string) (bool, error) {
 }
 
 const versionsExportGolden = "testdata/export/records.jsonl"
+
+// egressFormatRefuses reads the Envoy fixture's descriptor with its format
+// set to v. The format is the only member changed, so a refusal is the
+// format's.
+func egressFormatRefuses(v string) (bool, error) {
+	raw, err := fs.ReadFile(os.DirFS(versionsRepoRoot()), versionsEgressDescriptor)
+	if err != nil {
+		return false, err
+	}
+	const written = `"format": "` + egresslog.Format + `"`
+	if bytes.Count(raw, []byte(written)) != 1 {
+		return false, errors.New(versionsEgressDescriptor + ": the descriptor does not name the format once")
+	}
+	if _, err := ingest.ReadDescriptor(raw); err != nil {
+		return false, fmt.Errorf("%s does not load as written: %w", versionsEgressDescriptor, err)
+	}
+	_, err = ingest.ReadDescriptor(bytes.Replace(raw, []byte(written), []byte(`"format": `+strconv.Quote(v)), 1))
+	return err != nil, nil
+}
+
+const versionsEgressDescriptor = "internal/ingest/egresslog/testdata/envoy.descriptor.json"
 
 // versionsRepoRoot is the repository root, three directories above this file.
 func versionsRepoRoot() string {

@@ -34,6 +34,10 @@ a run a source's import reports doubt leaves `STEP_OUTSIDE_PROCEDURE` and
 `DENIED_ACTION_RETRIED_AROUND` not checked, and a finding citing an
 observation of a doubted run is `INDETERMINATE`.
 
+Amended by [ADR-0069](0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor.md),
+which decides that `supervise` refuses, as an input error, a `--source` whose
+kind names no run, such as an egress proxy's access log, and one with no kind.
+
 ## Context
 
 A plane decides each call on its own. Whether a run as a whole kept to the
