@@ -12,6 +12,7 @@
 #            archive that cannot be extracted, an archive whose name names no
 #            platform, a binary built for another platform than its
 #            archive's name says, an ELF or a Mach-O file go cannot read
+#            beside a good binary, a file whose first bytes cannot be read
 #            beside a good binary, a file named with a newline or a tab, one
 #            vulnerable binary among
 #            five (every binary still scanned), a binary the scanner cannot
@@ -112,7 +113,18 @@ case "$1" in
   *) exit 64 ;;
 esac
 EOF
-chmod 0755 "${tmp}/bin/go" "${tmp}/bin/docker"
+# A file named unreadable cannot be read, as head finds a file it may not
+# read; anything else goes to the real head.
+command -v head >"${tmp}/real-head" || die "head is not on PATH"
+cat >"${tmp}/bin/head" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+for arg in "$@"; do
+  [[ "${arg##*/}" != unreadable ]] || { echo "head: ${arg}: Permission denied" >&2; exit 1; }
+done
+exec "$(cat "${STUB_DIR}/real-head")" "$@"
+EOF
+chmod 0755 "${tmp}/bin/go" "${tmp}/bin/docker" "${tmp}/bin/head"
 
 # binary <path> <goos> <goarch> <verdict>
 binary() {
@@ -254,6 +266,16 @@ for kind in ELF Mach-O; do
     "product_1.0.0_linux_amd64.tar.gz/bin/opaque is an ELF or Mach-O file whose Go build information cannot be read" \
     -- archives "${tmp}/opaque"
 done
+
+stage="${tmp}/stage-unreadable"
+mkdir -p "${stage}/bin" "${tmp}/unreadable-bytes"
+binary "${stage}/bin/gateway" linux amd64 clean
+printf '\177ELF\002\001\001\000rest\n' >"${stage}/bin/unreadable"
+chmod 0755 "${stage}/bin/unreadable"
+tar -czf "${tmp}/unreadable-bytes/product_1.0.0_linux_amd64.tar.gz" -C "${stage}" .
+check "a file whose first bytes cannot be read" fail \
+  "product_1.0.0_linux_amd64.tar.gz/bin/unreadable: its first bytes could not be read" -- archives "${tmp}/unreadable-bytes"
+scanned "a file whose first bytes cannot be read" 0
 
 vuln="${tmp}/vuln"
 dist "${vuln}" vulnerable

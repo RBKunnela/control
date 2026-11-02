@@ -61,8 +61,7 @@ request.
 - `make quality-quick` runs formatting, `go vet`, the tests and the import
   check. Use it while working.
 - `make quality` runs the whole gate. The `Makefile` names every target it
-  calls; read the exact set there rather than from a list in prose that can
-  drift.
+  calls; read the exact set there, not from prose that can drift.
 
 `ci.yml` runs `make quality` on every pull request and on `main`; a change
 is unfinished until that run is green. A release commit is also gated cold
@@ -92,8 +91,9 @@ run some tools directly over a wider scope.
   is not, and the kernel's tests carry it. A package in those trees builds from
   the same Go files on every platform: a file build constraints leave out,
   and any source that is not plain Go, is refused.
-- Adapters may import core; the rule only constrains what core imports. Core
-  needing adapter behaviour declares an interface an adapter implements.
+- Non-test adapter code may import core except the reason codes, and composes
+  no v1 `Decision`. Core needing adapter behaviour declares an interface an
+  adapter implements.
 
 See [ADR-0007](docs/adr/0007-repository-layout-and-dependency-rule.md).
 

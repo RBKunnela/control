@@ -50,10 +50,49 @@ done <<<"${listed}"
 # Each package is "<module directory> <package relative to it>": a package
 # builds only from inside its own module, so each runs from the directory of
 # the nearest go.mod above it. repo_files rejects paths with whitespace, so a
-# space is a safe separator. Each declared entry adds the name a line-anchored
-# search reads in the source.
+# space is a safe separator. Each declared entry adds the name declared_awk
+# reads in the source.
 packages=""
 declared=()
+# Prints the name of each top-level function of a Go file that go test would
+# take for a fuzz target, however gofmt leaves its declaration: "func" at the
+# start of a line, then any comments, block or line, on that line or the
+# next ones, then the name. A method's receiver comes first and is not one.
+# shellcheck disable=SC2016 # $0 is awk's record, not the shell's
+declared_awk='
+function code(s,   out, i, j, two) {
+  out = ""
+  i = 1
+  while (i <= length(s)) {
+    if (inblock) {
+      j = index(substr(s, i), "*/")
+      if (j == 0) return out
+      i += j + 1
+      inblock = 0
+      out = out " "
+      continue
+    }
+    two = substr(s, i, 2)
+    if (two == "//") return out
+    if (two == "/*") { inblock = 1; i += 2; continue }
+    out = out substr(s, i, 1)
+    i++
+  }
+  return out
+}
+!open && /^func([^A-Za-z0-9_]|$)/ { open = 1; inblock = 0; buf = ""; $0 = substr($0, 5) }
+open {
+  buf = buf " " code($0)
+  if (inblock) next
+  sub(/^[ \t]+/, "", buf)
+  if (buf == "") next
+  open = 0
+  if (match(buf, /^Fuzz[^ \t(\[]*/)) {
+    name = substr(buf, RSTART, RLENGTH)
+    if (name ~ /^Fuzz($|[^a-z])/) print name
+  }
+}
+'
 while IFS= read -r file; do
   [[ -n "${file}" ]] || continue
   case "${file}" in
@@ -100,7 +139,10 @@ while IFS= read -r file; do
   fi
   grep -Fxq -- "${mod} ${pkg}" <<<"${packages}" || packages+="${mod} ${pkg}"$'\n'
 
-  names="$(sed -n 's/^func \(Fuzz[A-Za-z0-9_]*\)(.*/\1/p' "${file}")"
+  names="$(awk "${declared_awk}" "${file}")" || {
+    printf 'fuzz-smoke: cannot read the declarations of %s\n' "${file}" >&2
+    exit 1
+  }
   while IFS= read -r name; do
     [[ -n "${name}" ]] || continue
     declared+=("${mod} ${pkg} ${name}")
@@ -120,8 +162,8 @@ shown_package() {
 }
 
 # The targets run are the ones each package's test binary lists on this
-# platform, never the ones read from the source: a declaration that a
-# line-anchored search misses would otherwise compile and never fuzz.
+# platform, never the ones read from the source: a declaration the source
+# search misses would otherwise compile and never fuzz.
 targets=()
 compiled=""
 while read -r mod pkg; do

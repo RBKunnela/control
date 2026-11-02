@@ -107,9 +107,10 @@ func holdLock(t *testing.T, dir string) func() {
 	return func() { _ = held.Close() }
 }
 
-// raiseWaiting starts a raise to serial 6 that waits on the lock the test
-// holds, and returns where its answer arrives.
-func raiseWaiting(t *testing.T, s *policystate.Store) <-chan error {
+// raiseWaiting starts a raise to serial 6 that waits on the lock of dir the
+// test holds, and returns where its answer arrives once the raise is counted
+// as a writer, which it is only right before it tries the lock.
+func raiseWaiting(t *testing.T, dir string, s *policystate.Store) <-chan error {
 	t.Helper()
 	st, now := statement(t, idA, 6, d6, "11:30:00"), noon(t)
 	done := make(chan error, 1)
@@ -117,7 +118,7 @@ func raiseWaiting(t *testing.T, s *policystate.Store) <-chan error {
 		_, err := s.Raise(context.Background(), st, now)
 		done <- err
 	}()
-	time.Sleep(200 * time.Millisecond)
+	awaitWriters(t, dir, 1)
 	return done
 }
 
@@ -135,7 +136,7 @@ func answer(t *testing.T, done <-chan error) error {
 func TestRaiseReadsTheFloorOnlyOnceItHoldsTheLock(t *testing.T) {
 	dir, s := raised(t)
 	release := holdLock(t, dir)
-	done := raiseWaiting(t, s)
+	done := raiseWaiting(t, dir, s)
 	serial7 := `{"schema_version":"1.0","bundle_id":"bundle-a","serial":7,"digest":"` + d7 +
 		`","issued_at":"2026-09-11T11:45:00Z","latest_issued_at":"2026-09-11T11:45:00Z","reset_reason":null,"reset_from":null}` + "\n"
 	writeFile(t, filepath.Join(dir, fileA), serial7)
@@ -152,7 +153,7 @@ func TestARaiseWaitingForTheLockRefusesADirectorySwappedMeanwhile(t *testing.T) 
 	dir, s := raised(t)
 	before := readFile(t, filepath.Join(dir, fileA))
 	release := holdLock(t, dir)
-	done := raiseWaiting(t, s)
+	done := raiseWaiting(t, dir, s)
 	if err := os.Rename(dir, dir+".old"); err != nil {
 		t.Fatal(err)
 	}
@@ -198,8 +199,7 @@ func TestAReadThatStartsWhileARaiseWaitsReadsTheRaisedFloor(t *testing.T) {
 		readers[i] = open(t, dir)
 	}
 	release := holdLock(t, dir)
-	done := raiseWaiting(t, s)
-	awaitWriters(t, dir, 1)
+	done := raiseWaiting(t, dir, s)
 	read := make(chan string, len(readers))
 	for _, r := range readers {
 		go func() {
@@ -235,8 +235,7 @@ func TestAReadWaitingBehindARaiseEndsWithItsContext(t *testing.T) {
 	dir, s := raised(t)
 	reader := open(t, dir)
 	release := holdLock(t, dir)
-	done := raiseWaiting(t, s)
-	awaitWriters(t, dir, 1)
+	done := raiseWaiting(t, dir, s)
 	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 	read := make(chan error, 1)

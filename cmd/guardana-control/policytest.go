@@ -55,7 +55,9 @@ func policyTest(dir string, stdout, stderr io.Writer) int {
 // caseFiles lists the regular files of dir named *.json, in name order, and
 // refuses a directory that holds none. Regularity is decided through Stat,
 // which follows a link, so a linked case is run rather than skipped without
-// a word; a link that leads nowhere is a refusal.
+// a word; a link that leads nowhere is a refusal. A subdirectory is not
+// entered, and any other entry named *.json, a pipe or a socket, is refused:
+// skipped, its case would pass unrun.
 func caseFiles(dir string) ([]string, error) {
 	dir = filepath.Clean(dir)
 	entries, err := os.ReadDir(dir)
@@ -71,8 +73,11 @@ func caseFiles(dir string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		if info.Mode().IsRegular() {
+		switch {
+		case info.Mode().IsRegular():
 			names = append(names, e.Name())
+		case !info.IsDir():
+			return nil, fmt.Errorf("%s: %s is not a regular file, so its case cannot run", dir, e.Name())
 		}
 	}
 	if len(names) == 0 {

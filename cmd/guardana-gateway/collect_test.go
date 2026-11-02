@@ -192,20 +192,28 @@ func TestCollectAnswersARequestInFlightAtTheSignal(t *testing.T) {
 	}
 	body := otlpFixture(t, "export_logs_request.json")
 	head := "POST " + logsPath + " HTTP/1.1\r\nHost: " + addr + "\r\nAuthorization: Bearer " + collectToken +
-		"\r\nContent-Type: application/json\r\nContent-Length: " +
+		"\r\nContent-Type: application/json\r\nExpect: 100-continue\r\nContent-Length: " +
 		strconv.Itoa(len(body)) + "\r\n\r\n"
-	if _, err := conn.Write(append([]byte(head), body[:len(body)/2]...)); err != nil {
+	if _, err := conn.Write([]byte(head)); err != nil {
 		t.Fatal(err)
 	}
-	// The server has read the head and waits on the body when the signal
-	// comes; the listener closing says the shutdown has started.
-	time.Sleep(200 * time.Millisecond)
+	// The server sends 100 Continue once its handler first reads the body, so
+	// the request is in flight when the signal comes; the listener closing
+	// says the shutdown has started.
+	answers := bufio.NewReader(conn)
+	interim, err := http.ReadResponse(answers, nil)
+	if err != nil || interim.StatusCode != http.StatusContinue {
+		t.Fatalf("the server did not ask for the body: %v %v", interim, err)
+	}
+	if _, err := conn.Write(body[:len(body)/2]); err != nil {
+		t.Fatal(err)
+	}
 	c.cancel()
 	waitClosed(t, addr)
 	if _, err := conn.Write(body[len(body)/2:]); err != nil {
 		t.Fatalf("the rest of the body could not be sent: %v", err)
 	}
-	resp, err := http.ReadResponse(bufio.NewReader(conn), nil)
+	resp, err := http.ReadResponse(answers, nil)
 	if err != nil {
 		t.Fatalf("no answer to the request in flight: %v", err)
 	}

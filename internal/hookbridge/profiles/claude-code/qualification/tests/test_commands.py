@@ -7,6 +7,7 @@ import os
 import shutil
 import tempfile
 import unittest
+from unittest import mock
 
 import harness
 from harness_judge import judged
@@ -207,6 +208,43 @@ class StreamLines(unittest.TestCase):
         self.assertEqual(out.splitlines(keepends=True)[1], UNREADABLE)
         self.assertNotIn("a private chain", out)
         self.assertEqual(len(out.splitlines()), 2)
+
+
+class StreamCommand(Scratch):
+    def stream(self, raw: bytes, out: str) -> int:
+        stdin = io.TextIOWrapper(io.BytesIO(raw), encoding="utf-8")
+        with mock.patch("sys.stdin", stdin):
+            return harness.main(["stream", "--out", out])
+
+    def test_reasoning_never_reaches_the_file(self) -> None:
+        """The runtime's stream is written as the judge reads it: the tool
+        call kept, the reasoning and the text never written, a line that does
+        not parse replaced, a line of another type left out."""
+        use = {"type": "tool_use", "id": "toolu_1", "name": "Bash", "input": {"command": "x"}}
+        thinking = {"type": "thinking", "thinking": "a private chain"}
+        text = {"type": "text", "text": "a sentence of the model's"}
+        message = {"role": "assistant", "content": [thinking, text, use]}
+        line = {"type": "assistant", "message": message}
+        raw = "\n".join(
+            [json.dumps({"type": "system", "subtype": "init"}), json.dumps(line), '{"type": "assi']
+        )
+        out = self.path("stream-1.jsonl")
+        self.assertEqual(self.stream(raw.encode(), out), 0)
+        with open(out, encoding="utf-8") as f:
+            kept = f.read()
+        self.assertNotIn("a private chain", kept)
+        self.assertNotIn("a sentence", kept)
+        lines = kept.splitlines(keepends=True)
+        self.assertEqual(len(lines), 2)
+        self.assertEqual(json.loads(lines[0])["message"]["content"], [use])
+        self.assertEqual(lines[1], UNREADABLE)
+
+    def test_a_file_already_there_is_not_written_over(self) -> None:
+        out = self.path("stream-1.jsonl")
+        with open(out, "w", encoding="utf-8") as f:
+            f.write("kept\n")
+        with self.assertRaises(FileExistsError):
+            self.stream(b"{}\n", out)
 
 
 class Scrubbed(Scratch):

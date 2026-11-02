@@ -34,8 +34,10 @@ type devPage struct {
 	cmd   *exec.Cmd
 	stdin io.WriteCloser
 	line  string
-	// exited is closed once the page's process has exited.
-	exited chan struct{}
+	// exited is closed once the page's process has exited, and waitErr,
+	// how it exited, is written before that.
+	exited  chan struct{}
+	waitErr error
 }
 
 // startPage starts the page over the plane's approvals directory and pause
@@ -68,7 +70,7 @@ func startPage(control sibling, st devState, stderr io.Writer) (*devPage, error)
 	pg := &devPage{cmd: cmd, stdin: stdin, exited: make(chan struct{})}
 	lines := readFirstLine(stdout)
 	go func() {
-		_ = cmd.Wait()
+		pg.waitErr = cmd.Wait()
 		close(pg.exited)
 	}()
 	select {
@@ -107,11 +109,15 @@ func readFirstLine(r io.ReadCloser) <-chan string {
 }
 
 // halt closes the page's standard input, which stops it, and kills it past
-// pageStopWait.
+// pageStopWait. A page that exited with a failure is reported, so dev never
+// ends well over a console that did not.
 func (pg *devPage) halt() error {
 	err := pg.stdin.Close()
 	select {
 	case <-pg.exited:
+		if pg.waitErr != nil {
+			err = errors.Join(err, fmt.Errorf("%s console failed: %w", brand.CLI, pg.waitErr))
+		}
 		return err
 	case <-time.After(pageStopWait):
 	}

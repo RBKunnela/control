@@ -69,6 +69,20 @@ func TestStartPageHoldsThePageToItsLine(t *testing.T) {
 	}
 }
 
+// TestHaltReportsAPageThatFailed: a page that took its line and then exits
+// with a failure once its input closes makes halt fail, naming the console.
+func TestHaltReportsAPageThatFailed(t *testing.T) {
+	t.Parallel()
+	var stderr syncBuffer
+	pg, err := startPage(fakePage(t, "echo 'page: http://127.0.0.1:4242/#t="+validToken+"'; cat >/dev/null; exit 3"), devState{dir: t.TempDir()}, &stderr)
+	if err != nil {
+		t.Fatalf("its own line refused: %v", err)
+	}
+	if err := pg.halt(); err == nil || !strings.Contains(err.Error(), "console failed: exit status 3") {
+		t.Errorf("halt over a page that exited 3 = %v, want its failure", err)
+	}
+}
+
 // endless is a reader of one byte repeated forever, which holds no newline.
 type endless struct{}
 

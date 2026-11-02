@@ -114,9 +114,17 @@ launch() {
     [[ $# -lt 9 ]] || cmd+=(--tool "$8" --input "$9")
   fi
   [[ -z "${mcp}" ]] || cmd+=(--mcp-config "${mcp}")
+  # The stream reaches the disk only through the filter, which keeps what the
+  # judge reads and never the model's text or reasoning; the pipe between
+  # them holds nothing on disk.
+  local pipe="${d}/stream-${key}.pipe" filter
+  mkfifo "${pipe}" || die "no pipe for the stream of ${group}/$1"
+  harness stream --out "${d}/stream-${key}.jsonl" <"${pipe}" &
+  filter=$!
+  pids+=("${filter}")
   # The token is set by builtins, so it never sits in a process's arguments.
   (cd "${proj}" && unset CLAUDECODE CLAUDE_CODE_ENTRYPOINT && export "${token_var}=${token}" && exec "${cmd[@]}") \
-    >"${d}/stream-${key}.jsonl" 2>"${d}/runtime-${key}.err" &
+    >"${pipe}" 2>"${d}/runtime-${key}.err" &
   local pid=$! ticks=0 status=0
   pids+=("${pid}")
   while kill -0 "${pid}" 2>/dev/null; do
@@ -129,6 +137,8 @@ launch() {
     ticks=$((ticks + 1))
   done
   wait "${pid}" || status=$?
+  wait "${filter}" || die "the stream of ${group}/$1 could not be filtered"
+  rm -f "${pipe}"
   printf '%d\n' "${status}" >"${d}/runtime-${key}.exit"
 }
 # once <invocation> <launch arguments...> reserves, runs and gathers one invocation.

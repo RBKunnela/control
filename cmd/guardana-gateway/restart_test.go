@@ -316,12 +316,18 @@ func pendingApproval(t *testing.T, res *sdk.CallToolResult) string {
 // reconciliation is what reads it.
 func answerFrom(t *testing.T, dir, approvalID string, wantPlane bool) {
 	t.Helper()
+	answerFromAt(t, dir, approvalID, wantPlane, time.Now())
+}
+
+// answerFromAt is answerFrom with the answer dated at.
+func answerFromAt(t *testing.T, dir, approvalID string, wantPlane bool, at time.Time) {
+	t.Helper()
 	approver, err := approvals.OpenApprover(dir)
 	if err != nil {
 		t.Fatalf("OpenApprover: %v", err)
 	}
 	answered, err := approver.Answer(context.Background(), approvalID,
-		controlv1.ApprovalState_APPROVAL_STATE_APPROVED, "approver-1", "ok", time.Now())
+		controlv1.ApprovalState_APPROVAL_STATE_APPROVED, "approver-1", "ok", at)
 	if closeErr := approver.Close(); err == nil {
 		err = closeErr
 	}

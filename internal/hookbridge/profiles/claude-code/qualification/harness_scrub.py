@@ -90,21 +90,24 @@ class Scrubber:
         return self.ids.setdefault(m.group(0), f"id-{len(self.ids) + 1}")
 
     def stream(self, text: str) -> str:
-        """The stream without what the judge does not read. A line that does
-        not parse is replaced by one that does not parse either, so the copy
-        is as unreadable as the run without keeping what the line held."""
-        kept = []
-        for line in text.splitlines(keepends=True):
-            try:
-                value = json.loads(line)
-            except ValueError:
-                kept.append(UNREADABLE)
-                continue
-            if not isinstance(value, dict):
-                kept.append(UNREADABLE)
-            elif value.get("type") in STREAM_TYPES:
-                kept.append(json.dumps(judged_part(value)) + "\n")
-        return self.text("".join(kept))
+        """The stream without what the judge does not read."""
+        return self.text("".join(judged_line(line) for line in text.splitlines(keepends=True)))
+
+
+def judged_line(line: str) -> str:
+    """One line of a runtime's stream as the judge reads it: its judged part,
+    nothing for a line of a type the judge does not read, and for a line that
+    does not parse one that does not parse either, so what is kept is as
+    unreadable as the line without holding what it held."""
+    try:
+        value = json.loads(line)
+    except ValueError:
+        return UNREADABLE
+    if not isinstance(value, dict):
+        return UNREADABLE
+    if value.get("type") in STREAM_TYPES:
+        return json.dumps(judged_part(value)) + "\n"
+    return ""
 
 
 def copy_scrubbed(cases: str, events_root: str, work: str, out: str) -> None:

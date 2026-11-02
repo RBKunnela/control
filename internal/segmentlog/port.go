@@ -13,9 +13,9 @@ import (
 // evidence export's cursor names a file's first line by.
 type Digest = [sha256.Size]byte
 
-// RecordLog keeps whole lines in segments. Append returns nil only once the
-// lines are durable. Every method of a log that is closed, or that a seal or
-// a prune left part way, refuses.
+// RecordLog is the record log port: it keeps whole lines in segments. Append
+// returns nil only once the lines are durable. Every method of a log that is
+// closed, or that a seal or a prune left part way, refuses.
 type RecordLog interface {
 	// Append writes whole lines to the live segment, sealing it first when
 	// they would take it past its byte bound, and refuses them with

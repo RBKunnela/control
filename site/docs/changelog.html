@@ -128,6 +128,10 @@ fixes GHSA-g3hv-75wg-m249, through <code>overrides</code>: the server, at the ve
 its fingerprints were taken from, asks for the majors below them, where no
 fix exists. Its search and tree tools ran with them. Nothing this project
 ships uses either.</li>
+<li>The hook profile's qualification harness writes the runtime's stream only
+through a filter that keeps the tool calls, their answers and the run's
+status; the model's text and reasoning never reach the disk, where before
+they sat in the work directory until the scrubbed copy was made.</li>
 <li><code>trail export</code> refused a segment of a log named by its path but exported
 one reached through a symbolic link as a whole trail file, so coverage and
 <code>supervise</code> took a log with pruned segments as whole. The file opened is
@@ -139,15 +143,37 @@ their whole line.</li>
 </ul>
 <h3 id="added">Added</h3>
 <ul>
-<li><code>guardana-control operators roster sign</code> signs a roster of operator keys under
+<li>
+<p>A test holds <code>scripts/ports.txt</code> to the tree: every line whole, its
+interface an exported interface of its package, its conformance cases
+present with a negative control for every rule, its doctor key named, and
+<code>none</code> only where the port's record says the component has no <code>doctor</code>;
+a <code>testdata/ports/</code> directory, or an interface whose comment calls it a
+port, with no line fails it
+(<a href="/docs/adr/0066-each-decision-about-authority-is-a-port">ADR-0066</a>).</p>
+</li>
+<li>
+<p>The dependency rule refuses, in a non-test file under <code>adapters/</code>,
+importing <code>internal/policy/reasons</code> (<code>check-imports.sh</code> reads every file
+whatever its build constraints; depguard too), and composing or holding a
+v1 <code>Decision</code> by value (a type check; reflection is out of its reach),
+each shown refusing a planted violation by <code>check-imports-probe.sh</code>.</p>
+</li>
+<li>
+<p>A test holds <code>docs/adr/README.md</code> to one row per record.</p>
+</li>
+<li>
+<p><code>guardana-control operators roster sign</code> signs a roster of operator keys under
 a trust root, each key with grants of one tenant, one project and a level,
 for 24 hours unless told otherwise and at most 7 days, each signing at a
 higher serial; <code>operators floor init</code> starts the floor a plane raises as it
 takes a roster. The roster, operator authentication and operator
 authorization are ports with these as their defaults, and a veto may only
 deny. No plane reads a roster yet
-(<a href="/docs/adr/0071-operators-are-named-by-a-signed-roster">ADR-0071</a>).</li>
-<li><code>observe import</code> reads an egress proxy's access log. A source of kind
+(<a href="/docs/adr/0071-operators-are-named-by-a-signed-roster">ADR-0071</a>).</p>
+</li>
+<li>
+<p><code>observe import</code> reads an egress proxy's access log. A source of kind
 <code>egress-access-log</code> names which top-level member of each JSON line holds
 the time, host, port, method, status, byte counts and caller, and each line
 becomes one connection observation; no other member is read, so a path,
@@ -163,20 +189,26 @@ be an IP address, or it is dropped and counted in <code>callers_dropped</code>. 
 and addresses are written in one spelling, an IPv4-mapped IPv6 address as
 its IPv4 address. Such a source may declare <code>TRUST_INDEPENDENT</code> on an unsigned
 descriptor, and names no run
-(<a href="/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor">ADR-0069</a>).</li>
-<li>Source descriptor schema <code>0.2</code>, which carries the egress mapping; a <code>0.1</code>
+(<a href="/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor">ADR-0069</a>).</p>
+</li>
+<li>
+<p>Source descriptor schema <code>0.2</code>, which carries the egress mapping; a <code>0.1</code>
 descriptor reads as before, with the same digest. Which members and which
 trust a descriptor may carry is now decided by its kind
-(<a href="/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor">ADR-0069</a>).</li>
-<li>Observation record schema <code>0.3</code>, for a connection, for an import report
+(<a href="/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor">ADR-0069</a>).</p>
+</li>
+<li>
+<p>Observation record schema <code>0.3</code>, for a connection, for an import report
 with refusals by reason or callers dropped, and for a record naming its
 source's kind, which every egress record does. A source's liveness and
 doubt are read from reports of its kind alone, and <code>observe import</code> refuses,
 with exit 2, a write of another kind into a log holding the source's
 records. A connection's id is derived from its content, so
 importing a grown or rotated log again writes only what is new
-(<a href="/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor">ADR-0069</a>).</li>
-<li><code>coverage</code> reads an egress path as observed by the connections of the
+(<a href="/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor">ADR-0069</a>).</p>
+</li>
+<li>
+<p><code>coverage</code> reads an egress path as observed by the connections of the
 sources it names, ends every egress line with <code>no plane decides egress</code>,
 prints <code>independent</code> trust as <code>independent (unsigned descriptor)</code>, and adds
 a row for each host an egress source reached that no path declares, at most
@@ -187,10 +219,13 @@ are unseen. Any such row, or that line, makes the exit 1. An absent egress
 descriptor whose log holds egress records is refused, with exit 2, and so is
 a log whose egress records no egress descriptor given with that log names:
 one replaced by another kind or renamed, or another source's log sharing
-the directory (<a href="/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor">ADR-0069</a>).</li>
-<li><code>pkg/contract.ValidateUnclassified</code>: every rule of <code>Validate</code> but the
+the directory (<a href="/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor">ADR-0069</a>).</p>
+</li>
+<li>
+<p><code>pkg/contract.ValidateUnclassified</code>: every rule of <code>Validate</code> but the
 effect class's presence and what a class requires, for an envelope nothing
-classified. <code>Validate</code> does not change (<a href="/docs/adr/0067-the-pipeline-refuses-what-an-adapter-could-not-translate">ADR-0067</a>).</li>
+classified. <code>Validate</code> does not change (<a href="/docs/adr/0067-the-pipeline-refuses-what-an-adapter-could-not-translate">ADR-0067</a>).</p>
+</li>
 </ul>
 <h3 id="changed">Changed</h3>
 <ul>
@@ -422,6 +457,17 @@ time, which no lint read before.</p>
 </ul>
 <h3 id="fixed">Fixed</h3>
 <ul>
+<li><code>policy test</code> skipped a case named <code>*.json</code> that is a pipe or a socket and
+passed on the rest; it now refuses the directory, naming the entry.</li>
+<li><code>dev</code> ended with status 0 after its console exited with a failure; it now
+reports the console's failure.</li>
+<li><code>scan-binaries.sh</code> passed over a file whose first bytes it could not read,
+which could be a Go binary left unscanned; it now refuses it.</li>
+<li><code>fuzz-list</code> and <code>fuzz-smoke</code> missed a fuzz target that a build constraint
+leaves out when a comment stood between <code>func</code> and its name; every
+declaration gofmt can leave is now read.</li>
+<li>The qualification harness passed <code>block</code> when the runtime was stopped
+before it answered the refused call; such a run is now unknown.</li>
 <li>A collector whose live segment changed under it refused that append but
 went on to seal it, writing a manifest its next start refused. The log now
 takes nothing more until it is started again.</li>

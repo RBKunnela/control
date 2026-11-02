@@ -97,6 +97,27 @@ func TestAllThreeMechanismsAllowTheSameSet(t *testing.T) {
 	}
 }
 
+// adapterDenied is what no non-test adapter file may import.
+var adapterDenied = []string{"internal/policy/reasons"}
+
+// The adapter rule is written twice, as adapter_denied and as depguard's
+// adapters rule; neither may name a tree the other lacks.
+func TestBothMechanismsDenyAdaptersTheSameTrees(t *testing.T) {
+	modulePath, moduleDir := mainModule(t)
+	lint, script := readMechanisms(t, moduleDir)
+	rule, err := parseDepguardRule(lint, "adapters")
+	if err != nil {
+		t.Fatalf("%s: %v", lintConfig, err)
+	}
+	want := make([]string, 0, 2*len(adapterDenied))
+	for _, rel := range adapterDenied {
+		want = append(want, modulePath+"/"+rel+"$", modulePath+"/"+rel+"/")
+	}
+	sameSet(t, ruleScript+": adapter_denied", mustArray(t, script, "adapter_denied"), adapterDenied)
+	sameSet(t, lintConfig+": depguard rule adapters, deny", rule.deny, want)
+	sameSet(t, lintConfig+": depguard rule adapters, files", rule.files, []string{"**/adapters/**", "!$test"})
+}
+
 // The guarded tree list lives in the same files as the allowed set. Until the
 // two were compared, the files could disagree about which trees the rule
 // applies to at all, and every gate would still report green: a rule that
@@ -518,6 +539,16 @@ type depguardRule struct {
 // text rather than parsed as YAML: the module has no YAML dependency and a
 // test is not a reason to take one.
 func readDepguardRule(lines []string, name string) (depguardRule, error) {
+	rule, err := parseDepguardRule(lines, name)
+	if err != nil {
+		return rule, err
+	}
+	return rule, rule.complete()
+}
+
+// parseDepguardRule reads the rule called name as readDepguardRule does, and
+// asks nothing of which lists it holds.
+func parseDepguardRule(lines []string, name string) (depguardRule, error) {
 	rule := depguardRule{name: name}
 	start := slices.IndexFunc(lines, func(line string) bool { return strings.TrimSpace(line) == name+":" })
 	if start < 0 {
@@ -545,7 +576,7 @@ func readDepguardRule(lines []string, name string) (depguardRule, error) {
 			return rule, fmt.Errorf("depguard rule %s: %w", name, err)
 		}
 	}
-	return rule, rule.complete()
+	return rule, nil
 }
 
 func (r *depguardRule) setKey(line string) (string, error) {

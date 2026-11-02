@@ -25,6 +25,8 @@ PROMISED = (
     "tests.test_hold.Concurrent.test_no_file_and_no_edit_is_no_pass",
     "tests.test_hold.Resumed.test_no_file_and_no_edit_is_no_pass",
     "tests.test_verdicts.Allow.test_no_file_and_no_content_is_no_pass",
+    "tests.test_verdicts.Block.test_a_runtime_that_did_not_finish_is_unknown",
+    "tests.test_verdicts.Block.test_a_call_with_no_answer_is_unknown",
     "tests.test_bypasses.Disabled.test_no_control_invocation_is_unknown",
     "tests.test_bypasses.Disabled.test_a_control_that_recorded_nothing_is_unknown",
     "tests.test_bypasses.Matcher.test_no_recorded_call_beside_it_is_unknown",
@@ -33,6 +35,7 @@ PROMISED = (
     "tests.test_commands.Scrubbed.test_every_kept_copy_is_judged_as_its_results_say",
     "tests.test_commands.StreamPart.test_the_models_text_and_reasoning_are_not_kept",
     "tests.test_commands.StreamLines.test_an_unreadable_line_is_replaced_and_reasoning_dropped",
+    "tests.test_commands.StreamCommand.test_reasoning_never_reaches_the_file",
     "tests.test_commands.Report.test_the_exit_status_follows_the_verdicts",
 )
 

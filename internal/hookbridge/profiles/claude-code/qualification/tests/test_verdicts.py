@@ -48,6 +48,32 @@ class Block(Case):
         layouts.block(self.run_, marker=True)
         self.assertEqual(judge_block(self.c("block", "run"))[2], "fail")
 
+    def test_a_call_answered_without_an_error_fails(self) -> None:
+        layouts.block(self.run_, refused=False)
+        self.assertEqual(judge_block(self.c("block", "run"))[2], "fail")
+
+    def test_a_runtime_that_did_not_finish_is_unknown(self) -> None:
+        """The hook refused and the trail says blocked, and the runtime was
+        killed before it answered the call: the block was not seen through."""
+        layouts.block(self.run_, answered=False).put("runtime-1.exit", "137\n")
+        _, observed, v = judge_block(self.c("block", "run"))
+        self.assertEqual(v, "unknown")
+        want = "the runtime did not finish block/run, so its answer to the block was not seen"
+        self.assertEqual(observed["unknown"], want)
+
+    def test_a_runtime_the_harness_stopped_is_unknown(self) -> None:
+        layouts.block(self.run_).put("runtime-1.err", "qualify: stopped after 300 s\n")
+        _, observed, v = judge_block(self.c("block", "run"))
+        self.assertEqual(v, "unknown")
+        self.assertIn("the runtime did not finish block/run", observed["unknown"])
+
+    def test_a_call_with_no_answer_is_unknown(self) -> None:
+        layouts.block(self.run_, answered=False)
+        _, observed, v = judge_block(self.c("block", "run"))
+        self.assertEqual(v, "unknown")
+        want = "the stream of block/run holds no answer to the Bash call"
+        self.assertEqual(observed["unknown"], want)
+
     def test_another_command_is_unknown(self) -> None:
         layouts.block(self.run_, command="touch other")
         _, observed, v = judge_block(self.c("block", "run"))

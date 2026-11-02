@@ -20,6 +20,10 @@ Amended by [ADR-0037](0037-an-evidence-consumer-in-a-module-of-its-own.md):
 `examples/evidence-report` is a module of its own, and the gate runs over every
 module.
 
+Amended by [ADR-0066](0066-each-decision-about-authority-is-a-port.md): the rule
+also constrains adapters. No non-test file under `adapters/` imports the
+reason-code registry or composes a v1 `Decision`.
+
 ## Context
 
 The part of the system that decides has to stay small enough for one person to

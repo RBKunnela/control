@@ -13,6 +13,7 @@ cannot be read, is unknown, never passed.
     harness.py field <json file> <dotted path>
     harness.py free-port
     harness.py judge <cases> <events> [--work <dir>]
+    harness.py stream --out <file>
     harness.py scrub --cases <dir> --events <dir> --work <dir> --out <dir>
     harness.py rejudge <scrubbed copy> <results>
     harness.py report --results <jsonl> --meta <json> --out <file>
@@ -24,6 +25,7 @@ of the observations that may be kept; all sit beside this file.
 """
 
 import argparse
+import io
 import json
 import os
 import re
@@ -37,7 +39,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from harness_judge import judged
 from harness_observed import events, jsonl, load_json
-from harness_scrub import SCRUBBED, copy_scrubbed
+from harness_scrub import SCRUBBED, copy_scrubbed, judged_line
 from harness_verdicts import FAIL, PASS, UNKNOWN
 
 KEEP = 2048
@@ -199,6 +201,17 @@ def rejudge(args: argparse.Namespace) -> int:
     return 0
 
 
+def stream(args: argparse.Namespace) -> None:
+    """Writes the runtime's stream, read from standard input, to a new file as
+    the judge reads it, line by line: the model's text and reasoning never
+    reach the disk (invariant 9)."""
+    lines = io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8", errors="surrogateescape")
+    with open(args.out, "x", encoding="utf-8", errors="surrogateescape") as f:
+        for line in lines:
+            f.write(judged_line(line))
+            f.flush()
+
+
 def copy_dirs(copy: str) -> tuple[str, str]:
     return os.path.join(copy, "cases"), os.path.join(copy, "events")
 
@@ -267,6 +280,15 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("events")
     p.add_argument("--work", help="the directory the project paths were under, when moved")
     p.set_defaults(fn=judge)
+    observation_commands(sub)
+    return parser
+
+
+def observation_commands(sub: Any) -> None:
+    """The commands that write, copy, rejudge and report what a run observed."""
+    p = sub.add_parser("stream")
+    p.add_argument("--out", required=True)
+    p.set_defaults(fn=stream)
     p = sub.add_parser("scrub")
     p.add_argument("--cases", required=True)
     p.add_argument("--events", required=True)
@@ -285,7 +307,6 @@ def parser() -> argparse.ArgumentParser:
         "--judged-at", help="the commit whose judge read the observations, when not the run's"
     )
     p.set_defaults(fn=report)
-    return parser
 
 
 def main(argv: list[str] | None = None) -> int:

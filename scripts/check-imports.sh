@@ -19,6 +19,9 @@
 # And every Go file of a guarded tree must be one go list names, natively and
 # for foreign_platform: a package whose only files a name suffix keeps to
 # another platform is in no listing at all, and neither are its imports.
+# Under adapters/, no non-test Go file, whatever its build constraints, may
+# import a tree adapter_denied names; depguard's adapters rule holds the same
+# list over the files it loads.
 #
 # This script and depguard (.golangci.yml) each cover a half the other misses:
 #   - here: the in-module packages the non-test build reaches, which depguard
@@ -338,6 +341,36 @@ for dir in "${guarded[@]}"; do
   done <<<"${listing}"
 done
 
+# Every non-test Go file under adapters/, read as text whatever its build
+# constraints: a file no listing on the gate's machines builds still compiles
+# for another platform. An import path stands quoted, by " or `, so a path of
+# adapter_denied, or a package below it, between quotes is refused.
+adapter_files=0
+if ! adapter_list="$(repo_files 'adapters/*.go')"; then
+  printf 'FAIL adapters/: the Go files could not be listed\n' >&2
+  failures=$((failures + 1))
+fi
+while read -r file; do
+  [[ -n "${file}" && "${file}" != *_test.go && "${file}" != */testdata/* ]] || continue
+  adapter_files=$((adapter_files + 1))
+  for entry in "${adapter_denied[@]}"; do
+    rc=0
+    LC_ALL=C grep -qE -- "[\"\`]${module//./\\.}/${entry//./\\.}[\"\`/]" "${file}" || rc=$?
+    case "${rc}" in
+      0) refusals+="FAIL ${file} imports ${module}/${entry}, which no adapter may import"$'\n' ;;
+      1) ;;
+      *)
+        printf 'FAIL %s: grep could not read it\n' "${file}" >&2
+        failures=$((failures + 1))
+        ;;
+    esac
+  done
+done <<<"${adapter_list:-}"
+if [[ ${adapter_files} -eq 0 ]]; then
+  printf 'FAIL adapters/: no production Go file, so the adapter rule examined nothing\n' >&2
+  failures=$((failures + 1))
+fi
+
 # A reached tree no guarded tree reaches any more is a stale entry, which would
 # keep the name refusals on a tree for no reason anyone can check.
 if [[ ${checked} -eq ${#guarded[@]} ]]; then
@@ -360,8 +393,8 @@ if [[ ${nrefusals} -gt 0 ]]; then
   printf '%s' "${refusals}" | LC_ALL=C sort -u >&2
 fi
 
-printf 'check-imports: %d of %d tree(s) checked; %d package(s) of this module and %d import(s) examined; %d Go file(s) read for build constraints and %d of them sought in both listings; %d violation(s)\n' \
-  "${checked}" "${#guarded[@]}" "${npackages}" "${nimports}" "${sources}" "${listed}" "$((nrefusals + failures))"
+printf 'check-imports: %d of %d tree(s) checked; %d package(s) of this module and %d import(s) examined; %d Go file(s) read for build constraints and %d of them sought in both listings; %d adapter file(s) read; %d violation(s)\n' \
+  "${checked}" "${#guarded[@]}" "${npackages}" "${nimports}" "${sources}" "${listed}" "${adapter_files}" "$((nrefusals + failures))"
 
 # A run that examined nothing reports that, never a pass.
 if [[ ${checked} -eq 0 ]]; then

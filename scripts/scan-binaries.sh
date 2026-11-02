@@ -87,8 +87,11 @@ case "${mode}" in
         [[ -n "${file}" ]] || continue
         if ! go version -m "${file}" >/dev/null 2>&1; then
           # A README or a script holds no Go build information; an executable
-          # go cannot read might be a Go binary that would go unscanned.
-          case "$(head -c 4 "${file}" | od -An -tx1 | tr -d ' \n')" in
+          # go cannot read might be a Go binary that would go unscanned, and so
+          # might a file whose first bytes cannot be read.
+          magic="$(head -c 4 "${file}" | od -An -tx1 | tr -d ' \n')" ||
+            die "${name}/${file#"${dir}"/}: its first bytes could not be read, so it may be a Go binary left unscanned"
+          case "${magic}" in
             7f454c46 | feedface | feedfacf | cefaedfe | cffaedfe | cafebabe)
               die "${name}/${file#"${dir}"/} is an ELF or Mach-O file whose Go build information cannot be read"
               ;;

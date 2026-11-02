@@ -127,22 +127,32 @@ def judge_allow(c: Cases) -> Verdict:
 def judge_block(inv: Inv) -> Verdict:
     admits = inv.hook("PreToolUse", "Bash")
     expected = (
-        "the Bash call is blocked: its PreToolUse exits 2, no file marker appears, "
-        "the trail ends it ACTION_BLOCKED with RULE_DENY"
+        "the Bash call is blocked: its PreToolUse exits 2, the runtime answers the call "
+        "with an error and finishes, no file marker appears, the trail ends it "
+        "ACTION_BLOCKED with RULE_DENY"
     )
     why = missing(inv) or not_called(inv, "Bash", admits)
     if not why and any(e["input"].get("command") != "touch marker" for e in admits):
         why = "the model asked for another command than touch marker in " + inv.name
+    bashes = [u for u in inv.calls() if u["name"] == "Bash"]
+    if not why and not inv.returned():
+        why = f"the runtime did not finish {inv.name}, so its answer to the block was not seen"
+    if not why and any(inv.result(u["id"]) is None for u in bashes):
+        why = f"the stream of {inv.name} holds no answer to the Bash call"
+    refused = bool(bashes) and all(inv.refused(u["id"]) for u in bashes)
     reqs = [r for r in inv.requests().values() if r.get("name") == "Bash"]
     observed = {
         "admit_exits": exits(admits),
         "marker": "marker" in inv.files,
         "trail": [(r["kinds"], r["codes"]) for r in reqs],
+        "runtime_returned": inv.returned(),
+        "bash_refused": refused,
     }
     ok = (
         bool(admits)
         and all(x == BLOCK for x in exits(admits))
         and "marker" not in inv.files
+        and refused
         and bool(reqs)
         and all("ACTION_BLOCKED" in r["kinds"] and "RULE_DENY" in r["codes"] for r in reqs)
     )

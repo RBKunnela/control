@@ -27,7 +27,7 @@
 #               fuzz-smoke  a fuzz target whose seed fails
 #               fuzz-smoke  a fuzz target in a file a build constraint
 #               and         leaves out, which go test passes unfuzzed
-#               fuzz-list
+#               fuzz-list   (one of them with a comment between func and name)
 #               fuzz-smoke  a fuzz target whose seed fails, with a comment
 #                           between func and its name, alone in its package
 #               fuzz-smoke  a test file the search cannot read, alone in its
@@ -462,16 +462,16 @@ package nested
 
 import "testing"
 
-func FuzzProbeConstrained(f *testing.F) {
-	f.Add(1)
-	f.Fuzz(func(t *testing.T, _ int) {})
-}
+func FuzzProbeConstrained(f *testing.F) {}
+
+func /* a comment before the name */ FuzzProbeCommented(f *testing.F) {}
 EOF
 run fail fuzz-smoke "planted, left out by a build constraint"
 expect "fuzz-smoke: ./${nested} FuzzProbeConstrained is not compiled on"
-expect "fuzz-smoke: 1 of 3 target(s) not compiled on"
+expect "fuzz-smoke: 2 of 4 target(s) not compiled on"
 run fail fuzz-list "planted, left out by a build constraint"
-expect "fuzz-smoke: 1 of 3 target(s) not compiled on"
+expect "fuzz-smoke: ./${nested} FuzzProbeCommented is not compiled on"
+expect "fuzz-smoke: 2 of 4 target(s) not compiled on"
 rm -f "${copy:?}/${nested:?}/zz_fuzz_constrained_test.go"
 
 mkdir -p "${copy}/${nested}/hidden"

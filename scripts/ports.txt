@@ -1,7 +1,9 @@
 # The ports of ADR-0066, one per line: the port's name, its interface as
 # <package path>.<type>, its default kind, its conformance directory, and the
-# key doctor reports it under. Fields are separated by one space; a line that
-# begins with # is a comment.
+# key doctor reports it under, or none where the port's record says the
+# component has no doctor. Fields are separated by one space; a line that
+# begins with # is a comment. internal/docscheck/ports_test.go holds this file
+# to the tree and names the records that allow none.
 trust-roster internal/trust.Roster file testdata/ports/trust-roster trust
 operator-authenticator internal/operators.Authenticator roster testdata/ports/operator-authenticator operators.authenticator
 operator-authorizer internal/operators.Authorizer roster testdata/ports/operator-authorizer operators.authorizer

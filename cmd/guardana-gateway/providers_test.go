@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -49,7 +50,7 @@ func argumentsHash(t *testing.T) string {
 type provider struct {
 	name      string
 	configure func(t *testing.T, tr tree)
-	answer    func(t *testing.T, tr tree, p *plane, approvalID string)
+	answer    func(t *testing.T, tr tree, p *plane, approvalID string, at time.Time)
 }
 
 func providers() []provider {
@@ -57,14 +58,14 @@ func providers() []provider {
 		{
 			name:      "memory",
 			configure: func(*testing.T, tree) {},
-			answer: func(t *testing.T, _ tree, p *plane, approvalID string) {
+			answer: func(t *testing.T, _ tree, p *plane, approvalID string, at time.Time) {
 				t.Helper()
 				store, ok := p.store.(*gateway.MemoryApprovals)
 				if !ok {
 					t.Fatalf("the memory provider built a %T", p.store)
 				}
 				err := store.Answer(approvalID, controlv1.ApprovalState_APPROVAL_STATE_APPROVED,
-					"approver-1", "ok", time.Now())
+					"approver-1", "ok", at)
 				if err != nil {
 					t.Fatalf("answering %s: %v", approvalID, err)
 				}
@@ -76,11 +77,11 @@ func providers() []provider {
 				t.Helper()
 				tr.fileProvider(t)
 			},
-			answer: func(t *testing.T, tr tree, _ *plane, approvalID string) {
+			answer: func(t *testing.T, tr tree, _ *plane, approvalID string, at time.Time) {
 				t.Helper()
 				// The plane holds the directory while this runs, which is
 				// what an approver answering a live plane sees.
-				answerFrom(t, filepath.Join(tr.dir, recordsDir), approvalID, true)
+				answerFromAt(t, filepath.Join(tr.dir, recordsDir), approvalID, true, at)
 			},
 		},
 	}
@@ -109,7 +110,7 @@ func expectConsumedOnce(t *testing.T, provider provider) {
 	if held.Action != core.AwaitApproval {
 		t.Fatalf("the first call is %v, want a hold: %v", held.Action, held.Decision.GetReasonCodes())
 	}
-	provider.answer(t, tr, plane, held.Pending.ApprovalID)
+	provider.answer(t, tr, plane, held.Pending.ApprovalID, time.Now())
 
 	resumed := admitTransfer(t, plane, "req-hold-2")
 	if resumed.Action != core.Execute {
@@ -131,21 +132,26 @@ func expectConsumedOnce(t *testing.T, provider provider) {
 
 // expectExpiredResumesNothing: an answer that arrives is worth nothing once
 // the approval the plane minted has expired. The retry is held anew, and
-// nothing runs.
+// nothing runs. The pipeline reads a clock the case moves, so the answer
+// lands inside the lifetime and the retry past it however slow the machine.
 func expectExpiredResumesNothing(t *testing.T, provider provider) {
 	t.Helper()
-	tr, plane := holdingPlane(t, provider, 3*time.Second)
+	const ttl = 3 * time.Second
+	tr, plane := holdingPlane(t, provider, ttl)
+	clock := &handClock{now: time.Now()}
+	withClock(t, plane, clock.Now)
 
 	held := admitTransfer(t, plane, "req-expire-1")
 	if held.Action != core.AwaitApproval {
 		t.Fatalf("the first call is %v, want a hold", held.Action)
 	}
-	provider.answer(t, tr, plane, held.Pending.ApprovalID)
-	time.Sleep(time.Until(held.Pending.ExpiresAt) + 50*time.Millisecond)
+	clock.advance(time.Second)
+	provider.answer(t, tr, plane, held.Pending.ApprovalID, clock.Now())
+	clock.advance(ttl)
 
 	retry := admitTransfer(t, plane, "req-expire-2")
-	if retry.Action == core.Execute {
-		t.Fatalf("a retry ran on an approval that expired at %s", held.Pending.ExpiresAt)
+	if retry.Action != core.AwaitApproval {
+		t.Fatalf("a retry after the approval expired at %s is %v, want a hold anew: %v", held.Pending.ExpiresAt, retry.Action, retry.Decision.GetReasonCodes())
 	}
 	if s := plane.pipeline.Stats(); s.Executed != 0 {
 		t.Errorf("%d execution(s) on an expired approval", s.Executed)
@@ -206,6 +212,41 @@ func holdingPlane(t *testing.T, provider provider, ttl time.Duration) (tree, *pl
 	setEnv(t, "mode", "ENFORCE")
 	setEnv(t, "approvals.ttl", ttl.String())
 	return tr, tr.plane(t)
+}
+
+// handClock is a clock a case moves by hand.
+type handClock struct {
+	mu  sync.Mutex
+	now time.Time
+}
+
+func (c *handClock) Now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.now
+}
+
+func (c *handClock) advance(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.now = c.now.Add(d)
+}
+
+// withClock rebuilds the plane's pipeline over the same seams, reading clock
+// instead of the wall.
+func withClock(t *testing.T, p *plane, clock func() time.Time) {
+	t.Helper()
+	mode, err := p.cfg.Mode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := p.pipelineConfig(p.adapter, mode, p.pdp)
+	cfg.Clock = clock
+	pipeline, err := gateway.New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.pipeline = pipeline
 }
 
 // admitTransfer admits the same transfer again under a fresh request id: the

@@ -26,6 +26,13 @@
 #                                       guarded or reached tree
 #   go mod tidy -diff                   a module imported with no direct
 #                                       requirement in go.mod
+#   check-imports.sh, depguard          each tree adapter_denied names,
+#                                       imported by a non-test file under
+#                                       adapters/; check-imports.sh also in a
+#                                       file a constraint keeps off the gate
+#   layering_test.go, docscheck         a v1 Decision composed there, by a
+#                                       literal and by new; docscheck's type
+#                                       check also through an alias
 #
 # The lint fixture goes into every package of every guarded tree and of each
 # tree the probe names itself, its package clause rewritten, and into one new
@@ -69,6 +76,7 @@ staged="$(repo_stage "${copy}")"
 
 module="$(cd "${copy}" && GOWORK=off go list -m)"
 adapter="${module}/adapters/probeadapter"
+adapter_rule_dir="adapters/probereasons"
 helper="${module}/internal/probehelper"
 not_allowed="which the dependency rule does not allow"
 left_out="which build constraints leave out on this platform"
@@ -174,6 +182,15 @@ for tree in "${trees[@]}"; do
   plant platform "${tree}/ioprobe" ioprobe
   plant nameonly "${tree}/nameprobe" nameprobe
 done
+plant adapterrule "${adapter_rule_dir}" probereasons
+# One import of each tree adapter_denied names, in a plain file and in one a
+# build constraint keeps off every machine the gate runs on.
+n=0
+for entry in "${adapter_denied[@]}"; do
+  n=$((n + 1))
+  printf 'package probereasons\n\nimport _ "%s/%s"\n' "${module}" "${entry}" >"${copy}/${adapter_rule_dir}/zz_probe_denied_${n}.go"
+  printf '//go:build aix\n\npackage probereasons\n\nimport _ "%s/%s"\n' "${module}" "${entry}" >"${copy}/${adapter_rule_dir}/zz_probe_denied_aix_${n}.go"
+done
 
 failures=0
 expected=0
@@ -250,11 +267,21 @@ expect_walker() {
 
 run check-imports.sh scripts/check-imports.sh
 expect_walker check-imports.sh "FAIL "
+n=0
+for entry in "${adapter_denied[@]}"; do
+  n=$((n + 1))
+  for file in "zz_probe_denied_${n}.go" "zz_probe_denied_aix_${n}.go"; do
+    expect check-imports.sh "FAIL ${adapter_rule_dir}/${file} imports ${module}/${entry}, which no adapter may import"
+  done
+done
 
 run layering_test.go go test -count=1 \
-  -run '^(TestGuardedTreesImportOnlyAllowedPackages|TestGuardedTreesTakeNoInlineException|TestGuardedAndReachedFilesHoldNoBuildConstraint|TestGuardedFilesAreNamedByEveryListing|TestReachedPackagesReadNothingByName)$' \
+  -run '^(TestGuardedTreesImportOnlyAllowedPackages|TestGuardedTreesTakeNoInlineException|TestGuardedAndReachedFilesHoldNoBuildConstraint|TestGuardedFilesAreNamedByEveryListing|TestReachedPackagesReadNothingByName|TestAdaptersBuildNoDecision)$' \
   ./internal/core/
 expect_walker layering_test.go ""
+expect layering_test.go "${adapter_rule_dir}/zz_probe_adapter.go:" "composes a v1 Decision by a composite literal"
+expect layering_test.go "${adapter_rule_dir}/zz_probe_adapter.go:" "composes a v1 Decision by new"
+
 for dir in "${lint_dirs[@]}"; do
   expect layering_test.go "${dir}/zz_probe.go:" "excuses a guarded file from forbidigo"
   expect layering_test.go "${dir}/zz_probe_test.go:" "excuses a guarded file from depguard"
@@ -269,6 +296,11 @@ for dir in "${lint_dirs[@]}" "${reads_dirs[@]}"; do
   done
 done
 
+run 'the adapters type check' go test -count=1 -run '^TestAdaptersHoldNoDecisionValue$' ./internal/docscheck/
+for line in 10 13 19; do
+  expect 'the adapters type check' "${adapter_rule_dir}/zz_probe_adapter.go:${line}: composes or holds a v1 Decision by value"
+done
+
 # Every linter the configuration enables, over every guarded tree, and no
 # collapsing: by default golangci-lint keeps one issue per line and three of the
 # same text, which would drop expected refusals for reasons that have nothing
@@ -278,6 +310,7 @@ lint=(golangci-lint run --config .golangci.yml --uniq-by-line=false
 for tree in "${trees[@]}" "${reached_trees[@]}"; do
   lint+=("./${tree}/...")
 done
+lint+=("./${adapter_rule_dir}/...")
 run golangci-lint "${lint[@]}"
 for dir in "${lint_dirs[@]}"; do
   for imp in net os io/ioutil golang.org/x/sync/errgroup "${adapter}"; do
@@ -285,6 +318,11 @@ for dir in "${lint_dirs[@]}"; do
   done
   expect depguard "${dir}/zz_probe_test.go:" "import 'net/http' is not allowed from list 'core-tests'"
   expect forbidigo "${dir}/zz_probe.go:" "use of \`time.Now\` forbidden"
+done
+n=0
+for entry in "${adapter_denied[@]}"; do
+  n=$((n + 1))
+  expect depguard "${adapter_rule_dir}/zz_probe_denied_${n}.go:" "import '${module}/${entry}' is not allowed from list 'adapters'"
 done
 for dir in "${lint_dirs[@]}" "${reads_dirs[@]}"; do
   for call in probeclock.Now probeclock.Since probeclock.Until probeclock.After \

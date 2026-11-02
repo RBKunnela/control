@@ -94,3 +94,18 @@ func TestLintAndTestRefuseAPipe(t *testing.T) {
 		t.Errorf("a pipe as a case: %q, %v; want %q and a failure", r.line, r.ok, want)
 	}
 }
+
+// TestPolicyTestRefusesACaseThatIsAPipe: a named pipe beside a passing case is
+// refused by name before any case runs, never skipped while the rest pass.
+func TestPolicyTestRefusesACaseThatIsAPipe(t *testing.T) {
+	dir := caseDir(t, map[string]string{"case.json": base().json()})
+	mkfifo(t, filepath.Join(dir, "deny-write.json"))
+	o := within(t, "policy test", func() outputs {
+		code, stdout, stderr := invoke(t, "policy", "test", dir)
+		return outputs{code, stdout, stderr}
+	})
+	want := brand.CLI + ": policy test: " + dir + ": deny-write.json is not a regular file, so its case cannot run"
+	if o.code != exitFail || o.stdout != "" || strings.TrimSuffix(o.stderr, "\n") != want {
+		t.Errorf("exit %d, stdout %q, stderr %q; want %d, nothing and %q", o.code, o.stdout, o.stderr, exitFail, want)
+	}
+}

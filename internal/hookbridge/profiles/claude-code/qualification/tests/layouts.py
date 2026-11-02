@@ -35,10 +35,19 @@ def allow(
     return inv
 
 
-def block(run: Run, marker: bool = False, command: str = "touch marker") -> Invocation:
+def block(
+    run: Run,
+    marker: bool = False,
+    command: str = "touch marker",
+    answered: bool = True,
+    refused: bool = True,
+) -> Invocation:
     inv = run.inv("block")
     i = {"command": command}
-    cid = inv.call("Bash", i, answer="blocked by policy (RULE_DENY)", error=True)
+    if answered:
+        cid = inv.call("Bash", i, answer="blocked by policy (RULE_DENY)", error=refused)
+    else:
+        cid = inv.unanswered("Bash", i)
     inv.hook("PreToolUse", "Bash", i, cid, exit=2, stderr="blocked by policy (RULE_DENY)\n")
     inv.snapshot({"marker": ""} if marker else {})
     inv.request("r-block", "Bash", "cmd", [*PROPOSED, "ACTION_BLOCKED"], reasonCodes=["RULE_DENY"])
