@@ -11,6 +11,32 @@ verify one.
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-02
+
+Upgrading from 0.14 changes four things an operator must act on. `collect`
+writes a directory of segments of one tenant and project and requires a
+credential, which the plane sends through `export.headers`: `--dir`,
+`--tenant`, `--project` and `--credential-file` replace `--out`; past
+`--max-bytes` the plane's material calls are blocked until an operator prunes
+([ADR-0072](docs/adr/0072-the-collector-keeps-bounded-segments-of-one-project-behind-a-credential.md)).
+A run belongs to one project: a `1.0` run record is refused, so open each live
+run again in a new, empty directory, under a new task
+([ADR-0068](docs/adr/0068-a-run-belongs-to-one-project.md)). A gateway
+configuration that classifies a tool `WRITE`, `DELETE` or `CONFIGURE` needs
+`environment`, and an MCP override classified `TRANSACT` or
+`IDENTITY_OR_ACCESS` needs its upstream's `tenant_id`. An approval record
+whose approver now reads as `authn:` or mixes scripts resolves as
+`APPROVAL_STATE_UNKNOWN` and is never spent. Formats move too: the evidence
+export is `1.1`, whose `pruned_before` the evidence report raises as a gap;
+a supervise report that names a source it could not rely on is `0.2`; and an
+egress import writes observation records `0.3`. A 0.14 reader refuses each of
+them. New: `observe import` reads an egress proxy's access log, and `coverage`
+counts an egress path as observed by the connections of the sources it names
+([ADR-0069](docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor.md)).
+Operators can sign a roster of operator keys, though no plane reads it yet
+([ADR-0071](docs/adr/0071-operators-are-named-by-a-signed-roster.md)). The
+hook profile's qualification was not run again for this release.
+
 ### Security
 
 - The filesystem server the guide's MCP client check installs takes `glob`
@@ -2057,7 +2083,8 @@ yet.
   independence of this project from Guardana
   ([ADR-0024](docs/adr/0024-control-and-guardana-are-independent.md)).
 
-[Unreleased]: https://github.com/guardana/control/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/guardana/control/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/guardana/control/releases/tag/v0.15.0
 [0.14.0]: https://github.com/guardana/control/releases/tag/v0.14.0
 [0.13.0]: https://github.com/guardana/control/releases/tag/v0.13.0
 [0.12.0]: https://github.com/guardana/control/releases/tag/v0.12.0

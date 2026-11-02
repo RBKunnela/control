@@ -119,7 +119,31 @@
 <a href="/docs/adr/0008-branching-and-release-policy">ADR-0008</a>. Each release is built,
 signed and attested from its tag; <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a> shows how to
 verify one.</p>
-<h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.14.0...HEAD">Unreleased</a></h2>
+<h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.15.0...HEAD">Unreleased</a></h2>
+<h2 id="0150---2026-11-02"><a href="https://github.com/guardana/control/releases/tag/v0.15.0">0.15.0</a> - 2026-11-02</h2>
+<p>Upgrading from 0.14 changes four things an operator must act on. <code>collect</code>
+writes a directory of segments of one tenant and project and requires a
+credential, which the plane sends through <code>export.headers</code>: <code>--dir</code>,
+<code>--tenant</code>, <code>--project</code> and <code>--credential-file</code> replace <code>--out</code>; past
+<code>--max-bytes</code> the plane's material calls are blocked until an operator prunes
+(<a href="/docs/adr/0072-the-collector-keeps-bounded-segments-of-one-project-behind-a-credential">ADR-0072</a>).
+A run belongs to one project: a <code>1.0</code> run record is refused, so open each live
+run again in a new, empty directory, under a new task
+(<a href="/docs/adr/0068-a-run-belongs-to-one-project">ADR-0068</a>). A gateway
+configuration that classifies a tool <code>WRITE</code>, <code>DELETE</code> or <code>CONFIGURE</code> needs
+<code>environment</code>, and an MCP override classified <code>TRANSACT</code> or
+<code>IDENTITY_OR_ACCESS</code> needs its upstream's <code>tenant_id</code>. An approval record
+whose approver now reads as <code>authn:</code> or mixes scripts resolves as
+<code>APPROVAL_STATE_UNKNOWN</code> and is never spent. Formats move too: the evidence
+export is <code>1.1</code>, whose <code>pruned_before</code> the evidence report raises as a gap;
+a supervise report that names a source it could not rely on is <code>0.2</code>; and an
+egress import writes observation records <code>0.3</code>. A 0.14 reader refuses each of
+them. New: <code>observe import</code> reads an egress proxy's access log, and <code>coverage</code>
+counts an egress path as observed by the connections of the sources it names
+(<a href="/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor">ADR-0069</a>).
+Operators can sign a roster of operator keys, though no plane reads it yet
+(<a href="/docs/adr/0071-operators-are-named-by-a-signed-roster">ADR-0071</a>). The
+hook profile's qualification was not run again for this release.</p>
 <h3 id="security">Security</h3>
 <ul>
 <li>The filesystem server the guide's MCP client check installs takes <code>glob</code>
