@@ -121,6 +121,12 @@ Date: 2026-10-07</p>
 <a href="/docs/adr/0046-a-finding-stops-one-run-through-a-signed-route">ADR-0046</a>. Amends
 ADR-0045 on the procedure's schema, the rules and a run's children, and
 ADR-0046 on what may stop and on a child run.</p>
+<p>Amended: a report that names a source in doubt (<code>sources_in_doubt</code>: a
+<code>--source</code> not read, never heard or silent) is schema <code>&quot;0.2&quot;</code> whatever its
+procedure's schema. Under <code>0.1</code> a report keeps <code>&quot;0.1&quot;</code> only while every source
+was read and heard in time; that is new beside what the Decision and the
+Consequences below say
+(<a href="/docs/reference/supervision#the-finding-record-and-its-log">supervision</a>).</p>
 <h2 id="context">Context</h2>
 <p>Milestone 2 asks the supervisor to report a procedure's exceptions and the
 attempts to use a resource or permission the run does not hold, a denied

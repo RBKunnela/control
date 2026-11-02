@@ -124,6 +124,7 @@ func (e *evaluation) result(drafts []draft, states map[string]ruleState) *Result
 		}
 	}
 	e.reportTree(res.Report)
+	e.reportSources(res.Report)
 	for _, rq := range e.reqs {
 		if rq.terminal.GetKind() == blocked && !rq.denied() {
 			res.PlaneBlocks[rq.blockCode()]++
@@ -213,7 +214,8 @@ func inDoubt(kind string, ids []string) string {
 var reportRules = []string{RuleStepOutsideProcedure, RuleDeniedActionRetriedAround}
 
 // reportSchema02 is the version of a report that carries the children mode
-// and the run tree, which a 0.2 procedure's report always does.
+// and the run tree, which a 0.2 procedure's report always does, or names a
+// source it could not rely on.
 const reportSchema02 = "0.2"
 
 var childrenModes = map[Children]findingv1alpha1.ChildrenMode{
@@ -231,5 +233,29 @@ func (e *evaluation) reportTree(r *findingv1alpha1.SuperviseReport) {
 	r.SchemaVersion, r.Children = reportSchema02, childrenModes[e.p.children]
 	for _, run := range treeOf(e.in) {
 		r.RunTree = append(r.RunTree, &findingv1alpha1.RunTreeMember{RunId: run.ID, ParentRunId: run.Parent})
+	}
+}
+
+// reportSources names in the report each source it could not rely on: each
+// not read, then each never heard, then each silent. A report that names one
+// carries a member "0.1" does not have, so it is "0.2".
+func (e *evaluation) reportSources(r *findingv1alpha1.SuperviseReport) {
+	heartbeat := make(map[string]uint32, len(e.in.Sources))
+	for _, s := range e.in.Sources {
+		heartbeat[s.SourceID] = s.HeartbeatSeconds
+	}
+	for range e.in.SourcesNotRead {
+		r.SourcesInDoubt = append(r.SourcesInDoubt, &findingv1alpha1.SourceInDoubt{State: findingv1alpha1.SourceState_SOURCE_STATE_NOT_READ})
+	}
+	for _, group := range []struct {
+		ids   []string
+		state findingv1alpha1.SourceState
+	}{{e.neverHeard, findingv1alpha1.SourceState_SOURCE_STATE_NEVER_HEARD}, {e.lapsed, findingv1alpha1.SourceState_SOURCE_STATE_SILENT}} {
+		for _, id := range group.ids {
+			r.SourcesInDoubt = append(r.SourcesInDoubt, &findingv1alpha1.SourceInDoubt{SourceId: id, State: group.state, HeartbeatSeconds: heartbeat[id]})
+		}
+	}
+	if len(r.SourcesInDoubt) != 0 {
+		r.SchemaVersion = reportSchema02
 	}
 }

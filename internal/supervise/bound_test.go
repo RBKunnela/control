@@ -2,6 +2,7 @@ package supervise_test
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -124,8 +125,9 @@ func TestEveryReportAroundADenialIsWeighed(t *testing.T) {
 
 // TestAReportAtTheTreeBoundIsWritten: a tree of MaxTreeRuns open runs, with
 // the tenant, project, procedure id and version at contract.MaxStringBytes
-// of a byte JSON escapes in two, makes a report the findings log writes
-// within seven eighths of its line.
+// of a byte JSON escapes in two, and MaxSources sources never heard, each
+// with the longest id a descriptor holds, makes a report the findings log
+// writes within seven eighths of its line.
 func TestAReportAtTheTreeBoundIsWritten(t *testing.T) {
 	long := strings.Repeat(`"`, contract.MaxStringBytes)
 	doc := v02With(t, `"procedure_id": "refund"`, `"procedure_id": "`+strings.Repeat(`\"`, contract.MaxStringBytes)+`"`,
@@ -138,13 +140,18 @@ func TestAReportAtTheTreeBoundIsWritten(t *testing.T) {
 	for i := 1; i < supervise.MaxTreeRuns; i++ {
 		tree = append(tree, supervise.Run{ID: fmt.Sprintf("run-%032x", i), Tenant: long, Parent: tree[i-1].ID})
 	}
+	var sources []supervise.Source
+	for i := range supervise.MaxSources {
+		sources = append(sources, supervise.Source{SourceID: fmt.Sprintf("%0128d", i), Kind: otelKind, Tenant: long, Project: long,
+			HeartbeatSeconds: math.MaxUint32})
+	}
 	lookup := call{req: "r1", tool: "get_order", upstream: "shop", tenant: long, proj: long}
-	res, err := supervise.Evaluate(supervise.Input{Procedure: p, Run: tree[0], Tree: tree, Exports: []supervise.Export{export(lookup)}})
+	res, err := supervise.Evaluate(supervise.Input{Procedure: p, Run: tree[0], Tree: tree, Exports: []supervise.Export{export(lookup)}, Sources: sources})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(res.Report.GetRunTree()) != supervise.MaxTreeRuns || res.Report.GetProjectId() != long {
-		t.Fatalf("the report names %d runs", len(res.Report.GetRunTree()))
+	if len(res.Report.GetRunTree()) != supervise.MaxTreeRuns || res.Report.GetProjectId() != long || len(res.Report.GetSourcesInDoubt()) != supervise.MaxSources {
+		t.Fatalf("the report names %d runs and %d sources", len(res.Report.GetRunTree()), len(res.Report.GetSourcesInDoubt()))
 	}
 	line, err := findinglog.Line(&findingv1alpha1.Record{Record: &findingv1alpha1.Record_SuperviseReport{SuperviseReport: res.Report}})
 	if err != nil {

@@ -8,11 +8,11 @@ covers: [internal/supervise/**, internal/findinglog/**, internal/notify/**, cmd/
 # Supervision
 
 `guardana-control supervise` checks a run an operator opened against its
-procedure, from the plane's evidence and the runtime's reports, and
+procedure, from plane evidence and runtime reports, and
 appends findings to a log.
 `guardana-control notify` hands each alert in that log to a program of the
-operator's, at least once. Both are `experimental`. Neither decides a call,
-and no plane reads what they write
+operator's, at least once. Both are `experimental`. Neither decides a call;
+no plane reads what they write
 ([ADR-0045](../adr/0045-one-run-is-supervised-against-its-procedure.md));
 `react` turns a confirmed finding into a stop a plane reads
 ([reaction.md](reaction.md)). `--view` draws the run
@@ -48,16 +48,16 @@ another digest is refused.
 
 ## What belongs to the run
 
-Only a run opened in a runs directory is supervised; a plane's local run is
-refused. Under `0.1` and `inherit` the run must be a root. `inherit` reads
+Only a run opened in a runs directory is supervised, not a plane's local
+run. Under `0.1` and `inherit` the run must be a root. `inherit` reads
 the root's tree, up to 400 runs, and refuses a member of another tenant
 or project or a parent chain that misses the root; every member is judged, and
 the tree is closed when every member is. `separate` takes any opened run and
 lists its children, not judged. Plane events count when their run is judged
 and their tenant the run's; one of another project refuses the input.
 Observations count when their correlation is claimed, with such a run id,
-tenant and project; a `--source` of another tenant or project, or of a kind
-naming no run ([observations](observations.md#the-source-descriptor)), is
+tenant and project; a 33rd `--source`, one of another tenant or project, or
+of a kind naming no run ([observations](observations.md#the-source-descriptor)), is
 refused. Only a tool call is a step. An observation joined to a plane event
 by trace and span id is that call; a join cut short leaves
 `STEP_OUTSIDE_PROCEDURE` and `DENIED_ACTION_RETRIED_AROUND` not checked,
@@ -116,7 +116,7 @@ or `<id> silent` for each `--source` not judged against.
 
 | Exit | When |
 | --- | --- |
-| 0 | no finding, every rule checked or off, a plane event of the run read, every `--source` read and heard in time |
+| 0 | no finding, every rule checked or off, a plane event of the run read, no `--source` unread, unheard or silent |
 | 1 | otherwise |
 | 2 | nothing printed: an input refused, or a log not opened or written (a cut write no reader takes) |
 
@@ -132,7 +132,7 @@ finding with its id, rule, severity, verdict and run. Its id is
 `fnd-` and 32 hex digits, a function of the run, the procedure, the rule and
 its version, and what it is about, so a rerun finds the same ids. The log,
 `findings.jsonl`, is JSON Lines in an owner-only directory. The command writes only when it read an event
-of the run, and ends its write with a `SuperviseReport`; a write without one
+of the run, ending its write with a `SuperviseReport`; a write without one
 is never read.
 
 A record is schema `0.2` exactly when it carries a member `0.1` lacks
@@ -144,6 +144,7 @@ A record is schema `0.2` exactly when it carries a member `0.1` lacks
 | `FindingRecord.refs_left_out` | references cut past ten, doubtful ones kept; the verdict weighed all |
 | `SuperviseReport.children` | the procedure's `children`, as `CHILDREN_MODE_INHERIT` or `_SEPARATE` |
 | `SuperviseReport.run_tree` | each run's id and parent, the supervised run first, each other after its parent |
+| `SuperviseReport.sources_in_doubt` | each `--source` unread (no id), unheard or silent |
 | `LogHeader` | a new log's first line: `log_id`, `log-` and 32 hex digits of 128 random bits |
 
 The reader refuses an unknown schema or a member its schema lacks.

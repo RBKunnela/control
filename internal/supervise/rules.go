@@ -104,26 +104,31 @@ func (e *evaluation) outsideProcedure() []draft {
 }
 
 // deadline fires when the run's plane events span more than
-// deadline_seconds. Events from more than one export may come from planes
-// whose clocks differ, so then it only suggests. A 0.1 finding cites the
-// first event and the last; under 0.2 deadlineByRun gives each run its own.
+// deadline_seconds. A 0.1 finding cites the first event and the last; under
+// 0.2 deadlineByRun gives each run its own.
 func (e *evaluation) deadline() []draft {
 	limit := time.Duration(e.p.deadlineSeconds) * time.Second
 	if !e.pastDeadline() {
 		return nil
 	}
-	most := confirmed
-	if len(e.in.Exports) != 1 {
-		most = suspected
-	}
 	if e.namesRuns() {
-		return e.deadlineByRun(limit, most)
+		return e.deadlineByRun(limit)
 	}
-	d := draft{rule: RuleDeadlineExceeded, cap: most}
+	d := draft{rule: RuleDeadlineExceeded, cap: e.spanCap(e.first, e.last)}
 	for _, ev := range []*controlv1.Event{e.first, e.last} {
 		d.refs = append(d.refs, e.byRequest[ev.GetRequestId()].ref(ev))
 	}
 	return []draft{d}
+}
+
+// spanCap is the most a span between two events can say: endpoints no one
+// export holds may come from planes whose clocks differ, so then it only
+// suggests.
+func (e *evaluation) spanCap(from, to *controlv1.Event) controlv1.FindingVerdict {
+	if shareOne(e.exportsOf(from), e.exportsOf(to)) {
+		return confirmed
+	}
+	return suspected
 }
 
 // pastDeadline reports whether the run's events with a time span more than

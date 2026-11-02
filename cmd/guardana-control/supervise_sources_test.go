@@ -1,14 +1,19 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/guardana/control/internal/findinglog"
+	"github.com/guardana/control/internal/supervise"
 )
 
 // TestSuperviseSaysWhatOfASourceItRead: a descriptor that does not exist is
@@ -32,6 +37,66 @@ func TestSuperviseSaysWhatOfASourceItRead(t *testing.T) {
 		!strings.Contains(stdout, want) || !strings.Contains(stdout, "not checked: source "+descriptor+" absent\n") {
 		t.Errorf("exit %d, stderr %q, stdout\n%s\nwant 1, %q and the source not checked", code, stderr, stdout, want)
 	}
+	want := []string{"0.2 SOURCE_STATE_NEVER_HEARD:agent-runtime:300", "0.2 SOURCE_STATE_NOT_READ::0"}
+	if got := loggedReports(t, tr.findings); !slices.Equal(got, want) {
+		t.Errorf("the findings log and its export hold the reports %q, want %q", got, want)
+	}
+}
+
+// loggedReports is each report of the findings log in dir, as its schema and
+// then each source it names as state:id:heartbeat. It reads them from the log
+// and again from findings export, and fails the test unless both agree.
+func loggedReports(t *testing.T, dir string) []string {
+	t.Helper()
+	records, err := findinglog.ReadFile(filepath.Join(dir, findinglog.FileName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var logged []string
+	for _, r := range records {
+		if rep := r.GetSuperviseReport(); rep != nil {
+			out := rep.GetSchemaVersion()
+			for _, s := range rep.GetSourcesInDoubt() {
+				out += fmt.Sprintf(" %s:%s:%d", s.GetState(), s.GetSourceId(), s.GetHeartbeatSeconds())
+			}
+			logged = append(logged, out)
+		}
+	}
+	code, stdout, stderr := invoke(t, "findings", "export", "--findings", dir)
+	if code != exitOK || stderr != "" {
+		t.Fatalf("findings export: exit %d, stderr %q", code, stderr)
+	}
+	var exported []string
+	for _, line := range strings.Split(strings.TrimSuffix(stdout, "\n"), "\n") {
+		var l struct {
+			Type string `json:"type"`
+			Line struct {
+				Report struct {
+					SchemaVersion  string `json:"schemaVersion"`
+					SourcesInDoubt []struct {
+						SourceID         string `json:"sourceId"`
+						State            string `json:"state"`
+						HeartbeatSeconds uint32 `json:"heartbeatSeconds"`
+					} `json:"sourcesInDoubt"`
+				} `json:"superviseReport"`
+			} `json:"supervise_report"`
+		}
+		if err := json.Unmarshal([]byte(line), &l); err != nil {
+			t.Fatalf("findings export wrote a line that is not JSON: %q", line)
+		}
+		if l.Type != "supervise_report" {
+			continue
+		}
+		out := l.Line.Report.SchemaVersion
+		for _, s := range l.Line.Report.SourcesInDoubt {
+			out += fmt.Sprintf(" %s:%s:%d", s.State, s.SourceID, s.HeartbeatSeconds)
+		}
+		exported = append(exported, out)
+	}
+	if !slices.Equal(logged, exported) {
+		t.Fatalf("the log holds the reports %q and its export %q", logged, exported)
+	}
+	return logged
 }
 
 // TestSuperviseASilentSourceIsNotAPass: a conforming run whose source was
@@ -57,6 +122,13 @@ func TestSuperviseASilentSourceIsNotAPass(t *testing.T) {
 			}
 			if silent := strings.Contains(stdout, "not checked: source agent-runtime silent\n"); silent != (c.code == 1) {
 				t.Errorf("stdout names the source silent: %v, want %v:\n%s", silent, c.code == 1, stdout)
+			}
+			want := []string{"0.1"}
+			if c.code == 1 {
+				want = []string{"0.2 SOURCE_STATE_SILENT:agent-runtime:300"}
+			}
+			if got := loggedReports(t, tr.findings); !slices.Equal(got, want) {
+				t.Errorf("the findings log and its export hold the reports %q, want %q", got, want)
 			}
 		})
 	}
@@ -296,5 +368,26 @@ func TestSuperviseAnotherSourcesDoubtIsNotThisSources(t *testing.T) {
 	code, stdout, _ = invoke(t, tr.args("--evidence", x, "--source", other, "--log", log)...)
 	if want := `source "other-runtime" is in doubt`; code != exitFail || !strings.Contains(stdout, want) {
 		t.Errorf("supervised against the other source: exit %d, stdout\n%s\nwant 1 and %q", code, stdout, want)
+	}
+}
+
+// TestSuperviseRefusesTooManySourcesBeforeReading: past MaxSources pairs the
+// command refuses before it reads any file, even a procedure that does not
+// exist; at the bound it goes on to read the procedure and refuses that.
+func TestSuperviseRefusesTooManySourcesBeforeReading(t *testing.T) {
+	tr := newSupTree(t)
+	gone := filepath.Join(tr.dir, "gone")
+	for n, want := range map[int]string{
+		supervise.MaxSources:     "procedure",
+		supervise.MaxSources + 1: fmt.Sprintf("%d sources are given, bound %d", supervise.MaxSources+1, supervise.MaxSources),
+	} {
+		args := []string{"supervise", "--procedure", gone, "--runs", tr.runs, "--run", tr.run, "--findings", tr.findings}
+		for i := range n {
+			args = append(args, "--source", fmt.Sprintf("%s-%d.json", gone, i), "--log", tr.dir)
+		}
+		code, stdout, stderr := invoke(t, args...)
+		if code != exitUsage || stdout != "" || !strings.Contains(stderr, want) {
+			t.Errorf("%d sources: exit %d, stdout %q, stderr %q; want 2 and %q", n, code, stdout, stderr, want)
+		}
 	}
 }

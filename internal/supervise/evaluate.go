@@ -10,8 +10,8 @@ import (
 	"github.com/guardana/control/internal/observe"
 )
 
-// RecordSchemaVersion is the version of a 0.1 procedure's report and of each
-// finding record that carries no member of 0.2.
+// RecordSchemaVersion is the version of each report and finding record that
+// carries no member of 0.2.
 const RecordSchemaVersion = "0.1"
 
 // Run is an opened run, as its record says.
@@ -32,6 +32,11 @@ type Run struct {
 // supervised run included, so the report that lists them fits a findings
 // log line with every string it carries at the contract's longest.
 const MaxTreeRuns = 400
+
+// MaxSources bounds the sources one supervision is given, read or not, so
+// the report that names each one it could not rely on still fits a findings
+// log line.
+const MaxSources = 32
 
 // Export is one evidence export's events. Whole is true when it holds every
 // line of its trail; NotWhole says why it does not.
@@ -118,8 +123,8 @@ type Result struct {
 
 // Evaluate checks one run against its procedure. It refuses a run id that is
 // not an opened run's with ErrRunID, and a procedure ReadProcedure did not
-// make, a run with no tenant, a tree its procedure does not read, a source
-// given twice, a run whose events name two projects or another than its
+// make, a run with no tenant, a tree its procedure does not read, more than
+// MaxSources sources, a source given twice, a run whose events name two projects or another than its
 // record, or a source of another tenant or project than the run's with
 // ErrInput.
 func Evaluate(in Input) (*Result, error) {
@@ -178,6 +183,9 @@ func checkInput(in Input) error {
 	}
 	if in.Run.Tenant == "" {
 		return ErrInput.with("the run names no tenant")
+	}
+	if n := len(in.Sources) + len(in.SourcesNotRead); n > MaxSources {
+		return ErrInput.with(fmt.Sprintf("%d sources are given, bound %d", n, MaxSources))
 	}
 	seen := map[string]bool{}
 	for _, s := range in.Sources {

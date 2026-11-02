@@ -178,7 +178,8 @@ func TestAnUntimedEventLeavesADeadlineWithinTheKnownSpanUnchecked(t *testing.T) 
 
 // TestAnUntimedEventOfAnyRunOfTheTreeLeavesTheDeadlineUnchecked: under 0.2 a
 // child's event with no time may lie past the tree's deadline; a run past it
-// on the known span still gets its finding.
+// on the known span still gets its finding, confirmed when one export holds
+// both events it cites.
 func TestAnUntimedEventOfAnyRunOfTheTreeLeavesTheDeadlineUnchecked(t *testing.T) {
 	lookup := call{req: "r1", tool: "get_order", upstream: "shop"}
 	child := call{req: "c1", tool: "search_docs", upstream: "docs", at: 10 * time.Second, run: childRun}
@@ -194,7 +195,7 @@ func TestAnUntimedEventOfAnyRunOfTheTreeLeavesTheDeadlineUnchecked(t *testing.T)
 	late := call{req: "r2", tool: "search_docs", upstream: "docs", at: 700 * time.Second}
 	res = treeEvaluate(t, supervise.Input{Procedure: inheritProc(t), Tree: family(),
 		Exports: []supervise.Export{export(lookup, late), untimedBy(child)}})
-	if got := verdicts(res, supervise.RuleDeadlineExceeded); !slices.Equal(got, []string{rootS}) {
-		t.Fatalf("findings %q, want %q:\n%s", got, []string{rootS}, dump(res.Findings))
+	if got := verdicts(res, supervise.RuleDeadlineExceeded); !slices.Equal(got, []string{rootC}) {
+		t.Fatalf("findings %q, want %q:\n%s", got, []string{rootC}, dump(res.Findings))
 	}
 }

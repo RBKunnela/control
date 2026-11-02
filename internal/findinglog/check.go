@@ -70,6 +70,8 @@ func checkReport(r *findingv1alpha1.SuperviseReport) error {
 		added = "children"
 	case len(r.GetRunTree()) != 0:
 		added = "run_tree"
+	case len(r.GetSourcesInDoubt()) != 0:
+		added = "sources_in_doubt"
 	}
 	if err := checkOrigin(r.GetSchemaVersion(), added, r.GetTenantId(), r.GetProjectId()); err != nil {
 		return err
@@ -77,10 +79,30 @@ func checkReport(r *findingv1alpha1.SuperviseReport) error {
 	if !prefixedHex(r.GetRunId(), "run-") {
 		return fieldError(`run_id: not "run-" and 32 lowercase hex digits`)
 	}
-	if added == "" {
+	for _, s := range r.GetSourcesInDoubt() {
+		if err := checkSourceInDoubt(s); err != nil {
+			return err
+		}
+	}
+	if r.GetChildren() == findingv1alpha1.ChildrenMode_CHILDREN_MODE_UNSPECIFIED && len(r.GetRunTree()) == 0 {
 		return nil
 	}
 	return checkTree(r)
+}
+
+// checkSourceInDoubt holds a source a report names: of a known state, and
+// named by its id exactly when it was read.
+func checkSourceInDoubt(s *findingv1alpha1.SourceInDoubt) error {
+	notRead := s.GetState() == findingv1alpha1.SourceState_SOURCE_STATE_NOT_READ
+	switch {
+	case !known(int32(s.GetState()), findingv1alpha1.SourceState_name):
+		return fieldError("sources_in_doubt.state: neither not read, never heard nor silent")
+	case notRead && s.GetSourceId() != "":
+		return fieldError("sources_in_doubt.source_id: set on a source not read")
+	case !notRead && s.GetSourceId() == "":
+		return fieldError("sources_in_doubt.source_id: required")
+	}
+	return nil
 }
 
 // checkTree holds a "0.2" report's tree to its children mode: the

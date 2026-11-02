@@ -77,6 +77,13 @@ verify one.
 
 ### Changed
 
+- **Breaking:** a supervise report names each `--source` it could not rely
+  on in `sources_in_doubt`: one not read by its state alone, one never heard
+  or silent by its id and heartbeat. A report that names one is schema `0.2`
+  whatever its procedure's schema, so the findings log and `findings export`
+  now say what the exit status said. An earlier release refuses a log holding
+  such a line as damaged at that line, and misreads nothing. `supervise`
+  refuses more than 32 sources before reading any file.
 - Both approval stores decide whether an approval may be spent in one order
   ([approvals](docs/concepts/approvals-and-the-held-call.md)). An expired
   record marked multi-use in an approvals directory is left pending and
@@ -246,6 +253,10 @@ verify one.
 
 ### Fixed
 
+- A deadline finding is `CONFIRMED` when one evidence export holds both events
+  it cites, whatever other exports were given; it was `SUSPECTED` whenever
+  more than one export was, even the same export twice. Endpoints no one
+  export holds stay `SUSPECTED`, since two planes' clocks differ.
 - The collector answers 503, not 400, to a body it could not read to its end,
   as one cut by a reset connection or a read timeout, so the plane sends it
   again instead of quarantining it.

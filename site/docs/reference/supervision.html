@@ -113,11 +113,11 @@
 <main id="main" class="prose">
 <h1 id="supervision">Supervision</h1>
 <p><code>guardana-control supervise</code> checks a run an operator opened against its
-procedure, from the plane's evidence and the runtime's reports, and
+procedure, from plane evidence and runtime reports, and
 appends findings to a log.
 <code>guardana-control notify</code> hands each alert in that log to a program of the
-operator's, at least once. Both are <code>experimental</code>. Neither decides a call,
-and no plane reads what they write
+operator's, at least once. Both are <code>experimental</code>. Neither decides a call;
+no plane reads what they write
 (<a href="/docs/adr/0045-one-run-is-supervised-against-its-procedure">ADR-0045</a>);
 <code>react</code> turns a confirmed finding into a stop a plane reads
 (<a href="/docs/reference/reaction">reaction.md</a>). <code>--view</code> draws the run
@@ -184,16 +184,16 @@ another digest is refused.</p>
 </tbody>
 </table>
 <h2 id="what-belongs-to-the-run">What belongs to the run</h2>
-<p>Only a run opened in a runs directory is supervised; a plane's local run is
-refused. Under <code>0.1</code> and <code>inherit</code> the run must be a root. <code>inherit</code> reads
+<p>Only a run opened in a runs directory is supervised, not a plane's local
+run. Under <code>0.1</code> and <code>inherit</code> the run must be a root. <code>inherit</code> reads
 the root's tree, up to 400 runs, and refuses a member of another tenant
 or project or a parent chain that misses the root; every member is judged, and
 the tree is closed when every member is. <code>separate</code> takes any opened run and
 lists its children, not judged. Plane events count when their run is judged
 and their tenant the run's; one of another project refuses the input.
 Observations count when their correlation is claimed, with such a run id,
-tenant and project; a <code>--source</code> of another tenant or project, or of a kind
-naming no run (<a href="/docs/reference/observations#the-source-descriptor">observations</a>), is
+tenant and project; a 33rd <code>--source</code>, one of another tenant or project, or
+of a kind naming no run (<a href="/docs/reference/observations#the-source-descriptor">observations</a>), is
 refused. Only a tool call is a step. An observation joined to a plane event
 by trace and span id is that call; a join cut short leaves
 <code>STEP_OUTSIDE_PROCEDURE</code> and <code>DENIED_ACTION_RETRIED_AROUND</code> not checked,
@@ -292,7 +292,7 @@ or <code>&lt;id&gt; silent</code> for each <code>--source</code> not judged agai
 <tbody>
 <tr>
 <td>0</td>
-<td>no finding, every rule checked or off, a plane event of the run read, every <code>--source</code> read and heard in time</td>
+<td>no finding, every rule checked or off, a plane event of the run read, no <code>--source</code> unread, unheard or silent</td>
 </tr>
 <tr>
 <td>1</td>
@@ -314,7 +314,7 @@ finding with its id, rule, severity, verdict and run. Its id is
 <code>fnd-</code> and 32 hex digits, a function of the run, the procedure, the rule and
 its version, and what it is about, so a rerun finds the same ids. The log,
 <code>findings.jsonl</code>, is JSON Lines in an owner-only directory. The command writes only when it read an event
-of the run, and ends its write with a <code>SuperviseReport</code>; a write without one
+of the run, ending its write with a <code>SuperviseReport</code>; a write without one
 is never read.</p>
 <p>A record is schema <code>0.2</code> exactly when it carries a member <code>0.1</code> lacks
 (<a href="/docs/adr/0047-a-procedure-states-its-exceptions-resources-and-children">ADR-0047</a>):</p>
@@ -341,6 +341,10 @@ is never read.</p>
 <tr>
 <td><code>SuperviseReport.run_tree</code></td>
 <td>each run's id and parent, the supervised run first, each other after its parent</td>
+</tr>
+<tr>
+<td><code>SuperviseReport.sources_in_doubt</code></td>
+<td>each <code>--source</code> unread (no id), unheard or silent</td>
 </tr>
 <tr>
 <td><code>LogHeader</code></td>

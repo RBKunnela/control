@@ -187,6 +187,15 @@ classified. <code>Validate</code> does not change (<a href="/docs/adr/0067-the-p
 <h3 id="changed">Changed</h3>
 <ul>
 <li>
+<p><strong>Breaking:</strong> a supervise report names each <code>--source</code> it could not rely
+on in <code>sources_in_doubt</code>: one not read by its state alone, one never heard
+or silent by its id and heartbeat. A report that names one is schema <code>0.2</code>
+whatever its procedure's schema, so the findings log and <code>findings export</code>
+now say what the exit status said. An earlier release refuses a log holding
+such a line as damaged at that line, and misreads nothing. <code>supervise</code>
+refuses more than 32 sources before reading any file.</p>
+</li>
+<li>
 <p>Both approval stores decide whether an approval may be spent in one order
 (<a href="/docs/concepts/approvals-and-the-held-call">approvals</a>). An expired
 record marked multi-use in an approvals directory is left pending and
@@ -398,6 +407,10 @@ time, which no lint read before.</p>
 </ul>
 <h3 id="fixed">Fixed</h3>
 <ul>
+<li>A deadline finding is <code>CONFIRMED</code> when one evidence export holds both events
+it cites, whatever other exports were given; it was <code>SUSPECTED</code> whenever
+more than one export was, even the same export twice. Endpoints no one
+export holds stay <code>SUSPECTED</code>, since two planes' clocks differ.</li>
 <li>The collector answers 503, not 400, to a body it could not read to its end,
 as one cut by a reset connection or a read timeout, so the plane sends it
 again instead of quarantining it.</li>

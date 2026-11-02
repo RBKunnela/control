@@ -23,7 +23,8 @@ enum RuleState {
 }
 
 // How a supervision treated the supervised run's children. Unspecified, as in
-// every "0.1" report, reads as children neither judged nor listed.
+// the report of every "0.1" procedure, reads as children neither judged nor
+// listed.
 enum ChildrenMode {
   CHILDREN_MODE_UNSPECIFIED = 0;
   // The supervised run is a root, and every run of its tree was judged.
@@ -31,6 +32,29 @@ enum ChildrenMode {
   // Only the supervised run's own calls were judged; its children are listed
   // and not judged.
   CHILDREN_MODE_SEPARATE = 2;
+}
+
+// Why a supervision could not rely on a source it was given. Unspecified, or
+// a number a reader does not know, reads as not read.
+enum SourceState {
+  SOURCE_STATE_UNSPECIFIED = 0;
+  // No descriptor at the path given, so nothing of it was read.
+  SOURCE_STATE_NOT_READ = 1;
+  // No import report of its own says it was heard.
+  SOURCE_STATE_NEVER_HEARD = 2;
+  // Its heartbeat ran out before the run's last plane event with a time.
+  SOURCE_STATE_SILENT = 3;
+}
+
+// A source given to a supervision that it could not rely on: what that
+// source did not report may simply not have been read.
+message SourceInDoubt {
+  // The descriptor's source id; empty when not read, since the path given is
+  // the only name it has and the report does not repeat it.
+  string source_id = 1;
+  SourceState state = 2;
+  // The descriptor's heartbeat; 0 when not read.
+  uint32 heartbeat_seconds = 3;
 }
 
 // One run of a supervised tree.
@@ -92,11 +116,15 @@ message SuperviseReport {
   repeated RuleResult rules = 7;
   // Finding records this supervision appended to the log.
   uint64 findings_written = 8;
-  // Set in every "0.2" report, never in a "0.1" one.
+  // Set in the report of every "0.2" procedure, so never in a "0.1" report.
   ChildrenMode children = 9;
   // The supervised run first, then each other member after its parent. Under
   // inherit the first is the root and the list is its whole tree; under
-  // separate the rest are its children, none of them judged. Set in every
-  // "0.2" report, never in a "0.1" one.
+  // separate the rest are its children, none of them judged. Set exactly
+  // when children is.
   repeated RunTreeMember run_tree = 10;
+  // Each source given that was not read, then each never heard, then each
+  // silent, every group in the order given. Set only in a "0.2" report, and
+  // a report that sets it is "0.2" whatever its procedure's schema.
+  repeated SourceInDoubt sources_in_doubt = 11;
 }

@@ -87,7 +87,8 @@ func (RuleState) EnumDescriptor() ([]byte, []int) {
 }
 
 // How a supervision treated the supervised run's children. Unspecified, as in
-// every "0.1" report, reads as children neither judged nor listed.
+// the report of every "0.1" procedure, reads as children neither judged nor
+// listed.
 type ChildrenMode int32
 
 const (
@@ -140,6 +141,128 @@ func (ChildrenMode) EnumDescriptor() ([]byte, []int) {
 	return file_guardana_control_finding_v1alpha1_report_proto_rawDescGZIP(), []int{1}
 }
 
+// Why a supervision could not rely on a source it was given. Unspecified, or
+// a number a reader does not know, reads as not read.
+type SourceState int32
+
+const (
+	SourceState_SOURCE_STATE_UNSPECIFIED SourceState = 0
+	// No descriptor at the path given, so nothing of it was read.
+	SourceState_SOURCE_STATE_NOT_READ SourceState = 1
+	// No import report of its own says it was heard.
+	SourceState_SOURCE_STATE_NEVER_HEARD SourceState = 2
+	// Its heartbeat ran out before the run's last plane event with a time.
+	SourceState_SOURCE_STATE_SILENT SourceState = 3
+)
+
+// Enum value maps for SourceState.
+var (
+	SourceState_name = map[int32]string{
+		0: "SOURCE_STATE_UNSPECIFIED",
+		1: "SOURCE_STATE_NOT_READ",
+		2: "SOURCE_STATE_NEVER_HEARD",
+		3: "SOURCE_STATE_SILENT",
+	}
+	SourceState_value = map[string]int32{
+		"SOURCE_STATE_UNSPECIFIED": 0,
+		"SOURCE_STATE_NOT_READ":    1,
+		"SOURCE_STATE_NEVER_HEARD": 2,
+		"SOURCE_STATE_SILENT":      3,
+	}
+)
+
+func (x SourceState) Enum() *SourceState {
+	p := new(SourceState)
+	*p = x
+	return p
+}
+
+func (x SourceState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SourceState) Descriptor() protoreflect.EnumDescriptor {
+	return file_guardana_control_finding_v1alpha1_report_proto_enumTypes[2].Descriptor()
+}
+
+func (SourceState) Type() protoreflect.EnumType {
+	return &file_guardana_control_finding_v1alpha1_report_proto_enumTypes[2]
+}
+
+func (x SourceState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SourceState.Descriptor instead.
+func (SourceState) EnumDescriptor() ([]byte, []int) {
+	return file_guardana_control_finding_v1alpha1_report_proto_rawDescGZIP(), []int{2}
+}
+
+// A source given to a supervision that it could not rely on: what that
+// source did not report may simply not have been read.
+type SourceInDoubt struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The descriptor's source id; empty when not read, since the path given is
+	// the only name it has and the report does not repeat it.
+	SourceId string      `protobuf:"bytes,1,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
+	State    SourceState `protobuf:"varint,2,opt,name=state,proto3,enum=guardana.control.finding.v1alpha1.SourceState" json:"state,omitempty"`
+	// The descriptor's heartbeat; 0 when not read.
+	HeartbeatSeconds uint32 `protobuf:"varint,3,opt,name=heartbeat_seconds,json=heartbeatSeconds,proto3" json:"heartbeat_seconds,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *SourceInDoubt) Reset() {
+	*x = SourceInDoubt{}
+	mi := &file_guardana_control_finding_v1alpha1_report_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SourceInDoubt) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SourceInDoubt) ProtoMessage() {}
+
+func (x *SourceInDoubt) ProtoReflect() protoreflect.Message {
+	mi := &file_guardana_control_finding_v1alpha1_report_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SourceInDoubt.ProtoReflect.Descriptor instead.
+func (*SourceInDoubt) Descriptor() ([]byte, []int) {
+	return file_guardana_control_finding_v1alpha1_report_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *SourceInDoubt) GetSourceId() string {
+	if x != nil {
+		return x.SourceId
+	}
+	return ""
+}
+
+func (x *SourceInDoubt) GetState() SourceState {
+	if x != nil {
+		return x.State
+	}
+	return SourceState_SOURCE_STATE_UNSPECIFIED
+}
+
+func (x *SourceInDoubt) GetHeartbeatSeconds() uint32 {
+	if x != nil {
+		return x.HeartbeatSeconds
+	}
+	return 0
+}
+
 // One run of a supervised tree.
 type RunTreeMember struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -153,7 +276,7 @@ type RunTreeMember struct {
 
 func (x *RunTreeMember) Reset() {
 	*x = RunTreeMember{}
-	mi := &file_guardana_control_finding_v1alpha1_report_proto_msgTypes[0]
+	mi := &file_guardana_control_finding_v1alpha1_report_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -165,7 +288,7 @@ func (x *RunTreeMember) String() string {
 func (*RunTreeMember) ProtoMessage() {}
 
 func (x *RunTreeMember) ProtoReflect() protoreflect.Message {
-	mi := &file_guardana_control_finding_v1alpha1_report_proto_msgTypes[0]
+	mi := &file_guardana_control_finding_v1alpha1_report_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -178,7 +301,7 @@ func (x *RunTreeMember) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunTreeMember.ProtoReflect.Descriptor instead.
 func (*RunTreeMember) Descriptor() ([]byte, []int) {
-	return file_guardana_control_finding_v1alpha1_report_proto_rawDescGZIP(), []int{0}
+	return file_guardana_control_finding_v1alpha1_report_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *RunTreeMember) GetRunId() string {
@@ -208,7 +331,7 @@ type ProcedureRef struct {
 
 func (x *ProcedureRef) Reset() {
 	*x = ProcedureRef{}
-	mi := &file_guardana_control_finding_v1alpha1_report_proto_msgTypes[1]
+	mi := &file_guardana_control_finding_v1alpha1_report_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -220,7 +343,7 @@ func (x *ProcedureRef) String() string {
 func (*ProcedureRef) ProtoMessage() {}
 
 func (x *ProcedureRef) ProtoReflect() protoreflect.Message {
-	mi := &file_guardana_control_finding_v1alpha1_report_proto_msgTypes[1]
+	mi := &file_guardana_control_finding_v1alpha1_report_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -233,7 +356,7 @@ func (x *ProcedureRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcedureRef.ProtoReflect.Descriptor instead.
 func (*ProcedureRef) Descriptor() ([]byte, []int) {
-	return file_guardana_control_finding_v1alpha1_report_proto_rawDescGZIP(), []int{1}
+	return file_guardana_control_finding_v1alpha1_report_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ProcedureRef) GetProcedureId() string {
@@ -282,7 +405,7 @@ type ReadCounts struct {
 
 func (x *ReadCounts) Reset() {
 	*x = ReadCounts{}
-	mi := &file_guardana_control_finding_v1alpha1_report_proto_msgTypes[2]
+	mi := &file_guardana_control_finding_v1alpha1_report_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -294,7 +417,7 @@ func (x *ReadCounts) String() string {
 func (*ReadCounts) ProtoMessage() {}
 
 func (x *ReadCounts) ProtoReflect() protoreflect.Message {
-	mi := &file_guardana_control_finding_v1alpha1_report_proto_msgTypes[2]
+	mi := &file_guardana_control_finding_v1alpha1_report_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -307,7 +430,7 @@ func (x *ReadCounts) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadCounts.ProtoReflect.Descriptor instead.
 func (*ReadCounts) Descriptor() ([]byte, []int) {
-	return file_guardana_control_finding_v1alpha1_report_proto_rawDescGZIP(), []int{2}
+	return file_guardana_control_finding_v1alpha1_report_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ReadCounts) GetEventsTaken() uint64 {
@@ -373,7 +496,7 @@ type RuleResult struct {
 
 func (x *RuleResult) Reset() {
 	*x = RuleResult{}
-	mi := &file_guardana_control_finding_v1alpha1_report_proto_msgTypes[3]
+	mi := &file_guardana_control_finding_v1alpha1_report_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -385,7 +508,7 @@ func (x *RuleResult) String() string {
 func (*RuleResult) ProtoMessage() {}
 
 func (x *RuleResult) ProtoReflect() protoreflect.Message {
-	mi := &file_guardana_control_finding_v1alpha1_report_proto_msgTypes[3]
+	mi := &file_guardana_control_finding_v1alpha1_report_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -398,7 +521,7 @@ func (x *RuleResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RuleResult.ProtoReflect.Descriptor instead.
 func (*RuleResult) Descriptor() ([]byte, []int) {
-	return file_guardana_control_finding_v1alpha1_report_proto_rawDescGZIP(), []int{3}
+	return file_guardana_control_finding_v1alpha1_report_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *RuleResult) GetRuleId() string {
@@ -444,20 +567,24 @@ type SuperviseReport struct {
 	Rules []*RuleResult `protobuf:"bytes,7,rep,name=rules,proto3" json:"rules,omitempty"`
 	// Finding records this supervision appended to the log.
 	FindingsWritten uint64 `protobuf:"varint,8,opt,name=findings_written,json=findingsWritten,proto3" json:"findings_written,omitempty"`
-	// Set in every "0.2" report, never in a "0.1" one.
+	// Set in the report of every "0.2" procedure, so never in a "0.1" report.
 	Children ChildrenMode `protobuf:"varint,9,opt,name=children,proto3,enum=guardana.control.finding.v1alpha1.ChildrenMode" json:"children,omitempty"`
 	// The supervised run first, then each other member after its parent. Under
 	// inherit the first is the root and the list is its whole tree; under
-	// separate the rest are its children, none of them judged. Set in every
-	// "0.2" report, never in a "0.1" one.
-	RunTree       []*RunTreeMember `protobuf:"bytes,10,rep,name=run_tree,json=runTree,proto3" json:"run_tree,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// separate the rest are its children, none of them judged. Set exactly
+	// when children is.
+	RunTree []*RunTreeMember `protobuf:"bytes,10,rep,name=run_tree,json=runTree,proto3" json:"run_tree,omitempty"`
+	// Each source given that was not read, then each never heard, then each
+	// silent, every group in the order given. Set only in a "0.2" report, and
+	// a report that sets it is "0.2" whatever its procedure's schema.
+	SourcesInDoubt []*SourceInDoubt `protobuf:"bytes,11,rep,name=sources_in_doubt,json=sourcesInDoubt,proto3" json:"sources_in_doubt,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *SuperviseReport) Reset() {
 	*x = SuperviseReport{}
-	mi := &file_guardana_control_finding_v1alpha1_report_proto_msgTypes[4]
+	mi := &file_guardana_control_finding_v1alpha1_report_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -469,7 +596,7 @@ func (x *SuperviseReport) String() string {
 func (*SuperviseReport) ProtoMessage() {}
 
 func (x *SuperviseReport) ProtoReflect() protoreflect.Message {
-	mi := &file_guardana_control_finding_v1alpha1_report_proto_msgTypes[4]
+	mi := &file_guardana_control_finding_v1alpha1_report_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -482,7 +609,7 @@ func (x *SuperviseReport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SuperviseReport.ProtoReflect.Descriptor instead.
 func (*SuperviseReport) Descriptor() ([]byte, []int) {
-	return file_guardana_control_finding_v1alpha1_report_proto_rawDescGZIP(), []int{4}
+	return file_guardana_control_finding_v1alpha1_report_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *SuperviseReport) GetSchemaVersion() string {
@@ -555,11 +682,22 @@ func (x *SuperviseReport) GetRunTree() []*RunTreeMember {
 	return nil
 }
 
+func (x *SuperviseReport) GetSourcesInDoubt() []*SourceInDoubt {
+	if x != nil {
+		return x.SourcesInDoubt
+	}
+	return nil
+}
+
 var File_guardana_control_finding_v1alpha1_report_proto protoreflect.FileDescriptor
 
 const file_guardana_control_finding_v1alpha1_report_proto_rawDesc = "" +
 	"\n" +
-	".guardana/control/finding/v1alpha1/report.proto\x12!guardana.control.finding.v1alpha1\"J\n" +
+	".guardana/control/finding/v1alpha1/report.proto\x12!guardana.control.finding.v1alpha1\"\x9f\x01\n" +
+	"\rSourceInDoubt\x12\x1b\n" +
+	"\tsource_id\x18\x01 \x01(\tR\bsourceId\x12D\n" +
+	"\x05state\x18\x02 \x01(\x0e2..guardana.control.finding.v1alpha1.SourceStateR\x05state\x12+\n" +
+	"\x11heartbeat_seconds\x18\x03 \x01(\rR\x10heartbeatSeconds\"J\n" +
 	"\rRunTreeMember\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\"\n" +
 	"\rparent_run_id\x18\x02 \x01(\tR\vparentRunId\"c\n" +
@@ -590,7 +728,7 @@ const file_guardana_control_finding_v1alpha1_report_proto_rawDesc = "" +
 	"\arule_id\x18\x01 \x01(\tR\x06ruleId\x12!\n" +
 	"\frule_version\x18\x02 \x01(\tR\vruleVersion\x12B\n" +
 	"\x05state\x18\x03 \x01(\x0e2,.guardana.control.finding.v1alpha1.RuleStateR\x05state\x12\x10\n" +
-	"\x03why\x18\x04 \x01(\tR\x03why\"\xa7\x04\n" +
+	"\x03why\x18\x04 \x01(\tR\x03why\"\x83\x05\n" +
 	"\x0fSuperviseReport\x12%\n" +
 	"\x0eschema_version\x18\x01 \x01(\tR\rschemaVersion\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x1d\n" +
@@ -603,7 +741,8 @@ const file_guardana_control_finding_v1alpha1_report_proto_rawDesc = "" +
 	"\x10findings_written\x18\b \x01(\x04R\x0ffindingsWritten\x12K\n" +
 	"\bchildren\x18\t \x01(\x0e2/.guardana.control.finding.v1alpha1.ChildrenModeR\bchildren\x12K\n" +
 	"\brun_tree\x18\n" +
-	" \x03(\v20.guardana.control.finding.v1alpha1.RunTreeMemberR\arunTree*o\n" +
+	" \x03(\v20.guardana.control.finding.v1alpha1.RunTreeMemberR\arunTree\x12Z\n" +
+	"\x10sources_in_doubt\x18\v \x03(\v20.guardana.control.finding.v1alpha1.SourceInDoubtR\x0esourcesInDoubt*o\n" +
 	"\tRuleState\x12\x1a\n" +
 	"\x16RULE_STATE_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12RULE_STATE_CHECKED\x10\x01\x12\x1a\n" +
@@ -612,7 +751,12 @@ const file_guardana_control_finding_v1alpha1_report_proto_rawDesc = "" +
 	"\fChildrenMode\x12\x1d\n" +
 	"\x19CHILDREN_MODE_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15CHILDREN_MODE_INHERIT\x10\x01\x12\x1a\n" +
-	"\x16CHILDREN_MODE_SEPARATE\x10\x02B\xb5\x02\n" +
+	"\x16CHILDREN_MODE_SEPARATE\x10\x02*}\n" +
+	"\vSourceState\x12\x1c\n" +
+	"\x18SOURCE_STATE_UNSPECIFIED\x10\x00\x12\x19\n" +
+	"\x15SOURCE_STATE_NOT_READ\x10\x01\x12\x1c\n" +
+	"\x18SOURCE_STATE_NEVER_HEARD\x10\x02\x12\x17\n" +
+	"\x13SOURCE_STATE_SILENT\x10\x03B\xb5\x02\n" +
 	"%com.guardana.control.finding.v1alpha1B\vReportProtoP\x01ZXgithub.com/guardana/control/api/gen/go/guardana/control/finding/v1alpha1;findingv1alpha1\xa2\x02\x03GCF\xaa\x02!Guardana.Control.Finding.V1alpha1\xca\x02!Guardana\\Control\\Finding\\V1alpha1\xe2\x02-Guardana\\Control\\Finding\\V1alpha1\\GPBMetadata\xea\x02$Guardana::Control::Finding::V1alpha1b\x06proto3"
 
 var (
@@ -627,35 +771,39 @@ func file_guardana_control_finding_v1alpha1_report_proto_rawDescGZIP() []byte {
 	return file_guardana_control_finding_v1alpha1_report_proto_rawDescData
 }
 
-var file_guardana_control_finding_v1alpha1_report_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_guardana_control_finding_v1alpha1_report_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_guardana_control_finding_v1alpha1_report_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_guardana_control_finding_v1alpha1_report_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_guardana_control_finding_v1alpha1_report_proto_goTypes = []any{
 	(RuleState)(0),          // 0: guardana.control.finding.v1alpha1.RuleState
 	(ChildrenMode)(0),       // 1: guardana.control.finding.v1alpha1.ChildrenMode
-	(*RunTreeMember)(nil),   // 2: guardana.control.finding.v1alpha1.RunTreeMember
-	(*ProcedureRef)(nil),    // 3: guardana.control.finding.v1alpha1.ProcedureRef
-	(*ReadCounts)(nil),      // 4: guardana.control.finding.v1alpha1.ReadCounts
-	(*RuleResult)(nil),      // 5: guardana.control.finding.v1alpha1.RuleResult
-	(*SuperviseReport)(nil), // 6: guardana.control.finding.v1alpha1.SuperviseReport
-	nil,                     // 7: guardana.control.finding.v1alpha1.ReadCounts.EventsLeftOutEntry
-	nil,                     // 8: guardana.control.finding.v1alpha1.ReadCounts.ObservationsLeftOutEntry
-	nil,                     // 9: guardana.control.finding.v1alpha1.ReadCounts.PlaneBlocksEntry
+	(SourceState)(0),        // 2: guardana.control.finding.v1alpha1.SourceState
+	(*SourceInDoubt)(nil),   // 3: guardana.control.finding.v1alpha1.SourceInDoubt
+	(*RunTreeMember)(nil),   // 4: guardana.control.finding.v1alpha1.RunTreeMember
+	(*ProcedureRef)(nil),    // 5: guardana.control.finding.v1alpha1.ProcedureRef
+	(*ReadCounts)(nil),      // 6: guardana.control.finding.v1alpha1.ReadCounts
+	(*RuleResult)(nil),      // 7: guardana.control.finding.v1alpha1.RuleResult
+	(*SuperviseReport)(nil), // 8: guardana.control.finding.v1alpha1.SuperviseReport
+	nil,                     // 9: guardana.control.finding.v1alpha1.ReadCounts.EventsLeftOutEntry
+	nil,                     // 10: guardana.control.finding.v1alpha1.ReadCounts.ObservationsLeftOutEntry
+	nil,                     // 11: guardana.control.finding.v1alpha1.ReadCounts.PlaneBlocksEntry
 }
 var file_guardana_control_finding_v1alpha1_report_proto_depIdxs = []int32{
-	7, // 0: guardana.control.finding.v1alpha1.ReadCounts.events_left_out:type_name -> guardana.control.finding.v1alpha1.ReadCounts.EventsLeftOutEntry
-	8, // 1: guardana.control.finding.v1alpha1.ReadCounts.observations_left_out:type_name -> guardana.control.finding.v1alpha1.ReadCounts.ObservationsLeftOutEntry
-	9, // 2: guardana.control.finding.v1alpha1.ReadCounts.plane_blocks:type_name -> guardana.control.finding.v1alpha1.ReadCounts.PlaneBlocksEntry
-	0, // 3: guardana.control.finding.v1alpha1.RuleResult.state:type_name -> guardana.control.finding.v1alpha1.RuleState
-	3, // 4: guardana.control.finding.v1alpha1.SuperviseReport.procedure:type_name -> guardana.control.finding.v1alpha1.ProcedureRef
-	4, // 5: guardana.control.finding.v1alpha1.SuperviseReport.read:type_name -> guardana.control.finding.v1alpha1.ReadCounts
-	5, // 6: guardana.control.finding.v1alpha1.SuperviseReport.rules:type_name -> guardana.control.finding.v1alpha1.RuleResult
-	1, // 7: guardana.control.finding.v1alpha1.SuperviseReport.children:type_name -> guardana.control.finding.v1alpha1.ChildrenMode
-	2, // 8: guardana.control.finding.v1alpha1.SuperviseReport.run_tree:type_name -> guardana.control.finding.v1alpha1.RunTreeMember
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	2,  // 0: guardana.control.finding.v1alpha1.SourceInDoubt.state:type_name -> guardana.control.finding.v1alpha1.SourceState
+	9,  // 1: guardana.control.finding.v1alpha1.ReadCounts.events_left_out:type_name -> guardana.control.finding.v1alpha1.ReadCounts.EventsLeftOutEntry
+	10, // 2: guardana.control.finding.v1alpha1.ReadCounts.observations_left_out:type_name -> guardana.control.finding.v1alpha1.ReadCounts.ObservationsLeftOutEntry
+	11, // 3: guardana.control.finding.v1alpha1.ReadCounts.plane_blocks:type_name -> guardana.control.finding.v1alpha1.ReadCounts.PlaneBlocksEntry
+	0,  // 4: guardana.control.finding.v1alpha1.RuleResult.state:type_name -> guardana.control.finding.v1alpha1.RuleState
+	5,  // 5: guardana.control.finding.v1alpha1.SuperviseReport.procedure:type_name -> guardana.control.finding.v1alpha1.ProcedureRef
+	6,  // 6: guardana.control.finding.v1alpha1.SuperviseReport.read:type_name -> guardana.control.finding.v1alpha1.ReadCounts
+	7,  // 7: guardana.control.finding.v1alpha1.SuperviseReport.rules:type_name -> guardana.control.finding.v1alpha1.RuleResult
+	1,  // 8: guardana.control.finding.v1alpha1.SuperviseReport.children:type_name -> guardana.control.finding.v1alpha1.ChildrenMode
+	4,  // 9: guardana.control.finding.v1alpha1.SuperviseReport.run_tree:type_name -> guardana.control.finding.v1alpha1.RunTreeMember
+	3,  // 10: guardana.control.finding.v1alpha1.SuperviseReport.sources_in_doubt:type_name -> guardana.control.finding.v1alpha1.SourceInDoubt
+	11, // [11:11] is the sub-list for method output_type
+	11, // [11:11] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_guardana_control_finding_v1alpha1_report_proto_init() }
@@ -668,8 +816,8 @@ func file_guardana_control_finding_v1alpha1_report_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_guardana_control_finding_v1alpha1_report_proto_rawDesc), len(file_guardana_control_finding_v1alpha1_report_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   8,
+			NumEnums:      3,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

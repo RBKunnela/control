@@ -39,7 +39,7 @@ func superviseFlags(command string, out io.Writer) (*flag.FlagSet, *superviseArg
 	flags.Var(&a.runs, "runs", "the runs `dir` the run was opened in; given once")
 	flags.Var(&a.run, "run", "the opened run's `id`, run- and 32 hex digits; given once")
 	flags.Var(&a.evidence, "evidence", "an evidence `export` as the gateway's trail export wrote it; repeatable")
-	flags.Var(&a.sources, "source", "a source descriptor `file`, paired in order with --log; one that does not exist is left out; repeatable")
+	flags.Var(&a.sources, "source", "a source descriptor `file`, paired in order with --log; one that does not exist is left out; repeatable, at most "+strconv.Itoa(supervise.MaxSources))
 	flags.Var(&a.logs, "log", "the observation log `dir` of the --source in the same place; one with no log yet was never heard; repeatable")
 	flags.Var(&a.findings, "findings", "the findings log `dir`, owner-only; given once")
 	flags.Var(&a.view, "view", "a `file` to draw the run in as one page, mode 0600, replacing only a page drawn before; given once")
@@ -71,6 +71,8 @@ func superviseCommand(args []string, stdout, stderr io.Writer) int {
 	case flags.NArg() != 0 || len(a.procedure) != 1 || len(a.runs) != 1 || len(a.run) != 1 ||
 		len(a.findings) != 1 || len(a.sources) != len(a.logs):
 		return refuseSupervise(stderr, superviseUsage)
+	case len(a.sources) > supervise.MaxSources:
+		return refuseSupervise(stderr, fmt.Sprintf("%d sources are given, bound %d", len(a.sources), supervise.MaxSources))
 	}
 	view, err := viewPath(a)
 	if err != nil {

@@ -361,10 +361,13 @@ again (<a href="/docs/reference/runs#runs-an-earlier-release-opened">runs.md</a>
 lift.</strong> One exact <code>kind</code> is read; another is refused, never read as this
 one.</li>
 <li><strong>Procedure.</strong> A <code>0.1</code> document reads as before, with the same digest,
-rules and findings, and the records it gives keep schema <code>0.1</code>.</li>
+rules and findings, and the records it gives keep schema <code>0.1</code>, unless the
+report names a source in doubt.</li>
 <li><strong>Finding log.</strong> A log with no header is read as it is; an empty one gains
-a header when it is opened. A reader of schema <code>0.1</code> alone, such as an
-earlier release's, refuses every <code>0.2</code> line by name.</li>
+a header when it is opened. A release that does not know a member of a
+line, such as one reading schema <code>0.1</code> alone, or one without
+<code>sources_in_doubt</code> reading a report that names a source, refuses the whole
+log as damaged at that line; nothing is misread.</li>
 <li><strong>Findings export.</strong> A cursor holds only in its own log, known by the
 header's <code>log_id</code>, or by its first line in a log that has no header; the
 trailer's <code>identity</code> says which.</li>

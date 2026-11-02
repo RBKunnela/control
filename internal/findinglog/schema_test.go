@@ -26,6 +26,7 @@ const (
 	finding02 = `{"findingRecord":{"schemaVersion":"0.2","tenantId":"tenant-a","projectId":"project-a","procedure":{"procedureId":"refund","version":"1","digest":"aa"},"escalation":"ESCALATION_ALERT","refs":[{"event":{"eventId":"evt-1","requestId":"req-1","runId":"run-ffeeddccbbaa99887766554433221100"}}],"finding":{"findingId":"fnd-0123456789abcdef0123456789abcdef","ruleId":"REPEATED_DENIAL","ruleVersion":"1","severity":"FINDING_SEVERITY_HIGH","verdict":"FINDING_VERDICT_CONFIRMED","runId":"run-ffeeddccbbaa99887766554433221100","source":"FINDING_SOURCE_DETERMINISTIC"}}}` + "\n"
 	report02  = `{"superviseReport":{"schemaVersion":"0.2","tenantId":"tenant-a","projectId":"project-a","runId":"run-00112233445566778899aabbccddeeff","procedure":{"procedureId":"refund","version":"1","digest":"aa"},"read":{"eventsTaken":"4","eventsLeftOut":{"another run":"2"}},"rules":[{"ruleId":"repeated_denial","ruleVersion":"1","state":"RULE_STATE_CHECKED"}],"findingsWritten":"1","children":"CHILDREN_MODE_INHERIT","runTree":[{"runId":"run-00112233445566778899aabbccddeeff"},{"runId":"run-ffeeddccbbaa99887766554433221100","parentRunId":"run-00112233445566778899aabbccddeeff"}]}}` + "\n"
 	cut02     = `{"findingRecord":{"schemaVersion":"0.2","tenantId":"tenant-a","projectId":"project-a","procedure":{"procedureId":"refund","version":"1","digest":"aa"},"escalation":"ESCALATION_ALERT","refs":[{"event":{"eventId":"evt-1","requestId":"req-1","runId":"run-ffeeddccbbaa99887766554433221100"}}],"finding":{"findingId":"fnd-0123456789abcdef0123456789abcdef","ruleId":"REPEATED_DENIAL","ruleVersion":"1","severity":"FINDING_SEVERITY_HIGH","verdict":"FINDING_VERDICT_CONFIRMED","runId":"run-ffeeddccbbaa99887766554433221100","source":"FINDING_SOURCE_DETERMINISTIC"},"refsLeftOut":"9999"}}` + "\n"
+	sources02 = `{"superviseReport":{"schemaVersion":"0.2","tenantId":"tenant-a","projectId":"project-a","runId":"run-00112233445566778899aabbccddeeff","procedure":{"procedureId":"refund","version":"1","digest":"aa"},"read":{"eventsTaken":"4","eventsLeftOut":{"another run":"2"}},"rules":[{"ruleId":"repeated_denial","ruleVersion":"1","state":"RULE_STATE_CHECKED"}],"findingsWritten":"1","sourcesInDoubt":[{"state":"SOURCE_STATE_NOT_READ"},{"sourceId":"s3","state":"SOURCE_STATE_NEVER_HEARD","heartbeatSeconds":300},{"sourceId":"s2","state":"SOURCE_STATE_SILENT","heartbeatSeconds":300}]}}` + "\n"
 	header02  = `{"logHeader":{"schemaVersion":"0.2","logId":"log-0123456789abcdef0123456789abcdef"}}` + "\n"
 )
 
@@ -56,6 +57,30 @@ func report02Record() *findingv1alpha1.SuperviseReport {
 	return r
 }
 
+// sources02Record is a report of a 0.1 procedure that is "0.2" for the
+// sources it could not rely on alone: one not read, one never heard, one
+// silent.
+func sources02Record() *findingv1alpha1.SuperviseReport {
+	r := report()
+	r.SchemaVersion = "0.2"
+	r.SourcesInDoubt = []*findingv1alpha1.SourceInDoubt{
+		{State: findingv1alpha1.SourceState_SOURCE_STATE_NOT_READ},
+		{SourceId: "s3", State: findingv1alpha1.SourceState_SOURCE_STATE_NEVER_HEARD, HeartbeatSeconds: 300},
+		{SourceId: "s2", State: findingv1alpha1.SourceState_SOURCE_STATE_SILENT, HeartbeatSeconds: 300},
+	}
+	return r
+}
+
+// namesThreeSources reports whether r is a report of no children mode
+// naming sources02Record's three sources.
+func namesThreeSources(r *findingv1alpha1.Record) bool {
+	s := r.GetSuperviseReport().GetSourcesInDoubt()
+	return len(s) == 3 && s[0].GetSourceId() == "" && s[0].GetState() == findingv1alpha1.SourceState_SOURCE_STATE_NOT_READ &&
+		s[1].GetSourceId() == "s3" && s[1].GetState() == findingv1alpha1.SourceState_SOURCE_STATE_NEVER_HEARD &&
+		s[2].GetSourceId() == "s2" && s[2].GetState() == findingv1alpha1.SourceState_SOURCE_STATE_SILENT &&
+		s[2].GetHeartbeatSeconds() == 300 && r.GetSuperviseReport().GetChildren() == 0
+}
+
 // TestALineOfEitherSchemaReads: the 0.1 lines are the 0.9 writer's bytes,
 // and each line reads as the record its literal spells.
 func TestALineOfEitherSchemaReads(t *testing.T) {
@@ -80,6 +105,7 @@ func TestALineOfEitherSchemaReads(t *testing.T) {
 				tree[0].GetParentRunId() == "" && tree[1].GetRunId() == "run-ffeeddccbbaa99887766554433221100" &&
 				tree[1].GetParentRunId() == "run-00112233445566778899aabbccddeeff"
 		}},
+		"a 0.2 report of sources in doubt": {sources02, namesThreeSources},
 		"a header": {header02, func(r *findingv1alpha1.Record) bool {
 			return r.GetLogHeader().GetLogId() == "log-0123456789abcdef0123456789abcdef"
 		}},
@@ -107,15 +133,18 @@ func TestTheWriterSpellsEachSchemaAsTheLiterals(t *testing.T) {
 	r01.FindingsWritten = 1
 	r02 := report02Record()
 	r02.FindingsWritten = 1
+	s02 := sources02Record()
+	s02.FindingsWritten = 1
 	for name, c := range map[string]struct {
 		r    *findingv1alpha1.Record
 		want string
 	}{
-		"a 0.1 finding": {findingRecord(finding(idA, confirmed, "REPEATED_DENIAL")), finding01},
-		"a 0.1 report":  {reportRecord(r01), report01},
-		"a 0.2 finding": {findingRecord(finding02Record()), finding02},
-		"a 0.2 cut":     {findingRecord(cut02Record()), cut02},
-		"a 0.2 report":  {reportRecord(r02), report02},
+		"a 0.1 finding":                    {findingRecord(finding(idA, confirmed, "REPEATED_DENIAL")), finding01},
+		"a 0.1 report":                     {reportRecord(r01), report01},
+		"a 0.2 finding":                    {findingRecord(finding02Record()), finding02},
+		"a 0.2 cut":                        {findingRecord(cut02Record()), cut02},
+		"a 0.2 report":                     {reportRecord(r02), report02},
+		"a 0.2 report of sources in doubt": {reportRecord(s02), sources02},
 	} {
 		if got := line(t, c.r); got != c.want {
 			t.Errorf("%s: the writer wrote\n%s\nwant\n%s", name, got, c.want)
@@ -174,6 +203,14 @@ func TestARecordIsOfTheSchemaItsMembersCallFor(t *testing.T) {
 			r.Children = separate
 			r.RunTree[0].ParentRunId = "run-3"
 		})), "run_tree.parent_run_id"},
+		"a 0.1 report naming a source": {reportRecord(changeReport(sources02Record(), func(r *findingv1alpha1.SuperviseReport) { r.SchemaVersion = "0.1" })), "sources_in_doubt"},
+		"a source of no state":         {reportRecord(changeReport(sources02Record(), func(r *findingv1alpha1.SuperviseReport) { r.SourcesInDoubt[1].State = 0 })), "sources_in_doubt.state"},
+		"a source of an unknown state": {reportRecord(changeReport(sources02Record(), func(r *findingv1alpha1.SuperviseReport) { r.SourcesInDoubt[2].State = 4 })), "sources_in_doubt.state"},
+		"a source not read with an id": {reportRecord(changeReport(sources02Record(), func(r *findingv1alpha1.SuperviseReport) { r.SourcesInDoubt[0].SourceId = "s1" })), "sources_in_doubt.source_id"},
+		"a silent source with no id":   {reportRecord(changeReport(sources02Record(), func(r *findingv1alpha1.SuperviseReport) { r.SourcesInDoubt[2].SourceId = "" })), "sources_in_doubt.source_id"},
+		"sources beside a tree of no mode": {reportRecord(changeReport(sources02Record(), func(r *findingv1alpha1.SuperviseReport) {
+			r.RunTree = []*findingv1alpha1.RunTreeMember{member(runID, "")}
+		})), "children"},
 		"a header of 0.1":            {headerRecord("0.1", "log-0123456789abcdef0123456789abcdef"), "log_header.schema_version"},
 		"a header of another id":     {headerRecord("0.2", "log-0123"), "log_header.log_id"},
 		"a header of upper-case hex": {headerRecord("0.2", "log-0123456789ABCDEF0123456789abcdef"), "log_header.log_id"},
@@ -201,7 +238,11 @@ func TestARecordIsOfTheSchemaItsMembersCallFor(t *testing.T) {
 			f.Refs = []*findingv1alpha1.Reference{{Ref: &findingv1alpha1.Reference_Observation{
 				Observation: &findingv1alpha1.ObservationRef{SourceId: "s1", ObservationId: "obs-0123456789abcdef0123456789abcdef"}}}}
 		})),
-		"a 0.2 report": reportRecord(report02Record()),
+		"a 0.2 report":                     reportRecord(report02Record()),
+		"a 0.2 report of sources in doubt": reportRecord(sources02Record()),
+		"a tree and sources in doubt": reportRecord(changeReport(report02Record(), func(r *findingv1alpha1.SuperviseReport) {
+			r.SourcesInDoubt = sources02Record().SourcesInDoubt
+		})),
 		"a deeper inherit tree": reportRecord(changeReport(report02Record(), func(r *findingv1alpha1.SuperviseReport) {
 			r.RunTree = append(r.RunTree, member(third, childID))
 		})),
@@ -265,7 +306,7 @@ func TestAZeroNineReaderRefusesEveryLineOfSchema02ByName(t *testing.T) {
 		}
 	}
 	cutOnly := strings.Replace(cut02, `,"runId":"run-ffeeddccbbaa99887766554433221100"}}]`, `}}]`, 1)
-	for line, name := range map[string]string{finding02: `"runId"`, report02: `"children"`, header02: `"logHeader"`, cutOnly: `"refsLeftOut"`} {
+	for line, name := range map[string]string{finding02: `"runId"`, report02: `"children"`, header02: `"logHeader"`, cutOnly: `"refsLeftOut"`, sources02: `"sourcesInDoubt"`} {
 		if err := read(line); err == nil || !strings.Contains(err.Error(), "unknown field "+name) {
 			t.Errorf("the 0.9 reader on %s: %v; want it to refuse the field %s by name", line, err, name)
 		}
@@ -275,6 +316,33 @@ func TestAZeroNineReaderRefusesEveryLineOfSchema02ByName(t *testing.T) {
 	bare := strings.Replace(finding01, `"schemaVersion":"0.1"`, `"schemaVersion":"0.2"`, 1)
 	if err := read(bare); err == nil || !strings.Contains(err.Error(), "schema_version") {
 		t.Errorf("the 0.9 reader on a bare 0.2 line: %v; want a refusal naming schema_version", err)
+	}
+}
+
+// TestAStrictDecoderWithoutSourcesInDoubtRefusesThem: the strict decoder of
+// a build that reads "0.2" and does not know sources_in_doubt, simulated as
+// above, refuses a report naming a source and still decodes the other "0.2"
+// report, so such a build never takes that report for one that read every
+// source. The build's own log reader then names no field: it refuses the log
+// as damaged at that line.
+func TestAStrictDecoderWithoutSourcesInDoubtRefusesThem(t *testing.T) {
+	report := protodesc.ToFileDescriptorProto(findingv1alpha1.File_guardana_control_finding_v1alpha1_report_proto)
+	report.EnumType = dropEnum(report.EnumType, "SourceState")
+	report.MessageType = dropMessage(report.MessageType, "SourceInDoubt")
+	dropFields(t, report.MessageType, "SuperviseReport", "sources_in_doubt")
+	files := &protoregistry.Files{}
+	fd, err := protodesc.NewFile(report, files)
+	mustDo(t, err)
+	read := func(line string) error {
+		m := dynamicpb.NewMessage(fd.Messages().ByName("SuperviseReport"))
+		inner := strings.TrimSuffix(strings.TrimPrefix(strings.TrimSpace(line), `{"superviseReport":`), "}")
+		return (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal([]byte(inner), m)
+	}
+	if err := read(report02); err != nil {
+		t.Fatalf("the earlier decoder refuses a 0.2 report of a tree: %v", err)
+	}
+	if err := read(sources02); err == nil || !strings.Contains(err.Error(), `unknown field "sourcesInDoubt"`) {
+		t.Errorf("the earlier decoder on %s: %v; want it to refuse sourcesInDoubt", sources02, err)
 	}
 }
 
@@ -298,9 +366,9 @@ func zeroNineRecord(t *testing.T) protoreflect.MessageDescriptor {
 	t.Helper()
 	report := protodesc.ToFileDescriptorProto(findingv1alpha1.File_guardana_control_finding_v1alpha1_report_proto)
 	record := protodesc.ToFileDescriptorProto(findingv1alpha1.File_guardana_control_finding_v1alpha1_record_proto)
-	report.EnumType = dropEnum(report.EnumType, "ChildrenMode")
-	report.MessageType = dropMessage(report.MessageType, "RunTreeMember")
-	dropFields(t, report.MessageType, "SuperviseReport", "children", "run_tree")
+	report.EnumType = dropEnum(dropEnum(report.EnumType, "ChildrenMode"), "SourceState")
+	report.MessageType = dropMessage(dropMessage(report.MessageType, "RunTreeMember"), "SourceInDoubt")
+	dropFields(t, report.MessageType, "SuperviseReport", "children", "run_tree", "sources_in_doubt")
 	record.MessageType = dropMessage(record.MessageType, "LogHeader")
 	dropFields(t, record.MessageType, "EventRef", "run_id")
 	dropFields(t, record.MessageType, "FindingRecord", "refs_left_out")

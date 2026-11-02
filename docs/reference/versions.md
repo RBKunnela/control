@@ -77,10 +77,13 @@ one quoted key per line, carries none either.
   lift.** One exact `kind` is read; another is refused, never read as this
   one.
 - **Procedure.** A `0.1` document reads as before, with the same digest,
-  rules and findings, and the records it gives keep schema `0.1`.
+  rules and findings, and the records it gives keep schema `0.1`, unless the
+  report names a source in doubt.
 - **Finding log.** A log with no header is read as it is; an empty one gains
-  a header when it is opened. A reader of schema `0.1` alone, such as an
-  earlier release's, refuses every `0.2` line by name.
+  a header when it is opened. A release that does not know a member of a
+  line, such as one reading schema `0.1` alone, or one without
+  `sources_in_doubt` reading a report that names a source, refuses the whole
+  log as damaged at that line; nothing is misread.
 - **Findings export.** A cursor holds only in its own log, known by the
   header's `log_id`, or by its first line in a log that has no header; the
   trailer's `identity` says which.

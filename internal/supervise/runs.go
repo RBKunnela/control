@@ -165,8 +165,8 @@ func tied(a, b *controlv1.Event) bool {
 
 // deadlineByRun gives each run with an event more than limit after the
 // tree's first its own finding, citing that first event and the run's own
-// earliest past the limit, at most most.
-func (e *evaluation) deadlineByRun(limit time.Duration, most controlv1.FindingVerdict) []draft {
+// earliest past the limit.
+func (e *evaluation) deadlineByRun(limit time.Duration) []draft {
 	start := e.first.GetOccurredAt().AsTime()
 	past := map[string]*controlv1.Event{}
 	for _, ev := range e.rd.events {
@@ -178,7 +178,7 @@ func (e *evaluation) deadlineByRun(limit time.Duration, most controlv1.FindingVe
 	}
 	out := make([]draft, 0, len(past))
 	for _, run := range slices.Sorted(maps.Keys(past)) {
-		d := draft{rule: RuleDeadlineExceeded, cap: most}
+		d := draft{rule: RuleDeadlineExceeded, cap: e.spanCap(e.first, past[run])}
 		for _, ev := range []*controlv1.Event{e.first, past[run]} {
 			d.refs = append(d.refs, e.byRequest[ev.GetRequestId()].ref(ev))
 		}

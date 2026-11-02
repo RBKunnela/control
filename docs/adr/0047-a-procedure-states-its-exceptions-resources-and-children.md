@@ -11,6 +11,13 @@ Builds on [ADR-0016](0016-approval-providers-and-the-lost-hold.md),
 ADR-0045 on the procedure's schema, the rules and a run's children, and
 ADR-0046 on what may stop and on a child run.
 
+Amended: a report that names a source in doubt (`sources_in_doubt`: a
+`--source` not read, never heard or silent) is schema `"0.2"` whatever its
+procedure's schema. Under `0.1` a report keeps `"0.1"` only while every source
+was read and heard in time; that is new beside what the Decision and the
+Consequences below say
+([supervision](../reference/supervision.md#the-finding-record-and-its-log)).
+
 ## Context
 
 Milestone 2 asks the supervisor to report a procedure's exceptions and the
