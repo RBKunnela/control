@@ -239,6 +239,11 @@ func TestAbortedExecutionIsNeverClosed(t *testing.T) {
 			if aborts[0].d.ExecutionID != pipelineExecutionID {
 				t.Errorf("Abort got a disposition naming execution %q", aborts[0].d.ExecutionID)
 			}
+			// The agent is told the code the plane records the cause as.
+			recorded, ok := tc.cause.Code()
+			if codes := codesOf(t, res); !ok || codes[len(codes)-1] != recorded {
+				t.Errorf("the answer ends %q; the plane records %s as %q", codes, tc.name, recorded)
+			}
 		})
 	}
 }

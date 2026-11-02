@@ -189,6 +189,23 @@ func read(path string, limit int64, forbidden fs.FileMode, owner int) ([]byte, e
 	if err != nil {
 		return nil, err
 	}
+	return readOpened(f, limit, forbidden, owner)
+}
+
+// ReadRegularIn is ReadRegular of name in the directory root holds, with no
+// permission bits forbidden, so the file read is the one a write through root
+// replaces.
+func ReadRegularIn(root *os.Root, name string, limit int64) ([]byte, error) {
+	f, err := root.OpenFile(name, os.O_RDONLY|nonBlocking, 0)
+	if err != nil {
+		return nil, err
+	}
+	return readOpened(f, limit, 0, anyOwner)
+}
+
+// readOpened judges the opened f, as read describes, closes it and returns
+// its bytes.
+func readOpened(f *os.File, limit int64, forbidden fs.FileMode, owner int) ([]byte, error) {
 	defer func() { _ = f.Close() }()
 	info, err := f.Stat()
 	if err != nil {

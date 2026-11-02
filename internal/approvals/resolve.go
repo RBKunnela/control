@@ -164,10 +164,13 @@ func unknownRecord(rec Record) Record {
 //
 // approvalID is the approval the plane minted and holds in its own record, and
 // it is part of the compare-and-swap: a record filed under this binding and
-// this request id carrying any other approval id is not the plane's, answers
-// ErrNoApproval and is not spent. An approvalID that cannot name a file, the
-// empty one included, is refused with ErrRecordName rather than read as any
-// record at all.
+// this request id carrying any other approval id is not the plane's, and is
+// never answered from, spent or dropped. Where no unresolved record of
+// approvalID is left, though, a consumed record of the request under the
+// binding answers ErrApprovalConsumed whichever approval id it carries,
+// because it proves the request ran. An approvalID that cannot name a file,
+// the empty one included, is refused with ErrRecordName rather than read as
+// any record at all.
 func (p *Plane) Consume(ctx context.Context, binding approval.Binding, requestID, approvalID string, now time.Time) (*controlv1.Approval, error) {
 	if err := checkApprovalID(approvalID); err != nil {
 		return nil, err
@@ -212,9 +215,10 @@ func (p *Plane) Consume(ctx context.Context, binding approval.Binding, requestID
 // is a directory that disagrees with itself, which is refused rather than
 // answered from whichever came first.
 //
-// A record under another approval id is passed over entirely, expired, or
+// An unresolved record under another approval id is passed over, expired, or
 // refused for its approver id, or not: it is not the record the plane minted,
-// so the plane neither answers from it nor drops it.
+// so the plane neither answers from it nor drops it. Resolved records are
+// spentOrNot's, which reads them whatever their approval id.
 func (p *Plane) one(binding approval.Binding, requestID, approvalID string, now time.Time) ([]Record, error) {
 	found, err := p.matching(binding, requestID, approvalID, unresolved)
 	if err != nil {
@@ -239,10 +243,11 @@ func (p *Plane) one(binding approval.Binding, requestID, approvalID string, now 
 	return nil, p.spentOrNot(binding, requestID, approvalID)
 }
 
-// resolvedAs finds the record of requestID under binding among the ones a
-// plane has resolved, and says which state it stands in. A record whose
-// approver id the claim rule refuses refuses the call when it is approvalID's,
-// and is passed over when it is another approval's.
+// resolvedAs finds the records of requestID under binding among the ones a
+// plane has resolved, whatever their approval id, and says the furthest state
+// one stands in. A record whose approver id the claim rule refuses refuses the
+// call when it is approvalID's, and is passed over when it is another
+// approval's.
 //
 // Expiry is not consulted. A consumed record is the plane's proof that an
 // execution happened, and it says so until it is dropped, whether or not the
@@ -281,16 +286,19 @@ func (p *Plane) resolvedAs(binding approval.Binding, requestID, approvalID strin
 // approval approvalID the plane minted for it, will not be resumed: nothing
 // spent its approval and nothing will, so a later identical call is held anew
 // rather than told that an action ran. It grants nothing and spends nothing.
-// A record of any other approval id is neither read nor written, as for
-// Consume, and an approvalID that cannot name a file, the empty one included,
-// is refused with ErrRecordName.
+// A record of any other approval id is never written, and is read only where
+// no unresolved record of approvalID is left, as for Consume. An
+// approvalID that cannot name a file, the empty one included, is refused with
+// ErrRecordName.
 //
 // It takes ResolutionNotResumed and refuses every other resolution with
 // ErrResolution, since only Consume may mark a record spent; a zero now with
 // ErrZeroTime, a request it does not keep with ErrNoApproval, and a record
 // already consumed with ErrApprovalConsumed, because that record is proof of
 // an execution and nothing may write over it. A record this call already
-// resolved is not an error: the outcome asked for is the outcome on disk.
+// resolved is not an error: the outcome asked for is the outcome on disk. Nor
+// is an approvalID with no record of its own beside a record of the request
+// another approval id left not resumed.
 //
 // An expired record is resolved rather than dropped, so a plane that comes
 // back long after it lost the hold still closes it.

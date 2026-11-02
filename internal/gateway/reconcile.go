@@ -49,7 +49,8 @@ type Reconciliation struct {
 // no approver or a state no answer has. The record is then resolved as not
 // resumed and never consumed, so the next identical call is held anew rather
 // than told that an action ran. Entries in any other
-// state, and entries that will not decode, are counted and left untouched.
+// state, entries that will not decode, and entries whose approval is not one
+// the plane minted, are counted and left untouched.
 //
 // The closings carry this plane's mode, because what they state is that the
 // call was never run, not that this plane enforced anything. A plane with no
@@ -69,6 +70,13 @@ func (p *Pipeline) Reconcile(ctx context.Context) Reconciliation {
 	r.Interrupted, r.Unreadable = listing.Interrupted, listing.Unreadable
 	r.Complete = listing.Complete && r.Unreadable == 0
 	for _, entry := range listing.Held {
+		// The plane writes its own approval onto the trail it closes, so an
+		// entry whose approval is not one it minted is one it cannot speak for.
+		if !mintedPending(entry.Approval) {
+			r.Unreadable++
+			r.Complete = false
+			continue
+		}
 		if p.closeLostHold(ctx, entry, now) {
 			r.Closed++
 			continue

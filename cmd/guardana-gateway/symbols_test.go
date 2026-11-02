@@ -62,7 +62,9 @@ var (
 		brand.ModulePath + "/internal/runs.(*Plane)",
 		brand.ModulePath + "/internal/policykey.SignBundle",
 		brand.ModulePath + "/internal/reaction.VerifyRoute",
-		brand.ModulePath + "/internal/policystate.RaiseRoute",
+		// RaiseRoute is inlined where it is called; the raise it wraps writes
+		// through this method.
+		brand.ModulePath + "/internal/policystate.RouteFloor.writeTo",
 		brand.ModulePath + "/internal/reaction/stoplist.(*Poller)",
 	}
 	// The standard library's private-key parsers, under the names a program

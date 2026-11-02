@@ -102,8 +102,8 @@ func rosterSign(v rosterSignValues, source string, now time.Time, stdout, stderr
 	if err != nil {
 		return fail(stderr, rosterSignName, err)
 	}
-	if err := ondisk.Replace(filepath.Dir(out), filepath.Base(out), body, rosterFileMode); err != nil {
-		return fail(stderr, rosterSignName, fmt.Errorf("--out %s: %w", out, err))
+	if err := replaceRoster(out, d, key, body); err != nil {
+		return fail(stderr, rosterSignName, err)
 	}
 	lines := "roster_id: " + d.ID() + "\n" +
 		"serial: " + strconv.FormatInt(d.Serial(), 10) + "\n" +
@@ -117,6 +117,48 @@ func rosterSign(v rosterSignValues, source string, now time.Time, stdout, stderr
 		return fail(stderr, rosterSignName, fmt.Errorf("writing to standard output: %w; the roster was written to %s", err, out))
 	}
 	return exitOK
+}
+
+// rosterLockWait bounds how long roster sign waits for another signer's lock
+// on the output directory. A test shortens it.
+var rosterLockWait = 10 * time.Second
+
+// afterRosterLock runs once replaceRoster holds the directory's lock, before
+// it reads --out again. A test starts a second signer from it.
+var afterRosterLock = func() {}
+
+// replaceRoster holds the output directory's lock while it reads --out again,
+// checks the serial against what it holds now and replaces it, so of two
+// signers of one roster id and serial only the first writes: the check before
+// the lock was taken refuses early, and only this one decides.
+func replaceRoster(out string, next trust.Document, key ed25519.PrivateKey, body []byte) (err error) {
+	root, err := os.OpenRoot(filepath.Dir(out))
+	if err != nil {
+		return fmt.Errorf("--out %s: %w", out, err)
+	}
+	defer func() { err = errors.Join(err, root.Close()) }()
+	ctx, cancel := context.WithTimeout(context.Background(), rosterLockWait)
+	defer cancel()
+	unlock, err := lockRoot(ctx, root)
+	if errors.Is(err, context.DeadlineExceeded) {
+		return fmt.Errorf("--out %s: %w; another signer kept the directory's lock past %s", out, err, rosterLockWait)
+	}
+	if err != nil {
+		return fmt.Errorf("--out %s: %w", out, err)
+	}
+	defer func() { err = errors.Join(err, unlock()) }()
+	afterRosterLock()
+	prev, err := rosterIn(root, out)
+	if err != nil {
+		return err
+	}
+	if err := higherThan(prev, next, key); err != nil {
+		return fmt.Errorf("--out %s: %w", out, err)
+	}
+	if err := ondisk.ReplaceIn(root, filepath.Base(out), body, rosterFileMode); err != nil {
+		return fmt.Errorf("--out %s: %w", out, err)
+	}
+	return nil
 }
 
 // checkRosterOut refuses an output path whose directory is missing, and one
@@ -135,22 +177,49 @@ func checkRosterOut(out string) (*trust.Envelope, error) {
 	case err != nil:
 		return nil, fmt.Errorf("--out %s: %w", out, err)
 	}
-	notARoster := fmt.Errorf("--out %s exists and is not a roster's envelope, and roster sign replaces nothing else", out)
 	if !info.Mode().IsRegular() {
-		return nil, notARoster
+		return nil, notARoster(out)
 	}
 	raw, err := ondisk.ReadRegular(out, trust.MaxFileBytes, 0)
+	return envelopeAt(out, raw, err)
+}
+
+// rosterIn is checkRosterOut's read of --out through root, the directory the
+// lock is held on and the replace writes into, so the roster checked is the
+// one replaced.
+func rosterIn(root *os.Root, out string) (*trust.Envelope, error) {
+	name := filepath.Base(out)
+	info, err := root.Lstat(name)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return nil, nil
+	case err != nil:
+		return nil, fmt.Errorf("--out %s: %w", out, err)
+	case !info.Mode().IsRegular():
+		return nil, notARoster(out)
+	}
+	raw, err := ondisk.ReadRegularIn(root, name, trust.MaxFileBytes)
+	return envelopeAt(out, raw, err)
+}
+
+// envelopeAt is the roster envelope a read of --out returned, refusing what
+// is not one.
+func envelopeAt(out string, raw []byte, err error) (*trust.Envelope, error) {
 	if errors.Is(err, ondisk.ErrTooLarge) {
-		return nil, notARoster
+		return nil, notARoster(out)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("--out %s: %w", out, err)
 	}
 	env, err := trust.ParseFile(raw)
 	if err != nil || env.PayloadType != trust.PayloadType {
-		return nil, notARoster
+		return nil, notARoster(out)
 	}
 	return &env, nil
+}
+
+func notARoster(out string) error {
+	return fmt.Errorf("--out %s exists and is not a roster's envelope, and roster sign replaces nothing else", out)
 }
 
 // higherThan refuses a roster whose serial is not above that of prev, the
@@ -186,6 +255,10 @@ func floorInitFlagSet(command string, out io.Writer) *flag.FlagSet {
 	return flags
 }
 
+// errRosterID is a --roster-id no roster may carry, which the trust port
+// would refuse at start.
+var errRosterID = fmt.Errorf("not a roster id a roster may carry: lower-case ASCII letters and digits first, then those and . _ -, at most %d bytes", trust.MaxRosterIDBytes)
+
 // floorInitCommand gives a roster id its authority floor file holding no
 // serial yet, and never replaces one.
 func floorInitCommand(args []string, stdout, stderr io.Writer) int {
@@ -195,6 +268,9 @@ func floorInitCommand(args []string, stdout, stderr io.Writer) int {
 	}
 	if flags.NArg() != 1 || *id == "" {
 		return usageError(stderr, floorInitName, "takes --roster-id, then one directory, with every flag before it")
+	}
+	if !trust.ValidRosterID(*id) {
+		return fail(stderr, floorInitName, fmt.Errorf("--roster-id %s: %w", oneLine(*id), errRosterID))
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), floorLockWait)
 	defer cancel()

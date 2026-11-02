@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -202,21 +203,20 @@ func (a *Adapter) run(ctx context.Context, c call, send sender) (outcome, error)
 	}
 	cs := sessions[c.upstream]
 	if cs == nil {
-		return a.abort(ctx, p, d, gateway.AbortUnroutable, []string{codeUnclassified}, ErrUnroutable), nil
+		return a.abort(ctx, p, d, gateway.AbortUnroutable, nil, ErrUnroutable), nil
 	}
 	got, err := canon.ArgumentsHashV1(d.AuthorizedArgs)
 	if err != nil || got != d.AuthorizedDigest {
-		return a.abort(ctx, p, d, gateway.AbortArgsMismatch, []string{codeExecutedArgsMismatch}, nil), nil
+		return a.abort(ctx, p, d, gateway.AbortArgsMismatch, nil, nil), nil
 	}
 	obl, err := applyObligations(&c, d.Obligations)
 	if err != nil {
-		codes := append(append([]string(nil), d.Decision.GetReasonCodes()...), codeObligationNotApplied)
-		return a.abort(ctx, p, d, gateway.AbortObligation, codes, err), nil
+		return a.abort(ctx, p, d, gateway.AbortObligation, d.Decision.GetReasonCodes(), err), nil
 	}
 	do, sent, err := send(d.AuthorizedArgs)
 	if err != nil {
 		// The bytes are the authorized ones; this protocol cannot carry them.
-		return a.abort(ctx, p, d, gateway.AbortUntranslatable, []string{codeInvalidFieldValue}, err), nil
+		return a.abort(ctx, p, d, gateway.AbortUntranslatable, nil, err), nil
 	}
 	return a.sendOnce(ctx, p, d, &c, upstreamCall{session: cs, do: do, sent: sent, timeout: obl.timeout}), nil
 }
@@ -236,7 +236,7 @@ type upstreamCall struct {
 // rather than that the result is unknown.
 func (a *Adapter) sendOnce(ctx context.Context, p Pipeline, d gateway.Disposition, c *call, u upstreamCall) outcome {
 	if ctx.Err() != nil {
-		return a.abort(ctx, p, d, gateway.AbortCancelled, []string{codeEvidenceUnavailable}, nil)
+		return a.abort(ctx, p, d, gateway.AbortCancelled, nil, nil)
 	}
 	sendCtx, cancel := a.deadline(ctx, u.timeout)
 	defer cancel()
@@ -250,13 +250,18 @@ func (a *Adapter) sendOnce(ctx context.Context, p Pipeline, d gateway.Dispositio
 }
 
 // abort records an execution the adapter was handed and did not send, and
-// answers the block the agent sees. The decision is the pipeline's; the
-// codes say what the adapter refused.
-func (a *Adapter) abort(ctx context.Context, p Pipeline, d gateway.Disposition, cause gateway.AbortCause, codes []string, why error) outcome {
+// answers the block the agent sees. The decision is the pipeline's; the codes
+// are prior, then the one the plane records the cause as, so the agent and
+// the record name the refusal alike.
+func (a *Adapter) abort(ctx context.Context, p Pipeline, d gateway.Disposition, cause gateway.AbortCause, prior []string, why error) outcome {
 	a.blocked.Add(1)
 	if err := p.Abort(ctx, d, cause); err != nil {
 		a.closeFailures.Add(1)
 		a.logger.Error("aborting record failed", "execution_id", d.ExecutionID, "err", err)
+	}
+	codes := slices.Clone(prior)
+	if code, ok := cause.Code(); ok {
+		codes = append(codes, code)
 	}
 	extra := map[string]any{keyReasonCodes: codes}
 	if why != nil {

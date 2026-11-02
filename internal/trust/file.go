@@ -68,7 +68,7 @@ func Open(ctx context.Context, c Config) (Roster, error) {
 		return nil, err
 	}
 	switch {
-	case !nameRule(c.RosterID, MaxRosterIDBytes, false):
+	case !ValidRosterID(c.RosterID):
 		return nil, fmt.Errorf("%w: no roster id a roster may carry", ErrConfig)
 	case c.Path == "":
 		return nil, fmt.Errorf("%w: no roster file", ErrConfig)

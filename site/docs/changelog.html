@@ -128,6 +128,11 @@ fixes GHSA-g3hv-75wg-m249, through <code>overrides</code>: the server, at the ve
 its fingerprints were taken from, asks for the majors below them, where no
 fix exists. Its search and tree tools ran with them. Nothing this project
 ships uses either.</li>
+<li>The gateway no longer takes an approver id from its approval store that
+reads as the reserved <code>authn:</code> prefix. Such an answer runs nothing: a retry
+closes the held trail with the plane's own approval, expired, and a
+reconciliation closes a lost hold <code>APPROVAL_STATE_UNKNOWN</code>. Both shipped
+stores already refused such records; a store that did not was believed.</li>
 <li>The hook profile's qualification harness writes the runtime's stream only
 through a filter that keeps the tool calls, their answers and the run's
 status; the model's text and reasoning never reach the disk, where before
@@ -166,10 +171,14 @@ each shown refusing a planted violation by <code>check-imports-probe.sh</code>.<
 <p><code>guardana-control operators roster sign</code> signs a roster of operator keys under
 a trust root, each key with grants of one tenant, one project and a level,
 for 24 hours unless told otherwise and at most 7 days, each signing at a
-higher serial; <code>operators floor init</code> starts the floor a plane raises as it
-takes a roster. The roster, operator authentication and operator
-authorization are ports with these as their defaults, and a veto may only
-deny. No plane reads a roster yet
+higher serial. Signers writing into one <code>--out</code> directory hold a lock on it,
+so they never write one serial twice; it needs <code>flock</code>, and without it the
+command refuses. Of two rosters of one serial written elsewhere, the roster
+port's floor takes the first and refuses the second.
+<code>operators floor init</code> starts the floor a plane raises as it takes a
+roster, for a roster id the roster port takes. The roster, operator
+authentication and operator authorization are ports with these as their
+defaults, and a veto may only deny. No plane reads a roster yet
 (<a href="/docs/adr/0071-operators-are-named-by-a-signed-roster">ADR-0071</a>).</p>
 </li>
 <li>

@@ -9,12 +9,10 @@ import (
 	"io/fs"
 	"os"
 	"slices"
-	"strconv"
 
 	"github.com/guardana/control/internal/canon"
 	"github.com/guardana/control/internal/files"
 	"github.com/guardana/control/internal/policy"
-	"github.com/guardana/control/internal/policy/strictjson"
 )
 
 // KindAuthority is the floors of the trust rosters a plane takes. Its
@@ -178,44 +176,25 @@ func ReadAuthority(dir, rosterID string) (_ AuthorityFloor, err error) {
 // ErrAuthorityForked, and a serial or digest no roster carries with
 // ErrAuthorityInvalid, each leaving the file as it was. It never creates a
 // directory, a marker or a floor file, and waits for the lock until ctx ends.
-func RaiseAuthority(ctx context.Context, dir, rosterID string, serial int64, digest string) (_ AuthorityFloor, err error) {
-	next := AuthorityFloor{RosterID: rosterID, Serial: serial, Digest: digest}
-	if err := next.check(); err != nil {
-		return AuthorityFloor{}, err
-	}
-	if !next.HasSerial() {
-		return AuthorityFloor{}, fmt.Errorf("%w: serial 0", ErrAuthorityInvalid)
-	}
-	d, err := openDir(dir)
+func RaiseAuthority(ctx context.Context, dir, rosterID string, serial int64, digest string) (AuthorityFloor, error) {
+	return raiseSerial(ctx, dir, AuthorityFloor{RosterID: rosterID, Serial: serial, Digest: digest})
+}
+
+var authorityRefusals = serialRefusals{invalid: ErrAuthorityInvalid, below: ErrAuthorityBelowFloor, forked: ErrAuthorityForked}
+
+func (f AuthorityFloor) at() serialAt           { return serialAt{serial: f.Serial, digest: f.Digest} }
+func (AuthorityFloor) refusals() serialRefusals { return authorityRefusals }
+func (f AuthorityFloor) readFrom(d *dir) (AuthorityFloor, error) {
+	return d.readAuthorityFloor(f.RosterID)
+}
+
+// writeTo replaces the authority floor file f names, whole.
+func (f AuthorityFloor) writeTo(d *dir) error {
+	body, err := encodeAuthorityFile(f)
 	if err != nil {
-		return AuthorityFloor{}, err
+		return err
 	}
-	defer func() { err = errors.Join(err, d.close()) }()
-	unlock, err := d.lockToWrite(ctx)
-	if err != nil {
-		return AuthorityFloor{}, err
-	}
-	defer func() { err = errors.Join(err, unlock()) }()
-	stored, err := d.readAuthorityFloor(rosterID)
-	if err != nil {
-		return AuthorityFloor{}, err
-	}
-	switch {
-	case next.Serial < stored.Serial:
-		return AuthorityFloor{}, fmt.Errorf("%w: serial %d, the floor's %d", ErrAuthorityBelowFloor, next.Serial, stored.Serial)
-	case next.Serial == stored.Serial && next.Digest != stored.Digest:
-		return AuthorityFloor{}, fmt.Errorf("%w: serial %d", ErrAuthorityForked, next.Serial)
-	case next.Serial == stored.Serial:
-		return stored, nil
-	}
-	body, err := encodeAuthorityFile(next)
-	if err != nil {
-		return AuthorityFloor{}, err
-	}
-	if err := replaceIn(d.root, authorityName(rosterID), body, 0o600); err != nil {
-		return AuthorityFloor{}, err
-	}
-	return next, nil
+	return replaceIn(d.root, authorityName(f.RosterID), body, 0o600)
 }
 
 func (d *dir) readAuthorityFloor(rosterID string) (AuthorityFloor, error) {
@@ -293,104 +272,4 @@ func (f AuthorityFloor) check() error {
 		return fmt.Errorf("%w: the digest", ErrAuthorityInvalid)
 	}
 	return nil
-}
-
-type authorityMarkerBody struct {
-	SchemaVersion string   `json:"schema_version"`
-	Kind          Kind     `json:"kind"`
-	RosterIDs     []string `json:"roster_ids"`
-}
-
-type authorityFileBody struct {
-	SchemaVersion string  `json:"schema_version"`
-	RosterID      string  `json:"roster_id"`
-	Serial        *int64  `json:"serial"`
-	Digest        *string `json:"digest"`
-}
-
-func encodeAuthorityMarker(ids []string) ([]byte, error) {
-	body, err := encode(authorityMarkerBody{SchemaVersion: SchemaVersion, Kind: KindAuthority, RosterIDs: ids})
-	if err != nil {
-		return nil, err
-	}
-	back, err := decodeAuthorityMarker(body)
-	if err != nil || !slices.Equal(back, ids) {
-		return nil, errors.Join(ErrUnwritable, err)
-	}
-	return body, nil
-}
-
-func decodeAuthorityMarker(raw []byte) ([]string, error) {
-	members, err := readObject(raw, authorityMarkerMembers)
-	if err != nil {
-		return nil, err
-	}
-	if _, err := canon.CanonicalizeJSON(raw); err != nil {
-		return nil, fmt.Errorf("%w: not canonical JSON", ErrMalformed)
-	}
-	if err := checkSchemaVersion(members["schema_version"]); err != nil {
-		return nil, err
-	}
-	if named, ok := strictjson.String(members["kind"]); !ok || Kind(named) != KindAuthority {
-		return nil, fmt.Errorf("%w: kind", ErrMalformed)
-	}
-	return readIDs(members["roster_ids"], "roster_ids", MaxRosterIDs, ErrTooManyRosterIDs, checkRosterID)
-}
-
-func encodeAuthorityFile(f AuthorityFloor) ([]byte, error) {
-	if err := f.check(); err != nil {
-		return nil, err
-	}
-	out := authorityFileBody{SchemaVersion: SchemaVersion, RosterID: f.RosterID}
-	if f.HasSerial() {
-		out.Serial, out.Digest = &f.Serial, &f.Digest
-	}
-	body, err := encode(out)
-	if err != nil {
-		return nil, err
-	}
-	back, err := decodeAuthorityFile(body)
-	if err != nil || back != f {
-		return nil, errors.Join(ErrUnwritable, err)
-	}
-	return body, nil
-}
-
-// decodeAuthorityFile reads one authority floor file: serial and digest both
-// null, or a serial and digest check takes.
-func decodeAuthorityFile(raw []byte) (AuthorityFloor, error) {
-	members, err := readObject(raw, authorityFileMembers)
-	if err != nil {
-		return AuthorityFloor{}, err
-	}
-	if _, err := canon.CanonicalizeJSON(raw); err != nil {
-		return AuthorityFloor{}, fmt.Errorf("%w: not canonical JSON", ErrMalformed)
-	}
-	if err := checkSchemaVersion(members["schema_version"]); err != nil {
-		return AuthorityFloor{}, err
-	}
-	id, ok := strictjson.String(members["roster_id"])
-	if !ok {
-		return AuthorityFloor{}, fmt.Errorf("%w: roster_id is not a string", ErrMalformed)
-	}
-	f := AuthorityFloor{RosterID: id}
-	serial, digest := members["serial"], members["digest"]
-	switch {
-	case isNull(serial) != isNull(digest):
-		return AuthorityFloor{}, fmt.Errorf("%w: serial and digest are not both set or both null", ErrMalformed)
-	case !isNull(serial):
-		if f.Serial, err = strconv.ParseInt(string(serial), 10, 64); err != nil {
-			return AuthorityFloor{}, fmt.Errorf("%w: serial is not an integer", ErrMalformed)
-		}
-		if f.Digest, ok = strictjson.String(digest); !ok {
-			return AuthorityFloor{}, fmt.Errorf("%w: digest is not a string", ErrMalformed)
-		}
-		if f.Serial == 0 {
-			return AuthorityFloor{}, fmt.Errorf("%w: serial 0", ErrMalformed)
-		}
-	}
-	if err := f.check(); err != nil {
-		return AuthorityFloor{}, fmt.Errorf("%w: %w", ErrMalformed, err)
-	}
-	return f, nil
 }

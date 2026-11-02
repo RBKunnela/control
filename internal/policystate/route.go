@@ -151,64 +151,23 @@ func ReadRoute(dir, routeID string) (_ RouteFloor, err error) {
 // ErrRouteInvalid, each leaving the file as it was, and every refusal
 // ReadRoute makes. It never creates a directory, a marker or a floor file.
 // It returns the floor it leaves, and waits for the lock until ctx ends.
-func RaiseRoute(ctx context.Context, dir, routeID string, serial int64, digest string) (_ RouteFloor, err error) {
-	next := RouteFloor{RouteID: routeID, Serial: serial, Digest: digest}
-	if err := next.check(); err != nil {
-		return RouteFloor{}, err
-	}
-	if !next.HasSerial() {
-		return RouteFloor{}, fmt.Errorf("%w: serial 0", ErrRouteInvalid)
-	}
-	d, err := openDir(dir)
-	if err != nil {
-		return RouteFloor{}, err
-	}
-	defer func() { err = errors.Join(err, d.close()) }()
-	unlock, err := d.lockToWrite(ctx)
-	if err != nil {
-		return RouteFloor{}, err
-	}
-	defer func() { err = errors.Join(err, unlock()) }()
-	stored, err := d.readRouteFloor(routeID)
-	if err != nil {
-		return RouteFloor{}, err
-	}
-	raise, err := stored.takes(next)
-	switch {
-	case err != nil:
-		return RouteFloor{}, err
-	case !raise:
-		return stored, nil
-	}
-	if err := d.writeRouteFloor(next); err != nil {
-		return RouteFloor{}, err
-	}
-	return next, nil
+func RaiseRoute(ctx context.Context, dir, routeID string, serial int64, digest string) (RouteFloor, error) {
+	return raiseSerial(ctx, dir, RouteFloor{RouteID: routeID, Serial: serial, Digest: digest})
 }
 
-// writeRouteFloor replaces the route floor file f names, whole.
-func (d *dir) writeRouteFloor(f RouteFloor) error {
+var routeRefusals = serialRefusals{invalid: ErrRouteInvalid, below: ErrRouteBelowFloor, forked: ErrRouteForked}
+
+func (f RouteFloor) at() serialAt                        { return serialAt{serial: f.Serial, digest: f.Digest} }
+func (RouteFloor) refusals() serialRefusals              { return routeRefusals }
+func (f RouteFloor) readFrom(d *dir) (RouteFloor, error) { return d.readRouteFloor(f.RouteID) }
+
+// writeTo replaces the route floor file f names, whole.
+func (f RouteFloor) writeTo(d *dir) error {
 	body, err := encodeRouteFile(f)
 	if err != nil {
 		return err
 	}
 	return replaceIn(d.root, routeName(f.RouteID), body, 0o600)
-}
-
-// takes reports whether the floor takes next by raising itself to it. A
-// floor with no serial holds 0, below every route's; one at next's serial and
-// digest takes it as it is; a lower serial, or the same with another digest,
-// is refused.
-func (f RouteFloor) takes(next RouteFloor) (raise bool, err error) {
-	switch {
-	case next.Serial > f.Serial:
-		return true, nil
-	case next.Serial < f.Serial:
-		return false, fmt.Errorf("%w: serial %d, the floor's %d", ErrRouteBelowFloor, next.Serial, f.Serial)
-	case next.Digest != f.Digest:
-		return false, fmt.Errorf("%w: serial %d", ErrRouteForked, next.Serial)
-	}
-	return false, nil
 }
 
 // readRouteFloor judges what the directory holds and reads routeID's floor

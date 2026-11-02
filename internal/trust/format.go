@@ -114,7 +114,7 @@ func readDocument(body []byte) (Document, error) {
 	if d.id, err = text(members["rosterId"], "rosterId"); err != nil {
 		return Document{}, err
 	}
-	if !nameRule(d.id, MaxRosterIDBytes, false) {
+	if !ValidRosterID(d.id) {
 		return Document{}, fmt.Errorf("%w: rosterId", ErrMalformed)
 	}
 	if d.serial, err = strconv.ParseInt(string(members["serial"]), 10, 64); err != nil || d.serial < 1 || d.serial > policy.MaxSerial {
@@ -309,6 +309,12 @@ func readGrants(raw json.RawMessage) ([]Grant, error) {
 func scopeRule(s string) bool {
 	return policy.ValidID(s) && !strings.ContainsAny(s, "*?")
 }
+
+// ValidRosterID reports whether id is one a roster may carry: lower-case
+// ASCII letters and digits first, then those and . _ -, within
+// MaxRosterIDBytes. It is stricter than the floor's own check, and every
+// caller that names a roster id checks it first.
+func ValidRosterID(id string) bool { return nameRule(id, MaxRosterIDBytes, false) }
 
 // nameRule is the rule a roster id and a subject are held to: ASCII letters
 // and digits first, then letters, digits and . _ - (and @ + for a subject),

@@ -45,12 +45,8 @@ const (
 	keyRetryAfter   = "retry_after"
 	keyRefused      = "refused"
 
-	codeUnclassified         = "ACTION_UNCLASSIFIED"
-	codeInvalidFieldValue    = "INVALID_FIELD_VALUE"
-	codeApprovalPending      = "APPROVAL_PENDING"
-	codeExecutedArgsMismatch = "EXECUTED_ARGS_MISMATCH"
-	codeObligationNotApplied = "OBLIGATION_NOT_UNDERSTOOD"
-	codeEvidenceUnavailable  = "EVIDENCE_UNAVAILABLE"
+	codeUnclassified    = "ACTION_UNCLASSIFIED"
+	codeApprovalPending = "APPROVAL_PENDING"
 )
 
 // metaKeyAnswer marks an answer the gateway made itself, under its own

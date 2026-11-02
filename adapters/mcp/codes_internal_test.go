@@ -23,7 +23,7 @@ var codeShaped = regexp.MustCompile(`^[A-Z][A-Z0-9_]{3,}$`)
 // that is no code, and it is named by its own constant.
 func TestTheAdapterSpellsOnlyRegisteredCodes(t *testing.T) {
 	found := adapterCodeLiterals(t)
-	for _, own := range []string{codeUnclassified, codeInvalidFieldValue, codeApprovalPending, codeExecutedArgsMismatch, codeObligationNotApplied, codeEvidenceUnavailable} {
+	for _, own := range []string{codeUnclassified, codeApprovalPending} {
 		if !slices.Contains(found, own) {
 			t.Fatalf("the source spells %q and not the constant %q; the wrong source was examined", found, own)
 		}

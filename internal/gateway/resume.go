@@ -144,9 +144,10 @@ func sameDecision(held, fresh *controlv1.Decision) bool {
 // refuses then blocks with the approval spent.
 //
 // The plane never trusts the store's answer. One that is not the held approval
-// field by field, or not approved by someone, closes the window with the
-// plane's own approval, expired, as a lost hold's does: a store that answered
-// a spend with anything but an approval said nothing the plane can record.
+// field by field, or not approved by someone it may name, closes the window
+// with the plane's own approval, expired, as a lost hold's does: a store that
+// answered a spend with anything but an approval said nothing the plane can
+// record.
 func (c *call) resumeApproved(own *heldRequest, a *controlv1.Approval) Disposition {
 	if verdict, code, refused := approvalFields(own.approval, a, own.expires, c.now); refused {
 		return c.resumeBlocked(own, verdict, code, expiredEvent(own.approval))
@@ -207,14 +208,19 @@ func (c *call) resumeRejected(own *heldRequest, a *controlv1.Approval) Dispositi
 // checks a resume makes are the ones a reconciliation makes about a hold
 // nobody is retrying. An answer of a major this build does not read, or
 // decided outside the window between the request and now, is not one the
-// plane can place on its trail. It leaves the answer's state to its caller,
-// because a refusal is an answer where a resume needs an approval.
+// plane can place on its trail. Nor is one whose approver id is over the
+// bound or the claim rule refuses it: a store holds claims only, so no
+// approver the plane authenticated is ever taken from one. It leaves the
+// answer's state to its caller, because a refusal is an answer where a resume
+// needs an approval.
 func approvalFields(want, a *controlv1.Approval, expires, now time.Time) (controlv1.Verdict, string, bool) {
 	switch {
 	case a == nil, !readsApprovalVersion(a.GetSchemaVersion()),
 		a.GetApprovalId() != want.GetApprovalId(), a.GetRequestId() != want.GetRequestId(), a.GetMultiUse(),
 		!proto.Equal(a.GetRequestedAt(), want.GetRequestedAt()),
-		!decidedWithin(a, want.GetRequestedAt().AsTime(), now):
+		!decidedWithin(a, want.GetRequestedAt().AsTime(), now),
+		len(a.GetApproverId()) > approval.MaxApproverIDBytes,
+		approval.CheckClaimedApproverID(a.GetApproverId()) != nil:
 		return verdictIndeterminate, codeEvidenceUnavailable, true
 	case a.GetActionDigest() != want.GetActionDigest():
 		return verdictDeny, codeApprovalDigestMismatch, true
