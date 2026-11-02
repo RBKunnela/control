@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -37,15 +38,18 @@ type LogConfig struct {
 // tenant and project. Every segment not pruned is indexed by event id, so an
 // event sent again after its segment was sealed is not written again.
 type Log struct {
-	mu              sync.Mutex
-	rl              segmentlog.RecordLog
-	dir             string
+	mu  sync.Mutex
+	rl  segmentlog.RecordLog
+	dir string
+	// dirInfo is the directory as the log opened it.
+	dirInfo         os.FileInfo
 	tenant, project string
 	ids             index
 	// stale is an index a prune left naming pruned lines; the next append
 	// reads the segments left again first.
 	stale bool
-	// failed is an index that could not be read again after a prune.
+	// failed is a failure of the log that refuses every later call, an
+	// append whose events the index holds included.
 	failed error
 }
 
@@ -78,6 +82,9 @@ func OpenLog(cfg LogConfig) (*Log, error) {
 	if err != nil {
 		return nil, err
 	}
+	if l.dirInfo, err = os.Stat(cfg.Dir); err != nil {
+		return nil, errors.Join(err, rl.Close())
+	}
 	l.rl = rl
 	return l, nil
 }
@@ -95,10 +102,17 @@ func openLive(root *os.Root, name string) (segmentlog.LiveFile, error) {
 // liveFile is a Writer taking lines the log encoded and indexed.
 type liveFile struct{ w *Writer }
 
-// AppendLines marks a refusal after which the file is not what the log
-// counted, a change under the writer or a cut back that failed.
 func (f liveFile) AppendLines(ctx context.Context, lines []byte) error {
-	err := f.w.appendLines(ctx, lines)
+	return liveChanged(f.w.appendLines(ctx, lines))
+}
+
+func (f liveFile) Check() error {
+	return liveChanged(f.w.check())
+}
+
+// liveChanged marks a refusal after which the file is not what the log
+// counted, a change under the writer or a cut back that failed.
+func liveChanged(err error) error {
 	if errors.Is(err, ErrChanged) || errors.Is(err, ErrFailed) {
 		return fmt.Errorf("%w: %w", segmentlog.ErrLiveChanged, err)
 	}
@@ -144,10 +158,19 @@ func (l *Log) Append(ctx context.Context, events []*controlv1.Event) error {
 		return err
 	}
 	if err := l.rl.Append(ctx, buf); err != nil {
-		return err
+		return l.latch(err)
 	}
 	l.ids.add(added)
 	return nil
+}
+
+// latch keeps a failure of the segment log, so an append the index alone
+// answers is refused too.
+func (l *Log) latch(err error) error {
+	if errors.Is(err, segmentlog.ErrFailed) {
+		l.failed = err
+	}
+	return err
 }
 
 // Prune prunes the sealed segments through the one numbered through. The
@@ -163,7 +186,7 @@ func (l *Log) Prune(through int) error {
 		return l.failed
 	}
 	if err := l.rl.Prune(through); err != nil {
-		return err
+		return l.latch(err)
 	}
 	l.ids, l.stale = nil, true
 	return nil
@@ -175,18 +198,39 @@ func (l *Log) reindex() error {
 	if !l.stale {
 		return nil
 	}
-	// The log's own count of the bytes it holds leaves out anything written
-	// past it after the last line it wrote.
-	r, _, done, err := openLog(l.dir)
+	// The segments are read again by the log's path, so the directory there
+	// has to be the one the log holds, before and after the read. The log's
+	// own count of the bytes it holds leaves out anything written past it.
+	err := l.sameDir()
 	if err == nil {
-		l.ids, err = readIndex(io.LimitReader(r, l.rl.Manifest().Retained))
-		done()
+		var r io.Reader
+		var done func()
+		if r, _, done, err = openLog(l.dir); err == nil {
+			l.ids, err = readIndex(io.LimitReader(r, l.rl.Manifest().Retained))
+			done()
+		}
+	}
+	if err == nil {
+		err = l.sameDir()
 	}
 	if err != nil {
 		l.failed = fmt.Errorf("%w: the prune completed, and indexing the segments it left failed: %w", segmentlog.ErrFailed, err)
 		return l.failed
 	}
 	l.stale = false
+	return nil
+}
+
+// sameDir refuses a log path that no longer names the directory the log
+// opened.
+func (l *Log) sameDir() error {
+	info, err := os.Stat(l.dir)
+	switch {
+	case err != nil:
+		return err
+	case !os.SameFile(info, l.dirInfo):
+		return fmt.Errorf("%s is another directory than the log opened", strconv.Quote(l.dir))
+	}
 	return nil
 }
 

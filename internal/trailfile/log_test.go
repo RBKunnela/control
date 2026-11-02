@@ -613,3 +613,76 @@ func TestAnIndexThatCannotBeReadAfterAPruneFailsTheLog(t *testing.T) {
 		t.Errorf("the live segment holds %q, want %q", got, want)
 	}
 }
+
+// TestAnAppendThatSealsALiveFileChangedUnderItIsRefused: the first append
+// after the live segment was extended under the writer, one that needs a
+// seal, seals nothing and fails the log, so no manifest names the changed
+// file with the counts the log held; the log opened again holds the file.
+func TestAnAppendThatSealsALiveFileChangedUnderItIsRefused(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "log")
+	cfg := logConfig(dir)
+	l := openTestLog(t, cfg)
+	appendTo(t, l, event(1), event(2))
+	appendLive(t, dir, lines(t, event(3)))
+	if err := l.Append(context.Background(), []*controlv1.Event{event(4)}); !errors.Is(err, segmentlog.ErrFailed) {
+		t.Errorf("a sealing append after the live file changed = %v, want segmentlog.ErrFailed", err)
+	}
+	if n := len(l.Manifest().Segments); n != 0 {
+		t.Errorf("the log sealed %d segment(s) over the changed file, want none", n)
+	}
+	if err := l.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if m := openTestLog(t, cfg).Manifest(); len(m.Segments) != 0 || m.Live.Lines != 3 {
+		t.Errorf("opened again the log is %+v, want three live lines", m)
+	}
+}
+
+// TestADuplicateAfterTheLogFailedIsRefused: once an append failed the log, an
+// append whose events the index holds is refused too, not taken as written.
+func TestADuplicateAfterTheLogFailedIsRefused(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "log")
+	l := openTestLog(t, logConfig(dir))
+	appendTo(t, l, event(1))
+	if err := os.Truncate(filepath.Join(dir, segmentlog.LiveName), 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Append(context.Background(), []*controlv1.Event{event(2)}); !errors.Is(err, segmentlog.ErrFailed) {
+		t.Fatalf("an append after the live file was cut = %v, want segmentlog.ErrFailed", err)
+	}
+	if err := l.Append(context.Background(), []*controlv1.Event{event(1)}); !errors.Is(err, segmentlog.ErrFailed) {
+		t.Errorf("a resend of an event the cut file lost = %v, want segmentlog.ErrFailed", err)
+	}
+}
+
+// TestAnIndexAfterAPruneIsNotReadFromAnotherDirectory: a directory put at the
+// log's path after a prune, holding an event the log does not, is not read
+// into the index, so that event sent to the log is not taken as written.
+func TestAnIndexAfterAPruneIsNotReadFromAnotherDirectory(t *testing.T) {
+	base := t.TempDir()
+	dir := filepath.Join(base, "log")
+	l := openTestLog(t, logConfig(dir))
+	appendTo(t, l, event(1), event(2))
+	appendTo(t, l, event(3), event(4))
+	appendTo(t, l, event(5))
+	if err := l.Prune(1); err != nil {
+		t.Fatal(err)
+	}
+	other := filepath.Join(base, "other")
+	b := openTestLog(t, logConfig(other))
+	appendTo(t, b, event(6))
+	if err := b.Close(); err != nil {
+		t.Fatal(err)
+	}
+	moved := filepath.Join(base, "moved")
+	if err := os.Rename(dir, moved); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(other, dir); err != nil {
+		t.Fatal(err)
+	}
+	err := l.Append(context.Background(), []*controlv1.Event{event(6)})
+	if got := liveText(t, moved); err == nil && got != lines(t, event(5), event(6)) {
+		t.Errorf("the append after the directory was replaced = nil, and the log's live segment holds %q: event 6 taken as written", got)
+	}
+}

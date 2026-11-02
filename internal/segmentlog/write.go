@@ -104,6 +104,11 @@ func (l *segments) seal() error {
 		}
 		dropped, kept = dropped+1, kept[1:]
 	}
+	// The manifest names the file with the counts the log holds, so a file
+	// changed under it fails the log before a manifest is written.
+	if err := l.file.Check(); err != nil {
+		return l.fail(err)
+	}
 	s := l.liveSegment()
 	s.State, s.File, s.SealedAt = StateSealed, segmentFile(s.Seq), l.now()
 	next := append(slices.Clone(kept), s)

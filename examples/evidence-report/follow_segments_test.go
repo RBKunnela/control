@@ -71,14 +71,14 @@ func TestANextSegmentsGapAtTheLastOnesTailOffsetIsRaised(t *testing.T) {
 	}
 	in = strings.Replace(in, query, `"query":{"after":"`+trailerOf(t, "gaps.jsonl")+`","limit":1000}`, 1)
 	got := consume(t, dir, in)
-	if got.code != 1 || !strings.Contains(alertLines(got.stderr), `{"v":1,"alert":"evidence_gap","offset":1540,"note":"partial_tail"}`) {
+	if got.code != 1 || !strings.Contains(alertLines(got.stderr), `{"v":1,"alert":"evidence_gap","offset":1540,"note":"partial_tail","source":"`+other+`"}`) {
 		t.Errorf("the next segment's tail gap at 1540: exit %d, alerts %q; want it raised", got.code, alertLines(got.stderr))
 	}
 }
 
 // prunedAlertLine is the alert of an export that names no cursor and counts
 // segments pruned before it.
-const prunedAlertLine = `{"v":1,"alert":"evidence_gap","offset":0,"note":"pruned"}`
+const prunedAlertLine = `{"v":1,"alert":"evidence_gap","offset":0,"note":"pruned","source":"` + outageSource + `"}`
 
 // TestAStatesFirstExportAfterPrunedSegmentsRaisesAGap: a state's first
 // export, which names no cursor, raises evidence_gap noted pruned when its
@@ -110,17 +110,17 @@ func TestAResumedExportAfterPrunedSegmentsRaisesNoGap(t *testing.T) {
 	}
 }
 
-// segmentAfter is a framed export of the trail all, from its line from to
+// segmentAfter is a framed export of the trail all, from its first line to
 // its line to, as the next segment of a log after the cursor of the export
 // before: asked after that export's next_cursor.
-func segmentAfter(t *testing.T, before string, all []string, from, to int) string {
+func segmentAfter(t *testing.T, before string, all []string, to int) string {
 	t.Helper()
 	_, after, ok := strings.Cut(before, `"next_cursor":"`)
 	if !ok {
 		t.Fatal("the export before names no next_cursor")
 	}
 	cursor, _, _ := strings.Cut(after, `"`)
-	in := framed("b.trail", all, from, to, 1000)
+	in := framed("b.trail", all, 0, to, 1000)
 	return strings.Replace(in, `"query":{"limit":1000}`, `"query":{"after":"`+cursor+`","limit":1000}`, 1)
 }
 
@@ -136,7 +136,7 @@ func TestARequestOpenAcrossASegmentIsSavedAndResumed(t *testing.T) {
 		t.Fatalf("the first segment: exit 2, %s", got.stderr)
 	}
 	rest := x[3:]
-	b := segmentAfter(t, a, rest, 0, 1)
+	b := segmentAfter(t, a, rest, 1)
 	if got := consume(t, dir, b); got.code == 2 {
 		t.Fatalf("the next segment: exit 2, %s", got.stderr)
 	}
@@ -160,7 +160,7 @@ func TestAnAlertLoggedInTheNextSegmentBeforeACrashIsNotRaisedAgain(t *testing.T)
 		t.Fatalf("the first segment: exit %d, %s", got.code, got.stderr)
 	}
 	u := chain("u", undetermined...)
-	b := segmentAfter(t, a, u, 0, len(u))
+	b := segmentAfter(t, a, u, len(u))
 	crashOnce(t, "alerts")
 	got := consume(t, dir, b)
 	raised := alertLines(got.stderr)
@@ -187,7 +187,7 @@ func TestATailGapLoggedInTheNextSegmentBeforeACrashIsNotRaisedAgain(t *testing.T
 		t.Fatalf("the first segment: exit %d, %s", got.code, got.stderr)
 	}
 	c := chain("c", allowed...)
-	b := segmentAfter(t, a, c, 0, len(c))
+	b := segmentAfter(t, a, c, len(c))
 	end := regexp.MustCompile(`"scanned_bytes":(\d+)`).FindStringSubmatch(b)
 	if end == nil {
 		t.Fatal("the next segment's trailer names no scanned_bytes")
@@ -205,5 +205,33 @@ func TestATailGapLoggedInTheNextSegmentBeforeACrashIsNotRaisedAgain(t *testing.T
 	}
 	if log := alertLog(t, dir); log != raised {
 		t.Errorf("alerts.jsonl:\n%s\nwant each alert once:\n%s", log, raised)
+	}
+}
+
+// TestATailGapOfTheNextSegmentAtTheOffsetOfOneLoggedBeforeACrashIsRaised: a
+// run that logged the gap after the last newline of one segment stopped
+// before saving; the next segment ending in a gap at the same offset is
+// another gap, and raised.
+func TestATailGapOfTheNextSegmentAtTheOffsetOfOneLoggedBeforeACrashIsRaised(t *testing.T) {
+	first := chain("a", allowed...)
+	dir := newState(t)
+	a := framed("a.trail", first, 0, len(first), 1000)
+	if got := consume(t, dir, a); got.code != 0 {
+		t.Fatalf("the first segment: exit %d, %s", got.code, got.stderr)
+	}
+	tail := `{"type":"gap","offset":999999,"reason":"partial_tail"}` + "\n" + `{"type":"trailer"`
+	withTail := func(in string) string {
+		in = strings.Replace(in, `{"type":"trailer"`, tail, 1)
+		return strings.Replace(strings.Replace(in, `"tail_bytes":0`, `"tail_bytes":5`, 1), `"gap":0`, `"gap":1`, 1)
+	}
+	again := withTail(framed("a.trail", first, len(first), len(first), 1000))
+	crashOnce(t, "alerts")
+	if got := consume(t, dir, again); got.code != 2 || !strings.Contains(alertLines(got.stderr), `"offset":999999,"note":"partial_tail"`) {
+		t.Fatalf("the run that stopped: exit %d, alerts %q; want 2 after the first segment's tail gap", got.code, alertLines(got.stderr))
+	}
+	c := chain("c", allowed...)
+	b := withTail(segmentAfter(t, a, c, len(c)))
+	if got := consume(t, dir, b); got.code != 1 || !strings.Contains(alertLines(got.stderr), `"offset":999999,"note":"partial_tail"`) {
+		t.Errorf("the next segment's tail gap at the same offset: exit %d, alerts %q, %s; want 1 and it raised", got.code, alertLines(got.stderr), got.stderr)
 	}
 }

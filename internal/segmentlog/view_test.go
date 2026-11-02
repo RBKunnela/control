@@ -245,3 +245,42 @@ func TestALiveFileBetweenASealsManifestAndItsRenameIsMoved(t *testing.T) {
 		t.Errorf("after the seal was completed the view is %v, %v; want one sealed segment and none live", err, v)
 	}
 }
+
+// TestALiveFileOpenedBeforeASealsRenameCompletedIsMoved: a view read between
+// a seal's manifest and its rename whose live file was opened, then renamed
+// by the seal before the check, holds the sealed segment's bytes and is
+// moved.
+func TestALiveFileOpenedBeforeASealsRenameCompletedIsMoved(t *testing.T) {
+	cfg := config(logDir(t), 64, 256)
+	l, _ := crashOpen(t, cfg, 1<<30)
+	mustAppend(t, l, "aaa", "bbb")
+	c := &crashing{at: 2}
+	l.ops = c.ops()
+	if err := l.Seal(); !errors.Is(err, errCrash) {
+		t.Fatalf("a seal stopped at its rename: %v", err)
+	}
+	v, err := Inspect(cfg.Dir, cfg.MaxLineBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, err := os.OpenRoot(cfg.Dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = root.Close() }()
+	f, err := root.Open(LiveName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = f.Close() }()
+	if err := v.sealPending(root, f); !errors.Is(err, ErrMoved) {
+		t.Fatalf("before the rename: %v, want ErrMoved", err)
+	}
+	if err := root.Rename(LiveName, segmentFile(1)); err != nil {
+		t.Fatal(err)
+	}
+	if err := v.sealPending(root, f); !errors.Is(err, ErrMoved) {
+		t.Errorf("the live file opened, renamed by the seal before the check: %v, want ErrMoved", err)
+	}
+	_ = l.release()
+}

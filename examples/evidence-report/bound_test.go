@@ -36,7 +36,7 @@ func TestOpenBound(t *testing.T) {
 				"gaps 0, duplicates 0, conflicting 0, refused 0; trailer end reached\n",
 			nextAlerts: undecided},
 		{open: 10_001, code: 1, alerts: `{"v":1,"alert":"open_bound","tenant":"t","project":"p","request":"q0","run":"run-q0",` +
-			`"offset":%d,"note":"more than 10000 requests are open: the oldest is no longer followed, and its later events read as broken"}` + "\n",
+			`"offset":%d,"note":"more than 10000 requests are open: the oldest is no longer followed, and its later events read as broken","source":"%s"}` + "\n",
 			totals: "totals: requests 10000, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 10000, unknown 0; " +
 				"gaps 0, duplicates 0, conflicting 0, refused 0; trailer end reached",
 			next: columns + "\n" +
@@ -55,7 +55,7 @@ func TestOpenBound(t *testing.T) {
 			for _, l := range lines {
 				last, end = end, end+len(l)+1
 			}
-			want := strings.ReplaceAll(tc.alerts, "%d", fmt.Sprint(last))
+			want := strings.ReplaceAll(strings.ReplaceAll(tc.alerts, "%d", fmt.Sprint(last)), "%s", digest(lines[0]+"\n"))
 			if got.code != tc.code || totals != tc.totals || withoutCursors(alertLines(got.stderr)) != want {
 				t.Fatalf("%d proposals: exit %d, totals %q, alerts\n%s\nwant %d, %q,\n%s", tc.open, got.code, totals, alertLines(got.stderr), tc.code, tc.totals, want)
 			}

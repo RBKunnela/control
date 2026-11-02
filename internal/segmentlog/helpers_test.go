@@ -39,6 +39,8 @@ func (l testLive) AppendLines(_ context.Context, lines []byte) error {
 	return l.f.Sync()
 }
 
+func (testLive) Check() error { return nil }
+
 func (l testLive) Close() error { return l.f.Close() }
 
 // clockAt is a clock that stands at one second.

@@ -134,9 +134,10 @@ own, `"v":1` and `experimental`, not a contract:
 | `approval_expired` | an approval nobody answered in time |
 | `open_bound` | more than 10 000 open requests: the oldest is dropped, and its later events read as broken |
 
-A policy `DENY` is reported, not alerted. A line holds only the members that
+A policy `DENY` is reported, not alerted. A line holds the members that
 apply: `tenant`, `project`, `request`, `run`, `event`, `offset`, where it was
-raised, `cursor`, `occurred_at`, `verdict`, `reasons`, `block`, `note`.
+raised, `cursor` or `source`, `occurred_at`, `verdict`, `reasons`, `block`,
+`note`.
 Times are the events'; the program reads no clock. The gap after the file's
 last newline is alerted once while it stays there. It exits 0 with no new
 alert and 1 with one or more.

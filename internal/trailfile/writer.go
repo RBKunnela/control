@@ -237,6 +237,14 @@ func (w *Writer) appendLines(ctx context.Context, buf []byte) error {
 	return w.write(buf)
 }
 
+// check refuses, as ready does, a writer whose file is no longer as it left
+// it.
+func (w *Writer) check() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.ready(context.Background())
+}
+
 // ready refuses an append to a writer that is closed or failed, once ctx has
 // ended, or when the path no longer names the file the writer left.
 func (w *Writer) ready(ctx context.Context) error {

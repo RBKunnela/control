@@ -48,19 +48,26 @@ type alert struct {
 	Reasons    []string `json:"reasons,omitempty"`
 	Block      string   `json:"block,omitempty"`
 	Note       string   `json:"note,omitempty"`
+	// Source names the file of an alert no cursor names it by.
+	Source string `json:"source,omitempty"`
 }
 
 // key is what makes two alerts one: a rerun after a crash does not raise an
 // alert whose key the log holds past its checkpoint. The note is part of it,
 // since two gaps at one offset, before and after a writer ended the line
-// there, are two alerts.
+// there, are two alerts; so is the source, since two segments of a log can
+// each end in a gap at one offset.
 func (a alert) key() string {
 	at := a.Event
 	if at == "" && a.Offset != nil {
 		at = "@" + strconv.FormatInt(*a.Offset, 10)
 	}
-	return strings.Join([]string{strconv.Quote(a.Alert), strconv.Quote(a.Tenant), strconv.Quote(a.Project),
-		strconv.Quote(a.Request), strconv.Quote(at), strconv.Quote(a.Note)}, " ")
+	parts := []string{strconv.Quote(a.Alert), strconv.Quote(a.Tenant), strconv.Quote(a.Project),
+		strconv.Quote(a.Request), strconv.Quote(at), strconv.Quote(a.Note)}
+	if a.Source != "" {
+		parts = append(parts, strconv.Quote(a.Source))
+	}
+	return strings.Join(parts, " ")
 }
 
 // eventAlert is an alert about the event e carries, without an id over the
@@ -127,6 +134,8 @@ func readAlert(b []byte) (alert, error) {
 		return alert{}, errors.New("an alert code this program does not raise")
 	case a.Offset == nil:
 		return alert{}, errors.New("an alert naming no offset")
+	case a.Source != "" && !isSum(a.Source):
+		return alert{}, errors.New("an alert whose source is not a SHA-256 in lowercase hex")
 	}
 	return a, nil
 }

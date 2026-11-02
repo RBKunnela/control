@@ -105,7 +105,7 @@ func TestTailGapOnce(t *testing.T) {
 	runSteps(t, []followStep{{export: "gaps.jsonl", code: 1, rows: []string{rowG},
 		totals: totalsLine(1, 1, 0, 0, 0, 3, 0, 0, "trailer 15 bytes cut, no writer holds them"),
 		alerts: []expectedAlert{gapAlert(305, "malformed"), gapAlert(646, "unsupported_version"),
-			{`{"v":1,"alert":"evidence_gap","offset":1540,"note":"partial_tail"}`, 1540}}}, again, again})
+			{`{"v":1,"alert":"evidence_gap","offset":1540,"note":"partial_tail","source":"` + gapsSource + `"}`, 1540}}}, again, again})
 }
 
 // TestEventAlertsAfterABreak: a request whose chain broke, or that ended,
@@ -225,7 +225,7 @@ func TestStdoutFailure(t *testing.T) {
 	var stderr bytes.Buffer
 	code := run([]string{"-state", dir}, strings.NewReader(fixture(t, "gaps.jsonl")), failingWriter{}, &stderr)
 	want := gapAlert(305, "malformed").in(t, "gaps.jsonl") + "\n" + gapAlert(646, "unsupported_version").in(t, "gaps.jsonl") + "\n" +
-		`{"v":1,"alert":"evidence_gap","offset":1540,"note":"partial_tail"}` + "\n"
+		`{"v":1,"alert":"evidence_gap","offset":1540,"note":"partial_tail","source":"` + gapsSource + `"}` + "\n"
 	if code != 2 || !strings.Contains(stderr.String(), "could not be written") || stateOf(t, dir) != saved {
 		t.Errorf("exit %d, stderr %q, state changed %v; want 2, could not be written, state.json as it was", code, stderr.String(), stateOf(t, dir) != saved)
 	}

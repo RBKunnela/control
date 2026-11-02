@@ -45,6 +45,9 @@ type LiveFile interface {
 	// once they are synced; a failed append leaves the file as it was, or
 	// its error matches ErrLiveChanged.
 	AppendLines(ctx context.Context, lines []byte) error
+	// Check refuses, matching ErrLiveChanged, a file no longer as the last
+	// append left it.
+	Check() error
 	Close() error
 }
 

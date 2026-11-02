@@ -20,6 +20,8 @@ type follower struct {
 	duplicates, conflicting int
 	// at is the offset of the record being read, where an alert is raised.
 	at int64
+	// source is the export's file, which an alert with no cursor names.
+	source string
 }
 
 // raisedAt is where an alert was raised: its offset, and the source of the
@@ -34,6 +36,9 @@ func newFollower(s *followState, pending map[string]raisedAt) *follower {
 }
 
 func (f *follower) raise(a alert) {
+	if a.Cursor == "" {
+		a.Source = f.source
+	}
 	k := a.key()
 	if _, raised := f.pending[k]; raised {
 		f.matched[k] = true
@@ -46,6 +51,7 @@ func (f *follower) raise(a alert) {
 // reads the export's events and gaps in the file's order, then moves the
 // cursor and carries forward the pending alerts it has not reached.
 func (f *follower) take(x *export) {
+	f.source = x.header.source
 	f.enter(x)
 	if x.header.prunedGap() {
 		f.at = 0

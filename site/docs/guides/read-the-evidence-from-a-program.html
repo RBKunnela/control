@@ -244,9 +244,10 @@ own, <code>&quot;v&quot;:1</code> and <code>experimental</code>, not a contract:
 </tr>
 </tbody>
 </table>
-<p>A policy <code>DENY</code> is reported, not alerted. A line holds only the members that
+<p>A policy <code>DENY</code> is reported, not alerted. A line holds the members that
 apply: <code>tenant</code>, <code>project</code>, <code>request</code>, <code>run</code>, <code>event</code>, <code>offset</code>, where it was
-raised, <code>cursor</code>, <code>occurred_at</code>, <code>verdict</code>, <code>reasons</code>, <code>block</code>, <code>note</code>.
+raised, <code>cursor</code> or <code>source</code>, <code>occurred_at</code>, <code>verdict</code>, <code>reasons</code>, <code>block</code>,
+<code>note</code>.
 Times are the events'; the program reads no clock. The gap after the file's
 last newline is alerted once while it stays there. It exits 0 with no new
 alert and 1 with one or more.</p>

@@ -304,7 +304,8 @@ verify one.
   before it answered the refused call; such a run is now unknown.
 - A collector whose live segment changed under it refused that append but
   went on to seal it, writing a manifest its next start refused. The log now
-  takes nothing more until it is started again.
+  takes nothing more until it is started again, and that holds too when the
+  first append after the change needs a seal or repeats events it holds.
 - `prune` with the clock before a segment's seal wrote a tombstone the
   manifest reader refuses, leaving the directory unreadable. It is now refused
   with nothing changed.
@@ -315,7 +316,9 @@ verify one.
   was taken as written; the index now covers only the segments left.
 - `evidence-report -state` refused its own state after a request stayed open
   across a segment, and raised again an alert of the next segment logged
-  before a crash.
+  before a crash. After a crash it could also take the next segment's gap
+  after its last newline for an earlier segment's at the same offset, and
+  not raise it; an alert with no cursor now names its file as `source`.
 - A deadline finding is `CONFIRMED` when one evidence export holds both events
   it cites, whatever other exports were given; it was `SUSPECTED` whenever
   more than one export was, even the same export twice. Endpoints no one

@@ -124,7 +124,7 @@ func TestFollowGaps(t *testing.T) {
 	runSteps(t, []followStep{{export: "gaps.jsonl", code: 1, rows: []string{rowG},
 		totals: totalsLine(1, 1, 0, 0, 0, 3, 0, 0, "trailer 15 bytes cut, no writer holds them"),
 		alerts: []expectedAlert{gapAlert(305, "malformed"), gapAlert(646, "unsupported_version"),
-			{`{"v":1,"alert":"evidence_gap","offset":1540,"note":"partial_tail"}`, 1540}}}})
+			{`{"v":1,"alert":"evidence_gap","offset":1540,"note":"partial_tail","source":"` + gapsSource + `"}`, 1540}}}})
 }
 
 // TestFollowMissingEvent: a middle event the trail never held breaks its
