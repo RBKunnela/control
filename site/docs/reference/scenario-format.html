@@ -235,7 +235,7 @@ them is refused when the file loads.</p>
 <code>run</code> reads it. The listener, <code>/healthz</code>, the
 approvals directory and the pause file come from it and nowhere else; the
 listener must speak HTTP and <code>health.address</code> must be set. <code>--trail</code> is the
-file the plane's collector writes. Paths run in the order given, a
+trail file or the directory of segments the plane's collector writes. Paths run in the order given, a
 directory's <code>*.json</code> files in name order, and every file is read before the
 first one runs. <code>--timeout</code>, 10s by default, bounds each wait; a call may take the upstream's
 call timeout on top of it.</p>

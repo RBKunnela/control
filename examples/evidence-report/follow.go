@@ -11,8 +11,8 @@ import (
 type follower struct {
 	s *followState
 	// pending maps the key of each alert raised before and not saved past to
-	// its offset, and matched names those this run met again.
-	pending map[string]int64
+	// where it was raised, and matched names those this run met again.
+	pending map[string]raisedAt
 	matched map[string]bool
 	alerts  []alert
 	// rows are the requests that ended in this export, in the order they did.
@@ -22,7 +22,14 @@ type follower struct {
 	at int64
 }
 
-func newFollower(s *followState, pending map[string]int64) *follower {
+// raisedAt is where an alert was raised: its offset, and the source of the
+// file it is in when its cursor names one.
+type raisedAt struct {
+	offset int64
+	source string
+}
+
+func newFollower(s *followState, pending map[string]raisedAt) *follower {
 	return &follower{s: s, pending: pending, matched: map[string]bool{}}
 }
 
@@ -69,11 +76,36 @@ func (f *follower) take(x *export) {
 }
 
 // enter clears what was pending in the state's file when x is the next
-// segment of its log: the cursor is past all of it.
+// segment of its log, since the cursor is past all of it, and keeps what a
+// run stopped before saving raised in x's own or with no cursor to say where.
+// The open requests then began before x's first offset.
 func (f *follower) enter(x *export) {
-	if f.s.source != "" && x.header.source != f.s.source {
-		f.pending, f.s.tailGap = map[string]int64{}, nil
+	if f.s.source == "" || x.header.source == f.s.source {
+		return
 	}
+	for k, at := range f.pending {
+		if at.source != "" && at.source != x.header.source {
+			delete(f.pending, k)
+		}
+	}
+	f.s.tailGap = nil
+	f.s.beforeSegment()
+}
+
+// beforeSegment places every open request at offset 0 of the next segment,
+// keeping their order in the queue and dropping the entries of requests no
+// longer open, so an offset is compared only with one of its own segment.
+func (s *followState) beforeSegment() {
+	queue := make([]queued, 0, len(s.open))
+	for _, q := range s.queue {
+		if o := s.open[q.key]; o != nil && o.firstOffset == q.firstOffset {
+			queue = append(queue, queued{q.key, 0})
+		}
+	}
+	for _, o := range s.open {
+		o.firstOffset, o.tailOffset = 0, 0
+	}
+	s.queue = queue
 }
 
 // carry keeps the pending alerts this run did not meet again and the cursor
@@ -81,9 +113,9 @@ func (f *follower) enter(x *export) {
 func (f *follower) carry() {
 	reached := cursorOffset(f.s.cursor)
 	f.s.carried = map[string]int64{}
-	for k, offset := range f.pending {
-		if !f.matched[k] && offset >= reached {
-			f.s.carried[k] = offset
+	for k, at := range f.pending {
+		if !f.matched[k] && at.offset >= reached {
+			f.s.carried[k] = at.offset
 		}
 	}
 }

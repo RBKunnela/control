@@ -57,15 +57,16 @@ Appends go to `live.jsonl`. When the next append would take it past
 `--segment-bytes` (64 MiB unless told, and at least the largest request a
 plane sends), it is sealed: `segments.json` names
 it with its lines, bytes and the digests of its first and last line, and it
-is renamed `segment-<n>.jsonl`. Once the segments not pruned would pass
-`--max-bytes` (1 GiB unless told, and at least twice the segment bound), every
-request is answered 503 and nothing is pruned to make room.
+is renamed `segment-<n>.jsonl`. A request whose new records would take the
+segments not pruned past `--max-bytes` (1 GiB unless told, and at least twice
+the segment bound) is answered 503; an exact repeat or a smaller request still
+succeeds, and nothing is pruned to make room.
 
 At open, every segment is read and refused unless it holds what the manifest
 names it with; so is a name no collect leaves. A last line of `live.jsonl`
 with no newline is what a crash leaves, and is removed only when it can be
 the start of an evidence line. A seal or a prune a crash stopped part way is
-finished. Do not change the files while collect runs: a live segment removed,
+finished by the next collect or prune. Do not change the files while collect runs: a live segment removed,
 renamed, cut or extended under it makes it answer 503 until you start it
 again, and the plane keeps the records in its spool.
 
@@ -102,7 +103,7 @@ guardana-gateway trail trail/plane
 ```text
 request=req-1 project=orders tenant=acme last=EVENT_KIND_ACTION_COMPLETED ok
 request=req-2 project=orders tenant=acme last=EVENT_KIND_APPROVAL_REQUESTED open
-trails 2: ok 1, open 1, failed 0, indeterminate 0; lines 7, repeated lines collapsed 0, bytes after the last newline 0
+trails 2: ok 1, open 1, failed 0, indeterminate 0; lines 7, repeated lines collapsed 0, bytes after the last newline 0; segments pruned 0
 the check proves each chain's shape and not its integrity: a record altered to keep that shape passes it
 ```
 
@@ -124,8 +125,8 @@ guardana-gateway prune --through 3 trail/plane
 `trail export trail/plane` reads one segment. Its `end_reached` is true only
 at the log's end; before it, export again after `next_cursor`, which leads into
 the next segment. A cursor of a pruned segment is refused as expired, exit 2.
-A segment's file exported on its own, `trail export trail/plane/segment-00000002.jsonl`,
-is refused, exit 2: export the directory, whose header counts the segments
+A segment's file named on its own, `trail export trail/plane/segment-00000002.jsonl`,
+directly or through a symbolic link, is refused, exit 2: export the directory, whose header counts the segments
 pruned before. `evidence-report -state` follows the log from segment to
 segment.
 
@@ -134,7 +135,8 @@ and dropped of the 10,000 it names at most, then each segment's state, lines,
 bytes, key and dates, and whether a collect holds it. `prune`
 removes the sealed segments up to the one named, after writing each one's
 tombstone, which keeps its lines, bytes and digests. Stop collect first: a
-held directory is refused. The live segment is never pruned.
+held directory is refused, and so is a clock before the segment's seal.
+The live segment is never pruned.
 
 ## What the collector promises
 
@@ -164,8 +166,8 @@ held directory is refused. The live segment is never pruned.
   trail whose first events were pruned fails the chain check.
 - Before collect is up, whoever binds its loopback port first is sent the
   token in plaintext by the plane's next retry.
-- At 10,000 sealed segments the collector answers 503 until a prune; past
-  that, each seal drops the oldest tombstone.
+- At 10,000 sealed segments a request that needs a seal is answered 503 until
+  a prune; past that, each seal drops the oldest tombstone.
 - `trail` checks each chain's shape: its links, its order and its identifiers.
   There is no hash chain, so a record changed to keep that shape passes.
 - The collector reads what this repository's exporter sends and nothing more:

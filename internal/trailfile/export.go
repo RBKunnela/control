@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"os"
-	"strconv"
 
 	"github.com/guardana/control/internal/brand"
 	"github.com/guardana/control/internal/evidence"
@@ -149,23 +147,14 @@ func exportFormat() lineexport.Format {
 // ExportFile exports the file at path as Export does, reading the length it
 // has when opened and holding no lock, so it reads a file a collector is
 // writing. Anything that is not a regular file is refused, without waiting on
-// a named pipe, and so is a file in a log's directory, as ErrSegmentFile.
+// a named pipe, and so is a file in a log's directory, through a link or not,
+// as ErrSegmentFile.
 func ExportFile(path string, q Query, w io.Writer) (Trailer, error) {
-	if err := notInLog(path); err != nil {
-		return Trailer{}, err
-	}
-	f, err := os.OpenFile(path, os.O_RDONLY|readFlags, 0) //nolint:gosec // G304: the path is the operator's to name, and the descriptor is judged before a byte is read
+	f, info, err := openTrail(path, "trail export")
 	if err != nil {
 		return Trailer{}, err
 	}
 	defer func() { _ = f.Close() }()
-	info, err := f.Stat()
-	switch {
-	case err != nil:
-		return Trailer{}, err
-	case !info.Mode().IsRegular():
-		return Trailer{}, fmt.Errorf("%w: %s", ErrNotRegular, strconv.Quote(path))
-	}
 	return Export(Source{Name: path, R: f, Size: info.Size(), Held: func() (bool, error) { return heldByWriter(f) }}, q, w)
 }
 

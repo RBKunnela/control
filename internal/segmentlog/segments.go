@@ -127,7 +127,7 @@ func (l *segments) claim() error {
 	if l.lock, err = openJudged(l.root, LockName, os.O_RDWR|os.O_CREATE); err != nil {
 		return err
 	}
-	if err := lock(l.lock); err != nil {
+	if err := Lock(l.lock); err != nil {
 		return err
 	}
 	have, err := l.survey()

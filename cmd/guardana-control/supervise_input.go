@@ -3,16 +3,13 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
-	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/coverage"
 	"github.com/guardana/control/internal/observe"
 	"github.com/guardana/control/internal/runs"
 	"github.com/guardana/control/internal/supervise"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // readRun reads the opened run's record and the runs its procedure's
@@ -73,49 +70,17 @@ func readFamily(admin *runs.Admin, id string, mode supervise.Children) ([]runs.R
 	return nil, fmt.Errorf("children mode %d is not one this build reads", mode)
 }
 
-// readSupervisedExport reads an export as coverage does, then takes its
-// events from the same bytes: coverage.ReadExport judges the export and keeps
-// no event.
+// readSupervisedExport reads an export and its events as coverage does.
 func readSupervisedExport(path string) (supervise.Export, error) {
 	raw, err := readExportFile(path)
 	if err != nil {
 		return supervise.Export{}, err
 	}
-	x, err := coverage.ReadExport(bytes.NewReader(raw))
-	if err != nil {
-		return supervise.Export{}, refusedInput("evidence", path, err)
-	}
-	events, err := exportEvents(raw)
+	x, events, err := coverage.ReadExportEvents(bytes.NewReader(raw))
 	if err != nil {
 		return supervise.Export{}, refusedInput("evidence", path, err)
 	}
 	return supervise.Export{Events: events, Whole: x.Whole, NotWhole: x.NotWhole}, nil
-}
-
-// exportEvents decodes the event records of an export coverage.ReadExport
-// accepted. Bytes after the last newline are a line cut short, which that
-// reader does not read either.
-func exportEvents(raw []byte) ([]*controlv1.Event, error) {
-	lines := bytes.Split(raw, []byte("\n"))
-	var out []*controlv1.Event
-	for _, line := range lines[:len(lines)-1] {
-		var rec struct {
-			Type  string          `json:"type"`
-			Event json.RawMessage `json:"event"`
-		}
-		if err := json.Unmarshal(line, &rec); err != nil {
-			return nil, err
-		}
-		if rec.Type != "event" {
-			continue
-		}
-		ev := &controlv1.Event{}
-		if err := protojson.Unmarshal(rec.Event, ev); err != nil {
-			return nil, errors.New("an event does not decode")
-		}
-		out = append(out, ev)
-	}
-	return out, nil
 }
 
 // readSupervisedSource reads a source as coverage does: a descriptor that

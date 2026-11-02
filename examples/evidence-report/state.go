@@ -183,11 +183,19 @@ func (s *followState) file(alertsBytes int64) stateFile {
 		f.Pending = append(f.Pending, pendingJSON{k, offset})
 	}
 	slices.SortFunc(f.Pending, func(a, b pendingJSON) int { return cmp.Or(cmp.Compare(a.Offset, b.Offset), cmp.Compare(a.Key, b.Key)) })
+	// Requests that began in earlier segments all stand at offset 0, so the
+	// queue's order, oldest first, breaks a tie.
+	place := make(map[requestKey]int, len(s.queue))
+	for i, q := range s.queue {
+		place[q.key] = i
+	}
 	opens := make([]*openRequest, 0, len(s.open))
 	for _, o := range s.open {
 		opens = append(opens, o)
 	}
-	slices.SortFunc(opens, func(a, b *openRequest) int { return cmp.Compare(a.firstOffset, b.firstOffset) })
+	slices.SortFunc(opens, func(a, b *openRequest) int {
+		return cmp.Or(cmp.Compare(a.firstOffset, b.firstOffset), cmp.Compare(place[a.key], place[b.key]))
+	})
 	for _, o := range opens {
 		f.Open = append(f.Open, o.file())
 	}

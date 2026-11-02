@@ -106,8 +106,8 @@ while the totals say the end was not reached. Run one
 consumer per directory: a run holds its lock, and another refuses.
 
 It refuses, with status 2 and the state untouched, an export that is empty,
-cut, filtered, past those bounds, holds a record it refuses, is of another
-file than the one it first read, does not start at the saved cursor or ends behind it, or whose
+cut, filtered, past those bounds, holds a record it refuses, is neither the
+state's file nor its log's next segment, does not start at the saved cursor or ends behind it, or whose
 alerts would overfill the log (export again with a smaller `--limit`); and a
 state directory another user owns or may read or write, a state of another
 `schema_version` major, lacking a member its version had or holding one

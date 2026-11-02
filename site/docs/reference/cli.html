@@ -315,11 +315,13 @@ exits 1 when it cut one, lost a closing record or could not close the spool;
 is their page. <code>collect</code> appends what a plane exports, previews cleared, to
 segments bound to one tenant and project. It answers 401 without its
 credential, 400 to another project's event and 503 past <code>--max-bytes</code>, and
-prunes nothing itself; a directory holding what it does not write is refused
-untouched. <code>trail</code> prints one line per request and exits 1 when a chain fails
+prunes nothing; a directory holding what it does not write is refused,
+gaining a lock file, losing temporary files. <code>trail</code> prints one line per
+request and exits 1 when a chain fails
 or cannot be read, nothing holds a trail, a partial last line has no <code>collect</code>
 holding it, or past 100,000 lines. <code>trail export</code> of a directory exports one
-segment and refuses an expired cursor, and a file inside it. <code>prune</code>
+segment and, as <code>trail</code>, refuses a file inside it and an expired cursor.
+<code>prune</code>
 removes sealed segments,
 tombstones first, while no <code>collect</code> holds them.</p>
 <p><code>scenario run</code> holds a running plane to scenario files

@@ -19,7 +19,7 @@ func TestAWriterWaitsOutAReadersProbe(t *testing.T) {
 	for _, c := range []struct {
 		hold time.Duration
 		want error
-	}{{50 * time.Millisecond, nil}, {2 * lockTries * lockPause, ErrLocked}} {
+	}{{50 * time.Millisecond, nil}, {500 * time.Millisecond, ErrLocked}} {
 		f, err := os.Open(path) //nolint:gosec // G304: the test's own temp file
 		if err != nil {
 			t.Fatal(err)

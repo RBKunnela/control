@@ -20,11 +20,11 @@ It exits 0 only when every request ended on an unbroken chain of one run the
 plane allows and the export was whole. A request is `blocked`, `completed` only on
 success, `aborted` when nothing was sent, `failed` on a failure,
 `uncertain` on a timeout or an unknown outcome, otherwise `unknown`: the
-effect may have happened, as with a run under an enforcing mode against its
-decision. Anything unknown, uncertain, open or missing exits 1, as does an
-export over 100 000 records or 64 MiB; a usage error, 2.
+effect may have happened, as with an enforcing run against its decision.
+Anything unknown, uncertain, open or missing exits 1, as does an export over
+100 000 records or 64 MiB after its header; a usage error, 2.
 
-## Following a trail
+## Following a trail (unix only)
 
 ```
 bin/evidence-report -state s -init
@@ -33,8 +33,8 @@ after=$(bin/evidence-report -state s -cursor)
 ```
 
 One run at a time reads the next export, logs each new alert to
-`s/alerts.jsonl` as a JSON line, `"v":1`, `experimental`, and to stderr after
-`evidence-report: alert`, then prints requests that ended. Exit 1 is a new alert. Exit 2 leaves
+`s/alerts.jsonl` as JSON lines, `"v":1`, `experimental`, and to stderr after
+`evidence-report: alert`, then prints ended requests. Exit 1 is a new alert. Exit 2 leaves
 `state.json` unchanged unless only its last sync failed; logged alerts stay, not raised again, and
 rows may print again.
 

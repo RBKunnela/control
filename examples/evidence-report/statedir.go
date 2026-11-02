@@ -132,9 +132,9 @@ func (d *stateDir) open(name string, flag int) (*os.File, error) {
 type checkpoint struct {
 	state *followState
 	// pending maps the key of each alert a run logged and then stopped
-	// before saving, and each the state carries, to its offset: they were
-	// raised, and are not raised again.
-	pending map[string]int64
+	// before saving, and each the state carries, to where it was raised:
+	// they were raised, and are not raised again.
+	pending map[string]raisedAt
 	// saved is the log's length the state records, logBytes its length to
 	// its last whole line, and cut is bytes after it, which the next append
 	// drops.
@@ -162,9 +162,9 @@ func (d *stateDir) load() (*checkpoint, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", stateName, err)
 	}
-	c := &checkpoint{state: s, pending: map[string]int64{}}
+	c := &checkpoint{state: s, pending: map[string]raisedAt{}}
 	for k, offset := range s.carried {
-		c.pending[k] = offset
+		c.pending[k] = raisedAt{offset: offset, source: s.source}
 	}
 	return c, d.readPending(c, file.AlertsBytes)
 }
@@ -196,7 +196,7 @@ func (d *stateDir) readPending(c *checkpoint, saved int64) error {
 		if err != nil {
 			return fmt.Errorf("%s past the state's checkpoint: %w", alertsName, err)
 		}
-		c.pending[a.key()] = *a.Offset
+		c.pending[a.key()] = raisedAt{offset: *a.Offset, source: cursorSource(a.Cursor)}
 	}
 	return nil
 }

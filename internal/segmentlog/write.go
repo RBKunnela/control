@@ -3,6 +3,7 @@ package segmentlog
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -23,7 +24,8 @@ func (l *segments) usable() error {
 // Append writes lines to the live segment. Lines that would take a live
 // segment holding a line past SegmentBytes seal it first; lines that would
 // then take the log past MaxBytes are refused with ErrBudget and nothing of
-// them is written.
+// them is written. An append that leaves the live file other than the log
+// counts it fails the log.
 func (l *segments) Append(ctx context.Context, lines []byte) error {
 	if len(lines) == 0 || lines[len(lines)-1] != '\n' {
 		return ErrLines
@@ -40,6 +42,9 @@ func (l *segments) Append(ctx context.Context, lines []byte) error {
 		return err
 	}
 	if err := l.file.AppendLines(ctx, lines); err != nil {
+		if errors.Is(err, ErrLiveChanged) {
+			return l.fail(err)
+		}
 		return err
 	}
 	for line := range bytes.Lines(lines) {
@@ -123,6 +128,7 @@ func (l *segments) seal() error {
 // Prune prunes the sealed segments through the one numbered through. Each
 // one's tombstone is in the manifest before its file is unlinked. A prefix
 // already pruned, its tombstones dropped or not, is pruned again as nothing.
+// A clock before a seal it would prune is refused with nothing changed.
 func (l *segments) Prune(through int) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -137,6 +143,9 @@ func (l *segments) Prune(through int) error {
 	next := slices.Clone(l.segs)
 	var gone []string
 	at := l.now()
+	if err := sealedBy(next[:max(through-l.dropped, 0)], at); err != nil {
+		return err
+	}
 	for i := range next[:max(through-l.dropped, 0)] {
 		if next[i].State == StateSealed {
 			gone = append(gone, next[i].File)
@@ -158,6 +167,18 @@ func (l *segments) Prune(through int) error {
 		return l.fail(err)
 	}
 	l.segs = next
+	return nil
+}
+
+// sealedBy refuses a clock at before the seal of a sealed segment of segs:
+// the manifest reader refuses a prune dated before its segment's seal.
+func sealedBy(segs []Segment, at time.Time) error {
+	for _, s := range segs {
+		if s.State == StateSealed && at.Before(s.SealedAt) {
+			return fmt.Errorf("%w: the clock reads %s, and segment %d was sealed at %s", ErrClock,
+				at.Format(time.RFC3339), s.Seq, s.SealedAt.Format(time.RFC3339))
+		}
+	}
 	return nil
 }
 

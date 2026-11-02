@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/guardana/control/internal/brand"
@@ -320,4 +322,83 @@ func TestALogIsBoundToItsTenantAndProject(t *testing.T) {
 		}
 	}
 	_ = openLog(t, config(dir, 16, 32)).Close()
+}
+
+// gatedLive refuses an append with what refusal holds, writing nothing, and
+// otherwise appends as testLive does.
+type gatedLive struct {
+	LiveFile
+	refusal *error
+}
+
+func (l gatedLive) AppendLines(ctx context.Context, lines []byte) error {
+	if *l.refusal != nil {
+		return *l.refusal
+	}
+	return l.LiveFile.AppendLines(ctx, lines)
+}
+
+// TestALiveFileChangedUnderTheLogFailsIt: a live file refusing an append as
+// changed fails the log, which then seals and prunes nothing; any other
+// refusal leaves the log taking appends.
+func TestALiveFileChangedUnderTheLogFailsIt(t *testing.T) {
+	errOther := errors.New("refused, the file as it was")
+	for _, c := range []struct {
+		refusal error
+		fails   bool
+	}{{fmt.Errorf("%w: cut", ErrLiveChanged), true}, {errOther, false}} {
+		cfg := config(logDir(t), 8, 1<<10)
+		var refusal error
+		cfg.OpenLive = func(root *os.Root, name string) (LiveFile, error) {
+			f, err := openTestLive(root, name)
+			return gatedLive{f, &refusal}, err
+		}
+		l := openLog(t, cfg)
+		mustAppend(t, l, "aaa")
+		refusal = c.refusal
+		if err := l.Append(context.Background(), []byte("b\n")); !errors.Is(err, c.refusal) {
+			t.Fatalf("the refused append = %v, want %v", err, c.refusal)
+		}
+		refusal = nil
+		err := l.Append(context.Background(), []byte("eeeee\n"))
+		perr := l.Prune(1)
+		if failed := errors.Is(err, ErrFailed) && errors.Is(perr, ErrFailed); failed != c.fails {
+			t.Errorf("after %v: a sealing append %v, a prune %v; failed %v, want %v", c.refusal, err, perr, failed, c.fails)
+		}
+		if n := len(l.Manifest().Segments); c.fails && n != 0 {
+			t.Errorf("the failed log sealed %d segments, want none", n)
+		}
+	}
+}
+
+// TestAPruneDatedBeforeASealIsRefused: a prune whose clock stands before the
+// seal of a segment it would prune is refused, naming the clock, with the
+// manifest and the files unchanged, so the log stays one its next open reads;
+// at the second of that seal it prunes.
+func TestAPruneDatedBeforeASealIsRefused(t *testing.T) {
+	dir := logDir(t)
+	l := openLog(t, config(dir, 8, 64))
+	mustAppend(t, l, "aaa", "bbb")
+	mustAppend(t, l, "ccc", "ddd")
+	l.cfg.Now = clockAt(1_800_000_010)
+	mustAppend(t, l, "eee")
+	l.cfg.Now = clockAt(1_800_000_009)
+	if err := l.Prune(1); err != nil {
+		t.Fatalf("Prune(1) after segment 1's seal = %v", err)
+	}
+	manifest, names := fileText(t, filepath.Join(dir, ManifestName)), dirNames(t, dir)
+	if err := l.Prune(2); !errors.Is(err, ErrClock) || !strings.Contains(err.Error(), "2027-01-15T08:00:09Z") {
+		t.Errorf("Prune(2) a second before segment 2's seal = %v, want ErrClock naming the clock", err)
+	}
+	if fileText(t, filepath.Join(dir, ManifestName)) != manifest || !slices.Equal(dirNames(t, dir), names) {
+		t.Errorf("the refused prune changed the directory: %v", dirNames(t, dir))
+	}
+	if err := l.Close(); err != nil {
+		t.Fatal(err)
+	}
+	l = openLog(t, config(dir, 8, 64))
+	l.cfg.Now = clockAt(1_800_000_010)
+	if err := l.Prune(2); err != nil {
+		t.Errorf("Prune(2) at segment 2's seal = %v", err)
+	}
 }

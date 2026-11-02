@@ -1,6 +1,7 @@
 package main
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -106,5 +107,103 @@ func TestAResumedExportAfterPrunedSegmentsRaisesNoGap(t *testing.T) {
 	next := strings.Replace(nextSegment(t, "outage-1.jsonl", trailerOf(t, "outage-1.jsonl")), `"pruned_before":0,`, `"pruned_before":2,`, 1)
 	if got := consume(t, dir, next); got.code == 2 || strings.Contains(got.stderr, `"note":"pruned"`) {
 		t.Errorf("the next segment after the state's cursor counting two pruned: exit %d, %s; want no pruned gap", got.code, got.stderr)
+	}
+}
+
+// segmentAfter is a framed export of the trail all, from its line from to
+// its line to, as the next segment of a log after the cursor of the export
+// before: asked after that export's next_cursor.
+func segmentAfter(t *testing.T, before string, all []string, from, to int) string {
+	t.Helper()
+	_, after, ok := strings.Cut(before, `"next_cursor":"`)
+	if !ok {
+		t.Fatal("the export before names no next_cursor")
+	}
+	cursor, _, _ := strings.Cut(after, `"`)
+	in := framed("b.trail", all, from, to, 1000)
+	return strings.Replace(in, `"query":{"limit":1000}`, `"query":{"after":"`+cursor+`","limit":1000}`, 1)
+}
+
+// TestARequestOpenAcrossASegmentIsSavedAndResumed: a request opened past the
+// first line of one segment whose next event is the first line of the next
+// is saved as a state the next run takes, and ends there.
+func TestARequestOpenAcrossASegmentIsSavedAndResumed(t *testing.T) {
+	x := chain("x", approved...)
+	first := append(chain("a", allowed...), x[:3]...)
+	dir := newState(t)
+	a := framed("a.trail", first, 0, len(first), 1000)
+	if got := consume(t, dir, a); got.code == 2 {
+		t.Fatalf("the first segment: exit 2, %s", got.stderr)
+	}
+	rest := x[3:]
+	b := segmentAfter(t, a, rest, 0, 1)
+	if got := consume(t, dir, b); got.code == 2 {
+		t.Fatalf("the next segment: exit 2, %s", got.stderr)
+	}
+	got := consume(t, dir, framed("b.trail", rest, 1, len(rest), 1000))
+	if got.code != 0 {
+		t.Fatalf("the run after the next segment: exit %d, %s; want 0", got.code, got.stderr)
+	}
+	if rows, _ := table(t, got.stdout); len(rows) != 1 || !strings.HasPrefix(rows[0], "t\tp\tx\t") {
+		t.Errorf("the run after the next segment printed rows %q, want request x ended", rows)
+	}
+}
+
+// TestAnAlertLoggedInTheNextSegmentBeforeACrashIsNotRaisedAgain: a run that
+// logged an alert of the next segment and stopped before saving the state,
+// run again on the same export, raises nothing again.
+func TestAnAlertLoggedInTheNextSegmentBeforeACrashIsNotRaisedAgain(t *testing.T) {
+	first := chain("a", allowed...)
+	dir := newState(t)
+	a := framed("a.trail", first, 0, len(first), 1000)
+	if got := consume(t, dir, a); got.code != 0 {
+		t.Fatalf("the first segment: exit %d, %s", got.code, got.stderr)
+	}
+	u := chain("u", undetermined...)
+	b := segmentAfter(t, a, u, 0, len(u))
+	crashOnce(t, "alerts")
+	got := consume(t, dir, b)
+	raised := alertLines(got.stderr)
+	if got.code != 2 || !strings.Contains(raised, `"alert":"indeterminate"`) {
+		t.Fatalf("the run that stopped: exit %d, alerts %q; want 2 after an indeterminate alert", got.code, raised)
+	}
+	if got := consume(t, dir, b); got.code == 2 || alertLines(got.stderr) != "" {
+		t.Errorf("the same export again: exit %d, alerts %q; want none raised again", got.code, alertLines(got.stderr))
+	}
+	if log := alertLog(t, dir); log != raised {
+		t.Errorf("alerts.jsonl:\n%s\nwant each alert once:\n%s", log, raised)
+	}
+}
+
+// TestATailGapLoggedInTheNextSegmentBeforeACrashIsNotRaisedAgain: the gap
+// after the last newline carries no cursor to name its segment; one a run
+// logged in the next segment and stopped before saving is not raised again
+// by the same export run again.
+func TestATailGapLoggedInTheNextSegmentBeforeACrashIsNotRaisedAgain(t *testing.T) {
+	first := chain("a", allowed...)
+	dir := newState(t)
+	a := framed("a.trail", first, 0, len(first), 1000)
+	if got := consume(t, dir, a); got.code != 0 {
+		t.Fatalf("the first segment: exit %d, %s", got.code, got.stderr)
+	}
+	c := chain("c", allowed...)
+	b := segmentAfter(t, a, c, 0, len(c))
+	end := regexp.MustCompile(`"scanned_bytes":(\d+)`).FindStringSubmatch(b)
+	if end == nil {
+		t.Fatal("the next segment's trailer names no scanned_bytes")
+	}
+	b = strings.Replace(b, `{"type":"trailer"`, `{"type":"gap","offset":`+end[1]+`,"reason":"partial_tail"}`+"\n"+`{"type":"trailer"`, 1)
+	b = strings.Replace(strings.Replace(b, `"tail_bytes":0`, `"tail_bytes":5`, 1), `"gap":0`, `"gap":1`, 1)
+	crashOnce(t, "alerts")
+	got := consume(t, dir, b)
+	raised := alertLines(got.stderr)
+	if got.code != 2 || !strings.Contains(raised, `"note":"partial_tail"`) {
+		t.Fatalf("the run that stopped: exit %d, alerts %q; want 2 after the tail gap's alert", got.code, raised)
+	}
+	if again := consume(t, dir, b); again.code == 2 || alertLines(again.stderr) != "" {
+		t.Errorf("the same export again: exit %d, alerts %q, %s; want none raised again", again.code, alertLines(again.stderr), again.stderr)
+	}
+	if log := alertLog(t, dir); log != raised {
+		t.Errorf("alerts.jsonl:\n%s\nwant each alert once:\n%s", log, raised)
 	}
 }

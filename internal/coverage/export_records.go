@@ -114,6 +114,9 @@ func (er *exportReader) readEvent(line []byte) error {
 		return fmt.Errorf("event: schema_version: want major %s", eventMajor())
 	}
 	er.x.Events++
+	if er.keep {
+		er.events = append(er.events, ev)
+	}
 	if at := ev.GetOccurredAt(); at.IsValid() {
 		er.x.widen(at.AsTime())
 	}

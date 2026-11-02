@@ -3,10 +3,12 @@ package spool
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
+	"slices"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/evidence"
@@ -18,15 +20,16 @@ import (
 const quarantineName = "quarantine.log"
 
 // quarantine is what the quarantine file holds: the records that check, the
-// offset just past the last of them, and the event identifier of every one, so
-// a record the quarantine holds is never written twice. What the identifiers
-// take grows with the file, which the budget bounds. info is the file the
+// offset just past the last of them, and the digest of every one's line, which
+// carries its event identifier, so a record the quarantine holds is never
+// written twice and one with another line always is. What the digests take
+// grows with the file, which the budget bounds. info is the file the
 // listing or the create found, nil while there is none, and synced whether its
 // directory entry is known to be on disk.
 type quarantine struct {
 	records int
 	size    int64
-	held    map[string]struct{}
+	held    map[[sha256.Size]byte]struct{}
 	info    fs.FileInfo
 	synced  bool
 }
@@ -34,15 +37,15 @@ type quarantine struct {
 // quarantineWhat names the quarantine in a refusal.
 const quarantineWhat = "the quarantine"
 
-func (q *quarantine) remember(id string) {
+func (q *quarantine) remember(sum [sha256.Size]byte) {
 	if q.held == nil {
-		q.held = map[string]struct{}{}
+		q.held = map[[sha256.Size]byte]struct{}{}
 	}
-	q.held[id] = struct{}{}
+	q.held[sum] = struct{}{}
 }
 
-func (q *quarantine) holds(id string) bool {
-	_, ok := q.held[id]
+func (q *quarantine) holds(sum [sha256.Size]byte) bool {
+	_, ok := q.held[sum]
 	return ok
 }
 
@@ -79,8 +82,8 @@ func (s *Spool) loadQuarantine() (int64, error) {
 	return info.Size(), nil
 }
 
-// loadQuarantineIDs reads the event identifier of every record the
-// quarantine holds.
+// loadQuarantineIDs reads the line of every record the quarantine holds,
+// refusing one that is not an event, and remembers its digest.
 func (s *Spool) loadQuarantineIDs(ra io.ReaderAt, found scanned) error {
 	for at := int64(0); at < found.good; {
 		line, next, err := readRecord(ra, at, found.good)
@@ -91,7 +94,7 @@ func (s *Spool) loadQuarantineIDs(ra io.ReaderAt, found scanned) error {
 		if err != nil || len(events) != 1 {
 			return fmt.Errorf("%w: the quarantine at %d holds no event: %w", ErrCorrupt, at, err)
 		}
-		s.quarantine.remember(events[0].GetEventId())
+		s.quarantine.remember(sha256.Sum256(line))
 		at = next
 	}
 	return nil
@@ -111,8 +114,8 @@ func (s *Spool) cutQuarantineTail(size int64) error {
 	return nil
 }
 
-// Quarantine appends to the spool's quarantine the events whose identifiers it
-// does not already hold, and returns how many it wrote once they are durable.
+// Quarantine appends to the spool's quarantine the events whose lines it does
+// not already hold, and returns how many it wrote once they are durable.
 // It is how a record a collector refuses for good leaves the export without
 // leaving the evidence: a caller acknowledges past the records only after it
 // returns.
@@ -137,17 +140,18 @@ func (r *Reader) Quarantine(events []*controlv1.Event) (int, error) {
 	}
 	var records bytes.Buffer
 	var line bytes.Buffer
-	var write []*controlv1.Event
+	var write [][sha256.Size]byte
 	for i, event := range events {
-		if event != nil && (s.quarantine.holds(event.GetEventId()) || named(write, event.GetEventId())) {
-			continue
-		}
 		line.Reset()
 		if err := evidence.EncodeJSONL(&line, []*controlv1.Event{event}); err != nil {
 			return 0, fmt.Errorf("spool: quarantining event %d: %w", i, err)
 		}
+		sum := sha256.Sum256(line.Bytes())
+		if s.quarantine.holds(sum) || slices.Contains(write, sum) {
+			continue
+		}
 		records.Write(frame(line.Bytes()))
-		write = append(write, event)
+		write = append(write, sum)
 	}
 	if len(write) == 0 {
 		return 0, nil
@@ -163,23 +167,13 @@ func (r *Reader) Quarantine(events []*controlv1.Event) (int, error) {
 	return len(write), nil
 }
 
-// named reports whether events already hold the event identifier id.
-func named(events []*controlv1.Event, id string) bool {
-	for _, event := range events {
-		if event.GetEventId() == id {
-			return true
-		}
-	}
-	return false
-}
-
 // appendQuarantine writes framed records at the quarantine's end and syncs
 // them, and the directory until its entry for the file is known to be on
 // disk. On a failure the file is cut back to what it held through the same
 // descriptor and the cut is synced, and when either fails the spool is
 // broken: a later append could land behind a record nobody can vouch for. A close that fails after the sync breaks it too, since the
 // records are then on disk and no longer counted.
-func (s *Spool) appendQuarantine(records []byte, written []*controlv1.Event) error {
+func (s *Spool) appendQuarantine(records []byte, written [][sha256.Size]byte) error {
 	f, info, err := s.openForAppend(quarantineName, quarantineWhat, s.quarantine.info)
 	if err != nil {
 		return err
@@ -204,9 +198,9 @@ func (s *Spool) appendQuarantine(records []byte, written []*controlv1.Event) err
 		s.breakWith(fmt.Errorf("spool: quarantine: closing: %w", err))
 		return s.broken
 	}
-	for _, event := range written {
+	for _, sum := range written {
 		s.quarantine.records++
-		s.quarantine.remember(event.GetEventId())
+		s.quarantine.remember(sum)
 	}
 	s.quarantine.size += int64(len(records))
 	s.quarantinedSinceAck += int64(len(records))

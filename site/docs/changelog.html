@@ -128,6 +128,14 @@ fixes GHSA-g3hv-75wg-m249, through <code>overrides</code>: the server, at the ve
 its fingerprints were taken from, asks for the majors below them, where no
 fix exists. Its search and tree tools ran with them. Nothing this project
 ships uses either.</li>
+<li><code>trail export</code> refused a segment of a log named by its path but exported
+one reached through a symbolic link as a whole trail file, so coverage and
+<code>supervise</code> took a log with pruned segments as whole. The file opened is
+now judged by its real directory.</li>
+<li>The spool's quarantine took a record carrying an event id it already held
+as preserved, without comparing content, so a second record with that id,
+or with no id, was acknowledged and lost. It now tells records apart by
+their whole line.</li>
 </ul>
 <h3 id="added">Added</h3>
 <ul>
@@ -186,6 +194,13 @@ classified. <code>Validate</code> does not change (<a href="/docs/adr/0067-the-p
 </ul>
 <h3 id="changed">Changed</h3>
 <ul>
+<li>
+<p><strong>Breaking:</strong> <code>trail &lt;file&gt;</code> refuses a file in a log's directory, named
+directly or through a symbolic link, exit 1: name the directory instead.</p>
+</li>
+<li>
+<p><code>trail</code> of a directory ends its counts line with <code>segments pruned &lt;n&gt;</code>.</p>
+</li>
 <li>
 <p><strong>Breaking:</strong> a supervise report names each <code>--source</code> it could not rely
 on in <code>sources_in_doubt</code>: one not read by its state alone, one never heard
@@ -407,6 +422,20 @@ time, which no lint read before.</p>
 </ul>
 <h3 id="fixed">Fixed</h3>
 <ul>
+<li>A collector whose live segment changed under it refused that append but
+went on to seal it, writing a manifest its next start refused. The log now
+takes nothing more until it is started again.</li>
+<li><code>prune</code> with the clock before a segment's seal wrote a tombstone the
+manifest reader refuses, leaving the directory unreadable. It is now refused
+with nothing changed.</li>
+<li>An export or a read of a log between a seal's manifest and its rename took
+the sealed bytes as the next live segment; it now refuses them as moved and
+starts again, and fails once the stopped seal outlasts its retries.</li>
+<li>After <code>Prune</code> on an open log, an event whose line was pruned and sent again
+was taken as written; the index now covers only the segments left.</li>
+<li><code>evidence-report -state</code> refused its own state after a request stayed open
+across a segment, and raised again an alert of the next segment logged
+before a crash.</li>
 <li>A deadline finding is <code>CONFIRMED</code> when one evidence export holds both events
 it cites, whatever other exports were given; it was <code>SUSPECTED</code> whenever
 more than one export was, even the same export twice. Endpoints no one

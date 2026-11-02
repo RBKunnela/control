@@ -4,9 +4,9 @@ package segmentlog
 
 import "os"
 
-// Without a file lock two writers could seal or prune one directory at once,
-// so the writer refuses to open.
-func lock(*os.File) error { return ErrNoLock }
+// Lock is ErrNoLock: without a file lock two writers could write one file or
+// directory at once, so a writer refuses to open.
+func Lock(*os.File) error { return ErrNoLock }
 
-// No writer of this package opens a directory here, so none holds one.
-func heldByWriter(*os.File) (bool, error) { return false, nil }
+// HeldByWriter is false: no writer that takes Lock opens a file here.
+func HeldByWriter(*os.File) (bool, error) { return false, nil }

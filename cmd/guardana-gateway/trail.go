@@ -110,10 +110,10 @@ func (l *valueList) Set(v string) error {
 }
 
 // trail reads a trail file, or every segment of a directory of segments not
-// pruned, up to the last newline and prints one line per
-// request's trail with the chain check's verdict, then the counts and what the
-// check does not prove. It exits 1 when a trail failed or could not be read
-// either way, when the file holds no trail at all, since a check of nothing is
+// pruned, up to the last newline and prints one line per request's trail with
+// the chain check's verdict, then the counts, with the segments pruned for a
+// directory, and what the check does not prove. It exits 1 when a trail
+// failed or could not be read either way, when the file holds no trail at all, since a check of nothing is
 // not a pass, and when the file ends in a partial line no collector is
 // writing.
 func trail(path string, stdout, stderr io.Writer) int {
@@ -136,9 +136,13 @@ func trail(path string, stdout, stderr io.Writer) int {
 		}
 		b.WriteString("\n")
 	}
-	fmt.Fprintf(&b, "trails %d: ok %d, open %d, failed %d, indeterminate %d; lines %d, repeated lines collapsed %d, bytes after the last newline %d\n",
+	fmt.Fprintf(&b, "trails %d: ok %d, open %d, failed %d, indeterminate %d; lines %d, repeated lines collapsed %d, bytes after the last newline %d",
 		len(rep.Trails), counts[trailfile.Passed], counts[trailfile.StillOpen], counts[trailfile.Failed],
 		counts[trailfile.Indeterminate], rep.Lines, rep.Duplicates, rep.Unread)
+	if rep.Log {
+		fmt.Fprintf(&b, "; segments pruned %d", rep.Pruned)
+	}
+	b.WriteString("\n")
 	b.WriteString(shapeNote + "\n")
 	if _, err := io.WriteString(stdout, b.String()); err != nil {
 		return fail(stderr, "trail", errors.Join(errors.New("writing to standard output"), err))

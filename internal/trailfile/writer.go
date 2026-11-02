@@ -333,7 +333,7 @@ func (w *Writer) lstat() (os.FileInfo, error) {
 func (w *Writer) cutBack(cause error) error {
 	if err := errors.Join(w.f.Truncate(w.size), w.f.Sync()); err != nil {
 		w.failed = fmt.Errorf("%w: %w", ErrFailed, err)
-		return fmt.Errorf("%w: %w; cutting it back failed too: %w", ErrWrite, cause, err)
+		return fmt.Errorf("%w: %w; cutting it back failed too: %w", ErrWrite, cause, w.failed)
 	}
 	return fmt.Errorf("%w: %w", ErrWrite, cause)
 }

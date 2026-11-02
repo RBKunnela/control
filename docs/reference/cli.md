@@ -219,11 +219,13 @@ exits 1 when it cut one, lost a closing record or could not close the spool;
 is their page. `collect` appends what a plane exports, previews cleared, to
 segments bound to one tenant and project. It answers 401 without its
 credential, 400 to another project's event and 503 past `--max-bytes`, and
-prunes nothing itself; a directory holding what it does not write is refused
-untouched. `trail` prints one line per request and exits 1 when a chain fails
+prunes nothing; a directory holding what it does not write is refused,
+gaining a lock file, losing temporary files. `trail` prints one line per
+request and exits 1 when a chain fails
 or cannot be read, nothing holds a trail, a partial last line has no `collect`
 holding it, or past 100,000 lines. `trail export` of a directory exports one
-segment and refuses an expired cursor, and a file inside it. `prune`
+segment and, as `trail`, refuses a file inside it and an expired cursor.
+`prune`
 removes sealed segments,
 tombstones first, while no `collect` holds them.
 

@@ -24,6 +24,14 @@ func cursorOffset(c string) int64 {
 	return n
 }
 
+// cursorSource is the source a v1 cursor names, empty for anything else.
+func cursorSource(c string) string {
+	if !isCursor(c) {
+		return ""
+	}
+	return strings.Split(c, ":")[1]
+}
+
 func lineHash(b []byte) string {
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])

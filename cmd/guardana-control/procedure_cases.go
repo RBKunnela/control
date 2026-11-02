@@ -261,14 +261,10 @@ func (c *casesReader) exportFile(path, where string) supervise.Export {
 		c.fail(where, err)
 		return supervise.Export{}
 	}
-	x, err := coverage.ReadExport(bytes.NewReader(raw))
+	x, events, err := coverage.ReadExportEvents(bytes.NewReader(raw))
 	if err != nil {
 		c.fail(where, fmt.Errorf("%s: %w", resolved, err))
 		return supervise.Export{}
-	}
-	events, err := exportEvents(raw)
-	if err != nil {
-		c.fail(where, fmt.Errorf("%s: %w", resolved, err))
 	}
 	return supervise.Export{Events: events, Whole: x.Whole, NotWhole: x.NotWhole}
 }

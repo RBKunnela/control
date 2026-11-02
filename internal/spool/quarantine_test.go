@@ -335,3 +335,42 @@ func TestTheQuarantineHoldsOneCopyOfARecord(t *testing.T) {
 		t.Errorf("the quarantine holds %d records, want one", len(got))
 	}
 }
+
+// TestTheQuarantineTellsRecordsApartByContent: a record carrying the event
+// identifier of one the quarantine holds, or no identifier like one it holds,
+// with other content is written, in the same call and after a reopen; only a
+// record repeated byte for byte is not.
+func TestTheQuarantineTellsRecordsApartByContent(t *testing.T) {
+	first := event(controlv1.EventKind_EVENT_KIND_ACTION_PROPOSED, "req-1", 1)
+	sameID := event(controlv1.EventKind_EVENT_KIND_ACTION_PROPOSED, "req-2", 1)
+	noID, otherNoID := event(controlv1.EventKind_EVENT_KIND_ACTION_PROPOSED, "req-3", 3), event(controlv1.EventKind_EVENT_KIND_ACTION_PROPOSED, "req-4", 4)
+	noID.EventId, otherNoID.EventId = "", ""
+	batch := []*controlv1.Event{first, sameID, noID, otherNoID}
+	dir := t.TempDir()
+	opts := spool.Options{Dir: dir, MaxBytes: 64 * recordSize(t, first), SegmentBytes: 4 * recordSize(t, first)}
+	s := open(t, opts)
+	for _, ev := range batch {
+		mustAppend(t, s, ev)
+	}
+	r := reader(t, s)
+	deliveredCursors(t, r, 4)
+	if written, err := r.Quarantine([]*controlv1.Event{first, sameID, noID}); err != nil || written != 3 {
+		t.Fatalf("Quarantine of three records, two sharing an identifier = %d, %v; want three written", written, err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	s = open(t, opts)
+	for _, ev := range batch {
+		mustAppend(t, s, ev)
+	}
+	r = reader(t, s)
+	deliveredCursors(t, r, 8)
+	if written, err := r.Quarantine(batch); err != nil || written != 1 {
+		t.Fatalf("Quarantine after a reopen = %d, %v; want only the record with no identifier and other content written", written, err)
+	}
+	got := readQuarantine(t, dir)
+	if len(got) != 4 || !proto.Equal(got[1], sameID) || !proto.Equal(got[3], otherNoID) {
+		t.Errorf("the quarantine holds %d records, want first, sameID, noID and otherNoID in order", len(got))
+	}
+}

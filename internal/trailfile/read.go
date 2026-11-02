@@ -7,8 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
-	"strconv"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/evidence"
@@ -82,6 +80,10 @@ type Report struct {
 	// bytes after the last newline are a line it is still writing. ReadFile
 	// asks only when there are such bytes, and Read never does.
 	Held bool
+	// Log is a read of a log's segments, and Pruned the segments of it gone
+	// before the read: pruned, their tombstones dropped or not.
+	Log    bool
+	Pruned int
 }
 
 type scope struct{ tenant, project, request string }
@@ -240,20 +242,14 @@ func closed(events []*controlv1.Event) bool {
 // reads, so it reads a file a collector is writing, up to the last line the
 // collector finished. When bytes follow the last newline it then asks whether
 // a writer holds the file, and says so in Report.Held. Anything that is not a
-// regular file is refused, without waiting on a named pipe.
+// regular file is refused, without waiting on a named pipe, and so is a file
+// in a log's directory, through a link or not, as ErrSegmentFile.
 func ReadFile(path string, maxLines int) (Report, error) {
-	f, err := os.OpenFile(path, os.O_RDONLY|readFlags, 0) //nolint:gosec // G304: the path is the operator's to name, and the descriptor is judged before a byte is read
+	f, _, err := openTrail(path, "trail")
 	if err != nil {
 		return Report{}, err
 	}
 	defer func() { _ = f.Close() }()
-	info, err := f.Stat()
-	switch {
-	case err != nil:
-		return Report{}, err
-	case !info.Mode().IsRegular():
-		return Report{}, fmt.Errorf("%w: %s", ErrNotRegular, strconv.Quote(path))
-	}
 	rep, err := Read(f, maxLines)
 	if err != nil || rep.Unread == 0 {
 		return rep, err

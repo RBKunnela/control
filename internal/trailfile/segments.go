@@ -19,9 +19,9 @@ import (
 // ErrCursorExpired is a cursor naming a segment that was pruned.
 const ErrCursorExpired Error = "trailfile: cursor expired: the segment it names was pruned"
 
-// ErrSegmentFile is a file in a log's directory exported on its own: read as
+// ErrSegmentFile is a file in a log's directory exported or read on its own: as
 // a trail file it would count none of the segments pruned before it.
-const ErrSegmentFile Error = "trailfile: the file is a segment of a log; export the log's directory"
+const ErrSegmentFile Error = "trailfile: the file is a segment of a log; name the log's directory"
 
 // moveRetries bounds how often a read of a log starts again when a seal or a
 // prune moved the segment it was opening.
@@ -38,17 +38,59 @@ func IsLog(path string) (bool, error) {
 }
 
 // notInLog refuses a file whose directory holds a log's manifest, naming the
-// directory to export instead.
-func notInLog(path string) error {
+// directory command is to be given instead.
+func notInLog(path, command string) error {
 	dir := filepath.Dir(path)
 	_, err := os.Lstat(filepath.Join(dir, segmentlog.ManifestName))
 	switch {
 	case err == nil:
-		return fmt.Errorf("%w: %s; export the log with trail export %s", ErrSegmentFile, strconv.Quote(path), strconv.Quote(dir))
+		return fmt.Errorf("%w: %s; give the log to %s as %s", ErrSegmentFile, strconv.Quote(path), command, strconv.Quote(dir))
 	case errors.Is(err, fs.ErrNotExist):
 		return nil
 	}
 	return err
+}
+
+// openTrail opens the regular file at path to read as a trail file, without
+// waiting on a named pipe. A file whose real directory holds a log's manifest
+// is refused for command, judged by the file the descriptor names, so a link
+// from outside the log reaches no segment.
+func openTrail(path, command string) (*os.File, fs.FileInfo, error) {
+	f, err := os.OpenFile(path, os.O_RDONLY|readFlags, 0) //nolint:gosec // G304: the path is the operator's to name, and the descriptor is judged before a byte is read
+	if err != nil {
+		return nil, nil, err
+	}
+	info, err := f.Stat()
+	if err == nil && !info.Mode().IsRegular() {
+		err = fmt.Errorf("%w: %s", ErrNotRegular, strconv.Quote(path))
+	}
+	if err == nil {
+		err = inNoLog(path, info, command)
+	}
+	if err != nil {
+		return nil, nil, errors.Join(err, f.Close())
+	}
+	return f, info, nil
+}
+
+// inNoLog refuses the opened file info when the path, its links resolved,
+// stands in a log's directory, or names another file than the one opened.
+func inNoLog(path string, info fs.FileInfo, command string) error {
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return err
+	}
+	at, err := os.Stat(resolved)
+	switch {
+	case err != nil:
+		return err
+	case !os.SameFile(info, at):
+		return fmt.Errorf("trailfile: %s named another file once opened", strconv.Quote(path))
+	}
+	if err := notInLog(path, command); err != nil {
+		return err
+	}
+	return notInLog(resolved, command)
 }
 
 // ExportPath exports a trail file as ExportFile does, or one segment of a log
@@ -214,33 +256,44 @@ func ReadLog(dir string, maxLines int) (Report, error) {
 }
 
 func readLog(dir string, maxLines int) (Report, error) {
-	r, live, done, err := openLog(dir)
+	r, files, done, err := openLog(dir)
 	if err != nil {
 		return Report{}, err
 	}
 	defer done()
 	rep, err := Read(r, maxLines)
-	if err != nil || rep.Unread == 0 || live == nil {
+	if err != nil {
 		return rep, err
 	}
-	if rep.Held, err = heldByWriter(live); err != nil {
+	rep.Log, rep.Pruned = true, files.pruned
+	if rep.Unread == 0 || files.live == nil {
+		return rep, nil
+	}
+	if rep.Held, err = heldByWriter(files.live); err != nil {
 		return Report{}, err
 	}
 	return rep, nil
 }
 
+// logFiles is what openLog found beside the segments it opened: the live
+// segment's file when there is one, and how many segments are gone.
+type logFiles struct {
+	live   *os.File
+	pruned int
+}
+
 // openLog opens every segment of the log in dir that is not pruned and
 // returns them as one reader, in order, each to the length it had when
-// opened, with the live segment's file when there is one and what closes
-// them all.
-func openLog(dir string) (io.Reader, *os.File, func(), error) {
+// opened, with the live segment's file and the segments gone, and what
+// closes them all.
+func openLog(dir string) (io.Reader, logFiles, func(), error) {
 	v, err := segmentlog.Inspect(dir, evidence.MaxLineBytes)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, logFiles{}, nil, err
 	}
 	m := v.Manifest()
 	var readers []io.Reader
-	var live *os.File
+	files := logFiles{pruned: prunedBefore(v, m.Live.Seq)}
 	var opened []*os.File
 	done := func() {
 		for _, f := range opened {
@@ -257,15 +310,15 @@ func openLog(dir string) (io.Reader, *os.File, func(), error) {
 		}
 		if err != nil {
 			done()
-			return nil, nil, nil, err
+			return nil, logFiles{}, nil, err
 		}
 		opened = append(opened, f)
 		readers = append(readers, io.NewSectionReader(f, 0, size))
 		if s.State == segmentlog.StateLive {
-			live = f
+			files.live = f
 		}
 	}
-	return io.MultiReader(readers...), live, done, nil
+	return io.MultiReader(readers...), files, done, nil
 }
 
 // ErrTooLarge is a log whose segments not pruned hold more than a read's

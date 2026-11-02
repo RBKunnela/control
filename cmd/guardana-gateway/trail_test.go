@@ -12,6 +12,7 @@ import (
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/brand"
 	"github.com/guardana/control/internal/evidence"
+	"github.com/guardana/control/internal/segmentlog"
 	"github.com/guardana/control/internal/trailfile"
 )
 
@@ -230,4 +231,80 @@ func TestTrailRepeatsNoKeyTextItReads(t *testing.T) {
 	if status != exitOK || !strings.HasPrefix(stdout, want) || strings.Contains(stdout+stderr, body[:21]) {
 		t.Errorf("a body line as the request id: trail answered %d with %q%q, want it to start %q", status, stdout, stderr, want)
 	}
+}
+
+// TestTrailOfADirectorySaysHowManySegmentsWerePruned: the counts of a
+// directory of segments end with the segments pruned before the read, so a
+// trail whose first events were pruned is not read as never written.
+func TestTrailOfADirectorySaysHowManySegmentsWerePruned(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "log")
+	l, err := trailfile.OpenLog(trailfile.LogConfig{Dir: dir, Tenant: "t1", Project: "p1", SegmentBytes: 1, MaxBytes: 1 << 20})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = l.Close() }()
+	for _, ev := range append(trailOf("a", kProposed, kDecided), trailOf("b", kProposed, kDecided, kStarted, kCompleted)...) {
+		if err := l.Append(context.Background(), []*controlv1.Event{ev}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := l.Prune(2); err != nil {
+		t.Fatal(err)
+	}
+	status, stdout, stderr := trailCommand(t, dir)
+	want := "request=b project=p1 tenant=t1 last=EVENT_KIND_ACTION_COMPLETED ok\n" +
+		"trails 1: ok 1, open 0, failed 0, indeterminate 0; lines 4, repeated lines collapsed 0, bytes after the last newline 0; segments pruned 2\n" +
+		shapeLine
+	if status != exitOK || stdout != want || stderr != "" {
+		t.Errorf("trail of a log with two segments pruned answered %d with\n%s\nand %q; want %d with\n%s", status, stdout, stderr, exitOK, want)
+	}
+}
+
+// TestTheToolsReadALogWhoseSealStoppedBeforeItsRename: a collect that stopped
+// between a seal's manifest and its rename leaves a log `trail segments`
+// still reads and `prune` completes, sealing and then pruning that segment.
+func TestTheToolsReadALogWhoseSealStoppedBeforeItsRename(t *testing.T) {
+	dir, sealed := stoppedSeal(t)
+	status, stdout, stderr := trailCommand(t, "segments", dir)
+	if status != exitOK || !strings.Contains(stdout, "segment=1 state=sealed lines=1") || stderr != "" {
+		t.Errorf("trail segments of the stopped seal: %d, %q, %q; want 0 naming segment 1 sealed", status, stdout, stderr)
+	}
+	var out, errOut bytes.Buffer
+	if status := run(context.Background(), []string{"prune", "--through", "1", dir}, &out, &errOut); status != exitOK {
+		t.Fatalf("prune of the stopped seal: %d, %q", status, errOut.String())
+	}
+	if _, err := os.Lstat(sealed); !os.IsNotExist(err) {
+		t.Errorf("the pruned segment's file: %v, want none", err)
+	}
+	if status, stdout, _ := trailCommand(t, "segments", dir); status != exitOK || !strings.Contains(stdout, "segment=1 state=pruned") ||
+		!strings.Contains(stdout, "segment=2 state=live lines=0") {
+		t.Errorf("trail segments after the prune: %d, %q; want segment 1 pruned and an empty live segment 2", status, stdout)
+	}
+}
+
+// stoppedSeal is a log whose seal of segment 1 stopped between its manifest
+// and its rename, and the path that segment's file is renamed to.
+func stoppedSeal(t *testing.T) (string, string) {
+	t.Helper()
+	dir := filepath.Join(t.TempDir(), "log")
+	l, err := trailfile.OpenLog(trailfile.LogConfig{Dir: dir, Tenant: "t1", Project: "p1", SegmentBytes: 1, MaxBytes: 1 << 20})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, ev := range trailOf("a", kProposed, kDecided) {
+		if err := l.Append(context.Background(), []*controlv1.Event{ev}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := l.Close(); err != nil {
+		t.Fatal(err)
+	}
+	sealed := filepath.Join(dir, "segment-00000001.jsonl")
+	if err := os.Remove(filepath.Join(dir, segmentlog.LiveName)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(sealed, filepath.Join(dir, segmentlog.LiveName)); err != nil {
+		t.Fatal(err)
+	}
+	return dir, sealed
 }

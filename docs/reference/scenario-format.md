@@ -76,7 +76,7 @@ guardana-gateway scenario run --config <file> --trail <file> [--control <file>] 
 `run` reads it. The listener, `/healthz`, the
 approvals directory and the pause file come from it and nowhere else; the
 listener must speak HTTP and `health.address` must be set. `--trail` is the
-file the plane's collector writes. Paths run in the order given, a
+trail file or the directory of segments the plane's collector writes. Paths run in the order given, a
 directory's `*.json` files in name order, and every file is read before the
 first one runs. `--timeout`, 10s by default, bounds each wait; a call may take the upstream's
 call timeout on top of it.

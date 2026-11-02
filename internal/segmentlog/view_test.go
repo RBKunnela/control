@@ -204,3 +204,44 @@ func TestALiveSegmentSealedAtTheCapUnderAViewIsMoved(t *testing.T) {
 		t.Errorf("the live segment after a seal at the cap opened under the old view: %v, want ErrMoved", err)
 	}
 }
+
+// TestALiveFileBetweenASealsManifestAndItsRenameIsMoved: once a seal named
+// the live segment sealed and before it renamed the file, live.jsonl holds
+// the sealed segment's bytes. A view read then still reads the manifest, as a
+// prune that completes the seal must, but its live file opens as moved rather
+// than as the next live segment; so does that of a view read before the seal.
+// The log opened again completes the seal.
+func TestALiveFileBetweenASealsManifestAndItsRenameIsMoved(t *testing.T) {
+	cfg := config(logDir(t), 64, 256)
+	l, _ := crashOpen(t, cfg, 1<<30)
+	mustAppend(t, l, "aaa", "bbb")
+	before, err := Inspect(cfg.Dir, cfg.MaxLineBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := &crashing{at: 2}
+	l.ops = c.ops()
+	if err := l.Seal(); !errors.Is(err, errCrash) {
+		t.Fatalf("a seal stopped at its rename: %v", err)
+	}
+	during, err := Inspect(cfg.Dir, cfg.MaxLineBytes)
+	if err != nil {
+		t.Fatalf("a view of the manifest between the manifest and the rename: %v", err)
+	}
+	if m := during.Manifest(); len(m.Segments) != 1 || m.Segments[0].State != StateSealed {
+		t.Errorf("the view between the manifest and the rename names %+v, want segment 1 sealed", m)
+	}
+	if _, _, err := during.Open(during.Manifest().Live); !errors.Is(err, ErrMoved) {
+		t.Errorf("its live file opened: %v, want ErrMoved", err)
+	}
+	if _, _, err := before.Open(before.Manifest().Live); !errors.Is(err, ErrMoved) {
+		t.Errorf("the live segment of a view read before the seal, opened in its window: %v, want ErrMoved", err)
+	}
+	_ = l.release()
+	_, l = recovered(t, cfg)
+	_ = l.Close()
+	v, err := Inspect(cfg.Dir, cfg.MaxLineBytes)
+	if err != nil || len(v.Manifest().Segments) != 1 || v.Manifest().Live.Lines != 0 {
+		t.Errorf("after the seal was completed the view is %v, %v; want one sealed segment and none live", err, v)
+	}
+}

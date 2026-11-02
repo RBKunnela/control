@@ -42,7 +42,8 @@ const KindSegments = "segments"
 // judges what the file may hold and cuts what a crash left of a last line.
 type LiveFile interface {
 	// AppendLines writes whole lines at the end of the file and returns nil
-	// once they are synced; a failed append leaves the file as it was.
+	// once they are synced; a failed append leaves the file as it was, or
+	// its error matches ErrLiveChanged.
 	AppendLines(ctx context.Context, lines []byte) error
 	Close() error
 }

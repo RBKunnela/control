@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -486,5 +487,129 @@ func TestALiveSegmentOpensInTheDirectoryTheLogHolds(t *testing.T) {
 	}
 	if got := liveText(t, moved); got != lines(t, event(2)) {
 		t.Errorf("the locked directory's live segment holds %q, want event 2", got)
+	}
+}
+
+// TestALogWhoseLiveFileChangedTakesNothingMore: once an append finds the live
+// segment changed under the writer, the log seals, prunes and appends nothing
+// more, so it writes no manifest that disagrees with the file, and the log
+// opened again holds what the file holds.
+func TestALogWhoseLiveFileChangedTakesNothingMore(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "log")
+	cfg := logConfig(dir)
+	l := openTestLog(t, cfg)
+	appendTo(t, l, event(1), event(2))
+	appendTo(t, l, event(3))
+	appendLive(t, dir, lines(t, event(4)))
+	if err := l.Append(context.Background(), []*controlv1.Event{event(5)}); !errors.Is(err, ErrChanged) {
+		t.Fatalf("an append after the live file changed = %v, want ErrChanged", err)
+	}
+	big := event(6)
+	big.RequestId = strings.Repeat("r", int(twoPerSegment))
+	for name, step := range map[string]func() error{
+		"an append that seals": func() error { return l.Append(context.Background(), []*controlv1.Event{big}) },
+		"an append":            func() error { return l.Append(context.Background(), []*controlv1.Event{event(7)}) },
+		"a prune":              func() error { return l.Prune(1) },
+	} {
+		if err := step(); !errors.Is(err, segmentlog.ErrFailed) {
+			t.Errorf("%s after the live file changed = %v, want segmentlog.ErrFailed", name, err)
+		}
+	}
+	if err := l.Close(); err != nil {
+		t.Fatal(err)
+	}
+	want := lines(t, event(3), event(4))
+	if got := liveText(t, dir); got != want {
+		t.Errorf("the live segment holds %q, want %q", got, want)
+	}
+	again := openTestLog(t, cfg)
+	if m := again.Manifest(); len(m.Segments) != 1 || m.Segments[0].State != segmentlog.StateSealed || m.Live.Lines != 2 {
+		t.Errorf("opened again the log is %+v, want segment 1 sealed and two live lines", m)
+	}
+}
+
+// TestAnEventResentAfterItsSegmentWasPrunedIsWrittenAgain: the index covers
+// the segments not pruned, so on the same open log an event whose only line
+// was pruned is written again, and one still held is not.
+func TestAnEventResentAfterItsSegmentWasPrunedIsWrittenAgain(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "log")
+	l := openTestLog(t, logConfig(dir))
+	appendTo(t, l, event(1), event(2))
+	appendTo(t, l, event(3))
+	if err := l.Prune(1); err != nil {
+		t.Fatal(err)
+	}
+	appendTo(t, l, event(1), event(3))
+	if got, want := liveText(t, dir), lines(t, event(3), event(1)); got != want {
+		t.Errorf("after the resend the live segment holds %q, want %q", got, want)
+	}
+}
+
+// stopAtRename leaves the log in dir as a seal stopped between its manifest
+// and its rename leaves it: the manifest names segment seq sealed, its file
+// is not there, and live.jsonl holds its bytes.
+func stopAtRename(t *testing.T, dir string, seq int) {
+	t.Helper()
+	sealed := filepath.Join(dir, fmt.Sprintf("segment-%08d.jsonl", seq))
+	if err := os.Remove(filepath.Join(dir, segmentlog.LiveName)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(sealed, filepath.Join(dir, segmentlog.LiveName)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestAnExportInASealsStoppedRenameIsRefused: an export after a cursor at the
+// end of a segment a seal named sealed and has not renamed would read its
+// bytes again as the next live segment, so it is refused as moved, writing
+// nothing; the log opened again completes the seal, and the export moves on.
+func TestAnExportInASealsStoppedRenameIsRefused(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "log")
+	cfg := logConfig(dir)
+	l := openTestLog(t, cfg)
+	appendTo(t, l, event(1), event(2))
+	got, cursor, _ := exportIDs(t, dir, "", 10)
+	if !slices.Equal(got, ids(1, 2)) {
+		t.Fatalf("the first export wrote %v", got)
+	}
+	appendTo(t, l, event(3))
+	if err := l.Close(); err != nil {
+		t.Fatal(err)
+	}
+	stopAtRename(t, dir, 1)
+	var out bytes.Buffer
+	if _, err := ExportLog(dir, Query{After: cursor, Limit: 10}, &out); !errors.Is(err, segmentlog.ErrMoved) || out.Len() != 0 {
+		t.Errorf("an export at the end of a segment whose rename stopped: %v and %d bytes, want ErrMoved and nothing", err, out.Len())
+	}
+	_ = openTestLog(t, cfg).Close()
+	if after, _, file := exportIDs(t, dir, cursor, 10); len(after) != 0 || file != "segment-00000001.jsonl" {
+		t.Errorf("after the seal was completed: %v from %s, want nothing more after the cursor", after, file)
+	}
+}
+
+// TestAnIndexThatCannotBeReadAfterAPruneFailsTheLog: the append after a
+// prune reads the segments left into the index first; when that read fails,
+// the append is refused, saying the prune completed, nothing is written and
+// the log takes nothing more.
+func TestAnIndexThatCannotBeReadAfterAPruneFailsTheLog(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "log")
+	l := openTestLog(t, logConfig(dir))
+	appendTo(t, l, event(1), event(2))
+	appendTo(t, l, event(3), event(4))
+	appendTo(t, l, event(5))
+	if err := l.Prune(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(dir, "segment-00000002.jsonl")); err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range []int{6, 7} {
+		err := l.Append(context.Background(), []*controlv1.Event{event(n)})
+		if !errors.Is(err, segmentlog.ErrFailed) || !strings.Contains(err.Error(), "the prune completed") {
+			t.Errorf("append %d after the index could not be read: %v, want segmentlog.ErrFailed saying the prune completed", n, err)
+		}
+	}
+	if got, want := liveText(t, dir), lines(t, event(5)); got != want {
+		t.Errorf("the live segment holds %q, want %q", got, want)
 	}
 }

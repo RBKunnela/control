@@ -19,6 +19,14 @@ verify one.
   its fingerprints were taken from, asks for the majors below them, where no
   fix exists. Its search and tree tools ran with them. Nothing this project
   ships uses either.
+- `trail export` refused a segment of a log named by its path but exported
+  one reached through a symbolic link as a whole trail file, so coverage and
+  `supervise` took a log with pruned segments as whole. The file opened is
+  now judged by its real directory.
+- The spool's quarantine took a record carrying an event id it already held
+  as preserved, without comparing content, so a second record with that id,
+  or with no id, was acknowledged and lost. It now tells records apart by
+  their whole line.
 
 ### Added
 
@@ -77,6 +85,9 @@ verify one.
 
 ### Changed
 
+- **Breaking:** `trail <file>` refuses a file in a log's directory, named
+  directly or through a symbolic link, exit 1: name the directory instead.
+- `trail` of a directory ends its counts line with `segments pruned <n>`.
 - **Breaking:** a supervise report names each `--source` it could not rely
   on in `sources_in_doubt`: one not read by its state alone, one never heard
   or silent by its id and heartbeat. A report that names one is schema `0.2`
@@ -253,6 +264,20 @@ verify one.
 
 ### Fixed
 
+- A collector whose live segment changed under it refused that append but
+  went on to seal it, writing a manifest its next start refused. The log now
+  takes nothing more until it is started again.
+- `prune` with the clock before a segment's seal wrote a tombstone the
+  manifest reader refuses, leaving the directory unreadable. It is now refused
+  with nothing changed.
+- An export or a read of a log between a seal's manifest and its rename took
+  the sealed bytes as the next live segment; it now refuses them as moved and
+  starts again, and fails once the stopped seal outlasts its retries.
+- After `Prune` on an open log, an event whose line was pruned and sent again
+  was taken as written; the index now covers only the segments left.
+- `evidence-report -state` refused its own state after a request stayed open
+  across a segment, and raised again an alert of the next segment logged
+  before a crash.
 - A deadline finding is `CONFIRMED` when one evidence export holds both events
   it cites, whatever other exports were given; it was `SUSPECTED` whenever
   more than one export was, even the same export twice. Endpoints no one

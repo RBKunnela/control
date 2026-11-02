@@ -41,11 +41,18 @@ const (
 	ErrLines Error = "segmentlog: an append is whole lines, each ending in a newline"
 	// ErrPrune is a prune that names no sealed segment, or the live one.
 	ErrPrune Error = "segmentlog: a prune names sealed segments only"
+	// ErrClock is a prune whose clock stands before the seal of a segment it
+	// would prune, a date the manifest cannot hold.
+	ErrClock Error = "segmentlog: the clock stands before a segment's seal"
 	// ErrClosed is a call on a log that is closed.
 	ErrClosed Error = "segmentlog: the log is closed"
-	// ErrFailed is a call on a log a seal or a prune left part way: the next
-	// open completes it, and until then the log takes nothing more.
-	ErrFailed Error = "segmentlog: a seal or a prune stopped part way; open the log again"
+	// ErrFailed is a call on a log a seal or a prune left part way, or whose
+	// live file changed under it: the next open completes the step or counts
+	// the file again, and until then the log takes nothing more.
+	ErrFailed Error = "segmentlog: a seal or a prune stopped part way, or the live file changed; open the log again"
+	// ErrLiveChanged is a failed append after which the live file no longer
+	// holds what the log counted, so the log fails.
+	ErrLiveChanged Error = "segmentlog: the live file no longer holds what the log counted"
 	// ErrMoved is a segment that a seal or a prune moved between reading the
 	// manifest and opening the file.
 	ErrMoved Error = "segmentlog: the segment moved while it was opened"

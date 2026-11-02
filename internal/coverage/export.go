@@ -53,11 +53,21 @@ type proposalKey struct{ trace, span string }
 // unknown record type, another format or major, or an event that does not
 // decode is refused with ErrExport.
 func ReadExport(r io.Reader) (*Export, error) {
-	x, err := readExport(r)
+	x, _, err := readExport(r, false)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrExport, err)
 	}
 	return x, nil
+}
+
+// ReadExportEvents reads an export as ReadExport does, and returns its events
+// in order as that read decoded them.
+func ReadExportEvents(r io.Reader) (*Export, []*controlv1.Event, error) {
+	x, events, err := readExport(r, true)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%w: %w", ErrExport, err)
+	}
+	return x, events, nil
 }
 
 // exportReader is one read in progress: what the records said so far.
@@ -76,29 +86,32 @@ type exportReader struct {
 	// are gone; a 1.0 header, which never names it, has none.
 	prunedBefore uint64
 	counts       map[string]int
+	// keep says to keep the events read, in events.
+	keep   bool
+	events []*controlv1.Event
 }
 
-func readExport(r io.Reader) (*Export, error) {
+func readExport(r io.Reader, keep bool) (*Export, []*controlv1.Event, error) {
 	// Behind an interface, so a caller's large bufio.Reader is not taken as
 	// the buffer and the line bound stays this package's.
 	in := bufio.NewReaderSize(struct{ io.Reader }{r}, maxExportLineBytes+1)
-	er := &exportReader{x: &Export{proposals: map[proposalKey][]*controlv1.Event{}, refused: map[proposalKey][]*controlv1.Event{}}, counts: map[string]int{}}
+	er := &exportReader{x: &Export{proposals: map[proposalKey][]*controlv1.Event{}, refused: map[proposalKey][]*controlv1.Event{}}, counts: map[string]int{}, keep: keep}
 	for number := 1; ; number++ {
 		line, err := in.ReadSlice('\n')
 		done, err := er.line(line, err)
 		if err != nil {
-			return nil, fmt.Errorf("line %d: %w", number, err)
+			return nil, nil, fmt.Errorf("line %d: %w", number, err)
 		}
 		if done {
 			break
 		}
 	}
 	if !er.header {
-		return nil, errors.New("no header")
+		return nil, nil, errors.New("no header")
 	}
 	er.x.NotWhole = er.notWhole()
 	er.x.Whole = er.x.NotWhole == ""
-	return er.x, nil
+	return er.x, er.events, nil
 }
 
 // line takes one ReadSlice result and reports whether the input ended.
