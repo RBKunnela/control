@@ -58,3 +58,20 @@ func envName(name string) bool {
 	}
 	return true
 }
+
+// EnvironmentOverrides returns, sorted, every key the environment set, a
+// header named as its key reads, such as pdp.headers.<name>, and never a
+// value. No key is exempt: the plane's account sets its own environment when
+// it restarts, so any key set there is one no placement of the configuration
+// protects. A Config that Load did not make holds nothing the environment
+// set.
+func EnvironmentOverrides(c *Config) []string {
+	var keys []string
+	for key, source := range c.source {
+		if strings.HasPrefix(source, brand.EnvPrefix) && envName(source) {
+			keys = append(keys, key)
+		}
+	}
+	slices.Sort(keys)
+	return keys
+}

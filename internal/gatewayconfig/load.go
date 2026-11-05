@@ -264,6 +264,7 @@ func (b *binder) header(variable, key, value string) (bool, error) {
 				return true, fmt.Errorf("%s is set twice; it was set by %s", path, previous)
 			}
 			b.headers[path] = variable
+			b.cfg.source[path] = variable
 			(*m.get(b.cfg))[canonical] = value
 			return true, nil
 		}

@@ -16,6 +16,7 @@ github.com/guardana/control/internal/gatewayconfig TestAConfigurationGivenAwayIs
 github.com/guardana/control/internal/gatewayconfig TestAFileWithASecondNameIsRefused/a_second_name_for_root's_file_in_a_sticky_directory this system refuses a second name for root's file
 github.com/guardana/control/internal/gatewayconfig TestAnotherSpellingOfALockedDirectoryIsRefused/a_spelling_that_differs_in_case this volume tells SPOOL from spool
 github.com/guardana/control/internal/gatewayconfig TestAReadOnlyMountIsSeen no read-only mount to open
+github.com/guardana/control/internal/gatewayconfig TestAnACLIsSeen chmod +a cannot make an access control list here
 github.com/guardana/control/internal/holdjournal TestAnEntryAnotherAccountOwnsIsNotRead needs root
 github.com/guardana/control/internal/policykey TestReadPrivateRefusesAKeyOfAnotherAccount needs root
 github.com/guardana/control/internal/policystate TestHelperRaisesFromAnotherProcess run only as the other process of TestTwoProcessesAndTwoHandlesRaisingOneFloorNeverLowerIt

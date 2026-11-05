@@ -140,3 +140,40 @@ func TestAnEnvIndexIsSpelledOnce(t *testing.T) {
 		})
 	}
 }
+
+// TestEveryKeyTheEnvironmentSetsIsListed: whatever key the environment sets
+// is listed, sorted, a header by its key and never its value, even one set to
+// the value the file gives it; a key the file alone sets is not.
+func TestEveryKeyTheEnvironmentSetsIsListed(t *testing.T) {
+	path := write(t, overrideOf("orders")+"\n"+identifierBlock)
+	if got := EnvironmentOverrides(load(t, path)); len(got) != 0 {
+		t.Errorf("EnvironmentOverrides with nothing set from the environment = %q, want none", got)
+	}
+	setEnv(t, "mode", "OBSERVE")
+	setEnv(t, "overrides.0.effect", "READ")
+	setEnv(t, "listener.address", "127.0.0.1:9090")
+	t.Setenv(brand.Env("PDP_HEADERS_X_TENANT_KEY"), "tenant-secret")
+	got := EnvironmentOverrides(load(t, path))
+	want := []string{"listener.address", "mode", "overrides.0.effect", "pdp.headers.X-Tenant-Key"}
+	if !slices.Equal(got, want) {
+		t.Errorf("EnvironmentOverrides = %q, want %q", got, want)
+	}
+	if strings.Contains(strings.Join(got, " "), "tenant-secret") {
+		t.Errorf("EnvironmentOverrides = %q quotes a header's value", got)
+	}
+}
+
+// TestOnlyAVariableIsAnOverride: a key is listed when a variable's name set
+// it, never when a file position did, even a file whose name looks like a
+// variable's.
+func TestOnlyAVariableIsAnOverride(t *testing.T) {
+	c := &Config{source: map[string]string{
+		"trust.root":      brand.Env("TRUST_ROOT"),
+		"policy.key_id":   "gateway.yaml:7",
+		"pause.file":      brand.Env("PAUSE_FILE") + ":3",
+		"export.endpoint": "export.yaml:2",
+	}}
+	if got, want := EnvironmentOverrides(c), []string{"trust.root"}; !slices.Equal(got, want) {
+		t.Errorf("EnvironmentOverrides = %q, want %q", got, want)
+	}
+}

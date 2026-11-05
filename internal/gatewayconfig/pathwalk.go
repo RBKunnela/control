@@ -24,6 +24,24 @@ const maxLinks = 40
 // what the link reached, as the kernel takes it. It returns the path the walk
 // reached, which holds no link.
 func resolveJudged(path string) (string, error) {
+	return walkJudged(path, configJudge)
+}
+
+// walkJudge judges the entries a walk passes: dir the root and every
+// directory the walk enters, link every link before it is followed. The entry
+// the walk ends at, unless it is a directory, is the caller's to judge.
+type walkJudge struct {
+	dir  func(path string, info fs.FileInfo) error
+	link func(path string, info fs.FileInfo) error
+}
+
+// configJudge is the configuration's: whoever may change a directory or a
+// link on its path, other than the plane's account and root, is refused.
+var configJudge = walkJudge{dir: judgeTraversed, link: judgeConfigLink}
+
+// walkJudged walks path as resolveJudged describes, judging each entry it
+// passes by judge, and returns the path it reached, which holds no link.
+func walkJudged(path string, judge walkJudge) (string, error) {
 	abs := path
 	if !filepath.IsAbs(path) {
 		wd, err := os.Getwd()
@@ -36,10 +54,10 @@ func resolveJudged(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := judgeTraversed(separator, top); err != nil {
+	if err := judge.dir(separator, top); err != nil {
 		return "", err
 	}
-	w := &pathWalk{at: separator, isDir: true, pending: strings.Split(abs, separator)}
+	w := &pathWalk{at: separator, isDir: true, pending: strings.Split(abs, separator), judge: judge}
 	for len(w.pending) > 0 {
 		if err := w.step(); err != nil {
 			return "", err
@@ -51,12 +69,14 @@ func resolveJudged(path string) (string, error) {
 const separator = string(filepath.Separator)
 
 // pathWalk is a walk under way: the path reached, which holds no link,
-// whether it is a directory, the links passed, and the names still to take.
+// whether it is a directory, the links passed, the names still to take, and
+// how each entry passed is judged.
 type pathWalk struct {
 	at      string
 	isDir   bool
 	links   int
 	pending []string
+	judge   walkJudge
 }
 
 // step takes the next name.
@@ -81,7 +101,7 @@ func (w *pathWalk) step() error {
 	case info.Mode()&fs.ModeSymlink != 0:
 		return w.follow(next, info)
 	case info.IsDir():
-		if err := judgeTraversed(next, info); err != nil {
+		if err := w.judge.dir(next, info); err != nil {
 			return err
 		}
 		w.at = next
@@ -97,8 +117,8 @@ func (w *pathWalk) follow(link string, info fs.FileInfo) error {
 	if w.links++; w.links > maxLinks {
 		return fmt.Errorf("%s: %w: more than %d", link, errTooManyLinks, maxLinks)
 	}
-	if err := checkConfigOwner(info); err != nil {
-		return fmt.Errorf("the link %s: %w", link, err)
+	if err := w.judge.link(link, info); err != nil {
+		return err
 	}
 	target, err := os.Readlink(link)
 	if err != nil {
@@ -108,6 +128,15 @@ func (w *pathWalk) follow(link string, info fs.FileInfo) error {
 		w.at = separator
 	}
 	w.pending = append(strings.Split(target, separator), w.pending...)
+	return nil
+}
+
+// judgeConfigLink refuses a link on the configuration's path that an account
+// other than the plane's or root owns: its owner may point it anywhere.
+func judgeConfigLink(link string, info fs.FileInfo) error {
+	if err := checkConfigOwner(info); err != nil {
+		return fmt.Errorf("the link %s: %w", link, err)
+	}
 	return nil
 }
 
