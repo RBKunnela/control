@@ -224,8 +224,8 @@ value. A writer waits up to ten seconds for another writer's lock; a
 running plane takes none. A pause blocks every call not yet handed out
 when the plane reads it, within one <code>pause.poll_interval</code>; it cancels
 nothing already running.</p>
-<p>The <code>runs</code> commands open, close and list the runs a plane with <code>runs.dir</code>
-serves: <a href="/docs/reference/runs">runs.md</a>.</p>
+<p>The <code>runs</code> commands open, close, list and prune the runs a plane with
+<code>runs.dir</code> serves: <a href="/docs/reference/runs">runs.md</a>.</p>
 <p>The <code>observe</code> commands import spans or access logs into an observation log
 and export it: <a href="/docs/reference/observations">observations.md</a>. <code>coverage</code>
 is <a href="/docs/reference/coverage">coverage.md</a>, <code>supervise</code>, <code>notify</code> and <code>findings export</code>
@@ -258,6 +258,7 @@ profile's statuses, <a href="/docs/extending/runtime-profiles">extending/runtime
       --ttl [--parent] &lt;dir&gt;
   guardana-control runs close &lt;dir&gt; &lt;run-id&gt;
   guardana-control runs list &lt;dir&gt;
+  guardana-control runs prune --expired-before &lt;time&gt; --archive &lt;dir&gt; &lt;dir&gt;
   guardana-control observe import --source &lt;file&gt; --log &lt;dir&gt; &lt;file&gt;
   guardana-control observe export [--after] [--limit] [--max-bytes] &lt;file&gt;
   guardana-control coverage --inventory &lt;file&gt; [--plane &lt;config&gt; [--evidence &lt;export&gt;]]...
@@ -323,12 +324,13 @@ holding it, or past 100,000 lines. <code>trail export</code> of a directory expo
 segment and, as <code>trail</code>, refuses a file inside it and an expired cursor.
 <code>prune</code>
 removes sealed segments,
-tombstones first, while no <code>collect</code> holds them.</p>
+tombstones first, while no <code>collect</code> holds them. <code>spool drain</code>:
+<a href="/docs/concepts/evidence-and-the-spool">evidence-and-the-spool.md</a>.</p>
 <p><code>scenario run</code> holds a running plane to scenario files
 (<a href="/docs/reference/scenario-format">scenario-format.md</a>); it exits 1 when one differed, and
 2, a failure too, when one could not run.</p>
 <p><code>dev</code>: <a href="/docs/reference/dev">dev.md</a>.</p>
-<pre><code>usage: guardana-gateway [run --config &lt;file&gt; [--run-token-file &lt;file&gt;] | doctor --config &lt;file&gt; | collect --listen &lt;addr&gt; --dir &lt;dir&gt; --tenant &lt;id&gt; --project &lt;id&gt; --credential-file &lt;file&gt; [--segment-bytes &lt;n&gt;] [--max-bytes &lt;n&gt;] | trail [segments] [export [--after &lt;cursor&gt;] [--limit &lt;n&gt;] [--max-bytes &lt;n&gt;] [--request &lt;id&gt;]... [--run &lt;id&gt;]... [--tenant &lt;id&gt;]... [--project &lt;id&gt;]... [--kind &lt;kind&gt;]...] &lt;file or dir&gt; | prune --through &lt;segment&gt; &lt;dir&gt; | scenario run --config &lt;file&gt; --trail &lt;file&gt; [--control &lt;file&gt;] [--timeout &lt;d&gt;] &lt;path&gt;... | dev --config &lt;file&gt; --policy &lt;file&gt; [--decision-point=silent] [--state &lt;dir&gt;] [--scenario &lt;file&gt;]...]
+<pre><code>usage: guardana-gateway [run --config &lt;file&gt; [--run-token-file &lt;file&gt;] | doctor --config &lt;file&gt; | collect --listen &lt;addr&gt; --dir &lt;dir&gt; --tenant &lt;id&gt; --project &lt;id&gt; --credential-file &lt;file&gt; [--segment-bytes &lt;n&gt;] [--max-bytes &lt;n&gt;] | trail [segments] [export [--after &lt;cursor&gt;] [--limit &lt;n&gt;] [--max-bytes &lt;n&gt;] [--request &lt;id&gt;]... [--run &lt;id&gt;]... [--tenant &lt;id&gt;]... [--project &lt;id&gt;]... [--kind &lt;kind&gt;]...] &lt;file or dir&gt; | prune --through &lt;segment&gt; &lt;dir&gt; | spool drain &lt;dir&gt; &lt;out&gt; | scenario run --config &lt;file&gt; --trail &lt;file&gt; [--control &lt;file&gt;] [--timeout &lt;d&gt;] &lt;path&gt;... | dev --config &lt;file&gt; --policy &lt;file&gt; [--decision-point=silent] [--state &lt;dir&gt;] [--scenario &lt;file&gt;]...]
 
 run
   -config string
@@ -377,6 +379,8 @@ trail
 prune
   -through segment
     	prune every sealed segment up to and including this segment number
+
+spool
 
 scenario
   -config string

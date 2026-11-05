@@ -1,6 +1,6 @@
 ---
 title: Runs
-summary: The runs directory, what runs open, close and list print and refuse, and what a plane with runs.dir does with a token.
+summary: The runs directory, what runs open, close, list and prune print and refuse, and what a plane with runs.dir does with a token.
 type: reference
 covers: [cmd/guardana-control/runs.go, internal/runs/**, cmd/guardana-gateway/runs.go, adapters/mcp/runs.go]
 ---
@@ -84,6 +84,17 @@ by this machine's clock, then `root`, `project_id`, `tenant_id`, `principal_type
 `principal_id`, `agent_id`, `opened_at` and `expires_at`, each followed by its
 value. It prints no token and no hash. Past 1000 runs it stops, says so on
 stderr and exits 1.
+
+`runs prune --expired-before <time> --archive <dir> <runs-dir>` removes the
+trees whose every run expired before the RFC 3339 time, which may not be in
+the future, and prints `pruned <root>` for each. It first creates the archive,
+a new owner-only directory outside the runs directory that reads as a runs
+directory, and copies each tree's records and state into it, synced before
+anything of the tree is removed. A tree whose root is live is left alone,
+whatever its children. One whose root expired is kept, named on stderr, and
+the command exits 1 when a run under it expires later, a plane holds its state
+lock, or a file of it cannot be read; a record that does not decode refuses the
+whole prune.
 
 No command repeats a token, or a value given as a run id that is not one.
 

@@ -175,6 +175,33 @@ func (m *MemoryLedger) Prune(ctx context.Context, before time.Time) (int, error)
 	return pruned, nil
 }
 
+// LedgerPruner is a Ledger that forgets the marks written before a time and
+// says how many. Both ledgers a plane builds are one.
+type LedgerPruner interface {
+	Prune(ctx context.Context, before time.Time) (int, error)
+}
+
+// ErrLedgerUnprunable is a sweep of a ledger that cannot forget a mark. It
+// is an error and never zero marks forgotten: such a ledger grows to its
+// bound and then refuses every spend.
+const ErrLedgerUnprunable Error = "gateway: the ledger cannot forget a mark"
+
+// PruneLedger forgets the ledger marks written more than one approval
+// lifetime before now. Every approval the pipeline mints expires one lifetime
+// after its request and is spent or settled after that request, so a mark
+// this forgets speaks for a record already expired at now: no live record and
+// a missing mark can turn a spent approval into a new hold.
+func (p *Pipeline) PruneLedger(ctx context.Context, now time.Time) (int, error) {
+	if now.IsZero() {
+		return 0, ErrZeroTime
+	}
+	pruner, ok := p.cfg.Ledger.(LedgerPruner)
+	if !ok {
+		return 0, ErrLedgerUnprunable
+	}
+	return pruner.Prune(ctx, now.Add(-p.cfg.ApprovalTTL))
+}
+
 // checkLedgerCall makes the refusals every ledger call shares.
 func checkLedgerCall(ctx context.Context, b approval.Binding, req, appr string, now time.Time) error {
 	switch {

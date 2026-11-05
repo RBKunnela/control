@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/guardana/control/internal/brand"
 	"github.com/guardana/control/internal/runs"
 )
 
@@ -19,8 +20,10 @@ const (
 	runsOpenName  = "runs open"
 	runsCloseName = "runs close"
 	runsListName  = "runs list"
+	runsPruneName = "runs prune"
 	runsOpenForm  = "--project --tenant --principal-type --principal --agent\n      --ttl [--parent] <dir>"
 	runsCloseForm = "<dir> <run-id>"
+	runsPruneForm = "--expired-before <time> --archive <dir> <dir>"
 )
 
 // runsAuthority is what the help and docs/reference/cli.md both say about who
@@ -217,3 +220,68 @@ func runState(r runs.Record, now time.Time) string {
 
 // stampOf is a time as the runs directory records it, in UTC.
 func stampOf(t time.Time) string { return t.UTC().Format(time.RFC3339Nano) }
+
+// runsPruneFlags declares what runs prune is told: the cutoff and the archive.
+func runsPruneFlags(command string, out io.Writer) (*flag.FlagSet, *string, *string) {
+	flags := commandFlags(command, out)
+	cutoff := flags.String("expired-before", "", "remove the trees whose every run expired before this RFC 3339 `time`, which may not be in the future")
+	archive := flags.String("archive", "", "the new `dir` the removed trees' records and states are copied into first")
+	return flags, cutoff, archive
+}
+
+func runsPruneFlagSet(command string, out io.Writer) *flag.FlagSet {
+	flags, _, _ := runsPruneFlags(command, out)
+	return flags
+}
+
+// runsPruneCommand archives and removes the expired trees of a runs
+// directory, and fails after it prints them when it refused any tree.
+func runsPruneCommand(args []string, stdout, stderr io.Writer) int {
+	flags, cutoff, archive := runsPruneFlags(runsPruneName, stderr)
+	if err := flags.Parse(args); err != nil {
+		return exitUsage
+	}
+	switch {
+	case flags.NArg() != 1:
+		return usageError(stderr, runsPruneName, "takes the runs directory, with every flag before it")
+	case *cutoff == "" || *archive == "":
+		return usageError(stderr, runsPruneName, "--expired-before and --archive are both required")
+	}
+	before, err := time.Parse(time.RFC3339Nano, *cutoff)
+	if err != nil {
+		return usageError(stderr, runsPruneName, "--expired-before is not an RFC 3339 time")
+	}
+	admin, err := openRuns(runs.OpenAdmin, flags.Arg(0))
+	if err != nil {
+		return fail(stderr, runsPruneName, err)
+	}
+	status := pruneAndPrint(admin, runs.PruneRequest{ExpiredBefore: before, Archive: *archive, Now: time.Now()}, stdout, stderr)
+	if err := admin.Close(); err != nil && status == exitOK {
+		return fail(stderr, runsPruneName, err)
+	}
+	return status
+}
+
+func pruneAndPrint(admin *runs.Admin, req runs.PruneRequest, stdout, stderr io.Writer) int {
+	ctx, cancel := context.WithTimeout(context.Background(), runsLockWait)
+	defer cancel()
+	p, err := admin.Prune(ctx, req)
+	var b strings.Builder
+	for _, root := range p.Trees {
+		b.WriteString("pruned " + root + "\n")
+	}
+	fmt.Fprintf(&b, "%d tree(s), %d run(s), archived in %s\n", len(p.Trees), p.Runs, oneLine(req.Archive))
+	if _, werr := io.WriteString(stdout, b.String()); werr != nil && err == nil {
+		err = fmt.Errorf("writing to standard output: %w; the trees above were pruned", werr)
+	}
+	for _, r := range p.Refused {
+		writeLine(stderr, brand.CLI+": "+runsPruneName+": "+r.Root+" is kept: "+oneLine(r.Err.Error()))
+	}
+	if err != nil {
+		return fail(stderr, runsPruneName, err)
+	}
+	if len(p.Refused) > 0 {
+		return fail(stderr, runsPruneName, fmt.Errorf("%d tree(s) kept", len(p.Refused)))
+	}
+	return exitOK
+}

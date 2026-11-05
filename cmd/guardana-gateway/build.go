@@ -81,6 +81,9 @@ type plane struct {
 	lost atomic.Int64
 	// socket is the enforcement API's listener once bound.
 	socket net.Listener
+	// sweeps counts what the sweeps of the approval stores forgot and how
+	// often one failed.
+	sweeps sweepCounts
 }
 
 // role says what the plane being built is for. It is a parameter and not a

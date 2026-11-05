@@ -119,8 +119,8 @@ running plane takes none. A pause blocks every call not yet handed out
 when the plane reads it, within one `pause.poll_interval`; it cancels
 nothing already running.
 
-The `runs` commands open, close and list the runs a plane with `runs.dir`
-serves: [runs.md](runs.md).
+The `runs` commands open, close, list and prune the runs a plane with
+`runs.dir` serves: [runs.md](runs.md).
 
 The `observe` commands import spans or access logs into an observation log
 and export it: [observations.md](observations.md). `coverage`
@@ -158,6 +158,7 @@ usage:
       --ttl [--parent] <dir>
   guardana-control runs close <dir> <run-id>
   guardana-control runs list <dir>
+  guardana-control runs prune --expired-before <time> --archive <dir> <dir>
   guardana-control observe import --source <file> --log <dir> <file>
   guardana-control observe export [--after] [--limit] [--max-bytes] <file>
   guardana-control coverage --inventory <file> [--plane <config> [--evidence <export>]]...
@@ -227,7 +228,8 @@ holding it, or past 100,000 lines. `trail export` of a directory exports one
 segment and, as `trail`, refuses a file inside it and an expired cursor.
 `prune`
 removes sealed segments,
-tombstones first, while no `collect` holds them.
+tombstones first, while no `collect` holds them. `spool drain`:
+[evidence-and-the-spool.md](../concepts/evidence-and-the-spool.md).
 
 `scenario run` holds a running plane to scenario files
 ([scenario-format.md](scenario-format.md)); it exits 1 when one differed, and
@@ -237,7 +239,7 @@ tombstones first, while no `collect` holds them.
 
 <!-- generated: go test ./cmd/guardana-gateway -run TestCLIPage -->
 ```
-usage: guardana-gateway [run --config <file> [--run-token-file <file>] | doctor --config <file> | collect --listen <addr> --dir <dir> --tenant <id> --project <id> --credential-file <file> [--segment-bytes <n>] [--max-bytes <n>] | trail [segments] [export [--after <cursor>] [--limit <n>] [--max-bytes <n>] [--request <id>]... [--run <id>]... [--tenant <id>]... [--project <id>]... [--kind <kind>]...] <file or dir> | prune --through <segment> <dir> | scenario run --config <file> --trail <file> [--control <file>] [--timeout <d>] <path>... | dev --config <file> --policy <file> [--decision-point=silent] [--state <dir>] [--scenario <file>]...]
+usage: guardana-gateway [run --config <file> [--run-token-file <file>] | doctor --config <file> | collect --listen <addr> --dir <dir> --tenant <id> --project <id> --credential-file <file> [--segment-bytes <n>] [--max-bytes <n>] | trail [segments] [export [--after <cursor>] [--limit <n>] [--max-bytes <n>] [--request <id>]... [--run <id>]... [--tenant <id>]... [--project <id>]... [--kind <kind>]...] <file or dir> | prune --through <segment> <dir> | spool drain <dir> <out> | scenario run --config <file> --trail <file> [--control <file>] [--timeout <d>] <path>... | dev --config <file> --policy <file> [--decision-point=silent] [--state <dir>] [--scenario <file>]...]
 
 run
   -config string
@@ -286,6 +288,8 @@ trail
 prune
   -through segment
     	prune every sealed segment up to and including this segment number
+
+spool
 
 scenario
   -config string

@@ -157,6 +157,12 @@ var answers = map[string]answer{
 		refusal: brand.Gateway + ": prune: ",
 		status:  exitFail,
 	},
+	"spool": {
+		bare:    brand.Gateway + " spool: the one thing to do with a spool here is drain its quarantine: " + brand.Gateway + " spool " + spoolForm + "\n",
+		refused: func(missing string) []string { return []string{"drain", missing, missing + ".drained"} },
+		refusal: brand.Gateway + ": spool drain: ",
+		status:  exitFail,
+	},
 	"scenario": {
 		bare: brand.Gateway + " scenario: the one thing to do with scenarios is run them: " + brand.Gateway + " scenario " + scenarioForm + "\n",
 		refused: func(missing string) []string {

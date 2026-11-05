@@ -135,6 +135,7 @@ var commands = []subcommand{
 	{"runs", "open", runsOpenForm, runsOpenFlagSet, runsOpenCommand, writes},
 	{"runs", "close", runsCloseForm, runsCloseFlagSet, runsCloseCommand, writes},
 	{"runs", "list", "<dir>", nil, runsListCommand, inspects},
+	{"runs", "prune", runsPruneForm, runsPruneFlagSet, runsPruneCommand, writes},
 	{"observe", "import", observeImportForm, observeImportFlagSet, observeImportCommand, writes},
 	{"observe", "export", observeExportForm, observeExportFlagSet, observeExportCommand, inspects},
 	{"coverage", "", coverageForm, coverageFlagSet, coverageCommand, inspects},

@@ -149,6 +149,7 @@ var commands = []subcommand{
 	{"collect", collectForm, declareCollect, writes},
 	{"trail", trailForm, declareTrail, inspects},
 	{"prune", pruneForm, declarePrune, writes},
+	{"spool", spoolForm, declareSpool, writes},
 	{"scenario", scenarioForm, declareScenario, writes},
 	{"dev", devForm, declareDev, writes},
 }

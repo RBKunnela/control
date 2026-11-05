@@ -295,7 +295,7 @@ for the same thing; the right column is where the code defines it.</p>
 </tr>
 <tr>
 <td>quarantine</td>
-<td>the spool's file for records a collector refused for good, appended to and never released, so the exporter's cursor passes them without dropping them</td>
+<td>the spool's file for records a collector refused for good, appended to and released only by an operator's <code>spool drain</code>, so the exporter's cursor passes them without dropping them</td>
 <td><code>Reader.Quarantine</code> in <code>internal/spool/quarantine.go</code></td>
 </tr>
 <tr>

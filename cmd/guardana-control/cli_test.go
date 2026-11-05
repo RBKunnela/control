@@ -142,7 +142,10 @@ var ownRefusal = map[string]func(missing string) []string{
 	},
 	"runs close": func(m string) []string { return []string{m, "run-" + strings.Repeat("0", 32)} },
 	"runs list":  func(m string) []string { return []string{m} },
-	"console":    func(m string) []string { return []string{"--approvals", m, "--approver-id", "someone"} },
+	"runs prune": func(m string) []string {
+		return []string{"--expired-before", "2026-01-01T00:00:00Z", "--archive", m + "-archive", m}
+	},
+	"console": func(m string) []string { return []string{"--approvals", m, "--approver-id", "someone"} },
 	"observe import": func(m string) []string {
 		return []string{"--source", m, "--log", m, m}
 	},

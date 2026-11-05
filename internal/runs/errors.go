@@ -112,6 +112,19 @@ const (
 	// ErrState is a state this build cannot write: a sensitivity it cannot
 	// name.
 	ErrState Error = "runs: the state cannot be written"
+	// ErrPruneTime is a prune with no cutoff or no clock reading, or one
+	// whose cutoff is after the reading: a run that expires before a time
+	// still to come may be serving now.
+	ErrPruneTime Error = "runs: a prune cuts off at a time no later than now"
+	// ErrArchive is a prune's archive that is not a new directory outside
+	// the runs directory.
+	ErrArchive Error = "runs: the archive has to be a new directory outside the runs directory"
+	// ErrTreeLive is a tree a prune reached with a run that did not expire
+	// before the cutoff.
+	ErrTreeLive Error = "runs: a run of the tree has not expired before the cutoff"
+	// ErrTreeLocked is a tree whose root's state lock another file holds:
+	// a plane is raising its state.
+	ErrTreeLocked Error = "runs: the tree's state lock is held"
 )
 
 // OutlivesParentError is an opening refused because the run would expire after

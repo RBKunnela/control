@@ -25,6 +25,16 @@ verify one.
   run entry covers none: its run is not in `runs.dir`, is another project's,
   expired or closed. `doctor` counts the three and names each agent or
   principal entry that is not the listener's and each such run entry.
+- `guardana-gateway spool drain <dir> <out>` moves a stopped plane's spool
+  quarantine into a new owner-only file of JSON Lines, synced before the
+  quarantine is emptied, so its bytes stop counting against
+  `evidence.max_bytes`. It is refused while a plane holds the spool.
+- `guardana-control runs prune --expired-before <time> --archive <dir>
+  <runs-dir>` removes whole run trees whose every run expired before the
+  time, after copying their records and state into a new owner-only archive.
+  A tree whose root is live is left alone. One whose root expired is kept,
+  named, and the command exits 1, when a run under it did not expire, a
+  plane holds its state lock or a file of it cannot be read.
 
 ### Changed
 
@@ -52,6 +62,14 @@ verify one.
   serve it before anything is uploaded; a tag that already has a release, or
   a draft of the same name, is refused, a draft a failed run left included
   ([RELEASING.md](RELEASING.md)).
+
+### Fixed
+
+- A long-running plane no longer reaches `approvals.max_records` and refuses
+  every hold: it forgets expired approval records and ledger marks older
+  than `approvals.ttl` every quarter of `approvals.ttl` while it serves, not
+  only at start. A sweep that fails is logged and counted under
+  `approvals.sweep` in `/healthz`.
 
 ### Security
 

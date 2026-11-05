@@ -189,6 +189,7 @@ func (p *plane) health(src gateway.PauseSource, clock func() time.Time) (healthA
 		Approvals: approvalCounters(p.cfg.Approvals.Provider, stats),
 		Exporter:  exporterCounters(p.exporter.Stats()),
 	}
+	answer.Approvals["sweep"] = p.sweeps.counters()
 	if p.enforce != nil {
 		es := p.enforce.Stats()
 		answer.Pipeline, answer.Enforce = pipelineOnly(stats), enforceCounters(es)

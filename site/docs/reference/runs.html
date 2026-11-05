@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Runs · Guardana Control</title>
-<meta name="description" content="The runs directory, what runs open, close and list print and refuse, and what a plane with runs.dir does with a token."/>
+<meta name="description" content="The runs directory, what runs open, close, list and prune print and refuse, and what a plane with runs.dir does with a token."/>
 <link rel="canonical" href="https://control.guardana.dev/docs/reference/runs"/>
 <meta name="theme-color" content="#0B8F80"/>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
@@ -174,6 +174,16 @@ by this machine's clock, then <code>root</code>, <code>project_id</code>, <code>
 <code>principal_id</code>, <code>agent_id</code>, <code>opened_at</code> and <code>expires_at</code>, each followed by its
 value. It prints no token and no hash. Past 1000 runs it stops, says so on
 stderr and exits 1.</p>
+<p><code>runs prune --expired-before &lt;time&gt; --archive &lt;dir&gt; &lt;runs-dir&gt;</code> removes the
+trees whose every run expired before the RFC 3339 time, which may not be in
+the future, and prints <code>pruned &lt;root&gt;</code> for each. It first creates the archive,
+a new owner-only directory outside the runs directory that reads as a runs
+directory, and copies each tree's records and state into it, synced before
+anything of the tree is removed. A tree whose root is live is left alone,
+whatever its children. One whose root expired is kept, named on stderr, and
+the command exits 1 when a run under it expires later, a plane holds its state
+lock, or a file of it cannot be read; a record that does not decode refuses the
+whole prune.</p>
 <p>No command repeats a token, or a value given as a run id that is not one.</p>
 <h2 id="what-a-plane-does-with-a-token">What a plane does with a token</h2>
 <table>

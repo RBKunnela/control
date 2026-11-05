@@ -131,10 +131,11 @@ the plane. A plane in `OBSERVE` sends the proposed ones.
 | Record | Removed when | What the operator does |
 | --- | --- | --- |
 | a spool segment | every record in it is accepted by the collector or moved to `quarantine.log` | nothing; `evidence.max_bytes` bounds what waits |
-| `quarantine.log` in the spool | never: the plane does not remove it, and its bytes count against the budget | decide what to keep; nothing in this build prunes it |
+| `quarantine.log` in the spool | when an operator drains it; the plane never removes it, and its bytes count against the budget until then | stop the plane, then `guardana-gateway spool drain <dir> <out>`, which writes every record to a new file before it empties the quarantine |
 | the trail segments | when an operator runs `prune` on sealed segments; at `--max-bytes` the collector takes nothing more and the plane blocks material calls | stop `collect`, then `guardana-gateway prune --through <n> <dir>`, which keeps each segment's tombstone: its lines, bytes and the digests of its first and last line |
-| an approval record and its projection | at a plane's start, once its approval has expired, whether it was consumed or not, and when the plane settles a hold it lost | nothing removes them while a plane runs; a directory left to grow refuses holds at `approvals.max_records` |
-| a ledger mark | at a plane's start, once it is older than `approvals.ttl` | nothing; the ledger refuses a mark past `approvals.max_records` |
+| an approval record and its projection | once its approval has expired, whether it was consumed or not, by a sweep at a plane's start and every quarter of `approvals.ttl` while it runs, and when the plane settles a hold it lost | nothing; a sweep that fails is logged and counted under `approvals.sweep` in `/healthz`, and a directory left to grow refuses holds at `approvals.max_records` |
+| a ledger mark | once it is older than `approvals.ttl`, by the same sweeps | nothing; the ledger refuses a mark past `approvals.max_records` |
+| a run record and its root's state | when an operator prunes a tree whose every run expired | `guardana-control runs prune --expired-before <time> --archive <dir> <runs-dir>`, which copies the tree into a new archive first |
 | a hold journal entry | when its trail can take nothing more | nothing |
 | a pause entry | when an operator removes it; the file keeps no history | nothing |
 | a stop list's line | never: lines are appended, and a lift ends a stop without removing it; a list is refused past 4 MiB or 20 000 lines | start a new list with `stops init --carry`, which keeps every unlifted stop, and restart the plane |

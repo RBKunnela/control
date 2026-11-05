@@ -350,8 +350,8 @@ the plane. A plane in <code>OBSERVE</code> sends the proposed ones.</p>
 </tr>
 <tr>
 <td><code>quarantine.log</code> in the spool</td>
-<td>never: the plane does not remove it, and its bytes count against the budget</td>
-<td>decide what to keep; nothing in this build prunes it</td>
+<td>when an operator drains it; the plane never removes it, and its bytes count against the budget until then</td>
+<td>stop the plane, then <code>guardana-gateway spool drain &lt;dir&gt; &lt;out&gt;</code>, which writes every record to a new file before it empties the quarantine</td>
 </tr>
 <tr>
 <td>the trail segments</td>
@@ -360,13 +360,18 @@ the plane. A plane in <code>OBSERVE</code> sends the proposed ones.</p>
 </tr>
 <tr>
 <td>an approval record and its projection</td>
-<td>at a plane's start, once its approval has expired, whether it was consumed or not, and when the plane settles a hold it lost</td>
-<td>nothing removes them while a plane runs; a directory left to grow refuses holds at <code>approvals.max_records</code></td>
+<td>once its approval has expired, whether it was consumed or not, by a sweep at a plane's start and every quarter of <code>approvals.ttl</code> while it runs, and when the plane settles a hold it lost</td>
+<td>nothing; a sweep that fails is logged and counted under <code>approvals.sweep</code> in <code>/healthz</code>, and a directory left to grow refuses holds at <code>approvals.max_records</code></td>
 </tr>
 <tr>
 <td>a ledger mark</td>
-<td>at a plane's start, once it is older than <code>approvals.ttl</code></td>
+<td>once it is older than <code>approvals.ttl</code>, by the same sweeps</td>
 <td>nothing; the ledger refuses a mark past <code>approvals.max_records</code></td>
+</tr>
+<tr>
+<td>a run record and its root's state</td>
+<td>when an operator prunes a tree whose every run expired</td>
+<td><code>guardana-control runs prune --expired-before &lt;time&gt; --archive &lt;dir&gt; &lt;runs-dir&gt;</code>, which copies the tree into a new archive first</td>
 </tr>
 <tr>
 <td>a hold journal entry</td>

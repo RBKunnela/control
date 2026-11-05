@@ -317,7 +317,7 @@ the exporter work in records from there.</p>
 <tr>
 <td>Quarantine</td>
 <td>a refusal of the records (<code>400</code>, <code>413</code>, <code>422</code>) splits a batch in halves; a single record refused <code>maxRefusals</code> times running, every record of an accepted request from which the collector reports dropping some, since its answer does not say which, and a record the encoder refuses go to the quarantine, so the cursor may pass them without dropping them; a record the quarantine already holds is not written twice</td>
-<td><code>ErrFull</code> when what the quarantine took since the last acknowledgement would exceed what that acknowledgement releases: the quarantine's bytes count against the budget from then on and nothing releases them</td>
+<td><code>ErrFull</code> when what the quarantine took since the last acknowledgement would exceed what that acknowledgement releases: the quarantine's bytes count against the budget from then on, and only an operator's drain releases them</td>
 </tr>
 <tr>
 <td>Open</td>
@@ -328,6 +328,11 @@ the exporter work in records from there.</p>
 <td>Inspect</td>
 <td><code>doctor</code>'s read: every segment and the quarantine are read and checked as Open reads them, under a shared lock that keeps a spool from opening the directory meanwhile, and what Open would cut is counted and left on disk; nothing is created, cut or removed</td>
 <td>what Open refuses, with nothing changed; a directory a spool holds is reported held and not read</td>
+</tr>
+<tr>
+<td>Drain</td>
+<td><code>guardana-gateway spool drain</code>: under the directory's lock, the quarantine's whole records go to a new owner-only file as JSON Lines, synced with its directory before the quarantine is truncated, so a drain stopped between the two leaves every record in both</td>
+<td><code>ErrLocked</code> while a plane holds the spool; <code>ErrDrainTarget</code> for a file in the spool's directory; what Open refuses of the quarantine</td>
 </tr>
 <tr>
 <td>Break</td>

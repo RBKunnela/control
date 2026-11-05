@@ -145,8 +145,8 @@ func (p *plane) prune(ctx context.Context, stdout io.Writer) {
 }
 
 // run starts the exporter, the pause file's and the stop list's readers, the
-// policy's refresher, the health answers and the listener, and returns when
-// ctx ends or a listener stops on its own.
+// policy's refresher, the sweep of the approval stores, the health answers and
+// the listener, and returns when ctx ends or a listener stops on its own.
 // listen binds each address the configuration names, or hands over one bound
 // already. The pause file and the stop list are read once more before
 // anything is bound: the
@@ -174,6 +174,11 @@ func (p *plane) run(ctx context.Context, stdout io.Writer, listen listenFunc, dr
 	var wg sync.WaitGroup
 	stopped := make(chan error, len(bound)+1)
 	p.startReaders(ctx, exportCtx, &wg)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		p.sweepApprovals(ctx)
+	}()
 	if p.enforce != nil {
 		p.serveEnforcing(ctx, &wg, stopped)
 	}
