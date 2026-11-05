@@ -16,6 +16,8 @@ Amended by [ADR-0071](0071-operators-are-named-by-a-signed-roster.md): a port
 whose answer is sealed is declared by the package that mints the answer.
 Amended by [ADR-0072](0072-the-collector-keeps-bounded-segments-of-one-project-behind-a-credential.md):
 RecordLog meets properties 1, 3 and 6 only once it has a second kind.
+Amended by [ADR-0073](0073-an-approval-counts-only-as-the-plane-judges-it.md): the approval
+authority has no default kind, so property 3's default is not taken for it.
 
 ## Context
 

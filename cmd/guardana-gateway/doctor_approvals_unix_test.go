@@ -69,7 +69,7 @@ func TestDoctorJudgesTheApprovalDirectoriesAsRunOpensThem(t *testing.T) {
 	}
 }
 
-// approvalDir sets the tree up for the file provider and returns the
+// approvalDir sets the tree up for the directory authority and returns the
 // directory key names.
 func (tr tree) approvalDir(t *testing.T, key string) string {
 	t.Helper()
@@ -80,7 +80,7 @@ func (tr tree) approvalDir(t *testing.T, key string) string {
 	return holds
 }
 
-// linkApprovalDir sets the tree up for the file provider and points key at a
+// linkApprovalDir sets the tree up for the directory authority and points key at a
 // link to target.
 func (tr tree) linkApprovalDir(t *testing.T, key, target string) string {
 	t.Helper()

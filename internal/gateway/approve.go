@@ -58,7 +58,7 @@ func (c *call) approve(snap *policy.Snapshot) Disposition {
 	if len(matches) == 0 {
 		return c.holdAnew(binding, unheld)
 	}
-	return c.resume(matches, binding, helds)
+	return c.resume(matches, binding)
 }
 
 // holdAnew is the branch for a call no hold matched. A pause or a stop

@@ -356,3 +356,21 @@ func TestTheConstructorRefusesWhatCannotBeAnApproverID(t *testing.T) {
 		}
 	}
 }
+
+// TestAnAuthenticatedApproverIsTheConstructorsSpelling: an id the constructor
+// builds reads as authenticated, and a claim, a different case or a prefix
+// behind white space does not.
+func TestAnAuthenticatedApproverIsTheConstructorsSpelling(t *testing.T) {
+	built, err := approval.AuthenticatedApproverID("okta", "alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !approval.ApproverAuthenticated(built) {
+		t.Errorf("%q, built by the constructor, does not read as authenticated", built)
+	}
+	for _, id := range []string{"alice", "AUTHN:okta:alice", " authn:okta:alice", "authn", ""} {
+		if approval.ApproverAuthenticated(id) {
+			t.Errorf("%q reads as authenticated", id)
+		}
+	}
+}

@@ -168,7 +168,7 @@ func newPlane(t *testing.T, o planeOptions) *plane {
 	p, err := gateway.New(gateway.Config{
 		Mode: o.mode, Adapter: a, KernelOptions: core.Options{MaxStale: time.Hour},
 		Policy: fixedPolicy{snapshot(t, o.rules...)}, Pause: gateway.PauseDisabled(), Stops: gateway.StopsDisabled(),
-		Sink: pl.sink, Approvals: pl.store, Ledger: &gateway.MemoryLedger{}, Runs: r, Clock: clock, NewID: newID,
+		Sink: pl.sink, Approvals: pl.store, Authority: pl.store, AuthorityKind: gateway.AuthorityDirectory, Ledger: &gateway.MemoryLedger{}, Runs: r, Clock: clock, NewID: newID,
 		ApprovalTTL: 10 * time.Minute, RetryAfter: 5 * time.Second, MaxHeld: 16, MaxOpen: 16, MaxRuns: 16,
 	})
 	if err != nil {

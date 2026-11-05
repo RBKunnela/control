@@ -27,10 +27,11 @@ func (noPolicy) Current() *policy.Snapshot { return nil }
 
 func pipelineConfig(a gateway.Adapter, mode controlv1.EnforcementMode) gateway.Config {
 	var n atomic.Int64
+	store := &gateway.MemoryApprovals{}
 	return gateway.Config{
 		Mode: mode, Adapter: a,
 		KernelOptions: core.Options{MaxStale: time.Minute}, Policy: noPolicy{}, Pause: gateway.PauseDisabled(), Stops: gateway.StopsDisabled(), Sink: &evidence.MemorySink{},
-		Approvals: &gateway.MemoryApprovals{}, Ledger: &gateway.MemoryLedger{}, Clock: time.Now,
+		Approvals: store, Authority: store, AuthorityKind: gateway.AuthorityDirectory, Ledger: &gateway.MemoryLedger{}, Clock: time.Now,
 		NewID:       func() string { return "id-" + strconv.FormatInt(n.Add(1), 10) },
 		ApprovalTTL: time.Minute, RetryAfter: time.Second, MaxHeld: 16, MaxOpen: 16, MaxRuns: 16,
 	}

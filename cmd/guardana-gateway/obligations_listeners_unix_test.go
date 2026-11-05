@@ -89,7 +89,9 @@ policy:
   bundle_file: policy.bundle
   key_id: %s
   public_key: %s
-%sevidence:
+%sapprovals:
+  authority: memory
+evidence:
   dir: spool
 export:
   endpoint: %s

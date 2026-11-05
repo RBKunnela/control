@@ -59,6 +59,7 @@ func internalPipeline(t *testing.T) (*Pipeline, *policy.Snapshot) {
 		t.Fatalf("Load: %v", err)
 	}
 	ids := 0
+	store := &MemoryApprovals{}
 	p, err := New(Config{
 		Mode:          modeEnforce,
 		Adapter:       internalAdapter{},
@@ -67,7 +68,9 @@ func internalPipeline(t *testing.T) (*Pipeline, *policy.Snapshot) {
 		Pause:         PauseDisabled(),
 		Stops:         StopsDisabled(),
 		Sink:          &evidence.MemorySink{},
-		Approvals:     &MemoryApprovals{},
+		Approvals:     store,
+		Authority:     store,
+		AuthorityKind: AuthorityDirectory,
 		Ledger:        &MemoryLedger{},
 		Clock:         internalClock,
 		NewID:         func() string { ids++; return "id-" + strconv.Itoa(ids) },

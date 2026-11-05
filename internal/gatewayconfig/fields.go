@@ -1,6 +1,7 @@
 package gatewayconfig
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -38,14 +39,15 @@ const (
 // contract takes the contract's own name without its prefix; a key this
 // package owns takes a lower-case name.
 var (
-	modeNames         = []string{ModeObserve, ModeShadow, ModeWarn, ModeApprove, ModeEnforce, ModeLockdown}
-	listenerKinds     = []string{ListenerStatelessHTTP, ListenerStatefulHTTP, ListenerStdio, ListenerEnforceAPI}
-	fsyncPolicies     = []string{FsyncEveryRecord, FsyncInterval}
-	unwritablePolicy  = []string{UnwritableBlock, UnwritableAllowReads}
-	approvalProviders = []string{ProviderMemory, ProviderFile}
-	shapings          = []string{"none", "annotate", "hide"}
-	logLevels         = []string{"debug", "info", "warn", "error"}
-	effectNames       = classify.EffectNames()
+	modeNames           = []string{ModeObserve, ModeShadow, ModeWarn, ModeApprove, ModeEnforce, ModeLockdown}
+	listenerKinds       = []string{ListenerStatelessHTTP, ListenerStatefulHTTP, ListenerStdio, ListenerEnforceAPI}
+	fsyncPolicies       = []string{FsyncEveryRecord, FsyncInterval}
+	unwritablePolicy    = []string{UnwritableBlock, UnwritableAllowReads}
+	approvalAuthorities = []string{AuthorityMemory, AuthorityDirectory, AuthoritySigned}
+	operatorKinds       = []string{"roster"}
+	shapings            = []string{"none", "annotate", "hide"}
+	logLevels           = []string{"debug", "info", "warn", "error"}
+	effectNames         = classify.EffectNames()
 	// A tool of an enforcement API listener is never of a class that needs a
 	// delegation: the API carries none, so such a call is never decided.
 	toolEffectNames = slices.DeleteFunc(classify.EffectNames(), func(n string) bool {
@@ -106,9 +108,10 @@ var configFields = []field[Config]{
 	boolField("pdp.allow_plaintext", "false", func(c *Config) *bool { return &c.PDP.AllowPlaintext }),
 	credential(stringField("pdp.proxy", "", false, func(c *Config) *string { return &c.PDP.Proxy })),
 
-	enumField("approvals.provider", ProviderMemory, approvalProviders, true, func(c *Config) *string { return &c.Approvals.Provider }),
+	enumField("approvals.authority", "", approvalAuthorities, true, func(c *Config) *string { return &c.Approvals.Authority }),
 	filePath(stringField("approvals.dir", "", false, func(c *Config) *string { return &c.Approvals.Dir })),
 	filePath(stringField("approvals.hold_journal_dir", "", false, func(c *Config) *string { return &c.Approvals.HoldJournalDir })),
+	filePath(stringField("approvals.inbox_dir", "", false, func(c *Config) *string { return &c.Approvals.InboxDir })),
 	durationField("approvals.ttl", "15m", func(c *Config) *time.Duration { return &c.Approvals.TTL }),
 	durationField("approvals.retry_after", "30s", func(c *Config) *time.Duration { return &c.Approvals.RetryAfter }),
 	intField("approvals.max_held", "128", func(c *Config) *int { return &c.Approvals.MaxHeld }),
@@ -117,6 +120,13 @@ var configFields = []field[Config]{
 	intField("approvals.max_records", "1024", func(c *Config) *int { return &c.Approvals.MaxRecords }),
 	intField("approvals.max_record_bytes", "16384", func(c *Config) *int { return &c.Approvals.MaxRecordBytes }),
 	intField("approvals.reconcile_max", "256", func(c *Config) *int { return &c.Approvals.ReconcileMax }),
+
+	filePath(stringField("trust.root_public_key", "", false, func(c *Config) *string { return &c.Trust.RootPublicKey })),
+	filePath(stringField("trust.roster", "", false, func(c *Config) *string { return &c.Trust.Roster })),
+	stringField("trust.roster_id", "", false, func(c *Config) *string { return &c.Trust.RosterID }),
+	filePath(stringField("trust.floor_dir", "", false, func(c *Config) *string { return &c.Trust.FloorDir })),
+	enumField("operators.authenticator.kind", "", operatorKinds, false, func(c *Config) *string { return &c.Operators.AuthenticatorKind }),
+	enumField("operators.authorizer.kind", "", operatorKinds, false, func(c *Config) *string { return &c.Operators.AuthorizerKind }),
 
 	filePath(stringField("pause.file", "", false, func(c *Config) *string { return &c.Pause.File })),
 	durationField("pause.poll_interval", "1s", func(c *Config) *time.Duration { return &c.Pause.PollInterval }),
@@ -312,4 +322,37 @@ func appendFields[T any](out []Field, prefix string, fields []field[T]) []Field 
 		})
 	}
 	return out
+}
+
+// errNoAuthority refuses a configuration that names no approval authority.
+// The key has no default, so a configuration written for the key it replaced
+// breaks once, loudly, rather than run under an authority nobody chose.
+var errNoAuthority = fmt.Errorf("approvals.authority: no value, and it has no default; it replaces approvals.provider: " +
+	"write memory, directory for what provider: file was, or signed (ADR-0073)")
+
+// retiredKeys names each key this build no longer reads, with what replaced
+// it, so a configuration written for an older build is refused saying what to
+// write instead of only that the key is unknown.
+var retiredKeys = map[string]string{
+	"approvals.provider": "approvals.provider is replaced by approvals.authority, which has no default: " +
+		"memory stays memory, file becomes directory, and signed takes only an answer an operator signed (ADR-0073)",
+}
+
+// retired refuses path when it is a retired key, and returns nil otherwise.
+func retired(where, path string) error {
+	if why, ok := retiredKeys[path]; ok {
+		return fmt.Errorf("%s: %s", where, why)
+	}
+	return nil
+}
+
+// retiredVariable refuses the variable name when key, its name without the
+// product's prefix, is a retired key's.
+func retiredVariable(name, key string) error {
+	for path := range retiredKeys {
+		if EnvName(path) == key {
+			return retired(name, path)
+		}
+	}
+	return nil
 }

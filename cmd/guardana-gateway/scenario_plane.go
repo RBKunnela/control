@@ -50,7 +50,7 @@ func targetOf(cfg *gatewayconfig.Config) (planeTarget, error) {
 		healthURL: "http://" + cfg.Health.Address + "/healthz", pauseFile: cfg.Resolve(cfg.Pause.File),
 		callTimeout: cfg.Upstream.CallTimeout,
 	}
-	if cfg.Approvals.Provider == gatewayconfig.ProviderFile {
+	if cfg.Approvals.Authority == gatewayconfig.AuthorityDirectory {
 		t.approvals = cfg.Resolve(cfg.Approvals.Dir)
 	}
 	return t, nil

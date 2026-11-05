@@ -119,3 +119,13 @@ const (
 	// ErrInvalidOption is an option outside its range.
 	ErrInvalidOption Error = "approvals: invalid option"
 )
+
+// The vocabulary of a signed answer and of the inbox it is read from.
+const (
+	// ErrAnswerFormat is an answer body ReadAnswer refuses: not canonical, a
+	// member missing, unknown or of the wrong type, or a value outside its
+	// rule.
+	ErrAnswerFormat Error = "approvals: the answer is not an approval answer this build reads"
+	// ErrAnswerKind is an answer body of another kind.
+	ErrAnswerKind Error = "approvals: the answer names a kind this build does not read"
+)

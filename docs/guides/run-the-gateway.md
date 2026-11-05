@@ -92,6 +92,9 @@ policy:
   freshness_public_key: <44 characters of base64>
   poll_interval: 30s            # how often both files are read again
 
+approvals:
+  authority: memory             # no default
+
 evidence:
   dir: spool
 
@@ -183,7 +186,7 @@ complete. Then change the mode and restart.
 | Mode | What the plane does with the kernel's decision |
 | --- | --- |
 | `OBSERVE` | Records; executes every translated call one upstream lists, unclassified included, unless one of the plane's own causes blocks it ([enforcement modes](../concepts/enforcement-modes.md)); applies no obligation |
-| `APPROVE` | Enforces, and holds an allowed material call for an approval. It needs `approvals.provider: file`: nothing outside the process answers a hold kept in memory |
+| `APPROVE` | Enforces, and holds an allowed material call for an approval. It needs `approvals.authority` `directory` or `signed` |
 | `ENFORCE` | Enforces the decision: blocks a `DENY` and an `INDETERMINATE` save a fail-open read, applies the obligations, holds what needs an approval |
 | `LOCKDOWN` | Blocks every material call whatever the policy said, recording a decision; enforces a read with fail-open reads off |
 | `SHADOW`, `WARN` | Refused at start: declared in the contract, not built |
@@ -192,16 +195,28 @@ complete. Then change the mode and restart.
 
 ```yaml
 approvals:
-  provider: file
+  authority: signed             # or directory, with the next two keys alone
   dir: /var/lib/guardana/approvals
   hold_journal_dir: /var/lib/guardana/holds
+  inbox_dir: /var/lib/guardana/inbox   # the plane's, the operators' group, mode 1770
+trust:
+  root_public_key: /etc/guardana/root.pub
+  roster: /etc/guardana/roster.json
+  roster_id: acme-operators
+  floor_dir: /var/lib/guardana/roster-floor
+operators:
+  authenticator:
+    kind: roster
+  authorizer:
+    kind: roster
 ```
 
-An approver answers with the approval commands
-([reference/cli.md](../reference/cli.md)). Write access to `approvals.dir` is
-the approval authority, and `--approver-id` is a claim, never authenticated. A
-hold lost to a restart never runs; the next start closes its trail from the
-journal
+Under `directory`, write access to `approvals.dir` is the approval authority
+and `--approver-id` is a claim ([reference/cli.md](../reference/cli.md)).
+Under `signed`, an answer is an operator's signed file
+`<approval id>.<label>.answer`, at most 16 per approval, 32 KiB each
+([ADR-0073](../adr/0073-an-approval-counts-only-as-the-plane-judges-it.md)). A
+lost hold never runs; the next start closes its trail
 ([concepts/approvals-and-the-held-call.md](../concepts/approvals-and-the-held-call.md)).
 
 ### 9. Set the evidence rules on purpose

@@ -167,7 +167,7 @@ var ownedKeys = [][2]string{
 	{"policy.state_dir", "floors"},
 	{"policy.freshness_key_id", "f1"},
 	{"policy.freshness_public_key", "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB="},
-	{"approvals.provider", "file"},
+	{"approvals.authority", "directory"},
 	{"approvals.dir", "records"},
 	{"approvals.hold_journal_dir", "holds"},
 	{"runs.dir", "runs"},

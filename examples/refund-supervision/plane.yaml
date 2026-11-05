@@ -41,7 +41,7 @@ reaction:
   poll_interval: 1s
 
 approvals:
-  provider: file
+  authority: directory
   dir: state/approvals
   hold_journal_dir: state/holds
 

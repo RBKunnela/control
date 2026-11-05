@@ -90,6 +90,7 @@ func TestASweptPlaneKeepsHoldingPastItsBound(t *testing.T) {
 			want := map[string]any{
 				"records_forgotten": wantRecords, "records_failed": uint64(0),
 				"marks_forgotten": uint64(3 * sweptBound), "marks_failed": uint64(0),
+				"answers_forgotten": uint64(0), "answers_failed": uint64(0), "answers_refused": uint64(0),
 			}
 			if got := p.sweeps.counters(); !equalCounters(got, want) {
 				t.Errorf("the sweeps counted %v, want %v", got, want)

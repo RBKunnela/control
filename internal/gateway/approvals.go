@@ -35,13 +35,13 @@ type Held struct {
 	LastEventID string
 }
 
-// ApprovalStore holds requests awaiting approval and hands back what
-// approvers answered about them. Every implementation approves nothing it was
-// not told to, and its zero value approves nothing at all.
+// ApprovalStore holds requests awaiting approval and the projections an
+// approver lists. Answers come from the ApprovalAuthority, never from here.
 //
 // What an implementation owes the plane: Find hands back the records it still
-// keeps, each as an answer the plane judges itself and trusts no part of. A
-// store says nothing about what became of a record: whether an approval was
+// keeps, which pair a retry with its hold and show a record of a hold the
+// plane no longer keeps; the plane trusts no part of one. A store says
+// nothing about what became of a record: whether an approval was
 // spent or given up is the plane's Ledger's to say, and no store can write
 // it. Approval and Binding are the two fields the plane cannot do without;
 // Envelope, Decision and LastEventID may come back empty, since the plane
@@ -69,17 +69,21 @@ type ApprovalStore interface {
 	Release(ctx context.Context, binding approval.Binding, requestID, approvalID string) error
 }
 
-// MemoryApprovals is an ApprovalStore in process memory. The zero value is
-// ready to use and approves nothing. Answer is how a test, or an approval
-// provider in the same process, decides a held approval. Hold and Find drop
-// every record whose approval expired, so what it keeps is bounded by what is
-// held within one approval lifetime.
+// MemoryApprovals is an ApprovalStore in process memory, and the approval
+// authority of the directory kind over the same records. The zero value is
+// ready to use and approves nothing. Answer is how a test, or an approver in
+// the same process, decides a held approval; what it records is a claim.
+// Hold and Find drop every record whose approval expired, so what it keeps is
+// bounded by what is held within one approval lifetime.
 type MemoryApprovals struct {
 	mu   sync.Mutex
 	held map[approval.Binding][]*heldRecord
 }
 
-var _ ApprovalStore = (*MemoryApprovals)(nil)
+var (
+	_ ApprovalStore     = (*MemoryApprovals)(nil)
+	_ ApprovalAuthority = (*MemoryApprovals)(nil)
+)
 
 type heldRecord struct {
 	held Held
@@ -183,6 +187,30 @@ func (m *MemoryApprovals) Answer(approvalID string, state controlv1.ApprovalStat
 		}
 	}
 	return ErrNoApproval
+}
+
+// Answers returns, as claims, a clone of every record kept under approvalID,
+// expired ones included: the plane judges the window itself.
+func (m *MemoryApprovals) Answers(ctx context.Context, approvalID string) AnswerBatch {
+	if ctx.Err() != nil {
+		return AnswerBatch{}
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := AnswerBatch{State: BatchComplete}
+	for _, records := range m.held {
+		for _, r := range records {
+			if r.held.Approval.GetApprovalId() == approvalID {
+				out.Claimed = append(out.Claimed, proto.CloneOf(r.held.Approval))
+			}
+		}
+	}
+	return out
+}
+
+// Status says the records are claims kept in this process, always readable.
+func (m *MemoryApprovals) Status(context.Context) AuthorityStatus {
+	return AuthorityStatus{Kind: AuthorityDirectory, Health: AuthorityUsable}
 }
 
 // Release drops the record of approvalID held for requestID under binding.

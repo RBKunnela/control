@@ -30,6 +30,7 @@ version. [status.md](../status.md) is the inventory.
 | Policy document (`apiVersion`) | — | `agent-policy/v1alpha1` | alpha | [policy-format.md](policy-format.md#the-document) |
 | Freshness statement (`kind`) | `agent-policy-freshness/v1alpha1` | `agent-policy-freshness/v1alpha1` | `experimental` | [ADR-0038](../adr/0038-a-signed-freshness-statement-and-a-serial-floor.md) |
 | Trust roster (`kind`) | `trust-roster/v1alpha1` | `trust-roster/v1alpha1` | `experimental` | [ADR-0071](../adr/0071-operators-are-named-by-a-signed-roster.md) |
+| Approval answer (`kind`) | `approval-answer/v1alpha1` | `approval-answer/v1alpha1` | `experimental` | [ADR-0073](../adr/0073-an-approval-counts-only-as-the-plane-judges-it.md) |
 | Floor directories (`schema_version`) | `1.0` | `1.x` | `experimental` | [cli.md](cli.md#guardana-control) |
 | Scenario (`kind`) | — | `agent-scenario/v1alpha1` | `experimental` | [scenario-format.md](scenario-format.md#the-document) |
 | Pause file (`schema_version`) | `2` | `1`, `2` | `experimental` | [cli.md](cli.md#guardana-control) |

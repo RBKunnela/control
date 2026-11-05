@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -31,6 +32,10 @@ type healthAnswer struct {
 	// Approvals is where a held request is kept, whether this plane keeps a
 	// durable record of its own holds, and what its reconciliation settled.
 	Approvals map[string]any `json:"approvals"`
+	// Trust and Operators are the trust roster and the operator ports the
+	// signed authority judges answers with, each not_configured otherwise.
+	Trust     map[string]any `json:"trust"`
+	Operators map[string]any `json:"operators"`
 	// Runs says whether runs are local or opened by the operator, and what
 	// the listener refused and the pipeline could not read or raise.
 	Runs map[string]any `json:"runs"`
@@ -186,7 +191,9 @@ func (p *plane) health(src gateway.PauseSource, clock func() time.Time) (healthA
 		UptimeS:   now.Sub(p.started).Seconds(),
 		Halted:    stats.Halted,
 		Halt:      haltOf(stats),
-		Approvals: approvalCounters(p.cfg.Approvals.Provider, stats),
+		Approvals: approvalCounters(p.authorityHealth(context.Background(), stats.Answers), stats),
+		Trust:     p.trustHealth(context.Background()),
+		Operators: p.operatorsHealth(context.Background()),
 		Exporter:  exporterCounters(p.exporter.Stats()),
 	}
 	answer.Approvals["sweep"] = p.sweeps.counters()

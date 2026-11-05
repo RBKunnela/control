@@ -41,6 +41,9 @@ policy:
   freshness_public_key: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=
   poll_interval: 5s
 
+approvals:
+  authority: memory
+
 evidence:
   dir: spool
 
@@ -59,7 +62,20 @@ upstreams:
 // the loader.
 func write(t *testing.T, add string) string {
 	t.Helper()
-	return writeDocument(t, document+add)
+	return writeDocument(t, compose(add))
+}
+
+// memoryAuthority is the document's approval authority, which compose leaves
+// out where add names another.
+const memoryAuthority = "approvals:\n  authority: memory\n\n"
+
+// compose is the document with add appended, its own authority left out when
+// add names one.
+func compose(add string) string {
+	if strings.Contains(add, "  authority: ") {
+		return strings.Replace(document, memoryAuthority, "", 1) + add
+	}
+	return document + add
 }
 
 // without is the document with one of its lines removed; a line it does not
@@ -191,8 +207,8 @@ func TestSourcesNameWhatSetEachKey(t *testing.T) {
 	if _, ok := sources["health.address"]; ok {
 		t.Error("health.address stands at its default and has a source")
 	}
-	if len(sources) != 26 {
-		t.Errorf("%d keys have a source, want the document's 25 and the variable", len(sources))
+	if len(sources) != 27 {
+		t.Errorf("%d keys have a source, want the document's 26 and the variable", len(sources))
 	}
 	sources["mode"] = "elsewhere"
 	if cfg.Sources()["mode"] == "elsewhere" {

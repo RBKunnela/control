@@ -1,4 +1,4 @@
-ok      configuration <tree>/doctor.yaml parses, 24 key(s) set, the rest at their defaults
+ok      configuration <tree>/doctor.yaml parses, 25 key(s) set, the rest at their defaults
        mode                         OBSERVE                  (<tree>/doctor.yaml:3)
        project_id                   orders                   (<tree>/doctor.yaml:4)
        tenant_id                    acme                     (<tree>/doctor.yaml:5)
@@ -36,9 +36,10 @@ ok      configuration <tree>/doctor.yaml parses, 24 key(s) set, the rest at thei
        pdp.max_in_flight            16                       (default)
        pdp.allow_plaintext          false                    (default)
        pdp.proxy                                             (default)
-       approvals.provider           memory                   (default)
+       approvals.authority          memory                   (<tree>/doctor.yaml:31)
        approvals.dir                                         (default)
        approvals.hold_journal_dir                            (default)
+       approvals.inbox_dir                                   (default)
        approvals.ttl                15m0s                    (default)
        approvals.retry_after        30s                      (default)
        approvals.max_held           128                      (default)
@@ -47,6 +48,12 @@ ok      configuration <tree>/doctor.yaml parses, 24 key(s) set, the rest at thei
        approvals.max_records        1024                     (default)
        approvals.max_record_bytes   16384                    (default)
        approvals.reconcile_max      256                      (default)
+       trust.root_public_key                                 (default)
+       trust.roster                                          (default)
+       trust.roster_id                                       (default)
+       trust.floor_dir                                       (default)
+       operators.authenticator.kind                          (default)
+       operators.authorizer.kind                             (default)
        pause.file                                            (default)
        pause.poll_interval          1s                       (default)
        runs.dir                                              (default)
@@ -56,15 +63,15 @@ ok      configuration <tree>/doctor.yaml parses, 24 key(s) set, the rest at thei
        reaction.floor_dir                                    (default)
        reaction.stops                                        (default)
        reaction.poll_interval       1s                       (default)
-       evidence.dir                 spool                    (<tree>/doctor.yaml:31)
+       evidence.dir                 spool                    (<tree>/doctor.yaml:34)
        evidence.max_bytes           1073741824               (default)
        evidence.segment_bytes       67108864                 (default)
        evidence.closing_reserve     65536                    (default)
        evidence.fsync               every_record             (default)
        evidence.fsync_interval      0s                       (default)
        evidence.on_unwritable       block                    (default)
-       export.endpoint              http://127.0.0.1:4318/v1/logs (<tree>/doctor.yaml:34)
-       export.allow_plaintext       true                     (<tree>/doctor.yaml:35)
+       export.endpoint              http://127.0.0.1:4318/v1/logs (<tree>/doctor.yaml:37)
+       export.allow_plaintext       true                     (<tree>/doctor.yaml:38)
        export.timeout               10s                      (default)
        export.in_flight             4                        (default)
        export.max_batch             128                      (default)
@@ -80,7 +87,11 @@ ok      configuration <tree>/doctor.yaml parses, 24 key(s) set, the rest at thei
 ok      mode          OBSERVE needs observe_request, observe_result from the adapter; list shaping none
 ok      policy        bundle gateway-fixture version 2026-09-20.1 serial 1 verifies under key k1, digest sha256:0766ec8e242e7e98c0b9a2513c830762cbae6b3dbd1bffba33f2cf59b74d9e1e, staleness budget 10m0s; a statement under key f1 issued <time> confirms it until <time>; the floor holds no serial yet; policy.fail_open_read false, so a read fails closed while the policy is unavailable
 ok      evidence      access(2), which reads mode bits, a read-only mount and the ACLs the kernel applies, lets this account create a file in <tree>/spool; 0 segment(s), 0 byte(s) unacknowledged, 0 quarantined; a start would cut a torn tail of 0 byte(s), which this check left in place; on_unwritable block
-ok      approvals     held requests are kept in process memory under the memory provider: nothing outside this process answers one, and a hold lost to a restart is never closed
+ok      approvals     held requests are kept in process memory under the memory authority: nothing outside this process answers one, and a hold lost to a restart is never closed
+ok      approvals.authority memory: answers are claims made in this process; the approver is an unauthenticated claim, and nothing outside this process answers
+ok      trust         not read: approvals.authority is memory, which authenticates no operator
+ok      operators.authenticator not read: approvals.authority is memory, which authenticates no operator
+ok      operators.authorizer not read: approvals.authority is memory, which authenticates no operator
 ok      pause         disabled: pause.file is not set, so no call can be paused without a restart
 ok      runs          local: one run per principal and agent, kept in memory, so a new process starts clean (ADR-0021)
 ok      reaction      disabled: reaction.route is not set, so no finding stops a run

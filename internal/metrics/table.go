@@ -15,6 +15,10 @@ var seamRows = []Metric{
 		"Calls and resumes blocked, expired holds swept and lost holds a reconciliation closed, by the first reason code "+
 			"of the decision each carries; a code outside the reason registry is counted under "+Other+".",
 		func(r Reading) ([]sample, error) { return blockSamples(r.Pipeline.Blocks) }),
+	labelled(Counter, "pipeline_answers_refused_total", "cause", "Pipeline.Answers",
+		"Answers and batches of answers the plane did not take from its approval authority, by cause; a cause "+
+			"outside the plane's list is counted under "+Other+".",
+		func(r Reading) ([]sample, error) { return answerSamples(r.Pipeline.Answers) }),
 	count("pipeline_pending_total", "Pipeline.Pending",
 		"Admissions answered with a pending approval, first requests and retries alike.",
 		func(r Reading) uint64 { return r.Pipeline.Pending }),

@@ -64,6 +64,11 @@ type Stats struct {
 	// not forget included. Each one was held anew: a store that cannot say an
 	// execution used a record never makes the plane say so either.
 	UnheldRecords uint64
+	// Answers counts, by cause, the answers and the batches of answers the
+	// plane did not take from its approval authority: a batch it could not
+	// read whole, and an answer that was not authenticated, not about the
+	// hold, decided outside its window or not authorized.
+	Answers map[string]uint64
 	// JournalRefusals counts hold journal writes that failed. Each one
 	// refused a hold, blocked an append past a request for approval, or left
 	// an entry the plane could not forget.
@@ -244,6 +249,7 @@ func (c *counters) snapshot() Stats {
 	defer c.mu.Unlock()
 	out := c.stats
 	out.Blocks = maps.Clone(c.stats.Blocks)
+	out.Answers = maps.Clone(c.stats.Answers)
 	out.MismatchHalted, out.SinkHalted = c.mismatchHalt, c.sinkHalt
 	out.Halted = c.sinkHalt || c.mismatchHalt
 	out.RunsHalted = len(c.runHalts)

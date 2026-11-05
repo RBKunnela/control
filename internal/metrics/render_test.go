@@ -166,6 +166,8 @@ func readingWith(t *testing.T, l leaf, v uint64, code string) (r Reading, key, r
 			key = string(gateway.RunClosed)
 		case "Enforce.Refused":
 			key = "handle_spent"
+		case "Pipeline.Answers":
+			key = gateway.AnswerUnauthenticated
 		case "Policy.Refused":
 			key = string(policywatch.CauseStatementFuture)
 		}
@@ -378,7 +380,7 @@ func TestNamesFollowTheConventions(t *testing.T) {
 			t.Errorf("%s: help %q is empty or not one plain line", m.Name, m.Help)
 		}
 		wantLabel := map[string]string{
-			"Pipeline.Blocks": "code", "Pause.Failed": "cause", "PauseState": "state",
+			"Pipeline.Blocks": "code", "Pipeline.Answers": "cause", "Pause.Failed": "cause", "PauseState": "state",
 			"Adapter.RunsRefusedAtRequest": "cause", "Adapter.RunsRefusedAtMessage": "cause",
 			"Policy.Refused": "cause", "PolicyFreshness": "state", "Stops.Failed": "cause",
 			"Enforce.Refused": "code", "Enforce.RunsRefused": "cause",

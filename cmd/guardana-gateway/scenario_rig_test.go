@@ -252,7 +252,7 @@ policy:
   key_id: %s
   public_key: %s
 %sapprovals:
-  provider: file
+  authority: directory
   dir: records
   hold_journal_dir: holds
 pause:

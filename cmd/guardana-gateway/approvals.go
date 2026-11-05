@@ -141,7 +141,7 @@ func ledgerResolution(m holdjournal.Mark) gateway.Resolution {
 }
 
 // planeLedger is the ledger beside the plane's hold journal, or one in this
-// process where no journal is configured: only the memory provider runs
+// process where no journal is configured: only the memory authority runs
 // without one, and its holds do not outlive the process either.
 func planeLedger(holds gateway.HoldJournal) gateway.Ledger {
 	if h, ok := holds.(*holdJournal); ok && h.ledger != nil {
@@ -278,12 +278,12 @@ func holdListing(listing holdjournal.Listing) gateway.HoldListing {
 	return out
 }
 
-// openApprovals opens the store the configuration names. The memory store
-// keeps its records in this process, so nothing outside it answers a hold; the
-// file store is a directory an approver writes, and the plane holds its lock
-// for as long as it serves.
+// openApprovals opens the store the configuration's authority keeps the held
+// records in. The memory store keeps them in this process, so nothing outside
+// it answers a hold; under directory and signed they are a directory an
+// approver lists, and the plane holds its lock for as long as it serves.
 func openApprovals(cfg *gatewayconfig.Config) (gateway.ApprovalStore, *approvals.Plane, error) {
-	if cfg.Approvals.Provider != gatewayconfig.ProviderFile {
+	if cfg.Approvals.Authority == gatewayconfig.AuthorityMemory {
 		return &gateway.MemoryApprovals{}, nil, nil
 	}
 	// The window is the plane's own TTL: a record standing further from its

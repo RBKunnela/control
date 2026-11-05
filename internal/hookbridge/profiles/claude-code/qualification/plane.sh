@@ -78,7 +78,7 @@ policy:
   freshness_public_key: $(line_of public_key "${plane}/freshness/keygen.txt")
   poll_interval: 30s
 approvals:
-  provider: file
+  authority: directory
   dir: approvals
   hold_journal_dir: holds
   retry_after: 1s

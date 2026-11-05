@@ -27,6 +27,9 @@ policy:
   freshness_public_key: 1UIH2hlJd9z0atv+wrwudbUtWopCGE/t/cAAJPDj6No=
   poll_interval: 5s
 
+approvals:
+  authority: memory
+
 evidence:
   dir: spool
 

@@ -8,6 +8,7 @@ import (
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/core"
 	"github.com/guardana/control/internal/evidence"
+	"github.com/guardana/control/internal/operators"
 )
 
 // DefaultMaxHeldPerRun is how many requests one opened run may hold for an
@@ -50,8 +51,17 @@ type Config struct {
 	Stops StopSource
 	// Sink takes every event of every trail.
 	Sink evidence.Sink
-	// Approvals holds requests and hands back what approvers answered.
+	// Approvals holds the requests the plane holds, and their projections an
+	// approver lists.
 	Approvals ApprovalStore
+	// Authority hands back what was answered about a held approval, and
+	// AuthorityKind says how the plane takes it; the empty kind is refused.
+	Authority     ApprovalAuthority
+	AuthorityKind AuthorityKind
+	// Authenticator and Authorizer judge each signed answer; the signed kind
+	// needs both and the directory kind takes neither.
+	Authenticator operators.Authenticator
+	Authorizer    operators.Authorizer
 	// Ledger is where the plane marks an approval spent or given up, and the
 	// only place it reads either from.
 	Ledger Ledger
@@ -121,6 +131,9 @@ func checkConfig(cfg Config) (string, Capabilities, error) {
 		return "", Capabilities{}, err
 	}
 	if err := checkSources(cfg); err != nil {
+		return "", Capabilities{}, err
+	}
+	if err := checkAuthority(cfg); err != nil {
 		return "", Capabilities{}, err
 	}
 	if _, disabled := cfg.Stops.(disabledStops); !disabled && cfg.Runs == nil {

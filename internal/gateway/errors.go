@@ -57,6 +57,14 @@ const (
 	ErrNoSink Error = "gateway: no evidence sink"
 	// ErrNoApprovals is a nil approval store.
 	ErrNoApprovals Error = "gateway: no approval store"
+	// ErrNoAuthority is a nil approval authority.
+	ErrNoAuthority Error = "gateway: no approval authority"
+	// ErrAuthorityKind is an approval authority kind outside the closed set,
+	// the empty kind included: none is taken by default.
+	ErrAuthorityKind Error = "gateway: the approval authority's kind is directory or signed"
+	// ErrAuthorityConfig is a kind without the ports it needs, or with ports
+	// it does not read.
+	ErrAuthorityConfig Error = "gateway: the approval authority's ports do not fit its kind"
 	// ErrNoLedger is a nil ledger: the spent mark is the plane's own, and a
 	// plane with nowhere to keep it could not refuse a second execution.
 	ErrNoLedger Error = "gateway: no ledger of spent approvals"

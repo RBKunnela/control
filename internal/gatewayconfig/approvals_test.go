@@ -8,24 +8,43 @@ import (
 )
 
 // fileProvider is the block a configuration adds to keep its held requests in
-// a directory: the provider, the records and the plane's own journal, each in
-// a directory of its own.
+// a directory an approver answers: the authority, the records and the plane's
+// own journal, each in a directory of its own.
 const fileProvider = `
 approvals:
-  provider: file
+  authority: directory
   dir: approvals
   hold_journal_dir: holds
 `
 
+// signedBlock is the signed authority with every key it reads.
+const signedBlock = `
+approvals:
+  authority: signed
+  dir: approvals
+  hold_journal_dir: holds
+  inbox_dir: inbox
+trust:
+  root_public_key: trust/root.pub
+  roster: trust/roster.json
+  roster_id: roster-a
+  floor_dir: trust/floors
+operators:
+  authenticator:
+    kind: roster
+  authorizer:
+    kind: roster
+`
+
 // TestApprovalDefaultsStandWhereTheFileIsSilent pins what a configuration that
-// says nothing about approvals runs with, as literals.
+// names only its authority runs with, as literals.
 func TestApprovalDefaultsStandWhereTheFileIsSilent(t *testing.T) {
 	cfg := load(t, write(t, ""))
 	switch {
-	case cfg.Approvals.Provider != ProviderMemory:
-		t.Errorf("approvals.provider is %q, want %q", cfg.Approvals.Provider, ProviderMemory)
-	case cfg.Approvals.Dir != "" || cfg.Approvals.HoldJournalDir != "":
-		t.Errorf("a silent configuration names directories %q and %q", cfg.Approvals.Dir, cfg.Approvals.HoldJournalDir)
+	case cfg.Approvals.Authority != "memory":
+		t.Errorf("approvals.authority is %q, want memory", cfg.Approvals.Authority)
+	case cfg.Approvals.Dir != "" || cfg.Approvals.HoldJournalDir != "" || cfg.Approvals.InboxDir != "":
+		t.Errorf("a silent configuration names directories %q, %q and %q", cfg.Approvals.Dir, cfg.Approvals.HoldJournalDir, cfg.Approvals.InboxDir)
 	case cfg.Approvals.MaxRecords != 1024:
 		t.Errorf("approvals.max_records is %d, want 1024", cfg.Approvals.MaxRecords)
 	case cfg.Approvals.MaxRecordBytes != 16384:
@@ -35,48 +54,142 @@ func TestApprovalDefaultsStandWhereTheFileIsSilent(t *testing.T) {
 	}
 }
 
-// TestApproveNeedsAProviderThatCanBeAnswered: APPROVE holds every allowed
+// TestTheAuthorityHasNoDefault: a configuration that names no authority is
+// refused, naming the key and the one it replaces; the same document naming
+// one loads.
+func TestTheAuthorityHasNoDefault(t *testing.T) {
+	_, err := Load(writeDocument(t, strings.Replace(document, memoryAuthority, "", 1)), os.Environ())
+	if err == nil {
+		t.Fatal("a configuration naming no approval authority was accepted")
+	}
+	for _, want := range []string{"approvals.authority", "approvals.provider", "no default"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the refusal does not say %q: %v", want, err)
+		}
+	}
+	load(t, write(t, ""))
+}
+
+// TestTheOldProviderKeyIsRefusedNamingItsReplacement: approvals.provider, in
+// the file or the environment, is refused saying what to write instead; a key
+// that never existed gets the plain refusal, so the message is the retired
+// key's own.
+func TestTheOldProviderKeyIsRefusedNamingItsReplacement(t *testing.T) {
+	for name, path := range map[string]func(t *testing.T) string{
+		"in the file": func(t *testing.T) string { return write(t, "\napprovals:\n  provider: file\n") },
+		"in the environment": func(t *testing.T) string {
+			path := write(t, "")
+			setEnv(t, "approvals.provider", "file")
+			return path
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := Load(path(t), os.Environ())
+			if err == nil {
+				t.Fatal("approvals.provider was accepted")
+			}
+			for _, want := range []string{"approvals.provider", "approvals.authority", "file becomes directory"} {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("the refusal does not say %q: %v", want, err)
+				}
+			}
+		})
+	}
+	_, err := Load(write(t, "\napprovals:\n  providers: file\n"), os.Environ())
+	if err == nil || !strings.Contains(err.Error(), "is not a configuration key") || strings.Contains(err.Error(), "approvals.authority") {
+		t.Errorf("a key that never existed: %v", err)
+	}
+}
+
+// TestApproveNeedsAnAuthorityThatCanBeAnswered: APPROVE holds every allowed
 // material call, so a store nothing outside the process can answer would hold
-// each of them until it expired. The same mode with the file provider is
-// accepted, which is what makes this a refusal of the pair and not of the mode.
-func TestApproveNeedsAProviderThatCanBeAnswered(t *testing.T) {
+// each of them until it expired. The same mode with the directory authority
+// is accepted, which is what makes this a refusal of the pair and not of the
+// mode.
+func TestApproveNeedsAnAuthorityThatCanBeAnswered(t *testing.T) {
 	path := write(t, "")
 	setEnv(t, "mode", "APPROVE")
 	_, err := Load(path, os.Environ())
 	if err == nil {
-		t.Fatal("APPROVE was accepted with the memory provider, so every held call would expire")
+		t.Fatal("APPROVE was accepted with the memory authority, so every held call would expire")
 	}
-	if !strings.Contains(err.Error(), "approvals.provider") {
+	if !strings.Contains(err.Error(), "approvals.authority") {
 		t.Errorf("the refusal does not name the key: %v", err)
 	}
 
 	with := write(t, fileProvider)
 	setEnv(t, "mode", "APPROVE")
 	cfg := load(t, with)
-	if cfg.ModeName != "APPROVE" || cfg.Approvals.Provider != ProviderFile {
-		t.Errorf("the accepted configuration is %s with %s", cfg.ModeName, cfg.Approvals.Provider)
+	if cfg.ModeName != "APPROVE" || cfg.Approvals.Authority != AuthorityDirectory {
+		t.Errorf("the accepted configuration is %s with %s", cfg.ModeName, cfg.Approvals.Authority)
 	}
 }
 
-// TestTheFileProviderNeedsBothDirectories: the records and the plane's own
-// journal of its own holds are two durable artefacts, and a plane that keeps
-// the first without the second closes no hold it loses (ADR-0016).
-func TestTheFileProviderNeedsBothDirectories(t *testing.T) {
-	for _, c := range []struct {
-		name  string
-		add   string
-		names string
-	}{
-		{"no directory at all", "\napprovals:\n  provider: file\n", "approvals.dir"},
-		{"records but no journal", "\napprovals:\n  provider: file\n  dir: approvals\n", "approvals.hold_journal_dir"},
+// TestADurableAuthorityNeedsBothDirectories: under directory and signed the
+// records and the plane's own journal, with its ledger of spent approvals,
+// are two durable artefacts, and a plane without the second could spend an
+// approval twice across a restart.
+func TestADurableAuthorityNeedsBothDirectories(t *testing.T) {
+	for _, block := range []string{fileProvider, signedBlock} {
+		for _, c := range []struct {
+			drop  string
+			names string
+		}{
+			{"  dir: approvals\n", "approvals.dir"},
+			{"  hold_journal_dir: holds\n", "approvals.hold_journal_dir"},
+		} {
+			add := strings.Replace(block, c.drop, "", 1)
+			if add == block {
+				t.Fatalf("the block holds no %q", c.drop)
+			}
+			if _, err := Load(write(t, add), os.Environ()); err == nil || !strings.Contains(err.Error(), c.names) {
+				t.Errorf("without %s: %v", c.names, err)
+			}
+		}
+	}
+	if _, err := Load(write(t, signedBlock), os.Environ()); err != nil {
+		t.Errorf("the whole signed block was refused: %v", err)
+	}
+}
+
+// TestTheSignedAuthorityNeedsEveryKeyItReads: each key the signed authority
+// reads is required under it, and refused under any other, since a key that
+// applies to nothing is a setting the operator believes is in force.
+func TestTheSignedAuthorityNeedsEveryKeyItReads(t *testing.T) {
+	for key, line := range map[string]string{
+		"approvals.inbox_dir":          "  inbox_dir: inbox\n",
+		"trust.root_public_key":        "  root_public_key: trust/root.pub\n",
+		"trust.roster":                 "  roster: trust/roster.json\n",
+		"trust.roster_id":              "  roster_id: roster-a\n",
+		"trust.floor_dir":              "  floor_dir: trust/floors\n",
+		"operators.authenticator.kind": "  authenticator:\n    kind: roster\n",
+		"operators.authorizer.kind":    "  authorizer:\n    kind: roster\n",
 	} {
-		t.Run(c.name, func(t *testing.T) {
-			if _, err := Load(write(t, c.add), os.Environ()); err == nil {
-				t.Fatalf("the file provider was accepted %s", c.name)
-			} else if !strings.Contains(err.Error(), c.names) {
-				t.Errorf("the refusal does not name %s: %v", c.names, err)
+		t.Run(key, func(t *testing.T) {
+			without := strings.Replace(signedBlock, line, "", 1)
+			if without == signedBlock {
+				t.Fatalf("the block holds no %q", line)
+			}
+			if _, err := Load(write(t, without), os.Environ()); err == nil || !strings.Contains(err.Error(), key+": the signed authority needs it") {
+				t.Errorf("signed without %s: %v", key, err)
+			}
+			path := write(t, fileProvider)
+			setEnv(t, key, "roster")
+			if _, err := Load(path, os.Environ()); err == nil || !strings.Contains(err.Error(), key+": only the signed authority reads it") {
+				t.Errorf("directory with %s: %v", key, err)
 			}
 		})
+	}
+}
+
+// TestTheInboxStandsApartFromThePlanesDirectories: operators write the inbox,
+// and the plane alone writes the records, the journal and the spool.
+func TestTheInboxStandsApartFromThePlanesDirectories(t *testing.T) {
+	for _, dir := range []string{"approvals", "holds", "spool", "holds/inbox"} {
+		add := strings.Replace(signedBlock, "  inbox_dir: inbox\n", "  inbox_dir: "+dir+"\n", 1)
+		if _, err := Load(write(t, add), os.Environ()); err == nil || !strings.Contains(err.Error(), "approvals.inbox_dir") {
+			t.Errorf("an inbox at %s: %v", dir, err)
+		}
 	}
 }
 
@@ -95,7 +208,7 @@ func TestTheJournalIsNotInADirectoryAnotherWriterOwns(t *testing.T) {
 		{"a directory inside the approvals directory", "approvals/holds"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			add := "\napprovals:\n  provider: file\n  dir: approvals\n  hold_journal_dir: " + c.journal + "\n"
+			add := "\napprovals:\n  authority: directory\n  dir: approvals\n  hold_journal_dir: " + c.journal + "\n"
 			_, err := Load(write(t, add), os.Environ())
 			if err == nil {
 				t.Fatalf("the journal was accepted in %s", c.name)
@@ -107,15 +220,15 @@ func TestTheJournalIsNotInADirectoryAnotherWriterOwns(t *testing.T) {
 	}
 }
 
-// TestADirectoryUnderTheMemoryProviderIsRefused: a directory the provider
-// never reads would sit in the file looking like a store nobody wrote to.
+// TestADirectoryUnderTheMemoryProviderIsRefused: a directory the memory
+// authority never reads would sit in the file looking like a store nobody wrote to.
 func TestADirectoryUnderTheMemoryProviderIsRefused(t *testing.T) {
 	for _, key := range []string{"approvals.dir", "approvals.hold_journal_dir"} {
 		t.Run(key, func(t *testing.T) {
 			path := write(t, "")
 			setEnv(t, key, filepath.Join(t.TempDir(), "elsewhere"))
 			if _, err := Load(path, os.Environ()); err == nil {
-				t.Fatalf("%s was accepted under the memory provider", key)
+				t.Fatalf("%s was accepted under the memory authority", key)
 			} else if !strings.Contains(err.Error(), key) {
 				t.Errorf("the refusal does not name the key: %v", err)
 			}
@@ -150,7 +263,7 @@ func TestTheBoundOnOneRunsHoldsStaysBelowThePlanes(t *testing.T) {
 	if cfg := load(t, writeDocument(t, enforceDocument)); cfg.Approvals.MaxHeldPerRun != 16 {
 		t.Errorf("approvals.max_held_per_run defaults to %d, want 16", cfg.Approvals.MaxHeldPerRun)
 	}
-	mcpRuns := document + "\nruns:\n  dir: runs\n" + fileProvider
+	mcpRuns := compose("\nruns:\n  dir: runs\n" + fileProvider)
 	for _, doc := range []string{enforceDocument, mcpRuns} {
 		for _, env := range []map[string]string{
 			{"approvals.max_held": "17"},

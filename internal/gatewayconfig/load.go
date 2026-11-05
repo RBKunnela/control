@@ -38,7 +38,7 @@ func Load(path string, environ []string) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
-	b := &binder{cfg: &Config{dir: dir, source: map[string]string{}}, headers: map[string]string{}}
+	b := &binder{cfg: &Config{dir: dir, path: filepath.Join(dir, filepath.Base(path)), source: map[string]string{}}, headers: map[string]string{}}
 	for _, m := range mapFields {
 		*m.get(b.cfg) = map[string]string{}
 	}
@@ -121,6 +121,9 @@ func (b *binder) set(path, value, where string) error {
 	}
 	if rest, ok := strings.CutPrefix(path, "tools."); ok {
 		return bindItem(&b.cfg.Tools, toolFields, rest, value, where, path, nil)
+	}
+	if err := retired(where, path); err != nil {
+		return err
 	}
 	return fmt.Errorf("%s: %s is not a configuration key", where, path)
 }
@@ -237,6 +240,9 @@ func (b *binder) environment(environ []string) error {
 		if !ok {
 			if sequence, isSequence := sequenceOf(key); isSequence {
 				return fmt.Errorf("%s names no %s entry the file declares; a variable sets the values of an entry, it does not add one", name, sequence)
+			}
+			if err := retiredVariable(name, key); err != nil {
+				return err
 			}
 			return fmt.Errorf("%s names no configuration key", name)
 		}

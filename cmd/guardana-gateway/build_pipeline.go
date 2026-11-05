@@ -30,6 +30,8 @@ func (p *plane) pipelineConfig(adapter gateway.Adapter, mode controlv1.Enforceme
 		Stops:                p.stopSource(),
 		Sink:                 p.spool,
 		Approvals:            p.store,
+		Authority:            p.authority,
+		AuthorityKind:        p.authorityKind,
 		Ledger:               planeLedger(p.holds),
 		Journal:              p.holds,
 		ReconcileMax:         p.cfg.Approvals.ReconcileMax,
@@ -45,6 +47,9 @@ func (p *plane) pipelineConfig(adapter gateway.Adapter, mode controlv1.Enforceme
 	}
 	if p.runsDir != nil {
 		c.Runs = planeRuns(p.cfg, p.runsDir)
+	}
+	if p.signed != nil {
+		c.Authenticator, c.Authorizer = p.signed.authn, p.signed.authz
 	}
 	withDecisionPoint(&c, pdp, p.cfg.PDP.Timeout)
 	return c

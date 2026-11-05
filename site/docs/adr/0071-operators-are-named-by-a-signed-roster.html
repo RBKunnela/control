@@ -121,6 +121,9 @@ operator authentication and operator authorization ports, on
 <a href="/docs/adr/0046-a-finding-stops-one-run-through-a-signed-route">ADR-0046</a> for the
 serial floor, and on
 <a href="/docs/adr/0017-an-external-decision-point-can-veto">ADR-0017</a> for the veto.</p>
+<p>Amended by <a href="/docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it">ADR-0073</a>: a signed start
+refuses the configuration file, the trust root key file and any key the
+environment set, and not the approvals directory, which the plane owns.</p>
 <h2 id="context">Context</h2>
 <p>Today an approver is whoever can write the approvals directory, and the
 approver id is a claim. ADR-0066 says operators are authenticated against a

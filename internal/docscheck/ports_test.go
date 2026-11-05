@@ -338,7 +338,7 @@ func TestPortsListEveryPortWhole(t *testing.T) {
 	}
 	var problems []string
 	found := documentedPorts(repoFS(t), goFiles, &problems)
-	for _, iface := range []string{"internal/trust.Roster", "internal/operators.Authenticator", "internal/operators.Authorizer", "internal/segmentlog.RecordLog"} {
+	for _, iface := range []string{"internal/trust.Roster", "internal/operators.Authenticator", "internal/operators.Authorizer", "internal/segmentlog.RecordLog", "internal/gateway.ApprovalAuthority"} {
 		if !slices.Contains(found, iface) {
 			t.Errorf("%s is not documented as a port, so the documented side would check nothing: found %q", iface, found)
 		}

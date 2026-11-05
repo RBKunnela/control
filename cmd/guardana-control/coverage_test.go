@@ -47,6 +47,9 @@ policy:
   freshness_public_key: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=
   poll_interval: 5s
 
+approvals:
+  authority: memory
+
 evidence:
   dir: spool
 

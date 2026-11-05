@@ -90,6 +90,8 @@ policy:
   public_key: %s
 %sruns:
   dir: runs
+approvals:
+  authority: memory
 evidence:
   dir: spool
 export:

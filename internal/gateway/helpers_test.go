@@ -250,6 +250,7 @@ func newIDs(n *atomic.Int64) func() string {
 func validConfig(t *testing.T) gateway.Config {
 	t.Helper()
 	var n atomic.Int64
+	store := &gateway.MemoryApprovals{}
 	return gateway.Config{
 		Mode:          modeEnforce,
 		Adapter:       fakeAdapter{name: testProtocol, caps: enforcing},
@@ -258,7 +259,9 @@ func validConfig(t *testing.T) gateway.Config {
 		Pause:         gateway.PauseDisabled(),
 		Stops:         gateway.StopsDisabled(),
 		Sink:          &evidence.MemorySink{},
-		Approvals:     &gateway.MemoryApprovals{},
+		Approvals:     store,
+		Authority:     store,
+		AuthorityKind: gateway.AuthorityDirectory,
 		Ledger:        &gateway.MemoryLedger{},
 		Clock:         func() time.Time { return base() },
 		NewID:         newIDs(&n),
@@ -305,6 +308,7 @@ func build(t *testing.T, mode controlv1.EnforcementMode, snap *policy.Snapshot, 
 	for _, m := range mut {
 		m(&cfg)
 	}
+	withFindAuthority(&cfg, h.store)
 	p, err := gateway.New(cfg)
 	if err != nil {
 		t.Fatalf("New refused a configuration this test builds as valid: %v", err)

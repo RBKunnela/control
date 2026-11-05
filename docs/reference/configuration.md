@@ -18,11 +18,13 @@ key and are not in the table: an MCP HTTP listener needs `listener.address`, and
 `stateful_http` listener takes `listener.session_idle`, from one minute to a day, and
 `listener.max_sessions`, from 1 to 16384; an upstream
 needs exactly one of `endpoint` and `command`; `evidence.fsync_interval` is needed
-under the `interval` policy and refused under `every_record`; the `file` approval
-provider needs `approvals.dir` and `approvals.hold_journal_dir`, and that journal
-directory may be neither the spool's nor the approvals directory, nor inside either;
-and `APPROVE` needs the `file` provider, since nothing outside the process answers a
-request held in memory. An entry of `overrides` or `tools` is refused when no call to its tool could carry
+under the `interval` policy and refused under `every_record`; `approvals.authority`
+`directory` and `signed` need `approvals.dir` and `approvals.hold_journal_dir`, and that
+journal directory may be neither the spool's nor the approvals directory, nor inside
+either; `signed` needs, and every other authority refuses, `approvals.inbox_dir`, apart
+from those three, and every `trust.*` and `operators.*` key; and `APPROVE` needs
+`directory` or `signed`, since nothing outside the process answers a request held in
+memory. An entry of `overrides` or `tools` is refused when no call to its tool could carry
 an envelope the contract takes: `resource_type` is an identifier of at most 1024 bytes,
 `resource_from` an RFC 6901 pointer of at most 8 tokens of 64 bytes, an effect whose
 envelope needs a resource id (`WRITE`, `DELETE`, `TRANSACT`, `IDENTITY_OR_ACCESS` and `CONFIGURE`) needs `resource_from`, and
@@ -106,9 +108,10 @@ Rendered from the field table in `internal/gatewayconfig`. Rebuild it with
 | `pdp.max_in_flight` | `GUARDANA_CONTROL_PDP_MAX_IN_FLIGHT` | integer | `16` | no |  |
 | `pdp.allow_plaintext` | `GUARDANA_CONTROL_PDP_ALLOW_PLAINTEXT` | true or false | `false` | no |  |
 | `pdp.proxy` | `GUARDANA_CONTROL_PDP_PROXY` | string |  | no |  |
-| `approvals.provider` | `GUARDANA_CONTROL_APPROVALS_PROVIDER` | one of | `memory` | yes | `memory`, `file` |
+| `approvals.authority` | `GUARDANA_CONTROL_APPROVALS_AUTHORITY` | one of |  | yes | `memory`, `directory`, `signed` |
 | `approvals.dir` | `GUARDANA_CONTROL_APPROVALS_DIR` | string |  | no |  |
 | `approvals.hold_journal_dir` | `GUARDANA_CONTROL_APPROVALS_HOLD_JOURNAL_DIR` | string |  | no |  |
+| `approvals.inbox_dir` | `GUARDANA_CONTROL_APPROVALS_INBOX_DIR` | string |  | no |  |
 | `approvals.ttl` | `GUARDANA_CONTROL_APPROVALS_TTL` | duration | `15m` | no |  |
 | `approvals.retry_after` | `GUARDANA_CONTROL_APPROVALS_RETRY_AFTER` | duration | `30s` | no |  |
 | `approvals.max_held` | `GUARDANA_CONTROL_APPROVALS_MAX_HELD` | integer | `128` | no |  |
@@ -117,6 +120,12 @@ Rendered from the field table in `internal/gatewayconfig`. Rebuild it with
 | `approvals.max_records` | `GUARDANA_CONTROL_APPROVALS_MAX_RECORDS` | integer | `1024` | no |  |
 | `approvals.max_record_bytes` | `GUARDANA_CONTROL_APPROVALS_MAX_RECORD_BYTES` | integer | `16384` | no |  |
 | `approvals.reconcile_max` | `GUARDANA_CONTROL_APPROVALS_RECONCILE_MAX` | integer | `256` | no |  |
+| `trust.root_public_key` | `GUARDANA_CONTROL_TRUST_ROOT_PUBLIC_KEY` | string |  | no |  |
+| `trust.roster` | `GUARDANA_CONTROL_TRUST_ROSTER` | string |  | no |  |
+| `trust.roster_id` | `GUARDANA_CONTROL_TRUST_ROSTER_ID` | string |  | no |  |
+| `trust.floor_dir` | `GUARDANA_CONTROL_TRUST_FLOOR_DIR` | string |  | no |  |
+| `operators.authenticator.kind` | `GUARDANA_CONTROL_OPERATORS_AUTHENTICATOR_KIND` | one of |  | no | `roster` |
+| `operators.authorizer.kind` | `GUARDANA_CONTROL_OPERATORS_AUTHORIZER_KIND` | one of |  | no | `roster` |
 | `pause.file` | `GUARDANA_CONTROL_PAUSE_FILE` | string |  | no |  |
 | `pause.poll_interval` | `GUARDANA_CONTROL_PAUSE_POLL_INTERVAL` | duration | `1s` | no |  |
 | `runs.dir` | `GUARDANA_CONTROL_RUNS_DIR` | string |  | no |  |

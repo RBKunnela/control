@@ -41,6 +41,11 @@ directory, and that an authenticated approver is recorded as
 `authn:<issuer>:<subject>`; [status.md](../status.md) says how much of it a
 plane does today.
 
+Amended by [ADR-0073](0073-an-approval-counts-only-as-the-plane-judges-it.md):
+`approvals.authority` replaces `approvals.provider` with no default,
+`provider: file` becoming `directory`, and the hold journal is required
+beside every directory.
+
 ## Context
 
 ADR-0013 fixed what the gateway does with a pending state and with an approved

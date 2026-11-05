@@ -11,6 +11,10 @@ operator authentication and operator authorization ports, on
 serial floor, and on
 [ADR-0017](0017-an-external-decision-point-can-veto.md) for the veto.
 
+Amended by [ADR-0073](0073-an-approval-counts-only-as-the-plane-judges-it.md): a signed start
+refuses the configuration file, the trust root key file and any key the
+environment set, and not the approvals directory, which the plane owns.
+
 ## Context
 
 Today an approver is whoever can write the approvals directory, and the

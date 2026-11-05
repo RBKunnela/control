@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net"
@@ -12,6 +13,7 @@ import (
 	adaptermcp "github.com/guardana/control/adapters/mcp"
 	"github.com/guardana/control/adapters/otel"
 	"github.com/guardana/control/internal/approvals"
+	"github.com/guardana/control/internal/approvals/inbox"
 	"github.com/guardana/control/internal/gateway"
 	"github.com/guardana/control/internal/gatewayconfig"
 	"github.com/guardana/control/internal/holdjournal"
@@ -47,10 +49,17 @@ type plane struct {
 	// pdp is the decision point's client, nil where none is configured.
 	pdp *authzen.Client
 	// store is what the pipeline asks about a held request, and records is
-	// the same directory when the file provider named one: the plane prunes
-	// it and nothing else here reaches it.
+	// the same directory under the directory and signed authorities: the
+	// plane prunes it and nothing else here reaches it.
 	store   gateway.ApprovalStore
 	records *approvals.Plane
+	// authority is what the pipeline asks for answers, of authorityKind;
+	// signed and inbox are the signed kind's ports and directory, nil under
+	// any other kind.
+	authority     gateway.ApprovalAuthority
+	authorityKind gateway.AuthorityKind
+	signed        *signedPorts
+	inbox         *inbox.Inbox
 	// holds is the seam the pipeline writes its journal through, and journal
 	// the directory behind it. Both are nil where no journal is configured.
 	holds   gateway.HoldJournal
@@ -144,7 +153,8 @@ func build(cfg *gatewayconfig.Config, logger *slog.Logger, now time.Time, r role
 // nothing there.
 func (p *plane) open(r role, tokenPath string) error {
 	if r == roleInspect {
-		p.store = &gateway.MemoryApprovals{}
+		memory := &gateway.MemoryApprovals{}
+		p.store, p.authority, p.authorityKind = memory, memory, gateway.AuthorityDirectory
 		if p.cfg.Listener.Kind == gatewayconfig.ListenerEnforceAPI {
 			dir, _, err := openRuns(p.cfg, "")
 			if err != nil {
@@ -167,6 +177,9 @@ func (p *plane) open(r role, tokenPath string) error {
 		return err
 	}
 	p.store, p.records = store, records
+	if err := p.openAuthority(context.Background()); err != nil {
+		return err
+	}
 	holds, journal, err := openJournal(p.cfg)
 	if err != nil {
 		return err
@@ -271,6 +284,9 @@ func (p *plane) close() error {
 	}
 	if p.records != nil {
 		errs = append(errs, p.records.Close())
+	}
+	if p.inbox != nil {
+		errs = append(errs, p.inbox.Close())
 	}
 	if p.runsDir != nil {
 		errs = append(errs, p.runsDir.Close())

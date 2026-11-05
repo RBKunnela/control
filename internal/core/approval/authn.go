@@ -130,6 +130,12 @@ func CheckClaimedApproverID(id string) error {
 	return nil
 }
 
+// ApproverAuthenticated reports whether id is spelled as an approver id the
+// plane builds from an authentication: it begins with AuthnPrefix exactly.
+func ApproverAuthenticated(id string) bool {
+	return strings.HasPrefix(id, AuthnPrefix)
+}
+
 func beginsWithPrefix(id string) bool {
 	rest := strings.TrimLeftFunc(id, defaultIgnorable)
 	if len(rest) < len(AuthnPrefix) {

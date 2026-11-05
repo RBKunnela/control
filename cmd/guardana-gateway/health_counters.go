@@ -64,13 +64,13 @@ func askCounters(a gateway.Asks) map[string]any {
 	}
 }
 
-// approvalCounters is what an operator needs about the holds: the store a held
-// request is kept in, whether a hold lost to a restart is closed at all, and
+// approvalCounters is what an operator needs about the holds: the authority an
+// answer is taken from, whether a hold lost to a restart is closed at all, and
 // whether the last reconciliation read every entry. An incomplete pass is
 // reported and never stops the plane from serving (ADR-0016).
-func approvalCounters(provider string, s gateway.Stats) map[string]any {
+func approvalCounters(authority map[string]any, s gateway.Stats) map[string]any {
 	out := map[string]any{
-		"provider": provider, "hold_journal": s.HoldJournal,
+		"authority": authority, "hold_journal": s.HoldJournal,
 		"reconcile_incomplete": s.ReconcileIncomplete,
 		"holds_closed":         s.HoldsClosed, "holds_unmeasured": s.HoldsUnmeasured,
 		"unheld_records": s.UnheldRecords, "journal_refusals": s.JournalRefusals,

@@ -143,9 +143,23 @@ time, after copying their records and state into a new owner-only archive.
 A tree whose root is live is left alone. One whose root expired is kept,
 named, and the command exits 1, when a run under it did not expire, a
 plane holds its state lock or a file of it cannot be read.</li>
+<li><code>approvals.authority: signed</code>: a held call runs only on an answer an
+operator of the trust roster signed (<code>approval-answer/v1alpha1</code>), filed in
+<code>approvals.inbox_dir</code>, whose every member matches the hold and whose
+signer's grants let them approve the call's tenant and project. It reads
+<code>trust.*</code> and <code>operators.*</code>; <code>doctor</code> and <code>/healthz</code> report <code>trust</code>,
+<code>operators.authenticator</code>, <code>operators.authorizer</code> and <code>approvals.authority</code>,
+and <code>pipeline_answers_refused_total</code> counts the answers it did not take, by
+cause (<a href="/docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it">ADR-0073</a>).</li>
 </ul>
 <h3 id="changed">Changed</h3>
 <ul>
+<li><strong>Breaking:</strong> <code>approvals.authority</code> (<code>memory</code>, <code>directory</code> or <code>signed</code>)
+replaces <code>approvals.provider</code> and has no default. A configuration without
+it, or with the old key, is refused naming both; <code>provider: file</code> becomes
+<code>authority: directory</code>. <code>approvals.hold_journal_dir</code> is required beside
+every directory. <code>/healthz</code> reports <code>approvals.authority</code> in place of
+<code>approvals.provider</code>.</li>
 <li><strong>Breaking:</strong> the approvals directory is format <code>2.0</code>: a record carries no
 resolution and takes the held or the answered name only. A <code>1.0</code> directory
 or record is refused with a message naming both versions; empty the
@@ -181,6 +195,14 @@ only at start. A sweep that fails is logged and counted under
 </ul>
 <h3 id="security">Security</h3>
 <ul>
+<li>Under <code>approvals.authority: signed</code> any valid rejection wins, a rejection
+counts only from an operator who may approve, whatever time it names. An
+answer the roster or the authorizer could not judge, a batch read in part,
+or an inbox file for the approval that cannot be read leaves the call
+<code>INDETERMINATE</code> rather than reads as no rejection. A start under it refuses
+a configuration file or trust root key file the plane's account could
+change and any key set in the environment. A spend records the
+authenticated approver and the answer's digest in the plane's ledger only.</li>
 <li>Only the plane marks an approval spent or given up, in a ledger (<code>1.0</code>)
 under <code>ledger/</code> in <code>approvals.hold_journal_dir</code>, under the journal's lock
 and owned by the plane's account. A file an approver writes into the

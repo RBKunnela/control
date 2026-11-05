@@ -30,7 +30,7 @@ var devSet = []string{
 	"policy.state_dir",
 	"policy.freshness_key_id",
 	"policy.freshness_public_key",
-	"approvals.provider",
+	"approvals.authority",
 	"approvals.dir",
 	"approvals.hold_journal_dir",
 	"pause.file",
@@ -95,7 +95,7 @@ func newLayer(st devState, keys devKeys, listen, health, collector, token, silen
 		"policy.state_dir":            st.path(stateFloors),
 		"policy.freshness_key_id":     policykey.KeyID(keys.freshness),
 		"policy.freshness_public_key": policykey.FormatPublic(keys.freshness),
-		"approvals.provider":          gatewayconfig.ProviderFile,
+		"approvals.authority":         gatewayconfig.AuthorityDirectory,
 		"approvals.dir":               st.path(stateApprovals),
 		"approvals.hold_journal_dir":  st.path(stateHolds),
 		"pause.file":                  st.path(statePause),
@@ -191,6 +191,11 @@ func fileSets(path string, l devLayer, key string) bool {
 		if first == nil {
 			first = err
 		}
+	}
+	if defaultOf(key) == "" && strings.HasPrefix(first.Error(), key+": no value") {
+		// A key with no default that the file left out refuses the load
+		// without the layer's value by its own name.
+		return false
 	}
 	pinned := append(l.environ(key), brand.Env(gatewayconfig.EnvName(key))+"="+defaultOf(key))
 	_, again := gatewayconfig.Load(path, pinned)

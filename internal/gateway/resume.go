@@ -21,14 +21,13 @@ import (
 // trail cannot take a second POLICY_DECIDED. The first held request with an
 // approval runs; one whose approval expired or was refused is closed on its
 // trail; with none approved the agent is told about the oldest still pending.
-// found is what the store answered under binding, which the plane judges.
-func (c *call) resume(matches []*heldRequest, binding approval.Binding, found []Held) Disposition {
+func (c *call) resume(matches []*heldRequest, binding approval.Binding) Disposition {
 	var r resumption
 	for _, own := range matches {
 		if !sameDecision(own.decision, c.kernel) {
 			continue
 		}
-		if d, done := c.try(own, binding, found, &r); done {
+		if d, done := c.try(own, binding, &r); done {
 			return d
 		}
 	}
@@ -58,23 +57,24 @@ type resumption struct {
 	consumed  bool
 }
 
-// try judges the store's answer about the held request and reports the answer
-// when it ends the resume: the execution of an approved one, or a block for a
-// store or a ledger that cannot answer. Anything else is noted in r and the
-// resume goes on.
+// try judges what the authority answered about the held request and reports
+// the answer when it ends the resume: the execution of an approved one, or a
+// block for an authority or a ledger that cannot answer. Anything else is
+// noted in r and the resume goes on.
 //
-// The answer is the record the store keeps under the request id and the
-// approval id the plane minted, so a record some other writer filed under the
-// same binding is never the one judged (ADR-0016). Only an answer that passes
-// every check is spent, and the ledger's compare-and-swap is what spends it.
-func (c *call) try(own *heldRequest, binding approval.Binding, found []Held, r *resumption) (Disposition, bool) {
+// The answer is judged against the request id and the approval id the plane
+// minted, so an answer filed for another hold is never the one taken
+// (ADR-0016). Only an answer that passes every check is spent, and the
+// ledger's compare-and-swap is what spends it.
+func (c *call) try(own *heldRequest, binding approval.Binding, r *resumption) (Disposition, bool) {
 	if c.refusedBeforeConsume(own) {
 		return c.freshBlock(), true
 	}
-	a, readable := answerOf(own, found)
+	ans := c.p.answerFor(c.ctx, own.facts(), c.now)
+	a := ans.approval
 	var d Disposition
 	switch {
-	case !readable:
+	case !ans.readable:
 		c.decide(verdictIndeterminate, codeEvidenceUnavailable)
 		return c.freshBlock(), true
 	case a == nil:
@@ -83,7 +83,7 @@ func (c *call) try(own *heldRequest, binding approval.Binding, found []Held, r *
 	}
 	switch standing := approval.Consumable(a, c.now); standing {
 	case approval.StandingUsable:
-		return c.spend(own, binding, a, r)
+		return c.spend(own, binding, a, ans.proof, r)
 	case approval.StandingMultiUse:
 		c.p.counts.add(func(s *Stats) *uint64 { return &s.MultiUseRefused })
 		r.waiting = firstOf(r.waiting, own)
@@ -131,33 +131,13 @@ func (c *call) spentAlready(own *heldRequest, binding approval.Binding) (spent, 
 	return marks[own.approval.GetRequestId()] == ResolutionConsumed, true
 }
 
-// answerOf is the store's record of the approval the plane minted for own:
-// nil with none, and not readable where the store returned two, one it cannot
-// speak for, or one in a state this build does not name, since none of those
-// is an answer the plane can judge.
-func answerOf(own *heldRequest, found []Held) (*controlv1.Approval, bool) {
-	var answer *controlv1.Approval
-	for _, held := range found {
-		a := held.Approval
-		if a.GetRequestId() != own.approval.GetRequestId() || a.GetApprovalId() != own.approval.GetApprovalId() {
-			continue
-		}
-		_, named := controlv1.ApprovalState_name[int32(a.GetState())]
-		if answer != nil || !named || a.GetState() == controlv1.ApprovalState_APPROVAL_STATE_UNSPECIFIED {
-			return nil, false
-		}
-		answer = a
-	}
-	return answer, true
-}
-
 // spend checks an approved answer, spends it in the ledger and resumes the
 // held request. An answer the checks refuse closes the window with the plane's
 // own approval, expired, and is never spent. A ledger that says another call
 // spent it notes that in r; one that says the plane settled it leaves the hold
 // waiting; one that cannot be written blocks the call with nothing run.
-func (c *call) spend(own *heldRequest, binding approval.Binding, a *controlv1.Approval, r *resumption) (Disposition, bool) {
-	if verdict, code, refused := approvalFields(own.approval, a, own.expires, c.now); refused {
+func (c *call) spend(own *heldRequest, binding approval.Binding, a *controlv1.Approval, proof string, r *resumption) (Disposition, bool) {
+	if verdict, code, refused := approvalFields(own.approval, a, own.expires, c.now, c.p.cfg.AuthorityKind); refused {
 		d := c.resumeBlocked(own, verdict, code, expiredEvent(own.approval))
 		if r.concluded == nil {
 			r.concluded = &d
@@ -165,7 +145,7 @@ func (c *call) spend(own *heldRequest, binding approval.Binding, a *controlv1.Ap
 		return d, false
 	}
 	res, err := c.p.cfg.Ledger.Spend(c.ctx, binding,
-		own.approval.GetRequestId(), own.approval.GetApprovalId(), a.GetApproverId(), c.now)
+		own.approval.GetRequestId(), own.approval.GetApprovalId(), proof, c.now)
 	switch {
 	case err == nil && res == ResolutionConsumed:
 		return c.resumeApproved(own, a), true
@@ -266,30 +246,31 @@ func (c *call) resumeApproved(own *heldRequest, a *controlv1.Approval) Dispositi
 // the field checks is written as APPROVAL_DECIDED; any other is one the plane
 // cannot stand behind, so the window closes with its own approval, expired.
 func (c *call) resumeRejected(own *heldRequest, a *controlv1.Approval) Disposition {
-	if verdict, code, refused := approvalFields(own.approval, a, own.expires, c.now); refused {
+	if verdict, code, refused := approvalFields(own.approval, a, own.expires, c.now, c.p.cfg.AuthorityKind); refused {
 		return c.resumeBlocked(own, verdict, code, expiredEvent(own.approval))
 	}
 	return c.resumeBlocked(own, verdictDeny, codeApprovalRejected, decidedEvent(a))
 }
 
 // approvalFields compares an answer with the record the plane minted, field
-// by field, and is the whole of what the plane trusts about a store: the same
-// checks a resume makes are the ones a reconciliation makes about a hold
+// by field, and is the whole of what the plane trusts about an authority: the
+// same checks a resume makes are the ones a reconciliation makes about a hold
 // nobody is retrying. An answer of a major this build does not read, or
 // decided outside the window between the request and now, is not one the
 // plane can place on its trail. Nor is one whose approver id is over the
-// bound or the claim rule refuses it: a store holds claims only, so no
-// approver the plane authenticated is ever taken from one. It leaves the
-// answer's state to its caller, because a refusal is an answer where a resume
-// needs an approval.
-func approvalFields(want, a *controlv1.Approval, expires, now time.Time) (controlv1.Verdict, string, bool) {
+// bound or not of the kind's form: under the directory kind a claim the claim
+// rule refuses, so no approver the plane authenticated is ever taken from a
+// file, and under the signed kind any id the plane did not build. It leaves
+// the answer's state to its caller, because a refusal is an answer where a
+// resume needs an approval.
+func approvalFields(want, a *controlv1.Approval, expires, now time.Time, kind AuthorityKind) (controlv1.Verdict, string, bool) {
 	switch {
 	case a == nil, !readsApprovalVersion(a.GetSchemaVersion()),
 		a.GetApprovalId() != want.GetApprovalId(), a.GetRequestId() != want.GetRequestId(), a.GetMultiUse(),
 		!proto.Equal(a.GetRequestedAt(), want.GetRequestedAt()),
 		!decidedWithin(a, want.GetRequestedAt().AsTime(), now),
 		len(a.GetApproverId()) > approval.MaxApproverIDBytes,
-		approval.CheckClaimedApproverID(a.GetApproverId()) != nil:
+		!approverOfKind(a.GetApproverId(), kind):
 		return verdictIndeterminate, codeEvidenceUnavailable, true
 	case a.GetActionDigest() != want.GetActionDigest():
 		return verdictDeny, codeApprovalDigestMismatch, true
@@ -301,6 +282,16 @@ func approvalFields(want, a *controlv1.Approval, expires, now time.Time) (contro
 		return verdictIndeterminate, codeEvidenceUnavailable, true
 	}
 	return 0, "", false
+}
+
+// approverOfKind reports whether id is an approver id the kind may name: a
+// claim the claim rule takes under the directory kind, and one the plane
+// built from an authentication under the signed kind.
+func approverOfKind(id string, kind AuthorityKind) bool {
+	if kind == AuthoritySigned {
+		return approval.ApproverAuthenticated(id)
+	}
+	return approval.CheckClaimedApproverID(id) == nil
 }
 
 // decidedWithin reports whether a was decided at or after requested and not

@@ -53,26 +53,29 @@ sequenceDiagram
 Sources: `internal/gateway/approve.go`, `internal/gateway/resume.go`,
 `internal/gateway/approvals.go`.
 
-The approver's step happens in another process. `approvals.provider: file`
-points the plane at a directory of records; the approval commands of the
-command line write the answer into it, and the plane reads it back and checks
-it field by field ([reference/cli](../reference/cli.md),
-[reference/configuration](../reference/configuration.md)). Under
-`approvals.provider: memory` the records live in the process that holds them,
-nothing outside it answers, and a plane refuses to start in `APPROVE` with
-that provider, because holding every material call where nothing answers is
-a total denial. What the agent is told on the wire
+The approver's step happens in another process. `approvals.authority`, with
+no default, names where answers come from: `directory`, a directory the
+approval commands write and the plane checks field by field
+([reference/cli](../reference/cli.md),
+[reference/configuration](../reference/configuration.md)); `signed`; or
+`memory`, which nothing outside the process answers, so `APPROVE` refuses it. What the agent is told on the wire
 is on [the MCP gateway](mcp-gateway.md) page.
 
 ## Who may approve
 
-**Write access to the approvals directory is the approval authority.** The
-records are files; whoever can write them can answer a held request.
-`approver_id` on an answer is an unauthenticated claim, recorded because an
-operator wants a name, and worth what the directory's permissions are worth. Nothing in the plane
-treats it as an identity, and no authenticated provider exists. The
-directory is refused at open when another account owns it or a group or the
-world may write it, and each record is written `0600`.
+**Under `directory`, write access to the approvals directory is the approval
+authority.** Whoever can write the records can answer a held request.
+`approver_id` on an answer is an unauthenticated claim, worth what the
+directory's permissions are worth, and nothing in the plane treats it as an
+identity. The directory is refused at open when another account owns it or a
+group or the world may write it, and each record is written `0600`.
+
+**Under `signed`, only a roster operator granted the call's project
+approves**, by a signed `approval-answer/v1alpha1` in `approvals.inbox_dir`
+that names the hold member for member. Any valid rejection wins; an answer
+the plane could not judge leaves the call `INDETERMINATE`. Only an inbox the plane
+owns is pruned
+([ADR-0073](../adr/0073-an-approval-counts-only-as-the-plane-judges-it.md)).
 
 A writer of that directory chooses nothing else. A record carries no trail,
 position, envelope, decision or spent mark, so a forged record cannot graft
@@ -124,15 +127,15 @@ it, and counts it in `held_trails_left_open`; after hand-out it counts
 `sink_failures_after_effect`. The next start reports its entry, if any.
 
 **A plane configured without `approvals.hold_journal_dir` does not close a hold
-it loses.** That is the behaviour of a plane on the memory provider, it is
+it loses.** That is the behaviour of a plane under the memory authority, it is
 named rather than hidden, and `doctor` and `/healthz` both say it out loud.
 
 ## What is held, and by whom
 
 | Kept by | What | Used for |
 | --- | --- | --- |
-| the pipeline, in memory | the held request: its identifiers, the approval it minted, the envelope, the decision `POLICY_DECIDED` recorded, the binding, where the trail stands, the expiry | what a retry is compared with, and what resumes; the store's answer is checked against it field by field |
-| the approval store | the file store: one record per held request, under its binding, holding the approval and the request id, never an envelope, a decision or a trail; the memory store: the whole hold, in the plane's memory | whether an approver said yes |
+| the pipeline, in memory | the held request: its identifiers, the approval it minted, the envelope, the decision `POLICY_DECIDED` recorded, the binding, where the trail stands, the expiry | what a retry is compared with, and what resumes; every answer is checked against it field by field |
+| the approval store | the file store: one record per held request, under its binding, holding the approval and the request id, never an envelope, a decision or a trail; the memory store: the whole hold, in the plane's memory | which holds are kept; outside `signed`, the answer |
 | the ledger, beside the journal | a mark per approval spent or given up | spending once |
 | the hold journal, where configured | one entry per hold: the trail's identifiers and position, the binding, the approval and the expiry | closing a hold this plane lost to a restart |
 | the agent | `approval_id`, `action_digest`, `expires_at`, `retry_after` | retrying the same call after `retry_after` |

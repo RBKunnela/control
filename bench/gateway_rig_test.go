@@ -278,6 +278,7 @@ func newRig(tb testing.TB, mode fsyncMode, record bool) *rig {
 	if err != nil {
 		tb.Fatalf("mcp.New: %v", err)
 	}
+	store := &gateway.MemoryApprovals{}
 	pipeline, err := gateway.New(gateway.Config{
 		Mode:          controlv1.EnforcementMode_ENFORCEMENT_MODE_ENFORCE,
 		Adapter:       adapter,
@@ -286,7 +287,9 @@ func newRig(tb testing.TB, mode fsyncMode, record bool) *rig {
 		Pause:         gateway.PauseDisabled(),
 		Stops:         gateway.StopsDisabled(),
 		Sink:          sink,
-		Approvals:     &gateway.MemoryApprovals{},
+		Approvals:     store,
+		Authority:     store,
+		AuthorityKind: gateway.AuthorityDirectory,
 		Ledger:        &gateway.MemoryLedger{},
 		Clock:         time.Now,
 		NewID:         counterIDs(),

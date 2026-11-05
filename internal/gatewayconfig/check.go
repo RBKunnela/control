@@ -14,6 +14,9 @@ import (
 // the adapter and the spool refuse is left to them, so their message names
 // their own rule; what only this file knows is refused here, naming the key.
 func (c *Config) check() error {
+	if c.Approvals.Authority == "" {
+		return errNoAuthority
+	}
 	if err := checkRequired(c, configFields, ""); err != nil {
 		return err
 	}
@@ -134,32 +137,35 @@ func (c *Config) checkPDP() error {
 	return nil
 }
 
-// checkApprovals pairs the provider with what it needs, refuses a mode no
-// provider can serve, and keeps the hold journal out of a directory another
-// writer owns (ADR-0016).
+// checkApprovals pairs the authority with what it needs, refuses a mode no
+// authority can serve, and keeps the hold journal out of a directory another
+// writer owns (ADR-0016, ADR-0073).
 func (c *Config) checkApprovals() error {
 	if err := c.checkApprovalBounds(); err != nil {
 		return err
 	}
-	if c.Approvals.Provider != ProviderFile {
+	if err := c.checkSignedKeys(); err != nil {
+		return err
+	}
+	if c.Approvals.Authority == AuthorityMemory {
 		// Under APPROVE every allowed material call is held, and a store
 		// nothing outside this process can answer would hold every one of
 		// them until it expired: a total denial wearing a pending state.
-		if c.ModeName == "APPROVE" {
-			return fmt.Errorf("approvals.provider: %s under APPROVE; nothing outside this process answers a memory-held request, so every held call would expire (ADR-0016)", c.Approvals.Provider)
+		if c.ModeName == ModeApprove {
+			return fmt.Errorf("approvals.authority: %s under APPROVE; nothing outside this process answers a memory-held request, so every held call would expire (ADR-0016)", AuthorityMemory)
 		}
 		for _, key := range []string{"approvals.dir", "approvals.hold_journal_dir"} {
 			if c.wasSet(key) {
-				return fmt.Errorf("%s: only the %s provider reads a directory, and the provider is %s", key, ProviderFile, c.Approvals.Provider)
+				return fmt.Errorf("%s: the %s authority keeps its records in this process and reads no directory", key, AuthorityMemory)
 			}
 		}
 		return nil
 	}
 	switch {
 	case c.Approvals.Dir == "":
-		return fmt.Errorf("approvals.dir: the %s provider keeps its records in a directory, and no directory is named", ProviderFile)
+		return fmt.Errorf("approvals.dir: the %s authority keeps the held records in a directory, and no directory is named", c.Approvals.Authority)
 	case c.Approvals.HoldJournalDir == "":
-		return fmt.Errorf("approvals.hold_journal_dir: the %s provider keeps a journal of its own holds, and no directory is named; without one a hold lost to a restart is never closed (ADR-0016)", ProviderFile)
+		return fmt.Errorf("approvals.hold_journal_dir: the %s authority needs the plane's journal of its own holds and its ledger of spent approvals, and no directory is named (ADR-0073)", c.Approvals.Authority)
 	}
 	return c.checkJournalDir()
 }

@@ -244,7 +244,7 @@ func newRig(t *testing.T, o options) *rig {
 	pcfg := gateway.Config{
 		Mode: o.mode, Adapter: a, KernelOptions: core.Options{MaxStale: time.Hour},
 		Policy: fixedPolicy{snapshot(t, o.rules...)}, Pause: gateway.PauseDisabled(), Stops: gateway.StopsDisabled(),
-		Sink: r.sink, Approvals: r.store, Ledger: &gateway.MemoryLedger{}, Runs: r.runs, Clock: r.clock.read, NewID: newID,
+		Sink: r.sink, Approvals: r.store, Authority: r.store, AuthorityKind: gateway.AuthorityDirectory, Ledger: &gateway.MemoryLedger{}, Runs: r.runs, Clock: r.clock.read, NewID: newID,
 		ApprovalTTL: 10 * time.Minute, RetryAfter: 5 * time.Second, MaxHeld: 16, MaxOpen: 16, MaxRuns: 16,
 	}
 	if o.plane != nil {

@@ -90,7 +90,7 @@ func TestALinkDoesNotJoinTheRunsOrTheJournalDirectoryToTheSpool(t *testing.T) {
 			mkdir(t, filepath.Join(dir, "spool", "inner"))
 			link(t, filepath.Join(dir, "spool", "inner"), filepath.Join(dir, "linked"))
 			if key == "approvals.hold_journal_dir" {
-				setEnv(t, "approvals.provider", "file")
+				setEnv(t, "approvals.authority", "directory")
 				setEnv(t, "approvals.dir", "approvals")
 			}
 			setEnv(t, key, "linked")

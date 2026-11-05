@@ -25,7 +25,7 @@ import (
 	"github.com/guardana/control/internal/spool"
 )
 
-// The two directories the file provider runs on inside a test tree. Neither is
+// The two directories the directory authority runs on inside a test tree. Neither is
 // the spool's and neither is the other's.
 const (
 	recordsDir = "approvals"
@@ -51,7 +51,7 @@ func (tr tree) fileProvider(t *testing.T) (records, holds string) {
 			t.Fatalf("making %s: %v", dir, err)
 		}
 	}
-	setEnv(t, "approvals.provider", "file")
+	setEnv(t, "approvals.authority", "directory")
 	setEnv(t, "approvals.dir", records)
 	setEnv(t, "approvals.hold_journal_dir", holds)
 	return records, holds
@@ -792,8 +792,12 @@ func TestHealthSaysWhetherALostHoldIsClosed(t *testing.T) {
 		t.Fatalf("a plane with no hold journal answered %d: %v", status, body)
 	}
 	answer := approvalsAnswer(t, body)
-	if answer["provider"] != "memory" || answer["hold_journal"] != false {
-		t.Errorf("the answer is %v, want the memory provider and no journal", answer)
+	authority, _ := answer["authority"].(map[string]any)
+	if authority["kind"] != "memory" || authority["state"] != "usable" || answer["hold_journal"] != false {
+		t.Errorf("the answer is %v, want the memory authority, usable, and no journal", answer)
+	}
+	if claim, ok := authority["limits"].([]any); !ok || len(claim) != 1 || !strings.Contains(claim[0].(string), "unauthenticated claim") {
+		t.Errorf("the memory authority does not say its approver is a claim: %v", authority["limits"])
 	}
 	limits, ok := answer["limits"].([]any)
 	if !ok || len(limits) != 1 || !strings.Contains(limits[0].(string), "never closed") {
@@ -818,13 +822,16 @@ func TestHealthCountsWhatTheReconciliationSettled(t *testing.T) {
 	}
 	answer := approvalsAnswer(t, body)
 	for key, want := range map[string]any{
-		"provider": "file", "hold_journal": true, "reconcile_incomplete": false,
+		"hold_journal": true, "reconcile_incomplete": false,
 		"holds_closed": float64(1), "holds_unmeasured": float64(0), "journal_refusals": float64(0),
 		"held_trails_left_open": float64(0),
 	} {
 		if answer[key] != want {
 			t.Errorf("approvals.%s is %v, want %v", key, answer[key], want)
 		}
+	}
+	if authority, _ := answer["authority"].(map[string]any); authority["kind"] != "directory" {
+		t.Errorf("approvals.authority is %v, want the directory kind", answer["authority"])
 	}
 	if _, reported := answer["limits"]; reported {
 		t.Errorf("a plane that closes a lost hold still reports the limit: %v", answer["limits"])

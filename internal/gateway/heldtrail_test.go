@@ -357,13 +357,20 @@ func TestAHeldTrailClosedAtItsResumeFreesItsRequestID(t *testing.T) {
 }
 
 // TestAResumeTheSweepBeatIsNotClosedTwice: the sweep takes a hold while the
-// retry's lookup runs. The retry is answered as blocked and writes and counts
-// nothing on that trail, which carries the sweep's closing once.
+// retry's lookup of its answer runs. The retry is answered as blocked and
+// writes and counts nothing on that trail, which carries the sweep's closing
+// once.
 func TestAResumeTheSweepBeatIsNotClosedTwice(t *testing.T) {
 	store := newFakeStore()
 	h := build(t, modeEnforce, snapshot(t, approveRefunds, allowWrites), overStore(store))
 	holdApproved(t, h, store)
+	listed := false
 	store.found = func(a *controlv1.Approval) {
+		if !listed {
+			// The first Find lists the holds; the second is the answer's.
+			listed = true
+			return
+		}
 		store.found = nil
 		h.clock.set(base().Add(10 * time.Minute))
 		closeRun(t, h, h.admit(requestNamed(writeEnvelope(), "req-9"), []byte(`{}`)))

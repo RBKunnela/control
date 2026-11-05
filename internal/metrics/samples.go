@@ -60,6 +60,13 @@ func blockSamples(blocks map[string]uint64) ([]sample, error) {
 	})
 }
 
+// answerSamples writes the count of every answer cause counted at least once,
+// by name, and the sum of any other key last, labelled Other.
+func answerSamples(counts map[string]uint64) ([]sample, error) {
+	causes := gateway.AnswerCauses()
+	return closedSamples(counts, func(c string) bool { return slices.Contains(causes, c) })
+}
+
 // runSamples writes the count of every run refusal cause counted at least
 // once, in their order, and the sum of any other key last, labelled Other.
 func runSamples(counts map[gateway.RunCause]uint64) ([]sample, error) {

@@ -54,6 +54,8 @@ policy:
   poll_interval: 30s
 runs:
   dir: runs
+approvals:
+  authority: memory
 evidence:
   dir: spool
 export:

@@ -58,10 +58,10 @@ func writable(dir string) error {
 // that answers an approval and which this binary must not hold, and the
 // plane's own handle takes the lock and makes an unused directory a store.
 func (d *examination) approvals(ctx context.Context) (string, string, string) {
-	if d.cfg.Approvals.Provider != gatewayconfig.ProviderFile {
+	if d.cfg.Approvals.Authority == gatewayconfig.AuthorityMemory {
 		return verdictOK, "approvals", fmt.Sprintf(
-			"held requests are kept in process memory under the %s provider: nothing outside this process answers one, and a hold lost to a restart is never closed",
-			d.cfg.Approvals.Provider)
+			"held requests are kept in process memory under the %s authority: nothing outside this process answers one, and a hold lost to a restart is never closed",
+			d.cfg.Approvals.Authority)
 	}
 	for _, named := range []struct {
 		key   string

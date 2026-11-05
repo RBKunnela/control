@@ -17,6 +17,7 @@ import (
 	findingv1alpha1 "github.com/guardana/control/api/gen/go/guardana/control/finding/v1alpha1"
 	observev1 "github.com/guardana/control/api/gen/go/guardana/control/observe/v1alpha1"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/approvals"
 	"github.com/guardana/control/internal/brand"
 	"github.com/guardana/control/internal/coverage"
 	"github.com/guardana/control/internal/evidence"
@@ -85,6 +86,22 @@ func versionSpecs() map[string]versionSpec {
 				root := ed25519.NewKeyFromSeed(make([]byte, ed25519.SeedSize))
 				_, _, err := trust.SignDocument([]byte(`{"kind":`+strconv.Quote(v)+`}`), time.Unix(0, 0).UTC(), time.Hour, root)
 				return errors.Is(err, trust.ErrKind), nil
+			},
+		},
+		"Approval answer": {
+			cites: []versionCite{{"internal/approvals/answer.go#AnswerKind", writes | reads}},
+			refuses: func(v string) (bool, error) {
+				body, err := approvals.MarshalAnswer(approvals.Answer{
+					Alg: "ed25519", KeyID: "k", Tenant: "t", Project: "p", RequestID: "r", ApprovalID: "a",
+					ActionDigest: "sha256:" + strings.Repeat("0", 64), BundleDigest: "sha256:" + strings.Repeat("1", 64),
+					Decision: approvals.DecisionApprove, DecidedAt: time.Unix(0, 0).UTC(),
+				})
+				if err != nil {
+					return false, err
+				}
+				probe := bytes.Replace(body, []byte(strconv.Quote(approvals.AnswerKind)), []byte(strconv.Quote(v)), 1)
+				_, err = approvals.ReadAnswer(probe)
+				return errors.Is(err, approvals.ErrAnswerKind), nil
 			},
 		},
 		"Floor directories": {

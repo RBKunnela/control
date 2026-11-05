@@ -142,6 +142,7 @@ func fuzzListener(f *testing.F, v *victim) string {
 	if err != nil {
 		f.Fatalf("mcp.New: %v", err)
 	}
+	store := &gateway.MemoryApprovals{}
 	pipeline, err := gateway.New(gateway.Config{
 		Mode:          controlv1.EnforcementMode_ENFORCEMENT_MODE_ENFORCE,
 		Adapter:       adapter,
@@ -150,7 +151,9 @@ func fuzzListener(f *testing.F, v *victim) string {
 		Pause:         gateway.PauseDisabled(),
 		Stops:         gateway.StopsDisabled(),
 		Sink:          discardingSink{},
-		Approvals:     &gateway.MemoryApprovals{},
+		Approvals:     store,
+		Authority:     store,
+		AuthorityKind: gateway.AuthorityDirectory,
 		Ledger:        &gateway.MemoryLedger{},
 		Clock:         time.Now,
 		NewID:         ids,

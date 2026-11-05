@@ -42,9 +42,10 @@ func (p *plane) sweepApprovals(ctx context.Context) {
 // ledger marks older than one approval lifetime. ALREADY_USED rests on a live
 // record and a spent mark together, and a mark is written after its record's
 // request, so a mark this forgets speaks only for a record expired at now.
-// A pass whose records sweep failed leaves the marks for the next one, so no
-// mark goes while the records beside it are unread. A failure is counted and
-// logged; nothing here blocks a call or stops the plane.
+// A pass whose records sweep failed leaves the marks and the inbox for the
+// next one, so no mark goes while the records beside it are unread. Last go the
+// inbox answers to approvals no longer held. A failure is counted and logged;
+// nothing here blocks a call or stops the plane.
 func (p *plane) sweepStores(ctx context.Context, now time.Time) {
 	if p.records != nil {
 		n, err := p.records.Prune(ctx, now)
@@ -55,6 +56,11 @@ func (p *plane) sweepStores(ctx context.Context, now time.Time) {
 	}
 	n, err := p.pipeline.PruneLedger(ctx, now)
 	p.sweeps.note(p.logger, sweptMarks, n, err)
+	if p.inbox != nil {
+		pruned, err := p.pruneInbox(ctx, now)
+		p.sweeps.note(p.logger, sweptAnswers, pruned.Removed, err)
+		p.sweeps.refuse(pruned.Refused)
+	}
 }
 
 // swept names one of the two stores a sweep reaches.
@@ -63,19 +69,29 @@ type swept int
 const (
 	sweptRecords swept = iota
 	sweptMarks
+	sweptAnswers
 )
 
 // sweptWhat is how a log line names each store.
-var sweptWhat = [...]string{sweptRecords: "approval records", sweptMarks: "ledger marks"}
+var sweptWhat = [...]string{sweptRecords: "approval records", sweptMarks: "ledger marks", sweptAnswers: "inbox answers"}
 
 // sweepCounts is what the sweeps of a serving plane forgot and how often one
 // failed, by store, with the cause last logged for each: a failure is logged
 // when its cause differs from the one before, and a recovery once.
 type sweepCounts struct {
 	mu        sync.Mutex
-	forgotten [2]uint64
-	failed    [2]uint64
-	cause     [2]string
+	forgotten [3]uint64
+	failed    [3]uint64
+	cause     [3]string
+	// refused is the inbox answers a sweep could not unlink.
+	refused uint64
+}
+
+// refuse counts answers the inbox sweep was not allowed to remove.
+func (c *sweepCounts) refuse(n int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.refused += uint64(max(n, 0))
 }
 
 // note counts one sweep of store, which forgot n and ended with err.
@@ -105,6 +121,8 @@ func (c *sweepCounts) counters() map[string]any {
 	return map[string]any{
 		"records_forgotten": c.forgotten[sweptRecords], "records_failed": c.failed[sweptRecords],
 		"marks_forgotten": c.forgotten[sweptMarks], "marks_failed": c.failed[sweptMarks],
+		"answers_forgotten": c.forgotten[sweptAnswers], "answers_failed": c.failed[sweptAnswers],
+		"answers_refused": c.refused,
 	}
 }
 

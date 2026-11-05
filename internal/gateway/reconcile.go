@@ -101,7 +101,16 @@ func (p *Pipeline) reconcileMax() int {
 // forgotten once the trail is closed, so a pass that is interrupted leaves an
 // entry a later pass reports rather than a trail a later pass closes again.
 func (p *Pipeline) closeLostHold(ctx context.Context, entry HoldEntry, now time.Time) bool {
+	mark, marked := p.ledgerMark(ctx, entry, now)
 	answer, verdict, code := p.lostHoldAnswer(ctx, entry, now)
+	if marked {
+		// The mark decides the close; an approval the checks still take is
+		// recorded beside it, and anything else leaves the plane's own.
+		if mark == ResolutionUnspecified || answer.GetState() != approvalApproved {
+			answer = nil
+		}
+		verdict, code = markVerdict(mark), markCode(mark)
+	}
 	if !p.journalMark(ctx, entry.IDs.RequestID, HoldClosing) {
 		return false
 	}
@@ -129,40 +138,67 @@ func (p *Pipeline) closeLostHold(ctx context.Context, entry HoldEntry, now time.
 	return true
 }
 
-// lostHoldAnswer asks the store what became of a lost hold's approval and
-// returns the answer to record, with the verdict and code the close carries.
-// Only an answer that passes the field checks names what the approver did.
-// An expiry is said where the store's own record, or the plane's record of
-// the hold with its clock, shows one. A store that cannot be read, a record
-// the checks refuse, and a record missing before the plane's expiry leave the
-// answer unknown: the plane records its own approval then, because it records
-// nothing a store said that it did not check.
+// ledgerMark is what the ledger says became of a lost hold's approval, and
+// whether that decides the close. A mark is the plane's own record and wins
+// over anything an authority says now: an approval spent before a crash left
+// its entry held is closed from its mark, whoever was revoked since. A ledger
+// that cannot be read decides it as unknown, since it may hold the spend.
+func (p *Pipeline) ledgerMark(ctx context.Context, entry HoldEntry, now time.Time) (Resolution, bool) {
+	marks, err := p.cfg.Ledger.Lookup(ctx, entry.Binding, now)
+	if err != nil {
+		return ResolutionUnspecified, true
+	}
+	mark := marks[entry.Approval.GetRequestId()]
+	return mark, mark == ResolutionConsumed || mark == ResolutionNotResumed
+}
+
+// markVerdict and markCode close a lost hold from its ledger mark: spent or
+// given up, the call never ran, since an entry left held was never moved to
+// resuming, which comes before the call starts; a ledger that could not be
+// read leaves the hold unknown.
+func markVerdict(m Resolution) controlv1.Verdict {
+	if m == ResolutionUnspecified {
+		return verdictIndeterminate
+	}
+	return verdictDeny
+}
+
+func markCode(m Resolution) string {
+	if m == ResolutionUnspecified {
+		return codeApprovalStateUnknown
+	}
+	return codeApprovalNotResumed
+}
+
+// lostHoldAnswer asks the authority what became of a lost hold's approval
+// and returns the answer to record, with the verdict and code the close
+// carries. Only an answer the plane judged as a live resume judges it names
+// what the approver did; under the signed kind that is an answer it
+// authenticated and authorized again now, so an operator revoked since names
+// nothing. An expiry is said where the authority's record, or the plane's
+// record of the hold with its clock, shows one. An authority that cannot be
+// read whole, a record the checks refuse, and no answer before the plane's
+// expiry leave the answer unknown: the plane records its own approval then,
+// because it records nothing it did not check.
 func (p *Pipeline) lostHoldAnswer(ctx context.Context, entry HoldEntry, now time.Time) (*controlv1.Approval, controlv1.Verdict, string) {
-	helds, err := p.cfg.Approvals.Find(ctx, entry.Binding, now)
-	if err != nil && !errors.Is(err, ErrNoApproval) {
+	ans := p.answerFor(ctx, heldFacts{ids: entry.IDs, approval: entry.Approval, expires: entry.Expires}, now)
+	switch {
+	case !ans.readable:
 		return nil, verdictIndeterminate, codeApprovalStateUnknown
-	}
-	// The request id and the approval id the plane minted name its record
-	// together, as they do for a resume: a sibling filed under the same request
-	// is not the plane's to read.
-	for _, held := range helds {
-		a := held.Approval
-		if a.GetRequestId() == entry.Approval.GetRequestId() && a.GetApprovalId() == entry.Approval.GetApprovalId() {
-			return judgeLostAnswer(entry, a, now)
-		}
-	}
-	// A store drops what expired, so no record is an expiry once the approval
-	// the plane minted has expired, and an unknown before.
-	if !now.Before(entry.Expires) {
+	case ans.approval != nil:
+		return judgeLostAnswer(entry, ans.approval, now, p.cfg.AuthorityKind)
+	case !now.Before(entry.Expires):
+		// An authority drops what expired, so no answer is an expiry once the
+		// approval the plane minted has expired, and an unknown before.
 		return nil, verdictDeny, codeApprovalExpired
 	}
 	return nil, verdictIndeterminate, codeApprovalStateUnknown
 }
 
-// judgeLostAnswer is what the store's record a of a lost hold says, once its
-// ids matched: the checks a live resume makes first, then its state.
-func judgeLostAnswer(entry HoldEntry, a *controlv1.Approval, now time.Time) (*controlv1.Approval, controlv1.Verdict, string) {
-	if _, code, refused := approvalFields(entry.Approval, a, entry.Expires, now); refused {
+// judgeLostAnswer is what the answer a about a lost hold says, once its ids
+// matched: the checks a live resume makes first, then its state.
+func judgeLostAnswer(entry HoldEntry, a *controlv1.Approval, now time.Time, kind AuthorityKind) (*controlv1.Approval, controlv1.Verdict, string) {
+	if _, code, refused := approvalFields(entry.Approval, a, entry.Expires, now, kind); refused {
 		if code == codeApprovalExpired && a.GetExpiresAt() != nil {
 			return nil, verdictDeny, codeApprovalExpired
 		}

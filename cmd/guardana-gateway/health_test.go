@@ -227,7 +227,7 @@ func TestMaxStaleReachesTheKernel(t *testing.T) {
 // TestApprovalCountersReadEachKeyFromItsOwnField gives every counter a value
 // no other has, so a key read from the wrong field shows.
 func TestApprovalCountersReadEachKeyFromItsOwnField(t *testing.T) {
-	out := approvalCounters("memory", gateway.Stats{
+	out := approvalCounters(map[string]any{"kind": "memory"}, gateway.Stats{
 		HoldsClosed: 11, HoldsUnmeasured: 13, UnheldRecords: 17, JournalRefusals: 19,
 		HeldTrailsLeftOpen: 23, MultiUseRefused: 29, Mismatches: 31, ReadsUnrecorded: 37,
 		SinkFailuresBeforeEffect: 41, SinkFailuresAfterEffect: 43, Pending: 47, Executed: 53,

@@ -195,9 +195,9 @@ func TestCoverageReadsAnEnforcementAPIPlanesToolTable(t *testing.T) {
  {"id":"payments.refund","kind":"enforce_tool","tool":"refund"},
  {"id":"payments.void","kind":"enforce_tool","tool":"void"}`)
 			api := filepath.Join(tr.dir, "enforce.yaml")
-			approvals := ""
+			approvals := "\napprovals:\n  authority: memory\n"
 			if mode == "APPROVE" {
-				approvals = "\napprovals:\n  provider: file\n  dir: approvals\n  hold_journal_dir: holds\n"
+				approvals = "\napprovals:\n  authority: directory\n  dir: approvals\n  hold_journal_dir: holds\n"
 			}
 			writeFixture(t, api, fmt.Sprintf(enforcePlane, mode, approvals))
 			code, stdout, stderr := invoke(t, tr.args("--plane", api)...)

@@ -169,6 +169,8 @@ listener:
   public_key: %s
 %sruns:
   dir: %s
+approvals:
+  authority: memory
 evidence:
   dir: spool
 export:

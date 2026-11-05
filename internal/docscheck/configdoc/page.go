@@ -179,11 +179,13 @@ func lead(listDefault, classificationRule string) string {
 		"`stateful_http` listener takes `listener.session_idle`, from one minute to a day, and\n" +
 		"`listener.max_sessions`, from 1 to 16384; an upstream\n" +
 		"needs exactly one of `endpoint` and `command`; `evidence.fsync_interval` is needed\n" +
-		"under the `interval` policy and refused under `every_record`; the `file` approval\n" +
-		"provider needs `approvals.dir` and `approvals.hold_journal_dir`, and that journal\n" +
-		"directory may be neither the spool's nor the approvals directory, nor inside either;\n" +
-		"and `APPROVE` needs the `file` provider, since nothing outside the process answers a\n" +
-		"request held in memory. " + classificationRule + " An `enforce_api` listener serves the enforcement API on the Unix\n" +
+		"under the `interval` policy and refused under `every_record`; `approvals.authority`\n" +
+		"`directory` and `signed` need `approvals.dir` and `approvals.hold_journal_dir`, and that\n" +
+		"journal directory may be neither the spool's nor the approvals directory, nor inside\n" +
+		"either; `signed` needs, and every other authority refuses, `approvals.inbox_dir`, apart\n" +
+		"from those three, and every `trust.*` and `operators.*` key; and `APPROVE` needs\n" +
+		"`directory` or `signed`, since nothing outside the process answers a request held in\n" +
+		"memory. " + classificationRule + " An `enforce_api` listener serves the enforcement API on the Unix\n" +
 		"socket `listener.socket` names, at most 103 bytes as it resolves; the plane checks that\n" +
 		"the socket's directory is its own with no permission for group or others, and checks\n" +
 		"neither a macOS access control list on it nor a parent directory another account may\n" +

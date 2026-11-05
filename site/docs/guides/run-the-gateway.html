@@ -182,6 +182,9 @@ policy:
   freshness_public_key: &lt;44 characters of base64&gt;
   poll_interval: 30s            # how often both files are read again
 
+approvals:
+  authority: memory             # no default
+
 evidence:
   dir: spool
 
@@ -262,7 +265,7 @@ complete. Then change the mode and restart.</p>
 </tr>
 <tr>
 <td><code>APPROVE</code></td>
-<td>Enforces, and holds an allowed material call for an approval. It needs <code>approvals.provider: file</code>: nothing outside the process answers a hold kept in memory</td>
+<td>Enforces, and holds an allowed material call for an approval. It needs <code>approvals.authority</code> <code>directory</code> or <code>signed</code></td>
 </tr>
 <tr>
 <td><code>ENFORCE</code></td>
@@ -280,15 +283,27 @@ complete. Then change the mode and restart.</p>
 </table>
 <h3 id="8-let-a-person-answer-a-held-call">8. Let a person answer a held call</h3>
 <pre><code class="language-yaml">approvals:
-  provider: file
+  authority: signed             # or directory, with the next two keys alone
   dir: /var/lib/guardana/approvals
   hold_journal_dir: /var/lib/guardana/holds
+  inbox_dir: /var/lib/guardana/inbox   # the plane&#39;s, the operators&#39; group, mode 1770
+trust:
+  root_public_key: /etc/guardana/root.pub
+  roster: /etc/guardana/roster.json
+  roster_id: acme-operators
+  floor_dir: /var/lib/guardana/roster-floor
+operators:
+  authenticator:
+    kind: roster
+  authorizer:
+    kind: roster
 </code></pre>
-<p>An approver answers with the approval commands
-(<a href="/docs/reference/cli">reference/cli.md</a>). Write access to <code>approvals.dir</code> is
-the approval authority, and <code>--approver-id</code> is a claim, never authenticated. A
-hold lost to a restart never runs; the next start closes its trail from the
-journal
+<p>Under <code>directory</code>, write access to <code>approvals.dir</code> is the approval authority
+and <code>--approver-id</code> is a claim (<a href="/docs/reference/cli">reference/cli.md</a>).
+Under <code>signed</code>, an answer is an operator's signed file
+<code>&lt;approval id&gt;.&lt;label&gt;.answer</code>, at most 16 per approval, 32 KiB each
+(<a href="/docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it">ADR-0073</a>). A
+lost hold never runs; the next start closes its trail
 (<a href="/docs/concepts/approvals-and-the-held-call">concepts/approvals-and-the-held-call.md</a>).</p>
 <h3 id="9-set-the-evidence-rules-on-purpose">9. Set the evidence rules on purpose</h3>
 <table>

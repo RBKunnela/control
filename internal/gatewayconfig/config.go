@@ -28,6 +28,8 @@ type Config struct {
 	Policy    PolicyConfig
 	PDP       PDPConfig
 	Approvals ApprovalsConfig
+	Trust     TrustConfig
+	Operators OperatorsConfig
 	Pause     PauseConfig
 	Runs      RunsConfig
 	Reaction  ReactionConfig
@@ -42,8 +44,8 @@ type Config struct {
 	Tools     []ToolConfig
 
 	// dir is the directory of the file the configuration was read from, which
-	// every relative path in it resolves against.
-	dir string
+	// every relative path in it resolves against, and path that file.
+	dir, path string
 	// source names, per key, the file position or the environment variable
 	// that set it. A key that is absent stands at its default.
 	source map[string]string
@@ -114,24 +116,28 @@ type PDPConfig struct {
 	InformationalContext []string
 }
 
-// The approval providers a plane holds its requests in. The file provider is
-// a directory an approver outside the process writes; the memory provider
-// keeps its records in the process that holds them, so nothing outside it
-// answers a hold (ADR-0016).
+// The approval authorities a plane takes an answer from, with no default.
+// memory keeps the records in the process that holds them, so nothing outside
+// it answers a hold; directory takes a claim an approver writes into the
+// approvals directory; signed takes only an answer an operator of the trust
+// roster signed (ADR-0016, ADR-0073).
 const (
-	ProviderMemory = "memory"
-	ProviderFile   = "file"
+	AuthorityMemory    = "memory"
+	AuthorityDirectory = "directory"
+	AuthoritySigned    = "signed"
 )
 
-// ApprovalsConfig names the store a held request is kept in and bounds what
-// that store can make the plane do.
+// ApprovalsConfig names the approval authority, where a held request is kept,
+// and bounds what those can make the plane do.
 type ApprovalsConfig struct {
-	Provider string
-	// Dir is the approvals directory, and HoldJournalDir the plane's own
-	// journal of its own holds. The file provider needs both, and the
-	// journal's directory is never one another writer owns.
+	Authority string
+	// Dir is the approvals directory, HoldJournalDir the plane's own journal
+	// of its own holds and its ledger, and InboxDir the directory operators
+	// file signed answers in. directory and signed need the first two, signed
+	// the third, and the journal's directory is never one another writer owns.
 	Dir            string
 	HoldJournalDir string
+	InboxDir       string
 	TTL            time.Duration
 	RetryAfter     time.Duration
 	MaxHeld        int
@@ -146,6 +152,23 @@ type ApprovalsConfig struct {
 	// ReconcileMax bounds the journal entries one reconciliation reads. A
 	// pass the bound stopped is unmeasured, never done.
 	ReconcileMax int
+}
+
+// TrustConfig is the trust roster the signed authority reads: the pinned
+// root key's file, the roster file, the one roster id taken, and the floor
+// directory that keeps its serial.
+type TrustConfig struct {
+	RootPublicKey string
+	Roster        string
+	RosterID      string
+	FloorDir      string
+}
+
+// OperatorsConfig names how the signed authority authenticates and
+// authorizes an operator. Each kind is named, never taken by default.
+type OperatorsConfig struct {
+	AuthenticatorKind string
+	AuthorizerKind    string
 }
 
 // PauseConfig is the operator's pause file and how often the plane reads it
@@ -240,6 +263,9 @@ func (c *Config) Mode() (controlv1.EnforcementMode, error) {
 	}
 	return controlv1.EnforcementMode(number), nil
 }
+
+// File is the configuration file Load read, as an absolute path.
+func (c *Config) File() string { return c.path }
 
 // Resolve reads a path from the configuration against the directory of the
 // file it was read from, so a relative path means the same thing wherever the

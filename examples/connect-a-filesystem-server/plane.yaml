@@ -30,7 +30,7 @@ policy:
   poll_interval: 30s
 
 approvals:
-  provider: file
+  authority: directory
   dir: approvals
   hold_journal_dir: holds
 

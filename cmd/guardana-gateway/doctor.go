@@ -82,7 +82,7 @@ func examine(ctx context.Context, path string, stdout, stderr io.Writer) int {
 
 func (d *examination) check(ctx context.Context, stderr io.Writer) int {
 	for _, check := range []func(context.Context) (string, string, string){
-		d.mode, d.policy, d.evidence, d.approvals, d.pauseFile, d.runs, d.reaction, d.export, d.secrets, d.seams, d.upstreams, d.pdp,
+		d.mode, d.policy, d.evidence, d.approvals, d.authority, d.trust, d.authenticator, d.authorizer, d.pauseFile, d.runs, d.reaction, d.export, d.secrets, d.seams, d.upstreams, d.pdp,
 	} {
 		verdict, name, found := check(ctx)
 		report(d.out, verdict, name, found)

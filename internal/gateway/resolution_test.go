@@ -3,6 +3,7 @@ package gateway_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -27,6 +28,7 @@ type fakeLedger struct {
 	mu                  sync.Mutex
 	spends, settles     int
 	spentBinding        approval.Binding
+	proofs              []string
 	beforeSpend         func()
 	afterSpend          func()
 	spendErr, settleErr error
@@ -38,6 +40,7 @@ func (l *fakeLedger) Spend(ctx context.Context, b approval.Binding, req, appr, p
 	l.mu.Lock()
 	l.spends++
 	l.spentBinding = b
+	l.proofs = append(l.proofs, proof)
 	before, then, fail, after := l.beforeSpend, l.afterSpend, l.spendErr, l.failAfterSpend
 	l.mu.Unlock()
 	if before != nil {
@@ -82,6 +85,13 @@ func (l *fakeLedger) spentUnder() approval.Binding {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	return l.spentBinding
+}
+
+// spentProofs is every proof a spend recorded, in order.
+func (l *fakeLedger) spentProofs() []string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return slices.Clone(l.proofs)
 }
 
 func (l *fakeLedger) asked() (spends, settles int) {
