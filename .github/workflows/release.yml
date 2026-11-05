@@ -225,10 +225,10 @@ jobs:
     # maintain role can create one.
     environment: release
     permissions:
-      contents: write # Build and draft: goreleaser creates the draft and uploads its assets; Publish: gh releases it
-      id-token: write # Build and draft, Sign the image: cosign signs keyless; Attest: signs the provenance
+      contents: write # Draft the release: gh makes the draft; Build and upload: goreleaser uploads its assets; Publish: gh releases it
+      id-token: write # Build and upload, Sign the image: cosign signs keyless; Attest: signs the provenance
       attestations: write # Attest: stores the provenance attestations
-      packages: write # Build and draft: ko pushes the image; Sign the image and Attest the image: push the signature and the provenance beside it
+      packages: write # Build and upload: ko pushes the image; Sign the image and Attest the image: push the signature and the provenance beside it
       artifact-metadata: write # Attest the image: records which registry holds the image, the organization's linked artifacts
       actions: read # Check the gate: reads CI's and Security's runs of the tagged commit
       security-events: read # Check the gate: reads the open code scanning alerts on main
@@ -378,11 +378,24 @@ jobs:
           overwrite: true
           retention-days: 30
 
-      - name: Build and draft
-        # ko pushes the gateway's image before the draft exists, under a
-        # staging tag named after the commit; the version tag is added only
-        # once the image is verified. The current tag is named because a
-        # commit can carry a pre-release and a final tag at once.
+      - name: Draft the release
+        id: draft
+        # Before the build, so both hosts are known to serve the draft before
+        # anything is uploaded into it; goreleaser then takes it as its own
+        # (.goreleaser.yaml: use_existing_draft), finding it by the name its
+        # name_template renders, which is the name passed here. A release for
+        # this tag, or a draft of this name, refuses the step.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          id="$(scripts/draft-release.sh "${GITHUB_REF_NAME}" "${GITHUB_SHA}" "Guardana Control ${GITHUB_REF_NAME#v}")"
+          echo "id=${id}" >>"$GITHUB_OUTPUT"
+
+      - name: Build and upload
+        # ko pushes the gateway's image under a staging tag named after the
+        # commit; the version tag is added only once the image is verified.
+        # The current tag is named because a commit can carry a pre-release
+        # and a final tag at once.
         env:
           GITHUB_TOKEN: ${{ github.token }}
           GORELEASER_CURRENT_TAG: ${{ github.ref_name }}
@@ -544,8 +557,9 @@ jobs:
       - name: Publish
         # What was verified above is dist/. A draft can be edited by anyone
         # with write access, so the draft is published only when it is the one
-        # draft for this tag and holds exactly those files, digest for digest;
-        # it is then published by its id, never looked up by the tag again.
+        # draft for this tag, the one this run made, and holds exactly those
+        # files, digest for digest; it is then published by its id, never
+        # looked up by the tag again.
         # The notes gain a last line naming the image's digest: that is where
         # users find it. A repository writer can still edit a published
         # release's notes, so the digest is trusted only once cosign verifies
@@ -553,6 +567,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           DIGEST: ${{ steps.image.outputs.digest }}
+          DRAFT: ${{ steps.draft.outputs.id }}
         run: |
           releases="$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" --paginate)"
           ids="$(jq -r -s --arg tag "${GITHUB_REF_NAME}" \
@@ -562,6 +577,10 @@ jobs:
             exit 1
           fi
           id="${ids}"
+          if [[ "${id}" != "${DRAFT}" ]]; then
+            echo "the draft for ${GITHUB_REF_NAME} is ${id}, not the ${DRAFT} this run made" >&2
+            exit 1
+          fi
           expected="$(cd dist && for f in *.tar.gz *.cdx.json checksums.txt checksums.txt.sigstore.json; do
             [[ -f "${f}" ]] || { echo "no file matches ${f}" >&2; exit 1; }
             printf '%s sha256:%s\n' "${f}" "$(sha256sum "${f}" | cut -d' ' -f1)"

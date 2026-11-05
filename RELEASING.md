@@ -30,49 +30,49 @@ audit of the whole tree
    ```
 
 6. Approve the Release run (`release`), then its upload job (`pypi`), in
-   Review deployments. Only a maintainer or admin may push a `v*` tag or
+   Review deployments; only a maintainer or admin may push a `v*` tag or
    approve.
 7. After publication, set `"released"` in `docs/docs.json`, regenerate and
-   open a pull request; verify the live version, labels and links. Until
-   then the website must not name it.
+   open a pull request; verify the live version, labels and links. The
+   website names it only then.
 
 A version is `X.Y.Z`; a suffix such as `-rc.1` marks a preview.
 
 ## What the workflow does
 
-1. Builds `guardana-gateway` and `guardana-control` for Linux and macOS on
-   amd64 and arm64 from the tag: per platform an archive of both and a demo
-   archive with the server, each with a CycloneDX bill of materials, listed
-   in `checksums.txt`.
-2. Cosign signs checksums keylessly; the certificate names this workflow and tag.
-3. Pushes `ghcr.io/guardana/control-gateway`: the gateway alone, nonroot,
-   linux/amd64 and linux/arm64, under `sha-<commit>`; drafts the release.
-4. Scans every archive and image binary on every platform with
-   `govulncheck -mode=binary` (`scripts/scan-binaries.sh`).
-5. Runs the demo without Go on `PATH`, attests every file, signs and attests
+1. Drafts the release (`scripts/draft-release.sh`), refusing a tag that has
+   one.
+2. Builds `guardana-gateway` and `guardana-control` for Linux and macOS on
+   amd64 and arm64: per platform an archive of both and a demo archive with
+   the server, each with a CycloneDX bill of materials, in `checksums.txt`.
+3. Cosign signs checksums keylessly; the certificate names this workflow and tag.
+4. Pushes `ghcr.io/guardana/control-gateway`: the gateway alone, nonroot,
+   linux/amd64 and linux/arm64, under `sha-<commit>`; uploads into the draft.
+5. Scans every archive and image binary with `govulncheck -mode=binary`
+   (`scripts/scan-binaries.sh`).
+6. Runs the demo without Go on `PATH`, attests every file, signs and attests
    the image.
-6. Verifies downloads and image, adds the image's version tag, publishes the
+7. Verifies downloads and image, adds the image's version tag, publishes the
    draft with its digest.
-7. Builds and attests the Python client's files before the draft; after
-   publication a separate job, re-runnable alone, uploads them to PyPI and
-   reads them back.
+8. Builds and attests the Python client's files first; after publication a
+   separate job, re-runnable alone, uploads them to PyPI and reads them back.
 
 A known-vulnerable symbol, called or not, or an unavailable scan stops release.
 Only `main`'s head may release, with CI, Security and the newest CodeQL
 analysis covering it; advancing `main` before approval fails it. Before
 Publish, failure leaves at most a draft and staging/version image tags:
 delete them, fix the cause, release the next version. Publish requires
-exactly the verified files and rereads their digests; failure then leaves a public
-release and reports recovery steps.
+exactly the verified files and rereads their digests; failure then leaves a
+public release and names the recovery steps.
 
 ## A dry run
 
 Run the workflow from `main` with the intended tag. It checks the gate and notes,
 builds and scans unsigned `0.0.0-snapshot.<commit>` archives and image, runs
-the image and demo on the runner's platform, and publishes only the Python
-client, to TestPyPI as `X.Y.Z.dev<run>`.
+the image and demo there, and publishes only the Python client, to TestPyPI
+as `X.Y.Z.dev<run>`.
 `make release-snapshot`, `make check-demo-archive` and `make scan-binaries`
-build, scan and run locally with Docker; they check neither gate nor notes.
+build, scan and run locally with Docker, checking neither gate nor notes.
 
 ## A tag never moves
 

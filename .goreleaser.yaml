@@ -179,9 +179,11 @@ release:
   github:
     owner: guardana
     name: control
-  # The workflow publishes the draft only after the provenance is attested and
-  # the signature and attestations verify.
+  # The workflow makes the draft before the build (scripts/draft-release.sh)
+  # and publishes it only after the provenance is attested and the signature
+  # and attestations verify; goreleaser uploads into that draft.
   draft: true
+  use_existing_draft: true
   prerelease: auto
   mode: replace
   name_template: "Guardana Control {{ .Version }}"

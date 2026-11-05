@@ -178,8 +178,8 @@ beside its version:
 
 - `goreleaser` (MIT) builds the two binaries and the demo's servers for Linux
   and macOS, packs a product archive and a demo archive per platform, writes `checksums.txt`, builds and pushes the
-  gateway's image with the `ko` library it links (Apache-2.0), and drafts the
-  GitHub release, from `.goreleaser.yaml`. `ko` adds no download of its own;
+  gateway's image with the `ko` library it links (Apache-2.0), and uploads
+  into the draft release the workflow made, from `.goreleaser.yaml`. `ko` adds no download of its own;
   what it fetches is the base image above. Doing that by hand in the workflow
   would be a long script that nothing else tests.
 - `syft` (Apache-2.0) writes a CycloneDX bill of materials for each archive,
