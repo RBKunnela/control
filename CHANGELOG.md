@@ -11,6 +11,21 @@ verify one.
 
 ## [Unreleased]
 
+### Added
+
+- `pause add --run <id>`, `--agent <id>` and `--principal <id>` pause one
+  opened run, or every run under a root, one agent or one principal. A run
+  is named by its id from `runs open`, and any other spelling is refused. Each is
+  matched against what the plane vouches for: the opened run the listener
+  resolved from its token, and the agent and principal its configuration
+  names, never a run id or a client name the client sent. A call under no
+  opened run is paused by every run entry.
+- `/healthz`'s `pause.coverage` says per entry whether it covers `all`,
+  `some` or `none` of the plane's calls, and `pause.coverage_causes` why a
+  run entry covers none: its run is not in `runs.dir`, is another project's,
+  expired or closed. `doctor` counts the three and names each agent or
+  principal entry that is not the listener's and each such run entry.
+
 ### Changed
 
 - **Breaking:** the approvals directory is format `2.0`: a record carries no
@@ -18,6 +33,8 @@ verify one.
   or record is refused with a message naming both versions; empty the
   directory, whose holds expire within `approvals.ttl`. `approvals list` and
   the console no longer print a resolution.
+- The pause commands write pause file `2`; a plane and the commands read `1`
+  as before.
 - The release workflow makes its draft release before the build, through
   `scripts/draft-release.sh`, and proves the release list and the upload host
   serve it before anything is uploaded; a tag that already has a release, or

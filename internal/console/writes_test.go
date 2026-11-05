@@ -106,7 +106,8 @@ func TestPauseRefusalsWriteNothing(t *testing.T) {
 	}{
 		{"a global scope naming a provider", "/api/pause", `{"scope":{"kind":"global","provider":"payments","action":"","name":""},"reason":""}`, http.StatusBadRequest, "a global scope names nothing else"},
 		{"a prompt by name", "/api/pause", `{"scope":{"kind":"action","provider":"p","action":"prompt","name":"x"},"reason":""}`, http.StatusBadRequest, "paused by its provider only"},
-		{"a principal scope", "/api/pause", `{"scope":{"kind":"principal","provider":"","action":"","name":""},"reason":""}`, http.StatusBadRequest, "scope.kind"},
+		{"a principal scope without its id", "/api/pause", `{"scope":{"kind":"principal","provider":"","action":"","name":""},"reason":""}`, http.StatusBadRequest, "scope.id: empty"},
+		{"a tenant scope", "/api/pause", `{"scope":{"kind":"tenant","provider":"","action":"","name":"","id":"t"},"reason":""}`, http.StatusBadRequest, "scope.kind"},
 		{"an id the file lacks", "/api/unpause", `{"id":"NOPE"}`, http.StatusConflict, pause.ErrNoEntry.Error()},
 		{"a scope with an unknown member", "/api/pause", `{"scope":{"kind":"global","tenant":"t"},"reason":""}`, http.StatusBadRequest, `the member \"tenant\" is not one this write takes`},
 		{"a scope naming its kind twice", "/api/pause", `{"scope":{"kind":"provider","kind":"global","provider":"","action":"","name":""},"reason":""}`, http.StatusBadRequest, "a member named twice"},

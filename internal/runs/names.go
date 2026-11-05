@@ -61,6 +61,10 @@ func classify(name string) (kind, string) {
 	return kindForeign, ""
 }
 
+// CheckRunID refuses, with ErrRunID, an id that is not "run-" and 32
+// lower-case hex digits, the one form a run is named by.
+func CheckRunID(id string) error { return checkRunID(id) }
+
 // checkRunID holds an id to "run-" and 32 lower-case hex digits. The id names
 // files, so the rule leaves no separator, dot or case variant to pass.
 func checkRunID(id string) error {

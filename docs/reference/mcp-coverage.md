@@ -121,7 +121,7 @@ block in every mode. The codes below are the enforcement point's own.
 | --- | --- |
 | `ACTION_UNCLASSIFIED` | no manifest entry classifies the operation; blocked outside `OBSERVE` |
 | `LOCKDOWN` | a material call under `LOCKDOWN` |
-| `PAUSED` | an operator's pause covers the call: `global`, its upstream, or its kind, upstream and name; in every mode, reads included, and never in a listing |
+| `PAUSED` | an operator's pause covers the call ([scopes](../concepts/enforcement-modes.md#pausing-calls)); in every mode, reads included, and never in a listing |
 | `RUN_STOPPED` | a stop names the call's opened run, reads included |
 | `PAUSE_STATE_UNAVAILABLE`, `STOP_STATE_UNAVAILABLE` | the pause file or stop list is unreadable or untrusted, or its last read is stale or dated ahead; every call is blocked |
 | `EVIDENCE_UNAVAILABLE` | a record the decision depends on could not be written, kept or read back: the sink refused an event, a bound on held requests or open executions was reached, or the approval store or the hold journal could not answer, or answered with an approval that names another request, is not approved, or outlives the expiry the gateway minted; or, under `runs.dir`, its run ([runs.md](runs.md#what-a-plane-does-with-a-token)) |

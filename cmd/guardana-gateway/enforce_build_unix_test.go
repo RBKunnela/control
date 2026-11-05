@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -167,6 +168,7 @@ func TestAPauseEntryOfTheToolTableIsNotStray(t *testing.T) {
 		pauseEntry("read", scopeReadOrder),
 		pauseEntry("gone", `{"kind":"action","action":"tool","provider":"orders","name":"delete_order"}`),
 		pauseEntry("billing", scopeElsewhere),
+		pauseEntry("run", scopeRun),
 	))
 	setEnv(t, "pause.file", "pause/pause.json")
 	setEnv(t, "pause.poll_interval", "1s")
@@ -177,6 +179,10 @@ func TestAPauseEntryOfTheToolTableIsNotStray(t *testing.T) {
 	answer, _ := p.health(p.pauseSource(), time.Now)
 	if want := []string{"gone", "billing"}; !slices.Equal(answer.Pause.UnlistedOnly, want) {
 		t.Errorf("unlisted_only = %v, want %v", answer.Pause.UnlistedOnly, want)
+	}
+	covers := map[string]string{"orders": "some", "payments": "some", "read": "some", "gone": "none", "billing": "none", "run": "none"}
+	if !maps.Equal(answer.Pause.Coverage, covers) {
+		t.Errorf("coverage = %v, want %v", answer.Pause.Coverage, covers)
 	}
 	if err := p.close(); err != nil {
 		t.Fatal(err)
@@ -189,7 +195,8 @@ func TestAPauseEntryOfTheToolTableIsNotStray(t *testing.T) {
 	for _, want := range []string{
 		"pause entry gone names tool \"delete_order\" of provider \"orders\", which tools does not classify",
 		"pause entry billing names provider \"billing\", which no tool in tools has",
-		"5 entry(ies), 2 naming a provider or a tool the tool table does not have",
+		"6 entry(ies), 2 naming a provider or a tool the tool table does not have; 0 covering all of this plane's calls, 3 some, 3 none",
+		"pause entry run names run run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: no such run, so it pauses no call this plane runs",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("doctor did not say %q:\n%s", want, out)

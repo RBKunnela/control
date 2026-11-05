@@ -69,14 +69,14 @@ func targetsOf(cfg *gatewayconfig.Config, manifest []adaptermcp.Entry, listed bo
 
 // strayEntries names, in the file's order, every entry of a provider or
 // action scope whose provider is none of to's and, where to knows the tools,
-// every tool scope whose tool its provider does not serve. A global entry
-// names no provider and is never one; a prompt or resource scope names no
-// tool.
+// every tool scope whose tool its provider does not serve. An entry of any
+// other scope names no provider and is never one; a prompt or resource scope
+// names no tool.
 func strayEntries(entries []pause.Entry, to pauseTargets) []strayEntry {
 	var out []strayEntry
 	for _, e := range entries {
 		s := e.Scope
-		if s.Kind == pause.ScopeGlobal {
+		if s.Kind != pause.ScopeProvider && s.Kind != pause.ScopeAction {
 			continue
 		}
 		if !slices.Contains(to.providers, s.Provider) {
@@ -133,11 +133,13 @@ func hasGlobal(entries []pause.Entry) bool {
 
 // pauseFile reads the pause file once with every check a start makes, and
 // takes no lock and writes nothing: the file's directory is the writers'
-// (ADR-0019). It prints the path, the state, the number of entries and each
-// entry naming an upstream this configuration does not have, and never a
-// reason. A file the start would refuse fails here, naming the cause. On an
-// MCP plane the entries naming a tool are judged by the upstreams check, once
-// the manifest is read; an enforce_api plane's tool table is judged here.
+// (ADR-0019). It prints the path, the state, the number of entries, how many
+// cover all, some or none of this plane's calls, each entry naming an
+// upstream this configuration does not have and each that printCoverage
+// names, and never a reason. A file the start
+// would refuse fails here, naming the cause. On an MCP plane the entries
+// naming a tool are judged by the upstreams check, once the manifest is read;
+// an enforce_api plane's tool table is judged here.
 func (d *examination) pauseFile(context.Context) (string, string, string) {
 	if d.cfg.Pause.File == "" {
 		return verdictOK, "pause", "disabled: pause.file is not set, so no call can be paused without a restart"
@@ -151,6 +153,7 @@ func (d *examination) pauseFile(context.Context) (string, string, string) {
 	entries := snap.Entries()
 	d.pauseEntries = entries
 	stray := strayEntries(entries, targetsOf(d.cfg, nil, false))
+	shares := d.printCoverage(entries, stray)
 	if d.cfg.Listener.Kind == gatewayconfig.ListenerEnforceAPI {
 		for _, e := range stray {
 			if e.tool != "" {
@@ -161,15 +164,15 @@ func (d *examination) pauseFile(context.Context) (string, string, string) {
 			writeLine(d.out, fmt.Sprintf("       pause entry %s names provider %s, which no tool in tools has: it pauses no call this plane runs",
 				oneLine(e.id), oneLine(strconv.Quote(e.provider))))
 		}
-		return verdictOK, "pause", fmt.Sprintf("%s is %s: %d entry(ies), %d naming a provider or a tool the tool table does not have; read every %s",
-			path, snap.State(), len(entries), len(stray), d.cfg.Pause.PollInterval)
+		return verdictOK, "pause", fmt.Sprintf("%s is %s: %d entry(ies), %d naming a provider or a tool the tool table does not have; %s; read every %s",
+			path, snap.State(), len(entries), len(stray), shares, d.cfg.Pause.PollInterval)
 	}
 	for _, e := range stray {
 		writeLine(d.out, fmt.Sprintf("       pause entry %s names upstream %s, which this configuration does not have: it pauses only calls that carry no provider, which are calls to names no upstream lists",
 			oneLine(e.id), oneLine(strconv.Quote(e.provider))))
 	}
-	return verdictOK, "pause", fmt.Sprintf("%s is %s: %d entry(ies), %d naming an upstream this configuration does not have; read every %s",
-		path, snap.State(), len(entries), len(stray), d.cfg.Pause.PollInterval)
+	return verdictOK, "pause", fmt.Sprintf("%s is %s: %d entry(ies), %d naming an upstream this configuration does not have; %s, before the upstreams check judges the tools; read every %s",
+		path, snap.State(), len(entries), len(stray), shares, d.cfg.Pause.PollInterval)
 }
 
 // strayTools prints each pause entry naming a tool its upstream does not

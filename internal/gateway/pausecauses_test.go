@@ -250,7 +250,7 @@ func TestTheDecisionsReadOnePauseState(t *testing.T) {
 // TestEveryUnknownPauseStateBlocksWithItsOwnCode: one case per cause the
 // reader names, each an INDETERMINATE block with code 43 and never PAUSED.
 func TestEveryUnknownPauseStateBlocksWithItsOwnCode(t *testing.T) {
-	valid := `{"schema_version":"1","entries":[]}`
+	valid := `{"schema_version":"2","entries":[]}`
 	cases := map[string]func(t *testing.T) pause.Snapshot{
 		"missing": func(t *testing.T) pause.Snapshot {
 			return pause.Read(pauseFile(t)+".none", base(), pauseInterval)
@@ -265,7 +265,7 @@ func TestEveryUnknownPauseStateBlocksWithItsOwnCode(t *testing.T) {
 		},
 		"malformed": func(t *testing.T) pause.Snapshot { return readMode(t, valid[1:], 0o600, 0o700) },
 		"unknown version": func(t *testing.T) pause.Snapshot {
-			return readMode(t, strings.Replace(valid, `"1"`, `"2"`, 1), 0o600, 0o700)
+			return readMode(t, strings.Replace(valid, `"2"`, `"3"`, 1), 0o600, 0o700)
 		},
 		"stale": func(t *testing.T) pause.Snapshot {
 			return pause.Read(pauseFile(t), base().Add(-3*pauseInterval-time.Nanosecond), pauseInterval)

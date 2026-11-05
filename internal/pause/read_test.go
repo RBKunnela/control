@@ -42,12 +42,12 @@ func TestReadServesWhatTheFileSays(t *testing.T) {
 	if paused.State() != pause.Paused || len(paused.Entries()) != 1 || !paused.ReadAt().Equal(at()) {
 		t.Fatalf("one entry: state %s, entries %v, read at %v", paused.State(), paused.Entries(), paused.ReadAt())
 	}
-	if !paused.Covers("tool", "orders", "refund") || paused.Covers("tool", "orders", "list") {
+	if !paused.Covers("tool", "orders", "refund", pause.Vouched{}) || paused.Covers("tool", "orders", "list", pause.Vouched{}) {
 		t.Errorf("a tool pause covers the wrong calls")
 	}
 	// Entries is a copy: nothing a caller does to it reaches the snapshot.
 	paused.Entries()[0].Scope = pause.Scope{Kind: "global"}
-	if paused.Covers("tool", "orders", "list") {
+	if paused.Covers("tool", "orders", "list", pause.Vouched{}) {
 		t.Errorf("a change to the copy Entries returned widened the snapshot")
 	}
 }
@@ -98,11 +98,14 @@ func TestEveryUnreadableFileIsUnknownWithItsCause(t *testing.T) {
 			return dirWith(t, valid+strings.Repeat(" ", 163840-len(valid)+1), 0o600)
 		}, pause.CauseTooLarge},
 		{"malformed", func(t *testing.T) string { return dirWith(t, valid[:len(valid)-1], 0o600) }, pause.CauseMalformed},
-		{"an unknown version", func(t *testing.T) string { return dirWith(t, strings.Replace(valid, `"1"`, `"2"`, 1), 0o600) }, pause.CauseVersion},
+		{"an unknown version", func(t *testing.T) string { return dirWith(t, strings.Replace(valid, `"2"`, `"3"`, 1), 0o600) }, pause.CauseVersion},
+		{"a version 0 file", func(t *testing.T) string { return dirWith(t, strings.Replace(valid, `"2"`, `"0"`, 1), 0o600) }, pause.CauseVersion},
 		{"an unknown member", func(t *testing.T) string {
 			return dirWith(t, strings.Replace(valid, `"entries"`, `"extra":0,"entries"`, 1), 0o600)
 		}, pause.CauseMalformed},
-		{"an unknown scope", func(t *testing.T) string { return dirWith(t, docJSON(entryJSON("a", `{"kind":"agent"}`, "")), 0o600) }, pause.CauseMalformed},
+		{"an unknown scope", func(t *testing.T) string {
+			return dirWith(t, docJSON(entryJSON("a", `{"kind":"tenant","id":"t"}`, "")), 0o600)
+		}, pause.CauseMalformed},
 		{"a resource scope with a name", func(t *testing.T) string {
 			return dirWith(t, docJSON(entryJSON("a", `{"kind":"action","action":"resource","provider":"files","name":"file:///x"}`, "")), 0o600)
 		}, pause.CauseMalformed},
@@ -113,7 +116,7 @@ func TestEveryUnreadableFileIsUnknownWithItsCause(t *testing.T) {
 			if s.State() != pause.Unknown || s.Cause() != c.cause {
 				t.Errorf("state %s, cause %q, detail %q; want unknown, %q", s.State(), s.Cause(), s.Detail(), c.cause)
 			}
-			if s.Covers("tool", "orders", "refund") || len(s.Entries()) != 0 {
+			if s.Covers("tool", "orders", "refund", pause.Vouched{}) || len(s.Entries()) != 0 {
 				t.Errorf("an unknown snapshot holds entries")
 			}
 		})
@@ -143,7 +146,7 @@ func TestASnapshotAnswersForThreeIntervals(t *testing.T) {
 		if got.State() != c.state || got.Cause() != c.cause {
 			t.Errorf("At(%v): state %s, cause %q; want %s, %q", c.now, got.State(), got.Cause(), c.state, c.cause)
 		}
-		if got.State() == pause.Unknown && got.Covers("tool", "orders", "refund") {
+		if got.State() == pause.Unknown && got.Covers("tool", "orders", "refund", pause.Vouched{}) {
 			t.Errorf("At(%v): a stale snapshot still covers a call", c.now)
 		}
 	}

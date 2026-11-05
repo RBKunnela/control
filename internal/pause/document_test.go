@@ -16,14 +16,17 @@ func entryJSON(id, scope, reason string) string {
 }
 
 func docJSON(entries ...string) string {
-	return `{"schema_version":"1","entries":[` + strings.Join(entries, ",") + `]}`
+	return `{"schema_version":"2","entries":[` + strings.Join(entries, ",") + `]}`
 }
 
 const (
-	globalScope   = `{"kind":"global"}`
-	providerScope = `{"kind":"provider","provider":"orders"}`
-	toolScope     = `{"kind":"action","action":"tool","provider":"orders","name":"refund"}`
-	resourceScope = `{"kind":"action","action":"resource","provider":"files"}`
+	globalScope    = `{"kind":"global"}`
+	providerScope  = `{"kind":"provider","provider":"orders"}`
+	toolScope      = `{"kind":"action","action":"tool","provider":"orders","name":"refund"}`
+	resourceScope  = `{"kind":"action","action":"resource","provider":"files"}`
+	runScope       = `{"kind":"run","id":"run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}`
+	agentScope     = `{"kind":"agent","id":"orders-assistant"}`
+	principalScope = `{"kind":"principal","id":"agent-runner"}`
 )
 
 func TestParseReadsEveryScope(t *testing.T) {
@@ -33,6 +36,9 @@ func TestParseReadsEveryScope(t *testing.T) {
 		entryJSON("c", toolScope, "refunds misbehave"),
 		entryJSON("d", resourceScope, "files"),
 		entryJSON("e", `{"kind":"action","action":"prompt","provider":"orders"}`, ""),
+		entryJSON("f", runScope, ""),
+		entryJSON("g", agentScope, ""),
+		entryJSON("h", principalScope, ""),
 	)))
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
@@ -43,6 +49,9 @@ func TestParseReadsEveryScope(t *testing.T) {
 		{ID: "c", Scope: pause.Scope{Kind: "action", Action: "tool", Provider: "orders", Name: "refund"}, Reason: "refunds misbehave"},
 		{ID: "d", Scope: pause.Scope{Kind: "action", Action: "resource", Provider: "files"}, Reason: "files"},
 		{ID: "e", Scope: pause.Scope{Kind: "action", Action: "prompt", Provider: "orders"}},
+		{ID: "f", Scope: pause.Scope{Kind: "run", ID: "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}},
+		{ID: "g", Scope: pause.Scope{Kind: "agent", ID: "orders-assistant"}},
+		{ID: "h", Scope: pause.Scope{Kind: "principal", ID: "agent-runner"}},
 	}
 	if len(doc.Entries) != len(want) {
 		t.Fatalf("Parse read %d entries, want %d", len(doc.Entries), len(want))
@@ -59,6 +68,23 @@ func TestParseReadsEveryScope(t *testing.T) {
 	}
 }
 
+// TestAVersion1FileReadsAsBefore: a file of the version before names only the
+// scopes that version had, and reads as it did, so no upgrade lifts a pause.
+func TestAVersion1FileReadsAsBefore(t *testing.T) {
+	doc, err := pause.Parse([]byte(`{"schema_version":"1","entries":[` +
+		entryJSON("a", globalScope, "") + "," + entryJSON("b", providerScope, "") + "," + entryJSON("c", toolScope, "") + `]}`))
+	if err != nil || len(doc.Entries) != 3 {
+		t.Fatalf("a version 1 file: %+v, %v", doc, err)
+	}
+	if got := doc.Entries[2].Scope; got != (pause.Scope{Kind: "action", Action: "tool", Provider: "orders", Name: "refund"}) {
+		t.Errorf("the tool entry read as %+v", got)
+	}
+	out, err := pause.Marshal(doc)
+	if err != nil || !strings.Contains(string(out), `"schema_version": "2"`) {
+		t.Errorf("a version 1 document is rendered as %s, %v; want version 2", out, err)
+	}
+}
+
 // TestParseRefusesTheWholeDocument: each input breaks exactly one rule of a
 // document that is otherwise read, so each refusal is the one its case names.
 func TestParseRefusesTheWholeDocument(t *testing.T) {
@@ -68,18 +94,22 @@ func TestParseRefusesTheWholeDocument(t *testing.T) {
 		doc  string
 		want error
 	}{
-		{"not JSON", `{"schema_version":"1","entries":[`, pause.ErrMalformed},
+		{"not JSON", `{"schema_version":"2","entries":[`, pause.ErrMalformed},
 		{"not an object", `[]`, pause.ErrMalformed},
 		{"text after the document", docJSON(ok) + `{}`, pause.ErrMalformed},
 		{"not UTF-8", docJSON(`{"id":"a","scope":{"kind":"global"},"created_at":"2026-09-24T10:00:00Z","reason":"` + "\xff" + `"}`), pause.ErrMalformed},
 		{"no schema version", `{"entries":[]}`, pause.ErrMalformed},
 		{"a version that is a number", `{"schema_version":1,"entries":[]}`, pause.ErrMalformed},
-		{"an unknown version", `{"schema_version":"2","entries":[]}`, pause.ErrVersion},
-		{"an unknown top member", `{"schema_version":"1","entries":[],"extra":1}`, pause.ErrMalformed},
-		{"a member in another case", `{"schema_version":"1","Entries":[]}`, pause.ErrMalformed},
-		{"a repeated top member", `{"schema_version":"1","entries":[],"entries":[]}`, pause.ErrMalformed},
-		{"no entries", `{"schema_version":"1"}`, pause.ErrMalformed},
-		{"entries null", `{"schema_version":"1","entries":null}`, pause.ErrMalformed},
+		{"an unknown version", `{"schema_version":"3","entries":[]}`, pause.ErrVersion},
+		{"a version 1 file naming a run", strings.Replace(docJSON(entryJSON("a", runScope, "")), `"2"`, `"1"`, 1), pause.ErrMalformed},
+		{"a version 1 file naming an agent", strings.Replace(docJSON(entryJSON("a", agentScope, "")), `"2"`, `"1"`, 1), pause.ErrMalformed},
+		{"a version 1 file naming a principal", strings.Replace(docJSON(entryJSON("a", principalScope, "")), `"2"`, `"1"`, 1), pause.ErrMalformed},
+		{"a version 0 file", `{"schema_version":"0","entries":[]}`, pause.ErrVersion},
+		{"an unknown top member", `{"schema_version":"2","entries":[],"extra":1}`, pause.ErrMalformed},
+		{"a member in another case", `{"schema_version":"2","Entries":[]}`, pause.ErrMalformed},
+		{"a repeated top member", `{"schema_version":"2","entries":[],"entries":[]}`, pause.ErrMalformed},
+		{"no entries", `{"schema_version":"2"}`, pause.ErrMalformed},
+		{"entries null", `{"schema_version":"2","entries":null}`, pause.ErrMalformed},
 		{"an unknown entry member", docJSON(`{"id":"a","scope":{"kind":"global"},"created_at":"2026-09-24T10:00:00Z","reason":"","note":""}`), pause.ErrMalformed},
 		{"a repeated entry member", docJSON(`{"id":"a","id":"b","scope":{"kind":"global"},"created_at":"2026-09-24T10:00:00Z","reason":""}`), pause.ErrMalformed},
 		{"no reason", docJSON(`{"id":"a","scope":{"kind":"global"},"created_at":"2026-09-24T10:00:00Z"}`), pause.ErrMalformed},
@@ -92,8 +122,19 @@ func TestParseRefusesTheWholeDocument(t *testing.T) {
 		{"a duplicate id", docJSON(ok, entryJSON("a", globalScope, "")), pause.ErrMalformed},
 		{"a control character in a reason", docJSON(entryJSON("a", globalScope, "line\nbreak")), pause.ErrMalformed},
 		{"a format character in a reason", docJSON(entryJSON("a", globalScope, "right\u202eto left")), pause.ErrMalformed},
-		{"an unknown scope", docJSON(entryJSON("a", `{"kind":"agent","agent":"x"}`, "")), pause.ErrMalformed},
-		{"a principal scope", docJSON(entryJSON("a", `{"kind":"principal"}`, "")), pause.ErrMalformed},
+		{"an unknown scope", docJSON(entryJSON("a", `{"kind":"tenant","id":"x"}`, "")), pause.ErrMalformed},
+		{"an agent named by another member", docJSON(entryJSON("a", `{"kind":"agent","agent":"x"}`, "")), pause.ErrMalformed},
+		{"a principal scope without its id", docJSON(entryJSON("a", `{"kind":"principal"}`, "")), pause.ErrMalformed},
+		{"a run id in upper case", docJSON(entryJSON("a", `{"kind":"run","id":"RUN-`+strings.Repeat("A", 32)+`"}`, "")), pause.ErrMalformed},
+		{"a run id one digit short", docJSON(entryJSON("a", `{"kind":"run","id":"run-`+strings.Repeat("a", 31)+`"}`, "")), pause.ErrMalformed},
+		{"a run id that is no run id", docJSON(entryJSON("a", `{"kind":"run","id":"run-a"}`, "")), pause.ErrMalformed},
+		{"a run scope with an empty id", docJSON(entryJSON("a", `{"kind":"run","id":""}`, "")), pause.ErrMalformed},
+		{"an agent scope with an id led by a space", docJSON(entryJSON("a", `{"kind":"agent","id":" orders-assistant"}`, "")), pause.ErrMalformed},
+		{"a run scope with a provider", docJSON(entryJSON("a", `{"kind":"run","id":"run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","provider":"orders"}`, "")), pause.ErrMalformed},
+		{"an agent scope with a name", docJSON(entryJSON("a", `{"kind":"agent","id":"x","action":"tool","name":"refund"}`, "")), pause.ErrMalformed},
+		{"a global scope with an id", docJSON(entryJSON("a", `{"kind":"global","id":"run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}`, "")), pause.ErrMalformed},
+		{"a provider scope with an id", docJSON(entryJSON("a", `{"kind":"provider","provider":"orders","id":"run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}`, "")), pause.ErrMalformed},
+		{"a tool scope with an id", docJSON(entryJSON("a", `{"kind":"action","action":"tool","provider":"orders","name":"refund","id":"x"}`, "")), pause.ErrMalformed},
 		{"an unknown scope member", docJSON(entryJSON("a", `{"kind":"global","tenant":"t"}`, "")), pause.ErrMalformed},
 		{"a global scope with an empty member", docJSON(entryJSON("a", `{"kind":"global","provider":""}`, "")), pause.ErrMalformed},
 		{"a global scope with a provider", docJSON(entryJSON("a", `{"kind":"global","provider":"orders"}`, "")), pause.ErrMalformed},
@@ -129,6 +170,9 @@ func TestParseHoldsEveryBound(t *testing.T) {
 		{"id bytes", func(n int) string { return docJSON(entryJSON(strings.Repeat("i", n), globalScope, "")) }, 64, pause.ErrMalformed},
 		{"provider bytes", func(n int) string {
 			return docJSON(entryJSON("a", `{"kind":"provider","provider":"`+strings.Repeat("p", n)+`"}`, ""))
+		}, 256, pause.ErrMalformed},
+		{"scope id bytes", func(n int) string {
+			return docJSON(entryJSON("a", `{"kind":"principal","id":"`+strings.Repeat("u", n)+`"}`, ""))
 		}, 256, pause.ErrMalformed},
 		{"name bytes", func(n int) string {
 			return docJSON(entryJSON("a", `{"kind":"action","action":"tool","provider":"orders","name":"`+strings.Repeat("n", n)+`"}`, ""))
@@ -218,9 +262,71 @@ func TestScopeMatches(t *testing.T) {
 		{prompt, "prompts", "orders", "summary", true},
 	}
 	for _, c := range cases {
-		if got := c.scope.Matches(c.kind, c.provider, c.name); got != c.want {
+		if got := c.scope.Matches(c.kind, c.provider, c.name, pause.Vouched{}); got != c.want {
 			t.Errorf("%+v.Matches(%q, %q, %q) = %v, want %v", c.scope, c.kind, c.provider, c.name, got, c.want)
 		}
+	}
+}
+
+// TestAnIdentityScopeMatchesOnlyTheFieldItNames: a run scope matches the
+// vouched run's id or its root, an agent or a principal scope the vouched
+// field of its name, and an absent field matches. No scope reads another
+// field's value, and a call's kind, provider and name never widen or narrow
+// an identity scope.
+func TestAnIdentityScopeMatchesOnlyTheFieldItNames(t *testing.T) {
+	who := pause.Vouched{Run: "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Root: "run-11111111111111111111111111111111", Principal: "agent-runner", Agent: "orders-assistant"}
+	with := func(edit func(*pause.Vouched)) pause.Vouched {
+		v := who
+		edit(&v)
+		return v
+	}
+	run := pause.Scope{Kind: "run", ID: "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+	root := pause.Scope{Kind: "run", ID: "run-11111111111111111111111111111111"}
+	agent := pause.Scope{Kind: "agent", ID: "orders-assistant"}
+	principal := pause.Scope{Kind: "principal", ID: "agent-runner"}
+	cases := []struct {
+		name  string
+		scope pause.Scope
+		who   pause.Vouched
+		want  bool
+	}{
+		{"run: its own id", run, who, true},
+		{"run: another run under the same root", run, with(func(v *pause.Vouched) { v.Run = "run-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }), false},
+		{"run: no vouched run", run, pause.Vouched{Principal: "agent-runner", Agent: "orders-assistant"}, true},
+		{"run: a child by its root's id", root, with(func(v *pause.Vouched) { v.Run = "run-c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1" }), true},
+		{"run: another root", root, with(func(v *pause.Vouched) { v.Root = "run-22222222222222222222222222222222" }), false},
+		{"run: an id in the agent field", run, with(func(v *pause.Vouched) {
+			v.Run, v.Agent = "run-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+		}), false},
+		{"run: an id in the principal field", run, with(func(v *pause.Vouched) {
+			v.Run, v.Principal = "run-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+		}), false},
+		{"agent: its own agent", agent, who, true},
+		{"agent: another agent", agent, with(func(v *pause.Vouched) { v.Agent = "billing-assistant" }), false},
+		{"agent: no vouched agent", agent, with(func(v *pause.Vouched) { v.Agent = "" }), true},
+		{"agent: the id as the principal", agent, with(func(v *pause.Vouched) { v.Agent, v.Principal = "x", "orders-assistant" }), false},
+		{"agent: the id as the run", agent, with(func(v *pause.Vouched) { v.Agent, v.Run = "x", "orders-assistant" }), false},
+		{"agent: the id as the root", agent, with(func(v *pause.Vouched) { v.Agent, v.Root = "x", "orders-assistant" }), false},
+		{"principal: its own principal", principal, who, true},
+		{"principal: another principal", principal, with(func(v *pause.Vouched) { v.Principal = "someone-else" }), false},
+		{"principal: no vouched principal", principal, with(func(v *pause.Vouched) { v.Principal = "" }), true},
+		{"principal: the id as the agent", principal, with(func(v *pause.Vouched) { v.Principal, v.Agent = "x", "agent-runner" }), false},
+		{"principal: the id as the root", principal, with(func(v *pause.Vouched) { v.Principal, v.Root = "x", "agent-runner" }), false},
+		{"global: whoever calls", pause.Scope{Kind: "global"}, with(func(v *pause.Vouched) { v.Agent = "anyone" }), true},
+	}
+	for _, c := range cases {
+		for _, call := range [][3]string{{"tool", "orders", "refund"}, {"prompt", "", ""}, {"", "billing", "x"}} {
+			if got := c.scope.Matches(call[0], call[1], call[2], c.who); got != c.want {
+				t.Errorf("%s: %+v.Matches(%q, %+v) = %v, want %v", c.name, c.scope, call, c.who, got, c.want)
+			}
+		}
+	}
+	provider := pause.Scope{Kind: "provider", Provider: "orders"}
+	if provider.Matches("tool", "billing", "x", who) {
+		t.Error("a vouched identity widened a provider scope")
+	}
+	if !provider.Matches("tool", "orders", "x", pause.Vouched{Agent: "billing-assistant"}) {
+		t.Error("a vouched identity narrowed a provider scope")
 	}
 }
 
@@ -230,6 +336,9 @@ func TestMarshalReadsBack(t *testing.T) {
 	doc := pause.Document{Entries: []pause.Entry{
 		{ID: "a", Scope: pause.Scope{Kind: "global"}, CreatedAt: time.Date(2026, 9, 24, 10, 0, 0, 5, time.FixedZone("x", 3600)), Reason: "<incident> & \"quotes\""},
 		{ID: "b", Scope: pause.Scope{Kind: "action", Action: "tool", Provider: "orders", Name: "refund"}, CreatedAt: time.Date(2026, 9, 24, 11, 0, 0, 0, time.UTC)},
+		{ID: "c", Scope: pause.Scope{Kind: "run", ID: "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}, CreatedAt: time.Unix(1, 0)},
+		{ID: "d", Scope: pause.Scope{Kind: "agent", ID: "orders-assistant"}, CreatedAt: time.Unix(2, 0)},
+		{ID: "e", Scope: pause.Scope{Kind: "principal", ID: "agent-runner"}, CreatedAt: time.Unix(3, 0)},
 	}}
 	out, err := pause.Marshal(doc)
 	if err != nil {
@@ -252,6 +361,9 @@ func TestMarshalReadsBack(t *testing.T) {
 	for _, bad := range []pause.Document{
 		{Entries: []pause.Entry{{ID: "a", Scope: pause.Scope{Kind: "global"}}}},
 		{Entries: []pause.Entry{{ID: "a", Scope: pause.Scope{Kind: "agent"}, CreatedAt: time.Unix(1, 0)}}},
+		{Entries: []pause.Entry{{ID: "a", Scope: pause.Scope{Kind: "run", ID: "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Provider: "orders"}, CreatedAt: time.Unix(1, 0)}}},
+		{Entries: []pause.Entry{{ID: "a", Scope: pause.Scope{Kind: "global", ID: "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}, CreatedAt: time.Unix(1, 0)}}},
+		{Entries: []pause.Entry{{ID: "a", Scope: pause.Scope{Kind: "tenant", ID: "t"}, CreatedAt: time.Unix(1, 0)}}},
 		{Entries: []pause.Entry{
 			{ID: "a", Scope: pause.Scope{Kind: "global"}, CreatedAt: time.Unix(1, 0)},
 			{ID: "a", Scope: pause.Scope{Kind: "global"}, CreatedAt: time.Unix(1, 0)},

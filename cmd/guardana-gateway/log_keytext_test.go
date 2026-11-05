@@ -127,7 +127,7 @@ func TestRunLogWithholdsAPauseIDHoldingKeyText(t *testing.T) {
 func TestRunLogWithholdsKeyTextFromThePauseFile(t *testing.T) {
 	_, body := fixtureKeyText(t)
 	for name, c := range map[string]struct{ doc, line string }{
-		"unknown member": {`{"schema_version":"1","entries":[],"` + body + `":1}`, "pause state unknown"},
+		"unknown member": {`{"schema_version":"2","entries":[],"` + body + `":1}`, "pause state unknown"},
 		"version":        {`{"schema_version":"` + body + `","entries":[]}`, "pause state unknown"},
 		"entry id":       {pauseDocument(pauseEntry(body, scopeElsewhere)), "pause state changed"},
 	} {

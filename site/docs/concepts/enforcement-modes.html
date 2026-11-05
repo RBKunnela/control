@@ -329,10 +329,10 @@ pause, a stop or a halt that comes while the ask waits blocks that call. The pau
 policy and the clock are taken once more, and the halts judged again, right
 before each step that cannot be undone, as the next section says.</p>
 <h2 id="pausing-calls">Pausing calls</h2>
-<p>An operator stops one tool, one upstream or everything without a restart by
-writing an entry into the pause file <code>pause.file</code> names, with
-<code>guardana-control pause add</code>, and lifts it with <code>pause remove</code>. An entry has
-one of three scopes:</p>
+<p>An operator stops one tool, one upstream, one run, one agent, one principal
+or everything without a restart by writing an entry into the pause file
+<code>pause.file</code> names, with <code>guardana-control pause add</code>, and lifts it with
+<code>pause remove</code>. An entry has one of six scopes:</p>
 <ul>
 <li><code>global</code>: every call.</li>
 <li><code>provider</code>: every call to one upstream, by its configured name.</li>
@@ -341,20 +341,37 @@ tool, the name the plane routes by. A prompt and a resource are paused by
 their upstream only: the plane routes either by its upstream alone, so its
 name or URI is the client's to spell and an exact match could be
 sidestepped. The format refuses a name on either.</li>
+<li><code>run</code>: the opened run of that id, or every run whose root it is, named by
+the id <code>runs open</code> printed. A run's root is the top of its tree, so naming
+a child pauses that child alone.</li>
+<li><code>agent</code> and <code>principal</code>: every call of that agent or principal id.</li>
 </ul>
+<p>A run, an agent and a principal are matched only against what the plane
+vouches for: the opened run the listener resolved from its token, and the
+agent and principal the listener's configuration names. A run id in the run
+context, <code>_meta</code> or <code>clientInfo</code> neither aims a pause nor escapes one.</p>
 <p>A field the call does not carry matches, as an absent input restricts: a call
 nothing routes to an upstream is covered by every provider entry, and by an
-action entry of its kind and, for a tool, its name. No scope reads anything
-else the client wrote. A pause sits above every mode: it blocks in <code>OBSERVE</code>,
+action entry of its kind and, for a tool, its name; a call under no opened
+run, a local run's included, is covered by every run entry. No scope reads
+anything else the client wrote. A pause sits above every mode: it blocks in <code>OBSERVE</code>,
 reads included, and whatever the policy decided. A file holds at most 64
 entries; a full one refuses another, a global one included, until an entry is
 removed.</p>
-<p>An entry naming an upstream the configuration lacks, or a tool its upstream
-does not list, pauses only calls that carry no provider, which are calls to
-names no upstream lists. <code>doctor</code>, the <code>unlisted_only</code> member of <code>/healthz</code>'s
-<code>pause</code> and the plane's log name every such entry; a tool is judged once the
-upstreams have answered. The log names them at warn at start and with each
-change of the file.</p>
+<p>An entry that pauses less than it names is never silent. The <code>coverage</code>
+member of <code>/healthz</code>'s <code>pause</code> says, per entry id, whether it covers <code>all</code>,
+<code>some</code> or <code>none</code> of the plane's calls, and <code>doctor</code> counts them. Every call
+carries the listener's agent and principal, so an agent or principal entry
+covers all or none of them, and <code>doctor</code> names each that is not the
+listener's. A run entry covers all on a plane without <code>runs.dir</code>. On one
+with it, it covers some while its run is the plane's project's, unexpired and
+open, or a closed root whose runs stay open; otherwise none, and
+<code>coverage_causes</code> says why. An entry naming an upstream the configuration lacks, or a tool
+its upstream does not list, is <code>none</code>: it pauses only calls that carry no
+provider, which are calls to names no upstream lists. <code>doctor</code>, the
+<code>unlisted_only</code> member and the plane's log name every such entry; a tool is
+judged once the upstreams have answered. The log names them at warn at start
+and with each change of the file.</p>
 <p>The plane reads the file every <code>pause.poll_interval</code> into a snapshot, and once
 more before it listens, since a slow start can outlast the first read. A call
 takes the snapshot, then reads the clock it judges the snapshot's age by, and

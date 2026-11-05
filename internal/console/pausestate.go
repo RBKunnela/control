@@ -36,6 +36,7 @@ type scopeReply struct {
 	Provider string `json:"provider"`
 	Action   string `json:"action"`
 	Name     string `json:"name"`
+	ID       string `json:"id"`
 }
 
 // pauseState reads the file with every check a plane's read makes, so a file
@@ -58,6 +59,7 @@ func pauseState(file string) *pauseReply {
 			Provider: keytext.Printable(e.Scope.Provider),
 			Action:   keytext.Printable(e.Scope.Action),
 			Name:     keytext.Printable(e.Scope.Name),
+			ID:       keytext.Printable(e.Scope.ID),
 		}
 		created := e.CreatedAt.UTC().Format(time.RFC3339)
 		reason := keytext.Printable(e.Reason)
@@ -85,6 +87,10 @@ func scopeText(s scopeReply) string {
 			return "tool " + s.Name + " of " + s.Provider
 		}
 		return "every " + s.Action + " of " + s.Provider
+	case string(pause.ScopeRun):
+		return "run " + s.ID + ", or every run under it as their root"
+	case string(pause.ScopeAgent), string(pause.ScopePrincipal):
+		return "every call of " + s.Kind + " " + s.ID
 	}
 	return "scope " + s.Kind
 }

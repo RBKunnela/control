@@ -14,14 +14,14 @@ import (
 )
 
 // The names these commands report themselves under, and how the help spells
-// what follows them. The add form is as short as it is because a help line
+// what follows them. The add form is cut in two lines because a help line
 // wider than a terminal wraps and reads as two commands.
 const (
 	pauseInitName   = "pause init"
 	pauseAddName    = "pause add"
 	pauseRemoveName = "pause remove"
 	pauseListName   = "pause list"
-	pauseAddForm    = "--provider <p> [--action <k> [--name <n>]]|--global [--reason <r>] <f>"
+	pauseAddForm    = "(--global | --provider <p> [--action <k> [--name <n>]]\n      | --run <id> | --agent <id> | --principal <id>) [--reason <r>] <f>"
 	pauseRemoveForm = "<file> <id>"
 )
 
@@ -38,6 +38,7 @@ const pauseLockWait = 10 * time.Second
 type scopeFlags struct {
 	global                         bool
 	provider, action, name, reason string
+	run, agent, principal          string
 }
 
 func pauseAddFlags(command string, out io.Writer) (*flag.FlagSet, *scopeFlags) {
@@ -47,6 +48,9 @@ func pauseAddFlags(command string, out io.Writer) (*flag.FlagSet, *scopeFlags) {
 	flags.StringVar(&s.provider, "provider", "", "the upstream, by its configured name, whose calls to pause")
 	flags.StringVar(&s.action, "action", "", "tool, prompt or resource: pause only calls of this kind to the provider")
 	flags.StringVar(&s.name, "name", "", "the tool, by the name the plane routes by; a prompt or a resource is paused by its provider only")
+	flags.StringVar(&s.run, "run", "", "the opened run whose calls to pause, or the root whose every run to pause")
+	flags.StringVar(&s.agent, "agent", "", "the agent, as the listener's configuration names it, whose calls to pause")
+	flags.StringVar(&s.principal, "principal", "", "the principal, as the listener's configuration names it, whose calls to pause")
 	flags.StringVar(&s.reason, "reason", "", "why, for whoever lifts the pause; it decides nothing")
 	return flags, &s
 }
@@ -65,7 +69,9 @@ func pauseRemoveFlagSet(command string, out io.Writer) *flag.FlagSet {
 // scope reads the one scope the flags name, or says why they name none or
 // more than one. The values themselves are judged by internal/pause.
 func (s scopeFlags) scope() (pause.Scope, string) {
-	const oneScope = "names one scope: --global, --provider <name>, or --action <kind> with --provider <name>"
+	if scope, problem, ok := s.identityScope(); ok {
+		return scope, problem
+	}
 	switch {
 	case s.global && s.provider == "" && s.action == "" && s.name == "":
 		return pause.Scope{Kind: pause.ScopeGlobal}, ""
@@ -77,6 +83,38 @@ func (s scopeFlags) scope() (pause.Scope, string) {
 		return pause.Scope{Kind: pause.ScopeProvider, Provider: s.provider}, ""
 	}
 	return pause.Scope{Kind: pause.ScopeAction, Provider: s.provider, Action: s.action, Name: s.name}, ""
+}
+
+const oneScope = "names one scope: --global, --provider <name>, --action <kind> with --provider <name>, --run <id>, --agent <id> or --principal <id>"
+
+// identityScope is the run, agent or principal scope the flags name, or why
+// they name it beside another; ok is false when they name none of the three.
+func (s scopeFlags) identityScope() (pause.Scope, string, bool) {
+	kind, id, named := s.identity()
+	switch {
+	case named == 0:
+		return pause.Scope{}, "", false
+	case named > 1 || s.global || s.provider+s.action+s.name != "":
+		return pause.Scope{}, oneScope, true
+	}
+	return pause.Scope{Kind: kind, ID: id}, "", true
+}
+
+// identity is the run, agent or principal scope the flags name, and how many
+// of the three they set. An empty value is no scope, as for --provider.
+func (s scopeFlags) identity() (pause.ScopeKind, string, int) {
+	var kind pause.ScopeKind
+	var id string
+	named := 0
+	for _, f := range []struct {
+		kind pause.ScopeKind
+		id   string
+	}{{pause.ScopeRun, s.run}, {pause.ScopeAgent, s.agent}, {pause.ScopePrincipal, s.principal}} {
+		if f.id != "" {
+			kind, id, named = f.kind, f.id, named+1
+		}
+	}
+	return kind, id, named
 }
 
 func pauseInitCommand(args []string, stdout, stderr io.Writer) int {
@@ -157,6 +195,8 @@ func scopeText(s pause.Scope) string {
 		return "global"
 	case pause.ScopeProvider:
 		return "provider " + s.Provider
+	case pause.ScopeRun, pause.ScopeAgent, pause.ScopePrincipal:
+		return string(s.Kind) + " " + s.ID
 	}
 	if s.Name == "" {
 		return s.Action + " " + s.Provider

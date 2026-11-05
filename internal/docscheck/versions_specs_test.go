@@ -101,7 +101,10 @@ func versionSpecs() map[string]versionSpec {
 			},
 		},
 		"Pause file": {
-			cites: []versionCite{{"internal/pause/document.go#SchemaVersion", writes | reads}},
+			cites: []versionCite{
+				{"internal/pause/document.go#SchemaVersion", writes | reads},
+				{"internal/pause/document.go#subsetVersion", reads},
+			},
 			refuses: func(v string) (bool, error) {
 				_, err := pause.Parse([]byte(`{"schema_version":` + strconv.Quote(v) + `,"entries":[]}`))
 				return errors.Is(err, pause.ErrVersion), nil

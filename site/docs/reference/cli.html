@@ -205,11 +205,11 @@ reason over its bound — each on its own line, naming what to do about it.</p>
 <code>pause.file</code> (<a href="/docs/adr/0019-an-operator-can-pause-calls">ADR-0019</a>), and
 <a href="/docs/concepts/enforcement-modes">concepts/enforcement-modes.md</a> says what a
 pause does to a call. <code>pause init</code> creates the file, pausing nothing, and
-refuses a name that is taken. <code>pause add</code> takes exactly one scope: <code>--global</code>,
-every call; <code>--provider &lt;p&gt;</code>, every call to that upstream by its configured
-name; or <code>--action &lt;k&gt;</code> with <code>--provider &lt;p&gt;</code>, where <code>&lt;k&gt;</code> is <code>tool</code>, <code>prompt</code>
-or <code>resource</code> and a tool also takes <code>--name &lt;n&gt;</code>, the name the plane routes
-by. A prompt or a resource takes no name. <code>&lt;f&gt;</code> is the pause file, relative to the working directory. It prints
+refuses a name that is taken. <code>pause add</code> takes exactly one scope: <code>--global</code>;
+<code>--provider &lt;p&gt;</code>, an upstream by its configured name; <code>--action &lt;k&gt;</code>
+(<code>tool</code>, <code>prompt</code> or <code>resource</code>) with <code>--provider &lt;p&gt;</code>, and for a tool
+<code>--name &lt;n&gt;</code>, the name the plane routes by; <code>--run &lt;id&gt;</code>; <code>--agent &lt;id&gt;</code>; or
+<code>--principal &lt;id&gt;</code>, each as <a href="/docs/concepts/enforcement-modes#pausing-calls">pausing calls</a> says. <code>&lt;f&gt;</code> is the pause file, relative to the working directory. It prints
 only the id it drew for the entry, and <code>pause remove &lt;file&gt; &lt;id&gt;</code>
 takes that id; removing the last entry leaves a file pausing nothing,
 because a missing file blocks every call. <code>pause list</code> prints one line per
@@ -250,7 +250,8 @@ profile's statuses, <a href="/docs/extending/runtime-profiles">extending/runtime
   guardana-control approvals approve --approver-id &lt;id&gt; [--reason &lt;text&gt;] &lt;dir&gt; &lt;approval-id&gt;
   guardana-control approvals reject --approver-id &lt;id&gt; [--reason &lt;text&gt;] &lt;dir&gt; &lt;approval-id&gt;
   guardana-control pause init &lt;file&gt;
-  guardana-control pause add --provider &lt;p&gt; [--action &lt;k&gt; [--name &lt;n&gt;]]|--global [--reason &lt;r&gt;] &lt;f&gt;
+  guardana-control pause add (--global | --provider &lt;p&gt; [--action &lt;k&gt; [--name &lt;n&gt;]]
+      | --run &lt;id&gt; | --agent &lt;id&gt; | --principal &lt;id&gt;) [--reason &lt;r&gt;] &lt;f&gt;
   guardana-control pause remove &lt;file&gt; &lt;id&gt;
   guardana-control pause list &lt;file&gt;
   guardana-control runs open --project --tenant --principal-type --principal --agent

@@ -17,12 +17,14 @@ func FuzzParse(f *testing.F) {
 		docJSON(),
 		docJSON(entryJSON("a", globalScope, "r"), entryJSON("b", providerScope, "")),
 		docJSON(entryJSON("c", toolScope, "<&>"), entryJSON("d", resourceScope, "é")),
-		`{"schema_version":"1","entries":[],"entries":[]}`,
-		`{"schema_version":"2","entries":[]}`,
+		`{"schema_version":"2","entries":[],"entries":[]}`,
+		`{"schema_version":"1","entries":[]}`,
+		docJSON(entryJSON("r", runScope, ""), entryJSON("g", agentScope, ""), entryJSON("u", principalScope, "")),
+		docJSON(entryJSON("a", `{"kind":"run","id":"run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","provider":"orders"}`, "")),
 		docJSON(entryJSON("a", `{"kind":"action","action":"resource","provider":"f","name":"x"}`, "")),
 		docJSON(entryJSON("a", `{"kind":"action","action":"prompt","provider":"f","name":"x"}`, "")),
 		docJSON(entryJSON("a", `{"kind":"action","action":"prompt","provider":"f"}`, "<\u2028>")),
-		`{"schema_version":"1","entries":null}`,
+		`{"schema_version":"2","entries":null}`,
 		strings.Repeat(" ", 16) + docJSON() + " x",
 	} {
 		f.Add([]byte(seed))

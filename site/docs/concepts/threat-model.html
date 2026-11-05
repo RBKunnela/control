@@ -247,8 +247,9 @@ is refused (<code>internal/gateway/flow.go</code>; <code>TestAProducersFlowTagIs
 <li>After a run took in untrusted content, a policy's <code>flow</code> rule blocks calls to
 untrusted destinations (<code>internal/gateway/flow.go</code>;
 <code>TestTheToxicFlowIsDeniedAcrossSessions</code> in <code>internal/gateway/e2e/</code>).</li>
-<li>An operator can pause every call, one upstream or one tool
-(<code>internal/gateway/pause.go</code>; <code>TestAPauseAtEachScopeBlocksExactlyItsCalls</code>).</li>
+<li>An operator can pause every call, an upstream, a tool, or one run, agent
+or principal (<code>internal/gateway/pause.go</code>;
+<code>TestAPauseAtEachScopeBlocksExactlyItsCalls</code>).</li>
 <li>A policy counts as current only while a signed freshness statement bound to
 its bundle is within its budget; without one a mode that enforces blocks
 material calls. The plane's serial floor is on disk, so a restart onto an
@@ -276,8 +277,7 @@ around it. Which network paths and credentials an agent holds is the
 operator's to arrange.</li>
 <li>It does not know who the end user is. No configuration key wires an
 authenticator, so every call on a listener is the one configured principal
-(<a href="/docs/reference/mcp-coverage">MCP coverage</a>), and a pause cannot name a
-principal, an agent or a tenant.</li>
+(<a href="/docs/reference/mcp-coverage">MCP coverage</a>), and a pause names no tenant.</li>
 <li>The flow state is a lower bound: a run starts clean, and the user's prompt,
 the tools' descriptions and tools outside the plane are not tracked
 (<a href="/docs/adr/0021-a-run-carries-what-it-took-in">ADR-0021</a>).</li>

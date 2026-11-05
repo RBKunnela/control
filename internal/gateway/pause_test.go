@@ -43,7 +43,7 @@ func pauseFile(t *testing.T, scopes ...string) string {
 		t.Fatal(err)
 	}
 	path := filepath.Join(dir, "pause.json")
-	body := `{"schema_version":"1","entries":[` + strings.Join(entries, ",") + `]}`
+	body := `{"schema_version":"2","entries":[` + strings.Join(entries, ",") + `]}`
 	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}

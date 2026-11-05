@@ -125,7 +125,8 @@ func (c *call) blockIfCovered() bool {
 // took when it started. A stop matches the opened run as the listener
 // resolved it and the plane checked it against the envelope, never a run id
 // the agent sent or a local run the plane minted: a call with no opened run
-// asks about the empty run id, which no line of a list can name.
+// asks about the empty run id, which no line of a list can name. A pause
+// matches the same run, which a run entry covers when absent.
 func (c *call) planeState() planeState {
 	sink, mismatch, runHalt := c.p.counts.halts(c.flow.openedID())
 	action := c.in.Envelope.GetAction()
@@ -139,7 +140,7 @@ func (c *call) planeState() planeState {
 		mode:         c.p.cfg.Mode,
 		material:     contract.IsMaterial(action.GetEffect()),
 		unclassified: translationOf(c.in) == translationUnclassified,
-		paused:       state == pause.Paused && c.pause.Covers(action.GetKind(), action.GetProvider(), action.GetName()),
+		paused:       state == pause.Paused && c.pause.Covers(action.GetKind(), action.GetProvider(), action.GetName(), c.vouched()),
 		pauseUnknown: state == pause.Unknown,
 		stopped:      stops == reaction.Stopped,
 		stopUnknown:  stops == reaction.Unknown,
@@ -148,4 +149,16 @@ func (c *call) planeState() planeState {
 		runHalt:      runHalt,
 		runRefused:   c.flow.kind == flowUnnamed || c.flow.kind == flowUnavailable,
 	}
+}
+
+// vouched is the identity the plane vouches for the call: the opened run the
+// listener resolved and the plane held to the envelope's identity, and the
+// principal and agent the adapter set from the listener's configuration.
+// Neither the run context nor anything else the client sent reaches it.
+func (c *call) vouched() pause.Vouched {
+	who := pause.Vouched{Principal: c.in.Envelope.GetPrincipal().GetId(), Agent: c.in.Envelope.GetAgent().GetId()}
+	if run := c.flow.opened; run != nil {
+		who.Run, who.Root = run.ID, run.Root
+	}
+	return who
 }

@@ -140,14 +140,15 @@ func (s Snapshot) At(now time.Time) Snapshot {
 }
 
 // Covers reports whether an entry in force covers a call of the action kind,
-// provider and name the envelope carries. Only a Paused snapshot covers
-// anything; whether an Unknown one blocks is the caller's rule, not a match.
-func (s Snapshot) Covers(kind, provider, name string) bool {
+// provider and name the envelope carries, made under the identity who the
+// plane vouches for. Only a Paused snapshot covers anything; whether an
+// Unknown one blocks is the caller's rule, not a match.
+func (s Snapshot) Covers(kind, provider, name string, who Vouched) bool {
 	if s.state != Paused {
 		return false
 	}
 	for _, e := range s.entries {
-		if e.Scope.Matches(kind, provider, name) {
+		if e.Scope.Matches(kind, provider, name, who) {
 			return true
 		}
 	}

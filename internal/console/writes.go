@@ -159,7 +159,7 @@ func (p *page) pause(w http.ResponseWriter, r *http.Request, body any) {
 	b := body.(*pauseBody)
 	e := pause.Entry{
 		ID:        rand.Text(),
-		Scope:     pause.Scope{Kind: pause.ScopeKind(b.Scope.Kind), Provider: b.Scope.Provider, Action: b.Scope.Action, Name: b.Scope.Name},
+		Scope:     pause.Scope{Kind: pause.ScopeKind(b.Scope.Kind), Provider: b.Scope.Provider, Action: b.Scope.Action, Name: b.Scope.Name, ID: b.Scope.ID},
 		CreatedAt: p.now().UTC(),
 		Reason:    b.Reason,
 	}

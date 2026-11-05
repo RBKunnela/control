@@ -96,7 +96,7 @@ func addTwo(t *testing.T, path string) {
 		t.Errorf("entries = %v, want [p1 p2]", got)
 	}
 	s := pause.Read(path, at(), interval)
-	if s.State() != pause.Paused || !s.Covers("tool", "payments", "x") {
+	if s.State() != pause.Paused || !s.Covers("tool", "payments", "x", pause.Vouched{}) {
 		t.Errorf("after two adds: %s, and the global entry covers nothing", s.State())
 	}
 }
@@ -107,7 +107,7 @@ func addTwo(t *testing.T, path string) {
 func TestTheWriterRefusesWhatThePlaneRefuses(t *testing.T) {
 	ctx := context.Background()
 	add := entry("p1", pause.Scope{Kind: "global"})
-	broken := dirWith(t, `{"schema_version":"1","entries":[`, 0o600)
+	broken := dirWith(t, `{"schema_version":"2","entries":[`, 0o600)
 	if err := pause.Add(ctx, broken, add); !errors.Is(err, pause.ErrMalformed) {
 		t.Errorf("Add over a malformed file = %v, want ErrMalformed", err)
 	}

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -20,16 +21,21 @@ import (
 // Pause documents as the file spells them, written byte for byte so a case
 // never takes its input from the writer it is testing against.
 const (
-	pauseClear       = `{"schema_version":"1","entries":[]}`
+	pauseClear       = `{"schema_version":"2","entries":[]}`
 	pauseEntryFormat = `{"id":%q,"scope":%s,"created_at":"2026-09-24T10:00:00Z","reason":"the reason is never printed"}`
 	scopeGlobal      = `{"kind":"global"}`
 	scopeOrders      = `{"kind":"provider","provider":"orders"}`
 	scopeElsewhere   = `{"kind":"provider","provider":"billing"}`
 	scopeReadOrder   = `{"kind":"action","action":"tool","provider":"orders","name":"read_order"}`
+	scopeRun         = `{"kind":"run","id":"run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}`
+	scopeOurAgent    = `{"kind":"agent","id":"orders-assistant"}`
+	scopeOtherAgent  = `{"kind":"agent","id":"billing-assistant"}`
+	scopeOurUser     = `{"kind":"principal","id":"agent-runner"}`
+	scopeOtherUser   = `{"kind":"principal","id":"someone-else"}`
 )
 
 func pauseDocument(entries ...string) string {
-	return `{"schema_version":"1","entries":[` + strings.Join(entries, ",") + `]}`
+	return `{"schema_version":"2","entries":[` + strings.Join(entries, ",") + `]}`
 }
 
 func pauseEntry(id, scope string) string { return fmt.Sprintf(pauseEntryFormat, id, scope) }
@@ -158,9 +164,9 @@ func unknownCauses() []unknownCause {
 			}
 		}},
 		{"one byte over the bound", "too large", write(over)},
-		{"not JSON", "malformed", write(`{"schema_version":"1","entries":[`)},
-		{"an unknown version", "unknown version", write(`{"schema_version":"2","entries":[]}`)},
-		{"an unknown member", "malformed", write(`{"schema_version":"1","entries":[],"paused":true}`)},
+		{"not JSON", "malformed", write(`{"schema_version":"2","entries":[`)},
+		{"an unknown version", "unknown version", write(`{"schema_version":"3","entries":[]}`)},
+		{"an unknown member", "malformed", write(`{"schema_version":"2","entries":[],"paused":true}`)},
 		{"an unknown scope", "malformed", write(pauseDocument(pauseEntry("p1", `{"kind":"principal","provider":"orders"}`)))},
 		{"a resource scope with a name", "malformed", write(pauseDocument(pauseEntry("p1", `{"kind":"action","action":"resource","provider":"orders","name":"file:///a"}`)))},
 	}
@@ -224,18 +230,30 @@ func TestDoctorNamesEveryUnknownCause(t *testing.T) {
 }
 
 // TestDoctorReportsThePauseFile: the path, the state, the number of entries,
-// and every entry naming an upstream this configuration does not have. A
-// reason is never printed.
+// how many cover all, some or none of the plane's calls, every entry naming
+// an upstream this configuration does not have and every agent or principal
+// entry naming another than the listener's. A reason is never printed.
 func TestDoctorReportsThePauseFile(t *testing.T) {
+	const billing = "       pause entry billing names upstream \"billing\", which this configuration does not have: " +
+		"it pauses only calls that carry no provider, which are calls to names no upstream lists"
 	for _, c := range []struct {
 		name     string
 		document string
 		want     string
-		unlisted []string
+		lines    []string
 	}{
-		{"clear", pauseClear, "is clear: 0 entry(ies), 0 naming an upstream this configuration does not have", nil},
+		{"clear", pauseClear, "is clear: 0 entry(ies), 0 naming an upstream this configuration does not have; " +
+			"0 covering all of this plane's calls, 0 some, 0 none", nil},
 		{"paused", pauseDocument(pauseEntry("all", scopeGlobal), pauseEntry("orders", scopeOrders), pauseEntry("billing", scopeElsewhere)),
-			"is paused: 3 entry(ies), 1 naming an upstream this configuration does not have", []string{"billing"}},
+			"is paused: 3 entry(ies), 1 naming an upstream this configuration does not have; " +
+				"1 covering all of this plane's calls, 1 some, 1 none", []string{billing}},
+		{"identities", pauseDocument(pauseEntry("run", scopeRun), pauseEntry("ours", scopeOurAgent), pauseEntry("theirs", scopeOtherAgent),
+			pauseEntry("me", scopeOurUser), pauseEntry("them", scopeOtherUser)),
+			"is paused: 5 entry(ies), 0 naming an upstream this configuration does not have; " +
+				"3 covering all of this plane's calls, 0 some, 2 none", []string{
+				`       pause entry theirs names agent "billing-assistant", which is not this listener's: it pauses no call this plane runs`,
+				`       pause entry them names principal "someone-else", which is not this listener's: it pauses no call this plane runs`,
+			}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			tr := newTree(t)
@@ -244,21 +262,19 @@ func TestDoctorReportsThePauseFile(t *testing.T) {
 			doctor(context.Background(), tr.config, &stdout, &stderr)
 			out := tr.output(stdout.String())
 			line := reportLine(out, "pause")
-			if want := "ok      pause         <tree>/pause/pause.json " + c.want + "; read every 250ms"; line != want {
+			if want := "ok      pause         <tree>/pause/pause.json " + c.want + ", before the upstreams check judges the tools; read every 250ms"; line != want {
 				t.Errorf("the pause line is\n%q, want\n%q", line, want)
 			}
 			if !strings.Contains(out, "ok      seams") {
 				t.Errorf("doctor did not build the plane over a readable pause file:\n%s", out)
 			}
-			for _, id := range c.unlisted {
-				want := "       pause entry " + id + ` names upstream "billing", which this configuration does not have: ` +
-					"it pauses only calls that carry no provider, which are calls to names no upstream lists\n"
-				if !strings.Contains(out, want) {
-					t.Errorf("doctor does not name entry %s:\n%s", id, out)
+			for _, want := range c.lines {
+				if !strings.Contains(out, want+"\n") {
+					t.Errorf("doctor does not say\n%s\nin:\n%s", want, out)
 				}
 			}
-			if n := strings.Count(out, "       pause entry "); n != len(c.unlisted) {
-				t.Errorf("doctor named %d entries, want %d:\n%s", n, len(c.unlisted), out)
+			if n := strings.Count(out, "       pause entry "); n != len(c.lines) {
+				t.Errorf("doctor named %d entries, want %d:\n%s", n, len(c.lines), out)
 			}
 			if strings.Contains(out, "never printed") {
 				t.Errorf("doctor printed a reason:\n%s", out)
@@ -289,7 +305,9 @@ func pauseMember(t *testing.T, body map[string]any) map[string]any {
 
 // TestHealthAnswersThePauseState: an operator's pause is not a problem and
 // answers 200, with the entries, whether one is global, the entries that
-// pause only calls to names no upstream lists, and the snapshot's age.
+// pause only calls to names no upstream lists, the share of the plane's calls
+// each entry covers, and the snapshot's age. On a plane with no runs.dir no
+// call is under an opened run, so a run entry covers all of them.
 func TestHealthAnswersThePauseState(t *testing.T) {
 	for _, c := range []struct {
 		name     string
@@ -298,10 +316,16 @@ func TestHealthAnswersThePauseState(t *testing.T) {
 		entries  float64
 		global   bool
 		unlisted []any
+		coverage map[string]any
 	}{
-		{"clear", pauseClear, "clear", 0, false, []any{}},
-		{"an upstream paused", pauseDocument(pauseEntry("orders", scopeOrders), pauseEntry("billing", scopeElsewhere)), "paused", 2, false, []any{"billing"}},
-		{"everything paused", pauseDocument(pauseEntry("tool", scopeReadOrder), pauseEntry("all", scopeGlobal)), "paused", 2, true, []any{}},
+		{"clear", pauseClear, "clear", 0, false, []any{}, map[string]any{}},
+		{"an upstream paused", pauseDocument(pauseEntry("orders", scopeOrders), pauseEntry("billing", scopeElsewhere)), "paused", 2, false,
+			[]any{"billing"}, map[string]any{"orders": "some", "billing": "none"}},
+		{"everything paused", pauseDocument(pauseEntry("tool", scopeReadOrder), pauseEntry("all", scopeGlobal)), "paused", 2, true,
+			[]any{}, map[string]any{"tool": "some", "all": "all"}},
+		{"identities", pauseDocument(pauseEntry("run", scopeRun), pauseEntry("ours", scopeOurAgent), pauseEntry("theirs", scopeOtherAgent),
+			pauseEntry("me", scopeOurUser), pauseEntry("them", scopeOtherUser)), "paused", 5, false,
+			[]any{}, map[string]any{"run": "all", "ours": "all", "theirs": "none", "me": "all", "them": "none"}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			tr := newTree(t)
@@ -322,6 +346,9 @@ func TestHealthAnswersThePauseState(t *testing.T) {
 			}
 			if unlisted, _ := member["unlisted_only"].([]any); !slices.Equal(unlisted, c.unlisted) {
 				t.Errorf("pause.unlisted_only = %v, want %v", member["unlisted_only"], c.unlisted)
+			}
+			if covers, ok := member["coverage"].(map[string]any); !ok || !maps.Equal(covers, c.coverage) {
+				t.Errorf("pause.coverage = %v, want %v", member["coverage"], c.coverage)
 			}
 			if _, set := member["cause"]; set {
 				t.Errorf("a readable state carries a cause: %v", member)

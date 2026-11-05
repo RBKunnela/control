@@ -125,8 +125,9 @@ What the plane does today:
 - After a run took in untrusted content, a policy's `flow` rule blocks calls to
   untrusted destinations (`internal/gateway/flow.go`;
   `TestTheToxicFlowIsDeniedAcrossSessions` in `internal/gateway/e2e/`).
-- An operator can pause every call, one upstream or one tool
-  (`internal/gateway/pause.go`; `TestAPauseAtEachScopeBlocksExactlyItsCalls`).
+- An operator can pause every call, an upstream, a tool, or one run, agent
+  or principal (`internal/gateway/pause.go`;
+  `TestAPauseAtEachScopeBlocksExactlyItsCalls`).
 - A policy counts as current only while a signed freshness statement bound to
   its bundle is within its budget; without one a mode that enforces blocks
   material calls. The plane's serial floor is on disk, so a restart onto an
@@ -154,8 +155,7 @@ What it does not do:
   operator's to arrange.
 - It does not know who the end user is. No configuration key wires an
   authenticator, so every call on a listener is the one configured principal
-  ([MCP coverage](../reference/mcp-coverage.md)), and a pause cannot name a
-  principal, an agent or a tenant.
+  ([MCP coverage](../reference/mcp-coverage.md)), and a pause names no tenant.
 - The flow state is a lower bound: a run starts clean, and the user's prompt,
   the tools' descriptions and tools outside the plane are not tracked
   ([ADR-0021](../adr/0021-a-run-carries-what-it-took-in.md)).

@@ -126,6 +126,15 @@ call <code>STOP_STATE_UNAVAILABLE</code> while its stop list is unknown, and the
 the plane's causes becomes <code>PAUSED</code>, <code>RUN_STOPPED</code>, <code>EXECUTED_ARGS_MISMATCH</code>,
 <code>LOCKDOWN</code>, <code>PAUSE_STATE_UNAVAILABLE</code>, <code>STOP_STATE_UNAVAILABLE</code>,
 <code>EVIDENCE_UNAVAILABLE</code>, <code>ACTION_UNCLASSIFIED</code>.</p>
+<p>Amended in 0.16: an entry may also name a <code>run</code>, by the id its runs directory
+gives it, an <code>agent</code> or a <code>principal</code>. Each is matched only against the
+identity the plane vouches for: the opened run the listener resolved from its
+token, or every run whose root it names, and the agent and principal the
+listener's configuration names, never anything the client sent. In place of
+refusing those scopes, <code>/healthz</code> and <code>doctor</code> say per entry whether it covers
+all, some or none of the plane's calls, and name each that covers none. A
+tenant is still no scope. The file is version <code>2</code>; version <code>1</code>, which names
+none of the three, is still read.</p>
 <h2 id="context">Context</h2>
 <p>The registry holds <code>PAUSED</code>, number 24, <code>DENY</code>, and nothing emits it. An
 operator who sees an agent misuse one tool can stop the plane, which stops

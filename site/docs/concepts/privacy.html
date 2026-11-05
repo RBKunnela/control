@@ -301,7 +301,7 @@ to the plane, no field of the contract holds it, and no adapter reads it.</p>
 </tr>
 <tr>
 <td><code>/metrics</code> and <code>/healthz</code></td>
-<td>counts and states; <code>/healthz</code> also the mode, the bundle's id, version, digest and serial, its confirmation and expiry times, and the ids of pause entries that match no listed tool; with a route, also the route's id, serial and digest, its floor's serial and digest, the stop list's <code>list_id</code>, state and age, and, for each active stop up to 64, its entry id, run id, finding id, rule id and expiry, and the run ids of those stops the runs directory does not hold for the plane's project or cannot read. No metric label carries an identifier, a digest or free text; <code>pipeline_blocks_total</code> is labelled with a reason code (<a href="/docs/reference/metrics">reference/metrics</a>)</td>
+<td>counts and states; <code>/healthz</code> also the mode, the bundle's id, version, digest and serial, its confirmation and expiry times, the id of every pause entry with the share of calls it covers, and the ids of those that match no listed tool; with a route, also the route's id, serial and digest, its floor's serial and digest, the stop list's <code>list_id</code>, state and age, and, for each active stop up to 64, its entry id, run id, finding id, rule id and expiry, and the run ids of those stops the runs directory does not hold for the plane's project or cannot read. No metric label carries an identifier, a digest or free text; <code>pipeline_blocks_total</code> is labelled with a reason code (<a href="/docs/reference/metrics">reference/metrics</a>)</td>
 <td>anyone who reaches <code>health.address</code>, which takes no credential</td>
 </tr>
 <tr>

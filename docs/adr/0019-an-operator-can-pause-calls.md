@@ -17,6 +17,16 @@ the plane's causes becomes `PAUSED`, `RUN_STOPPED`, `EXECUTED_ARGS_MISMATCH`,
 `LOCKDOWN`, `PAUSE_STATE_UNAVAILABLE`, `STOP_STATE_UNAVAILABLE`,
 `EVIDENCE_UNAVAILABLE`, `ACTION_UNCLASSIFIED`.
 
+Amended in 0.16: an entry may also name a `run`, by the id its runs directory
+gives it, an `agent` or a `principal`. Each is matched only against the
+identity the plane vouches for: the opened run the listener resolved from its
+token, or every run whose root it names, and the agent and principal the
+listener's configuration names, never anything the client sent. In place of
+refusing those scopes, `/healthz` and `doctor` say per entry whether it covers
+all, some or none of the plane's calls, and name each that covers none. A
+tenant is still no scope. The file is version `2`; version `1`, which names
+none of the three, is still read.
+
 ## Context
 
 The registry holds `PAUSED`, number 24, `DENY`, and nothing emits it. An

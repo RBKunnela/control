@@ -52,9 +52,9 @@ func swapAt(t *testing.T, step, path, decoy string) *bool {
 	return swapped
 }
 
-const clearBody = `{"schema_version":"1","entries":[]}`
+const clearBody = `{"schema_version":"2","entries":[]}`
 
-const globalBody = `{"schema_version":"1","entries":[{"id":"g","scope":{"kind":"global"},"created_at":"2026-09-24T10:00:00Z","reason":""}]}`
+const globalBody = `{"schema_version":"2","entries":[{"id":"g","scope":{"kind":"global"},"created_at":"2026-09-24T10:00:00Z","reason":""}]}`
 
 // TestAReadGoesThroughTheDirectoryItJudged: a directory swapped in under the
 // path once the judged one is open is never read, and one swapped in between

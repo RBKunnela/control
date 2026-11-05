@@ -52,7 +52,7 @@ func TestAPauseFileSpoiledWhileThePlaneRunsBlocksEveryCall(t *testing.T) {
 		name  string
 		spoil func(t *testing.T)
 	}{
-		{"garbled", func(t *testing.T) { writePauseFile(t, path, `{"schema_version":"1","entries":[`) }},
+		{"garbled", func(t *testing.T) { writePauseFile(t, path, `{"schema_version":"2","entries":[`) }},
 		{"unreadable", func(t *testing.T) {
 			if err := os.Chmod(path, 0); err != nil {
 				t.Fatal(err)
