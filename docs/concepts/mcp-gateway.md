@@ -40,7 +40,7 @@ sequenceDiagram
         Plane->>Kernel: Decide again with the answer
         Kernel-->>Plane: the decision that is recorded
     end
-    Plane->>Plane: apply rewriting obligations, decide the authorized envelope again
+    Plane->>Plane: check the envelope obligations, rewrite, decide the authorized envelope again
     Plane->>Sink: ACTION_PROPOSED, POLICY_DECIDED, ACTION_STARTED
     Sink-->>Plane: appended, on disk under evidence.fsync every_record, closing record reserved
     Plane-->>Listener: Disposition: execute, authorized bytes and digest

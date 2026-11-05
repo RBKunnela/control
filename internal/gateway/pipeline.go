@@ -142,7 +142,7 @@ func New(cfg Config) (*Pipeline, error) {
 	opts := cfg.KernelOptions
 	opts.Mode = modeEnforce
 	opts.DecisionPoint = cfg.DecisionPointID
-	opts.Applicable = append(append([]string(nil), rewriting...), caps.Obligations...)
+	opts.Applicable = append(PlaneObligations(), caps.Obligations...)
 	if cfg.Mode == modeLockdown {
 		opts.FailOpenRead = false
 	}

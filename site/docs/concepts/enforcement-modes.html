@@ -138,7 +138,7 @@ The kernel's decision is recorded untouched whatever the mode did with it.</p>
 <p>Sources: <code>internal/gateway/admit.go</code>, <code>internal/gateway/pipeline.go</code>.</p>
 <p>The mode is applied in <code>applyMode</code>, after the kernel decided and before
 anything is written. It is also read where the kernel is built, where
-<code>OBSERVE</code> skips the rewriting obligations, and where <code>OBSERVE</code> takes a call
+<code>OBSERVE</code> skips the obligations the plane applies, and where <code>OBSERVE</code> takes a call
 nothing classifies. It changes the action and never the decision:
 <code>POLICY_DECIDED</code> carries the kernel's decision, and a block the mode made
 carries a decision the enforcement point minted, with <code>pdp_type: gateway</code> and
@@ -198,8 +198,11 @@ runs, <code>INDETERMINATE</code> goes to the fail-closed table, see
 </tr>
 </tbody>
 </table>
+<p>In every mode but <code>OBSERVE</code>, a call that fails <code>read_only</code>,
+<code>restrict_resources</code> or <code>deny_external_sink</code> is blocked before it would run
+or be held for an approval, a read included.</p>
 <p><code>OBSERVE</code> enforces nothing the decision says, so it executes the proposed
-bytes without applying a rewriting obligation, and it takes a call nothing
+bytes without applying an obligation, and it takes a call nothing
 classifies; it is how an operator learns which tools exist before classifying
 them. It never takes a call the adapter could not translate for any other
 reason, nor one whose envelope names a kind or a protocol outside the plane's

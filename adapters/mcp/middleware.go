@@ -209,7 +209,7 @@ func (a *Adapter) run(ctx context.Context, c call, send sender) (outcome, error)
 	if err != nil || got != d.AuthorizedDigest {
 		return a.abort(ctx, p, d, gateway.AbortArgsMismatch, nil, nil), nil
 	}
-	obl, err := applyObligations(&c, d.Obligations)
+	obl, err := applyObligations(d.Obligations)
 	if err != nil {
 		return a.abort(ctx, p, d, gateway.AbortObligation, d.Decision.GetReasonCodes(), err), nil
 	}

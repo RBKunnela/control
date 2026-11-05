@@ -100,9 +100,19 @@ func TestNewRefusesEachMisconfiguration(t *testing.T) {
 		}, gateway.ErrStrength},
 		{"an obligation outside the catalogue", func(c *gateway.Config) {
 			caps := enforcing
-			caps.Obligations = []string{"redact_fields", "teleport"}
+			caps.Obligations = []string{"shorten_timeout", "teleport"}
 			c.Adapter = fakeAdapter{name: testProtocol, caps: caps}
 		}, gateway.ErrObligation},
+		{"an obligation the pipeline checks", func(c *gateway.Config) {
+			caps := enforcing
+			caps.Obligations = []string{"shorten_timeout", "read_only"}
+			c.Adapter = fakeAdapter{name: testProtocol, caps: caps}
+		}, gateway.ErrPlaneObligation},
+		{"an obligation the pipeline rewrites", func(c *gateway.Config) {
+			caps := enforcing
+			caps.Obligations = []string{"cap_amount"}
+			c.Adapter = fakeAdapter{name: testProtocol, caps: caps}
+		}, gateway.ErrPlaneObligation},
 		{"an end-user binding on an adapter that authenticates nobody", func(c *gateway.Config) {
 			caps := enforcing
 			caps.BindEndUser = true
@@ -230,7 +240,7 @@ func TestNewAcceptsWhatTheModeNeeds(t *testing.T) {
 	}
 	cfg = validConfig(t)
 	caps := enforcing
-	caps.Obligations = []string{"redact_fields"}
+	caps.Obligations = []string{"shorten_timeout"}
 	caps.Authenticates, caps.BindEndUser = true, true
 	cfg.Adapter = fakeAdapter{name: testProtocol, caps: caps}
 	for _, mode := range []controlv1.EnforcementMode{modeApprove, modeEnforce, modeLockdown} {

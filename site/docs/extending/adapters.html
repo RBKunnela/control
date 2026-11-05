@@ -268,7 +268,7 @@ expired.</p>
 </tr>
 <tr>
 <td><code>Obligations</code></td>
-<td>The obligation types the adapter applies itself, by name from the catalogue. The plane's own rewriting types plus these are the kernel's applicable set; a non-advisory obligation outside the union is a <code>DENY</code> with <code>OBLIGATION_NOT_UNDERSTOOD</code></td>
+<td>The obligation types the adapter applies itself, by name from the catalogue. The plane's own types plus these are the kernel's applicable set; a non-advisory obligation outside the union is a <code>DENY</code> with <code>OBLIGATION_NOT_UNDERSTOOD</code>. Declaring a plane type is refused at start</td>
 </tr>
 </tbody>
 </table>
@@ -295,9 +295,8 @@ send, <code>Close</code> or <code>Abort</code>.</li>
 <li><strong>Close.</strong> Disconnect, and let the plane's own seams close after it.</li>
 </ol>
 <h2 id="applying-an-obligation">Applying an obligation</h2>
-<p>An adapter applies only the obligation types it declared, and each one it
-declares needs a conformance test. The MCP adapter's four, with the parameters it
-reads:</p>
+<p>The plane applies five types itself, for every adapter, before any approval
+is asked; three read only the envelope:</p>
 <table>
 <thead>
 <tr>
@@ -315,28 +314,24 @@ reads:</p>
 <tr>
 <td><code>restrict_resources</code></td>
 <td><code>ids</code> (comma-separated exact ids), <code>prefix</code> (a literal prefix)</td>
-<td>refuses a call whose resource id matches neither; ids compare as text and are never resolved as paths; under <code>prefix</code>, counted from the segment the prefix ends in, it also refuses what a resolver could read as leaving the prefix: a <code>%</code>, a <code>;</code>, a <code>?</code> or <code>#</code>, a backslash, a byte outside printable ASCII, a segment of only dots and spaces (<code>.</code>, <code>..</code>, <code>...</code>, <code>.. </code>) and an empty segment other than a trailing one; end a prefix with <code>/</code>, since <code>/srv/data</code> also matches <code>/srv/database</code>; with neither parameter, nothing matches</td>
-</tr>
-<tr>
-<td><code>shorten_timeout</code></td>
-<td><code>ms</code> (a positive integer)</td>
-<td>bounds this call by the shortest timeout the obligations ask for</td>
+<td>refuses a call whose resource id matches neither; ids compare as text and are never resolved as paths; under <code>prefix</code>, counted from the segment the prefix ends in, it also refuses what a resolver could read as leaving the prefix: a <code>%</code>, a <code>;</code>, a <code>?</code> or <code>#</code>, a backslash, a byte outside printable ASCII, a segment of only dots and spaces (<code>.</code>, <code>..</code>, <code>...</code>, <code>.. </code>) and an empty segment other than a trailing one; end a prefix with <code>/</code>, since <code>/srv/data</code> also matches <code>/srv/database</code>; with neither parameter, or no resource id, nothing matches</td>
 </tr>
 <tr>
 <td><code>deny_external_sink</code></td>
 <td>none</td>
-<td>refuses a call whose destination trust zone is untrusted</td>
+<td>refuses a call whose destination trust zone is untrusted or unstated</td>
 </tr>
 </tbody>
 </table>
-<p>An obligation the adapter cannot satisfy, including one carrying a parameter
-its type does not read, is skipped when it is marked advisory and the call
-proceeds, and nothing records the skip; a non-advisory one stops it,
-and the closing record says the obligation refused it. A rewrite that changes
-the member a tool's <code>resource_from</code> reads is refused by the plane before it is
-handed out. The plane applies the rewriting types (<code>redact_fields</code>,
-<code>cap_amount</code>) itself, before the decision that is recorded, because they change
-the bytes the digest covers.</p>
+<p>A call failing one, or carrying a parameter its type does not read, is the
+plane's <code>DENY</code> with <code>OBLIGATION_NOT_UNDERSTOOD</code>; an advisory one is skipped.
+The rewriting types (<code>redact_fields</code>, <code>cap_amount</code>) apply before the recorded
+decision; a rewrite moving the member <code>resource_from</code> reads is refused.</p>
+<p>An adapter applies only the types it declared, each with a conformance test.
+The MCP adapter's is <code>shorten_timeout</code> (<code>ms</code>, a positive integer), the
+shortest bounding the call. One it cannot satisfy, or carrying a parameter its
+type does not read, is skipped unrecorded when advisory; a non-advisory one
+stops the call, and the closing record names it.</p>
 <h2 id="the-bytes-are-not-the-adapters-to-choose">The bytes are not the adapter's to choose</h2>
 <p><code>Disposition.AuthorizedArgs</code> are the bytes to send and <code>AuthorizedDigest</code> is
 their <code>ArgumentsHashV1</code>. An adapter digests what it is about to send, compares,

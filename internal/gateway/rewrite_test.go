@@ -72,14 +72,24 @@ func TestRewriteAppliesEachObligation(t *testing.T) {
 // TestReproducesHoldsTheSecondDecisionToTheBytes: the second decision's
 // obligations have to give exactly the bytes it was asked about. The kernel
 // reads no argument value, so no decision it makes today reaches the refusing
-// cases through Admit; they are held here.
+// cases through Admit; they are held here. The checks hold the second
+// decision too.
 func TestReproducesHoldsTheSecondDecisionToTheBytes(t *testing.T) {
 	proposed := []byte(`{"amount": 5000, "ssn": "x"}`)
 	capped := []byte(`{"amount":1000,"ssn":"x"}`)
+	env := &controlv1.ActionEnvelope{Resource: &controlv1.Resource{Id: "ord-1"}}
 	advisory := obligation("cap_rate", true, "per_minute", "60")
-	rest, ok := reproduces(proposed, capped, []*controlv1.Obligation{obligation("cap_amount", false, "max", "1000"), advisory})
+	rest, ok := reproduces(env, proposed, capped, []*controlv1.Obligation{obligation("cap_amount", false, "max", "1000"), advisory})
 	if !ok || len(rest) != 1 || rest[0] != advisory {
 		t.Errorf("the same cap: %v, %v; want it reproduced with the advisory obligation left", rest, ok)
+	}
+	held := []*controlv1.Obligation{obligation("cap_amount", false, "max", "1000"), obligation("restrict_resources", false, "ids", "ord-1")}
+	if rest, ok := reproduces(env, proposed, capped, held); !ok || len(rest) != 0 {
+		t.Errorf("the cap and a check that holds: %v, %v; want it reproduced with nothing left", rest, ok)
+	}
+	held[1] = obligation("restrict_resources", false, "ids", "ord-2")
+	if rest, ok := reproduces(env, proposed, capped, held); ok || rest != nil {
+		t.Errorf("the cap and a check that fails: reproduces = %v, %v; want false", rest, ok)
 	}
 	for name, obs := range map[string][]*controlv1.Obligation{
 		"no obligation":           nil,
@@ -88,7 +98,7 @@ func TestReproducesHoldsTheSecondDecisionToTheBytes(t *testing.T) {
 		"the cap and a redaction": {obligation("cap_amount", false, "max", "1000"), obligation("redact_fields", false, "fields", "ssn")},
 		"the cap made advisory":   {obligation("cap_amount", true, "max", "1000")},
 	} {
-		if rest, ok := reproduces(proposed, capped, obs); ok || rest != nil {
+		if rest, ok := reproduces(env, proposed, capped, obs); ok || rest != nil {
 			t.Errorf("%s: reproduces = %v, %v; want false", name, rest, ok)
 		}
 	}

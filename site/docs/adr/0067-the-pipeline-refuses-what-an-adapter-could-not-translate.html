@@ -117,6 +117,16 @@ Date: 2026-10-28</p>
 <p>Amends <a href="/docs/adr/0013-mcp-interception-approvals-and-modes">ADR-0013</a>,
 <a href="/docs/adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api">ADR-0051</a>
 and <a href="/docs/adr/0061-an-obligations-parameters-are-the-catalogues">ADR-0061</a>.</p>
+<p>Amended in 0.16.0: <code>read_only</code>, <code>restrict_resources</code> and <code>deny_external_sink</code>
+read only the envelope, so the pipeline applies them beside the rewriting
+types, after the decision it records and before an approval is asked for, for
+every adapter, and they join its applicable set. A call that fails one is a
+plane <code>DENY</code> with <code>OBLIGATION_NOT_UNDERSTOOD</code>; <code>OBSERVE</code> applies none. An
+adapter applies only what reads its protocol (MCP: <code>shorten_timeout</code>), and
+<code>gateway.New</code> refuses one that declares a type the pipeline applies
+(<code>ErrPlaneObligation</code>). The prefix rule is one function, <code>rules.UnderPrefix</code>,
+and the catalogue's prefix grammar is defined from it. The enforcement API and
+the hook bridge now run a call these three hold for, which they denied.</p>
 <h2 id="context">Context</h2>
 <p>An adapter translates a call into an envelope and hands it to the pipeline
 with a refusal when the translation failed. Some rules about what may be

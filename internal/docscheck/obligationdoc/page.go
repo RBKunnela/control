@@ -26,7 +26,7 @@ var meta = frontmatter.Meta{
 	Title:   "Obligations",
 	Summary: "The catalogue of obligation types a policy rule may name, the parameters each takes, and what the tree does with one.",
 	Type:    "reference",
-	Covers: []string{"internal/policy/rules/catalogue.go", "internal/policy/rules/obligations.go", "internal/gateway/rewrite.go",
+	Covers: []string{"internal/policy/rules/catalogue.go", "internal/policy/rules/obligations.go", "internal/gateway/apply.go",
 		"adapters/mcp/obligations.go", "internal/docscheck/obligationdoc/**"},
 	Generated: "scripts/gen-obligations.go",
 }
@@ -47,9 +47,12 @@ const header = "\n# Obligations\n" +
 	"may name, with the parameters each type takes and who in this build applies\n" +
 	"it. Recognising a type is `implemented`: the parser and `policy lint` refuse\n" +
 	"a document naming a type outside it, and the kernel refuses a configuration\n" +
-	"whose applicable types include one outside it. The gateway rewrites the\n" +
-	"arguments for its types before the decision it records, and an adapter\n" +
-	"applies the types it declares to the call it sends. A decision carrying a\n" +
+	"whose applicable types include one outside it. The gateway applies its\n" +
+	"types for every adapter: it checks the envelope against the three that\n" +
+	"read only the envelope and rewrites the arguments for the others before the\n" +
+	"decision it records, and a call that fails a check is the gateway's own\n" +
+	"`DENY`, never held for an approval. An adapter applies the types it\n" +
+	"declares to the call it sends. A decision carrying a\n" +
 	"non-advisory obligation that nothing here applies is `DENY` with\n" +
 	"`OBLIGATION_NOT_UNDERSTOOD`, and no fail-open setting relieves that; an\n" +
 	"advisory one is skipped.\n" +

@@ -32,10 +32,7 @@ var provenBy = map[string][]string{
 	"SeeResourceIDs":    {"TestResourceFromReadsTheResourceID"},
 	"PresentsRuns":      {"TestRunTokenReachesTheAdmission", "TestRefusedRunTokenIsA401BeforeTheLibrary", "TestStdioResolvesEveryMessage"},
 
-	"read_only":          {"TestReadOnlyObligation"},
-	"restrict_resources": {"TestRestrictResourcesObligation"},
-	"shorten_timeout":    {"TestShortenTimeoutObligation"},
-	"deny_external_sink": {"TestDenyExternalSinkObligation"},
+	"shorten_timeout": {"TestShortenTimeoutObligation"},
 }
 
 // TestEveryDeclaredCapabilityIsProven holds the table above to what the

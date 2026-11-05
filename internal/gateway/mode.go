@@ -56,8 +56,9 @@ func Requirements(mode controlv1.EnforcementMode) (Capabilities, error) {
 // checkAdapter refuses, at start, an adapter that cannot enforce mode or
 // declares an enforcement this build does not know, an adapter named after no
 // protocol or declaring another strength than its protocol's, an adapter that
-// declares an obligation the catalogue lacks, and an adapter that binds an end
-// user on a listener that authenticates nobody.
+// declares an obligation the catalogue lacks or one the pipeline applies
+// itself, and an adapter that binds an end user on a listener that
+// authenticates nobody.
 func checkAdapter(mode controlv1.EnforcementMode, name string, caps Capabilities) error {
 	need, err := Requirements(mode)
 	if err != nil {

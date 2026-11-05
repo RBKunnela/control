@@ -14,13 +14,18 @@ import (
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/canon"
 	"github.com/guardana/control/internal/policy/rules"
+	"github.com/guardana/control/pkg/contract"
 )
 
-// The obligations the pipeline applies to the argument bytes itself; every
-// other obligation is the adapter's to declare and to honour.
+// The obligations the pipeline applies itself: the rewriting ones to the
+// argument bytes, the checking ones to the envelope. Every other obligation is
+// the adapter's to declare and to honour.
 const (
-	obligationRedactFields = "redact_fields"
-	obligationCapAmount    = "cap_amount"
+	obligationRedactFields      = "redact_fields"
+	obligationCapAmount         = "cap_amount"
+	obligationReadOnly          = "read_only"
+	obligationRestrictResources = "restrict_resources"
+	obligationDenyExternalSink  = "deny_external_sink"
 )
 
 const (
@@ -29,25 +34,76 @@ const (
 	paramField  = "field"
 )
 
-// rewriting is the pipeline's own applicable set, in the order New declares
-// it to the kernel.
-var rewriting = []string{obligationRedactFields, obligationCapAmount}
+// rewriting and checking are the pipeline's own applicable set, in the order
+// New declares it to the kernel.
+var (
+	rewriting = []string{obligationRedactFields, obligationCapAmount}
+	checking  = []string{obligationReadOnly, obligationRestrictResources, obligationDenyExternalSink}
+)
 
 // paramNames is the catalogue's list of the parameters a type declares, which
 // onlyParams checks an obligation against.
 var paramNames = rules.ParamNames
 
-// RewritingObligations returns the obligation types the pipeline applies
-// itself, by rewriting the arguments before the decision it records.
-func RewritingObligations() []string {
-	return slices.Clone(rewriting)
+// PlaneObligations returns the obligation types the pipeline applies itself
+// for every adapter: the ones that rewrite the arguments, then the ones that
+// read only the envelope.
+func PlaneObligations() []string {
+	return append(slices.Clone(rewriting), checking...)
 }
 
-// errRewrite is an obligation of a rewriting type the pipeline cannot apply as
-// written: a parameter it does not read, a value it cannot parse, or a member
-// the arguments do not hold. The call is denied with OBLIGATION_NOT_UNDERSTOOD,
-// which is what an obligation nobody applied is.
-var errRewrite = errors.New("gateway: a rewriting obligation cannot be applied")
+// errRewrite is an obligation the pipeline applies that it cannot apply as
+// written, or a check the call fails: a parameter it does not read, a value it
+// cannot parse, a member the arguments do not hold, or an envelope the check
+// refuses. The call is denied with OBLIGATION_NOT_UNDERSTOOD, which is what an
+// obligation nobody applied is.
+var errRewrite = errors.New("gateway: an obligation the pipeline applies does not hold")
+
+// apply holds env to the non-advisory checking obligations among obligations,
+// then rewrites args with the rewriting ones as rewrite does. An advisory
+// checking obligation is neither evaluated nor left for the adapter, which
+// could not apply it either.
+func apply(env *controlv1.ActionEnvelope, args []byte, obligations []*controlv1.Obligation) ([]byte, []*controlv1.Obligation, error) {
+	var rest []*controlv1.Obligation
+	for _, o := range obligations {
+		if !slices.Contains(checking, o.GetType()) {
+			rest = append(rest, o)
+			continue
+		}
+		if o.GetAdvisory() {
+			continue
+		}
+		if err := holds(env, o); err != nil {
+			return nil, nil, fmt.Errorf("%w: %s: %w", errRewrite, o.GetType(), err)
+		}
+	}
+	return rewrite(args, rest)
+}
+
+// holds checks one checking obligation against the envelope. A trust zone
+// nobody stated restricts, and no resource id is allowed when none is stated.
+func holds(env *controlv1.ActionEnvelope, o *controlv1.Obligation) error {
+	if err := onlyParams(o.GetType(), o.GetParams()); err != nil {
+		return err
+	}
+	switch o.GetType() {
+	case obligationReadOnly:
+		if contract.IsMaterial(env.GetAction().GetEffect()) {
+			return fmt.Errorf("the call's effect is %s, not a read", env.GetAction().GetEffect())
+		}
+	case obligationRestrictResources:
+		if !rules.ResourceAllowed(env.GetResource().GetId(), o.GetParams()) {
+			return errors.New("the resource is outside the allowed set")
+		}
+	case obligationDenyExternalSink:
+		if contract.IsUntrusted(env.GetDestination().GetTrustZone()) {
+			return errors.New("the destination is not trusted")
+		}
+	default:
+		return errors.New("no check applies this type")
+	}
+	return nil
+}
 
 // rewrite applies the non-advisory rewriting obligations among obligations to
 // args and returns the bytes to send and the obligations left for the

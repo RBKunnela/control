@@ -121,7 +121,7 @@ expired.
 | `PresentsRuns` | The adapter resolves a run token on every call and hands the run in. Declared exactly when the plane has a runs directory, or the plane is refused at start (ADR-0034) |
 | `SeeDelegation` | The adapter can read a delegation chain out of the call |
 | `SeeResourceIDs` | The adapter can name the resource a call touches |
-| `Obligations` | The obligation types the adapter applies itself, by name from the catalogue. The plane's own rewriting types plus these are the kernel's applicable set; a non-advisory obligation outside the union is a `DENY` with `OBLIGATION_NOT_UNDERSTOOD` |
+| `Obligations` | The obligation types the adapter applies itself, by name from the catalogue. The plane's own types plus these are the kernel's applicable set; a non-advisory obligation outside the union is a `DENY` with `OBLIGATION_NOT_UNDERSTOOD`. Declaring a plane type is refused at start |
 
 A capability is a promise to the plane, so the plane checks it at start and never
 per call: the mode table maps every declared enforcement mode to what it needs,
@@ -148,25 +148,25 @@ adapter that observes while the operator believes it enforces.
 
 ## Applying an obligation
 
-An adapter applies only the obligation types it declared, and each one it
-declares needs a conformance test. The MCP adapter's four, with the parameters it
-reads:
+The plane applies five types itself, for every adapter, before any approval
+is asked; three read only the envelope:
 
 | Type | Parameters | What it does to a call |
 | --- | --- | --- |
 | `read_only` | none | refuses a call whose effect is material |
-| `restrict_resources` | `ids` (comma-separated exact ids), `prefix` (a literal prefix) | refuses a call whose resource id matches neither; ids compare as text and are never resolved as paths; under `prefix`, counted from the segment the prefix ends in, it also refuses what a resolver could read as leaving the prefix: a `%`, a `;`, a `?` or `#`, a backslash, a byte outside printable ASCII, a segment of only dots and spaces (`.`, `..`, `...`, `.. `) and an empty segment other than a trailing one; end a prefix with `/`, since `/srv/data` also matches `/srv/database`; with neither parameter, nothing matches |
-| `shorten_timeout` | `ms` (a positive integer) | bounds this call by the shortest timeout the obligations ask for |
-| `deny_external_sink` | none | refuses a call whose destination trust zone is untrusted |
+| `restrict_resources` | `ids` (comma-separated exact ids), `prefix` (a literal prefix) | refuses a call whose resource id matches neither; ids compare as text and are never resolved as paths; under `prefix`, counted from the segment the prefix ends in, it also refuses what a resolver could read as leaving the prefix: a `%`, a `;`, a `?` or `#`, a backslash, a byte outside printable ASCII, a segment of only dots and spaces (`.`, `..`, `...`, `.. `) and an empty segment other than a trailing one; end a prefix with `/`, since `/srv/data` also matches `/srv/database`; with neither parameter, or no resource id, nothing matches |
+| `deny_external_sink` | none | refuses a call whose destination trust zone is untrusted or unstated |
 
-An obligation the adapter cannot satisfy, including one carrying a parameter
-its type does not read, is skipped when it is marked advisory and the call
-proceeds, and nothing records the skip; a non-advisory one stops it,
-and the closing record says the obligation refused it. A rewrite that changes
-the member a tool's `resource_from` reads is refused by the plane before it is
-handed out. The plane applies the rewriting types (`redact_fields`,
-`cap_amount`) itself, before the decision that is recorded, because they change
-the bytes the digest covers.
+A call failing one, or carrying a parameter its type does not read, is the
+plane's `DENY` with `OBLIGATION_NOT_UNDERSTOOD`; an advisory one is skipped.
+The rewriting types (`redact_fields`, `cap_amount`) apply before the recorded
+decision; a rewrite moving the member `resource_from` reads is refused.
+
+An adapter applies only the types it declared, each with a conformance test.
+The MCP adapter's is `shorten_timeout` (`ms`, a positive integer), the
+shortest bounding the call. One it cannot satisfy, or carrying a parameter its
+type does not read, is skipped unrecorded when advisory; a non-advisory one
+stops the call, and the closing record names it.
 
 ## The bytes are not the adapter's to choose
 

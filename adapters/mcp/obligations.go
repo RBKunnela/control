@@ -6,31 +6,25 @@ import (
 	"math"
 	"slices"
 	"strconv"
-	"strings"
 	"time"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/policy/rules"
-	"github.com/guardana/control/pkg/contract"
 )
 
-// The obligation types the adapter applies, each with a conformance test.
-// The pipeline applies the rewriting ones; the kernel refuses an obligation
-// outside the union of the two sets as OBLIGATION_NOT_UNDERSTOOD.
+// The obligation type the adapter applies, with its conformance tests. The
+// pipeline applies the ones that read only the envelope or rewrite the
+// arguments; the kernel refuses an obligation outside the union of the two
+// sets as OBLIGATION_NOT_UNDERSTOOD.
 const (
-	obligationReadOnly          = "read_only"
-	obligationRestrictResources = "restrict_resources"
-	obligationShortenTimeout    = "shorten_timeout"
-	obligationDenyExternalSink  = "deny_external_sink"
+	obligationShortenTimeout = "shorten_timeout"
 
-	paramIDs    = "ids"
-	paramPrefix = "prefix"
-	paramMS     = "ms"
+	paramMS = "ms"
 )
 
 // applies is each type the adapter applies, in the order it declares them.
 // The parameters each reads are the catalogue's.
-var applies = []string{obligationReadOnly, obligationRestrictResources, obligationShortenTimeout, obligationDenyExternalSink}
+var applies = []string{obligationShortenTimeout}
 
 // AppliedObligations returns the obligation types the adapter applies to a
 // call it sends, which it declares to the kernel as applicable.
@@ -43,14 +37,14 @@ type applied struct {
 	timeout time.Duration
 }
 
-// applyObligations checks every obligation against the call and returns
-// what the send has to honour, or the obligation the call fails: a
-// non-advisory one the adapter cannot satisfy for this call stops it. An
-// advisory obligation that fails is skipped and the call proceeds.
-func applyObligations(c *call, obligations []*controlv1.Obligation) (applied, error) {
+// applyObligations reads every obligation and returns what the send has to
+// honour, or the obligation the call fails: a non-advisory one the adapter
+// cannot satisfy stops it. An advisory obligation that fails is skipped and
+// the call proceeds.
+func applyObligations(obligations []*controlv1.Obligation) (applied, error) {
 	var out applied
 	for _, o := range obligations {
-		err := applyOne(c, o, &out)
+		err := applyOne(o, &out)
 		if err != nil && !o.GetAdvisory() {
 			return applied{}, fmt.Errorf("%s: %w", o.GetType(), err)
 		}
@@ -58,31 +52,16 @@ func applyObligations(c *call, obligations []*controlv1.Obligation) (applied, er
 	return out, nil
 }
 
-func applyOne(c *call, o *controlv1.Obligation, out *applied) error {
+func applyOne(o *controlv1.Obligation, out *applied) error {
 	if err := onlyParams(o); err != nil {
 		return err
 	}
-	env := c.admission.Envelope
 	switch o.GetType() {
-	case obligationReadOnly:
-		if contract.IsMaterial(env.GetAction().GetEffect()) {
-			return fmt.Errorf("the call's effect is %s, not a read", env.GetAction().GetEffect())
-		}
-	case obligationRestrictResources:
-		id := env.GetResource().GetId()
-		if id == "" || !resourceAllowed(id, o.GetParams()) {
-			return errors.New("the resource is outside the allowed set")
-		}
 	case obligationShortenTimeout:
 		return shorten(o.GetParams(), out)
-	case obligationDenyExternalSink:
-		if contract.IsUntrusted(env.GetDestination().GetTrustZone()) {
-			return errors.New("the destination is not trusted")
-		}
 	default:
 		return errors.New("not applied by this adapter")
 	}
-	return nil
 }
 
 // onlyParams refuses a parameter outside the ones the catalogue declares for
@@ -121,58 +100,4 @@ func shorten(params map[string]string, out *applied) error {
 		out.timeout = d
 	}
 	return nil
-}
-
-// resourceAllowed reads the parameters as exact ids, comma-separated, and a
-// literal prefix; a call passes when either matches. Neither parameter
-// present allows nothing.
-func resourceAllowed(id string, params map[string]string) bool {
-	if ids, ok := params[paramIDs]; ok {
-		for _, want := range strings.Split(ids, ",") {
-			if want != "" && want == id {
-				return true
-			}
-		}
-	}
-	if prefix, ok := params[paramPrefix]; ok && prefix != "" && strings.HasPrefix(id, prefix) {
-		return plainBelow(id[strings.LastIndex(prefix, "/")+1:])
-	}
-	return false
-}
-
-// plainBelow reports whether the path from the segment the prefix ends in
-// avoids every spelling this adapter knows a resolver to read as leaving it:
-// a percent escape, a `;` parameter, a `?` or `#`, which a URI resolver cuts
-// before it removes dot segments, a backslash, a byte outside printable
-// ASCII, a segment of only dots and spaces, and an empty segment but a
-// trailing one. The upstream's own resolver is not consulted.
-func plainBelow(rest string) bool {
-	for i := 0; i < len(rest); i++ {
-		if !plainByte(rest[i]) {
-			return false
-		}
-	}
-	segments := strings.Split(rest, "/")
-	for i, s := range segments {
-		if s == "" {
-			if i != len(segments)-1 {
-				return false
-			}
-			continue
-		}
-		if strings.Trim(s, ". ") == "" {
-			return false
-		}
-	}
-	return true
-}
-
-// plainByte reports whether b is printable ASCII that no resolver reads as
-// an escape, a parameter, a query, a fragment or a separator.
-func plainByte(b byte) bool {
-	switch b {
-	case '%', ';', '?', '#', '\\':
-		return false
-	}
-	return b >= 0x20 && b <= 0x7e
 }

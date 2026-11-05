@@ -45,104 +45,6 @@ func assertRefused(t *testing.T, r *rig, res *sdk.CallToolResult, err error, too
 	}
 }
 
-// TestReadOnlyObligation: read_only lets a read through and refuses a call
-// whose manifest effect is not a read.
-func TestReadOnlyObligation(t *testing.T) {
-	r := newRig(t, mcp.KindStatelessHTTP, rigOptions{})
-	r.pipe.decide = executeWith(obligation("read_only", nil))
-	agent := r.connect(t, "agent-a")
-	if res, err := callTool(t, agent, "read_file", map[string]any{"path": "/x"}); err != nil || res.IsError {
-		t.Fatalf("read under read_only: %v %+v", err, res)
-	}
-	res, err := callTool(t, agent, "delete_file", map[string]any{"path": "/x"})
-	assertRefused(t, r, res, err, "delete_file")
-	if r.victim.count("read_file") != 1 {
-		t.Errorf("read ran %d times", r.victim.count("read_file"))
-	}
-	// Advisory: the same obligation marked advisory does not stop the call.
-	r.pipe.decide = executeWith(&controlv1.Obligation{Type: "read_only", Advisory: true})
-	if res, err := callTool(t, agent, "delete_file", map[string]any{"path": "/x"}); err != nil || res.IsError {
-		t.Fatalf("advisory read_only stopped the call: %v %+v", err, res)
-	}
-}
-
-// TestRestrictResourcesObligation: the resource named by the call has to
-// be one of the ids or under the prefix; no parameter allows nothing, and
-// the prefix is literal. Under the prefix, a segment or a byte a resolver
-// could read as leaving it refuses the call; an exact id stays text. NUL,
-// the other control characters, DEL and trailing white space are refused
-// already as an invalid identifier, before any obligation runs.
-func TestRestrictResourcesObligation(t *testing.T) {
-	r := newRig(t, mcp.KindStatelessHTTP, rigOptions{})
-	agent := r.connect(t, "agent-a")
-	cases := []struct {
-		name   string
-		params map[string]string
-		path   string
-		allow  bool
-	}{
-		{"exact id", map[string]string{"ids": "/a,/b"}, "/b", true},
-		{"id outside", map[string]string{"ids": "/a,/b"}, "/c", false},
-		{"prefix", map[string]string{"prefix": "/srv/data/"}, "/srv/data/x", true},
-		{"prefix is literal", map[string]string{"prefix": "/srv/data/"}, "/srv/data-evil/x", false},
-		{"deeper path under the prefix", map[string]string{"prefix": "/srv/data/"}, "/srv/data/a/b.c/..d", true},
-		{"dot-dot under the prefix", map[string]string{"prefix": "/srv/data/"}, "/srv/data/../../etc/passwd", false},
-		{"dot segment under the prefix", map[string]string{"prefix": "/srv/data/"}, "/srv/data/./x", false},
-		{"empty segment under the prefix", map[string]string{"prefix": "/srv/data/"}, "/srv/data/a//x", false},
-		{"backslash under the prefix", map[string]string{"prefix": "/srv/data/"}, `/srv/data/..\..\etc\passwd`, false},
-		{"trailing dot-dot under the prefix", map[string]string{"prefix": "/srv/data/"}, "/srv/data/a/..", false},
-		{"trailing slash under the prefix", map[string]string{"prefix": "/srv/data/"}, "/srv/data/a/", true},
-		{"prefix without a slash", map[string]string{"prefix": "/srv/data"}, "/srv/data/x", true},
-		{"dot-dot after a prefix without a slash", map[string]string{"prefix": "/srv/data"}, "/srv/data/../x", false},
-		{"exact id is text", map[string]string{"ids": "/srv/data/../x"}, "/srv/data/../x", true},
-		{"id equal to the prefix", map[string]string{"prefix": "/srv/data/"}, "/srv/data/", true},
-		{"hyphen, underscore and tilde under the prefix", map[string]string{"prefix": "/srv/data/"}, "/srv/data/a-b_c~d.txt", true},
-		{"url prefix", map[string]string{"prefix": "https://api.example/v1/users/"}, "https://api.example/v1/users/42", true},
-		{"encoded dot-dot", map[string]string{"prefix": "/srv/data/"}, "/srv/data/%2e%2e/%2e%2e/etc/passwd", false},
-		{"encoded slash", map[string]string{"prefix": "/srv/data/"}, "/srv/data/..%2f..%2fetc%2fpasswd", false},
-		{"encoded backslash", map[string]string{"prefix": "/srv/data/"}, "/srv/data/..%5c..%5cetc", false},
-		{"fullwidth dots", map[string]string{"prefix": "/srv/data/"}, "/srv/data/．．/．．/etc/passwd", false},
-		{"path parameter", map[string]string{"prefix": "/srv/data/"}, "/srv/data/..;/..;/etc/passwd", false},
-		{"nul after dot-dot", map[string]string{"prefix": "/srv/data/"}, "/srv/data/..\x00", false},
-		{"nul in a name", map[string]string{"prefix": "/srv/data/"}, "/srv/data/a\x00b", false},
-		{"control character", map[string]string{"prefix": "/srv/data/"}, "/srv/data/a\tb", false},
-		{"delete character", map[string]string{"prefix": "/srv/data/"}, "/srv/data/a\x7fb", false},
-		{"dot-dot and a space", map[string]string{"prefix": "/srv/data/"}, "/srv/data/.. ", false},
-		{"dot-dot and a space mid-path", map[string]string{"prefix": "/srv/data/"}, "/srv/data/.. /etc/passwd", false},
-		{"space segment", map[string]string{"prefix": "/srv/data/"}, "/srv/data/a/ /b", false},
-		{"space inside a name", map[string]string{"prefix": "/srv/data/"}, "/srv/data/a b", true},
-		{"three dots", map[string]string{"prefix": "/srv/data/"}, "/srv/data/.../x", false},
-		{"file url encoded dot-dot", map[string]string{"prefix": "file:///srv/data/"}, "file:///srv/data/%2E%2E/%2E%2E/etc/passwd", false},
-		{"https url encoded dot-dot", map[string]string{"prefix": "https://api.example/v1/users/"}, "https://api.example/v1/users/%2e%2e/admin", false},
-		{"prefix ending in dot-dot", map[string]string{"prefix": "/srv/data/.."}, "/srv/data/../etc", false},
-		{"id equal to a prefix ending in dot-dot", map[string]string{"prefix": "/srv/data/.."}, "/srv/data/..", false},
-		{"percent in an exact id is text", map[string]string{"ids": "/srv/data/%2e%2e"}, "/srv/data/%2e%2e", true},
-		{"https dot-dot before a query", map[string]string{"prefix": "https://api.example/pub/"}, "https://api.example/pub/..?x", false},
-		{"https dot-dot before a fragment", map[string]string{"prefix": "https://api.example/pub/"}, "https://api.example/pub/..#x", false},
-		{"file url dot-dot before an empty query", map[string]string{"prefix": "file:///srv/data/"}, "file:///srv/data/..?", false},
-		{"query below the prefix", map[string]string{"prefix": "/srv/data/"}, "/srv/data/a?b", false},
-		{"query in an exact id is text", map[string]string{"ids": "https://api.example/pub/a?x"}, "https://api.example/pub/a?x", true},
-		{"no parameter", nil, "/a", false},
-		{"empty ids", map[string]string{"ids": ""}, "", false},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			r.pipe.decide = executeWith(obligation("restrict_resources", tc.params))
-			before := r.victim.count("read_file")
-			res, err := callTool(t, agent, "read_file", map[string]any{"path": tc.path})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if tc.allow && (res.IsError || r.victim.count("read_file") != before+1) {
-				t.Fatalf("allowed resource refused: %+v", res)
-			}
-			if !tc.allow && (!res.IsError || r.victim.count("read_file") != before) {
-				t.Fatalf("resource outside the set sent: %+v", res)
-			}
-		})
-	}
-}
-
 // TestShortenTimeoutObligation: the upstream call gets the obligation's
 // deadline; a tool that outlives it is cut off and closed as TIMEOUT. A
 // missing or non-positive ms refuses the call, and so does one past what a
@@ -172,26 +74,6 @@ func TestShortenTimeoutObligation(t *testing.T) {
 	})
 }
 
-// TestDenyExternalSinkObligation: a tool whose destination is not trusted
-// is refused; one classified as trusted internal proceeds; one with no
-// destination at all is refused, because nobody vouched for it.
-func TestDenyExternalSinkObligation(t *testing.T) {
-	r := newRig(t, mcp.KindStatelessHTTP, rigOptions{overrides: func(v *victim, t *testing.T) []mcp.Override {
-		o := v.overrides(t)
-		o = append(o, mcp.Override{Upstream: "victim", Tool: "unlisted", Fingerprint: v.fingerprint(t, "unlisted"), Classification: classify.Classification{Effect: effectComm, ResourceType: "peer", ResourceFrom: "/path", TrustZone: zoneInternal}})
-		return o
-	}})
-	r.pipe.decide = executeWith(obligation("deny_external_sink", nil))
-	agent := r.connect(t, "agent-a")
-	res, err := callTool(t, agent, "send_mail", map[string]any{"to": "x@example.com"})
-	assertRefused(t, r, res, err, "send_mail")
-	res, err = callTool(t, agent, "read_file", map[string]any{"path": "/x"})
-	assertRefused(t, r, res, err, "read_file")
-	if res, err := callTool(t, agent, "unlisted", map[string]any{"path": "/x"}); err != nil || res.IsError {
-		t.Fatalf("trusted sink refused: %v %+v", err, res)
-	}
-}
-
 // TestObligationWithAnUnreadParameterIsNotApplied: a parameter the type does
 // not read is an instruction nobody follows, so the obligation carrying it is
 // not applied. Each case passes without the extra parameter; with it, a
@@ -210,19 +92,12 @@ func TestObligationWithAnUnreadParameterIsNotApplied(t *testing.T) {
 	}
 	// The extra key is, where one exists, a parameter another type reads.
 	cases := []unread{
-		{"read_only", map[string]string{}, "ids"},
-		{"restrict_resources", map[string]string{"ids": "/x"}, "ms"},
-		{"restrict_resources", map[string]string{"prefix": "/"}, "fields"},
 		{"shorten_timeout", map[string]string{"ms": "60000"}, "prefix"},
-		{"deny_external_sink", map[string]string{}, "limit"},
+		{"shorten_timeout", map[string]string{"ms": "60000"}, "fields"},
 	}
-	// And a key no type of the catalogue declares, on every applied type.
+	// And a key no type of the catalogue declares.
 	for _, extra := range outsideTheCatalogue(t, "per_minute", "seconds", "x", "MS") {
-		cases = append(cases,
-			unread{"read_only", map[string]string{}, extra},
-			unread{"restrict_resources", map[string]string{"ids": "/x"}, extra},
-			unread{"shorten_timeout", map[string]string{"ms": "60000"}, extra},
-			unread{"deny_external_sink", map[string]string{}, extra})
+		cases = append(cases, unread{"shorten_timeout", map[string]string{"ms": "60000"}, extra})
 	}
 	for _, tc := range cases {
 		t.Run(tc.typ+"/"+tc.extra, func(t *testing.T) {
@@ -266,7 +141,7 @@ func outsideTheCatalogue(t *testing.T, names ...string) []string {
 // TestAppliedObligationsAreACopy: a caller that changes the returned list
 // changes nothing the adapter declares.
 func TestAppliedObligationsAreACopy(t *testing.T) {
-	want := []string{"read_only", "restrict_resources", "shorten_timeout", "deny_external_sink"}
+	want := []string{"shorten_timeout"}
 	got := mcp.AppliedObligations()
 	if !slices.Equal(got, want) {
 		t.Fatalf("AppliedObligations = %v, want %v", got, want)
@@ -295,13 +170,22 @@ func TestAdvisoryShortenTimeoutWithAnUnreadParameterIsSkipped(t *testing.T) {
 }
 
 // TestUndeclaredObligationIsRefused: an obligation outside the declared set
-// stops the call unless advisory, whatever the pipeline let through.
+// stops the call unless advisory, whatever the pipeline let through: the ones
+// the pipeline applies itself included, which reach the adapter only from a
+// pipeline that did not apply them.
 func TestUndeclaredObligationIsRefused(t *testing.T) {
 	r := newRig(t, mcp.KindStatelessHTTP, rigOptions{})
 	agent := r.connect(t, "agent-a")
-	r.pipe.decide = executeWith(obligation("cap_amount", map[string]string{"max": "1"}))
-	res, err := callTool(t, agent, "read_file", map[string]any{"path": "/x"})
-	assertRefused(t, r, res, err, "read_file")
+	for _, o := range []*controlv1.Obligation{
+		obligation("cap_amount", map[string]string{"max": "1"}),
+		obligation("read_only", nil),
+		obligation("restrict_resources", map[string]string{"prefix": "/"}),
+		obligation("deny_external_sink", nil),
+	} {
+		r.pipe.decide = executeWith(o)
+		res, err := callTool(t, agent, "read_file", map[string]any{"path": "/x"})
+		assertRefused(t, r, res, err, "read_file")
+	}
 	r.pipe.decide = executeWith(&controlv1.Obligation{Type: "emit_alert", Advisory: true})
 	if res, err := callTool(t, agent, "read_file", map[string]any{"path": "/x"}); err != nil || res.IsError {
 		t.Fatalf("advisory obligation stopped the call: %v %+v", err, res)
@@ -445,7 +329,7 @@ func TestUnauthenticatedListenerDeclaresNoBinding(t *testing.T) {
 	if !caps.ObserveRequest || !caps.ObserveResult || caps.Enforcement != gateway.EnforcementInline || !caps.SeeResourceIDs || caps.SeeDelegation {
 		t.Fatalf("capabilities %+v", caps)
 	}
-	if !slices.Equal(caps.Obligations, []string{"read_only", "restrict_resources", "shorten_timeout", "deny_external_sink"}) {
+	if !slices.Equal(caps.Obligations, []string{"shorten_timeout"}) {
 		t.Fatalf("obligations %v", caps.Obligations)
 	}
 }

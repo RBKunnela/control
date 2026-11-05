@@ -144,6 +144,18 @@ directory, whose holds expire within <code>approvals.ttl</code>. <code>approvals
 the console no longer print a resolution.</li>
 <li>The pause commands write pause file <code>2</code>; a plane and the commands read <code>1</code>
 as before.</li>
+<li>The gateway applies the <code>read_only</code>, <code>restrict_resources</code> and
+<code>deny_external_sink</code> obligations itself, for every adapter, before an
+approval is asked for. The enforcement API and the hook bridge, which denied
+every call under a rule with one of them, now run a call the check holds
+for; <code>shorten_timeout</code> stays a <code>DENY</code> there. On <code>enforce_api</code>,
+<code>restrict_resources</code> needs <code>resource_from</code> on the tool, or the empty
+resource id is refused. Over MCP a failing check is now the gateway's own
+<code>DENY</code> with <code>OBLIGATION_NOT_UNDERSTOOD</code>, recorded <code>ACTION_BLOCKED</code> with no
+<code>ACTION_STARTED</code>, and a call that would be held for an approval, under
+<code>APPROVE</code> or by a <code>REQUIRE_APPROVAL</code> rule, is denied instead.
+An adapter that declares a type the gateway applies is refused at start
+(<a href="/docs/adr/0067-the-pipeline-refuses-what-an-adapter-could-not-translate">ADR-0067</a>).</li>
 <li>The release workflow makes its draft release before the build, through
 <code>scripts/draft-release.sh</code>, and proves the release list and the upload host
 serve it before anything is uploaded; a tag that already has a release, or

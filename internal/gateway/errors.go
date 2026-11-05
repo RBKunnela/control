@@ -30,6 +30,9 @@ const (
 	ErrStrength Error = "gateway: the adapter declares another enforcement than its protocol's"
 	// ErrObligation is a declared obligation type outside the catalogue.
 	ErrObligation Error = "gateway: a declared obligation type is not in the catalogue"
+	// ErrPlaneObligation is a declared obligation type the pipeline applies
+	// itself for every adapter.
+	ErrPlaneObligation Error = "gateway: a declared obligation type is one the pipeline applies"
 	// ErrUnauthenticatedBinding is an adapter that binds an end user on a
 	// listener that authenticates nobody: there is no user to bind, only a
 	// claim.

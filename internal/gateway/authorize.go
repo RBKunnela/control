@@ -11,12 +11,14 @@ import (
 	"github.com/guardana/control/internal/policy"
 )
 
-// authorize produces the bytes execution may send: the proposed bytes as
-// they are, or the rewritten document when a rewriting obligation applies,
-// and the obligations left for the adapter. OBSERVE executes the proposed
-// bytes and enforces nothing. Bytes whose member at the classification's
-// pointer no longer names the decided resource are a DENY: the call would act
-// on a resource no decision covered.
+// authorize holds the call to the obligations the pipeline applies and
+// produces the bytes execution may send: the proposed bytes as they are, or
+// the rewritten document when a rewriting obligation applies, and the
+// obligations left for the adapter. A check the call fails is a DENY, before
+// any approval is asked for. OBSERVE executes the proposed bytes and enforces
+// nothing. Bytes whose member at the classification's pointer no longer names
+// the decided resource are a DENY: the call would act on a resource no
+// decision covered.
 //
 // A rewrite that changed the arguments makes the call another action, so the
 // kernel decides the authorized envelope with the rewritten bytes against
@@ -28,7 +30,7 @@ import (
 func (c *call) authorize(snap *policy.Snapshot) {
 	c.args, c.rest = c.in.Arguments, nil
 	if c.p.cfg.Mode != modeObserve {
-		args, rest, err := rewrite(c.in.Arguments, c.kernel.GetObligations())
+		args, rest, err := apply(c.in.Envelope, c.in.Arguments, c.kernel.GetObligations())
 		if err != nil {
 			c.decide(verdictDeny, codeObligationNotApplied)
 			return
@@ -88,7 +90,7 @@ func (c *call) decideAuthorized(snap *policy.Snapshot) bool {
 	if c.action == core.Block {
 		return false
 	}
-	rest, ok := reproduces(c.in.Arguments, c.args, c.kernel.GetObligations())
+	rest, ok := reproduces(c.env, c.in.Arguments, c.args, c.kernel.GetObligations())
 	if !ok {
 		c.decide(verdictDeny, codeObligationNotApplied)
 		return false
@@ -97,10 +99,11 @@ func (c *call) decideAuthorized(snap *policy.Snapshot) bool {
 	return true
 }
 
-// reproduces reports whether obligations rewrite proposed into exactly
-// authorized, and returns the obligations they leave for the adapter.
-func reproduces(proposed, authorized []byte, obligations []*controlv1.Obligation) ([]*controlv1.Obligation, bool) {
-	args, rest, err := rewrite(proposed, obligations)
+// reproduces reports whether env holds to obligations and they rewrite
+// proposed into exactly authorized, and returns the obligations they leave
+// for the adapter.
+func reproduces(env *controlv1.ActionEnvelope, proposed, authorized []byte, obligations []*controlv1.Obligation) ([]*controlv1.Obligation, bool) {
+	args, rest, err := apply(env, proposed, obligations)
 	if err != nil || !bytes.Equal(args, authorized) {
 		return nil, false
 	}

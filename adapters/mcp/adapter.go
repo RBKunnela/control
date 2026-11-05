@@ -178,7 +178,8 @@ func (*Adapter) Name() string { return channel.ProtocolMCP }
 // Capabilities declares what the adapter does, each backed by a conformance
 // test in this package. Authenticates and BindEndUser hold only for a
 // listener with an authenticator. Obligations are the ones the adapter
-// applies to a call itself; the pipeline applies the ones that rewrite.
+// applies to a call itself; the pipeline applies the ones that read only the
+// envelope or rewrite the arguments.
 func (a *Adapter) Capabilities() gateway.Capabilities {
 	authenticates := a.cfg.Listener.Authenticator != nil
 	return gateway.Capabilities{

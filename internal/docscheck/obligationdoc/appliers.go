@@ -18,11 +18,11 @@ type Applier struct {
 }
 
 // Appliers is who applies obligations in this build, read from each one's own
-// declaration: the types the gateway rewrites and the types the MCP adapter
-// declares to the kernel.
+// declaration: the types the gateway applies for every adapter and the types
+// the MCP adapter declares to the kernel.
 func Appliers() []Applier {
 	return []Applier{
-		{Name: "the gateway", Types: gateway.RewritingObligations()},
+		{Name: "the gateway", Types: gateway.PlaneObligations()},
 		{Name: "the MCP adapter", Types: mcp.AppliedObligations()},
 	}
 }

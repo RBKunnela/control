@@ -35,6 +35,18 @@ verify one.
   the console no longer print a resolution.
 - The pause commands write pause file `2`; a plane and the commands read `1`
   as before.
+- The gateway applies the `read_only`, `restrict_resources` and
+  `deny_external_sink` obligations itself, for every adapter, before an
+  approval is asked for. The enforcement API and the hook bridge, which denied
+  every call under a rule with one of them, now run a call the check holds
+  for; `shorten_timeout` stays a `DENY` there. On `enforce_api`,
+  `restrict_resources` needs `resource_from` on the tool, or the empty
+  resource id is refused. Over MCP a failing check is now the gateway's own
+  `DENY` with `OBLIGATION_NOT_UNDERSTOOD`, recorded `ACTION_BLOCKED` with no
+  `ACTION_STARTED`, and a call that would be held for an approval, under
+  `APPROVE` or by a `REQUIRE_APPROVAL` rule, is denied instead.
+  An adapter that declares a type the gateway applies is refused at start
+  ([ADR-0067](docs/adr/0067-the-pipeline-refuses-what-an-adapter-could-not-translate.md)).
 - The release workflow makes its draft release before the build, through
   `scripts/draft-release.sh`, and proves the release list and the upload host
   serve it before anything is uploaded; a tag that already has a release, or

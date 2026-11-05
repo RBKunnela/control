@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/guardana/control/internal/channel"
 	"github.com/guardana/control/internal/policy/rules"
@@ -81,11 +82,16 @@ func (c Capabilities) covers(need Capabilities) bool {
 }
 
 // checkObligations refuses a declared obligation type the catalogue does not
-// know, naming its position.
+// know, and one the pipeline applies itself, which would be applied twice,
+// naming its position.
 func checkObligations(declared []string) error {
+	plane := PlaneObligations()
 	for i, name := range declared {
 		if !rules.KnownObligation(name) {
 			return fmt.Errorf("%w: Obligations[%d]", ErrObligation, i)
+		}
+		if slices.Contains(plane, name) {
+			return fmt.Errorf("%w: Obligations[%d] %s", ErrPlaneObligation, i, name)
 		}
 	}
 	return nil

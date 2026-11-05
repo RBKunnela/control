@@ -2,7 +2,7 @@
 title: Obligations
 summary: The catalogue of obligation types a policy rule may name, the parameters each takes, and what the tree does with one.
 type: reference
-covers: [internal/policy/rules/catalogue.go, internal/policy/rules/obligations.go, internal/gateway/rewrite.go, adapters/mcp/obligations.go, internal/docscheck/obligationdoc/**]
+covers: [internal/policy/rules/catalogue.go, internal/policy/rules/obligations.go, internal/gateway/apply.go, adapters/mcp/obligations.go, internal/docscheck/obligationdoc/**]
 generated: scripts/gen-obligations.go
 ---
 
@@ -19,9 +19,12 @@ The table below is the catalogue, the closed set of types a policy document
 may name, with the parameters each type takes and who in this build applies
 it. Recognising a type is `implemented`: the parser and `policy lint` refuse
 a document naming a type outside it, and the kernel refuses a configuration
-whose applicable types include one outside it. The gateway rewrites the
-arguments for its types before the decision it records, and an adapter
-applies the types it declares to the call it sends. A decision carrying a
+whose applicable types include one outside it. The gateway applies its
+types for every adapter: it checks the envelope against the three that
+read only the envelope and rewrites the arguments for the others before the
+decision it records, and a call that fails a check is the gateway's own
+`DENY`, never held for an approval. An adapter applies the types it
+declares to the call it sends. A decision carrying a
 non-advisory obligation that nothing here applies is `DENY` with
 `OBLIGATION_NOT_UNDERSTOOD`, and no fail-open setting relieves that; an
 advisory one is skipped.
@@ -52,9 +55,9 @@ types the gateway and the MCP adapter declare. Rebuild it with
 | Type | Applied by | Parameter | Required | Value |
 | --- | --- | --- | --- | --- |
 | `redact_fields` | the gateway | `fields` | yes | comma-separated top-level member names, each non-empty and without `.`, `/` or white space |
-| `read_only` | the MCP adapter | none |  |  |
-| `restrict_resources` | the MCP adapter | `ids` | one of `ids`, `prefix` | comma-separated resource ids, none empty and each one the identifier rule admits |
-| `restrict_resources` | the MCP adapter | `prefix` | one of `ids`, `prefix` | an identifier whose last `/`-separated segment is printable ASCII without `%`, `;`, `?`, `#` or `\` |
+| `read_only` | the gateway | none |  |  |
+| `restrict_resources` | the gateway | `ids` | one of `ids`, `prefix` | comma-separated resource ids, none empty and each one the identifier rule admits |
+| `restrict_resources` | the gateway | `prefix` | one of `ids`, `prefix` | an identifier whose last `/`-separated segment is printable ASCII without `%`, `;`, `?`, `#` or `\` |
 | `require_idempotency_key` | `planned`: nothing in this build | none |  |  |
 | `cap_amount` | the gateway | `max` | yes | a base-10 integer from -9007199254740991 to 9223372036854775807, with an optional sign |
 | `cap_amount` | the gateway | `field` | no | the exact name of one top-level member |
@@ -63,4 +66,4 @@ types the gateway and the MCP adapter declare. Rebuild it with
 | `second_approver` | `planned`: nothing in this build | none |  |  |
 | `emit_alert` | `planned`: nothing in this build | none |  |  |
 | `shorten_timeout` | the MCP adapter | `ms` | yes | a base-10 integer from 1 to 9223372036854 |
-| `deny_external_sink` | the MCP adapter | none |  |  |
+| `deny_external_sink` | the gateway | none |  |  |

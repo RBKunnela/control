@@ -122,9 +122,12 @@ applied (<a href="/docs/adr/0011-contract-corrections-before-publication">ADR-00
 may name, with the parameters each type takes and who in this build applies
 it. Recognising a type is <code>implemented</code>: the parser and <code>policy lint</code> refuse
 a document naming a type outside it, and the kernel refuses a configuration
-whose applicable types include one outside it. The gateway rewrites the
-arguments for its types before the decision it records, and an adapter
-applies the types it declares to the call it sends. A decision carrying a
+whose applicable types include one outside it. The gateway applies its
+types for every adapter: it checks the envelope against the three that
+read only the envelope and rewrites the arguments for the others before the
+decision it records, and a call that fails a check is the gateway's own
+<code>DENY</code>, never held for an approval. An adapter applies the types it
+declares to the call it sends. A decision carrying a
 non-advisory obligation that nothing here applies is <code>DENY</code> with
 <code>OBLIGATION_NOT_UNDERSTOOD</code>, and no fail-open setting relieves that; an
 advisory one is skipped.</p>
@@ -169,21 +172,21 @@ types the gateway and the MCP adapter declare. Rebuild it with
 </tr>
 <tr>
 <td><code>read_only</code></td>
-<td>the MCP adapter</td>
+<td>the gateway</td>
 <td>none</td>
 <td></td>
 <td></td>
 </tr>
 <tr>
 <td><code>restrict_resources</code></td>
-<td>the MCP adapter</td>
+<td>the gateway</td>
 <td><code>ids</code></td>
 <td>one of <code>ids</code>, <code>prefix</code></td>
 <td>comma-separated resource ids, none empty and each one the identifier rule admits</td>
 </tr>
 <tr>
 <td><code>restrict_resources</code></td>
-<td>the MCP adapter</td>
+<td>the gateway</td>
 <td><code>prefix</code></td>
 <td>one of <code>ids</code>, <code>prefix</code></td>
 <td>an identifier whose last <code>/</code>-separated segment is printable ASCII without <code>%</code>, <code>;</code>, <code>?</code>, <code>#</code> or <code>\</code></td>
@@ -246,7 +249,7 @@ types the gateway and the MCP adapter declare. Rebuild it with
 </tr>
 <tr>
 <td><code>deny_external_sink</code></td>
-<td>the MCP adapter</td>
+<td>the gateway</td>
 <td>none</td>
 <td></td>
 <td></td>

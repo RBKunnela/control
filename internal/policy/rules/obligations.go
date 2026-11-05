@@ -109,25 +109,13 @@ func everyEntry(s string, ok func(string) bool) bool {
 }
 
 // resourcePrefix reports whether some resource id an envelope can carry
-// passes under prefix s. It mirrors plainBelow and plainByte in adapters/mcp,
-// which judge the id from the start of the prefix's last segment on. A prefix
-// at the byte bound admits only itself, whose last segment must then not be
-// all dots and spaces.
+// passes UnderPrefix under prefix s: s itself, or, below the byte bound, s
+// with one plain byte after it.
 func resourcePrefix(s string) bool {
 	if s == "" || len(s) > contract.MaxStringBytes || contract.CheckIdentifier(s) != nil {
 		return false
 	}
-	last := s[strings.LastIndex(s, "/")+1:]
-	for i := range len(last) {
-		switch b := last[i]; {
-		case b == '%', b == ';', b == '?', b == '#', b == '\\', b < 0x20, b > 0x7e:
-			return false
-		}
-	}
-	if len(s) == contract.MaxStringBytes && last != "" && strings.Trim(last, ". ") == "" {
-		return false
-	}
-	return true
+	return UnderPrefix(s, s) || len(s) < contract.MaxStringBytes && UnderPrefix(s+"a", s)
 }
 
 // CheckObligations holds every obligation of doc to its type's entry in the

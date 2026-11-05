@@ -35,7 +35,7 @@ child process (`upstreams[].command`).
 | Method | What the gateway does | Decided |
 | --- | --- | --- |
 | `tools/list` | Answers from the manifest, without a [withheld](../concepts/mcp-gateway.md#an-answer-that-quotes-a-credential) definition, shaped for the principal, with `cacheScope: private` and the operator's `ttlMs` | under `annotate` or `hide`, one preview per classified tool one upstream serves; a cached list, one naming the bundle in force; nothing recorded |
-| `tools/call` | Admits an `ActionEnvelope`; only if the mode lets it run, applies rewriting obligations, none under `OBSERVE`, sends exactly the authorized bytes and closes the trail with their digest | yes |
+| `tools/call` | Admits an `ActionEnvelope`; if the mode lets it run, applies the plane's obligations, none under `OBSERVE`, sends exactly the authorized bytes and closes the trail with their digest | yes |
 | `resources/read` | Translated as a `READ` of the URI. Routed only when one upstream is configured; with several it is `ACTION_UNCLASSIFIED`, since nothing says which server holds the URI | yes |
 | `prompts/get` | Translated as a `READ` of the prompt, its arguments authorized as a canonical JSON object of strings. Routed as above | yes |
 | `resources/list`, `resources/templates/list`, `prompts/list` | Merged from every upstream, bounded, with the gateway's own `_meta` keys stripped and `cacheScope: private`; `-31103` when an item quotes a credential | no: a listing names no action |
