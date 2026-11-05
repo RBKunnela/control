@@ -5,21 +5,21 @@ import (
 	"strings"
 )
 
-// state is how far a record has travelled. The order is total, and it is what
-// resolves a crash between linking the next name and unlinking the previous
-// one: a reader takes the furthest-along name present.
+// state is how far a record has travelled: held by the plane, then answered
+// by an approver. The order is total, and it is what resolves a crash between
+// linking the answered name and unlinking the held one: a reader takes the
+// furthest-along name present. What became of an answer after that is not the
+// directory's to say: the plane keeps it in its own ledger.
 type state uint8
 
 const (
 	stateHeld state = iota
 	stateAnswered
-	stateNotResumed
-	stateConsumed
 )
 
 // byRank holds the states furthest along first, which is the order a reader
 // probes the names in.
-var byRank = [...]state{stateConsumed, stateNotResumed, stateAnswered, stateHeld}
+var byRank = [...]state{stateAnswered, stateHeld}
 
 // suffix is the file name a record in this state takes after its approval id.
 // The rank leads the word so that the order is legible in a directory listing
@@ -30,10 +30,6 @@ func (s state) suffix() string {
 		return ".0-held.rec"
 	case stateAnswered:
 		return ".1-answered.rec"
-	case stateNotResumed:
-		return ".2-not-resumed.rec"
-	case stateConsumed:
-		return ".3-consumed.rec"
 	}
 	return ""
 }
@@ -44,21 +40,6 @@ func (s state) String() string {
 		return name[3:]
 	}
 	return fmt.Sprintf("state(%d)", uint8(s))
-}
-
-// resolution is the Resolution a record in this state carries. Held and
-// answered are both pending: an answered record is one no execution has
-// consumed yet.
-func (s state) resolution() Resolution {
-	switch s {
-	case stateHeld, stateAnswered:
-		return ResolutionPending
-	case stateNotResumed:
-		return ResolutionNotResumed
-	case stateConsumed:
-		return ResolutionConsumed
-	}
-	return ResolutionUnspecified
 }
 
 const (

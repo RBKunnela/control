@@ -97,16 +97,6 @@ func digestOf(t testing.TB, approvalID string) approval.ActionDigest {
 	return digest
 }
 
-// bindingOf is the binding one request's approval is filed under.
-func bindingOf(t testing.TB, approvalID string) approval.Binding {
-	t.Helper()
-	_, binding, err := approval.Bind(fixtureEnvelope(requestOf(approvalID)), fixtureArgs, fixtureBundle)
-	if err != nil {
-		t.Fatalf("binding the fixture: %v", err)
-	}
-	return binding
-}
-
 // newStore opens a plane over a fresh directory, which makes it an approvals
 // store, and holds the lock until the test ends.
 func newStore(t *testing.T) (string, *approvals.Plane) {
@@ -205,12 +195,13 @@ func mustApprove(t *testing.T, dir, approvalID, approverID string) {
 	}
 }
 
-// The five records everyState builds, one per state an approver can meet.
+// The four records everyState builds, one per state an approver can meet.
+// What became of an answer after that is the plane's own ledger's, which no
+// approver reads.
 const (
 	waitingID  = "WAITING"  // held, nobody has answered it
-	answeredID = "ANSWERED" // an approver said yes, no execution has spent it
-	spentID    = "SPENT"    // an execution consumed it
-	closedID   = "CLOSED"   // the plane closed the request without resuming it
+	answeredID = "ANSWERED" // an approver said yes
+	rejectedID = "REJECTED" // an approver said no
 	staleID    = "STALE"    // held, and past its expiry
 )
 
@@ -220,17 +211,13 @@ func everyState(t *testing.T) (string, *approvals.Plane) {
 	t.Helper()
 	dir, plane := newStore(t)
 	now := clockNow()
-	for _, id := range []string{waitingID, answeredID, spentID, closedID} {
+	for _, id := range []string{waitingID, answeredID, rejectedID} {
 		hold(t, plane, id, now.Add(15*time.Minute))
 	}
 	hold(t, plane, staleID, now.Add(-time.Minute))
 	mustApprove(t, dir, answeredID, "duty-officer")
-	mustApprove(t, dir, spentID, "duty-officer")
-	if _, err := plane.Consume(context.Background(), bindingOf(t, spentID), requestOf(spentID), spentID, time.Now()); err != nil {
-		t.Fatalf("consuming %s: %v", spentID, err)
-	}
-	if err := plane.Resolve(context.Background(), bindingOf(t, closedID), requestOf(closedID), closedID, approvals.ResolutionNotResumed, now); err != nil {
-		t.Fatalf("closing %s: %v", closedID, err)
+	if code, _, stderr := invoke(t, "approvals", "reject", "--approver-id", "duty-officer", dir, rejectedID); code != exitOK {
+		t.Fatalf("approvals reject %s: exit %d with %q", rejectedID, code, stderr)
 	}
 	return dir, plane
 }

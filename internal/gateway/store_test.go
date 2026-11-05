@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 	"slices"
-	"sync/atomic"
+	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -21,16 +22,13 @@ import (
 var errStore = errors.New("store: unavailable")
 
 // fakeStore is a memory store whose answers a test can break: an error from
-// Hold, Find or Consume, or a rewrite of what Find or Consume hands out. It
-// counts the resolutions it was asked for.
+// Hold, Find or Release, or a rewrite of what Find hands out.
 type fakeStore struct {
 	*gateway.MemoryApprovals
-	holdErr, findErr, consumeErr error
-	found                        func(*controlv1.Approval)
-	listed                       func([]gateway.Held) []gateway.Held
-	answer                       func(*controlv1.Approval, error) (*controlv1.Approval, error)
-	beforeConsume                func()
-	resolves                     atomic.Int64
+	holdErr, findErr error
+	releaseErr       error
+	found            func(*controlv1.Approval)
+	listed           func([]gateway.Held) []gateway.Held
 }
 
 func newFakeStore() *fakeStore { return &fakeStore{MemoryApprovals: &gateway.MemoryApprovals{}} }
@@ -58,23 +56,25 @@ func (f *fakeStore) Find(ctx context.Context, b approval.Binding, now time.Time)
 	return helds, err
 }
 
-func (f *fakeStore) Resolve(ctx context.Context, b approval.Binding, requestID, approvalID string, r gateway.Resolution, now time.Time) error {
-	f.resolves.Add(1)
-	return f.MemoryApprovals.Resolve(ctx, b, requestID, approvalID, r, now)
+func (f *fakeStore) Release(ctx context.Context, b approval.Binding, requestID, approvalID string) error {
+	if f.releaseErr != nil {
+		return f.releaseErr
+	}
+	return f.MemoryApprovals.Release(ctx, b, requestID, approvalID)
 }
 
-func (f *fakeStore) Consume(ctx context.Context, b approval.Binding, requestID, approvalID string, now time.Time) (*controlv1.Approval, error) {
-	if f.beforeConsume != nil {
-		f.beforeConsume()
+// lieAbout makes f hand out every record through lie, and leave out one lie
+// answers nil for.
+func lieAbout(f *fakeStore, lie func(*controlv1.Approval) *controlv1.Approval) {
+	f.listed = func(helds []gateway.Held) []gateway.Held {
+		var out []gateway.Held
+		for _, h := range helds {
+			if h.Approval = lie(h.Approval); h.Approval != nil {
+				out = append(out, h)
+			}
+		}
+		return out
 	}
-	if f.consumeErr != nil {
-		return nil, f.consumeErr
-	}
-	a, err := f.MemoryApprovals.Consume(ctx, b, requestID, approvalID, now)
-	if f.answer != nil {
-		return f.answer(a, err)
-	}
-	return a, err
 }
 
 // withStore builds a harness over approveRefunds whose store is f.
@@ -92,86 +92,94 @@ func holdApproved(t *testing.T, h *harness, f *fakeStore) {
 	}
 }
 
+// What a retry over a lying store comes to.
+const (
+	// closesExpired closes the held trail with the plane's own approval,
+	// expired, and the case's verdict and code.
+	closesExpired = iota
+	// closesRejected closes the held trail on the rejection it read.
+	closesRejected
+	// waits tells the agent the held request still awaits its approval.
+	waits
+	// refusesOwn blocks the retry on a trail of its own and leaves the hold.
+	refusesOwn
+	// holdsAnew holds the retry as a request of its own.
+	holdsAnew
+)
+
 // TestThePipelineNeverTrustsTheStoresApproval: a store that hands out a
-// record that is not the held approval, approved, unexpired and single-use is
-// refused, the held trail is closed with the code for what is wrong, and
-// nothing runs; the genuine record runs. An answer to a Consume that is not an
-// approval is one the plane cannot stand behind, whatever its state, so the
-// window closes with the plane's own approval, expired.
+// record that is not the held approval, approved, unexpired and single-use
+// never runs the call. An answer the checks refuse closes the window with the
+// plane's own approval, expired; one that is no answer yet leaves the hold
+// waiting; a record of a state no build names, or the record of another
+// request, is not the hold's. Nothing is spent in the ledger unless the call
+// runs, and the genuine record runs.
 func TestThePipelineNeverTrustsTheStoresApproval(t *testing.T) {
 	cases := []struct {
 		name    string
 		lie     func(*controlv1.Approval) *controlv1.Approval
+		outcome int
 		verdict controlv1.Verdict
 		code    string
 	}{
-		{"no record", func(*controlv1.Approval) *controlv1.Approval { return nil }, verdictIndeterminate, codeEvidenceUnavailable},
+		{"no record", func(*controlv1.Approval) *controlv1.Approval { return nil }, holdsAnew, 0, ""},
 		{"still pending", func(a *controlv1.Approval) *controlv1.Approval {
 			a.State = controlv1.ApprovalState_APPROVAL_STATE_PENDING
 			return a
-		}, verdictIndeterminate, codeEvidenceUnavailable},
+		}, waits, 0, ""},
 		{"pending, undecided", func(a *controlv1.Approval) *controlv1.Approval {
 			a.State, a.DecidedAt = controlv1.ApprovalState_APPROVAL_STATE_PENDING, nil
 			return a
-		}, verdictIndeterminate, codeEvidenceUnavailable},
+		}, waits, 0, ""},
 		{"expired, undecided", func(a *controlv1.Approval) *controlv1.Approval {
 			a.State, a.DecidedAt = controlv1.ApprovalState_APPROVAL_STATE_EXPIRED, nil
 			return a
-		}, verdictIndeterminate, codeEvidenceUnavailable},
+		}, waits, 0, ""},
 		{"rejected", func(a *controlv1.Approval) *controlv1.Approval {
 			a.State = controlv1.ApprovalState_APPROVAL_STATE_REJECTED
 			return a
-		}, verdictIndeterminate, codeEvidenceUnavailable},
-		{"no state", func(a *controlv1.Approval) *controlv1.Approval { a.State = 0; return a }, verdictIndeterminate, codeEvidenceUnavailable},
-		{"a state of no name", func(a *controlv1.Approval) *controlv1.Approval { a.State = 99; return a }, verdictIndeterminate, codeEvidenceUnavailable},
-		{"no approver", func(a *controlv1.Approval) *controlv1.Approval { a.ApproverId = ""; return a }, verdictIndeterminate, codeEvidenceUnavailable},
+		}, closesRejected, verdictDeny, codeApprovalRejected},
+		{"no state", func(a *controlv1.Approval) *controlv1.Approval { a.State = 0; return a }, refusesOwn, verdictIndeterminate, codeEvidenceUnavailable},
+		{"a state of no name", func(a *controlv1.Approval) *controlv1.Approval { a.State = 99; return a }, refusesOwn, verdictIndeterminate, codeEvidenceUnavailable},
+		{"no approver", func(a *controlv1.Approval) *controlv1.Approval { a.ApproverId = ""; return a }, waits, 0, ""},
 		{"requested a year earlier", func(a *controlv1.Approval) *controlv1.Approval {
 			a.RequestedAt = timestamppb.New(a.GetRequestedAt().AsTime().AddDate(-1, 0, 0))
 			return a
-		}, verdictIndeterminate, codeEvidenceUnavailable},
+		}, closesExpired, verdictIndeterminate, codeEvidenceUnavailable},
 		{"requested a nanosecond later", func(a *controlv1.Approval) *controlv1.Approval {
 			a.RequestedAt = timestamppb.New(a.GetRequestedAt().AsTime().Add(time.Nanosecond))
 			return a
-		}, verdictIndeterminate, codeEvidenceUnavailable},
-		{"no request time", func(a *controlv1.Approval) *controlv1.Approval { a.RequestedAt = nil; return a }, verdictIndeterminate, codeEvidenceUnavailable},
-		{"another approval", func(a *controlv1.Approval) *controlv1.Approval { a.ApprovalId = "a-other"; return a }, verdictIndeterminate, codeEvidenceUnavailable},
-		{"another request", func(a *controlv1.Approval) *controlv1.Approval { a.RequestId = "req-other"; return a }, verdictIndeterminate, codeEvidenceUnavailable},
-		{"multi-use", func(a *controlv1.Approval) *controlv1.Approval { a.MultiUse = true; return a }, verdictIndeterminate, codeEvidenceUnavailable},
-		{"another major", func(a *controlv1.Approval) *controlv1.Approval { a.SchemaVersion = "9.0"; return a }, verdictIndeterminate, codeEvidenceUnavailable},
+		}, waits, 0, ""},
+		{"no request time", func(a *controlv1.Approval) *controlv1.Approval { a.RequestedAt = nil; return a }, closesExpired, verdictIndeterminate, codeEvidenceUnavailable},
+		{"another approval", func(a *controlv1.Approval) *controlv1.Approval { a.ApprovalId = "a-other"; return a }, waits, 0, ""},
+		{"another request", func(a *controlv1.Approval) *controlv1.Approval { a.RequestId = "req-other"; return a }, holdsAnew, 0, ""},
+		{"multi-use", func(a *controlv1.Approval) *controlv1.Approval { a.MultiUse = true; return a }, waits, 0, ""},
+		{"another major", func(a *controlv1.Approval) *controlv1.Approval { a.SchemaVersion = "9.0"; return a }, closesExpired, verdictIndeterminate, codeEvidenceUnavailable},
 		{"decided later", func(a *controlv1.Approval) *controlv1.Approval {
 			a.DecidedAt = timestamppb.New(base().Add(time.Hour))
 			return a
-		}, verdictIndeterminate, codeEvidenceUnavailable},
-		{"another digest", func(a *controlv1.Approval) *controlv1.Approval { a.ActionDigest = "sha256:" + digits; return a }, verdictDeny, codeApprovalDigestMismatch},
-		{"another bundle", func(a *controlv1.Approval) *controlv1.Approval { a.PolicyBundleDigest = "sha256:" + digits; return a }, verdictDeny, codeApprovalBundleMismatch},
-		{"expiring now", func(a *controlv1.Approval) *controlv1.Approval { a.ExpiresAt = timestamppb.New(base()); return a }, verdictDeny, codeApprovalExpired},
-		{"no expiry", func(a *controlv1.Approval) *controlv1.Approval { a.ExpiresAt = nil; return a }, verdictDeny, codeApprovalExpired},
+		}, waits, 0, ""},
+		{"another digest", func(a *controlv1.Approval) *controlv1.Approval { a.ActionDigest = "sha256:" + digits; return a }, closesExpired, verdictDeny, codeApprovalDigestMismatch},
+		{"another bundle", func(a *controlv1.Approval) *controlv1.Approval { a.PolicyBundleDigest = "sha256:" + digits; return a }, closesExpired, verdictDeny, codeApprovalBundleMismatch},
+		{"expiring now", func(a *controlv1.Approval) *controlv1.Approval { a.ExpiresAt = timestamppb.New(base()); return a }, closesExpired, verdictDeny, codeApprovalExpired},
+		{"no expiry", func(a *controlv1.Approval) *controlv1.Approval { a.ExpiresAt = nil; return a }, closesExpired, verdictDeny, codeApprovalExpired},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newFakeStore()
-			h := withStore(t, f)
-			holdApproved(t, h, f)
-			f.answer = func(a *controlv1.Approval, err error) (*controlv1.Approval, error) {
-				if err != nil {
-					t.Fatalf("the genuine Consume failed: %v", err)
-				}
-				return tc.lie(a), nil
+			ledger := &fakeLedger{}
+			h := build(t, modeEnforce, snapshot(t, approveRefunds), overStore(f), overLedger(ledger))
+			first := hold(t, h)
+			if err := f.Answer(first.Pending.ApprovalID, approved, "alice", "", base()); err != nil {
+				t.Fatalf("Answer: %v", err)
 			}
+			lieAbout(f, tc.lie)
 			d := h.admit(retry(t, "req-2"), refundArgs())
-			expectBlock(t, d, tc.verdict, tc.code, gateway.PDPType)
-			if d.Decision.GetRequestId() != "req-1" {
-				t.Errorf("the block names request %q, want the held req-1", d.Decision.GetRequestId())
+			expectLiedTo(t, h, d, first, tc.outcome, tc.verdict, tc.code)
+			if spends, _ := ledger.asked(); spends != 0 {
+				t.Errorf("the plane spent %d approval(s) on a record it refused", spends)
 			}
-			trail := h.trailOf("req-1")
-			expectKinds(t, kindsOf(trail), []controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested, kindApprovalExpired, kindBlocked})
-			if err := evidence.ValidateChain(trail); err != nil {
-				t.Errorf("ValidateChain: %v", err)
-			}
-			if len(trail) == 5 {
-				expectPlanesApprovalExpired(t, trail[2].GetApproval(), trail[3].GetApproval())
-			}
-			if s := h.p.Stats(); s.Executed != 0 || s.Open != 0 || s.Held != 0 {
+			if s := h.p.Stats(); s.Executed != 0 || s.Open != 0 {
 				t.Errorf("Stats = %+v", s)
 			}
 		})
@@ -179,10 +187,55 @@ func TestThePipelineNeverTrustsTheStoresApproval(t *testing.T) {
 	f := newFakeStore()
 	h := withStore(t, f)
 	holdApproved(t, h, f)
-	f.answer = func(a *controlv1.Approval, err error) (*controlv1.Approval, error) { return a, err }
+	lieAbout(f, func(a *controlv1.Approval) *controlv1.Approval { return a })
 	if d := h.admit(retry(t, "req-2"), refundArgs()); d.Action != core.Execute {
 		t.Errorf("the genuine approval: Action = %d, decision %+v", d.Action, d.Decision)
 	}
+}
+
+// expectHeldTrailClosed asserts the retry closed the held trail with verdict
+// and code: on the rejection it read, or with the plane's own approval,
+// expired.
+func expectHeldTrailClosed(t *testing.T, d gateway.Disposition, trail []*controlv1.Event, rejected bool, verdict controlv1.Verdict, code string) {
+	t.Helper()
+	expectBlock(t, d, verdict, code, gateway.PDPType)
+	if d.Decision.GetRequestId() != "req-1" {
+		t.Errorf("the block names request %q, want the held req-1", d.Decision.GetRequestId())
+	}
+	closing := kindApprovalExpired
+	if rejected {
+		closing = kindApprovalDecided
+	}
+	expectKinds(t, kindsOf(trail), []controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested, closing, kindBlocked})
+	if err := evidence.ValidateChain(trail); err != nil {
+		t.Errorf("ValidateChain: %v", err)
+	}
+	if len(trail) == 5 && !rejected {
+		expectPlanesApprovalExpired(t, trail[2].GetApproval(), trail[3].GetApproval())
+	}
+}
+
+// expectLiedTo asserts what a retry over a lying store came to.
+func expectLiedTo(t *testing.T, h *harness, d gateway.Disposition, first gateway.Disposition, outcome int, verdict controlv1.Verdict, code string) {
+	t.Helper()
+	trail := h.trailOf("req-1")
+	switch outcome {
+	case closesExpired, closesRejected:
+		expectHeldTrailClosed(t, d, trail, outcome == closesRejected, verdict, code)
+		return
+	case waits:
+		if d.Action != core.AwaitApproval || pendingID(d) != first.Pending.ApprovalID {
+			t.Errorf("Action = %d, pending %+v; want the hold still waiting", d.Action, d.Pending)
+		}
+	case refusesOwn:
+		expectBlock(t, d, verdict, code, gateway.PDPType)
+		expectKinds(t, kindsOf(h.trailOf("req-2")), []controlv1.EventKind{kindProposed, kindDecided, kindBlocked})
+	case holdsAnew:
+		if d.Action != core.AwaitApproval || d.Pending == nil || d.Pending.ApprovalID == first.Pending.ApprovalID {
+			t.Errorf("Action = %d, pending %+v; want a hold of its own", d.Action, d.Pending)
+		}
+	}
+	expectKinds(t, kindsOf(trail), []controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested})
 }
 
 // expectPlanesApprovalExpired fails unless closed is the approval the plane
@@ -198,10 +251,10 @@ func expectPlanesApprovalExpired(t *testing.T, own, closed *controlv1.Approval) 
 
 const digits = "0000000000000000000000000000000000000000000000000000000000000000"
 
-// TestAStoreThatCannotAnswerBlocksWithEveryRecordWritten: a Find or a Consume
-// that fails blocks the call on a whole trail of its own, and a Hold that
-// fails closes the window it opened; every trail validates and nothing is
-// held.
+// TestAStoreThatCannotAnswerBlocksWithEveryRecordWritten: a Find, or a spend
+// the ledger cannot write, blocks the call on a whole trail of its own, and a
+// Hold that fails closes the window it opened; every trail validates and
+// nothing is held but what was.
 func TestAStoreThatCannotAnswerBlocksWithEveryRecordWritten(t *testing.T) {
 	t.Run("find", func(t *testing.T) {
 		f := newFakeStore()
@@ -224,11 +277,11 @@ func TestAStoreThatCannotAnswerBlocksWithEveryRecordWritten(t *testing.T) {
 		}
 		expectValidHeld(t, h, "req-1", 0)
 	})
-	t.Run("consume", func(t *testing.T) {
+	t.Run("spend", func(t *testing.T) {
 		f := newFakeStore()
-		h := withStore(t, f)
+		ledger := &fakeLedger{spendErr: errLedger}
+		h := build(t, modeEnforce, snapshot(t, approveRefunds), overStore(f), overLedger(ledger))
 		holdApproved(t, h, f)
-		f.consumeErr = errStore
 		d := h.admit(retry(t, "req-2"), refundArgs())
 		expectBlock(t, d, verdictIndeterminate, codeEvidenceUnavailable, gateway.PDPType)
 		expectKinds(t, kindsOf(h.trailOf("req-2")), []controlv1.EventKind{kindProposed, kindDecided, kindBlocked})
@@ -408,17 +461,15 @@ func expectOneHoldConsumed(t *testing.T, h *harness) {
 	}
 }
 
-// TestARejectionCarriesTheRecordTheStoreRead: an answer that lands between
-// the lookup and the consumption is what APPROVAL_DECIDED records, not the
-// pending copy the lookup returned.
+// TestARejectionCarriesTheRecordTheStoreRead: what APPROVAL_DECIDED records
+// is the rejection the store handed back, not the pending copy the plane
+// minted.
 func TestARejectionCarriesTheRecordTheStoreRead(t *testing.T) {
 	f := newFakeStore()
 	h := withStore(t, f)
 	first := hold(t, h)
-	f.beforeConsume = func() {
-		if err := f.Answer(first.Pending.ApprovalID, rejected, "bob", "not today", base()); err != nil {
-			t.Errorf("Answer: %v", err)
-		}
+	if err := f.Answer(first.Pending.ApprovalID, rejected, "bob", "not today", base()); err != nil {
+		t.Fatalf("Answer: %v", err)
 	}
 	d := h.admit(retry(t, "req-2"), refundArgs())
 	expectBlock(t, d, verdictDeny, codeApprovalRejected, gateway.PDPType)
@@ -429,14 +480,14 @@ func TestARejectionCarriesTheRecordTheStoreRead(t *testing.T) {
 	}
 }
 
-// TestAnExpiryTheStoreReportsClosesTheHeldTrail: a store that reports the
-// approval expired has the held trail closed with APPROVAL_EXPIRED and the
-// plane's DENY about the held request.
+// TestAnExpiryTheStoreReportsClosesTheHeldTrail: a store that hands back the
+// approval expired at this reading has the held trail closed with
+// APPROVAL_EXPIRED and the plane's DENY about the held request.
 func TestAnExpiryTheStoreReportsClosesTheHeldTrail(t *testing.T) {
 	f := newFakeStore()
 	h := withStore(t, f)
 	holdApproved(t, h, f)
-	f.consumeErr = gateway.ErrApprovalExpired
+	f.found = func(a *controlv1.Approval) { a.ExpiresAt = timestamppb.New(base()) }
 	d := h.admit(retry(t, "req-2"), refundArgs())
 	expectBlock(t, d, verdictDeny, codeApprovalExpired, gateway.PDPType)
 	trail := h.trailOf("req-1")
@@ -449,10 +500,9 @@ func TestAnExpiryTheStoreReportsClosesTheHeldTrail(t *testing.T) {
 	}
 }
 
-// lyingStore rewrites the approval of every record it hands out, in Find and in
-// Consume alike, so a lie is consistent whichever answer the plane reads. With
-// frozen set it answers as at that reading, so it keeps a record the plane
-// minted to expire.
+// lyingStore rewrites the approval of every record it hands out. With frozen
+// set it answers as at that reading, so it keeps a record the plane minted to
+// expire.
 type lyingStore struct {
 	*gateway.MemoryApprovals
 	lie    func(*controlv1.Approval)
@@ -474,25 +524,17 @@ func (l *lyingStore) Find(ctx context.Context, b approval.Binding, now time.Time
 	return helds, err
 }
 
-func (l *lyingStore) Consume(ctx context.Context, b approval.Binding, requestID, approvalID string, now time.Time) (*controlv1.Approval, error) {
-	a, err := l.MemoryApprovals.Consume(ctx, b, requestID, approvalID, l.at(now))
-	if a != nil {
-		l.lie(a)
-	}
-	return a, err
-}
-
 // TestAStoreThatLiesTheSameWayTwiceIsStillRefused: a store that rewrites the
-// action digest and the bundle in both of its answers is checked against the
-// pipeline's own record of the hold and this call's own decision, so nothing
-// runs and the held trail is closed.
+// action digest and the bundle of every record it hands out is checked against
+// the pipeline's own record of the hold and this call's own decision, so
+// nothing runs and the held trail is closed.
 func TestAStoreThatLiesTheSameWayTwiceIsStillRefused(t *testing.T) {
 	for name, tc := range map[string]struct {
 		lie  func(*controlv1.Approval)
 		code string
 	}{
-		"another digest in both answers": {func(a *controlv1.Approval) { a.ActionDigest = "sha256:" + digits }, codeApprovalDigestMismatch},
-		"another bundle in both answers": {func(a *controlv1.Approval) { a.PolicyBundleDigest = "sha256:" + digits }, codeApprovalBundleMismatch},
+		"another digest in every record": {func(a *controlv1.Approval) { a.ActionDigest = "sha256:" + digits }, codeApprovalDigestMismatch},
+		"another bundle in every record": {func(a *controlv1.Approval) { a.PolicyBundleDigest = "sha256:" + digits }, codeApprovalBundleMismatch},
 	} {
 		t.Run(name, func(t *testing.T) {
 			l := &lyingStore{MemoryApprovals: &gateway.MemoryApprovals{}, lie: tc.lie}
@@ -558,13 +600,11 @@ func TestAStoreThatStretchesTheExpiryIsRefused(t *testing.T) {
 
 // forgedStore files every hold under an approval id the plane never minted,
 // which is what a writer of an approvals directory can do to a record that
-// carries the binding and request id of a live hold. It remembers the approval
-// ids the plane asked to consume by.
+// carries the binding and request id of a live hold.
 type forgedStore struct {
 	*gateway.MemoryApprovals
 	forged  string
 	binding approval.Binding
-	asked   []string
 }
 
 func (f *forgedStore) Hold(ctx context.Context, h gateway.Held, now time.Time) error {
@@ -574,19 +614,15 @@ func (f *forgedStore) Hold(ctx context.Context, h gateway.Held, now time.Time) e
 	return f.MemoryApprovals.Hold(ctx, h, now)
 }
 
-func (f *forgedStore) Consume(ctx context.Context, b approval.Binding, requestID, approvalID string, now time.Time) (*controlv1.Approval, error) {
-	f.asked = append(f.asked, approvalID)
-	return f.MemoryApprovals.Consume(ctx, b, requestID, approvalID, now)
-}
-
 // TestARecordUnderAnotherApprovalIdIsNeverSpent: the store keeps a record
 // under the binding and request id of a live hold, carrying an approval id the
-// plane never minted, and an approver answers that record. The plane consumes
-// by the approval it minted, so the record is refused, nothing runs, and it is
-// left unspent for a reconciliation to resolve (ADR-0016).
+// plane never minted, and an approver answers that record. The plane judges
+// only the record of the approval it minted, so nothing is spent and nothing
+// runs, and the record is left for a reconciliation to settle (ADR-0016).
 func TestARecordUnderAnotherApprovalIdIsNeverSpent(t *testing.T) {
 	f := &forgedStore{MemoryApprovals: &gateway.MemoryApprovals{}, forged: "apr-forged"}
-	h := build(t, modeEnforce, snapshot(t, approveRefunds), func(c *gateway.Config) { c.Approvals = f })
+	ledger := &fakeLedger{}
+	h := build(t, modeEnforce, snapshot(t, approveRefunds), overStore(f), overLedger(ledger))
 	first := hold(t, h)
 	if first.Pending.ApprovalID == f.forged {
 		t.Fatalf("the plane minted %q, which the store forged", f.forged)
@@ -602,12 +638,11 @@ func TestARecordUnderAnotherApprovalIdIsNeverSpent(t *testing.T) {
 	if d.Action != core.AwaitApproval || pendingID(d) != first.Pending.ApprovalID {
 		t.Errorf("Action = %d, pending %+v; want the call still awaiting the approval the plane minted", d.Action, d.Pending)
 	}
-	if !slices.Equal(f.asked, []string{first.Pending.ApprovalID}) {
-		t.Errorf("the plane consumed by %q; want the one approval id it minted", f.asked)
+	if spends, _ := ledger.asked(); spends != 0 {
+		t.Errorf("the plane spent %d approval(s); a record it never minted is never spent", spends)
 	}
-	found, err := f.Find(context.Background(), f.binding, base())
-	if err != nil || len(found) != 1 || found[0].Resolution != gateway.ResolutionPending {
-		t.Errorf("the store holds %+v, %v; want the forged record still unspent", found, err)
+	if marks, err := ledger.Lookup(context.Background(), f.binding, base()); err != nil || len(marks) != 0 {
+		t.Errorf("the ledger holds %v, %v; want nothing", marks, err)
 	}
 	expectKinds(t, kindsOf(h.trailOf("req-1")), []controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested})
 	if s := h.p.Stats(); s.Executed != 0 || s.Held != 1 {
@@ -615,33 +650,23 @@ func TestARecordUnderAnotherApprovalIdIsNeverSpent(t *testing.T) {
 	}
 }
 
-// TestAStoreThatConsumesOneApprovalTwiceRunsItOnce: the flip from held to
-// running is the pipeline's, so a store that hands the same approval to a
-// second retry cannot have the held trail written twice; the second retry is
+// TestALedgerThatSpendsOneApprovalTwiceRunsItOnce: the flip from held to
+// running is the pipeline's, so even a ledger that answers a second spend as
+// a first cannot have the held trail written twice; the second retry is
 // refused on its own trail.
-func TestAStoreThatConsumesOneApprovalTwiceRunsItOnce(t *testing.T) {
+func TestALedgerThatSpendsOneApprovalTwiceRunsItOnce(t *testing.T) {
 	f := newFakeStore()
-	h := withStore(t, f)
+	ledger := &forgetfulLedger{}
+	h := build(t, modeEnforce, snapshot(t, approveRefunds), overStore(f), overLedger(ledger))
 	holdApproved(t, h, f)
-	var spent *controlv1.Approval
-	f.answer = func(a *controlv1.Approval, err error) (*controlv1.Approval, error) {
-		if err == nil {
-			spent = a
-			return a, nil
-		}
-		if errors.Is(err, gateway.ErrApprovalConsumed) && spent != nil {
-			return spent, nil
-		}
-		return a, err
-	}
 	inner := false
-	f.beforeConsume = func() {
+	ledger.beforeSpend = func() {
 		if inner {
 			return
 		}
 		inner = true
 		// The held request runs, and its trail stops being held, while the
-		// outer retry is between the lookup and its own consumption.
+		// outer retry is between the lookup and its own spend.
 		if d := h.admit(retry(t, "req-inner"), refundArgs()); d.Action != core.Execute {
 			t.Errorf("the inner retry: Action = %d, decision %+v", d.Action, d.Decision)
 		}
@@ -656,6 +681,45 @@ func TestAStoreThatConsumesOneApprovalTwiceRunsItOnce(t *testing.T) {
 	if s := h.p.Stats(); s.Executed != 1 {
 		t.Errorf("Stats = %+v; want the one execution the approval was for", s)
 	}
+}
+
+// forgetfulLedger answers every spend as the first, which no ledger may do;
+// it runs beforeSpend first.
+type forgetfulLedger struct {
+	gateway.MemoryLedger
+	beforeSpend func()
+}
+
+func (l *forgetfulLedger) Spend(_ context.Context, _ approval.Binding, _, _, _ string, _ time.Time) (gateway.Resolution, error) {
+	if l.beforeSpend != nil {
+		l.beforeSpend()
+	}
+	return gateway.ResolutionConsumed, nil
+}
+
+// TestSixteenRetriesOfOneApprovedHoldRunItOnce: sixteen retries of one
+// approved hold race for it, and the ledger's compare-and-swap and the
+// pipeline's take of the hold let exactly one run.
+func TestSixteenRetriesOfOneApprovedHoldRunItOnce(t *testing.T) {
+	f := newFakeStore()
+	h := withStore(t, f)
+	holdApproved(t, h, f)
+	var wg sync.WaitGroup
+	runs := make([]gateway.Disposition, 16)
+	for i := range runs {
+		wg.Go(func() { runs[i] = h.admit(retry(t, "req-r"+strconv.Itoa(i)), refundArgs()) })
+	}
+	wg.Wait()
+	executed := 0
+	for _, d := range runs {
+		if d.Action == core.Execute {
+			executed++
+		}
+	}
+	if s := h.p.Stats(); executed != 1 || s.Executed != 1 {
+		t.Fatalf("%d of 16 retries ran, Stats().Executed = %d; want one", executed, s.Executed)
+	}
+	expectKinds(t, kindsOf(h.trailOf("req-1")), []controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested, kindApprovalDecided, kindStarted})
 }
 
 // TestAStoreThatRewritesTheHeldEnvelopeResumesNothing: what the retry is
@@ -740,5 +804,33 @@ func TestAHoldIsResumedOnlyUnderTheBindingItWasHeldFor(t *testing.T) {
 	expectKinds(t, kindsOf(h.trailOf("req-1")), []controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested})
 	if s := h.p.Stats(); s.Executed != 0 || s.Held != 2 {
 		t.Errorf("Stats = %+v; want both requests held and nothing executed", s)
+	}
+}
+
+// TestTwoRecordsOfTheMintedApprovalAreNoAnswer: a store that hands back two
+// records under the approval the plane minted disagrees with itself, so the
+// retry is blocked on its own trail, nothing is spent and the hold stands;
+// either record alone runs.
+func TestTwoRecordsOfTheMintedApprovalAreNoAnswer(t *testing.T) {
+	f := newFakeStore()
+	ledger := &fakeLedger{}
+	h := build(t, modeEnforce, snapshot(t, approveRefunds), overStore(f), overLedger(ledger))
+	holdApproved(t, h, f)
+	f.listed = func(helds []gateway.Held) []gateway.Held {
+		if len(helds) == 0 {
+			return helds
+		}
+		twin := helds[0]
+		twin.Approval = proto.CloneOf(twin.Approval)
+		return append(helds, twin)
+	}
+	expectBlock(t, h.admit(retry(t, "req-2"), refundArgs()), verdictIndeterminate, codeEvidenceUnavailable, gateway.PDPType)
+	expectKinds(t, kindsOf(h.trailOf("req-1")), []controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested})
+	if spends, _ := ledger.asked(); spends != 0 {
+		t.Errorf("the plane spent %d approval(s) on a store that disagrees with itself", spends)
+	}
+	f.listed = nil
+	if d := h.admit(retry(t, "req-3"), refundArgs()); d.Action != core.Execute {
+		t.Errorf("the record alone: Action = %d, decision %+v; want it run", d.Action, d.Decision)
 	}
 }

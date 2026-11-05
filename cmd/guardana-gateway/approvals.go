@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/approvals"
 	"github.com/guardana/control/internal/core/approval"
 	"github.com/guardana/control/internal/gateway"
@@ -44,42 +43,24 @@ func (s *approvalStore) Find(ctx context.Context, binding approval.Binding, now 
 	}
 	out := make([]gateway.Held, 0, len(records))
 	for _, r := range records {
-		out = append(out, gateway.Held{
-			Approval:   r.Approval,
-			Binding:    r.Binding,
-			Resolution: heldResolution(r.Resolution),
-		})
+		out = append(out, gateway.Held{Approval: r.Approval, Binding: r.Binding})
 	}
 	return out, nil
 }
 
-func (s *approvalStore) Consume(ctx context.Context, binding approval.Binding, requestID, approvalID string, now time.Time) (*controlv1.Approval, error) {
-	a, err := s.plane.Consume(ctx, binding, requestID, approvalID, now)
-	return a, storeError(err)
-}
-
-func (s *approvalStore) Resolve(ctx context.Context, binding approval.Binding, requestID, approvalID string, resolution gateway.Resolution, now time.Time) error {
-	to, ok := storeResolution(resolution)
-	if !ok {
-		return fmt.Errorf("%w: %d", gateway.ErrResolution, resolution)
-	}
-	return storeError(s.plane.Resolve(ctx, binding, requestID, approvalID, to, now))
+func (s *approvalStore) Release(ctx context.Context, binding approval.Binding, requestID, approvalID string) error {
+	return storeError(s.plane.Release(ctx, binding, requestID, approvalID))
 }
 
 // storeErrors is the translation the store's package documents, one entry per
 // refusal the pipeline names.
 var storeErrors = map[approvals.Error]gateway.Error{
 	approvals.ErrNoApproval:       gateway.ErrNoApproval,
-	approvals.ErrApprovalConsumed: gateway.ErrApprovalConsumed,
-	approvals.ErrApprovalExpired:  gateway.ErrApprovalExpired,
-	approvals.ErrApprovalRejected: gateway.ErrApprovalRejected,
-	approvals.ErrMultiUse:         gateway.ErrMultiUse,
 	approvals.ErrZeroTime:         gateway.ErrZeroTime,
 	approvals.ErrInvalidHold:      gateway.ErrInvalidHold,
 	approvals.ErrAlreadyHeld:      gateway.ErrAlreadyHeld,
 	approvals.ErrApprovalAnswered: gateway.ErrApprovalAnswered,
 	approvals.ErrApprovalAnswer:   gateway.ErrApprovalAnswer,
-	approvals.ErrResolution:       gateway.ErrResolution,
 }
 
 // storeError names a store's refusal in the pipeline's vocabulary, keeping the
@@ -89,34 +70,92 @@ func storeError(err error) error {
 	return translate(err, storeErrors)
 }
 
-// heldResolution reads what the store can prove about a record. A resolution
-// this build cannot name is the store having no answer, so the plane holds the
-// request anew rather than reading a record it cannot speak for as spent.
-func heldResolution(r approvals.Resolution) gateway.Resolution {
-	switch r {
-	case approvals.ResolutionPending:
-		return gateway.ResolutionPending
-	case approvals.ResolutionConsumed:
+// spentLedger is the ledger beside the plane's hold journal, as the
+// pipeline's Ledger. The journal's package answers a refusal and nothing
+// else; the resolution the pipeline reads beside it is built here from that
+// refusal, so what this returns is what the package documents and no more.
+type spentLedger struct{ ledger *holdjournal.Ledger }
+
+var _ gateway.Ledger = (*spentLedger)(nil)
+
+func (l *spentLedger) Spend(ctx context.Context, b approval.Binding, req, appr, proof string, now time.Time) (gateway.Resolution, error) {
+	err := l.ledger.Spend(ctx, b, req, appr, proof, now)
+	switch {
+	case err == nil:
+		return gateway.ResolutionConsumed, nil
+	case errors.Is(err, holdjournal.ErrSpent):
+		return gateway.ResolutionConsumed, ledgerError(err)
+	case errors.Is(err, holdjournal.ErrSettled):
+		return gateway.ResolutionNotResumed, ledgerError(err)
+	}
+	return gateway.ResolutionUnspecified, ledgerError(err)
+}
+
+func (l *spentLedger) Settle(ctx context.Context, b approval.Binding, req, appr string, now time.Time) (gateway.Resolution, error) {
+	err := l.ledger.Settle(ctx, b, req, appr, now)
+	switch {
+	case err == nil:
+		return gateway.ResolutionNotResumed, nil
+	case errors.Is(err, holdjournal.ErrSpent):
+		return gateway.ResolutionConsumed, ledgerError(err)
+	}
+	return gateway.ResolutionUnspecified, ledgerError(err)
+}
+
+func (l *spentLedger) Lookup(ctx context.Context, b approval.Binding, now time.Time) (map[string]gateway.Resolution, error) {
+	marks, err := l.ledger.Lookup(ctx, b, now)
+	if err != nil {
+		return nil, ledgerError(err)
+	}
+	out := make(map[string]gateway.Resolution, len(marks))
+	for req, m := range marks {
+		out[req] = ledgerResolution(m)
+	}
+	return out, nil
+}
+
+// ledgerErrors is the translation the journal's package documents for its
+// ledger.
+var ledgerErrors = map[holdjournal.Error]gateway.Error{
+	holdjournal.ErrSpent:       gateway.ErrApprovalConsumed,
+	holdjournal.ErrSettled:     gateway.ErrNoApproval,
+	holdjournal.ErrLedgerEntry: gateway.ErrLedgerEntry,
+	holdjournal.ErrZeroTime:    gateway.ErrZeroTime,
+}
+
+func ledgerError(err error) error {
+	return translate(err, ledgerErrors)
+}
+
+// ledgerResolution is a mark as the pipeline reads it. A mark this build
+// cannot name proves nothing, which is the unspecified resolution.
+func ledgerResolution(m holdjournal.Mark) gateway.Resolution {
+	switch m {
+	case holdjournal.MarkConsumed:
 		return gateway.ResolutionConsumed
-	case approvals.ResolutionNotResumed:
+	case holdjournal.MarkNotResumed:
 		return gateway.ResolutionNotResumed
 	default:
 		return gateway.ResolutionUnspecified
 	}
 }
 
-// storeResolution is the one resolution a store may be told to write. Only the
-// consuming path marks a record spent, so nothing else is passed through.
-func storeResolution(r gateway.Resolution) (approvals.Resolution, bool) {
-	if r == gateway.ResolutionNotResumed {
-		return approvals.ResolutionNotResumed, true
+// planeLedger is the ledger beside the plane's hold journal, or one in this
+// process where no journal is configured: only the memory provider runs
+// without one, and its holds do not outlive the process either.
+func planeLedger(holds gateway.HoldJournal) gateway.Ledger {
+	if h, ok := holds.(*holdJournal); ok && h.ledger != nil {
+		return &spentLedger{ledger: h.ledger}
 	}
-	return approvals.ResolutionUnspecified, false
+	return &gateway.MemoryLedger{}
 }
 
 // holdJournal is the plane's own directory of its own holds, as the
 // pipeline's HoldJournal.
-type holdJournal struct{ journal *holdjournal.Journal }
+type holdJournal struct {
+	journal *holdjournal.Journal
+	ledger  *holdjournal.Ledger
+}
 
 var _ gateway.HoldJournal = (*holdJournal)(nil)
 
@@ -274,5 +313,23 @@ func openJournal(cfg *gatewayconfig.Config) (gateway.HoldJournal, *holdjournal.J
 	if err != nil {
 		return nil, nil, fmt.Errorf("approvals.hold_journal_dir: %w", err)
 	}
-	return &holdJournal{journal: j}, j, nil
+	ledger, err := openLedger(j, cfg.Approvals.TTL)
+	if err != nil {
+		return nil, nil, errors.Join(fmt.Errorf("approvals.hold_journal_dir: %w", err), j.Close())
+	}
+	return &holdJournal{journal: j, ledger: ledger}, j, nil
+}
+
+// openLedger opens the ledger beside the journal and forgets the marks older
+// than one approval lifetime: an approval spent at a time t expires before t
+// plus that lifetime, so no record such a mark speaks for is still live.
+func openLedger(j *holdjournal.Journal, ttl time.Duration) (*holdjournal.Ledger, error) {
+	ledger, err := j.Ledger()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := ledger.Prune(context.Background(), time.Now().Add(-ttl)); err != nil {
+		return nil, fmt.Errorf("the ledger's sweep: %w", err)
+	}
+	return ledger, nil
 }

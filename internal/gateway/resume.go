@@ -21,13 +21,14 @@ import (
 // trail cannot take a second POLICY_DECIDED. The first held request with an
 // approval runs; one whose approval expired or was refused is closed on its
 // trail; with none approved the agent is told about the oldest still pending.
-func (c *call) resume(matches []*heldRequest, binding approval.Binding) Disposition {
+// found is what the store answered under binding, which the plane judges.
+func (c *call) resume(matches []*heldRequest, binding approval.Binding, found []Held) Disposition {
 	var r resumption
 	for _, own := range matches {
 		if !sameDecision(own.decision, c.kernel) {
 			continue
 		}
-		if d, done := c.try(own, binding, &r); done {
+		if d, done := c.try(own, binding, found, &r); done {
 			return d
 		}
 	}
@@ -57,44 +58,126 @@ type resumption struct {
 	consumed  bool
 }
 
-// try consumes the approval of the held request and reports the answer when it
-// ends the resume: the execution of an approved one, or a block for a store
-// that cannot answer. Anything else is noted in r and the resume goes on.
+// try judges the store's answer about the held request and reports the answer
+// when it ends the resume: the execution of an approved one, or a block for a
+// store or a ledger that cannot answer. Anything else is noted in r and the
+// resume goes on.
 //
-// The approval id the plane minted goes with the request id, so a record some
-// other writer filed under the same binding is never the one spent (ADR-0016).
-func (c *call) try(own *heldRequest, binding approval.Binding, r *resumption) (Disposition, bool) {
+// The answer is the record the store keeps under the request id and the
+// approval id the plane minted, so a record some other writer filed under the
+// same binding is never the one judged (ADR-0016). Only an answer that passes
+// every check is spent, and the ledger's compare-and-swap is what spends it.
+func (c *call) try(own *heldRequest, binding approval.Binding, found []Held, r *resumption) (Disposition, bool) {
 	if c.refusedBeforeConsume(own) {
 		return c.freshBlock(), true
 	}
-	a, err := c.p.cfg.Approvals.Consume(c.ctx, binding,
-		own.approval.GetRequestId(), own.approval.GetApprovalId(), c.now)
+	a, readable := answerOf(own, found)
 	var d Disposition
 	switch {
-	case err == nil:
-		return c.resumeApproved(own, a), true
-	case errors.Is(err, ErrNoApproval):
+	case !readable:
+		c.decide(verdictIndeterminate, codeEvidenceUnavailable)
+		return c.freshBlock(), true
+	case a == nil:
 		r.waiting = firstOf(r.waiting, own)
 		return d, false
-	case errors.Is(err, ErrMultiUse):
+	}
+	switch standing := approval.Consumable(a, c.now); standing {
+	case approval.StandingUsable:
+		return c.spend(own, binding, a, r)
+	case approval.StandingMultiUse:
 		c.p.counts.add(func(s *Stats) *uint64 { return &s.MultiUseRefused })
 		r.waiting = firstOf(r.waiting, own)
 		return d, false
-	case errors.Is(err, ErrApprovalConsumed):
-		r.consumed = true
-		return d, false
-	case errors.Is(err, ErrApprovalExpired):
-		d = c.resumeBlocked(own, verdictDeny, codeApprovalExpired, expiredEvent(own.approval))
-	case errors.Is(err, ErrApprovalRejected):
-		d = c.resumeRejected(own, a)
+	case approval.StandingExpired, approval.StandingRejected:
+		return c.closeUnlessSpent(own, binding, a, standing, r)
 	default:
+		r.waiting = firstOf(r.waiting, own)
+		return d, false
+	}
+}
+
+// closeUnlessSpent closes the held trail on an expired or rejected answer,
+// unless the ledger marks the approval spent: that is proof of an execution,
+// whatever the record reads now, so the retry is told it was already used. A
+// ledger that cannot be read blocks the call with nothing closed.
+func (c *call) closeUnlessSpent(own *heldRequest, binding approval.Binding, a *controlv1.Approval, standing approval.Standing, r *resumption) (Disposition, bool) {
+	spent, readable := c.spentAlready(own, binding)
+	var d Disposition
+	switch {
+	case !readable:
 		c.decide(verdictIndeterminate, codeEvidenceUnavailable)
 		return c.freshBlock(), true
+	case spent:
+		r.consumed = true
+		return d, false
+	case standing == approval.StandingExpired:
+		d = c.resumeBlocked(own, verdictDeny, codeApprovalExpired, expiredEvent(own.approval))
+	default:
+		d = c.resumeRejected(own, a)
 	}
 	if r.concluded == nil {
 		r.concluded = &d
 	}
 	return d, false
+}
+
+// spentAlready reports whether the ledger marks own's request spent under
+// binding, and whether the ledger could be read at all.
+func (c *call) spentAlready(own *heldRequest, binding approval.Binding) (spent, readable bool) {
+	marks, err := c.p.cfg.Ledger.Lookup(c.ctx, binding, c.now)
+	if err != nil {
+		return false, false
+	}
+	return marks[own.approval.GetRequestId()] == ResolutionConsumed, true
+}
+
+// answerOf is the store's record of the approval the plane minted for own:
+// nil with none, and not readable where the store returned two, one it cannot
+// speak for, or one in a state this build does not name, since none of those
+// is an answer the plane can judge.
+func answerOf(own *heldRequest, found []Held) (*controlv1.Approval, bool) {
+	var answer *controlv1.Approval
+	for _, held := range found {
+		a := held.Approval
+		if a.GetRequestId() != own.approval.GetRequestId() || a.GetApprovalId() != own.approval.GetApprovalId() {
+			continue
+		}
+		_, named := controlv1.ApprovalState_name[int32(a.GetState())]
+		if answer != nil || !named || a.GetState() == controlv1.ApprovalState_APPROVAL_STATE_UNSPECIFIED {
+			return nil, false
+		}
+		answer = a
+	}
+	return answer, true
+}
+
+// spend checks an approved answer, spends it in the ledger and resumes the
+// held request. An answer the checks refuse closes the window with the plane's
+// own approval, expired, and is never spent. A ledger that says another call
+// spent it notes that in r; one that says the plane settled it leaves the hold
+// waiting; one that cannot be written blocks the call with nothing run.
+func (c *call) spend(own *heldRequest, binding approval.Binding, a *controlv1.Approval, r *resumption) (Disposition, bool) {
+	if verdict, code, refused := approvalFields(own.approval, a, own.expires, c.now); refused {
+		d := c.resumeBlocked(own, verdict, code, expiredEvent(own.approval))
+		if r.concluded == nil {
+			r.concluded = &d
+		}
+		return d, false
+	}
+	res, err := c.p.cfg.Ledger.Spend(c.ctx, binding,
+		own.approval.GetRequestId(), own.approval.GetApprovalId(), a.GetApproverId(), c.now)
+	switch {
+	case err == nil && res == ResolutionConsumed:
+		return c.resumeApproved(own, a), true
+	case errors.Is(err, ErrApprovalConsumed) && res == ResolutionConsumed:
+		r.consumed = true
+		return Disposition{}, false
+	case errors.Is(err, ErrNoApproval) && res == ResolutionNotResumed:
+		r.waiting = firstOf(r.waiting, own)
+		return Disposition{}, false
+	}
+	c.decide(verdictIndeterminate, codeEvidenceUnavailable)
+	return c.freshBlock(), true
 }
 
 // refusedBeforeConsume decides the block of a resume that may not consume its
@@ -137,24 +220,13 @@ func sameDecision(held, fresh *controlv1.Decision) bool {
 		slices.EqualFunc(held.GetObligations(), fresh.GetObligations(), func(a, b *controlv1.Obligation) bool { return proto.Equal(a, b) })
 }
 
-// resumeApproved checks what the store answered, then writes APPROVAL_DECIDED
-// and ACTION_STARTED on the held trail and executes exactly once, with the
-// decision that trail recorded. The approval is consumed before the record is
-// written, because two retries must not both write it; a record the sink
-// refuses then blocks with the approval spent.
-//
-// The plane never trusts the store's answer. One that is not the held approval
-// field by field, or not approved by someone it may name, closes the window
-// with the plane's own approval, expired, as a lost hold's does: a store that
-// answered a spend with anything but an approval said nothing the plane can
-// record.
+// resumeApproved writes APPROVAL_DECIDED and ACTION_STARTED on the held trail
+// and executes exactly once, with the decision that trail recorded. It runs
+// only after spend checked the answer field by field and the ledger spent it:
+// the approval is consumed before the record is written, because two retries
+// must not both write it, and a record the sink refuses then blocks with the
+// approval spent.
 func (c *call) resumeApproved(own *heldRequest, a *controlv1.Approval) Disposition {
-	if verdict, code, refused := approvalFields(own.approval, a, own.expires, c.now); refused {
-		return c.resumeBlocked(own, verdict, code, expiredEvent(own.approval))
-	}
-	if a.GetState() != approvalApproved || a.GetApproverId() == "" {
-		return c.resumeBlocked(own, verdictIndeterminate, codeEvidenceUnavailable, expiredEvent(own.approval))
-	}
 	trail, err := c.resumedTrail(own)
 	if err != nil {
 		return c.blockUnrecorded()
@@ -189,16 +261,13 @@ func (c *call) resumeApproved(own *heldRequest, a *controlv1.Approval) Dispositi
 	return c.start(trail)
 }
 
-// resumeRejected closes the held trail on the rejection the store answered,
-// checked as an approval is. Only a record that is the held approval, and
-// rejected, is written as APPROVAL_DECIDED; any other answer is one the plane
+// resumeRejected closes the held trail on a rejection, checked as an approval
+// is: approval.Consumable has already read a as rejected. Only one that passes
+// the field checks is written as APPROVAL_DECIDED; any other is one the plane
 // cannot stand behind, so the window closes with its own approval, expired.
 func (c *call) resumeRejected(own *heldRequest, a *controlv1.Approval) Disposition {
 	if verdict, code, refused := approvalFields(own.approval, a, own.expires, c.now); refused {
 		return c.resumeBlocked(own, verdict, code, expiredEvent(own.approval))
-	}
-	if a.GetState() != approvalRejected {
-		return c.resumeBlocked(own, verdictIndeterminate, codeEvidenceUnavailable, expiredEvent(own.approval))
 	}
 	return c.resumeBlocked(own, verdictDeny, codeApprovalRejected, decidedEvent(a))
 }

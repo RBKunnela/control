@@ -169,27 +169,14 @@ func TestASecondAnswerIsRefused(t *testing.T) {
 	answerRefused(t, dir, minted.Add(2*time.Minute), approvals.ErrApprovalAnswered)
 }
 
-// TestAnAnswerAfterTheRecordWasSpentIsRefused, each way it can have been spent.
-func TestAnAnswerAfterTheRecordWasSpentIsRefused(t *testing.T) {
-	t.Run("consumed already", func(t *testing.T) {
-		p, dir, h := heldOne(t)
-		answerAt(t, dir, minted.Add(time.Minute))
-		if _, err := p.Consume(t.Context(), h.Binding, "req-1", firstApproval, minted.Add(2*time.Minute)); err != nil {
-			t.Fatalf("consuming: %v", err)
-		}
-		answerRefused(t, dir, minted.Add(3*time.Minute), approvals.ErrApprovalConsumed)
-	})
-	t.Run("resolved already", func(t *testing.T) {
-		p, dir, h := heldOne(t)
-		if err := p.Resolve(t.Context(), h.Binding, "req-1", firstApproval, approvals.ResolutionNotResumed, minted); err != nil {
-			t.Fatalf("resolving: %v", err)
-		}
-		answerRefused(t, dir, minted.Add(time.Minute), approvals.ErrResolved)
-	})
-	t.Run("expired already", func(t *testing.T) {
-		_, dir, _ := heldOne(t)
-		answerRefused(t, dir, expires, approvals.ErrApprovalExpired)
-	})
+// TestAnAnswerAfterTheRecordExpiredIsRefused.
+func TestAnAnswerAfterTheRecordExpiredIsRefused(t *testing.T) {
+	_, dir, _ := heldOne(t)
+	answerRefused(t, dir, expires, approvals.ErrApprovalExpired)
+	if _, err := openApprover(t, dir).Answer(t.Context(), firstApproval, controlv1.ApprovalState_APPROVAL_STATE_APPROVED,
+		"approver-1", "", expires.Add(-time.Nanosecond)); err != nil {
+		t.Errorf("an answer one nanosecond before the expiry = %v, want it filed", err)
+	}
 }
 
 // TestAnAnswerToAnApprovalNobodyHeldIsRefused.

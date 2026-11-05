@@ -54,6 +54,9 @@ const (
 	ErrNoSink Error = "gateway: no evidence sink"
 	// ErrNoApprovals is a nil approval store.
 	ErrNoApprovals Error = "gateway: no approval store"
+	// ErrNoLedger is a nil ledger: the spent mark is the plane's own, and a
+	// plane with nowhere to keep it could not refuse a second execution.
+	ErrNoLedger Error = "gateway: no ledger of spent approvals"
 	// ErrNoClock is a nil clock.
 	ErrNoClock Error = "gateway: no clock"
 	// ErrNoIDSource is a nil id source.
@@ -96,21 +99,13 @@ const (
 	ErrDecisionTimeout Error = "gateway: a decision point's deadline has to be positive, and set only with one"
 )
 
-// Refusals of the approval store.
+// Refusals of the approval store and the ledger.
 const (
-	// ErrNoApproval is a binding nothing approves: nothing held, or held and
-	// not yet decided.
+	// ErrNoApproval is a binding nothing approves: nothing held, held and not
+	// yet decided, or an approval the plane settled as not resumed.
 	ErrNoApproval Error = "gateway: no approval for this binding"
 	// ErrApprovalConsumed is an approval an earlier execution already used.
 	ErrApprovalConsumed Error = "gateway: the approval was consumed"
-	// ErrApprovalExpired is an approval past its expiry at the clock it was
-	// checked against.
-	ErrApprovalExpired Error = "gateway: the approval has expired"
-	// ErrApprovalRejected is an approval an approver refused.
-	ErrApprovalRejected Error = "gateway: the approval was rejected"
-	// ErrMultiUse is an approval record marked multi-use, which this plane
-	// does not honour: it consumes an approval once.
-	ErrMultiUse Error = "gateway: a multi-use approval is not honoured"
 	// ErrZeroTime is a clock reading of zero, which would pass every expiry.
 	ErrZeroTime Error = "gateway: the clock reads zero"
 	// ErrInvalidHold is a held request with no approval, no approval id, no
@@ -120,16 +115,18 @@ const (
 	ErrInvalidHold Error = "gateway: a held request needs a pending, unanswered approval with an approval id, a request id, a requested time and an expiry, a binding, an envelope and a decision"
 	// ErrAlreadyHeld is a second hold of one request id under one binding.
 	ErrAlreadyHeld Error = "gateway: this request is already held under this binding"
-	// ErrApprovalAnswered is an answer to an approval that was answered, or
-	// consumed, already.
+	// ErrApprovalAnswered is an answer to an approval that was answered
+	// already.
 	ErrApprovalAnswered Error = "gateway: the approval was answered already"
 	// ErrApprovalAnswer is an answer that is neither APPROVED with an
 	// approver nor REJECTED.
 	ErrApprovalAnswer Error = "gateway: an answer is APPROVED with an approver, or REJECTED"
-	// ErrResolution is a resolution a store may not be told to write: only
-	// Consume marks a record spent, and a record is never unresolved again.
-	ErrResolution Error = "gateway: a store resolves a record as not resumed and nothing else"
 )
+
+// ErrLedgerEntry is a ledger call that does not name one binding, one request
+// and one approval, or a spend that records no proof. It is never read as any
+// approval will do.
+const ErrLedgerEntry Error = "gateway: a ledger mark names a binding, a request and an approval, and a spend its proof"
 
 // Refusals of the hold journal.
 const (

@@ -287,6 +287,7 @@ func newRig(tb testing.TB, mode fsyncMode, record bool) *rig {
 		Stops:         gateway.StopsDisabled(),
 		Sink:          sink,
 		Approvals:     &gateway.MemoryApprovals{},
+		Ledger:        &gateway.MemoryLedger{},
 		Clock:         time.Now,
 		NewID:         counterIDs(),
 		ApprovalTTL:   10 * time.Minute,

@@ -83,11 +83,8 @@ func TestARefusedLegacyApproverRefusesOnlyItsOwnApproval(t *testing.T) {
 			if n, err := p.Prune(ctx, now); err != nil || n != 0 {
 				t.Fatalf("pruning before any expiry = %d, %v; want nothing pruned and no error", n, err)
 			}
-			got, err := p.Consume(ctx, valid.Binding, "req-2", "APPROVAL2", now)
-			if err != nil || got.GetApproverId() != "duty-officer" {
-				t.Fatalf("consuming the other binding = %v, %v", got, err)
-			}
-			assertNames(t, dir, answeredName, "APPROVAL2.3-consumed.rec", "APPROVAL3.0-held.rec")
+			expectOtherAnswer(t, p, valid.Binding, now)
+			assertNames(t, dir, answeredName, "APPROVAL2.1-answered.rec", "APPROVAL3.0-held.rec")
 
 			if n, err := p.Prune(ctx, expires); err != nil || n != 3 {
 				t.Fatalf("pruning at the expiry = %d, %v; want all three records", n, err)
@@ -97,15 +94,20 @@ func TestARefusedLegacyApproverRefusesOnlyItsOwnApproval(t *testing.T) {
 	}
 }
 
-// assertOwnApprovalRefused holds a consume of the legacy record's own
-// approval to the claim rule's refusal, and a lookup of its binding to the
-// record as one the store cannot speak for.
+// expectOtherAnswer holds the other binding's two records to coming back with
+// APPROVAL2's answer as it was given.
+func expectOtherAnswer(t *testing.T, p *approvals.Plane, binding approval.Binding, now time.Time) {
+	t.Helper()
+	found, err := p.Find(t.Context(), binding, now)
+	if err != nil || len(found) != 2 || recordOf(t, found, "APPROVAL2").Approval.GetApproverId() != "duty-officer" {
+		t.Fatalf("finding the other binding's answer = %v, %v", found, err)
+	}
+}
+
+// assertOwnApprovalRefused holds a lookup of the legacy record's binding to
+// the record as one the store cannot speak for.
 func assertOwnApprovalRefused(t *testing.T, p *approvals.Plane, binding approval.Binding, now time.Time) {
 	t.Helper()
-	_, err := p.Consume(t.Context(), binding, "req-1", firstApproval, now)
-	if !errors.Is(err, approvals.ErrApproverID) || !errors.Is(err, approval.ErrReservedApproverID) {
-		t.Errorf("consume of the legacy record = %v, want ErrApproverID and ErrReservedApproverID", err)
-	}
 	found, err := p.Find(t.Context(), binding, now)
 	if err != nil || len(found) != 1 {
 		t.Fatalf("find of the legacy record = %d record(s), %v; want it alone", len(found), err)

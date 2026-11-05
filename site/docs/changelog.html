@@ -122,11 +122,26 @@ verify one.</p>
 <h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.15.0...HEAD">Unreleased</a></h2>
 <h3 id="changed">Changed</h3>
 <ul>
+<li><strong>Breaking:</strong> the approvals directory is format <code>2.0</code>: a record carries no
+resolution and takes the held or the answered name only. A <code>1.0</code> directory
+or record is refused with a message naming both versions; empty the
+directory, whose holds expire within <code>approvals.ttl</code>. <code>approvals list</code> and
+the console no longer print a resolution.</li>
 <li>The release workflow makes its draft release before the build, through
 <code>scripts/draft-release.sh</code>, and proves the release list and the upload host
 serve it before anything is uploaded; a tag that already has a release, or
 a draft of the same name, is refused, a draft a failed run left included
 (<a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a>).</li>
+</ul>
+<h3 id="security">Security</h3>
+<ul>
+<li>Only the plane marks an approval spent or given up, in a ledger (<code>1.0</code>)
+under <code>ledger/</code> in <code>approvals.hold_journal_dir</code>, under the journal's lock
+and owned by the plane's account. A file an approver writes into the
+approvals directory can no longer make the plane read an approval as spent
+or given up; a name that once meant either is refused as foreign. A hold
+the plane settles at start leaves that directory, so <code>approvals list</code> and
+the console no longer offer it.</li>
 </ul>
 <h2 id="0150---2026-11-02"><a href="https://github.com/guardana/control/releases/tag/v0.15.0">0.15.0</a> - 2026-11-02</h2>
 <p>Upgrading from 0.14 changes four things an operator must act on. <code>collect</code>
@@ -152,7 +167,7 @@ counts an egress path as observed by the connections of the sources it names
 Operators can sign a roster of operator keys, though no plane reads it yet
 (<a href="/docs/adr/0071-operators-are-named-by-a-signed-roster">ADR-0071</a>). The
 hook profile's qualification was not run again for this release.</p>
-<h3 id="security">Security</h3>
+<h3 id="security-1">Security</h3>
 <ul>
 <li>The filesystem server the guide's MCP client check installs takes <code>glob</code>
 14.0.2, which fixes GHSA-3g3m-2fjr-6pw4, and <code>minimatch</code> 11.0.1, which
@@ -639,7 +654,7 @@ a <code>--source</code> of another tenant or project is refused, and <code>cap_a
 is held to the integer range the canonical form writes.
 The project is still alpha, and the <code>0.x</code> series makes no compatibility promise
 between minor versions.</p>
-<h3 id="security-1">Security</h3>
+<h3 id="security-2">Security</h3>
 <ul>
 <li><code>mcp.New</code> refuses an override whose <code>ReturnsTrust</code> or <code>ReturnsSensitivity</code>
 is a number the contract does not declare. Such an override loaded through
@@ -1289,7 +1304,7 @@ run's own calls, so no run can get another one stopped, and a child run can
 now be stopped on its own. <code>procedure lint</code> and <code>procedure test</code> check a
 procedure with cases, and <code>findings export</code> reads the findings log with a
 cursor. The fixes come from an audit of this release's own changes.</p>
-<h3 id="security-2">Security</h3>
+<h3 id="security-3">Security</h3>
 <ul>
 <li>Built with Go 1.27.2, which fixes GO-2026-6599, GO-2026-6600, GO-2026-6603,
 GO-2026-6604, GO-2026-6605, GO-2026-6607, GO-2026-6608 and GO-2026-6610 in

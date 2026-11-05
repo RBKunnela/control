@@ -199,8 +199,8 @@ version. <a href="/docs/status">status.md</a> is the inventory.</p>
 </tr>
 <tr>
 <td>Approvals directory (<code>schema_version</code>)</td>
-<td><code>1.0</code></td>
-<td><code>1.x</code></td>
+<td><code>2.0</code></td>
+<td><code>2.x</code></td>
 <td><code>experimental</code></td>
 <td><a href="/docs/concepts/approvals-and-the-held-call#what-is-held-and-by-whom">approvals</a></td>
 </tr>
@@ -210,6 +210,13 @@ version. <a href="/docs/status">status.md</a> is the inventory.</p>
 <td><code>1.x</code></td>
 <td><code>experimental</code></td>
 <td><a href="/docs/concepts/approvals-and-the-held-call#a-hold-the-plane-loses">approvals</a></td>
+</tr>
+<tr>
+<td>Spent ledger (<code>schema_version</code>)</td>
+<td><code>1.0</code></td>
+<td><code>1.x</code></td>
+<td><code>experimental</code></td>
+<td><a href="/docs/concepts/approvals-and-the-held-call#an-approval-is-spent-once">approvals</a></td>
 </tr>
 <tr>
 <td>Hook profile (<code>kind</code>)</td>
@@ -350,10 +357,13 @@ one quoted key per line, carries none either.</p>
 <h2 id="reading-files-an-older-release-wrote">Reading files an older release wrote</h2>
 <ul>
 <li><strong>Wire messages, the evidence export, the runs directory's marker and
-root states, the approvals directory, the hold journal and the floor
+root states, the hold journal, the spent ledger and the floor
 directories.</strong> Any minor of major 1 is read. A member the reader does not
 know is refused, so a file a later minor extended is refused when that
 member arrives, never read with it dropped.</li>
+<li><strong>Approvals directory.</strong> Any minor of major 2 is read. A 1.0 directory
+kept the plane's spent mark beside the answers, so it is refused: empty
+it; its holds expire within <code>approvals.ttl</code>.</li>
 <li><strong>Run record.</strong> Any minor of major 2 is read. A record of major 1 names no
 project, so it is refused, never read as any project's run: open the run
 again (<a href="/docs/reference/runs#runs-an-earlier-release-opened">runs.md</a>).</li>

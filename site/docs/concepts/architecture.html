@@ -330,7 +330,7 @@ unrecorded.</p>
         Adapter-&gt;&gt;Pipeline: ActionEnvelope and the proposed arguments
         Pipeline-&gt;&gt;Store: the requests still held under this binding
         Store--&gt;&gt;Pipeline: what it holds under the binding, and whether it was approved
-        Pipeline-&gt;&gt;Store: consume the approval, once
+        Pipeline-&gt;&gt;Pipeline: spend the approval in its own ledger, once
         Pipeline-&gt;&gt;Evidence: APPROVAL_DECIDED, ACTION_STARTED, on the held request&#39;s trail
         Pipeline--&gt;&gt;Adapter: allow the held request only
         Adapter-&gt;&gt;Tool: call

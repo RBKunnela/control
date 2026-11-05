@@ -157,7 +157,7 @@ func encodeEntry(e Entry, maxBody int) ([]byte, error) {
 // refusal, because an operator acts differently on a truncated file, a
 // checksum that does not match and a field this build cannot name.
 func decodeEntry(data []byte, maxBody int) (Entry, error) {
-	body, err := unframe(data, maxBody)
+	body, err := unframe(data, magic, maxBody)
 	if err != nil {
 		return Entry{}, err
 	}
@@ -245,12 +245,13 @@ func checkMembers(body []byte, known ...string) error {
 	return nil
 }
 
-// unframe returns the body of one framed entry.
-func unframe(data []byte, maxBody int) ([]byte, error) {
+// unframe returns the body of one framed entry whose magic is want, which is
+// as long as magic.
+func unframe(data []byte, want string, maxBody int) ([]byte, error) {
 	if len(data) < headerBytes {
 		return nil, fmt.Errorf("%w: %d bytes, header %d", ErrTruncated, len(data), headerBytes)
 	}
-	if string(data[:len(magic)]) != magic {
+	if string(data[:len(magic)]) != want {
 		return nil, fmt.Errorf("%w: the file does not begin as an entry does", ErrCorrupt)
 	}
 	length := int64(binary.BigEndian.Uint32(data[len(magic):]))

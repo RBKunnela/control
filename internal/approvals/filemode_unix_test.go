@@ -7,7 +7,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"slices"
 	"testing"
 	"time"
 
@@ -41,15 +40,15 @@ func overwriteInPlace(t *testing.T, dir, name string, body []byte) {
 	}
 }
 
-// TestARecordOthersMayWriteIsNotSpent: a held record a group or the world may
-// write carries whatever answer that account put in it, so Consume refuses it
-// and spends nothing. The same rewrite of a record only its owner may write is
-// the owner's own answer, and is spent.
-func TestARecordOthersMayWriteIsNotSpent(t *testing.T) {
+// TestARecordOthersMayWriteIsNotRead: a held record a group or the world may
+// write carries whatever answer that account put in it, so Find refuses it.
+// The same rewrite of a record only its owner may write is the owner's own
+// answer, and is read.
+func TestARecordOthersMayWriteIsNotRead(t *testing.T) {
 	forged := forgedGrant(t)
 	for _, c := range []struct {
-		mode  fs.FileMode
-		spent bool
+		mode fs.FileMode
+		read bool
 	}{{0o666, false}, {0o620, false}, {0o602, false}, {0o600, true}} {
 		t.Run(c.mode.String(), func(t *testing.T) {
 			p, dir := openPlane(t)
@@ -63,28 +62,24 @@ func TestARecordOthersMayWriteIsNotSpent(t *testing.T) {
 			}
 			overwriteInPlace(t, dir, heldName, forged)
 
-			got, err := p.Consume(t.Context(), h.Binding, "req-1", firstApproval, minted.Add(2*time.Minute))
-			consumed := slices.Contains(recordNames(t, dir), firstApproval+".3-consumed.rec")
-			if !c.spent {
-				if !errors.Is(err, approvals.ErrForeignFile) || got != nil {
-					t.Errorf("Consume over a record at %04o = %v, %v; want ErrForeignFile", c.mode, got, err)
-				}
-				if consumed {
-					t.Errorf("a record at %04o was spent: %v", c.mode, recordNames(t, dir))
+			found, err := p.Find(t.Context(), h.Binding, minted.Add(2*time.Minute))
+			if !c.read {
+				if !errors.Is(err, approvals.ErrForeignFile) || found != nil {
+					t.Errorf("Find over a record at %04o = %v, %v; want ErrForeignFile", c.mode, found, err)
 				}
 				return
 			}
-			if err != nil || got.GetApproverId() != "approver-1" || !consumed {
-				t.Errorf("Consume over the owner's own record = %v, %v, consumed %v; want it spent", got, err, consumed)
+			if err != nil || len(found) != 1 || found[0].Approval.GetApproverId() != "approver-1" {
+				t.Errorf("Find over the owner's own record = %v, %v; want its answer", found, err)
 			}
 		})
 	}
 }
 
-// TestARecordAnotherAccountOwnsIsNotSpent: the directory stays the plane's,
-// so only the record's own owner refuses it. The same record is spent once
-// this account is the one that owns it again.
-func TestARecordAnotherAccountOwnsIsNotSpent(t *testing.T) {
+// TestARecordAnotherAccountOwnsIsNotRead: the directory stays the plane's, so
+// only the record's own owner refuses it. The same record is read once this
+// account is the one that owns it again.
+func TestARecordAnotherAccountOwnsIsNotRead(t *testing.T) {
 	p, dir := openPlane(t)
 	h := held(t, firstApproval, "req-1")
 	if err := p.Hold(t.Context(), h, minted); err != nil {
@@ -94,16 +89,13 @@ func TestARecordAnotherAccountOwnsIsNotSpent(t *testing.T) {
 	at := minted.Add(2 * time.Minute)
 	for _, uid := range []int{os.Geteuid() + 1, -1} {
 		restore := approvals.SetEffectiveUID(func() int { return uid })
-		got, err := p.Consume(t.Context(), h.Binding, "req-1", firstApproval, at)
+		found, err := p.Find(t.Context(), h.Binding, at)
 		restore()
-		if !errors.Is(err, approvals.ErrForeignFile) || got != nil {
-			t.Errorf("Consume of a record uid %d does not own = %v, %v; want ErrForeignFile", uid, got, err)
-		}
-		if slices.Contains(recordNames(t, dir), firstApproval+".3-consumed.rec") {
-			t.Fatalf("a record uid %d does not own was spent", uid)
+		if !errors.Is(err, approvals.ErrForeignFile) || found != nil {
+			t.Errorf("Find of a record uid %d does not own = %v, %v; want ErrForeignFile", uid, found, err)
 		}
 	}
-	if got, err := p.Consume(t.Context(), h.Binding, "req-1", firstApproval, at); err != nil || got.GetApproverId() != "approver-1" {
-		t.Errorf("Consume as the owner = %v, %v; want it spent", got, err)
+	if found, err := p.Find(t.Context(), h.Binding, at); err != nil || len(found) != 1 || found[0].Approval.GetApproverId() != "approver-1" {
+		t.Errorf("Find as the owner = %v, %v; want its answer", found, err)
 	}
 }

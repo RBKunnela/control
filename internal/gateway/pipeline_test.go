@@ -112,6 +112,7 @@ func TestNewRefusesEachMisconfiguration(t *testing.T) {
 		{"nil policy", func(c *gateway.Config) { c.Policy = nil }, gateway.ErrNoPolicy},
 		{"nil sink", func(c *gateway.Config) { c.Sink = nil }, gateway.ErrNoSink},
 		{"nil approvals", func(c *gateway.Config) { c.Approvals = nil }, gateway.ErrNoApprovals},
+		{"nil ledger", func(c *gateway.Config) { c.Ledger = nil }, gateway.ErrNoLedger},
 		{"nil clock", func(c *gateway.Config) { c.Clock = nil }, gateway.ErrNoClock},
 		{"nil id source", func(c *gateway.Config) { c.NewID = nil }, gateway.ErrNoIDSource},
 		{"a zero approval lifetime", func(c *gateway.Config) { c.ApprovalTTL = 0 }, gateway.ErrApprovalTTL},

@@ -30,7 +30,7 @@ func pipelineConfig(a gateway.Adapter, mode controlv1.EnforcementMode) gateway.C
 	return gateway.Config{
 		Mode: mode, Adapter: a,
 		KernelOptions: core.Options{MaxStale: time.Minute}, Policy: noPolicy{}, Pause: gateway.PauseDisabled(), Stops: gateway.StopsDisabled(), Sink: &evidence.MemorySink{},
-		Approvals: &gateway.MemoryApprovals{}, Clock: time.Now,
+		Approvals: &gateway.MemoryApprovals{}, Ledger: &gateway.MemoryLedger{}, Clock: time.Now,
 		NewID:       func() string { return "id-" + strconv.FormatInt(n.Add(1), 10) },
 		ApprovalTTL: time.Minute, RetryAfter: time.Second, MaxHeld: 16, MaxOpen: 16, MaxRuns: 16,
 	}

@@ -33,8 +33,9 @@ version. [status.md](../status.md) is the inventory.
 | Floor directories (`schema_version`) | `1.0` | `1.x` | `experimental` | [cli.md](cli.md#guardana-control) |
 | Scenario (`kind`) | — | `agent-scenario/v1alpha1` | `experimental` | [scenario-format.md](scenario-format.md#the-document) |
 | Pause file (`schema_version`) | `1` | `1` | `experimental` | [cli.md](cli.md#guardana-control) |
-| Approvals directory (`schema_version`) | `1.0` | `1.x` | `experimental` | [approvals](../concepts/approvals-and-the-held-call.md#what-is-held-and-by-whom) |
+| Approvals directory (`schema_version`) | `2.0` | `2.x` | `experimental` | [approvals](../concepts/approvals-and-the-held-call.md#what-is-held-and-by-whom) |
 | Hold journal (`schema_version`) | `1.0` | `1.x` | `experimental` | [approvals](../concepts/approvals-and-the-held-call.md#a-hold-the-plane-loses) |
+| Spent ledger (`schema_version`) | `1.0` | `1.x` | `experimental` | [approvals](../concepts/approvals-and-the-held-call.md#an-approval-is-spent-once) |
 | Hook profile (`kind`) | — | `hook-profile/v1alpha1` | `experimental` | [runtime-profiles](../extending/runtime-profiles.md#the-profile) |
 | Hook bridge handles (`version`) | `1.0` | `1.x` | `experimental` | [runtime-profiles](../extending/runtime-profiles.md#what-the-bridge-does) |
 | Runs directory marker and root state (`schema_version`) | `1.0` | `1.x` | `experimental` | [contracts.md](../contracts.md#the-runs-directory) |
@@ -66,10 +67,13 @@ one quoted key per line, carries none either.
 ## Reading files an older release wrote
 
 - **Wire messages, the evidence export, the runs directory's marker and
-  root states, the approvals directory, the hold journal and the floor
+  root states, the hold journal, the spent ledger and the floor
   directories.** Any minor of major 1 is read. A member the reader does not
   know is refused, so a file a later minor extended is refused when that
   member arrives, never read with it dropped.
+- **Approvals directory.** Any minor of major 2 is read. A 1.0 directory
+  kept the plane's spent mark beside the answers, so it is refused: empty
+  it; its holds expire within `approvals.ttl`.
 - **Run record.** Any minor of major 2 is read. A record of major 1 names no
   project, so it is refused, never read as any project's run: open the run
   again ([runs.md](runs.md#runs-an-earlier-release-opened)).

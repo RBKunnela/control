@@ -17,8 +17,9 @@ import (
 // approval satisfies. A retry that is a held request again resumes it; any
 // other call is held anew. A request held under this binding is one the
 // pipeline itself holds, unexpired at this call's clock reading: the store says
-// which of its records are still there, and the pipeline's own record says what
-// was held. Whatever the store cannot answer blocks the call on its own trail.
+// which of its records are still there and what was answered, the pipeline's
+// own record says what was held, and its ledger what was spent. Whatever the
+// store or the ledger cannot answer blocks the call on its own trail.
 func (c *call) approve(snap *policy.Snapshot) Disposition {
 	if c.runLapsedNow() {
 		// A hold under a run that expired is one no retry can reach, since the
@@ -31,8 +32,8 @@ func (c *call) approve(snap *policy.Snapshot) Disposition {
 		c.decide(verdictIndeterminate, codeEvidenceUnavailable)
 		return c.freshBlock()
 	}
-	// Memory before the store, the reverse of a resume's consume then take: a
-	// hold taken after this read was consumed first, so the store reads it spent.
+	// Memory before the ledger, the reverse of a resume's spend then take: a
+	// hold taken after this read was spent first, so the ledger reads it spent.
 	holds := c.p.heldUnder(binding, c.now)
 	helds, err := c.p.cfg.Approvals.Find(c.ctx, binding, c.now)
 	if err != nil && !errors.Is(err, ErrNoApproval) {
@@ -57,7 +58,7 @@ func (c *call) approve(snap *policy.Snapshot) Disposition {
 	if len(matches) == 0 {
 		return c.holdAnew(binding, unheld)
 	}
-	return c.resume(matches, binding)
+	return c.resume(matches, binding, helds)
 }
 
 // holdAnew is the branch for a call no hold matched. A pause or a stop
@@ -74,25 +75,35 @@ func (c *call) holdAnew(binding approval.Binding, unheld []Held) Disposition {
 	return c.holdOrUsed(binding, unheld)
 }
 
-// holdOrUsed holds this call anew, unless a record the store keeps for a
-// request the pipeline no longer holds resolves as consumed, as Find returned
-// it: a resume of that request spent its approval, and this call is the next
-// identical one (ADR-0013). Only a plane resuming a request it held consumes,
-// so Consumed proves the approval spent once the hold is gone, though not that
-// anything ran: a pause or a record the sink refuses after the consume blocks
-// the execution. Every other resolution proves nothing spent, and the call is
-// held anew and counted. A record the plane does not hold is never consumed:
-// that would spend an answer a reconciliation may still resolve, and tell the
-// next identical call that its approval was spent (ADR-0016).
+// holdOrUsed holds this call anew, unless the ledger marks consumed the
+// approval of a record the store keeps for a request the pipeline no longer
+// holds: a resume of that request spent its approval, and this call is the
+// next identical one (ADR-0013). Only a plane resuming a request it held
+// spends, so the mark proves the approval spent once the hold is gone, though
+// not that anything ran: a pause or a record the sink refuses after the spend
+// blocks the execution. A record with no mark, or one marked not resumed,
+// proves nothing spent, and the call is held anew; the first is counted. A
+// record the plane does not hold is never spent: that would spend an answer a
+// reconciliation may still settle, and tell the next identical call that its
+// approval was spent (ADR-0016). A ledger that cannot be read blocks the call,
+// since it may hold the mark that refuses it.
 func (c *call) holdOrUsed(binding approval.Binding, unheld []Held) Disposition {
+	if len(unheld) == 0 {
+		return c.hold(binding)
+	}
+	marks, err := c.p.cfg.Ledger.Lookup(c.ctx, binding, c.now)
+	if err != nil {
+		c.decide(verdictIndeterminate, codeEvidenceUnavailable)
+		return c.freshBlock()
+	}
 	for _, held := range unheld {
-		if held.Resolution == ResolutionConsumed {
+		if marks[held.Approval.GetRequestId()] == ResolutionConsumed {
 			c.decide(verdictDeny, codeApprovalAlreadyUsed)
 			return c.freshBlock()
 		}
 	}
 	for _, held := range unheld {
-		if held.Resolution != ResolutionNotResumed {
+		if marks[held.Approval.GetRequestId()] != ResolutionNotResumed {
 			c.p.counts.add(func(s *Stats) *uint64 { return &s.UnheldRecords })
 		}
 	}

@@ -4,6 +4,7 @@ package approvals_test
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -102,43 +103,54 @@ func TestAnAnswerThatCannotBeMadeDurableIsNotFiled(t *testing.T) {
 	}
 }
 
-// TestAnAnswerThePlaneSpentBeforeTheFailureIsFiled: between the approver's
-// link and forcing it to disk, the plane reads the answer, runs on it and
-// unlinks it, and then the directory cannot be opened. The consumed record
-// carries this answer, so the answer was filed: Answer reports it as filed
-// and leaves only the consumed record.
-func TestAnAnswerThePlaneSpentBeforeTheFailureIsFiled(t *testing.T) {
-	dir, consumeErr, err := answerWhileThePlaneConsumes(t, controlv1.ApprovalState_APPROVAL_STATE_APPROVED, "approver-1")
-	if consumeErr != nil {
-		t.Fatalf("the plane consuming the answer: %v", consumeErr)
+// TestAnAnswerThePlaneReadBeforeTheFailureIsTakenBack: between the
+// approver's link and forcing it to disk, the plane reads the answer, and then
+// the directory cannot be opened. The answer is taken back and Answer reports
+// the failure alone: whether the plane spent what it read is in the plane's
+// own ledger, never in this directory.
+func TestAnAnswerThePlaneReadBeforeTheFailureIsTakenBack(t *testing.T) {
+	var read []approvals.Record
+	dir, readErr, err := answerWhileThePlaneReads(t, func(p *approvals.Plane, h approvals.Hold) error {
+		found, err := p.Find(t.Context(), h.Binding, minted.Add(2*time.Minute))
+		read = found
+		return err
+	})
+	if readErr != nil || len(read) != 1 || read[0].Approval.GetState() != approved {
+		t.Fatalf("the plane reading the answer = %v, %v; want the answer", read, readErr)
 	}
-	if err != nil {
-		t.Fatalf("Answer of an answer the plane spent = %v, want nil: an action ran on it", err)
+	if !errors.Is(err, fs.ErrPermission) || errors.Is(err, approvals.ErrOutcomeUnknown) {
+		t.Fatalf("Answer whose sync failed = %v, want fs.ErrPermission alone", err)
 	}
-	if got, want := recordNames(t, dir), []string{"APPROVAL1.3-consumed.rec"}; !slices.Equal(got, want) {
+	if got, want := recordNames(t, dir), []string{"APPROVAL1.0-held.rec"}; !slices.Equal(got, want) {
 		t.Fatalf("records = %v, want %v", got, want)
 	}
 }
 
-// TestAnAnswerGoneBeforeItsUndoIsNotReportedNotFiled: the plane reads a
-// rejection between the approver's link and forcing it to disk, and drops the
-// record, answer and all. The approver's undo finds the name gone, so whether
-// the answer was read is unknown, and Answer says so beside the failure.
+// TestAnAnswerGoneBeforeItsUndoIsNotReportedNotFiled: the plane prunes the
+// record as expired between the approver's link and forcing it to disk,
+// answer and all. The approver's undo finds the name gone, so whether the
+// answer was read is unknown, and Answer says so beside the failure.
 func TestAnAnswerGoneBeforeItsUndoIsNotReportedNotFiled(t *testing.T) {
-	_, consumeErr, err := answerWhileThePlaneConsumes(t, controlv1.ApprovalState_APPROVAL_STATE_REJECTED, "")
-	if !errors.Is(consumeErr, approvals.ErrApprovalRejected) {
-		t.Fatalf("the plane reading the rejection = %v, want ErrApprovalRejected", consumeErr)
+	_, pruneErr, err := answerWhileThePlaneReads(t, func(p *approvals.Plane, _ approvals.Hold) error {
+		n, err := p.Prune(t.Context(), expires)
+		if err == nil && n != 1 {
+			return fmt.Errorf("pruned %d records, want 1", n)
+		}
+		return err
+	})
+	if pruneErr != nil {
+		t.Fatalf("the plane pruning the record: %v", pruneErr)
 	}
 	if !errors.Is(err, approvals.ErrOutcomeUnknown) || !errors.Is(err, fs.ErrPermission) {
 		t.Fatalf("Answer whose undo found its name gone = %v, want ErrOutcomeUnknown beside fs.ErrPermission", err)
 	}
 }
 
-// answerWhileThePlaneConsumes holds firstApproval and answers it. At the
-// approver's link the plane consumes it, and then the directory stops being
+// answerWhileThePlaneReads holds firstApproval and approves it. At the
+// approver's link the plane runs call, and then the directory stops being
 // readable, so forcing the link to disk fails. It returns the directory, what
-// Consume returned and what Answer returned.
-func answerWhileThePlaneConsumes(t *testing.T, answer controlv1.ApprovalState, approverID string) (string, error, error) {
+// call returned and what Answer returned.
+func answerWhileThePlaneReads(t *testing.T, call func(*approvals.Plane, approvals.Hold) error) (string, error, error) {
 	t.Helper()
 	if os.Geteuid() == 0 {
 		t.Skip("the superuser opens a directory whatever its mode")
@@ -150,19 +162,19 @@ func answerWhileThePlaneConsumes(t *testing.T, answer controlv1.ApprovalState, a
 	}
 	var armed atomic.Bool
 	armed.Store(true)
-	var consumeErr error
+	var callErr error
 	a := openApprover(t, dir, approvals.WithSteps(func(step string) {
 		if step == approvals.StepLinked && armed.CompareAndSwap(true, false) {
-			_, consumeErr = p.Consume(t.Context(), h.Binding, "req-1", firstApproval, minted.Add(2*time.Minute))
+			callErr = call(p, h)
 			if err := os.Chmod(dir, 0o300); err != nil { //nolint:gosec // G302: a directory its owner cannot list, so the sync fails
 				t.Error(err)
 			}
 		}
 	}))
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) }) //nolint:gosec // G302: the store's own mode, back
-	_, err := a.Answer(t.Context(), firstApproval, answer, approverID, "", minted.Add(time.Minute))
+	_, err := a.Answer(t.Context(), firstApproval, approved, "approver-1", "", minted.Add(time.Minute))
 	if chmodErr := os.Chmod(dir, 0o700); chmodErr != nil { //nolint:gosec // G302: the store's own mode, back
 		t.Fatal(chmodErr)
 	}
-	return dir, consumeErr, err
+	return dir, callErr, err
 }

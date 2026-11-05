@@ -336,14 +336,14 @@ func TestAHoldWhosePolicyIsStaleBeforeTheConsumeSpendsNothing(t *testing.T) {
 	})
 	hook.before = func() { r.policy.set(snapshotAt(t, base().Add(-handOutBudget-time.Minute), approveRefunds)) }
 	expectWithheld(t, r.admit(retry(t, "req-2"), refundArgs()))
-	if n := r.store.consumed.Load(); n != 0 {
+	if n := r.spent(); n != 0 {
 		t.Fatalf("the withheld retry consumed %d approval(s), want none", n)
 	}
 	hook.before = nil
 	r.policy.set(snapshotAt(t, base().Add(2*time.Minute), approveRefunds))
 	expectRuns(t, r.admit(retry(t, "req-3"), refundArgs()))
-	if n := r.store.consumed.Load(); n != 1 {
-		t.Errorf("Consume was asked %d time(s), want once, by the retry that ran", n)
+	if n := r.spent(); n != 1 {
+		t.Errorf("Spend was asked %d time(s), want once, by the retry that ran", n)
 	}
 	if d := r.admit(retry(t, "req-4"), refundArgs()); d.Action != core.Block {
 		t.Errorf("a third retry: Action = %d, want the spent approval refused", d.Action)

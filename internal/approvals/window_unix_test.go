@@ -177,17 +177,14 @@ func callAfterSwap(t *testing.T, home, other string, call func(p *approvals.Plan
 
 // TestAPlaneAfterItsJudgeReadsTheDirectoryItHolds: the plane holds its own
 // directory's lock and the other store holds an approved record under the
-// plane's binding. Swapped in after the judge, it is neither found nor
-// spent, and it stays approved.
+// plane's binding. Swapped in after the judge, it is not found, and it stays
+// approved.
 func TestAPlaneAfterItsJudgeReadsTheDirectoryItHolds(t *testing.T) {
 	dir := t.TempDir()
 	other := approvedElsewhere(t)
 	binding := bindingOf(t, "req-1")
 	for name, call := range map[string]func(p *approvals.Plane) (any, error){
 		"Find": func(p *approvals.Plane) (any, error) { return p.Find(t.Context(), binding, minted) },
-		"Consume": func(p *approvals.Plane) (any, error) {
-			return p.Consume(t.Context(), binding, "req-1", firstApproval, minted)
-		},
 	} {
 		got, err := callAfterSwap(t, dir+"/"+name, other, call)
 		if !errors.Is(err, approvals.ErrNoApproval) {
@@ -270,26 +267,22 @@ func TestAnApproverRacingASwapNeverAnswersTheOtherStore(t *testing.T) {
 
 // TestAPlaneRacingASwapNeverFindsTheOtherStoresApproval: the plane holds its
 // own directory while the name flips to a link to a store holding an
-// approved record under the plane's binding. Find never returns it and
-// Consume never spends it.
+// approved record under the plane's binding. Find never returns it.
 func TestAPlaneRacingASwapNeverFindsTheOtherStoresApproval(t *testing.T) {
 	p, dir := openPlane(t)
 	other := approvedElsewhere(t)
 	binding := bindingOf(t, "req-1")
 	stop := swapper(t, dir, other)
-	calls, found, spent := 0, 0, 0
+	calls, found := 0, 0
 	for deadline := time.Now().Add(raceFor); time.Now().Before(deadline); calls++ {
 		if recs, err := p.Find(t.Context(), binding, minted); err == nil && len(recs) > 0 {
 			found++
-		}
-		if a, err := p.Consume(t.Context(), binding, "req-1", firstApproval, minted); err == nil && a != nil {
-			spent++
 		}
 	}
 	if swaps := stop(); swaps == 0 || calls == 0 {
 		t.Fatalf("%d swaps and %d calls: the race examined nothing", swaps, calls)
 	}
-	if found > 0 || spent > 0 {
-		t.Errorf("the plane holding %s read %s's approval: found %d times, spent %d", dir, other, found, spent)
+	if found > 0 {
+		t.Errorf("the plane holding %s read %s's approval %d times", dir, other, found)
 	}
 }

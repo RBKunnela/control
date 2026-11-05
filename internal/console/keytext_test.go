@@ -142,7 +142,7 @@ func shownText(st stateReply) []string {
 		out = append(out, pr.Name, pr.Error)
 	}
 	for _, r := range a.Records {
-		out = append(out, r.State, r.Resolution, r.Request, r.BundleDigest, r.Expires, r.AnsweredBy, r.AnsweredAt,
+		out = append(out, r.State, r.Request, r.BundleDigest, r.Expires, r.AnsweredBy, r.AnsweredAt,
 			r.ReadableNote, r.Title, r.Status, r.Confirm)
 		if v := r.Readable; v != nil {
 			out = append(out, v.Principal, v.Agent, v.Action, v.Upstream, v.Resource, v.EffectClass, v.RuleIDs, v.Requested)

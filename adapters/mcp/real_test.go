@@ -87,6 +87,7 @@ func (r *rig) plan(t *testing.T, a *mcp.Adapter, o rigOptions) mcp.Pipeline {
 		Stops:         gateway.StopsDisabled(),
 		Sink:          r.sink,
 		Approvals:     r.approvals,
+		Ledger:        &gateway.MemoryLedger{},
 		Clock:         time.Now,
 		NewID:         func() string { return "gw-" + strconv.FormatInt(n.Add(1), 10) },
 		ApprovalTTL:   time.Minute,

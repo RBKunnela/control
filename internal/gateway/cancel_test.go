@@ -9,7 +9,6 @@ import (
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/core"
-	"github.com/guardana/control/internal/core/approval"
 	"github.com/guardana/control/internal/evidence"
 	"github.com/guardana/control/internal/gateway"
 )
@@ -135,13 +134,11 @@ func TestAnAgentsCancelNeverCutsAProposedCallsTrail(t *testing.T) {
 }
 
 // cancellingStore cancels the admitting agent's context as the store is asked
-// to keep a hold, or once it has spent an approval: an agent that gives up
-// while the store syncs.
+// to keep a hold: an agent that gives up while the store syncs.
 type cancellingStore struct {
 	*gateway.MemoryApprovals
-	cancel  func()
-	onHold  bool
-	consume bool
+	cancel func()
+	onHold bool
 }
 
 func (s *cancellingStore) Hold(ctx context.Context, held gateway.Held, now time.Time) error {
@@ -149,14 +146,6 @@ func (s *cancellingStore) Hold(ctx context.Context, held gateway.Held, now time.
 		s.cancel()
 	}
 	return s.MemoryApprovals.Hold(ctx, held, now)
-}
-
-func (s *cancellingStore) Consume(ctx context.Context, b approval.Binding, requestID, approvalID string, now time.Time) (*controlv1.Approval, error) {
-	a, err := s.MemoryApprovals.Consume(ctx, b, requestID, approvalID, now)
-	if s.consume {
-		s.cancel()
-	}
-	return a, err
 }
 
 // cancellingJournal cancels the admitting agent's context as an entry is
@@ -219,21 +208,22 @@ func TestAnAgentsCancelDuringTheHoldLeavesNoTrailOpen(t *testing.T) {
 	}
 }
 
-// TestAnAgentsCancelAfterTheConsumeStillStartsTheCall: the approval is spent
-// once Consume returns, so an agent that gives up right then still has the
-// answer and the start written on the held trail, its journal entry flipped,
-// and the execution handed out for its adapter to close or abort.
-func TestAnAgentsCancelAfterTheConsumeStillStartsTheCall(t *testing.T) {
+// TestAnAgentsCancelAfterTheSpendStillStartsTheCall: the approval is spent
+// once the ledger has marked it, so an agent that gives up right then still
+// has the answer and the start written on the held trail, its journal entry
+// flipped, and the execution handed out for its adapter to close or abort.
+func TestAnAgentsCancelAfterTheSpendStillStartsTheCall(t *testing.T) {
 	store := &cancellingStore{MemoryApprovals: &gateway.MemoryApprovals{}}
 	journal := &gateway.MemoryHoldJournal{}
-	h := build(t, modeEnforce, snapshot(t, approveRefunds), func(c *gateway.Config) { c.Approvals, c.Journal = store, journal })
+	ledger := &fakeLedger{}
+	h := build(t, modeEnforce, snapshot(t, approveRefunds), func(c *gateway.Config) { c.Approvals, c.Journal, c.Ledger = store, journal, ledger })
 	first := hold(t, h)
 	if err := store.Answer(first.Pending.ApprovalID, approved, "alice", "", base()); err != nil {
 		t.Fatalf("Answer: %v", err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	store.cancel, store.consume = cancel, true
+	ledger.afterSpend = cancel
 	d := h.p.Admit(ctx, admission(retry(t, "req-2"), refundArgs()))
 	if d.Action != core.Execute && d.Action != core.ExecuteWithObligations {
 		t.Errorf("the resumed call: %s %v, want it handed out", d.Decision.GetVerdict(), d.Decision.GetReasonCodes())
@@ -251,12 +241,12 @@ func TestAnAgentsCancelAfterTheConsumeStillStartsTheCall(t *testing.T) {
 	expectNoSinkFailure(t, h)
 }
 
-// TestAnAgentsCancelBeforeTheConsumeSpendsNothing: an agent that gives up on
+// TestAnAgentsCancelBeforeTheSpendSpendsNothing: an agent that gives up on
 // the retry of an approved hold before its approval is spent, at the
 // admission or while the store is asked, has that call blocked on a whole
 // trail of its own with nothing spent: the hold stands, nothing is counted as
 // the sink's failure, and the agent's next retry runs on the approval.
-func TestAnAgentsCancelBeforeTheConsumeSpendsNothing(t *testing.T) {
+func TestAnAgentsCancelBeforeTheSpendSpendsNothing(t *testing.T) {
 	for _, when := range []string{"before the admission", "while the store is asked"} {
 		t.Run(when, func(t *testing.T) {
 			f := newFakeStore()

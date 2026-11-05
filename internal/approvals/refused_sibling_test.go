@@ -8,7 +8,6 @@ import (
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/approvals"
-	"github.com/guardana/control/internal/core/approval"
 )
 
 // sibling is the approval id a writer of the directory files a second record
@@ -18,16 +17,16 @@ const sibling = "APPROVAL2"
 // reservedApprover is an approver id the claim rule refuses.
 const reservedApprover = "authn:okta:alice"
 
-// forgeSibling files a copy of the framed record from under another approval
-// id, for requestID, naming approverID, as a writer of the directory would.
-func forgeSibling(t *testing.T, dir, from, name, requestID, approverID string) {
+// forgeSibling files a copy of the answered record under another approval id,
+// for requestID, naming approverID, as a writer of the directory would.
+func forgeSibling(t *testing.T, dir, requestID, approverID string) {
 	t.Helper()
-	b := withField(t, readFile(t, dir, from), "approval_id", `"`+sibling+`"`)
+	b := withField(t, readFile(t, dir, answeredName), "approval_id", `"`+sibling+`"`)
 	b = withApprovalField(t, b, "approvalId", `"`+sibling+`"`)
 	b = withField(t, b, "request_id", `"`+requestID+`"`)
 	b = withApprovalField(t, b, "requestId", `"`+requestID+`"`)
 	b = withApprovalField(t, b, "approverId", `"`+approverID+`"`)
-	writeFile(t, dir, name, b)
+	writeFile(t, dir, sibling+".1-answered.rec", b)
 }
 
 // recordOf is the one record of approvalID among found.
@@ -43,7 +42,7 @@ func recordOf(t *testing.T, found []approvals.Record, approvalID string) approva
 }
 
 // expectUnknown holds a refused record to what Find may say of it: what
-// identifies it and its window, and nothing about its answer or its fate.
+// identifies it and its window, and nothing about its answer.
 func expectUnknown(t *testing.T, rec approvals.Record, requestID string) {
 	t.Helper()
 	expectUnknownOf(t, rec, sibling, requestID)
@@ -54,8 +53,6 @@ func expectUnknownOf(t *testing.T, rec approvals.Record, approvalID, requestID s
 	t.Helper()
 	a := rec.Approval
 	switch {
-	case rec.Resolution != approvals.ResolutionUnspecified:
-		t.Errorf("the refused record reads %v, want unspecified", rec.Resolution)
 	case a.GetState() != controlv1.ApprovalState_APPROVAL_STATE_UNSPECIFIED || a.GetApproverId() != "" || a.GetDecidedAt() != nil:
 		t.Errorf("the refused record carries its answer: %s by %q at %v", a.GetState(), a.GetApproverId(), a.GetDecidedAt())
 	case a.GetApprovalId() != approvalID || a.GetRequestId() != requestID || rec.RequestID != requestID:
@@ -68,16 +65,16 @@ func expectUnknownOf(t *testing.T, rec approvals.Record, approvalID, requestID s
 }
 
 // TestARefusedRecordOfAnotherRequestBlocksNothing: a writer files a record
-// for another request of the same action, under an approver id the claim rule
-// refuses. Find answers about every record of the binding, the refused one as
-// unknown, and the plane's own approval is spent as if the other were not
-// there.
+// for another request of the same action, or a second file for the plane's
+// own request, under an approver id the claim rule refuses. Find answers about
+// every record of the binding, the refused one as unknown and the plane's own
+// as it stands, and writes nothing.
 func TestARefusedRecordOfAnotherRequestBlocksNothing(t *testing.T) {
 	for name, requestID := range map[string]string{"another request": "req-2", "the same request": "req-1"} {
 		t.Run(name, func(t *testing.T) {
 			p, dir, h := heldOne(t)
 			answerAt(t, dir, minted.Add(time.Minute))
-			forgeSibling(t, dir, answeredName, sibling+".1-answered.rec", requestID, reservedApprover)
+			forgeSibling(t, dir, requestID, reservedApprover)
 			now := minted.Add(2 * time.Minute)
 
 			found, err := p.Find(t.Context(), h.Binding, now)
@@ -85,16 +82,11 @@ func TestARefusedRecordOfAnotherRequestBlocksNothing(t *testing.T) {
 				t.Fatalf("Find = %d record(s), %v; want the plane's own and the refused one", len(found), err)
 			}
 			expectUnknown(t, recordOf(t, found, sibling), requestID)
-			if own := recordOf(t, found, firstApproval); own.Approval.GetApproverId() != "approver-1" {
-				t.Errorf("the plane's own record reads approver %q", own.Approval.GetApproverId())
+			own := recordOf(t, found, firstApproval)
+			if own.Approval.GetApproverId() != "approver-1" || own.Approval.GetState() != controlv1.ApprovalState_APPROVAL_STATE_APPROVED {
+				t.Errorf("the plane's own record reads %s by %q", own.Approval.GetState(), own.Approval.GetApproverId())
 			}
-			if got, err := p.Consume(t.Context(), h.Binding, requestID, sibling, now); got != nil || !errors.Is(err, approval.ErrReservedApproverID) {
-				t.Errorf("Consume of the refused record = %v, %v; want nothing and ErrReservedApproverID", got, err)
-			}
-			if got, err := p.Consume(t.Context(), h.Binding, "req-1", firstApproval, now); err != nil || got.GetApproverId() != "approver-1" {
-				t.Fatalf("Consume of the plane's own record = %v, %v; want it spent", got, err)
-			}
-			assertNames(t, dir, consumedName, sibling+".1-answered.rec")
+			assertNames(t, dir, answeredName, sibling+".1-answered.rec")
 		})
 	}
 }
@@ -104,7 +96,7 @@ func TestARefusedRecordOfAnotherRequestBlocksNothing(t *testing.T) {
 func TestARefusedRecordPastItsExpiryIsHidden(t *testing.T) {
 	p, dir, h := heldOne(t)
 	answerAt(t, dir, minted.Add(time.Minute))
-	forgeSibling(t, dir, answeredName, sibling+".1-answered.rec", "req-2", reservedApprover)
+	forgeSibling(t, dir, "req-2", reservedApprover)
 	early := expires.Add(-5 * time.Minute)
 	writeFile(t, dir, sibling+".1-answered.rec", withApprovalField(t, readFile(t, dir, sibling+".1-answered.rec"),
 		"expiresAt", mustJSON(t, early.Format(time.RFC3339Nano))))
@@ -122,71 +114,29 @@ func TestARefusedRecordPastItsExpiryIsHidden(t *testing.T) {
 	}
 }
 
-// TestResolveClosesOnlyTheApprovalItNames: the plane's own record is refused
-// for its approver id and a writer files an accepted record of the same
-// request under another approval id. Resolve refuses, and leaves the other
-// record byte for byte as it was.
-func TestResolveClosesOnlyTheApprovalItNames(t *testing.T) {
+// TestARefusedOwnRecordIsReadAsUnknownBesideAnAcceptedSibling: the plane's
+// own record is refused for its approver id and a writer files an accepted
+// record of the same request under another approval id. Find hands back the
+// sibling as it stands and the plane's own record as unknown, so nothing it
+// says about its answer reaches the plane, and the directory is left byte for
+// byte as it was.
+func TestARefusedOwnRecordIsReadAsUnknownBesideAnAcceptedSibling(t *testing.T) {
 	p, dir, h := heldOne(t)
 	answerAt(t, dir, minted.Add(time.Minute))
-	forgeSibling(t, dir, answeredName, sibling+".1-answered.rec", "req-1", "approver-2")
+	forgeSibling(t, dir, "req-1", "approver-2")
 	writeFile(t, dir, answeredName, withApprovalField(t, readFile(t, dir, answeredName), "approverId", `"`+reservedApprover+`"`))
 	before := dirContents(t, dir)
-	now := minted.Add(2 * time.Minute)
 
-	if err := p.Resolve(t.Context(), h.Binding, "req-1", firstApproval, approvals.ResolutionNotResumed, now); !errors.Is(err, approval.ErrReservedApproverID) {
-		t.Errorf("Resolve of the refused own record = %v, want ErrReservedApproverID", err)
+	found, err := p.Find(t.Context(), h.Binding, minted.Add(2*time.Minute))
+	if err != nil || len(found) != 2 {
+		t.Fatalf("Find = %d record(s), %v; want both", len(found), err)
 	}
-	if err := p.Resolve(t.Context(), h.Binding, "req-1", "", approvals.ResolutionNotResumed, now); !errors.Is(err, approvals.ErrRecordName) {
-		t.Errorf("Resolve naming no approval = %v, want ErrRecordName", err)
-	}
-	if err := p.Resolve(t.Context(), h.Binding, "req-1", "APPROVAL3", approvals.ResolutionNotResumed, now); !errors.Is(err, approvals.ErrNoApproval) {
-		t.Errorf("Resolve of an approval nobody holds = %v, want ErrNoApproval", err)
+	expectUnknownOf(t, recordOf(t, found, firstApproval), firstApproval, "req-1")
+	if sib := recordOf(t, found, sibling); sib.Approval.GetApproverId() != "approver-2" {
+		t.Errorf("the accepted sibling reads approver %q", sib.Approval.GetApproverId())
 	}
 	if after := dirContents(t, dir); !maps.Equal(before, after) {
-		t.Fatalf("Resolve changed the directory: %v, was %v", keysOf(after), keysOf(before))
-	}
-}
-
-// TestASpentRecordStaysSpentBesideARefusedSibling: the plane's own record was
-// consumed, and a writer files a refused record of the same request under
-// another approval id, answered or consumed. The spent record still answers
-// ErrApprovalConsumed to Consume and to Resolve, and Find reads the refused
-// one as unknown, never as spent.
-func TestASpentRecordStaysSpentBesideARefusedSibling(t *testing.T) {
-	for name, sib := range map[string]struct{ from, to string }{
-		"answered": {answeredName, sibling + ".1-answered.rec"},
-		"consumed": {consumedName, sibling + ".3-consumed.rec"},
-	} {
-		t.Run(name, func(t *testing.T) {
-			p, dir, h := heldOne(t)
-			answerAt(t, dir, minted.Add(time.Minute))
-			if sib.from == answeredName {
-				forgeSibling(t, dir, sib.from, sib.to, "req-1", reservedApprover)
-			}
-			now := minted.Add(2 * time.Minute)
-			if _, err := p.Consume(t.Context(), h.Binding, "req-1", firstApproval, now); err != nil {
-				t.Fatalf("consuming: %v", err)
-			}
-			if sib.from == consumedName {
-				forgeSibling(t, dir, sib.from, sib.to, "req-1", reservedApprover)
-			}
-
-			if _, err := p.Consume(t.Context(), h.Binding, "req-1", firstApproval, now); !errors.Is(err, approvals.ErrApprovalConsumed) {
-				t.Errorf("Consume again = %v, want ErrApprovalConsumed", err)
-			}
-			if err := p.Resolve(t.Context(), h.Binding, "req-1", firstApproval, approvals.ResolutionNotResumed, now); !errors.Is(err, approvals.ErrApprovalConsumed) {
-				t.Errorf("Resolve of the spent record = %v, want ErrApprovalConsumed", err)
-			}
-			found, err := p.Find(t.Context(), h.Binding, now)
-			if err != nil || len(found) != 2 {
-				t.Fatalf("Find = %d record(s), %v; want the spent one and the refused one", len(found), err)
-			}
-			if own := recordOf(t, found, firstApproval); own.Resolution != approvals.ResolutionConsumed {
-				t.Errorf("the plane's own record reads %v, want consumed", own.Resolution)
-			}
-			expectUnknown(t, recordOf(t, found, sibling), "req-1")
-		})
+		t.Fatalf("Find changed the directory: %v, was %v", keysOf(after), keysOf(before))
 	}
 }
 
@@ -196,7 +146,7 @@ func TestASpentRecordStaysSpentBesideARefusedSibling(t *testing.T) {
 func TestFindTellsARefusedRecordFromAnUnreadableOne(t *testing.T) {
 	p, dir, h := heldOne(t)
 	answerAt(t, dir, minted.Add(time.Minute))
-	forgeSibling(t, dir, answeredName, sibling+".1-answered.rec", "req-2", "approver-2")
+	forgeSibling(t, dir, "req-2", "approver-2")
 	writeFile(t, dir, sibling+".1-answered.rec", withApprovalField(t, readFile(t, dir, sibling+".1-answered.rec"),
 		"decidedAt", mustJSON(t, minted.Add(-time.Hour).Format(time.RFC3339Nano))))
 	if found, err := p.Find(t.Context(), h.Binding, minted.Add(2*time.Minute)); !errors.Is(err, approvals.ErrDecidedAt) {

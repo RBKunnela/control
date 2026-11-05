@@ -227,6 +227,10 @@ type harness struct {
 	p      *gateway.Pipeline
 	sink   *failingSink
 	store  *gateway.MemoryApprovals
+	ledger *fakeLedger
+	// spy is the ledger a test shared between planes and watches, nil
+	// where the harness's own ledger serves.
+	spy    *fakeLedger
 	policy *snapshotSource
 	pause  *pauseSource
 	clock  *clock
@@ -255,6 +259,7 @@ func validConfig(t *testing.T) gateway.Config {
 		Stops:         gateway.StopsDisabled(),
 		Sink:          &evidence.MemorySink{},
 		Approvals:     &gateway.MemoryApprovals{},
+		Ledger:        &gateway.MemoryLedger{},
 		Clock:         func() time.Time { return base() },
 		NewID:         newIDs(&n),
 		ApprovalTTL:   10 * time.Minute,
@@ -271,6 +276,7 @@ func build(t *testing.T, mode controlv1.EnforcementMode, snap *policy.Snapshot, 
 	h := &harness{
 		sink:   &failingSink{refuse: map[controlv1.EventKind]bool{}},
 		store:  &gateway.MemoryApprovals{},
+		ledger: &fakeLedger{},
 		policy: &snapshotSource{snap: snap},
 		pause:  &pauseSource{snap: pause.DisabledSnapshot()},
 		clock:  &clock{now: base()},
@@ -287,6 +293,7 @@ func build(t *testing.T, mode controlv1.EnforcementMode, snap *policy.Snapshot, 
 		Stops:         gateway.StopsDisabled(),
 		Sink:          h.sink,
 		Approvals:     h.store,
+		Ledger:        h.ledger,
 		Clock:         h.clock.read,
 		NewID:         newIDs(h.ids),
 		ApprovalTTL:   10 * time.Minute,
@@ -304,6 +311,12 @@ func build(t *testing.T, mode controlv1.EnforcementMode, snap *policy.Snapshot, 
 	}
 	h.p, h.protocol = p, cfg.Adapter.Name()
 	return h
+}
+
+// spent is how many spends the harness's own ledger was asked for.
+func (h *harness) spent() int {
+	n, _ := h.ledger.asked()
+	return n
 }
 
 func (h *harness) admit(env *controlv1.ActionEnvelope, args []byte) gateway.Disposition {

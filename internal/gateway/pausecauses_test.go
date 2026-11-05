@@ -7,13 +7,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/core"
-	"github.com/guardana/control/internal/core/approval"
 	"github.com/guardana/control/internal/evidence"
 	"github.com/guardana/control/internal/gateway"
 	"github.com/guardana/control/internal/pause"
@@ -174,26 +172,12 @@ func TestACallThePlaneBlocksIsNotAskedAbout(t *testing.T) {
 	}
 }
 
-// countingStore counts the approvals consumed through it.
-type countingStore struct {
-	gateway.ApprovalStore
-	consumed atomic.Int64
-}
-
-func (s *countingStore) Consume(ctx context.Context, b approval.Binding, requestID, approvalID string, now time.Time) (*controlv1.Approval, error) {
-	s.consumed.Add(1)
-	return s.ApprovalStore.Consume(ctx, b, requestID, approvalID, now)
-}
-
-// TestAPausedRetryConsumesNothing: a retry of an approved hold under a pause
+// TestAPausedRetrySpendsNothing: a retry of an approved hold under a pause
 // is blocked on a trail of its own, the approval unspent and the hold
 // standing; once the pause is lifted the next retry resumes it and runs once.
-func TestAPausedRetryConsumesNothing(t *testing.T) {
-	var store *countingStore
-	h := build(t, modeEnforce, snapshot(t, approveRefunds), func(c *gateway.Config) {
-		store = &countingStore{ApprovalStore: c.Approvals}
-		c.Approvals = store
-	})
+func TestAPausedRetrySpendsNothing(t *testing.T) {
+	ledger := &fakeLedger{}
+	h := build(t, modeEnforce, snapshot(t, approveRefunds), overLedger(ledger))
 	first := hold(t, h)
 	if err := h.store.Answer(first.Pending.ApprovalID, approved, "alice", "", base()); err != nil {
 		t.Fatalf("Answer: %v", err)
@@ -201,8 +185,8 @@ func TestAPausedRetryConsumesNothing(t *testing.T) {
 	h.pause.set(paused(t, pausePayments))
 	blocked := h.admit(retry(t, "req-2"), refundArgs())
 	expectPlaneBlock(t, h, blocked, verdictDeny, codePaused)
-	if store.consumed.Load() != 0 {
-		t.Errorf("a paused retry consumed %d approval(s)", store.consumed.Load())
+	if spends, _ := ledger.asked(); spends != 0 {
+		t.Errorf("a paused retry spent %d approval(s)", spends)
 	}
 	expectKinds(t, kindsOf(h.trailOf("req-1")), []controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested})
 	if h.p.Stats().Held != 1 {
@@ -225,8 +209,8 @@ func TestAPausedRetryConsumesNothing(t *testing.T) {
 	if got := len(h.events()); got != len(held)+3 {
 		t.Errorf("%d event(s) outside the held trail; want the paused retry's three alone", got-len(held))
 	}
-	if s := h.p.Stats(); s.Executed != 1 || store.consumed.Load() != 1 {
-		t.Errorf("Executed = %d, consumed = %d; want the held request run once", s.Executed, store.consumed.Load())
+	if spends, _ := ledger.asked(); h.p.Stats().Executed != 1 || spends != 1 {
+		t.Errorf("Executed = %d, spent = %d; want the held request run once", h.p.Stats().Executed, spends)
 	}
 }
 

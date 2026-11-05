@@ -21,15 +21,12 @@ func planeCalls(t *testing.T, p *approvals.Plane, _ approvals.Hold) map[string]e
 	ctx := t.Context()
 	binding := bindingOf(t, "req-1")
 	_, find := p.Find(ctx, binding, minted)
-	_, consume := p.Consume(ctx, binding, "req-1", firstApproval, minted)
 	second := held(t, "APPROVAL2", "req-2")
 	_, prune := p.Prune(ctx, expires)
 	return map[string]error{
-		"Find":    find,
-		"Consume": consume,
-		"Hold":    p.Hold(ctx, second, minted),
-		"Resolve": p.Resolve(ctx, binding, "req-1", firstApproval, approvals.ResolutionNotResumed, minted),
-		"Prune":   prune,
+		"Find":  find,
+		"Hold":  p.Hold(ctx, second, minted),
+		"Prune": prune,
 	}
 }
 

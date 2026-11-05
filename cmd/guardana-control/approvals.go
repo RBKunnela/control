@@ -45,6 +45,12 @@ const unbound = "the readable fields below come from a projection and are not bo
 	"action digest beside them: the binding is over the authorized argument\n" +
 	"bytes, which no record holds"
 
+// unspent is what a listing says, once and before the records, about an
+// approved record: the plane marks a spend in its own ledger, which this
+// directory does not hold.
+const unspent = "whether a retry spent an approved record is the plane's own record and\n" +
+	"is not in this directory"
+
 // errIncomplete is a listing that is neither the whole directory nor an empty
 // one. Printing it without saying so would read as "these are all the
 // approvals there are".
@@ -158,10 +164,6 @@ func answerHint(err error) string {
 	switch {
 	case errors.Is(err, approvals.ErrOutcomeUnknown):
 		return "the plane may have read this answer before the failed write was taken back; run approvals list before answering again"
-	case errors.Is(err, approvals.ErrApprovalConsumed):
-		return "the plane consumed this approval already; nothing was written"
-	case errors.Is(err, approvals.ErrResolved):
-		return "the plane closed this request without resuming it; nothing was written"
 	case errors.Is(err, approvals.ErrApprovalAnswered):
 		return "an approver answered this approval already; nothing was written"
 	case errors.Is(err, approvals.ErrApprovalExpired):
@@ -172,8 +174,7 @@ func answerHint(err error) string {
 	return ""
 }
 
-// approvalsList prints what is waiting under dir and what became of what is
-// not. A directory that is not an approvals store is refused rather than
+// approvalsList prints what is waiting under dir and what was answered. A directory that is not an approvals store is refused rather than
 // printed as an empty one.
 func approvalsList(dir string, stdout, stderr io.Writer) int {
 	store, err := approvals.OpenApprover(dir)
@@ -214,7 +215,7 @@ func renderListing(b *strings.Builder, dir string, l approvals.Listing) {
 	if l.PlaneRunning {
 		plane = "a plane holds this directory"
 	}
-	fmt.Fprintf(b, "%s in %s\n%s\n%s\n", plural(len(l.Entries), "record", "records"), oneLine(dir), plane, unbound)
+	fmt.Fprintf(b, "%s in %s\n%s\n%s\n%s\n", plural(len(l.Entries), "record", "records"), oneLine(dir), plane, unbound, unspent)
 	for _, e := range l.Entries {
 		b.WriteString("\n")
 		renderEntry(b, e)
@@ -228,7 +229,6 @@ func renderEntry(b *strings.Builder, e approvals.Entry) {
 	a := e.Record.Approval
 	fmt.Fprintf(b, "approval %s\n", oneLine(e.Record.ApprovalID))
 	field(b, "state", a.GetState().String())
-	field(b, "resolution", e.Record.Resolution.String())
 	field(b, "request", e.Record.RequestID)
 	field(b, "action digest", a.GetActionDigest())
 	field(b, "bundle digest", a.GetPolicyBundleDigest())

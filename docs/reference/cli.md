@@ -77,9 +77,9 @@ refuse on a platform without permission bits
 Both answering commands require `--approver-id`, a claim nothing checks;
 flags come before the directory and the approval id.
 
-`approvals list` prints, for each record, what the plane wrote — its state,
-its resolution and both digests — and beside it the readable fields of the
-projection the plane wrote at hold time. Those readable fields are not bound
+`approvals list` prints, for each record, its state and both digests, and
+beside them the readable fields of the projection the plane wrote at hold
+time; whether a retry spent an approval is the plane's own ledger's. Those readable fields are not bound
 to the action digest beside them, since the binding is over argument bytes no
 record holds; the listing says so above the records. A listing the store
 reports incomplete exits 1 and names what it could not read.
@@ -91,9 +91,8 @@ call waits for the answer, since a hold does not outlive its plane, and a
 plane that keeps a hold journal records it on that call's trail as too late.
 
 Both commands refuse, writing nothing, an approval id that is absent, one
-an approver answered already, one the plane consumed, one the plane closed
-without resuming, one past its expiry, and an approver id or a reason over
-its bound — each on its own line, naming what to do about it.
+an approver answered already, one past its expiry, and an approver id or a
+reason over its bound — each on its own line, naming what to do about it.
 
 The `pause` commands write and read the pause file a plane names in
 `pause.file` ([ADR-0019](../adr/0019-an-operator-can-pause-calls.md)), and

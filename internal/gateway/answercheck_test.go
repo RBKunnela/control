@@ -1,7 +1,6 @@
 package gateway_test
 
 import (
-	"errors"
 	"testing"
 	"time"
 
@@ -9,41 +8,40 @@ import (
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/core"
-	"github.com/guardana/control/internal/evidence"
 	"github.com/guardana/control/internal/gateway"
 )
 
-// TestARejectionTheChecksRefuseIsNeverRecordedAsDecided: a store that answers
-// a rejection beside a record that is not the held approval, rejected, of this
-// contract's major and decided by the plane's clock is checked as an approval
-// is. Its record is never written as APPROVAL_DECIDED: the held trail closes
-// with the approval the plane minted, expired, and nothing runs. The genuine
-// rejection is the record APPROVAL_DECIDED carries.
+// TestARejectionTheChecksRefuseIsNeverRecordedAsDecided: a store that hands
+// back a rejection that is not the held approval, rejected, of this contract's
+// major and decided by the plane's clock has it checked as an approval is. Its
+// record is never written as APPROVAL_DECIDED: the held trail closes with the
+// approval the plane minted, expired, or the hold waits for an answer it can
+// read, and nothing runs. The genuine rejection is the record APPROVAL_DECIDED
+// carries.
 func TestARejectionTheChecksRefuseIsNeverRecordedAsDecided(t *testing.T) {
 	cases := []struct {
 		name    string
 		lie     func(*controlv1.Approval) *controlv1.Approval
+		outcome int
 		verdict controlv1.Verdict
 		code    string
-		outcome controlv1.EventKind
 	}{
-		{"the genuine rejection", func(a *controlv1.Approval) *controlv1.Approval { return a }, verdictDeny, codeApprovalRejected, kindApprovalDecided},
-		{"no record", func(*controlv1.Approval) *controlv1.Approval { return nil }, verdictIndeterminate, codeEvidenceUnavailable, kindApprovalExpired},
-		{"another approval", func(a *controlv1.Approval) *controlv1.Approval { a.ApprovalId = "a-other"; return a }, verdictIndeterminate, codeEvidenceUnavailable, kindApprovalExpired},
-		{"another request", func(a *controlv1.Approval) *controlv1.Approval { a.RequestId = "req-other"; return a }, verdictIndeterminate, codeEvidenceUnavailable, kindApprovalExpired},
-		{"multi-use", func(a *controlv1.Approval) *controlv1.Approval { a.MultiUse = true; return a }, verdictIndeterminate, codeEvidenceUnavailable, kindApprovalExpired},
-		{"another digest", func(a *controlv1.Approval) *controlv1.Approval { a.ActionDigest = "sha256:" + digits; return a }, verdictDeny, codeApprovalDigestMismatch, kindApprovalExpired},
-		{"another bundle", func(a *controlv1.Approval) *controlv1.Approval { a.PolicyBundleDigest = "sha256:" + digits; return a }, verdictDeny, codeApprovalBundleMismatch, kindApprovalExpired},
+		{"the genuine rejection", func(a *controlv1.Approval) *controlv1.Approval { return a }, closesRejected, verdictDeny, codeApprovalRejected},
+		{"no record", func(*controlv1.Approval) *controlv1.Approval { return nil }, holdsAnew, 0, ""},
+		{"another approval", func(a *controlv1.Approval) *controlv1.Approval { a.ApprovalId = "a-other"; return a }, waits, 0, ""},
+		{"another request", func(a *controlv1.Approval) *controlv1.Approval { a.RequestId = "req-other"; return a }, holdsAnew, 0, ""},
+		{"multi-use", func(a *controlv1.Approval) *controlv1.Approval { a.MultiUse = true; return a }, waits, 0, ""},
+		{"another digest", func(a *controlv1.Approval) *controlv1.Approval { a.ActionDigest = "sha256:" + digits; return a }, closesExpired, verdictDeny, codeApprovalDigestMismatch},
+		{"another bundle", func(a *controlv1.Approval) *controlv1.Approval { a.PolicyBundleDigest = "sha256:" + digits; return a }, closesExpired, verdictDeny, codeApprovalBundleMismatch},
 		{"an expiry past the minted one", func(a *controlv1.Approval) *controlv1.Approval {
 			a.ExpiresAt = timestamppb.New(base().Add(time.Hour))
 			return a
-		}, verdictIndeterminate, codeEvidenceUnavailable, kindApprovalExpired},
-		{"a grant", func(a *controlv1.Approval) *controlv1.Approval { a.State = approved; return a }, verdictIndeterminate, codeEvidenceUnavailable, kindApprovalExpired},
-		{"another major", func(a *controlv1.Approval) *controlv1.Approval { a.SchemaVersion = "9.0"; return a }, verdictIndeterminate, codeEvidenceUnavailable, kindApprovalExpired},
+		}, closesExpired, verdictIndeterminate, codeEvidenceUnavailable},
+		{"another major", func(a *controlv1.Approval) *controlv1.Approval { a.SchemaVersion = "9.0"; return a }, closesExpired, verdictIndeterminate, codeEvidenceUnavailable},
 		{"decided after the reading", func(a *controlv1.Approval) *controlv1.Approval {
 			a.DecidedAt = timestamppb.New(base().Add(time.Nanosecond))
 			return a
-		}, verdictIndeterminate, codeEvidenceUnavailable, kindApprovalExpired},
+		}, waits, 0, ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -53,79 +51,72 @@ func TestARejectionTheChecksRefuseIsNeverRecordedAsDecided(t *testing.T) {
 			if err := f.Answer(first.Pending.ApprovalID, rejected, "bob", "not today", base()); err != nil {
 				t.Fatalf("Answer: %v", err)
 			}
-			f.answer = func(a *controlv1.Approval, err error) (*controlv1.Approval, error) {
-				if !errors.Is(err, gateway.ErrApprovalRejected) {
-					t.Fatalf("the genuine Consume: %v, want a rejection", err)
-				}
-				return tc.lie(a), err
-			}
+			lieAbout(f, tc.lie)
 			d := h.admit(retry(t, "req-2"), refundArgs())
-			expectBlock(t, d, tc.verdict, tc.code, gateway.PDPType)
-			trail := h.trailOf("req-1")
-			expectKinds(t, kindsOf(trail), []controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested, tc.outcome, kindBlocked})
-			if err := evidence.ValidateChain(trail); err != nil {
-				t.Errorf("ValidateChain: %v", err)
+			expectLiedTo(t, h, d, first, tc.outcome, tc.verdict, tc.code)
+			if s := h.p.Stats(); s.Executed != 0 {
+				t.Errorf("Stats: %d executed; want nothing run", s.Executed)
 			}
-			if tc.outcome == kindApprovalExpired && len(trail) > 3 {
-				expectOwnApprovalExpired(t, trail, first)
-			}
-			if s := h.p.Stats(); s.Executed != 0 || s.Held != 0 || s.Blocks[tc.code] != 1 {
-				t.Errorf("Stats: %d executed, %d held, blocks %v; want nothing run or held and one %s", s.Executed, s.Held, s.Blocks, tc.code)
+			if tc.outcome == closesRejected {
+				if a := h.trailOf("req-1")[3].GetApproval(); a.GetApproverId() != "bob" || a.GetReason() != "not today" {
+					t.Errorf("APPROVAL_DECIDED carries %+v; want the rejection", a)
+				}
 			}
 		})
 	}
 }
 
 // TestAnApprovalOfAnotherMajorOrDecidedLaterNeverRuns: an approval of a major
-// this build does not read, with none, with no decision time, or decided
-// after the plane's clock reading or before its request, is refused and the
-// call never runs; a later minor, and an answer decided at that very reading,
-// run.
+// this build does not read, or with none, closes the held trail; one with no
+// decision time, or decided after the plane's clock reading or before its
+// request, is no answer yet and the hold waits. The call never runs; a later
+// minor, and an answer decided at that very reading, run.
 func TestAnApprovalOfAnotherMajorOrDecidedLaterNeverRuns(t *testing.T) {
 	cases := []struct {
-		name string
-		edit func(*controlv1.Approval)
-		runs bool
+		name  string
+		edit  func(*controlv1.Approval)
+		runs  bool
+		waits bool
 	}{
-		{"major 1", func(*controlv1.Approval) {}, true},
-		{"a later minor", func(a *controlv1.Approval) { a.SchemaVersion = "1.7" }, true},
-		{"decided at the reading", func(a *controlv1.Approval) { a.DecidedAt = timestamppb.New(base()) }, true},
-		{"another major", func(a *controlv1.Approval) { a.SchemaVersion = "9.0" }, false},
-		{"major 10", func(a *controlv1.Approval) { a.SchemaVersion = "10.0" }, false},
-		{"no version", func(a *controlv1.Approval) { a.SchemaVersion = "" }, false},
-		{"a major alone", func(a *controlv1.Approval) { a.SchemaVersion = "1" }, false},
-		{"a major and a dot", func(a *controlv1.Approval) { a.SchemaVersion = "1." }, false},
-		{"a minor that is no number", func(a *controlv1.Approval) { a.SchemaVersion = "1.x" }, false},
-		{"a third part", func(a *controlv1.Approval) { a.SchemaVersion = "1.0.0" }, false},
-		{"a signed minor", func(a *controlv1.Approval) { a.SchemaVersion = "1.-3" }, false},
-		{"a minor past 32 bits", func(a *controlv1.Approval) { a.SchemaVersion = "1.4294967296" }, false},
-		{"a major with a leading zero", func(a *controlv1.Approval) { a.SchemaVersion = "01.0" }, false},
-		{"decided after the reading", func(a *controlv1.Approval) { a.DecidedAt = timestamppb.New(base().Add(time.Nanosecond)) }, false},
-		{"no decision time", func(a *controlv1.Approval) { a.DecidedAt = nil }, false},
+		{"major 1", func(*controlv1.Approval) {}, true, false},
+		{"a later minor", func(a *controlv1.Approval) { a.SchemaVersion = "1.7" }, true, false},
+		{"decided at the reading", func(a *controlv1.Approval) { a.DecidedAt = timestamppb.New(base()) }, true, false},
+		{"another major", func(a *controlv1.Approval) { a.SchemaVersion = "9.0" }, false, false},
+		{"major 10", func(a *controlv1.Approval) { a.SchemaVersion = "10.0" }, false, false},
+		{"no version", func(a *controlv1.Approval) { a.SchemaVersion = "" }, false, false},
+		{"a major alone", func(a *controlv1.Approval) { a.SchemaVersion = "1" }, false, false},
+		{"a major and a dot", func(a *controlv1.Approval) { a.SchemaVersion = "1." }, false, false},
+		{"a minor that is no number", func(a *controlv1.Approval) { a.SchemaVersion = "1.x" }, false, false},
+		{"a third part", func(a *controlv1.Approval) { a.SchemaVersion = "1.0.0" }, false, false},
+		{"a signed minor", func(a *controlv1.Approval) { a.SchemaVersion = "1.-3" }, false, false},
+		{"a minor past 32 bits", func(a *controlv1.Approval) { a.SchemaVersion = "1.4294967296" }, false, false},
+		{"a major with a leading zero", func(a *controlv1.Approval) { a.SchemaVersion = "01.0" }, false, false},
+		{"decided after the reading", func(a *controlv1.Approval) { a.DecidedAt = timestamppb.New(base().Add(time.Nanosecond)) }, false, true},
+		{"no decision time", func(a *controlv1.Approval) { a.DecidedAt = nil }, false, true},
 		{"decided before the request", func(a *controlv1.Approval) {
 			a.DecidedAt = timestamppb.New(a.GetRequestedAt().AsTime().Add(-time.Nanosecond))
-		}, false},
+		}, false, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newFakeStore()
 			h := withStore(t, f)
 			holdApproved(t, h, f)
-			f.answer = func(a *controlv1.Approval, err error) (*controlv1.Approval, error) {
-				if err != nil {
-					t.Fatalf("the genuine Consume failed: %v", err)
-				}
-				tc.edit(a)
-				return a, nil
-			}
+			f.found = tc.edit
 			d := h.admit(retry(t, "req-2"), refundArgs())
-			if tc.runs {
+			switch {
+			case tc.runs:
 				if d.Action != core.Execute {
 					t.Errorf("%s %v, want the approved call handed out", d.Decision.GetVerdict(), d.Decision.GetReasonCodes())
 				}
 				return
+			case tc.waits:
+				if d.Action != core.AwaitApproval {
+					t.Errorf("Action = %d, want the hold waiting", d.Action)
+				}
+			default:
+				expectBlock(t, d, verdictIndeterminate, codeEvidenceUnavailable, gateway.PDPType)
 			}
-			expectBlock(t, d, verdictIndeterminate, codeEvidenceUnavailable, gateway.PDPType)
 			if s := h.p.Stats(); s.Executed != 0 || s.Open != 0 {
 				t.Errorf("Stats: %d executed, %d open; want nothing run", s.Executed, s.Open)
 			}
@@ -141,7 +132,7 @@ func TestAMultiUseApprovalIsLeftPending(t *testing.T) {
 	f := newFakeStore()
 	h := withStore(t, f)
 	first := hold(t, h)
-	f.consumeErr = gateway.ErrMultiUse
+	f.found = func(a *controlv1.Approval) { a.MultiUse = true }
 	d := h.admit(retry(t, "req-2"), refundArgs())
 	if d.Action != core.AwaitApproval || pendingID(d) != first.Pending.ApprovalID {
 		t.Errorf("the retry: Action = %d, pending %q; want pending on %q", d.Action, pendingID(d), first.Pending.ApprovalID)

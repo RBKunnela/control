@@ -30,6 +30,7 @@ func (p *plane) pipelineConfig(adapter gateway.Adapter, mode controlv1.Enforceme
 		Stops:                p.stopSource(),
 		Sink:                 p.spool,
 		Approvals:            p.store,
+		Ledger:               planeLedger(p.holds),
 		Journal:              p.holds,
 		ReconcileMax:         p.cfg.Approvals.ReconcileMax,
 		Clock:                time.Now,

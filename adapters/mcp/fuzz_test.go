@@ -151,6 +151,7 @@ func fuzzListener(f *testing.F, v *victim) string {
 		Stops:         gateway.StopsDisabled(),
 		Sink:          discardingSink{},
 		Approvals:     &gateway.MemoryApprovals{},
+		Ledger:        &gateway.MemoryLedger{},
 		Clock:         time.Now,
 		NewID:         ids,
 		ApprovalTTL:   time.Minute,

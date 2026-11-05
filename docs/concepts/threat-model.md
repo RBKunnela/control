@@ -353,8 +353,8 @@ What bounds it:
   field of an answer against its own record of the hold
   (`internal/gateway/resume.go`; `TestThePipelineNeverTrustsTheStoresApproval`
   in `internal/gateway/store_test.go`).
-- A writer of that directory can still deny a chosen action and bundle, and
-  leave evidence naming an approval that was never used (ADR-0016).
+- A writer of that directory can still deny a chosen action and bundle
+  (ADR-0016); only the plane's ledger marks an approval spent.
 - The gateway binary holds none of the approver's code, no private-key
   parser and no code that makes or lowers a floor, so the process that serves
   agents cannot answer an approval, read a signing key or reset its own floor

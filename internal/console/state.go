@@ -56,7 +56,6 @@ type problemReply struct {
 type recordReply struct {
 	ApprovalID   string         `json:"approval_id"`
 	State        string         `json:"state"`
-	Resolution   string         `json:"resolution"`
 	Request      string         `json:"request"`
 	ActionDigest string         `json:"action_digest"`
 	BundleDigest string         `json:"bundle_digest"`
@@ -162,7 +161,6 @@ func recordOf(e approvals.Entry, now time.Time, planeRunning bool) recordReply {
 	rec := recordReply{
 		ApprovalID:   e.Record.ApprovalID,
 		State:        a.GetState().String(),
-		Resolution:   e.Record.Resolution.String(),
 		Request:      keytext.Printable(e.Record.RequestID),
 		ActionDigest: a.GetActionDigest(),
 		BundleDigest: keytext.Printable(a.GetPolicyBundleDigest()),
@@ -193,28 +191,19 @@ func recordOf(e approvals.Entry, now time.Time, planeRunning bool) recordReply {
 	}
 	rec.Status = statusOf(rec, planeRunning)
 	rec.Fields = fieldsOf(rec)
-	rec.Answerable = a.GetState() == controlv1.ApprovalState_APPROVAL_STATE_PENDING &&
-		e.Record.Resolution == approvals.ResolutionPending && !rec.Expired
+	rec.Answerable = a.GetState() == controlv1.ApprovalState_APPROVAL_STATE_PENDING && !rec.Expired
 	rec.Confirm = confirmOf(rec)
 	return rec
 }
 
 // statusOf is the one sentence a card says of its record. It claims no more
 // than the record: an approval can resume a retry and is never said to have
-// run, and a resolution the store cannot give reads as that.
+// run, and whether a retry spent it is the plane's own record, which this page
+// does not read.
 func statusOf(r recordReply, planeRunning bool) string {
 	by := ""
 	if r.AnsweredBy != "" {
 		by = " by " + r.AnsweredBy
-	}
-	switch r.Resolution {
-	case approvals.ResolutionPending.String():
-	case approvals.ResolutionConsumed.String():
-		return "A retry spent this approval. This page cannot see what the call did."
-	case approvals.ResolutionNotResumed.String():
-		return "The plane closed this request without resuming the call."
-	default:
-		return "Cannot say what became of this record."
 	}
 	switch r.State {
 	case controlv1.ApprovalState_APPROVAL_STATE_PENDING.String():
@@ -229,7 +218,8 @@ func statusOf(r recordReply, planeRunning bool) string {
 		case !planeRunning:
 			return "Approved" + by + ". No plane holds this directory, so the call it was held for will not run."
 		}
-		return "Approved" + by + ". The call can resume on the agent's retry before " + r.Expires + "."
+		return "Approved" + by + ". The call can resume on the agent's retry before " + r.Expires +
+			", once; this page cannot see whether a retry spent it."
 	case controlv1.ApprovalState_APPROVAL_STATE_REJECTED.String():
 		return "Rejected" + by + "."
 	}
@@ -239,13 +229,8 @@ func statusOf(r recordReply, planeRunning bool) string {
 // fieldsOf is a card's labels and values, in the order the listing prints
 // them.
 func fieldsOf(r recordReply) []fieldReply {
-	resolution := r.Resolution
-	if r.Resolution == approvals.ResolutionUnspecified.String() {
-		resolution = "cannot say"
-	}
 	out := []fieldReply{
 		{"state", strings.ToLower(strings.TrimPrefix(r.State, "APPROVAL_STATE_"))},
-		{"resolution", resolution},
 		{"request", r.Request},
 		{"action digest", keytext.Printable(r.ActionDigest)},
 		{"bundle digest", r.BundleDigest},

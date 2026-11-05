@@ -143,7 +143,7 @@ func TestAHaltRaisedDuringTheApprovalLookupBlocksTheResume(t *testing.T) {
 			store.onFind = func() { halt.raise(t, h, earlier) }
 			d := h.admit(retry(t, "req-2"), refundArgs())
 			expectPlaneBlock(t, h, d, halt.verdict, halt.code)
-			if n := store.consumed.Load(); n != 0 {
+			if n := h.spent(); n != 0 {
 				t.Errorf("the blocked retry consumed %d approval(s)", n)
 			}
 			if s := h.p.Stats(); s.Executed != 1 || s.Held != 1 {

@@ -251,7 +251,7 @@ func TestConsoleAnswersAsTheCommandsDo(t *testing.T) {
 		t.Fatalf("approvals list answered %d: %s", code, stderr)
 	}
 	page, cli, refused := blockOf(t, listing, "BYPAGE"), blockOf(t, listing, "BYCLI"), blockOf(t, listing, "REFUSED")
-	for _, label := range []string{"state", "resolution", "answered by", "expires", "bundle digest"} {
+	for _, label := range []string{"state", "answered by", "expires", "bundle digest"} {
 		if fieldOf(t, page, label) != fieldOf(t, cli, label) {
 			t.Errorf("%s: the page wrote %q, the command %q", label, fieldOf(t, page, label), fieldOf(t, cli, label))
 		}

@@ -145,21 +145,6 @@ func checkFile(name string, info fs.FileInfo) error {
 	return nil
 }
 
-// present reports, without following a link at name, whether name is the
-// regular file this package writes: nil when it is, an error matching
-// fs.ErrNotExist when nothing is there, and ErrForeignFile when something
-// else is. A read follows a link, and takes one to a missing name for no name.
-func (s *store) present(name string) error {
-	info, err := s.root.Lstat(name)
-	if err != nil {
-		return err
-	}
-	if !info.Mode().IsRegular() {
-		return fmt.Errorf("%w: %q is not a regular file", ErrForeignFile, cause(name))
-	}
-	return nil
-}
-
 // listing is what one pass over the directory found: the approval ids, sorted,
 // each with the furthest-along name present at that moment.
 type listing struct {
@@ -249,9 +234,9 @@ func (s *store) readListed(id string, hint state) (rec Record, st state, refusal
 }
 
 // decodeAt decodes raw and holds it to the name it was read under. A record
-// whose inner identifier or resolution disagrees with its name is refused,
-// never read as if the two agreed: the name is how the store finds it and the
-// content is what it answers from.
+// whose inner identifier disagrees with its name is refused, never read as if
+// the two agreed: the name is how the store finds it and the content is what
+// it answers from.
 func (s *store) decodeAt(id string, st state, raw []byte) (Record, error) {
 	rec, err := decodeRecord(raw, s.opts.maxRecordBytes, s.opts.maxApprovalWindow)
 	own, refused := refusedOnlyItself(err)
@@ -265,10 +250,6 @@ func (s *store) decodeAt(id string, st state, raw []byte) (Record, error) {
 		return Record{}, fmt.Errorf("%w: %q holds approval %q",
 			ErrNameMismatch, cause(id+st.suffix()), cause(rec.ApprovalID))
 	}
-	if rec.Resolution != st.resolution() {
-		return Record{}, fmt.Errorf("%w: %q holds resolution %s",
-			ErrNameMismatch, cause(id+st.suffix()), rec.Resolution)
-	}
 	if refused {
 		return Record{}, fmt.Errorf("record %q: %w", cause(id+st.suffix()), err)
 	}
@@ -276,7 +257,7 @@ func (s *store) decodeAt(id string, st state, raw []byte) (Record, error) {
 }
 
 // drop forgets one record: every name it may take, and its projection. It is
-// how an expired or rejected record leaves the directory.
+// how an expired record leaves the directory.
 func (s *store) drop(id string) error {
 	var errs []error
 	for _, st := range byRank {

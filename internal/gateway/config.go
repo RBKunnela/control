@@ -50,8 +50,11 @@ type Config struct {
 	Stops StopSource
 	// Sink takes every event of every trail.
 	Sink evidence.Sink
-	// Approvals holds requests and consumes approvals.
+	// Approvals holds requests and hands back what approvers answered.
 	Approvals ApprovalStore
+	// Ledger is where the plane marks an approval spent or given up, and the
+	// only place it reads either from.
+	Ledger Ledger
 	// Runs is the runs directory, set exactly when the adapter presents runs.
 	// Without it every run is local (ADR-0021); with it every call needs an
 	// opened run (ADR-0034).
@@ -145,6 +148,8 @@ func checkSources(cfg Config) error {
 		return ErrNoSink
 	case cfg.Approvals == nil:
 		return ErrNoApprovals
+	case cfg.Ledger == nil:
+		return ErrNoLedger
 	case cfg.Clock == nil:
 		return ErrNoClock
 	case cfg.NewID == nil:

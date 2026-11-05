@@ -90,6 +90,10 @@ var everyRefusal = map[string]Error{
 	"ErrMalformed":      ErrMalformed,
 	"ErrNameMismatch":   ErrNameMismatch,
 	"ErrRequestName":    ErrRequestName,
+	"ErrSpent":          ErrSpent,
+	"ErrSettled":        ErrSettled,
+	"ErrLedgerEntry":    ErrLedgerEntry,
+	"ErrZeroTime":       ErrZeroTime,
 }
 
 // assertOnly holds a refusal to exactly one sentinel: the one the case names,

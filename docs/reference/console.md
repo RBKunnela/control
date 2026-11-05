@@ -100,8 +100,8 @@ when the agent retries the call.
 
 Cards keep their place. They are ordered by the time their call was held, a
 new one goes after all of them, and none is removed while the page is open: a
-card whose call was answered, consumed or closed says so, and one whose
-record left the directory says that it did. The answer buttons wait one
+card whose call was answered says so, and one whose record left the
+directory says that it did. The answer buttons wait one
 second after any change to the list.
 
 ## What it shows
@@ -117,10 +117,10 @@ it shows at least what the command line quotes. Every value is set as text,
 never as markup.
 
 The words claim no more than the records. An approved call can resume on the
-agent's retry before the approval expires; the page never says it ran. A
-listing that is not the whole directory is a warning, never an empty list. A
-record whose resolution the store cannot give reads "cannot say", and a
-listing that failed cannot say whether a plane holds the directory. A pause
+agent's retry before the approval expires; the page never says it ran, or
+whether a retry spent it, which is the plane's own ledger's. A listing that
+is not the whole directory is a warning, never an empty list, and a listing
+that failed cannot say whether a plane holds the directory. A pause
 file that cannot be read is shown as one under which a plane blocks every
 call. A refusal from the store or the pause file is shown in its own words.
 

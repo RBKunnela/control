@@ -180,7 +180,7 @@ sequenceDiagram
         Adapter->>Pipeline: ActionEnvelope and the proposed arguments
         Pipeline->>Store: the requests still held under this binding
         Store-->>Pipeline: what it holds under the binding, and whether it was approved
-        Pipeline->>Store: consume the approval, once
+        Pipeline->>Pipeline: spend the approval in its own ledger, once
         Pipeline->>Evidence: APPROVAL_DECIDED, ACTION_STARTED, on the held request's trail
         Pipeline-->>Adapter: allow the held request only
         Adapter->>Tool: call

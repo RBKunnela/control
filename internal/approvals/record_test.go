@@ -167,7 +167,10 @@ func TestEveryWayARecordCanLieIsItsOwnRefusal(t *testing.T) {
 		}, approvals.ErrMalformed},
 		{"a wrong-typed field", func(t testing.TB, f []byte) []byte { return withField(t, f, "request_id", `7`) }, approvals.ErrFieldType},
 		{"a schema version from a later major", func(t testing.TB, f []byte) []byte {
-			return withField(t, f, "schema_version", `"2.0"`)
+			return withField(t, f, "schema_version", `"3.0"`)
+		}, approvals.ErrSchemaVersion},
+		{"a schema version from the earlier major", func(t testing.TB, f []byte) []byte {
+			return withField(t, f, "schema_version", `"1.0"`)
 		}, approvals.ErrSchemaVersion},
 		{"no schema version at all", func(t testing.TB, f []byte) []byte { return withField(t, f, "schema_version", `""`) }, approvals.ErrSchemaVersion},
 		{"an approval from a later major", func(t testing.TB, f []byte) []byte {
@@ -176,15 +179,9 @@ func TestEveryWayARecordCanLieIsItsOwnRefusal(t *testing.T) {
 		{"an approval with no schema version", func(t testing.TB, f []byte) []byte {
 			return withApprovalField(t, f, "schemaVersion", `""`)
 		}, approvals.ErrSchemaVersion},
-		{"a resolution this build cannot name", func(t testing.TB, f []byte) []byte {
-			return withField(t, f, "resolution", `"granted"`)
-		}, approvals.ErrMalformed},
-		{"a resolution saying the store cannot say", func(t testing.TB, f []byte) []byte {
-			return withField(t, f, "resolution", `"unspecified"`)
-		}, approvals.ErrMalformed},
-		{"a resolution that disagrees with the name", func(t testing.TB, f []byte) []byte {
-			return withField(t, f, "resolution", `"consumed"`)
-		}, approvals.ErrNameMismatch},
+		{"the resolution a 1.0 record carried", func(t testing.TB, f []byte) []byte {
+			return reframe(t, replaceInBody(t, f, `"binding":`, `"resolution":"consumed","binding":`))
+		}, approvals.ErrUnknownField},
 		{"an approval naming another approval", func(t testing.TB, f []byte) []byte {
 			return withApprovalField(t, f, "approvalId", `"APPROVAL9"`)
 		}, approvals.ErrRecordMismatch},
@@ -281,12 +278,12 @@ func TestARefusalQuotesNoControlCharacterAndNoUnboundedRun(t *testing.T) {
 		t.Fatalf("holding: %v", err)
 	}
 	hostile := strings.Repeat("A", 4000) + "\x1b[2J\x07"
-	body := replaceInBody(t, readFile(t, dir, "APPROVAL1.0-held.rec"), `"resolution":"pending"`,
-		`"resolution":`+mustJSON(t, hostile))
+	body := replaceInBody(t, readFile(t, dir, "APPROVAL1.0-held.rec"), `"schema_version":"2.0"`,
+		`"schema_version":`+mustJSON(t, hostile))
 	writeFile(t, dir, "APPROVAL1.0-held.rec", reframe(t, body))
 	_, err := p.Find(t.Context(), h.Binding, minted)
 	if err == nil {
-		t.Fatal("a resolution nothing names was read as a record")
+		t.Fatal("a schema version nothing names was read as a record")
 	}
 	text := err.Error()
 	if strings.ContainsAny(text, "\x00\x07\x1b\n\r") {

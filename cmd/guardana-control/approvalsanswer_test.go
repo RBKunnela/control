@@ -85,9 +85,6 @@ func assertFiled(t *testing.T, dir string, want controlv1.ApprovalState, expires
 	if got := rec.Approval.GetExpiresAt().AsTime(); !got.Equal(expires) {
 		t.Errorf("expiry = %s, want %s", got, expires)
 	}
-	if rec.Resolution != approvals.ResolutionPending {
-		t.Errorf("resolution = %s, want pending: an answer spends nothing", rec.Resolution)
-	}
 }
 
 // TestAnswerWithoutAnApproverIDIsRefused: an approval nobody claims is not an
@@ -126,8 +123,6 @@ func TestAnswerRefusalsAreDistinguishable(t *testing.T) {
 	for name, tc := range map[string]struct{ id, want string }{
 		"no such approval": {"NOSUCH", "no record under that approval id"},
 		"answered already": {answeredID, "answered this approval already"},
-		"consumed":         {spentID, "consumed this approval already"},
-		"closed":           {closedID, "without resuming it"},
 		"expired":          {staleID, "past its expiry"},
 	} {
 		line := refusalLine(t, dir, tc.id)

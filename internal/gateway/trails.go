@@ -26,7 +26,7 @@ type heldRequest struct {
 	approval *controlv1.Approval
 	envelope *controlv1.ActionEnvelope
 	decision *controlv1.Decision
-	// basis is what decision stood on, judged again before the consume.
+	// basis is what decision stood on, judged again before the spend.
 	basis       core.Basis
 	binding     approval.Binding
 	lastEventID string

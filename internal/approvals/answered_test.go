@@ -7,6 +7,7 @@ import (
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/approvals"
+	"github.com/guardana/control/internal/core/approval"
 )
 
 // TestTwoApproversAnsweringOneRecordFileOneAnswer: two handles, each with a
@@ -45,49 +46,53 @@ func TestTwoApproversAnsweringOneRecordFileOneAnswer(t *testing.T) {
 	}
 }
 
-// TestAnAnswerDecidedAfterTheConsumeIsNotYetAnAnswer: an answer whose decided
-// time is later than the clock it is spent at would put the decision after
-// the action it allowed. It is no answer yet, and nothing is spent or dropped.
-func TestAnAnswerDecidedAfterTheConsumeIsNotYetAnAnswer(t *testing.T) {
+// TestAnAnswerDecidedAfterTheReadingIsNotYetAnAnswer: an answer whose decided
+// time is later than the clock it is read at would put the decision after the
+// action it allowed. Find hands it back as it was decided, and what the plane
+// judges it by says it is no answer yet; nothing on disk changes.
+func TestAnAnswerDecidedAfterTheReadingIsNotYetAnAnswer(t *testing.T) {
 	decided := minted.Add(2 * time.Minute)
-	t.Run("approved", func(t *testing.T) {
-		p, dir, h := heldOne(t)
-		answerAt(t, dir, decided)
-		if _, err := p.Consume(t.Context(), h.Binding, "req-1", firstApproval, decided.Add(-time.Nanosecond)); !errors.Is(err, approvals.ErrNoApproval) {
-			t.Fatalf("consuming one nanosecond before the decision = %v, want ErrNoApproval", err)
-		}
-		assertNames(t, dir, answeredName)
-		got, err := p.Consume(t.Context(), h.Binding, "req-1", firstApproval, decided)
-		if err != nil || got.GetState() != controlv1.ApprovalState_APPROVAL_STATE_APPROVED {
-			t.Fatalf("consuming at the decision = %v, %v; want it approved", got.GetState(), err)
-		}
-		assertNames(t, dir, consumedName)
-	})
-	t.Run("rejected", func(t *testing.T) {
-		p, dir, h := heldOne(t)
-		if _, err := openApprover(t, dir).Answer(t.Context(), firstApproval, controlv1.ApprovalState_APPROVAL_STATE_REJECTED,
-			"", "", decided); err != nil {
-			t.Fatalf("rejecting: %v", err)
-		}
-		if _, err := p.Consume(t.Context(), h.Binding, "req-1", firstApproval, decided.Add(-time.Nanosecond)); !errors.Is(err, approvals.ErrNoApproval) {
-			t.Fatalf("consuming one nanosecond before the rejection = %v, want ErrNoApproval", err)
-		}
-		assertNames(t, dir, answeredName)
-		if _, err := p.Consume(t.Context(), h.Binding, "req-1", firstApproval, decided); !errors.Is(err, approvals.ErrApprovalRejected) {
-			t.Fatalf("consuming at the rejection = %v, want ErrApprovalRejected", err)
-		}
-	})
+	for _, c := range []struct {
+		answer controlv1.ApprovalState
+		at     approval.Standing
+	}{
+		{controlv1.ApprovalState_APPROVAL_STATE_APPROVED, approval.StandingUsable},
+		{controlv1.ApprovalState_APPROVAL_STATE_REJECTED, approval.StandingRejected},
+	} {
+		t.Run(c.answer.String(), func(t *testing.T) {
+			p, dir, h := heldOne(t)
+			if _, err := openApprover(t, dir).Answer(t.Context(), firstApproval, c.answer, "approver-1", "", decided); err != nil {
+				t.Fatalf("answering: %v", err)
+			}
+			early := decided.Add(-time.Nanosecond)
+			found, err := p.Find(t.Context(), h.Binding, early)
+			if err != nil || len(found) != 1 || !found[0].Approval.GetDecidedAt().AsTime().Equal(decided) {
+				t.Fatalf("Find one nanosecond before the decision = %v, %v; want the answer as it was decided", found, err)
+			}
+			if got := approval.Consumable(found[0].Approval, early); got != approval.StandingUnusable {
+				t.Errorf("the answer one nanosecond before its decision stands %v, want unusable", got)
+			}
+			if got := approval.Consumable(found[0].Approval, decided); got != c.at {
+				t.Errorf("the answer at its decision stands %v, want %v", got, c.at)
+			}
+			assertNames(t, dir, answeredName)
+		})
+	}
 }
 
-// TestAnApprovalWithNoDecidedTimeIsNotSpent: a record written straight into
+// TestAnApprovalWithNoDecidedTimeIsNotUsable: a record written straight into
 // the directory as approved, with no time it was decided at, cannot be shown
 // to have been decided before the call it would allow.
-func TestAnApprovalWithNoDecidedTimeIsNotSpent(t *testing.T) {
+func TestAnApprovalWithNoDecidedTimeIsNotUsable(t *testing.T) {
 	p, dir, h := heldOne(t)
 	forged := withApprovalField(t, readFile(t, dir, heldName), "state", `"APPROVAL_STATE_APPROVED"`)
 	writeFile(t, dir, heldName, withApprovalField(t, forged, "approverId", `"approver-1"`))
-	if _, err := p.Consume(t.Context(), h.Binding, "req-1", firstApproval, minted.Add(time.Minute)); !errors.Is(err, approvals.ErrNoApproval) {
-		t.Fatalf("consuming an approval decided at no time = %v, want ErrNoApproval", err)
+	found, err := p.Find(t.Context(), h.Binding, minted.Add(time.Minute))
+	if err != nil || len(found) != 1 {
+		t.Fatalf("Find = %v, %v", found, err)
+	}
+	if got := approval.Consumable(found[0].Approval, minted.Add(time.Minute)); got != approval.StandingUnusable {
+		t.Errorf("an approval decided at no time stands %v, want unusable", got)
 	}
 	assertNames(t, dir, heldName)
 }

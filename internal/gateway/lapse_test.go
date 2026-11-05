@@ -5,7 +5,6 @@ import (
 	"slices"
 	"strconv"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -33,34 +32,37 @@ func (j *slowJournal) Mark(ctx context.Context, requestID string, state gateway.
 	return j.MemoryHoldJournal.Mark(ctx, requestID, state)
 }
 
-// spendingStore counts the approvals consumed through it and keeps the
-// binding they were consumed under; answer, when set, edits what Consume
-// hands back.
+// spendingStore edits what Find hands back when answer is set.
 type spendingStore struct {
 	gateway.ApprovalStore
-	consumed atomic.Int64
-	mu       sync.Mutex
-	binding  approval.Binding
-	answer   func(*controlv1.Approval)
+	mu     sync.Mutex
+	answer func(*controlv1.Approval)
 }
 
-func (s *spendingStore) Consume(ctx context.Context, b approval.Binding, requestID, approvalID string, now time.Time) (*controlv1.Approval, error) {
-	s.consumed.Add(1)
+func (s *spendingStore) Find(ctx context.Context, b approval.Binding, now time.Time) ([]gateway.Held, error) {
+	helds, err := s.ApprovalStore.Find(ctx, b, now)
 	s.mu.Lock()
-	s.binding = b
 	edit := s.answer
 	s.mu.Unlock()
-	a, err := s.ApprovalStore.Consume(ctx, b, requestID, approvalID, now)
-	if a != nil && edit != nil {
-		edit(a)
+	for i := range helds {
+		if edit != nil {
+			edit(helds[i].Approval)
+		}
 	}
-	return a, err
+	return helds, err
 }
 
-func (s *spendingStore) consumedUnder() approval.Binding {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.binding
+// expectSpent asserts the ledger marks req-1's approval spent, and that the
+// plane offered it exactly spends approvals.
+func expectSpent(t *testing.T, l *fakeLedger, spends int) {
+	t.Helper()
+	if got, _ := l.asked(); got != spends {
+		t.Errorf("the plane offered %d approval(s) to the ledger; want %d", got, spends)
+	}
+	marks, err := l.MemoryLedger.Lookup(ctx(), l.spentUnder(), base())
+	if err != nil || marks["req-1"] != gateway.ResolutionConsumed {
+		t.Errorf("the ledger marks %v, %v; want req-1 spent", marks, err)
+	}
 }
 
 // lapseRig is a plane over approveRefunds whose held refund was approved,
@@ -149,7 +151,9 @@ func TestAnApprovalThatLapsesBeforeTheHandOutRunsNothing(t *testing.T) {
 func TestTheHandOutIsJudgedByTheStoresShorterExpiry(t *testing.T) {
 	shorter := base().Add(5 * time.Minute)
 	r := lapsing(t)
+	r.store.mu.Lock()
 	r.store.answer = func(a *controlv1.Approval) { a.ExpiresAt = timestamppb.New(shorter) }
+	r.store.mu.Unlock()
 	r.journal.onResuming = func() { r.clock.set(shorter) }
 	expectLapsed(t, r, r.admit(retry(t, "req-2"), refundArgs()))
 }
@@ -173,14 +177,14 @@ func expectLapsed(t *testing.T, r *lapseRig, d gateway.Disposition) {
 	if s := r.p.Stats(); s.Executed != 0 || s.Open != 0 || s.Held != 0 || s.Blocks[codeApprovalExpired] != 1 {
 		t.Errorf("Stats = %+v; want nothing run, open or held, and one APPROVAL_EXPIRED block", s)
 	}
-	expectResolution(t, r.harness.store, r.store.consumedUnder(), gateway.ResolutionConsumed)
+	expectSpent(t, r.ledger, 1)
 
 	next := r.admit(retry(t, "req-3"), refundArgs())
 	if next.Action == core.Execute || next.Action == core.ExecuteWithObligations {
 		t.Fatalf("the call after the lapse ran: codes %v", next.Decision.GetReasonCodes())
 	}
-	if got := r.store.consumed.Load(); got != 1 {
-		t.Errorf("Consume was called %d time(s); want once, by the resume that lapsed", got)
+	if got := r.spent(); got != 1 {
+		t.Errorf("Spend was called %d time(s); want once, by the resume that lapsed", got)
 	}
 }
 
@@ -207,7 +211,7 @@ func TestAPauseInTheWindowOfALapseRunsNothing(t *testing.T) {
 	if s := r.p.Stats(); s.Executed != 0 || s.Open != 0 || s.Blocks[codePaused] != 1 || len(s.Blocks) != 1 {
 		t.Errorf("Stats = %+v; want nothing run and one block, counted as PAUSED", s)
 	}
-	expectResolution(t, r.harness.store, r.store.consumedUnder(), gateway.ResolutionConsumed)
+	expectSpent(t, r.ledger, 1)
 }
 
 // TestConcurrentRetriesOfALapsingApprovalRunAtMostOnce: many identical
@@ -329,7 +333,7 @@ func expectAbortedLapse(t *testing.T, r *lapseRig, d gateway.Disposition, at tim
 	if s := r.p.Stats(); s.Executed != 0 || s.Open != 0 || s.Blocks[codeApprovalExpired] != 1 {
 		t.Errorf("Stats = %+v; want nothing run or open and one APPROVAL_EXPIRED block", s)
 	}
-	expectResolution(t, r.harness.store, r.store.consumedUnder(), gateway.ResolutionConsumed)
+	expectSpent(t, r.ledger, 1)
 	expectRequestIDFreed(t, r)
 }
 

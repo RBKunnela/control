@@ -310,7 +310,11 @@ These are stated here, not discovered later.
   and make the plane deny a chosen action and bundle, with evidence naming an
   approval that was never used. The expiry bound and the record bound limit how
   long and how many; nothing makes it impossible, because that directory is the
-  approval authority.
+  approval authority. Amended by
+  [ADR-0066](0066-each-decision-about-authority-is-a-port.md): the spent mark
+  lives in the plane's ledger beside its hold journal, and approvals directory
+  `2.0` has no spent name, so a file an approver writes no longer does this;
+  the plane's own account can still write the ledger.
 - `APPROVAL_ALREADY_USED` is decided by binding, not by request. A record the
   plane no longer holds carries no envelope, deliberately, so a call that
   differs from the spent one only in its data labels or its run context cannot

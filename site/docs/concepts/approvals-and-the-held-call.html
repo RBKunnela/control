@@ -123,12 +123,13 @@ once, binds to one action digest under one bundle, and expires
 answer, an approver writing a file in the approvals directory, and what
 becomes of a hold the plane loses.</p>
 <h2 id="one-held-request-end-to-end">One held request, end to end</h2>
-<figure class="dg-text" id="diagram-1"><figcaption>One held request, end to end</figcaption><p>The call is held and the agent told it is pending; an approver answers in the store; the agent&#39;s identical retry is decided again, consumes the approval once, and only the authorized bytes reach the upstream. <a href="https://github.com/guardana/control/blob/main/docs/concepts/approvals-and-the-held-call.md">Drawn on GitHub</a>.</p><details><summary>The diagram's source</summary><pre><code class="language-mermaid">sequenceDiagram
+<figure class="dg-text" id="diagram-1"><figcaption>One held request, end to end</figcaption><p>The call is held and the agent told it is pending; an approver answers in the store; the agent&#39;s identical retry is decided again, the answer is checked and spent once in the plane&#39;s ledger, and only the authorized bytes reach the upstream. <a href="https://github.com/guardana/control/blob/main/docs/concepts/approvals-and-the-held-call.md">Drawn on GitHub</a>.</p><details><summary>The diagram's source</summary><pre><code class="language-mermaid">sequenceDiagram
     accTitle: One held request, end to end
-    accDescr: The call is held and the agent told it is pending; an approver answers in the store; the agent&#39;s identical retry is decided again, consumes the approval once, and only the authorized bytes reach the upstream.
+    accDescr: The call is held and the agent told it is pending; an approver answers in the store; the agent&#39;s identical retry is decided again, the answer is checked and spent once in the plane&#39;s ledger, and only the authorized bytes reach the upstream.
     participant Agent
     participant Point as Enforcement point
     participant Store as Approval store
+    participant Ledger as Plane&#39;s ledger
     participant Approver
     participant Upstream
     Agent-&gt;&gt;Point: the call
@@ -139,9 +140,10 @@ becomes of a hold the plane loses.</p>
     Approver-&gt;&gt;Store: Answer(approval_id, APPROVED, approver_id)
     Agent-&gt;&gt;Point: the same call again
     Note over Point: decided again, matched to the hold on binding, labels, context and decision
-    Point-&gt;&gt;Store: Consume(binding, request_id)
-    Store--&gt;&gt;Point: the approval, once
+    Point-&gt;&gt;Store: Find(binding)
+    Store--&gt;&gt;Point: the answer, a claim
     Note over Point: checked field by field against the enforcement point&#39;s own record
+    Point-&gt;&gt;Ledger: Spend(binding, request_id, approval_id), once
     Point-&gt;&gt;Point: APPROVAL_DECIDED, ACTION_STARTED on the held trail
     Point-&gt;&gt;Upstream: exactly the authorized bytes
     Upstream--&gt;&gt;Point: the result
@@ -157,22 +159,20 @@ it field by field (<a href="/docs/reference/cli">reference/cli</a>,
 <a href="/docs/reference/configuration">reference/configuration</a>). Under
 <code>approvals.provider: memory</code> the records live in the process that holds them,
 nothing outside it answers, and a plane refuses to start in <code>APPROVE</code> with
-that provider, because holding every material call where nothing can answer
-is a total denial wearing a pending state. What the agent is told on the wire
+that provider, because holding every material call where nothing answers is
+a total denial. What the agent is told on the wire
 is on <a href="/docs/concepts/mcp-gateway">the MCP gateway</a> page.</p>
 <h2 id="who-may-approve">Who may approve</h2>
 <p><strong>Write access to the approvals directory is the approval authority.</strong> The
 records are files; whoever can write them can answer a held request.
-<code>approver_id</code> on an answer is an unauthenticated claim, recorded as given
-because an operator reading the evidence months later wants a name, and worth
-exactly what the directory's permissions are worth. Nothing in the plane
+<code>approver_id</code> on an answer is an unauthenticated claim, recorded because an
+operator wants a name, and worth what the directory's permissions are worth. Nothing in the plane
 treats it as an identity, and no authenticated provider exists. The
 directory is refused at open when another account owns it or a group or the
 world may write it, and each record is written <code>0600</code>.</p>
-<p>A writer of that directory chooses nothing else. A record answers about one
-approval id: it carries no trail, no position in one, no envelope and no
-decision, so a forged record cannot graft events onto a live or a finished
-trail. Beside each record sits a projection for a person to read, which the
+<p>A writer of that directory chooses nothing else. A record carries no trail,
+position, envelope, decision or spent mark, so a forged record cannot graft
+events onto a trail or spend an approval. Beside each record sits a projection for a person to read, which the
 plane never reads back as truth.</p>
 <h2 id="a-hold-the-plane-loses">A hold the plane loses</h2>
 <p>A hold does not survive a restart, and the window between a request and an
@@ -199,7 +199,7 @@ next start the plane reads the journal and closes each of those trails:</p>
 <tr>
 <td>an approver approved it, and it passes the same field checks a live resume makes</td>
 <td><code>APPROVAL_DECIDED</code> with the answer, then <code>ACTION_BLOCKED</code> with <code>DENY</code> and <code>APPROVAL_NOT_RESUMED</code></td>
-<td>the record is resolved not resumed, never consumed</td>
+<td>settled not resumed in the ledger, record forgotten</td>
 </tr>
 <tr>
 <td>an approver rejected it</td>
@@ -276,13 +276,18 @@ named rather than hidden, and <code>doctor</code> and <code>/healthz</code> both
 </tr>
 <tr>
 <td>the approval store</td>
-<td>the file store: one record per held request, under its binding, holding the approval, the request id and what became of it, and never an envelope, a decision or a trail; the memory store: the whole hold, envelope and decision included, in the plane's own memory</td>
-<td>whether an approver said yes, and consuming it once</td>
+<td>the file store: one record per held request, under its binding, holding the approval and the request id, never an envelope, a decision or a trail; the memory store: the whole hold, in the plane's memory</td>
+<td>whether an approver said yes</td>
 </tr>
 <tr>
-<td>the hold journal, where one is configured</td>
-<td>one entry per hold: the trail's identifiers, where it stands, the binding, the approval and the expiry</td>
-<td>closing the trail of a hold this plane lost to a restart</td>
+<td>the ledger, beside the journal</td>
+<td>a mark per approval spent or given up</td>
+<td>spending once</td>
+</tr>
+<tr>
+<td>the hold journal, where configured</td>
+<td>one entry per hold: the trail's identifiers and position, the binding, the approval and the expiry</td>
+<td>closing a hold this plane lost to a restart</td>
 </tr>
 <tr>
 <td>the agent</td>
@@ -392,7 +397,7 @@ one the retry equals, oldest first.</p>
 <tbody>
 <tr>
 <td>an approved retry</td>
-<td><code>APPROVAL_DECIDED</code>, <code>ACTION_STARTED</code>, then the closing event; the approval is consumed before the event is written, so two retries cannot both write it</td>
+<td><code>APPROVAL_DECIDED</code>, <code>ACTION_STARTED</code>, then the closing event; the approval is spent before the event is written, so two retries cannot both write it</td>
 <td>the upstream's result, sent with exactly the authorized bytes</td>
 </tr>
 <tr>
@@ -408,7 +413,7 @@ one the retry equals, oldest first.</p>
 <tr>
 <td>the next identical call after the held one ran</td>
 <td>its own trail: <code>ACTION_PROPOSED</code>, <code>POLICY_DECIDED</code>, <code>ACTION_BLOCKED</code></td>
-<td><code>DENY</code>, <code>APPROVAL_ALREADY_USED</code>: the approval was spent, which is not by itself a statement that the earlier call ran (<a href="/docs/reference/reason-codes">reference/reason-codes</a>); once the spent approval has expired, the same call is held anew</td>
+<td><code>DENY</code>, <code>APPROVAL_ALREADY_USED</code>: the approval was spent, which does not by itself say the earlier call ran (<a href="/docs/reference/reason-codes">reference/reason-codes</a>); once the spent approval has expired, the same call is held anew</td>
 </tr>
 <tr>
 <td>it expired before a retry resumed it, answered or not</td>
@@ -427,11 +432,11 @@ one the retry equals, oldest first.</p>
 </tr>
 <tr>
 <td>the store would not keep the hold, or <code>MaxHeld</code> holds stand</td>
-<td><code>APPROVAL_EXPIRED</code>, <code>ACTION_BLOCKED</code> with <code>INDETERMINATE</code>, <code>EVIDENCE_UNAVAILABLE</code>: the window the enforcement point opened is closed first, since the chain lets nothing else follow a request for approval</td>
+<td><code>APPROVAL_EXPIRED</code>, <code>ACTION_BLOCKED</code> with <code>INDETERMINATE</code>, <code>EVIDENCE_UNAVAILABLE</code>: the window it opened is closed first, since nothing else may follow a request for approval</td>
 <td>that block</td>
 </tr>
 <tr>
-<td>the store cannot answer, or the hold was dropped or resumed between the lookup and the flip to running</td>
+<td>the hold was dropped or resumed before the flip to running, or the store or the ledger cannot answer</td>
 <td>this call's own trail: <code>ACTION_PROPOSED</code>, <code>POLICY_DECIDED</code>, <code>ACTION_BLOCKED</code> with <code>INDETERMINATE</code>, <code>EVIDENCE_UNAVAILABLE</code></td>
 <td>that block</td>
 </tr>
@@ -450,51 +455,53 @@ one the retry equals, oldest first.</p>
 <p>A consumed approval stays consumed when the upstream call then fails, because
 the effect may have happened; that failure is a new request.</p>
 <h2 id="what-is-checked-before-the-held-request-runs">What is checked before the held request runs</h2>
-<p>The enforcement point never trusts the store's answer. Every field an
-approval is honoured on is compared with the enforcement point's own record of
-the hold, and <code>reason</code> and the value of <code>approver_id</code> are recorded as the store
-gave them. An answer that fails a check is recorded as the enforcement point's
-own approval, <code>APPROVAL_EXPIRED</code>, never as decided:</p>
+<p>The enforcement point never trusts the store's answer: it judges only the
+record of the approval it minted, by approval and request id, and records
+<code>reason</code> and <code>approver_id</code> as the store gave them.</p>
 <table>
 <thead>
 <tr>
-<th>Check</th>
-<th>If it fails</th>
+<th>The answer</th>
+<th>What happens</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>the answer exists, is <code>APPROVED</code>, names an <code>approver_id</code>, carries the held <code>approval_id</code> and <code>request_id</code>, and is not multi-use</td>
-<td><code>INDETERMINATE</code>, <code>EVIDENCE_UNAVAILABLE</code></td>
+<td>pending, approved with no <code>approver_id</code>, multi-use (counted), or decided never, before <code>requested_at</code> or after now</td>
+<td>the hold waits; the retry is told the same <code>approval_id</code></td>
 </tr>
 <tr>
-<td>its schema version is <code>MAJOR.MINOR</code> of major 1, its <code>requested_at</code> is the held one, and it was decided at or after that time and not after now</td>
-<td><code>INDETERMINATE</code>, <code>EVIDENCE_UNAVAILABLE</code></td>
+<td>missing, or filed under another request</td>
+<td>the retry is held anew</td>
 </tr>
 <tr>
-<td>its action digest is the held one</td>
-<td><code>DENY</code>, <code>APPROVAL_DIGEST_MISMATCH</code></td>
+<td>two records of the minted approval, an unnamed state, or a store or ledger that cannot answer</td>
+<td>this call's own trail is blocked <code>INDETERMINATE</code>, <code>EVIDENCE_UNAVAILABLE</code>; the hold stands, unspent</td>
 </tr>
 <tr>
-<td>its bundle digest is the held one</td>
-<td><code>DENY</code>, <code>APPROVAL_BUNDLE_MISMATCH</code></td>
+<td>expired, or with no expiry, and not marked spent</td>
+<td>the held trail closes <code>DENY</code>, <code>APPROVAL_EXPIRED</code></td>
 </tr>
 <tr>
-<td>its expiry is set and after now</td>
-<td><code>DENY</code>, <code>APPROVAL_EXPIRED</code></td>
+<td>approved or rejected, but of another major, another <code>requested_at</code>, a refused <code>approver_id</code>, or an expiry later than minted</td>
+<td>the held trail closes with the plane's own approval, expired, <code>INDETERMINATE</code>, <code>EVIDENCE_UNAVAILABLE</code></td>
 </tr>
 <tr>
-<td>its expiry is no later than the one the enforcement point minted</td>
-<td><code>INDETERMINATE</code>, <code>EVIDENCE_UNAVAILABLE</code></td>
+<td>another action or bundle digest</td>
+<td>the same close, <code>DENY</code>, <code>APPROVAL_DIGEST_MISMATCH</code> or <code>APPROVAL_BUNDLE_MISMATCH</code></td>
 </tr>
 <tr>
-<td>the hold is still the one on its trail, flipped to running in one step under the enforcement point's lock</td>
-<td><code>INDETERMINATE</code>, <code>EVIDENCE_UNAVAILABLE</code></td>
+<td>rejected, passing those checks</td>
+<td><code>APPROVAL_DECIDED</code>, then <code>DENY</code>, <code>APPROVAL_REJECTED</code></td>
+</tr>
+<tr>
+<td>approved, passing those checks</td>
+<td>spent in the ledger, then <code>APPROVAL_DECIDED</code> and <code>ACTION_STARTED</code> once the hold flips to running; a mark already there answers <code>APPROVAL_ALREADY_USED</code>, a hold another call took <code>INDETERMINATE</code></td>
 </tr>
 </tbody>
 </table>
-<p><strong>Expiry is judged up to four times.</strong> The store's answer is checked when it
-is consumed; the expiry is checked again by the plane's clock with the pause
+<p><strong>Expiry is judged up to four times.</strong> The store's answer is checked before
+the spend; the expiry is checked again by the plane's clock with the pause
 state right before <code>ACTION_STARTED</code> is written, again once an opened run's
 state is raised, and once more right after it.
 A journal or a sink slow enough to let the approval expire in between cannot
@@ -507,9 +514,11 @@ The adapter's time after the hand-out is not covered
 The bundle the decision stood on is judged at those moments too, and once
 before the consume, where a stale or replaced bundle spends nothing
 (<a href="/docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands">ADR-0055</a>).</p>
-<p>An approval marked multi-use is left pending and counted: this enforcement
-point consumes once, and the store's <code>Consume</code> is one compare-and-swap that
-only an approved, unconsumed record passes.</p>
+<h2 id="an-approval-is-spent-once">An approval is spent once</h2>
+<p>The plane marks a spend in <code>ledger/</code> inside <code>approvals.hold_journal_dir</code> with
+a create that never replaces a mark; no approvals directory file says an
+approval was spent. A lost ledger only turns <code>APPROVAL_ALREADY_USED</code> into a
+new hold.</p>
 <h2 id="bounds">Bounds</h2>
 <table>
 <thead>
@@ -584,9 +593,9 @@ mode's hold on an allowed call, and nothing else: never a <code>DENY</code> and 
 an <code>INDETERMINATE</code> (ADR-0013, invariant 4).</li>
 <li>The record of a hold is the enforcement point's own, so a hold does not
 survive a restart: a store record from before resumes nothing. A record the
-store proves an execution spent blocks the next call of that action under
-that bundle, and a record it cannot speak for proves nothing, so that call is
-held anew and counted. The block is by binding and not by request: a record
+plane's ledger marks spent blocks the next call of that action under that
+bundle, and any other record proves nothing, so that call is held anew and
+counted. The block is by binding and not by request: a record
 the plane no longer holds carries no envelope, so a call differing only in
 its data labels or its run context cannot be told from the identical one and
 is blocked with it (ADR-0013, ADR-0016).</li>
@@ -598,10 +607,9 @@ any run is blocked as already used (ADR-0034).</li>
 the envelope's data labels and run context on disk to compare a retry
 against, and would run an effect for a call answered pending long ago
 (ADR-0016).</li>
-<li>Consumption is one compare-and-swap in a store whose zero value approves
-nothing, and the enforcement point checks every field an approval is
-honoured on, so a store that lies cannot run a call the enforcement point
-did not hold (ADR-0013).</li>
+<li>The spend is one compare-and-swap in the plane's ledger, and every field an
+approval is honoured on is checked, so a lying store cannot run a call the
+enforcement point did not hold (ADR-0013, ADR-0066).</li>
 </ul>
 <h2 id="where-the-code-lives">Where the code lives</h2>
 <p><code>internal/gateway/approve.go</code> holds a call that awaits an approval and
@@ -610,9 +618,10 @@ checks what the store answers;
 <code>internal/gateway/trails.go</code>
 keeps the enforcement point's record of a hold, flips it to running and
 closes the expired ones; <code>internal/gateway/approvals.go</code> is the store
-interface and the in-memory store, <code>internal/gateway/reconcile.go</code> closes the
-holds a restart lost, <code>internal/approvals/</code> is the directory of records and
-<code>internal/holdjournal/</code> the plane's journal; <code>internal/core/approval/</code>
+interface and the in-memory store, <code>internal/gateway/ledger.go</code> the ledger's,
+<code>internal/gateway/reconcile.go</code> closes the holds a restart lost,
+<code>internal/approvals/</code> is the directory of records and <code>internal/holdjournal/</code>
+the plane's journal and ledger; <code>internal/core/approval/</code>
 computes the binding and decides when an approval may be spent. The pending
 state an agent is told is <code>gateway.Pending</code> in <code>internal/gateway/pipeline.go</code>;
 its MCP shape is in <code>adapters/mcp/answer.go</code>.</p>

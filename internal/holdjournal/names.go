@@ -74,6 +74,9 @@ const (
 	kindMarker
 	kindTemp
 	kindEntry
+	// kindLedger is the ledger's directory, the one name in the journal's
+	// directory that is not a regular file.
+	kindLedger
 )
 
 // classify says what a directory entry is, and for an entry file the request
@@ -99,6 +102,9 @@ func classify(name string) (kind, string) {
 // lock every other caller needs, so what a file is has to be settled from the
 // listing and never from the name alone.
 func classifyEntry(e fs.DirEntry) kind {
+	if e.Name() == ledgerDir && e.Type().IsDir() {
+		return kindLedger
+	}
 	if !e.Type().IsRegular() {
 		return kindForeign
 	}

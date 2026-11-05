@@ -2,7 +2,6 @@ package approvals_test
 
 import (
 	"bytes"
-	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -11,6 +10,7 @@ import (
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/approvals"
+	"github.com/guardana/control/internal/core/approval"
 )
 
 // The approval id a writer of the directory files under, which is every id the
@@ -43,120 +43,68 @@ func answeredAndForged(t *testing.T) (*approvals.Plane, string, approvals.Hold) 
 	return p, dir, h
 }
 
-// TestConsumeSpendsARecordThePlaneDidNotMintNeverAtAll is the finding: the
-// compare-and-swap is keyed by the approval id the plane minted, so a record
-// filed under the binding and the request id of a held call, with any other
-// approval id, is not the plane's and is never spent by it.
-//
-// The plane's own record is unlinked here because a writer of the directory
-// may unlink as well as write, and the approval id the plane passes is the one
-// it holds in its own record, not one it reads back from the directory.
-func TestConsumeSpendsARecordThePlaneDidNotMintNeverAtAll(t *testing.T) {
+// approvalIDs is the approval ids among found, in the order Find gave them.
+func approvalIDs(found []approvals.Record) []string {
+	var ids []string
+	for _, rec := range found {
+		ids = append(ids, rec.ApprovalID)
+	}
+	return ids
+}
+
+// TestAForgedRecordComesBackUnderItsOwnApprovalID: a record filed under the
+// binding and the request id of a held call, with any other approval id, is
+// handed back under that id and no other, so the plane, which judges only the
+// record of the approval id it minted, never reads it as its own. The plane's
+// own record is unlinked here because a writer of the directory may unlink as
+// well as write.
+func TestAForgedRecordComesBackUnderItsOwnApprovalID(t *testing.T) {
 	p, dir, h := answeredAndForged(t)
 	if err := os.Remove(filepath.Join(dir, firstApproval+".1-answered.rec")); err != nil {
 		t.Fatalf("unlinking the plane's own record: %v", err)
 	}
-
-	got, err := p.Consume(t.Context(), h.Binding, "req-1", firstApproval, minted.Add(2*time.Minute))
-	if !errors.Is(err, approvals.ErrNoApproval) {
-		t.Fatalf("consuming a record the plane did not mint = %v, want ErrNoApproval", err)
+	found, err := p.Find(t.Context(), h.Binding, minted.Add(2*time.Minute))
+	if err != nil || !slices.Equal(approvalIDs(found), []string{forgedApproval}) ||
+		found[0].Approval.GetApprovalId() != forgedApproval || found[0].Approval.GetRequestId() != "req-1" {
+		t.Fatalf("Find = %v, %v; want the forged record under its own id alone", approvalIDs(found), err)
 	}
-	if got != nil {
-		t.Fatalf("a refused consume handed back %v", got)
-	}
-	if names := recordNames(t, dir); !slices.Contains(names, forgedApproval+".1-answered.rec") ||
-		slices.Contains(names, forgedApproval+".3-consumed.rec") {
-		t.Fatalf("the forged record was spent by the plane: %v", names)
-	}
+	assertNames(t, dir, forgedApproval+".1-answered.rec")
 }
 
-// TestConsumeSpendsThePlanesOwnRecordBesideAForgedOne: the same directory, the
-// plane's own record still there. It is consumed, and the forged one is left
-// exactly as it was.
-func TestConsumeSpendsThePlanesOwnRecordBesideAForgedOne(t *testing.T) {
+// TestThePlanesOwnRecordComesBackBesideAForgedOne: the same directory with
+// the plane's own record still there. Both come back, each under its own id,
+// and Find writes nothing.
+func TestThePlanesOwnRecordComesBackBesideAForgedOne(t *testing.T) {
 	p, dir, h := answeredAndForged(t)
-
-	got, err := p.Consume(t.Context(), h.Binding, "req-1", firstApproval, minted.Add(2*time.Minute))
-	if err != nil {
-		t.Fatalf("consuming the plane's own record beside a forged one: %v", err)
+	found, err := p.Find(t.Context(), h.Binding, minted.Add(2*time.Minute))
+	if err != nil || !slices.Equal(approvalIDs(found), []string{firstApproval, forgedApproval}) {
+		t.Fatalf("Find = %v, %v; want the plane's own record and the forged one", approvalIDs(found), err)
 	}
-	if got.GetApprovalId() != firstApproval {
-		t.Fatalf("consume returned approval %q", got.GetApprovalId())
-	}
-	names := recordNames(t, dir)
-	if !slices.Contains(names, firstApproval+".3-consumed.rec") {
-		t.Fatalf("the plane's own record was not spent: %v", names)
-	}
-	if !slices.Contains(names, forgedApproval+".1-answered.rec") ||
-		slices.Contains(names, forgedApproval+".3-consumed.rec") {
-		t.Fatalf("the forged record was touched: %v", names)
-	}
+	assertNames(t, dir, firstApproval+".1-answered.rec", forgedApproval+".1-answered.rec")
 }
 
-// TestConsumeRefusesAHeldRecordBesideAForgedOne is the shape the review
-// reported: a live hold under the plane's own approval id, a forged record
-// under the same binding and request id. Nobody has answered the plane's
-// record, so the answer is that there is no approval, and nothing is spent.
-func TestConsumeRefusesAHeldRecordBesideAForgedOne(t *testing.T) {
-	p, dir := openPlane(t)
-	h := held(t, firstApproval, "req-1")
-	if err := p.Hold(t.Context(), h, minted); err != nil {
-		t.Fatalf("holding: %v", err)
-	}
-	forgeUnder(t, dir, ".0-held.rec")
-
-	_, err := p.Consume(t.Context(), h.Binding, "req-1", firstApproval, minted.Add(time.Minute))
-	if !errors.Is(err, approvals.ErrNoApproval) {
-		t.Fatalf("consuming beside a forged record = %v, want ErrNoApproval", err)
-	}
-	for _, name := range recordNames(t, dir) {
-		if filepath.Ext(name) == ".rec" && slices.Contains([]string{
-			firstApproval + ".3-consumed.rec", forgedApproval + ".3-consumed.rec",
-		}, name) {
-			t.Fatalf("a refused consume spent %s", name)
-		}
-	}
-}
-
-// TestConsumeRefusesAnApprovalIDItCannotName: an empty id is not "any record
-// under this binding", which is what the call meant before it took one.
-func TestConsumeRefusesAnApprovalIDItCannotName(t *testing.T) {
-	p, dir, h := answeredAndForged(t)
-	for name, id := range map[string]string{
-		"an empty approval id": "",
-		"a path separator":     "../APPROVAL1",
-	} {
-		_, err := p.Consume(t.Context(), h.Binding, "req-1", id, minted.Add(2*time.Minute))
-		if !errors.Is(err, approvals.ErrRecordName) {
-			t.Errorf("consuming with %s = %v, want ErrRecordName", name, err)
-		}
-	}
-	if names := recordNames(t, dir); slices.Contains(names, firstApproval+".3-consumed.rec") {
-		t.Fatalf("a refused consume spent a record: %v", names)
-	}
-}
-
-// TestConsumeRefusesAnApprovalNobodyClaimed: an APPROVED record with no
+// TestAnApprovalNobodyClaimedIsNotUsable: an APPROVED record with no
 // approver, written straight into the directory past Answer's own check, is a
-// grant nobody made. It is refused as no approval and nothing is spent.
-func TestConsumeRefusesAnApprovalNobodyClaimed(t *testing.T) {
+// grant nobody made. Find hands it back as it stands and what the plane judges
+// it by says it is no approval.
+func TestAnApprovalNobodyClaimedIsNotUsable(t *testing.T) {
 	p, dir, h := heldOne(t)
 	answerAt(t, dir, minted.Add(time.Minute))
 	writeFile(t, dir, answeredName, withApprovalField(t, readFile(t, dir, answeredName), "approverId", `""`))
-
-	got, err := p.Consume(t.Context(), h.Binding, "req-1", firstApproval, minted.Add(2*time.Minute))
-	if !errors.Is(err, approvals.ErrNoApproval) {
-		t.Fatalf("consuming an approval nobody claimed = %v, want ErrNoApproval", err)
+	now := minted.Add(2 * time.Minute)
+	found, err := p.Find(t.Context(), h.Binding, now)
+	if err != nil || len(found) != 1 {
+		t.Fatalf("Find = %v, %v", found, err)
 	}
-	if got != nil {
-		t.Fatalf("a refused consume handed back %v", got)
+	if got := approval.Consumable(found[0].Approval, now); got != approval.StandingUnusable {
+		t.Errorf("an approval nobody claimed stands %v, want unusable", got)
 	}
 	assertNames(t, dir, answeredName)
 }
 
 // TestAnAnswerIsStillReadBackFromTheRecordThePlaneMinted holds the ordinary
-// path against the check above: the plane mints, an approver answers, and the
-// plane spends its own record once.
+// path against the checks above: the plane mints, an approver answers, and
+// the plane reads the answer from its own record.
 func TestAnAnswerIsStillReadBackFromTheRecordThePlaneMinted(t *testing.T) {
 	p, dir := openPlane(t)
 	h := held(t, firstApproval, "req-1")
@@ -164,11 +112,8 @@ func TestAnAnswerIsStillReadBackFromTheRecordThePlaneMinted(t *testing.T) {
 		t.Fatalf("holding: %v", err)
 	}
 	answerAt(t, dir, minted.Add(time.Minute))
-	got, err := p.Consume(t.Context(), h.Binding, "req-1", firstApproval, minted.Add(2*time.Minute))
-	if err != nil {
-		t.Fatalf("consuming: %v", err)
-	}
-	if got.GetState() != controlv1.ApprovalState_APPROVAL_STATE_APPROVED {
-		t.Fatalf("consume returned state %s", got.GetState())
+	found, err := p.Find(t.Context(), h.Binding, minted.Add(2*time.Minute))
+	if err != nil || len(found) != 1 || found[0].Approval.GetState() != controlv1.ApprovalState_APPROVAL_STATE_APPROVED {
+		t.Fatalf("Find = %v, %v; want the approved record", found, err)
 	}
 }

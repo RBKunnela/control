@@ -59,6 +59,8 @@ var (
 	}
 	gatewayHolds = []string{
 		brand.ModulePath + "/internal/approvals.(*Plane)",
+		// The spent mark is the plane's own, kept beside its hold journal.
+		brand.ModulePath + "/internal/holdjournal.(*Ledger)",
 		brand.ModulePath + "/internal/runs.(*Plane)",
 		brand.ModulePath + "/internal/policykey.SignBundle",
 		brand.ModulePath + "/internal/reaction.VerifyRoute",

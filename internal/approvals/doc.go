@@ -5,8 +5,8 @@
 // nothing here treats it as an identity.
 //
 // It grants nothing on its own. It reports which of its records are still
-// there, and the plane compares every answer against its own record, field by
-// field, before anything runs.
+// there and what was answered, and the plane compares every answer against its
+// own record, field by field, before anything runs.
 //
 // Two handles open one directory and the compiler keeps them apart. OpenPlane
 // takes the directory's exclusive lock and has no method that answers an
@@ -24,18 +24,18 @@
 //
 // # The names a record takes
 //
-// One record is one file, and a state transition is a link to the next state's
-// name that fails with EEXIST when another writer won, so nothing in the
-// request path waits on another process's lock. The states are totally
-// ordered:
+// One record is one file, and the answer is a link to the answered name that
+// fails with EEXIST when another writer won, so nothing in the request path
+// waits on another process's lock. The states are totally ordered:
 //
-//	held < answered < not-resumed < consumed
+//	held < answered
 //
-// A reader takes the furthest-along name present, and the earlier names are
-// unlinked after the new one is linked, so a crash between the two leaves two
-// names that the order resolves rather than a guess. Consumed is furthest
-// because a record read as consumed refuses a later execution, which is the
-// closed direction; not-resumed only makes the next identical call hold anew.
+// A reader takes the furthest-along name present, and the held name is
+// unlinked after the answered one is linked, so a crash between the two leaves
+// two names that the order resolves rather than a guess. No name here says an
+// approval was spent or given up: the plane keeps that in its own ledger,
+// beside its hold journal, where no approver writes. A name that once said so
+// is foreign, refused as any foreign name is.
 //
 // # What a record is held to on the way back
 //

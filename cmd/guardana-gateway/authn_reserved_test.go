@@ -4,17 +4,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"errors"
 	"hash/crc32"
 	"os"
 	"path/filepath"
-	"slices"
 	"testing"
 	"time"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/approvals"
 	"github.com/guardana/control/internal/core/approval"
+	"github.com/guardana/control/internal/holdjournal"
 )
 
 // The record frame as the store's format states it, written out here so the
@@ -50,10 +49,10 @@ func rewriteApprover(t *testing.T, path, from, to string) {
 
 // TestAHandWrittenAuthnApproverResumesNothingAndClosesUnknown: a plane lost a
 // hold, and the record was answered by hand under the reserved prefix. The
-// seam refuses to spend it, and the reconciliation closes the trail
-// APPROVAL_STATE_UNKNOWN, never as an approval that came too late. The same
-// rewrite to a plain claim closes APPROVAL_NOT_RESUMED, so the prefix is what
-// changes the outcome.
+// seam hands it back as a record it cannot speak for, and the reconciliation
+// closes the trail APPROVAL_STATE_UNKNOWN, never as an approval that came too
+// late, and settles it in the ledger. The same rewrite to a plain claim closes
+// APPROVAL_NOT_RESUMED, so the prefix is what changes the outcome.
 func TestAHandWrittenAuthnApproverResumesNothingAndClosesUnknown(t *testing.T) {
 	for _, c := range []struct{ approver, closes string }{
 		{"night-officer", "APPROVAL_NOT_RESUMED"},
@@ -69,7 +68,7 @@ func TestAHandWrittenAuthnApproverResumesNothingAndClosesUnknown(t *testing.T) {
 			rewriteApprover(t, filepath.Join(records, lostApproval+".1-answered.rec"), "duty-officer", c.approver)
 
 			if c.closes == "APPROVAL_STATE_UNKNOWN" {
-				consumeReserved(t, records, binding)
+				findReserved(t, records, binding)
 			}
 
 			p := tr.plane(t)
@@ -80,27 +79,33 @@ func TestAHandWrittenAuthnApproverResumesNothingAndClosesUnknown(t *testing.T) {
 			if blocks[c.closes] != 1 || len(blocks) != 1 {
 				t.Errorf("the lost hold closed as %v, want one %s", blocks, c.closes)
 			}
-			if slices.Contains(namesUnder(t, records), lostApproval+".3-consumed.rec") {
-				t.Error("the record was spent")
+			ledger, err := p.journal.Ledger()
+			if err != nil {
+				t.Fatalf("the plane's ledger: %v", err)
+			}
+			marks, err := ledger.Lookup(context.Background(), binding, time.Now())
+			if err != nil || marks[lostRequest] != holdjournal.MarkNotResumed {
+				t.Errorf("the ledger marks %v, %v; want the lost hold settled and nothing spent", marks, err)
 			}
 		})
 	}
 }
 
-// consumeReserved asks the seam to spend the lost hold's record and holds it
-// to refusing with the reservation's sentinel.
-func consumeReserved(t *testing.T, records string, binding approval.Binding) {
+// findReserved reads the lost hold's record through the seam and holds it to
+// coming back as one the store cannot speak for.
+func findReserved(t *testing.T, records string, binding approval.Binding) {
 	t.Helper()
 	store, err := approvals.OpenPlane(records)
 	if err != nil {
 		t.Fatalf("OpenPlane: %v", err)
 	}
-	got, err := (&approvalStore{plane: store}).Consume(context.Background(), binding, lostRequest, lostApproval, time.Now())
+	found, err := (&approvalStore{plane: store}).Find(context.Background(), binding, time.Now())
 	if closeErr := store.Close(); closeErr != nil {
 		t.Fatalf("closing the store: %v", closeErr)
 	}
-	if got != nil || !errors.Is(err, approval.ErrReservedApproverID) {
-		t.Errorf("consuming through the seam = %v, %v; want nothing and ErrReservedApproverID", got, err)
+	if err != nil || len(found) != 1 || found[0].Approval.GetState() != controlv1.ApprovalState_APPROVAL_STATE_UNSPECIFIED ||
+		found[0].Approval.GetApproverId() != "" {
+		t.Errorf("reading through the seam = %v, %v; want the record alone, its answer unspecified", found, err)
 	}
 }
 

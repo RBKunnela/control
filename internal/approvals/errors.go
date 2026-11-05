@@ -12,20 +12,11 @@ func (e Error) Error() string { return string(e) }
 // ApprovalStore vocabulary, one sentinel per documented refusal, so a caller
 // translates rather than interprets.
 const (
-	// ErrNoApproval is a binding nothing approves: no record, a record no
-	// approver has approved, or one resolved not-resumed.
+	// ErrNoApproval is a binding with no record, or an approval id with none.
 	ErrNoApproval Error = "approvals: no approval for this binding"
-	// ErrApprovalConsumed is an approval an earlier execution already used.
-	ErrApprovalConsumed Error = "approvals: the approval was consumed"
 	// ErrApprovalExpired is an approval at or past its expiry at the clock it
 	// was compared with.
 	ErrApprovalExpired Error = "approvals: the approval has expired"
-	// ErrApprovalRejected is an approval an approver refused. It is returned
-	// beside the record that was read.
-	ErrApprovalRejected Error = "approvals: the approval was rejected"
-	// ErrMultiUse is a record marked multi-use, which this store does not
-	// honour.
-	ErrMultiUse Error = "approvals: a multi-use approval is not honoured"
 	// ErrZeroTime is a clock reading of zero, which would pass every expiry.
 	ErrZeroTime Error = "approvals: the clock reads zero"
 	// ErrInvalidHold is a hold with no approval, no approval id, no request
@@ -49,14 +40,6 @@ const (
 	// where the name was gone before it could be taken back. Another process
 	// unlinked it, and may have acted on it first.
 	ErrOutcomeUnknown Error = "approvals: the name was gone before it could be taken back, so whether it was read is unknown"
-	// ErrResolved is an attempt to resolve a record the plane has resolved
-	// already. Resolve does not answer it: the outcome its caller asked for
-	// is the outcome on disk.
-	ErrResolved Error = "approvals: the record is resolved already"
-	// ErrResolution is a resolution a store may not be told to write. Only
-	// the consuming path marks a record spent, because that record is the
-	// plane's proof that an execution happened.
-	ErrResolution Error = "approvals: a store resolves a record as not resumed and nothing else"
 	// ErrApproverID is an approver id that is empty, over MaxApproverIDBytes,
 	// holds a code point no identifier may hold, or reads as the reserved
 	// authn: prefix, with approval.ErrReservedApproverID beside it.
@@ -122,14 +105,14 @@ const (
 	// build does not understand, or none at all.
 	ErrSchemaVersion Error = "approvals: the record's schema version is not one this build reads"
 	// ErrMalformed is a record body that is not one JSON object of one
-	// record, or one whose resolution this build cannot name.
+	// record.
 	ErrMalformed Error = "approvals: the record is malformed"
 	// ErrNameMismatch is a record whose file name disagrees with what the
-	// record carries inside, or whose state disagrees with its resolution.
+	// record carries inside.
 	ErrNameMismatch Error = "approvals: the record's file name disagrees with the record"
 	// ErrRecordMismatch is a record that disagrees with itself: an approval
-	// naming another request, a binding that is not the one its digests make,
-	// or two live records for one request.
+	// naming another request, or a binding that is not the one its digests
+	// make.
 	ErrRecordMismatch Error = "approvals: the record disagrees with itself"
 	// ErrRecordName is an approval id that cannot name a file.
 	ErrRecordName Error = "approvals: the approval id cannot name a file"

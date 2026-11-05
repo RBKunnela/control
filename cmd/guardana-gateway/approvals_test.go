@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -142,11 +143,35 @@ func recordsUnder(t *testing.T, dir string) []string {
 	}
 	out := make([]string, 0, len(listing.Entries))
 	for _, e := range listing.Entries {
-		out = append(out, fmt.Sprintf("%s %s %s %q", e.Record.ApprovalID, e.Record.Resolution,
+		out = append(out, fmt.Sprintf("%s %s %q", e.Record.ApprovalID,
 			e.Record.Approval.GetState(), e.Record.Approval.GetApproverId()))
 	}
 	slices.Sort(out)
 	return out
+}
+
+// ledgerMarks is every mark the ledger beside the journal under dir holds
+// under binding, read by a plane's handle once no plane holds it.
+func ledgerMarks(t *testing.T, dir string, binding approval.Binding) map[string]holdjournal.Mark {
+	t.Helper()
+	journal, err := holdjournal.Open(dir)
+	if err != nil {
+		t.Fatalf("holdjournal.Open: %v", err)
+	}
+	defer func() {
+		if err := journal.Close(); err != nil {
+			t.Errorf("closing the journal: %v", err)
+		}
+	}()
+	ledger, err := journal.Ledger()
+	if err != nil {
+		t.Fatalf("the ledger: %v", err)
+	}
+	marks, err := ledger.Lookup(context.Background(), binding, time.Now())
+	if err != nil {
+		t.Fatalf("Lookup: %v", err)
+	}
+	return marks
 }
 
 // entriesUnder is every journal entry, from the handle that takes no lock.
@@ -429,7 +454,7 @@ func probePlane(t *testing.T, dir string) bool {
 func TestRunClosesTheHoldsItLostAndPrunesAfterwards(t *testing.T) {
 	tr := newTree(t)
 	records, holds := tr.fileProvider(t)
-	lostHold(t, records, holds, time.Now().Add(10*time.Minute))
+	binding := lostHold(t, records, holds, time.Now().Add(10*time.Minute))
 	setEnv(t, "upstreams.0.endpoint", upstream(t))
 	setEnv(t, "listener.address", "127.0.0.1:0")
 	setEnv(t, "health.address", "127.0.0.1:0")
@@ -453,10 +478,11 @@ func TestRunClosesTheHoldsItLostAndPrunesAfterwards(t *testing.T) {
 		t.Fatalf("run answered %d; stderr: %s", status, stderr.String())
 	}
 
-	if got := recordsUnder(t, records); !slices.Equal(got, []string{
-		lostApproval + ` not_resumed APPROVAL_STATE_PENDING ""`,
-	}) {
-		t.Errorf("the record after the reconciliation is %v; a lost hold is resolved not resumed and never spent", got)
+	if got := recordsUnder(t, records); len(got) != 0 {
+		t.Errorf("the records after the reconciliation are %v; a settled hold leaves the directory", got)
+	}
+	if marks := ledgerMarks(t, holds, binding); !maps.Equal(marks, map[string]holdjournal.Mark{lostRequest: holdjournal.MarkNotResumed}) {
+		t.Errorf("the ledger after the reconciliation marks %v; a lost hold is settled not resumed and never spent", marks)
 	}
 	if got := entriesUnder(t, holds); !slices.Equal(got, []string{"interrupted 0 unreadable 0 complete true"}) {
 		t.Errorf("the journal after the reconciliation is %v; a closed trail's entry is forgotten", got)
@@ -565,11 +591,6 @@ func (r refusalRig) answered(t *testing.T, id string, state controlv1.ApprovalSt
 	}
 }
 
-func (r refusalRig) consume(id string, at time.Time) error {
-	_, err := r.seam.Consume(context.Background(), r.binding, "req-"+id, "apr-"+id, at)
-	return err
-}
-
 const (
 	approvedState = controlv1.ApprovalState_APPROVAL_STATE_APPROVED
 	rejectedState = controlv1.ApprovalState_APPROVAL_STATE_REJECTED
@@ -577,8 +598,7 @@ const (
 )
 
 // storeRefusals makes each refusal storeErrors translates with a real store.
-// The seam carries no answer, so the approver's two refusals, and the
-// resolution the seam refuses before the store is asked, are handed to the
+// The seam carries no answer, so the approver's two refusals are handed to the
 // translation directly.
 var storeRefusals = []struct {
 	store   approvals.Error
@@ -586,28 +606,8 @@ var storeRefusals = []struct {
 	refusal func(*testing.T, refusalRig) error
 }{
 	{approvals.ErrNoApproval, gateway.ErrNoApproval, func(_ *testing.T, r refusalRig) error {
-		return r.consume("nobody-held", r.now)
-	}},
-	{approvals.ErrApprovalConsumed, gateway.ErrApprovalConsumed, func(t *testing.T, r refusalRig) error {
-		r.hold(t, "consumed", false)
-		r.answered(t, "consumed", approvedState, "approver-1")
-		if err := r.consume("consumed", r.now); err != nil {
-			t.Fatalf("the first consume: %v", err)
-		}
-		return r.consume("consumed", r.now)
-	}},
-	{approvals.ErrApprovalExpired, gateway.ErrApprovalExpired, func(t *testing.T, r refusalRig) error {
-		r.hold(t, "expired", false)
-		return r.consume("expired", r.now.Add(10*time.Minute))
-	}},
-	{approvals.ErrApprovalRejected, gateway.ErrApprovalRejected, func(t *testing.T, r refusalRig) error {
-		r.hold(t, "rejected", false)
-		r.answered(t, "rejected", rejectedState, "")
-		return r.consume("rejected", r.now)
-	}},
-	{approvals.ErrMultiUse, gateway.ErrMultiUse, func(t *testing.T, r refusalRig) error {
-		r.hold(t, "multi", true)
-		return r.consume("multi", r.now)
+		_, err := r.seam.Find(context.Background(), r.binding, r.now.Add(time.Hour))
+		return err
 	}},
 	{approvals.ErrZeroTime, gateway.ErrZeroTime, func(_ *testing.T, r refusalRig) error {
 		return r.seam.Hold(context.Background(), gateway.Held{}, time.Time{})
@@ -630,9 +630,6 @@ var storeRefusals = []struct {
 		r.hold(t, "pending", false)
 		return storeError(r.answer("pending", pendingState, "approver-1"))
 	}},
-	{approvals.ErrResolution, gateway.ErrResolution, func(_ *testing.T, r refusalRig) error {
-		return storeError(r.store.Resolve(context.Background(), r.binding, lostRequest, lostApproval, approvals.ResolutionConsumed, r.now))
-	}},
 }
 
 // TestAStoreRefusalIsTheGatewaysOwnVocabulary: the directory's refusals reach
@@ -643,22 +640,16 @@ func TestAStoreRefusalIsTheGatewaysOwnVocabulary(t *testing.T) {
 	r := openRefusalRig(t)
 	ctx := context.Background()
 
-	// Nobody has approved the held request, so consuming it is refused.
-	if _, err := r.seam.Consume(ctx, r.binding, lostRequest, lostApproval, r.now); !isGateway(err, gateway.ErrNoApproval) {
-		t.Errorf("consuming an unanswered record answered %v, want %v", err, gateway.ErrNoApproval)
-	}
-	// A record this plane never held is not a record it may speak for.
-	if err := r.seam.Resolve(ctx, r.binding, "req-nobody-held", "apr-nobody-held", gateway.ResolutionNotResumed, r.now); !isGateway(err, gateway.ErrNoApproval) {
-		t.Errorf("resolving an unheld record answered %v, want %v", err, gateway.ErrNoApproval)
-	}
-	// Only the consuming path marks a record spent, whatever a caller asks.
-	if err := r.seam.Resolve(ctx, r.binding, lostRequest, lostApproval, gateway.ResolutionConsumed, r.now); !isGateway(err, gateway.ErrResolution) {
-		t.Errorf("resolving a record consumed answered %v, want %v", err, gateway.ErrResolution)
+	// Nobody has approved the held request, so it reads as pending, and a
+	// read writes nothing.
+	found, err := r.seam.Find(ctx, r.binding, r.now)
+	if err != nil || len(found) != 1 || found[0].Approval.GetState() != pendingState {
+		t.Errorf("reading the unanswered record answered %v, %v; want it pending", found, err)
 	}
 	if got := recordsUnder(t, r.records); !slices.Equal(got, []string{
-		lostApproval + ` pending APPROVAL_STATE_PENDING ""`,
+		lostApproval + ` APPROVAL_STATE_PENDING ""`,
 	}) {
-		t.Errorf("a refused call changed the record: %v", got)
+		t.Errorf("a read changed the record: %v", got)
 	}
 
 	covered := map[approvals.Error]bool{}
@@ -677,6 +668,69 @@ func TestAStoreRefusalIsTheGatewaysOwnVocabulary(t *testing.T) {
 	for from := range storeErrors {
 		if !covered[from] {
 			t.Errorf("no case makes the store refuse with %v", from)
+		}
+	}
+}
+
+// TestALedgerRefusalIsTheGatewaysOwnVocabulary: the ledger's refusals reach
+// the pipeline as the sentinels it names, beside the resolution the gateway's
+// Ledger documents for each, and the ledger's own words travel with them.
+// Every entry of the translation has a case.
+func TestALedgerRefusalIsTheGatewaysOwnVocabulary(t *testing.T) {
+	journal, err := holdjournal.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("holdjournal.Open: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := journal.Close(); err != nil {
+			t.Errorf("closing the journal: %v", err)
+		}
+	})
+	ledger, err := journal.Ledger()
+	if err != nil {
+		t.Fatalf("the ledger: %v", err)
+	}
+	seam := &spentLedger{ledger: ledger}
+	ctx, now, b := context.Background(), time.Now(), approval.Binding("sha256:ledger")
+	if res, err := seam.Spend(ctx, b, "req-1", "apr-1", "duty-officer", now); res != gateway.ResolutionConsumed || err != nil {
+		t.Fatalf("the first spend answered %v, %v", res, err)
+	}
+	res, err := seam.Spend(ctx, b, "req-1", "apr-1", "duty-officer", now)
+	expectLedgerAnswer(t, "a second spend", res, err, gateway.ResolutionConsumed, gateway.ErrApprovalConsumed, holdjournal.ErrSpent)
+	res, err = seam.Settle(ctx, b, "req-1", "apr-1", now)
+	expectLedgerAnswer(t, "a settle of a spent approval", res, err, gateway.ResolutionConsumed, gateway.ErrApprovalConsumed, holdjournal.ErrSpent)
+	if res, err := seam.Settle(ctx, b, "req-2", "apr-2", now); res != gateway.ResolutionNotResumed || err != nil {
+		t.Fatalf("a settle answered %v, %v", res, err)
+	}
+	res, err = seam.Spend(ctx, b, "req-2", "apr-2", "duty-officer", now)
+	expectLedgerAnswer(t, "a spend of a settled approval", res, err, gateway.ResolutionNotResumed, gateway.ErrNoApproval, holdjournal.ErrSettled)
+	res, err = seam.Spend(ctx, b, "", "apr-3", "duty-officer", now)
+	expectLedgerAnswer(t, "a spend naming no request", res, err, gateway.ResolutionUnspecified, gateway.ErrLedgerEntry, holdjournal.ErrLedgerEntry)
+	res, err = seam.Settle(ctx, b, "req-3", "apr-3", time.Time{})
+	expectLedgerAnswer(t, "a settle at the zero time", res, err, gateway.ResolutionUnspecified, gateway.ErrZeroTime, holdjournal.ErrZeroTime)
+	expectLedgerMarks(t, seam, b, now)
+}
+
+// expectLedgerAnswer holds one ledger call to the resolution and the two
+// refusals, the pipeline's and the ledger's own, it should answer.
+func expectLedgerAnswer(t *testing.T, what string, res gateway.Resolution, err error, wantRes gateway.Resolution, want gateway.Error, from holdjournal.Error) {
+	t.Helper()
+	if res != wantRes || !isGateway(err, want) || !errors.Is(err, from) {
+		t.Errorf("%s answered %v, %v; want %v beside %v and the ledger's own %v", what, res, err, wantRes, want, from)
+	}
+}
+
+// expectLedgerMarks holds the seam's lookup to the two marks the vocabulary
+// test made, and the translation to the four refusals it made.
+func expectLedgerMarks(t *testing.T, seam *spentLedger, b approval.Binding, now time.Time) {
+	t.Helper()
+	marks, err := seam.Lookup(context.Background(), b, now)
+	if err != nil || !maps.Equal(marks, map[string]gateway.Resolution{"req-1": gateway.ResolutionConsumed, "req-2": gateway.ResolutionNotResumed}) {
+		t.Errorf("Lookup answered %v, %v", marks, err)
+	}
+	for from := range ledgerErrors {
+		if !slices.Contains([]holdjournal.Error{holdjournal.ErrSpent, holdjournal.ErrSettled, holdjournal.ErrLedgerEntry, holdjournal.ErrZeroTime}, from) {
+			t.Errorf("no case makes the ledger refuse with %v", from)
 		}
 	}
 }

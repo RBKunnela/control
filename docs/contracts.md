@@ -635,7 +635,7 @@ reads where a producer left a value out, as ADR-0011 and the comments in
   against the receiver's clock, never the producer's `occurred_at`.
   `APPROVAL_STATE_UNSPECIFIED` is not approved, and `APPROVED` with no
   `approver_id` is refused. `implemented` in the gateway's resume
-  (`checkApproval`, `approvalFields`) and in the approvals store's `Consume`.
+  (`approvalFields`, `approval.Consumable`, `answerOf`).
 - A `Decision` with no `expires_at` may not be reused, and
   `POLICY_FRESHNESS_UNSPECIFIED` is stale. `planned`.
 - An empty `pdp_instance` means the decision consulted no external decision

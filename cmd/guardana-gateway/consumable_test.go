@@ -54,8 +54,8 @@ const (
 	rowExpiresAfterNow
 )
 
-// consumeRow is one combination of what a consuming store reads, and the
-// moment it is consumed at.
+// consumeRow is one combination of what a store hands back, and the moment
+// it is read at.
 type consumeRow struct {
 	state    controlv1.ApprovalState
 	approver string
@@ -165,72 +165,62 @@ func consumeRows() []consumeRow {
 	return out
 }
 
-// The classes a Consume answer falls in, as the pipeline tells them apart.
+// The classes of what a store hands back about one row at one reading, as
+// the pipeline judges it.
 const (
-	classSpent      = "spent"
-	classRejected   = "rejected"
-	classExpired    = "expired"
-	classMultiUse   = "multi-use"
-	classNoApproval = "no approval"
-	classZeroTime   = "zero time"
-	classConsumed   = "consumed already"
-	classNotHeld    = "not held"
+	classUsable   = "usable"
+	classRejected = "rejected"
+	classMultiUse = "multi-use"
+	classUnusable = "no answer yet"
+	classGone     = "gone"
+	classZeroTime = "zero time"
+	classNotHeld  = "not held"
 )
 
-// classOf names what Consume answered. Anything else is spelled out, so it
-// can match no expected class.
-func classOf(a *controlv1.Approval, err error) string {
+// classOf names what Find handed back at now, judged as the pipeline judges
+// it. Anything else is spelled out, so it can match no expected class.
+func classOf(found []gateway.Held, err error, now time.Time) string {
 	switch {
-	case err == nil && a != nil:
-		return classSpent
-	case errors.Is(err, gateway.ErrApprovalRejected) && a != nil:
-		return classRejected
-	case a != nil:
-		return fmt.Sprintf("an approval beside %v", err)
-	case errors.Is(err, gateway.ErrApprovalExpired):
-		return classExpired
-	case errors.Is(err, gateway.ErrMultiUse):
-		return classMultiUse
-	case errors.Is(err, gateway.ErrNoApproval):
-		return classNoApproval
 	case errors.Is(err, gateway.ErrZeroTime):
 		return classZeroTime
-	case errors.Is(err, gateway.ErrApprovalConsumed):
-		return classConsumed
+	case errors.Is(err, gateway.ErrNoApproval):
+		return classGone
+	case err != nil:
+		return fmt.Sprintf("refused: %v", err)
+	case len(found) != 1:
+		return fmt.Sprintf("%d records", len(found))
 	}
-	return fmt.Sprintf("refused: %v", err)
+	switch approval.Consumable(found[0].Approval, now) {
+	case approval.StandingUsable:
+		return classUsable
+	case approval.StandingRejected:
+		return classRejected
+	case approval.StandingMultiUse:
+		return classMultiUse
+	case approval.StandingUnusable:
+		return classUnusable
+	}
+	return fmt.Sprintf("standing %v", approval.Consumable(found[0].Approval, now))
 }
 
 // wantClass is the order restated over the row's names: no time and no
-// store in it.
+// store in it. A store hides what expired, so an expiry is a record gone.
 func wantClass(r consumeRow) string {
 	switch {
 	case r.zeroNow:
 		return classZeroTime
+	case r.expires != rowExpiresAfterNow:
+		return classGone
 	case r.multiUse:
 		return classMultiUse
-	case r.expires != rowExpiresAfterNow:
-		return classExpired
 	case r.decided != rowDecidedAtRequest && r.decided != rowDecidedAtNow:
-		return classNoApproval
+		return classUnusable
 	case r.state == controlv1.ApprovalState_APPROVAL_STATE_REJECTED:
 		return classRejected
 	case r.state == controlv1.ApprovalState_APPROVAL_STATE_APPROVED && r.approver != "":
-		return classSpent
+		return classUsable
 	}
-	return classNoApproval
-}
-
-// wantAgain is what a second Consume of the same record answers: a spent
-// record is consumed, a dropped one is gone, and anything else stands.
-func wantAgain(first string) string {
-	switch first {
-	case classSpent:
-		return classConsumed
-	case classRejected, classExpired:
-		return classNoApproval
-	}
-	return first
+	return classUnusable
 }
 
 // unreadable is a row the directory refuses to read at all: no expiry, an
@@ -259,10 +249,9 @@ func rowBinding(t *testing.T) approval.Binding {
 // later is a moment past every expiry a row can carry.
 var later = rowNow.Add(time.Hour)
 
-// storeAnswer is what one store answered about one row: the class of a
-// Consume, of the same Consume again, and of one at a later moment, with the
-// errors the directory's two Consumes came back with and the names it holds
-// afterwards.
+// storeAnswer is what one store handed back about one row: the class of a
+// Find, of the same Find again, and of one at a later moment, with the errors
+// the directory's two Finds came back with and the names it holds afterwards.
 type storeAnswer struct {
 	first, again, later string
 	firstErr, againErr  error
@@ -270,10 +259,10 @@ type storeAnswer struct {
 	answered            bool
 }
 
-// consumeInMemory holds the row's approval pending, answers it through
-// Answer where an approver could, and consumes it three times. A hold the
-// store refuses is held nowhere.
-func consumeInMemory(t *testing.T, r consumeRow, binding approval.Binding) storeAnswer {
+// findInMemory holds the row's approval pending, answers it through Answer
+// where an approver could, and reads it three times. A hold the store refuses
+// is held nowhere.
+func findInMemory(t *testing.T, r consumeRow, binding approval.Binding) storeAnswer {
 	t.Helper()
 	var store gateway.MemoryApprovals
 	err := store.Hold(context.Background(), gateway.Held{
@@ -292,17 +281,20 @@ func consumeInMemory(t *testing.T, r consumeRow, binding approval.Binding) store
 	if at, ok := r.decidedAt(); ok {
 		out.answered = store.Answer(rowApproval, r.state, r.approver, "", at) == nil
 	}
-	out.first = classOf(store.Consume(context.Background(), binding, rowRequest, rowApproval, r.now()))
-	out.again = classOf(store.Consume(context.Background(), binding, rowRequest, rowApproval, r.now()))
-	out.later = classOf(store.Consume(context.Background(), binding, rowRequest, rowApproval, later))
+	found, err := store.Find(context.Background(), binding, r.now())
+	out.first = classOf(found, err, r.now())
+	found, err = store.Find(context.Background(), binding, r.now())
+	out.again = classOf(found, err, r.now())
+	found, err = store.Find(context.Background(), binding, later)
+	out.later = classOf(found, err, later)
 	return out
 }
 
-// consumeInDirectory holds the row's approval pending through the plane,
+// findInDirectory holds the row's approval pending through the plane,
 // answers it as an approver would where the approvers' command takes the
 // answer, and otherwise writes the row's record by hand, as any writer of the
-// directory can. It then consumes it three times through the seam.
-func consumeInDirectory(t *testing.T, r consumeRow, binding approval.Binding) storeAnswer {
+// directory can. It then reads it three times through the seam.
+func findInDirectory(t *testing.T, r consumeRow, binding approval.Binding) storeAnswer {
 	t.Helper()
 	dir := filepath.Join(t.TempDir(), "records")
 	if err := os.Mkdir(dir, 0o700); err != nil {
@@ -324,19 +316,20 @@ func consumeInDirectory(t *testing.T, r consumeRow, binding approval.Binding) st
 		out.answered = answerInDirectory(t, dir, r)
 	}
 	if !out.answered {
-		writeRecord(t, filepath.Join(dir, rowApproval+".0-held.rec"), r.approval(), binding, "pending")
+		writeRecord(t, filepath.Join(dir, rowApproval+".0-held.rec"), r.approval(), binding)
 	}
 	plane, err := approvals.OpenPlane(dir)
 	if err != nil {
 		t.Fatalf("OpenPlane: %v", err)
 	}
 	store := &approvalStore{plane: plane}
-	a, err := store.Consume(context.Background(), binding, rowRequest, rowApproval, r.now())
-	out.first, out.firstErr = classOf(a, err), err
-	a, err = store.Consume(context.Background(), binding, rowRequest, rowApproval, r.now())
-	out.again, out.againErr = classOf(a, err), err
+	found, err := store.Find(context.Background(), binding, r.now())
+	out.first, out.firstErr = classOf(found, err, r.now()), err
+	found, err = store.Find(context.Background(), binding, r.now())
+	out.again, out.againErr = classOf(found, err, r.now()), err
 	out.names = namesUnder(t, dir)
-	out.later = classOf(store.Consume(context.Background(), binding, rowRequest, rowApproval, later))
+	found, err = store.Find(context.Background(), binding, later)
+	out.later = classOf(found, err, later)
 	if err := plane.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
 	}
@@ -363,18 +356,17 @@ func answerInDirectory(t *testing.T, dir string, r consumeRow) bool {
 }
 
 // writeRecord frames one record as the store's format states it.
-func writeRecord(t *testing.T, path string, a *controlv1.Approval, binding approval.Binding, resolution string) {
+func writeRecord(t *testing.T, path string, a *controlv1.Approval, binding approval.Binding) {
 	t.Helper()
 	raw, err := protojson.Marshal(a)
 	if err != nil {
 		t.Fatalf("protojson: %v", err)
 	}
 	body, err := json.Marshal(map[string]any{
-		"schema_version": "1.0",
+		"schema_version": approvals.SchemaVersion,
 		"approval_id":    a.GetApprovalId(),
 		"request_id":     a.GetRequestId(),
 		"binding":        string(binding),
-		"resolution":     resolution,
 		"approval":       json.RawMessage(raw),
 	})
 	if err != nil {
@@ -390,21 +382,22 @@ func writeFramed(t *testing.T, path string, body []byte) {
 	copy(out, recordMagic)
 	binary.BigEndian.PutUint32(out[len(recordMagic):], uint32(len(body))) //nolint:gosec // G115: a test record is a few hundred bytes
 	binary.BigEndian.PutUint32(out[len(recordMagic)+4:], crc32.Checksum(body, crc32.MakeTable(crc32.Castagnoli)))
-	if err := os.WriteFile(path, append(out, body...), 0o600); err != nil {
+	if err := os.WriteFile(path, append(out, body...), 0o600); err != nil { //nolint:gosec // G703: the test's own temporary directory
 		t.Fatalf("writing %s: %v", path, err)
 	}
 }
 
-// TestBothStoresConsumeEveryRowAlike: each store holds the row pending and
-// takes its answer through its own route, and answers the class the order
-// names; where both hold the row itself, they answer alike, a second Consume
-// included. A record spent and since expired still answers spent. A row the
-// directory refuses to read spends nothing in either store.
-func TestBothStoresConsumeEveryRowAlike(t *testing.T) {
+// TestBothStoresHandBackEveryRowAlike: each store holds the row pending and
+// takes its answer through its own route, and hands back what the order names
+// at that reading; where both hold the row itself, they hand back alike, a
+// second read included, since a read changes nothing. Past its expiry every
+// record is gone from a read, and no read writes a name. A row the directory
+// refuses to read is usable in neither store.
+func TestBothStoresHandBackEveryRowAlike(t *testing.T) {
 	binding := rowBinding(t)
 	unread, alike := 0, 0
 	for _, r := range consumeRows() {
-		read, compared := consumeRowAlike(t, r, binding)
+		read, compared := findRowAlike(t, r, binding)
 		if !read {
 			unread++
 		}
@@ -417,27 +410,27 @@ func TestBothStoresConsumeEveryRowAlike(t *testing.T) {
 	}
 }
 
-// consumeRowAlike consumes one row in both stores and holds each to the class
-// the order names for what it holds. It reports whether the directory read
-// the row rather than refusing it at read, and whether both stores held the
-// row itself and were compared.
-func consumeRowAlike(t *testing.T, r consumeRow, binding approval.Binding) (read, compared bool) {
+// findRowAlike reads one row in both stores and holds each to the class the
+// order names for what it holds. It reports whether the directory read the
+// row rather than refusing it at read, and whether both stores held the row
+// itself and were compared.
+func findRowAlike(t *testing.T, r consumeRow, binding approval.Binding) (read, compared bool) {
 	t.Helper()
-	mem := consumeInMemory(t, r, binding)
-	dir := consumeInDirectory(t, r, binding)
+	mem := findInMemory(t, r, binding)
+	dir := findInDirectory(t, r, binding)
 	memoryAsHeld(t, r, mem)
 	if unreadable(r) && (!r.zeroNow || r.expires == rowExpiresNever) {
 		refusedByOne(t, r, mem, dir)
 		return r.zeroNow, false
 	}
 	want := wantClass(r)
-	if dir.first != want || dir.again != wantAgain(want) {
-		t.Errorf("%s: the directory answered %q then %q, want %q then %q", r, dir.first, dir.again, want, wantAgain(want))
+	if dir.first != want || dir.again != want {
+		t.Errorf("%s: the directory handed back %q then %q, want %q twice", r, dir.first, dir.again, want)
 	}
 	if r.answerable() && (dir.first != mem.first || dir.again != mem.again) {
-		t.Errorf("%s: the directory answered %q then %q, the memory store %q then %q", r, dir.first, dir.again, mem.first, mem.again)
+		t.Errorf("%s: the directory handed back %q then %q, the memory store %q then %q", r, dir.first, dir.again, mem.first, mem.again)
 	}
-	keptAlike(t, r, want, mem, dir)
+	keptAlike(t, r, mem, dir)
 	return true, r.answerable() && !r.zeroNow
 }
 
@@ -452,30 +445,41 @@ func memoryAsHeld(t *testing.T, r consumeRow, mem storeAnswer) {
 	} else if mem.answered != r.answerable() {
 		t.Errorf("%s: the memory store took the answer: %t, want %t", r, mem.answered, r.answerable())
 	}
-	if mem.first != want || mem.again != wantAgain(want) {
-		t.Errorf("%s: the memory store answered %q then %q, want %q then %q", r, mem.first, mem.again, want, wantAgain(want))
+	if mem.first != want || mem.again != want {
+		t.Errorf("%s: the memory store handed back %q then %q, want %q twice", r, mem.first, mem.again, want)
 	}
 }
 
-// keptAlike holds what each store keeps of a row it read: a spent record
-// still answers spent past its expiry, and the directory holds the spent
-// name, or nothing once it dropped the record.
-func keptAlike(t *testing.T, r consumeRow, want string, mem, dir storeAnswer) {
+// keptAlike holds what each store keeps of a row it read: past every expiry
+// the record is gone from a read, and the directory holds the record under
+// the name it was held or answered under and no other.
+func keptAlike(t *testing.T, r consumeRow, mem, dir storeAnswer) {
 	t.Helper()
-	if want == classSpent && (mem.later != classConsumed || dir.later != classConsumed) {
-		t.Errorf("%s: past its expiry the spent record answered %q in memory and %q in the directory, want %q", r, mem.later, dir.later, classConsumed)
+	// A record the directory refuses at read is refused at every reading.
+	dirGone := dir.later == classGone
+	if unreadable(r) {
+		dirGone = strings.HasPrefix(dir.later, "refused: ")
 	}
-	consumed := slices.Contains(dir.names, rowApproval+".3-consumed.rec")
-	dropped := !slices.ContainsFunc(dir.names, func(n string) bool {
-		return strings.HasPrefix(n, rowApproval+".") && !strings.HasSuffix(n, ".view.json")
-	})
-	if consumed != (want == classSpent) || dropped != (want == classRejected || want == classExpired) {
-		t.Errorf("%s: answered %q and the directory holds %v", r, dir.first, dir.names)
+	if r.expires != rowExpiresNever && (mem.later != classGone || !dirGone) {
+		t.Errorf("%s: past every expiry the record read %q in memory and %q in the directory, want %q, or a refusal of what the directory cannot read", r, mem.later, dir.later, classGone)
+	}
+	want := rowApproval + ".0-held.rec"
+	if dir.answered {
+		want = rowApproval + ".1-answered.rec"
+	}
+	var records []string
+	for _, n := range dir.names {
+		if strings.HasPrefix(n, rowApproval+".") && !strings.HasSuffix(n, ".view.json") {
+			records = append(records, n)
+		}
+	}
+	if !slices.Equal(records, []string{want}) {
+		t.Errorf("%s: read %q and the directory holds %v, want %s alone", r, dir.first, dir.names, want)
 	}
 }
 
-// refusedByOne holds a row one store refuses to keep to spending nothing in
-// either: the directory refuses it at read, or at the zero time before it
+// refusedByOne holds a row one store refuses to keep to being usable in
+// neither: the directory refuses it at read, or at the zero time before it
 // reads, both times, and leaves the record where it was.
 func refusedByOne(t *testing.T, r consumeRow, mem, dir storeAnswer) {
 	t.Helper()
@@ -485,15 +489,15 @@ func refusedByOne(t *testing.T, r consumeRow, mem, dir storeAnswer) {
 	switch {
 	case r.zeroNow:
 		if dir.first != classZeroTime || dir.again != classZeroTime {
-			t.Errorf("%s: the directory answered %q then %q, want %q twice", r, dir.first, dir.again, classZeroTime)
+			t.Errorf("%s: the directory handed back %q then %q, want %q twice", r, dir.first, dir.again, classZeroTime)
 		}
 	case !readRefusal(dir.firstErr) || !readRefusal(dir.againErr):
 		t.Errorf("%s: the directory answered %v then %v, want the record refused at read twice", r, dir.firstErr, dir.againErr)
 	}
-	if !slices.Contains(dir.names, rowApproval+".0-held.rec") || slices.Contains(dir.names, rowApproval+".3-consumed.rec") {
-		t.Errorf("%s: a record the directory refused leaves %v, want it in place and unspent", r, dir.names)
+	if !slices.Contains(dir.names, rowApproval+".0-held.rec") {
+		t.Errorf("%s: a record the directory refused leaves %v, want it in place", r, dir.names)
 	}
-	if mem.first == classSpent {
-		t.Errorf("%s: a record the directory refuses to read was spent in memory", r)
+	if mem.first == classUsable {
+		t.Errorf("%s: a record the directory refuses to read is usable in memory", r)
 	}
 }

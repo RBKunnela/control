@@ -61,15 +61,17 @@ func WithMaxEntryBytes(n int) Option {
 type Journal struct {
 	mu  sync.Mutex
 	dir string
-	// root is the directory as it was opened and judged. Every file is
-	// reached through it, never through dir.
-	root *os.Root
+	// dirFiles holds the directory as it was opened and judged. Every file
+	// is reached through its root, never through dir.
+	dirFiles
 	// opened is what root described at open, which dir has to name still.
 	opened   fs.FileInfo
 	opts     options
 	open     bool
 	writable bool
 	unlock   func() error
+	// ledger is the ledger directory's handle once Ledger opened it.
+	ledger *Ledger
 	// entries is how many entry files the directory holds. Only this process
 	// writes them, and it does so under the directory's exclusive lock, so a
 	// count kept here needs no directory read per hold.
@@ -121,7 +123,7 @@ func openJournal(dir string, writable bool, opts []Option) (*Journal, error) {
 	if err != nil {
 		return nil, err
 	}
-	j := &Journal{dir: dir, root: root, opened: opened, opts: o, writable: writable, unlock: func() error { return nil }}
+	j := &Journal{dir: dir, dirFiles: dirFiles{root: root}, opened: opened, opts: o, writable: writable, unlock: func() error { return nil }}
 	if writable {
 		unlock, err := lockDir(root, dir)
 		if err != nil {
@@ -251,6 +253,7 @@ func sortEntries(entries []os.DirEntry) (marker bool, temps []string, held int, 
 			temps = append(temps, e.Name())
 		case kindEntry:
 			held++
+		case kindLedger:
 		case kindForeign:
 			if foreign == "" {
 				foreign = e.Name()
@@ -356,5 +359,5 @@ func (j *Journal) Close() error {
 		return ErrClosed
 	}
 	j.open = false
-	return errors.Join(j.unlock(), j.root.Close())
+	return errors.Join(j.ledger.close(), j.unlock(), j.root.Close())
 }

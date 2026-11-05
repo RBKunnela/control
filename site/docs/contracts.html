@@ -831,7 +831,7 @@ never one that established their absence. <code>implemented</code> in <code>Toxi
 against the receiver's clock, never the producer's <code>occurred_at</code>.
 <code>APPROVAL_STATE_UNSPECIFIED</code> is not approved, and <code>APPROVED</code> with no
 <code>approver_id</code> is refused. <code>implemented</code> in the gateway's resume
-(<code>checkApproval</code>, <code>approvalFields</code>) and in the approvals store's <code>Consume</code>.</li>
+(<code>approvalFields</code>, <code>approval.Consumable</code>, <code>answerOf</code>).</li>
 <li>A <code>Decision</code> with no <code>expires_at</code> may not be reused, and
 <code>POLICY_FRESHNESS_UNSPECIFIED</code> is stale. <code>planned</code>.</li>
 <li>An empty <code>pdp_instance</code> means the decision consulted no external decision

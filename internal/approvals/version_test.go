@@ -2,6 +2,7 @@ package approvals_test
 
 import (
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -51,10 +52,10 @@ func TestAnApprovalFromAnotherMajorOnDiskIsNotAnswered(t *testing.T) {
 // fold a member's case, skip an unknown one and keep the last of two.
 func TestAMarkerIsReadStrictly(t *testing.T) {
 	cases := map[string]string{
-		"an unknown member":         `{"schema_version":"1.0","kind":"approvals","writable_by":"anyone"}`,
-		"members in capitals":       `{"SCHEMA_VERSION":"1.0","KIND":"approvals"}`,
-		"the kind given twice":      `{"schema_version":"1.0","kind":"hold_journal","kind":"approvals"}`,
-		"the version given twice":   `{"schema_version":"9.0","schema_version":"1.0","kind":"approvals"}`,
+		"an unknown member":         `{"schema_version":"2.0","kind":"approvals","writable_by":"anyone"}`,
+		"members in capitals":       `{"SCHEMA_VERSION":"2.0","KIND":"approvals"}`,
+		"the kind given twice":      `{"schema_version":"2.0","kind":"hold_journal","kind":"approvals"}`,
+		"the version given twice":   `{"schema_version":"9.0","schema_version":"2.0","kind":"approvals"}`,
 		"a marker that is an array": `["approvals"]`,
 	}
 	for name, marker := range cases {
@@ -68,7 +69,7 @@ func TestAMarkerIsReadStrictly(t *testing.T) {
 			}
 		})
 	}
-	dir := markedStore(t, `{"schema_version":"1.0","kind":"approvals"}`+"\n")
+	dir := markedStore(t, `{"schema_version":"2.0","kind":"approvals"}`+"\n")
 	p, err := approvals.OpenPlane(dir)
 	if err != nil {
 		t.Fatalf("a plane over the marker as the format spells it = %v", err)
@@ -88,4 +89,33 @@ func markedStore(t *testing.T, marker string) string {
 	}
 	writeFile(t, dir, "store.meta", []byte(marker))
 	return dir
+}
+
+// TestA10DirectoryIsRefusedByName: a directory or a record of the format that
+// kept the spent mark beside the answers is refused, by both handles, with a
+// message naming both versions and what to do; a record of the current major
+// beside it is read.
+func TestA10DirectoryIsRefusedByName(t *testing.T) {
+	dir := markedStore(t, `{"schema_version":"1.0","kind":"approvals"}`+"\n")
+	for name, open := range map[string]func() error{
+		"a plane":     func() error { _, err := approvals.OpenPlane(dir); return err },
+		"an approver": func() error { _, err := approvals.OpenApprover(dir); return err },
+	} {
+		err := open()
+		if !errors.Is(err, approvals.ErrNotAStore) || !errors.Is(err, approvals.ErrSchemaVersion) ||
+			!strings.Contains(err.Error(), "1.0") || !strings.Contains(err.Error(), "2.0") || !strings.Contains(err.Error(), "empty the directory") {
+			t.Errorf("%s over a 1.0 directory: %v; want it refused, naming 1.0 and 2.0 and saying to empty it", name, err)
+		}
+	}
+
+	p, dir, h := heldOne(t)
+	writeFile(t, dir, heldName, withField(t, readFile(t, dir, heldName), "schema_version", `"1.0"`))
+	_, err := p.Find(t.Context(), h.Binding, minted)
+	if !errors.Is(err, approvals.ErrSchemaVersion) || !strings.Contains(err.Error(), "2.0") {
+		t.Errorf("Find over a 1.0 record: %v; want ErrSchemaVersion naming 2.0", err)
+	}
+	writeFile(t, dir, heldName, withField(t, readFile(t, dir, heldName), "schema_version", `"2.3"`))
+	if found, err := p.Find(t.Context(), h.Binding, minted); err != nil || len(found) != 1 {
+		t.Errorf("Find over a record of a later minor = %d, %v; want it read", len(found), err)
+	}
 }

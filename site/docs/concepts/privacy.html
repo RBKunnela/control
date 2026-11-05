@@ -275,6 +275,11 @@ to the plane, no field of the contract holds it, and no adapter reads it.</p>
 <td>the plane's account: entries are <code>0600</code></td>
 </tr>
 <tr>
+<td>the ledger, <code>ledger/</code> in the hold journal's directory</td>
+<td>per spent or settled approval, the binding, the request and approval ids, the approver id the plane recorded and when</td>
+<td>the plane's account: marks are <code>0600</code></td>
+</tr>
+<tr>
 <td>the floor directory, <code>policy.state_dir</code></td>
 <td>per bundle id, the serial, digest and <code>issuedAt</code> of the newest freshness statement taken, and the reason and prior value of the last reset</td>
 <td>the plane's account: the directory is owner-only and its files <code>0600</code></td>
@@ -355,8 +360,13 @@ the plane. A plane in <code>OBSERVE</code> sends the proposed ones.</p>
 </tr>
 <tr>
 <td>an approval record and its projection</td>
-<td>at a plane's start, once its approval has expired, whether it was consumed or not</td>
+<td>at a plane's start, once its approval has expired, whether it was consumed or not, and when the plane settles a hold it lost</td>
 <td>nothing removes them while a plane runs; a directory left to grow refuses holds at <code>approvals.max_records</code></td>
+</tr>
+<tr>
+<td>a ledger mark</td>
+<td>at a plane's start, once it is older than <code>approvals.ttl</code></td>
+<td>nothing; the ledger refuses a mark past <code>approvals.max_records</code></td>
 </tr>
 <tr>
 <td>a hold journal entry</td>

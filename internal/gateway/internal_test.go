@@ -68,6 +68,7 @@ func internalPipeline(t *testing.T) (*Pipeline, *policy.Snapshot) {
 		Stops:         StopsDisabled(),
 		Sink:          &evidence.MemorySink{},
 		Approvals:     &MemoryApprovals{},
+		Ledger:        &MemoryLedger{},
 		Clock:         internalClock,
 		NewID:         func() string { ids++; return "id-" + strconv.Itoa(ids) },
 		ApprovalTTL:   time.Minute,

@@ -214,6 +214,7 @@ func newPlane(t *testing.T, o options) *plane {
 		Stops:                gateway.StopsDisabled(),
 		Sink:                 p.sink,
 		Approvals:            p.approvals,
+		Ledger:               &gateway.MemoryLedger{},
 		Clock:                time.Now,
 		NewID:                ids(),
 		ApprovalTTL:          10 * time.Minute,

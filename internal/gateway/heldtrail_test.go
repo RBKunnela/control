@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/core"
 	"github.com/guardana/control/internal/evidence"
@@ -73,7 +75,7 @@ func TestAHeldReadIsClosedStrictlyAtItsResume(t *testing.T) {
 			if first := h.admit(readEnvelope(), []byte(`{}`)); first.Action != core.AwaitApproval {
 				t.Fatalf("the first read: Action = %d, decision %+v", first.Action, first.Decision)
 			}
-			store.consumeErr = gateway.ErrApprovalExpired
+			reportExpired(store)
 			h.sink.refuseKind(kindBlocked)
 
 			d := h.admit(requestNamed(readEnvelope(), "req-2"), []byte(`{}`))
@@ -87,7 +89,7 @@ func TestAHeldReadIsClosedStrictlyAtItsResume(t *testing.T) {
 				t.Errorf("Stats = %+v; want EVIDENCE_UNAVAILABLE once and no read unrecorded", s)
 			}
 
-			store.consumeErr = nil
+			store.found = nil
 			h.sink.accept()
 			again := h.admit(readEnvelope(), []byte(`{}`))
 			expectBlock(t, again, verdictIndeterminate, codeInvalidFieldValue, gateway.PDPType)
@@ -342,7 +344,7 @@ func TestAHeldTrailClosedAtItsResumeFreesItsRequestID(t *testing.T) {
 	store := newFakeStore()
 	h := build(t, modeEnforce, snapshot(t, approveRefunds, allowWrites), overStore(store))
 	holdApproved(t, h, store)
-	store.consumeErr = gateway.ErrApprovalExpired
+	reportExpired(store)
 	expectBlock(t, h.admit(retry(t, "req-2"), refundArgs()), verdictDeny, codeApprovalExpired, gateway.PDPType)
 	d := h.admit(writeEnvelope(), []byte(`{}`))
 	closeRun(t, h, d)
@@ -355,18 +357,18 @@ func TestAHeldTrailClosedAtItsResumeFreesItsRequestID(t *testing.T) {
 }
 
 // TestAResumeTheSweepBeatIsNotClosedTwice: the sweep takes a hold while the
-// retry's Consume runs. The retry is answered as blocked and writes and
-// counts nothing on that trail, which carries the sweep's closing once.
+// retry's lookup runs. The retry is answered as blocked and writes and counts
+// nothing on that trail, which carries the sweep's closing once.
 func TestAResumeTheSweepBeatIsNotClosedTwice(t *testing.T) {
 	store := newFakeStore()
 	h := build(t, modeEnforce, snapshot(t, approveRefunds, allowWrites), overStore(store))
 	holdApproved(t, h, store)
-	store.beforeConsume = func() {
-		store.beforeConsume = nil
+	store.found = func(a *controlv1.Approval) {
+		store.found = nil
 		h.clock.set(base().Add(10 * time.Minute))
 		closeRun(t, h, h.admit(requestNamed(writeEnvelope(), "req-9"), []byte(`{}`)))
+		a.ExpiresAt = timestamppb.New(base())
 	}
-	store.consumeErr = gateway.ErrApprovalExpired
 	d := h.admit(retry(t, "req-2"), refundArgs())
 	expectBlock(t, d, verdictIndeterminate, codeEvidenceUnavailable, gateway.PDPType)
 	expectOneChain(t, h, []controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested, kindApprovalExpired, kindBlocked})
@@ -411,7 +413,7 @@ func TestEveryHeldTrailLeftOpenIsCounted(t *testing.T) {
 		"a resume whose closing block is refused": {
 			open: func(t *testing.T, h *harness, store *fakeStore, _ *journalDouble) {
 				holdApproved(t, h, store)
-				store.consumeErr = gateway.ErrApprovalExpired
+				reportExpired(store)
 				h.sink.refuseKind(kindBlocked)
 				expectBlock(t, h.admit(retry(t, "req-2"), refundArgs()), verdictIndeterminate, codeEvidenceUnavailable, gateway.PDPType)
 			},
@@ -468,4 +470,10 @@ func TestEveryHeldTrailLeftOpenIsCounted(t *testing.T) {
 			}
 		})
 	}
+}
+
+// reportExpired makes f hand back every record expired at base(), which is
+// what a store answers about an approval whose window has passed.
+func reportExpired(f *fakeStore) {
+	f.found = func(a *controlv1.Approval) { a.ExpiresAt = timestamppb.New(base()) }
 }

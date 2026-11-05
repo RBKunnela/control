@@ -27,6 +27,21 @@ const (
 	ErrMaybeRecorded Error = "holdjournal: a write failed after its file was linked, so the file may stand"
 )
 
+// The refusals of the ledger, which the gateway's Ledger names under its own
+// vocabulary. Package documentation carries the translation.
+const (
+	// ErrSpent is an approval a plane marked consumed already: a spend that
+	// found it there, or a settle a spent mark refuses.
+	ErrSpent Error = "holdjournal: the ledger marks this approval spent"
+	// ErrSettled is a spend of an approval a plane marked not resumed.
+	ErrSettled Error = "holdjournal: the ledger marks this approval not resumed"
+	// ErrLedgerEntry is a mark that does not name one binding, one request and
+	// one approval within their bounds, or a spend with no proof.
+	ErrLedgerEntry Error = "holdjournal: a ledger mark names a binding, a request and an approval, and a spend its proof"
+	// ErrZeroTime is a clock reading of zero, which dates nothing.
+	ErrZeroTime Error = "holdjournal: the clock reads zero"
+)
+
 // The vocabulary of the directory and of the handle.
 const (
 	// ErrClosed is an operation on a journal nobody opened, or one already

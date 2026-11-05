@@ -78,7 +78,6 @@ func (c *pageClient) post(t *testing.T, path string, body any) (int, string) {
 type pageRecord struct {
 	ApprovalID   string `json:"approval_id"`
 	State        string `json:"state"`
-	Resolution   string `json:"resolution"`
 	ActionDigest string `json:"action_digest"`
 }
 
@@ -144,7 +143,8 @@ func (c *pageClient) pauseAll(t *testing.T, healthz string) func() {
 // TestAHeldCallAnsweredOnThePage: a call held for an approval is approved
 // through the page's API with the digest the page listed; with a pause in
 // force the retry is blocked and the approval stays unspent; once the pause
-// is lifted the retry runs on the held trail and spends it.
+// is lifted the retry runs on the held trail and spends it, so the same call
+// after it is refused as already used.
 func TestAHeldCallAnsweredOnThePage(t *testing.T) {
 	t.Parallel()
 	_, values, _ := devDemo(t, "5ms")
@@ -159,15 +159,16 @@ func TestAHeldCallAnsweredOnThePage(t *testing.T) {
 	if paused.kind != scenario.AnswerBlocked || !slices.Equal(paused.codes, []string{"PAUSED"}) {
 		t.Fatalf("the retry under the pause answered %+v, want blocked PAUSED", paused)
 	}
-	if rec := page.record(t, held.approvalID); rec.State != "APPROVAL_STATE_APPROVED" || rec.Resolution != "pending" {
-		t.Fatalf("after the paused retry the record is %+v, want approved and unspent", rec)
+	if rec := page.record(t, held.approvalID); rec.State != "APPROVAL_STATE_APPROVED" {
+		t.Fatalf("after the paused retry the record is %+v, want approved", rec)
 	}
 	lift()
 	resumed := callOnce(t, values["mcp"], "update_order", "ord-10")
 	if resumed.kind != scenario.AnswerResult || resumed.output != "order updated" || resumed.requestID != held.requestID {
 		t.Fatalf("the retry after the lift answered %+v, want the upstream's result on the held trail", resumed)
 	}
-	if rec := page.record(t, held.approvalID); rec.Resolution != "consumed" {
-		t.Fatalf("after the retry ran the record is %+v, want consumed", rec)
+	used := callOnce(t, values["mcp"], "update_order", "ord-10")
+	if used.kind != scenario.AnswerBlocked || !slices.Equal(used.codes, []string{"APPROVAL_ALREADY_USED"}) {
+		t.Fatalf("the call after the one that ran answered %+v, want blocked APPROVAL_ALREADY_USED", used)
 	}
 }

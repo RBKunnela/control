@@ -21,35 +21,35 @@ func TestListShowsWhatIsWaitingAndWhatBecameOfTheRest(t *testing.T) {
 		t.Fatalf("exit %d with %q, want 0 and nothing on stderr", code, stderr)
 	}
 	head, _, _ := strings.Cut(stdout, "\n\n")
-	for _, want := range []string{"5 records in " + dir, "a plane holds this directory", "not bound to the"} {
+	for _, want := range []string{"4 records in " + dir, "a plane holds this directory", "not bound to the", "whether a retry spent an approved record"} {
 		if !strings.Contains(head, want) {
 			t.Errorf("the listing's head does not say %q:\n%s", want, head)
 		}
 	}
-	for id, want := range map[string]struct{ state, resolution string }{
-		waitingID:  {"APPROVAL_STATE_PENDING", "pending"},
-		answeredID: {"APPROVAL_STATE_APPROVED", "pending"},
-		spentID:    {"APPROVAL_STATE_APPROVED", "consumed"},
-		closedID:   {"APPROVAL_STATE_PENDING", "not_resumed"},
-		staleID:    {"APPROVAL_STATE_PENDING", "pending"},
+	for id, state := range map[string]string{
+		waitingID:  "APPROVAL_STATE_PENDING",
+		answeredID: "APPROVAL_STATE_APPROVED",
+		rejectedID: "APPROVAL_STATE_REJECTED",
+		staleID:    "APPROVAL_STATE_PENDING",
 	} {
-		assertEntry(t, stdout, id, want.state, want.resolution)
+		assertEntry(t, stdout, id, state)
 	}
 	if got := fieldOf(t, blockOf(t, stdout, answeredID), "answered by"); got != "duty-officer" {
 		t.Errorf("answered by %q, want %q", got, "duty-officer")
 	}
 }
 
-// assertEntry holds one entry of a listing to the state and the resolution the
-// record reached, and to the request it was held for.
-func assertEntry(t *testing.T, stdout, approvalID, state, resolution string) {
+// assertEntry holds one entry of a listing to the state the record reached
+// and to the request it was held for, and holds it to printing no resolution,
+// which the directory no longer keeps.
+func assertEntry(t *testing.T, stdout, approvalID, state string) {
 	t.Helper()
 	block := blockOf(t, stdout, approvalID)
 	if got := fieldOf(t, block, "state"); got != state {
 		t.Errorf("%s: state %q, want %q", approvalID, got, state)
 	}
-	if got := fieldOf(t, block, "resolution"); got != resolution {
-		t.Errorf("%s: resolution %q, want %q", approvalID, got, resolution)
+	if strings.Contains(block, "resolution") {
+		t.Errorf("%s: the entry prints a resolution:\n%s", approvalID, block)
 	}
 	if got := fieldOf(t, block, "request"); got != requestOf(approvalID) {
 		t.Errorf("%s: request %q, want %q", approvalID, got, requestOf(approvalID))

@@ -36,7 +36,6 @@ func seedRecord(t testing.TB) []byte {
 		ApprovalID:    "APPROVAL1",
 		RequestID:     "req-1",
 		Binding:       approval.Binding(binding),
-		Resolution:    ResolutionPending,
 		Approval: &controlv1.Approval{
 			SchemaVersion:      "1.0",
 			ApprovalId:         "APPROVAL1",
@@ -92,10 +91,10 @@ func bodySeeds(body []byte) [][]byte {
 		swap(`"binding"`, `"bindinx"`),
 		swap(`"binding":"sha256:7e`, `"binding":"sha256:0e`),
 		swap(`"binding":"sha256:7e5557df4a97ec3c5df3a67c879ffe3799c820636914f7b010bf6eac312a7aaa"`, `"binding":""`),
-		swap(`"schema_version":"1.0"`, `"schema_version":"2.0"`),
-		swap(`"schema_version":"1.0"`, `"schema_version":1`),
-		swap(`"resolution":"pending"`, `"resolution":"decided"`),
-		swap(`"resolution":"pending"`, `"resolution":"unspecified"`),
+		swap(`"schema_version":"2.0"`, `"schema_version":"1.0"`),
+		swap(`"schema_version":"2.0"`, `"schema_version":"3.0"`),
+		swap(`"schema_version":"2.0"`, `"schema_version":2`),
+		swap(`"binding":`, `"resolution":"consumed","binding":`),
 		swap(`"approval_id":"APPROVAL1"`, `"approval_id":"../elsewhere"`),
 		swap(`"approvalId":"APPROVAL1"`, `"approvalId":"APPROVAL2"`),
 		swap(`"approvalId"`, `"approvalIdx"`),
@@ -104,7 +103,7 @@ func bodySeeds(body []byte) [][]byte {
 		swap(`"reason":"signed off"`, `"reason":"signed\noff"`),
 		swap(`"expiresAt":"2026-03-01T12:15:00Z"`, `"expiresAt":"2036-03-01T12:15:00Z"`),
 		swap(`"decidedAt":"2026-03-01T12:01:00Z"`, `"decidedAt":"2025-03-01T12:01:00Z"`),
-		[]byte(`{"schema_version":"2.0"}`),
+		[]byte(`{"schema_version":"3.0"}`),
 		[]byte("a body that is not a JSON object at all"),
 		nil,
 	}
@@ -167,7 +166,7 @@ func holdsDecoder(t *testing.T, file []byte) {
 	t.Helper()
 	rec, err := decodeRecord(file, DefaultMaxRecordBytes, DefaultMaxApprovalWindow)
 	if err != nil {
-		if rec.ApprovalID != "" || rec.Approval != nil || rec.Resolution != ResolutionUnspecified {
+		if rec.ApprovalID != "" || rec.Approval != nil || rec.Binding != "" {
 			t.Fatalf("a refused record handed back %+v", rec)
 		}
 		return
@@ -177,8 +176,8 @@ func holdsDecoder(t *testing.T, file []byte) {
 	if err := checkApprovalID(rec.ApprovalID); err != nil {
 		t.Fatalf("an accepted record names %q: %v", rec.ApprovalID, err)
 	}
-	if rec.Resolution == ResolutionUnspecified {
-		t.Fatal("an accepted record says the store cannot say")
+	if rec.SchemaVersion != SchemaVersion {
+		t.Fatalf("an accepted record is of version %q", rec.SchemaVersion)
 	}
 	roundTrip(t, rec)
 }
@@ -195,7 +194,7 @@ func roundTrip(t *testing.T, rec Record) {
 		t.Fatalf("a record this build wrote will not decode: %v", err)
 	}
 	if back.ApprovalID != rec.ApprovalID || back.RequestID != rec.RequestID ||
-		back.Binding != rec.Binding || back.Resolution != rec.Resolution ||
+		back.Binding != rec.Binding ||
 		!proto.Equal(back.Approval, rec.Approval) {
 		t.Fatalf("the round trip changed the record: %+v then %+v", rec, back)
 	}

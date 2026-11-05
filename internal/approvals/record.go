@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"hash/crc32"
-	"strconv"
 	"strings"
 	"time"
 
@@ -23,54 +22,7 @@ import (
 // SchemaVersion is the version this build writes. A record whose major
 // differs is refused: a reader that skipped what it could not name would
 // answer about an approval it did not understand.
-const SchemaVersion = "1.0"
-
-// Resolution is what the store can say about a record. The zero value means
-// it cannot say, so a caller that forgets to look holds the request anew
-// rather than treating it as spent; a bool would put that case on the unsafe
-// side by accident.
-type Resolution uint8
-
-const (
-	// ResolutionUnspecified is the store having no answer.
-	ResolutionUnspecified Resolution = iota
-	// ResolutionPending is a record no execution has consumed, answered or
-	// not.
-	ResolutionPending
-	// ResolutionConsumed is a record whose approval a resume spent. It
-	// does not say the action ran: the resume can still block after it.
-	ResolutionConsumed
-	// ResolutionNotResumed is a record the plane closed without resuming the
-	// call it was held for.
-	ResolutionNotResumed
-)
-
-// String names the resolution as a record spells it.
-func (r Resolution) String() string {
-	switch r {
-	case ResolutionUnspecified:
-		return "unspecified"
-	case ResolutionPending:
-		return "pending"
-	case ResolutionConsumed:
-		return "consumed"
-	case ResolutionNotResumed:
-		return "not_resumed"
-	}
-	return "resolution(" + strconv.Itoa(int(r)) + ")"
-}
-
-// parseResolution reads what a record spells. "unspecified" is refused on the
-// way in: a record that says the store cannot say is a record that says
-// nothing.
-func parseResolution(s string) (Resolution, error) {
-	for _, r := range []Resolution{ResolutionPending, ResolutionConsumed, ResolutionNotResumed} {
-		if r.String() == s {
-			return r, nil
-		}
-	}
-	return ResolutionUnspecified, fmt.Errorf("%w: resolution %q", ErrMalformed, cause(s))
-}
+const SchemaVersion = "2.0"
 
 // Record is the durable record, and the whole of what the plane reads back. It
 // carries no envelope, no decision and no position in a trail, so a writer of
@@ -87,8 +39,6 @@ type Record struct {
 	// Binding is what the approval is stored and compared against. It is the
 	// binding Approval's two digests make, and that is checked on every read.
 	Binding approval.Binding
-	// Resolution is what the store can say about this record.
-	Resolution Resolution
 	// Approval is the approval as it stands.
 	Approval *controlv1.Approval
 }
@@ -120,11 +70,10 @@ type wireRecord struct {
 	ApprovalID    string          `json:"approval_id"`
 	RequestID     string          `json:"request_id"`
 	Binding       string          `json:"binding"`
-	Resolution    string          `json:"resolution"`
 	Approval      json.RawMessage `json:"approval"`
 }
 
-var wireKeys = []string{"schema_version", "approval_id", "request_id", "binding", "resolution", "approval"}
+var wireKeys = []string{"schema_version", "approval_id", "request_id", "binding", "approval"}
 
 // check holds a record to what it claims about itself, in either direction. A
 // record that disagrees with itself is refused rather than read as if one half
@@ -184,8 +133,6 @@ func (r Record) checkIdentity() error {
 		return fmt.Errorf("%w: no request id", ErrInvalidHold)
 	case r.Binding == "":
 		return fmt.Errorf("%w: no binding", ErrInvalidHold)
-	case r.Resolution == ResolutionUnspecified:
-		return fmt.Errorf("%w: no resolution", ErrInvalidHold)
 	}
 	if err := checkApprovalID(r.ApprovalID); err != nil {
 		return err
@@ -193,8 +140,8 @@ func (r Record) checkIdentity() error {
 	if err := checkSchemaVersion(r.SchemaVersion); err != nil {
 		return err
 	}
-	if err := checkSchemaVersion(r.Approval.GetSchemaVersion()); err != nil {
-		return fmt.Errorf("the approval: %w", err)
+	if err := checkApprovalVersion(r.Approval.GetSchemaVersion()); err != nil {
+		return err
 	}
 	if got := r.Approval.GetApprovalId(); got != r.ApprovalID {
 		return fmt.Errorf("%w: the approval names %q, the record %q", ErrRecordMismatch, cause(got), cause(r.ApprovalID))
@@ -214,10 +161,21 @@ func (r Record) checkIdentity() error {
 
 // checkSchemaVersion refuses a version this build does not read. The major is
 // what decides: a later minor may add a field, and the unknown-field rule
-// refuses that record too, so nothing is dropped in silence.
+// refuses that record too, so nothing is dropped in silence. A 1.0 directory
+// kept the spent mark beside the answers, so its operator is told what to do.
 func checkSchemaVersion(v string) error {
+	if !strictjson.IsVersion(v, "2") {
+		return fmt.Errorf("%w: %q; this build reads approvals 2.0 and refuses 1.0: empty the directory, whose holds expire within approvals.ttl",
+			ErrSchemaVersion, cause(v))
+	}
+	return nil
+}
+
+// checkApprovalVersion refuses an approval of a wire major this build does
+// not read; the record around it has a version of its own.
+func checkApprovalVersion(v string) error {
 	if !strictjson.IsVersion(v, "1") {
-		return fmt.Errorf("%w: %q", ErrSchemaVersion, cause(v))
+		return fmt.Errorf("the approval: %w: %q", ErrSchemaVersion, cause(v))
 	}
 	return nil
 }
@@ -243,7 +201,6 @@ func encodeRecord(r Record, maxBody int, maxWindow time.Duration) ([]byte, error
 		ApprovalID:    r.ApprovalID,
 		RequestID:     r.RequestID,
 		Binding:       string(r.Binding),
-		Resolution:    r.Resolution.String(),
 		Approval:      compact.Bytes(),
 	})
 	if err != nil {
@@ -284,10 +241,6 @@ func decodeRecord(data []byte, maxBody int, maxWindow time.Duration) (Record, er
 	if err := checkSchemaVersion(w.SchemaVersion); err != nil {
 		return Record{}, err
 	}
-	resolution, err := parseResolution(w.Resolution)
-	if err != nil {
-		return Record{}, err
-	}
 	a := &controlv1.Approval{}
 	// DiscardUnknown stays false: a field this build cannot name is refused
 	// here too, rather than dropped on the way in.
@@ -299,7 +252,6 @@ func decodeRecord(data []byte, maxBody int, maxWindow time.Duration) (Record, er
 		ApprovalID:    w.ApprovalID,
 		RequestID:     w.RequestID,
 		Binding:       approval.Binding(w.Binding),
-		Resolution:    resolution,
 		Approval:      a,
 	}
 	if err := r.checkStanding(maxWindow); err != nil {

@@ -183,7 +183,7 @@ func (j *Journal) entryNames() ([]string, error) {
 		switch classifyEntry(e) {
 		case kindEntry:
 			names = append(names, e.Name())
-		case kindMarker, kindTemp:
+		case kindMarker, kindTemp, kindLedger:
 		case kindForeign:
 			return nil, fmt.Errorf("%w: %q", ErrForeignFile, cause(e.Name()))
 		}

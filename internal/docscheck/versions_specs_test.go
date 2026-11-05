@@ -51,6 +51,7 @@ func versionSpecs() map[string]versionSpec {
 				{"internal/gateway/decisions.go#decisionSchemaVersion", writes},
 				{"internal/gateway/decisions.go#approvalSchemaVersion", writes},
 				{"internal/gateway/decisions.go#resultSchemaVersion", writes},
+				{"internal/approvals/record.go#checkApprovalVersion/major", readsMajor},
 			},
 			refuses: func(v string) (bool, error) {
 				return evidence.CheckEventVersion(&controlv1.Event{SchemaVersion: v}) != nil, nil
@@ -116,6 +117,12 @@ func versionSpecs() map[string]versionSpec {
 			cites: []versionCite{
 				{"internal/holdjournal/entry.go#SchemaVersion", writes},
 				{"internal/gateway/journal.go#holdEntrySchemaVersion", writes},
+				{"internal/holdjournal/codec.go#checkSchemaVersion/major", readsMajor},
+			},
+		},
+		"Spent ledger": {
+			cites: []versionCite{
+				{"internal/holdjournal/ledgercodec.go#LedgerSchemaVersion", writes},
 				{"internal/holdjournal/codec.go#checkSchemaVersion/major", readsMajor},
 			},
 		},

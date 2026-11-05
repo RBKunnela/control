@@ -14,14 +14,12 @@ import (
 	"github.com/guardana/control/internal/pause"
 )
 
-// stepStore runs onFind during the next Find and onConsume during the next
-// Consume it is armed for, hides the held requests from the Find calls it is
-// told to, and counts the approvals consumed through it.
+// stepStore runs onFind during the next Find it is armed for and hides the
+// held requests from the Find calls it is told to.
 type stepStore struct {
 	gateway.ApprovalStore
-	onFind, onConsume func()
-	hideFinds         atomic.Int64
-	consumed          atomic.Int64
+	onFind    func()
+	hideFinds atomic.Int64
 }
 
 func (s *stepStore) Find(ctx context.Context, b approval.Binding, now time.Time) ([]gateway.Held, error) {
@@ -33,15 +31,6 @@ func (s *stepStore) Find(ctx context.Context, b approval.Binding, now time.Time)
 		return nil, gateway.ErrNoApproval
 	}
 	return s.ApprovalStore.Find(ctx, b, now)
-}
-
-func (s *stepStore) Consume(ctx context.Context, b approval.Binding, requestID, approvalID string, now time.Time) (*controlv1.Approval, error) {
-	s.consumed.Add(1)
-	if run := s.onConsume; run != nil {
-		s.onConsume = nil
-		defer run()
-	}
-	return s.ApprovalStore.Consume(ctx, b, requestID, approvalID, now)
 }
 
 func withStepStore(store **stepStore) func(*gateway.Config) {
@@ -78,13 +67,14 @@ var stepChanges = []struct {
 
 // TestAPauseDuringTheApprovalLookupBlocksTheResume: a state that stops
 // vouching for an approved retry while the store looks its hold up blocks the
-// retry on a trail of its own before anything is consumed; the hold stands,
-// and the next retry after the lift resumes it and runs once.
+// retry on a trail of its own before anything is spent; the hold stands, and
+// the next retry after the lift resumes it and runs once.
 func TestAPauseDuringTheApprovalLookupBlocksTheResume(t *testing.T) {
 	for _, change := range stepChanges {
 		t.Run(change.name, func(t *testing.T) {
 			var store *stepStore
-			h := build(t, modeEnforce, snapshot(t, approveRefunds), withStepStore(&store))
+			ledger := &fakeLedger{}
+			h := build(t, modeEnforce, snapshot(t, approveRefunds), withStepStore(&store), overLedger(ledger))
 			first := hold(t, h)
 			if err := h.store.Answer(first.Pending.ApprovalID, approved, "alice", "", base()); err != nil {
 				t.Fatalf("Answer: %v", err)
@@ -93,8 +83,8 @@ func TestAPauseDuringTheApprovalLookupBlocksTheResume(t *testing.T) {
 			store.onFind = func() { change.apply(t, h) }
 			blocked := h.admit(retry(t, "req-2"), refundArgs())
 			expectPlaneBlock(t, h, blocked, change.verdict, change.code)
-			if store.consumed.Load() != 0 {
-				t.Errorf("the blocked retry consumed %d approval(s)", store.consumed.Load())
+			if spends, _ := ledger.asked(); spends != 0 {
+				t.Errorf("the blocked retry spent %d approval(s)", spends)
 			}
 			expectKinds(t, kindsOf(h.trailOf("req-1")), []controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested})
 			if h.p.Stats().Held != 1 {
@@ -115,34 +105,43 @@ func TestAPauseDuringTheApprovalLookupBlocksTheResume(t *testing.T) {
 			if err := evidence.ValidateChain(held); err != nil {
 				t.Errorf("ValidateChain over the held trail: %v", err)
 			}
-			if s := h.p.Stats(); s.Executed != 1 || store.consumed.Load() != 1 {
-				t.Errorf("Executed = %d, consumed = %d; want the held request run once", s.Executed, store.consumed.Load())
+			if spends, _ := ledger.asked(); h.p.Stats().Executed != 1 || spends != 1 {
+				t.Errorf("Executed = %d, spent = %d; want the held request run once", h.p.Stats().Executed, spends)
 			}
 		})
 	}
 }
 
-// TestAPauseBetweenTwoConsumesBlocksTheSecond: with two held requests the
-// retry equals, a pause written while the first one's approval is looked at
-// blocks the retry before the second one's approved record is consumed.
-func TestAPauseBetweenTwoConsumesBlocksTheSecond(t *testing.T) {
+// TestAPauseBetweenTwoSpendsBlocksTheSecond: with two approved held requests
+// the retry equals, the first of which the plane settled, a pause written
+// while the first one's approval is offered to the ledger blocks the retry
+// before the second one's approval is spent.
+func TestAPauseBetweenTwoSpendsBlocksTheSecond(t *testing.T) {
 	var store *stepStore
-	h := build(t, modeEnforce, snapshot(t, approveRefunds), withStepStore(&store))
-	hold(t, h)
+	ledger := &fakeLedger{}
+	h := build(t, modeEnforce, snapshot(t, approveRefunds), withStepStore(&store), overLedger(ledger))
+	first := hold(t, h)
 	store.hideFinds.Store(1)
 	second := h.admit(retry(t, "req-2"), refundArgs())
 	if second.Action != core.AwaitApproval || second.Pending == nil {
 		t.Fatalf("setup: the second hold is %d, codes %v", second.Action, second.Decision.GetReasonCodes())
 	}
-	if err := h.store.Answer(second.Pending.ApprovalID, approved, "alice", "", base().Add(time.Minute)); err != nil {
-		t.Fatalf("Answer: %v", err)
+	for _, d := range []gateway.Disposition{first, second} {
+		if err := h.store.Answer(d.Pending.ApprovalID, approved, "alice", "", base().Add(time.Minute)); err != nil {
+			t.Fatalf("Answer: %v", err)
+		}
 	}
-	h.pause.set(paused(t))
-	store.onConsume = func() { h.pause.set(paused(t, pauseGlobal)) }
+	a := approvalOfHoldIn(t, h.store, first, 2)
+	if _, err := ledger.MemoryLedger.Settle(ctx(), bindingOfHeld(t, a), a.GetRequestId(), a.GetApprovalId(), base()); err != nil {
+		t.Fatal(err)
+	}
+	h.clock.set(base().Add(time.Minute))
+	h.pause.set(clearAt(t, base().Add(time.Minute)))
+	ledger.beforeSpend = func() { h.pause.set(paused(t, pauseGlobal)) }
 	d := h.admit(retry(t, "req-3"), refundArgs())
 	expectPlaneBlock(t, h, d, verdictDeny, codePaused)
-	if got := store.consumed.Load(); got != 1 {
-		t.Errorf("the retry called Consume %d time(s); want once, for the pending first hold", got)
+	if spends, _ := ledger.asked(); spends != 1 {
+		t.Errorf("the retry offered %d approval(s) to the ledger; want once, for the settled first hold", spends)
 	}
 	expectKinds(t, kindsOf(h.trailOf("req-2")), []controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested})
 	if s := h.p.Stats(); s.Executed != 0 || s.Held != 2 {

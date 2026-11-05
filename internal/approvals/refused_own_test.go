@@ -1,54 +1,39 @@
 package approvals_test
 
 import (
-	"errors"
 	"testing"
 	"time"
 
-	"github.com/guardana/control/internal/approvals"
-	"github.com/guardana/control/internal/core/approval"
+	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 )
 
-// TestTheOwnResolvedRecordRefusedForItsApproverRefusesTheCall: the plane's
-// own record, spent or given up on, is rewritten to an approver id the claim
-// rule refuses. Consume and Resolve then refuse with the reservation's
-// sentinel, never ErrNoApproval, which would tell the agent its request is
-// still pending rather than block it. The same record under a plain approver
-// answers as its state says.
-func TestTheOwnResolvedRecordRefusedForItsApproverRefusesTheCall(t *testing.T) {
-	spend := func(t *testing.T, p *approvals.Plane, h approvals.Hold, now time.Time) {
-		if _, err := p.Consume(t.Context(), h.Binding, "req-1", firstApproval, now); err != nil {
-			t.Fatalf("consuming: %v", err)
-		}
-	}
-	giveUp := func(t *testing.T, p *approvals.Plane, h approvals.Hold, now time.Time) {
-		if err := p.Resolve(t.Context(), h.Binding, "req-1", firstApproval, approvals.ResolutionNotResumed, now); err != nil {
-			t.Fatalf("resolving: %v", err)
-		}
-	}
+// TestTheOwnRecordRefusedForItsApproverIsReadAsUnknown: the plane's own
+// answered record is rewritten to an approver id the claim rule refuses. Find
+// then hands it back as unknown, never as an approval or as pending, which
+// would tell the agent its request still waits rather than block it. The same
+// record under a plain approver reads as its answer says.
+func TestTheOwnRecordRefusedForItsApproverIsReadAsUnknown(t *testing.T) {
 	for _, c := range []struct {
-		name, file, approver string
-		resolve              func(*testing.T, *approvals.Plane, approvals.Hold, time.Time)
-		consume, resolveErr  error
+		name, approver string
+		want           controlv1.ApprovalState
 	}{
-		{"consumed, a plain approver", consumedName, "approver-2", spend, approvals.ErrApprovalConsumed, approvals.ErrApprovalConsumed},
-		{"consumed, a reserved approver", consumedName, reservedApprover, spend, approval.ErrReservedApproverID, approval.ErrReservedApproverID},
-		{"not resumed, a plain approver", notResumedName, "approver-2", giveUp, approvals.ErrNoApproval, nil},
-		{"not resumed, a reserved approver", notResumedName, reservedApprover, giveUp, approval.ErrReservedApproverID, approval.ErrReservedApproverID},
+		{"a plain approver", "approver-2", controlv1.ApprovalState_APPROVAL_STATE_APPROVED},
+		{"a reserved approver", reservedApprover, controlv1.ApprovalState_APPROVAL_STATE_UNSPECIFIED},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			p, dir, h := heldOne(t)
 			answerAt(t, dir, minted.Add(time.Minute))
-			now := minted.Add(2 * time.Minute)
-			c.resolve(t, p, h, now)
-			writeFile(t, dir, c.file, withApprovalField(t, readFile(t, dir, c.file), "approverId", `"`+c.approver+`"`))
+			writeFile(t, dir, answeredName, withApprovalField(t, readFile(t, dir, answeredName), "approverId", `"`+c.approver+`"`))
 
-			if got, err := p.Consume(t.Context(), h.Binding, "req-1", firstApproval, now); got != nil || !errors.Is(err, c.consume) {
-				t.Errorf("Consume = %v, %v; want nothing and %v", got, err, c.consume)
+			found, err := p.Find(t.Context(), h.Binding, minted.Add(2*time.Minute))
+			if err != nil || len(found) != 1 {
+				t.Fatalf("Find = %d record(s), %v; want the one record", len(found), err)
 			}
-			err := p.Resolve(t.Context(), h.Binding, "req-1", firstApproval, approvals.ResolutionNotResumed, now)
-			if !errors.Is(err, c.resolveErr) {
-				t.Errorf("Resolve = %v, want %v", err, c.resolveErr)
+			if got := found[0].Approval.GetState(); got != c.want {
+				t.Errorf("the record reads %s, want %s", got, c.want)
+			}
+			if c.want == controlv1.ApprovalState_APPROVAL_STATE_UNSPECIFIED {
+				expectUnknownOf(t, found[0], firstApproval, "req-1")
 			}
 		})
 	}

@@ -17,6 +17,11 @@
 // that will not decode, mean this plane cannot say, and are reported rather
 // than acted on.
 //
+// Beside the entries sits the ledger, in its own directory under the journal's,
+// written under the same lock: the plane's mark that it spent an approval or
+// gave it up. The approvals directory an approver writes holds no such mark,
+// so nothing an approver can write makes the plane read either.
+//
 // An entry carries no envelope and no decision. A lost hold is closed, never
 // resumed, and keeping what a retry would be compared against would widen what
 // the plane holds on disk for behaviour nobody asked for.
@@ -31,6 +36,13 @@
 //	ErrNoEntry                                                   -> ErrNoHoldEntry
 //	ErrFlip                                                      -> ErrHoldFlip
 //	ErrMaybeRecorded                                             -> ErrHoldMaybeRecorded
+//
+// The adapter that satisfies the gateway's Ledger translates:
+//
+//	ErrSpent       -> ErrApprovalConsumed
+//	ErrSettled     -> ErrNoApproval
+//	ErrLedgerEntry -> ErrLedgerEntry
+//	ErrZeroTime    -> ErrZeroTime
 //
 // Every other refusal travels as itself: the directory, the lock, a bound or a
 // file that will not decode are not the entry's fault, and an operator acts on

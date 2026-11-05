@@ -37,7 +37,7 @@ type Reconciliation struct {
 // Reconcile closes the trails of holds this plane lost, and reports what it
 // could not close. It runs once, at start, before the plane serves: a command
 // that only inspects a plane never calls it, however it builds its pipeline,
-// because this writes evidence and resolves records.
+// because this writes evidence and settles approvals in the ledger.
 //
 // For each entry that reads as held it asks the store about the record, makes
 // the same field checks a live resume makes, and ends that trail: with the
@@ -46,9 +46,9 @@ type Reconciliation struct {
 // answered or the approval expired, and APPROVAL_STATE_UNKNOWN, an
 // INDETERMINATE, where the store cannot be read, has no record before the
 // minted expiry, or answers with a record the checks refuse, an approval with
-// no approver or a state no answer has. The record is then resolved as not
-// resumed and never consumed, so the next identical call is held anew rather
-// than told that an action ran. Entries in any other
+// no approver or a state no answer has. The approval is then settled in the
+// ledger as not resumed and never spent, so the next identical call is held
+// anew rather than told that an action ran. Entries in any other
 // state, entries that will not decode, and entries whose approval is not one
 // the plane minted, are counted and left untouched.
 //
@@ -124,7 +124,7 @@ func (p *Pipeline) closeLostHold(ctx context.Context, entry HoldEntry, now time.
 	}
 	p.counts.blocked(code)
 	p.counts.add(func(s *Stats) *uint64 { return &s.HoldsClosed })
-	p.resolveLostHold(ctx, entry, now)
+	p.settleLostHold(ctx, entry, now)
 	p.journalForget(ctx, entry.IDs.RequestID)
 	return true
 }
@@ -143,7 +143,7 @@ func (p *Pipeline) lostHoldAnswer(ctx context.Context, entry HoldEntry, now time
 		return nil, verdictIndeterminate, codeApprovalStateUnknown
 	}
 	// The request id and the approval id the plane minted name its record
-	// together, as they do for Consume: a sibling filed under the same request
+	// together, as they do for a resume: a sibling filed under the same request
 	// is not the plane's to read.
 	for _, held := range helds {
 		a := held.Approval
@@ -179,14 +179,25 @@ func judgeLostAnswer(entry HoldEntry, a *controlv1.Approval, now time.Time) (*co
 	return nil, verdictIndeterminate, codeApprovalStateUnknown
 }
 
-// resolveLostHold tells the store the request will not be resumed. A store
-// that will not take it keeps a record nothing spent, which the next
-// identical call reads as a record it cannot prove was used, so that call is
-// held anew: the failure direction is a second approval, never an action
-// reported as run.
-func (p *Pipeline) resolveLostHold(ctx context.Context, entry HoldEntry, now time.Time) {
-	requestID := entry.Approval.GetRequestId()
-	if err := p.cfg.Approvals.Resolve(ctx, entry.Binding, requestID, entry.Approval.GetApprovalId(), ResolutionNotResumed, now); err != nil {
+// settleLostHold tells the ledger the request will not be resumed, then has
+// the store forget the plane's own record of it, so no approver is offered an
+// answer nothing will read. A ledger that will not take it holds no mark for
+// the record, which the next identical call reads as a record it cannot prove
+// was used, so that call is held anew: the failure direction is a second
+// approval, never an action reported as run. A ledger that answers the
+// approval spent is counted the same way and the record is kept, since its
+// mark and the record together refuse the next identical call. A record the
+// store will not forget is counted; the ledger's mark still holds.
+func (p *Pipeline) settleLostHold(ctx context.Context, entry HoldEntry, now time.Time) {
+	requestID, approvalID := entry.Approval.GetRequestId(), entry.Approval.GetApprovalId()
+	res, err := p.cfg.Ledger.Settle(ctx, entry.Binding, requestID, approvalID, now)
+	if err == nil && res == ResolutionNotResumed {
+		err = p.cfg.Approvals.Release(ctx, entry.Binding, requestID, approvalID)
+		if errors.Is(err, ErrNoApproval) {
+			err = nil
+		}
+	}
+	if err != nil || res != ResolutionNotResumed {
 		p.counts.add(func(s *Stats) *uint64 { return &s.UnheldRecords })
 	}
 }

@@ -70,8 +70,9 @@ func TestAnAnswerMayNotClaimTheReservedPrefix(t *testing.T) {
 // TestARecordWrittenWithTheReservedPrefixResumesNothing: a writer of the
 // directory files the answer by hand, past Answer's check, with an approver
 // id in the reserved spelling. The plane finds it only as a record it cannot
-// speak for and never spends it, and nothing on disk changes. The same rewrite with a plain claim is consumed,
-// so the refusal comes from the prefix and not from the rewrite.
+// speak for, and nothing on disk changes. The same rewrite with a plain claim
+// is read as that claim, so the refusal comes from the prefix and not from the
+// rewrite.
 func TestARecordWrittenWithTheReservedPrefixResumesNothing(t *testing.T) {
 	for _, id := range append([]string{"duty-officer"}, reservedClaims...) {
 		t.Run(id, func(t *testing.T) {
@@ -79,29 +80,20 @@ func TestARecordWrittenWithTheReservedPrefixResumesNothing(t *testing.T) {
 			answerAt(t, dir, minted.Add(time.Minute))
 			writeFile(t, dir, answeredName, withApprovalField(t, readFile(t, dir, answeredName), "approverId", `"`+id+`"`))
 			before := dirContents(t, dir)
-			now := minted.Add(2 * time.Minute)
 
-			found, findErr := p.Find(t.Context(), h.Binding, now)
-			got, consumeErr := p.Consume(t.Context(), h.Binding, "req-1", firstApproval, now)
+			found, err := p.Find(t.Context(), h.Binding, minted.Add(2*time.Minute))
+			if err != nil || len(found) != 1 {
+				t.Fatalf("find = %d record(s), %v; want the record alone", len(found), err)
+			}
 			if id == "duty-officer" {
-				if findErr != nil || consumeErr != nil || got.GetApproverId() != id {
-					t.Fatalf("the control: find %v, consume %v, approver %q", findErr, consumeErr, got.GetApproverId())
+				if got := found[0].Approval.GetApproverId(); got != id {
+					t.Fatalf("the control reads approver %q", got)
 				}
-				assertNames(t, dir, consumedName)
-				return
-			}
-			if !errors.Is(consumeErr, approvals.ErrApproverID) || !errors.Is(consumeErr, approval.ErrReservedApproverID) {
-				t.Errorf("consume = %v, want ErrApproverID and ErrReservedApproverID", consumeErr)
-			}
-			if findErr != nil || len(found) != 1 {
-				t.Fatalf("find = %d record(s), %v; want the refused record alone", len(found), findErr)
-			}
-			expectUnknownOf(t, found[0], firstApproval, "req-1")
-			if got != nil {
-				t.Errorf("a refused consume handed back %v", got)
+			} else {
+				expectUnknownOf(t, found[0], firstApproval, "req-1")
 			}
 			if after := dirContents(t, dir); !maps.Equal(before, after) {
-				t.Fatalf("a refused consume changed the directory: %v, was %v", keysOf(after), keysOf(before))
+				t.Fatalf("a read changed the directory: %v, was %v", keysOf(after), keysOf(before))
 			}
 		})
 	}

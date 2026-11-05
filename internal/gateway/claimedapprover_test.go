@@ -2,7 +2,6 @@ package gateway_test
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -29,9 +28,8 @@ var claimedApprovers = []struct {
 	{"\u0430uthn:x", true},
 }
 
-// TestTheResumeHoldsTheStoresApproverToTheClaimRule: a store that spends the
-// held approval and answers it as approved by an id the claim rule refuses
-// runs nothing. The held trail closes with the plane's own approval, expired,
+// TestTheResumeHoldsTheStoresApproverToTheClaimRule: a store that hands back
+// the held approval as approved by an id the claim rule refuses runs nothing. The held trail closes with the plane's own approval, expired,
 // and never records that id; the same answer naming a plain claim runs and
 // records it, so the reserved prefix is what changes the outcome.
 func TestTheResumeHoldsTheStoresApproverToTheClaimRule(t *testing.T) {
@@ -40,13 +38,7 @@ func TestTheResumeHoldsTheStoresApproverToTheClaimRule(t *testing.T) {
 			f := newFakeStore()
 			h := withStore(t, f)
 			holdApproved(t, h, f)
-			f.answer = func(a *controlv1.Approval, err error) (*controlv1.Approval, error) {
-				if err != nil {
-					t.Fatalf("the genuine Consume failed: %v", err)
-				}
-				a.ApproverId = c.id
-				return a, nil
-			}
+			f.found = func(a *controlv1.Approval) { a.ApproverId = c.id }
 			d := h.admit(retry(t, "req-2"), refundArgs())
 			trail := h.trailOf("req-1")
 			if err := evidence.ValidateChain(trail); err != nil {
@@ -80,13 +72,7 @@ func TestARejectionByAReservedApproverIsNeverRecorded(t *testing.T) {
 	if err := f.Answer(first.Pending.ApprovalID, rejected, "bob", "not today", base()); err != nil {
 		t.Fatalf("Answer: %v", err)
 	}
-	f.answer = func(a *controlv1.Approval, err error) (*controlv1.Approval, error) {
-		if !errors.Is(err, gateway.ErrApprovalRejected) || a == nil {
-			t.Fatalf("the genuine Consume: %v, %v; want the rejected record", a, err)
-		}
-		a.ApproverId = "authn:roster/x:mallory"
-		return a, err
-	}
+	f.found = func(a *controlv1.Approval) { a.ApproverId = "authn:roster/x:mallory" }
 	d := h.admit(retry(t, "req-2"), refundArgs())
 	expectBlock(t, d, verdictIndeterminate, codeEvidenceUnavailable, gateway.PDPType)
 	trail := h.trailOf("req-1")
@@ -193,8 +179,8 @@ func TestAJournalEntryNotAsMintedIsNeverClosed(t *testing.T) {
 				t.Errorf("Reconcile = %+v; want the entry counted unreadable and the pass incomplete", r)
 			}
 			expectKinds(t, kindsOf(trail), []controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested})
-			if got := store.resolves.Load(); got != 0 {
-				t.Errorf("the store was asked to resolve %d time(s)", got)
+			if _, settles := next.ledger.asked(); settles != 0 {
+				t.Errorf("the ledger was asked to settle %d time(s)", settles)
 			}
 		})
 	}

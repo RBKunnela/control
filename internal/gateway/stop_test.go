@@ -209,8 +209,8 @@ func TestAStoppedHoldIsNeverHeld(t *testing.T) {
 	h := stopPlane(t, modeEnforce, []string{approveRefunds}, newStopSource(stopped(t, "run-a")), withStepStore(&store))
 	d := h.admit(refundEnvelope(t, refundArgs()), refundArgs())
 	expectPlaneBlock(t, h, d, verdictDeny, codeRunStopped)
-	if s := h.p.Stats(); s.Held != 0 || s.Pending != 0 || store.consumed.Load() != 0 {
-		t.Errorf("Held = %d, Pending = %d, consumed = %d; want nothing held or spent", s.Held, s.Pending, store.consumed.Load())
+	if s := h.p.Stats(); s.Held != 0 || s.Pending != 0 || h.spent() != 0 {
+		t.Errorf("Held = %d, Pending = %d, consumed = %d; want nothing held or spent", s.Held, s.Pending, h.spent())
 	}
 }
 
@@ -234,8 +234,8 @@ func TestAStoppedRetryConsumesNothingAndResumesAfterTheLift(t *testing.T) {
 	h, src := heldUnderRunA(t, withStepStore(&store))
 	src.set(stopped(t, "run-a"))
 	expectPlaneBlock(t, h, h.admit(retry(t, "req-2"), refundArgs()), verdictDeny, codeRunStopped)
-	if store.consumed.Load() != 0 {
-		t.Errorf("a stopped retry consumed %d approval(s)", store.consumed.Load())
+	if h.spent() != 0 {
+		t.Errorf("a stopped retry consumed %d approval(s)", h.spent())
 	}
 	expectKinds(t, kindsOf(h.trailOf("req-1")), []controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested})
 	if h.p.Stats().Held != 1 {
@@ -254,8 +254,8 @@ func TestAStoppedRetryConsumesNothingAndResumesAfterTheLift(t *testing.T) {
 	expectKinds(t, kindsOf(h.trailOf("req-1")), []controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested, kindApprovalDecided, kindStarted, kindCompleted})
 	again := h.admit(retry(t, "req-4"), refundArgs())
 	expectBlock(t, again, verdictDeny, codeApprovalAlreadyUsed, gateway.PDPType)
-	if s := h.p.Stats(); s.Executed != 1 || store.consumed.Load() != 1 {
-		t.Errorf("Executed = %d, consumed = %d; want the held request run once", s.Executed, store.consumed.Load())
+	if s := h.p.Stats(); s.Executed != 1 || h.spent() != 1 {
+		t.Errorf("Executed = %d, consumed = %d; want the held request run once", s.Executed, h.spent())
 	}
 }
 
@@ -266,7 +266,7 @@ func TestAStoppedRetryConsumesNothingAndResumesAfterTheLift(t *testing.T) {
 func TestAStopReadAfterTheConsumeClosesTheHeldTrail(t *testing.T) {
 	var store *stepStore
 	h, src := heldUnderRunA(t, withStepStore(&store))
-	store.onConsume = func() { src.set(stopped(t, "run-a")) }
+	h.ledger.afterSpend = func() { src.set(stopped(t, "run-a")) }
 	d := h.admit(retry(t, "req-2"), refundArgs())
 	expectBlock(t, d, verdictDeny, codeRunStopped, gateway.PDPType)
 	if d.ExecutionID != "" {
@@ -276,8 +276,8 @@ func TestAStopReadAfterTheConsumeClosesTheHeldTrail(t *testing.T) {
 	if len(h.trailOf("req-2")) != 0 {
 		t.Errorf("the resume wrote a trail of its own: %v", kindsOf(h.trailOf("req-2")))
 	}
-	if s := h.p.Stats(); s.Executed != 0 || s.Open != 0 || s.Held != 0 || s.Blocks[codeRunStopped] != 1 || store.consumed.Load() != 1 {
-		t.Errorf("Stats = %+v, consumed = %d; want nothing run, the approval spent and the block counted as RUN_STOPPED", s, store.consumed.Load())
+	if s := h.p.Stats(); s.Executed != 0 || s.Open != 0 || s.Held != 0 || s.Blocks[codeRunStopped] != 1 || h.spent() != 1 {
+		t.Errorf("Stats = %+v, consumed = %d; want nothing run, the approval spent and the block counted as RUN_STOPPED", s, h.spent())
 	}
 	src.set(liftedAt(t, "run-a", base()))
 	expectBlock(t, h.admit(retry(t, "req-3"), refundArgs()), verdictDeny, codeApprovalAlreadyUsed, gateway.PDPType)
@@ -290,8 +290,8 @@ func TestAStopDuringTheApprovalLookupBlocksTheResume(t *testing.T) {
 	h, src := heldUnderRunA(t, withStepStore(&store))
 	store.onFind = func() { src.set(stopped(t, "run-a")) }
 	expectPlaneBlock(t, h, h.admit(retry(t, "req-2"), refundArgs()), verdictDeny, codeRunStopped)
-	if store.consumed.Load() != 0 {
-		t.Errorf("the blocked retry consumed %d approval(s)", store.consumed.Load())
+	if h.spent() != 0 {
+		t.Errorf("the blocked retry consumed %d approval(s)", h.spent())
 	}
 	if h.p.Stats().Held != 1 {
 		t.Errorf("Stats.Held = %d, want the hold standing", h.p.Stats().Held)

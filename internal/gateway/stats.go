@@ -60,9 +60,9 @@ type Stats struct {
 	// withheld them with POLICY_STALE.
 	StaleHandedOut uint64
 	// UnheldRecords counts records a store still keeps for a request this
-	// plane does not hold and cannot prove was spent. Each one was held anew:
-	// a store that cannot say an execution used a record never makes the
-	// plane say so either.
+	// plane does not hold and cannot prove was spent, a settled one it would
+	// not forget included. Each one was held anew: a store that cannot say an
+	// execution used a record never makes the plane say so either.
 	UnheldRecords uint64
 	// JournalRefusals counts hold journal writes that failed. Each one
 	// refused a hold, blocked an append past a request for approval, or left

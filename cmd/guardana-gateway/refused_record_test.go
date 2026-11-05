@@ -146,10 +146,10 @@ func TestARefusedRecordUnderTheHeldRequestHidesNoRejection(t *testing.T) {
 }
 
 // TestARefusedRecordThePlaneNeverHeldIsHeldAnew: the only record under the
-// binding is one the claim rule refuses, filed as consumed for a request this
-// plane never held. The store cannot speak for it, so it proves no
-// execution: the call is held anew and the record counted, never told that
-// the approval was used.
+// binding is one the claim rule refuses, filed as answered for a request this
+// plane never held. The store cannot speak for it and the ledger holds no mark
+// of it, so it proves no execution: the call is held anew and the record
+// counted, never told that the approval was used.
 func TestARefusedRecordThePlaneNeverHeldIsHeldAnew(t *testing.T) {
 	tr, plane := holdingPlane(t, fileProviderOf(t), 15*time.Minute)
 	records := filepath.Join(tr.dir, recordsDir)
@@ -159,13 +159,13 @@ func TestARefusedRecordThePlaneNeverHeldIsHeldAnew(t *testing.T) {
 		t.Fatalf("Bind: %v", err)
 	}
 	now := time.Now()
-	writeRecord(t, filepath.Join(records, forgedApproval+".3-consumed.rec"), &controlv1.Approval{
+	writeRecord(t, filepath.Join(records, forgedApproval+".1-answered.rec"), &controlv1.Approval{
 		SchemaVersion: "1.0", ApprovalId: forgedApproval, RequestId: forgedRequest,
 		ActionDigest: string(digest), PolicyBundleDigest: string(bundle),
 		State: controlv1.ApprovalState_APPROVAL_STATE_APPROVED, ApproverId: forgedApprover,
 		RequestedAt: timestamppb.New(now.Add(-time.Minute)), DecidedAt: timestamppb.New(now.Add(-time.Second)),
 		ExpiresAt: timestamppb.New(now.Add(10 * time.Minute)),
-	}, binding, "consumed")
+	}, binding)
 
 	call := admitTransfer(t, plane, "req-new-1")
 	if call.Action != core.AwaitApproval {

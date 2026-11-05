@@ -179,7 +179,7 @@ var (
 // tableEntry is one record, held a minute before tableNow and expiring after
 // it by expiresIn, answered half a minute before tableNow by approver when
 // approver is not empty.
-func tableEntry(state controlv1.ApprovalState, resolution approvals.Resolution, expiresIn time.Duration, approver string, view *approvals.View) approvals.Entry {
+func tableEntry(state controlv1.ApprovalState, expiresIn time.Duration, approver string, view *approvals.View) approvals.Entry {
 	a := &controlv1.Approval{
 		ApprovalId:   "REC1",
 		RequestId:    "req-rec1",
@@ -192,7 +192,7 @@ func tableEntry(state controlv1.ApprovalState, resolution approvals.Resolution, 
 	if approver != "" {
 		a.DecidedAt = timestamppb.New(tableNow.Add(-30 * time.Second))
 	}
-	return approvals.Entry{Record: approvals.Record{ApprovalID: "REC1", RequestID: "req-rec1", Resolution: resolution, Approval: a}, View: view}
+	return approvals.Entry{Record: approvals.Record{ApprovalID: "REC1", RequestID: "req-rec1", Approval: a}, View: view}
 }
 
 func tableView() *approvals.View {
@@ -203,11 +203,12 @@ func tableView() *approvals.View {
 	}
 }
 
-// TestEachRecordSaysWhatBecameOfIt: every sentence a card says, over state,
-// resolution, expiry and whether a plane holds the directory. Each case
-// differs from a neighbour in one of them, and the expiry cases sit on either
-// side of the instant an answer is refused at.
-func TestEachRecordSaysWhatBecameOfIt(t *testing.T) {
+// TestEachRecordSaysWhatItCan: every sentence a card says, over state, expiry
+// and whether a plane holds the directory. Each case differs from a neighbour
+// in one of them, and the expiry cases sit on either side of the instant an
+// answer is refused at. No card says an approval was spent: that is the
+// plane's own record, which the page does not read.
+func TestEachRecordSaysWhatItCan(t *testing.T) {
 	const (
 		pendingState  = controlv1.ApprovalState_APPROVAL_STATE_PENDING
 		approvedState = controlv1.ApprovalState_APPROVAL_STATE_APPROVED
@@ -218,40 +219,33 @@ func TestEachRecordSaysWhatBecameOfIt(t *testing.T) {
 		entry      approvals.Entry
 		plane      bool
 		status     string
-		resolution string
 		answerable bool
 	}{
-		{"waiting", tableEntry(pendingState, approvals.ResolutionPending, time.Second, "", tableView()), true,
-			"Waiting for an answer until 2026-03-01T12:00:01Z.", "pending", true},
-		{"waiting with no plane", tableEntry(pendingState, approvals.ResolutionPending, time.Second, "", tableView()), false,
-			"Waiting for an answer until 2026-03-01T12:00:01Z.", "pending", true},
-		{"expiring now", tableEntry(pendingState, approvals.ResolutionPending, 0, "", tableView()), true,
-			"Past its expiry. No answer is accepted.", "pending", false},
-		{"approved", tableEntry(approvedState, approvals.ResolutionPending, time.Minute, "duty-officer", tableView()), true,
-			"Approved by duty-officer. The call can resume on the agent's retry before 2026-03-01T12:01:00Z.", "pending", false},
-		{"approved with no plane", tableEntry(approvedState, approvals.ResolutionPending, time.Minute, "duty-officer", tableView()), false,
-			"Approved by duty-officer. No plane holds this directory, so the call it was held for will not run.", "pending", false},
-		{"approved and expired", tableEntry(approvedState, approvals.ResolutionPending, 0, "duty-officer", tableView()), true,
-			"Approved by duty-officer. It expired before a retry used it.", "pending", false},
-		{"rejected", tableEntry(rejectedState, approvals.ResolutionPending, time.Minute, "duty-officer", tableView()), true,
-			"Rejected by duty-officer.", "pending", false},
-		{"rejected by nobody named", tableEntry(rejectedState, approvals.ResolutionPending, time.Minute, "", tableView()), true,
-			"Rejected.", "pending", false},
-		{"spent", tableEntry(approvedState, approvals.ResolutionConsumed, time.Minute, "duty-officer", tableView()), true,
-			"A retry spent this approval. This page cannot see what the call did.", "consumed", false},
-		{"not resumed", tableEntry(pendingState, approvals.ResolutionNotResumed, time.Minute, "", tableView()), true,
-			"The plane closed this request without resuming the call.", "not_resumed", false},
-		{"a resolution the store cannot give", tableEntry(pendingState, approvals.ResolutionUnspecified, time.Minute, "", tableView()), true,
-			"Cannot say what became of this record.", "cannot say", false},
-		{"a state no answer names", tableEntry(controlv1.ApprovalState_APPROVAL_STATE_UNSPECIFIED, approvals.ResolutionPending, time.Minute, "", tableView()), true,
-			"State APPROVAL_STATE_UNSPECIFIED.", "pending", false},
+		{"waiting", tableEntry(pendingState, time.Second, "", tableView()), true,
+			"Waiting for an answer until 2026-03-01T12:00:01Z.", true},
+		{"waiting with no plane", tableEntry(pendingState, time.Second, "", tableView()), false,
+			"Waiting for an answer until 2026-03-01T12:00:01Z.", true},
+		{"expiring now", tableEntry(pendingState, 0, "", tableView()), true,
+			"Past its expiry. No answer is accepted.", false},
+		{"approved", tableEntry(approvedState, time.Minute, "duty-officer", tableView()), true,
+			"Approved by duty-officer. The call can resume on the agent's retry before 2026-03-01T12:01:00Z, once; this page cannot see whether a retry spent it.", false},
+		{"approved with no plane", tableEntry(approvedState, time.Minute, "duty-officer", tableView()), false,
+			"Approved by duty-officer. No plane holds this directory, so the call it was held for will not run.", false},
+		{"approved and expired", tableEntry(approvedState, 0, "duty-officer", tableView()), true,
+			"Approved by duty-officer. It expired before a retry used it.", false},
+		{"rejected", tableEntry(rejectedState, time.Minute, "duty-officer", tableView()), true,
+			"Rejected by duty-officer.", false},
+		{"rejected by nobody named", tableEntry(rejectedState, time.Minute, "", tableView()), true,
+			"Rejected.", false},
+		{"a state no answer names", tableEntry(controlv1.ApprovalState_APPROVAL_STATE_UNSPECIFIED, time.Minute, "", tableView()), true,
+			"State APPROVAL_STATE_UNSPECIFIED.", false},
 	} {
 		r := recordOf(c.entry, tableNow, c.plane)
 		if r.Status != c.status {
 			t.Errorf("%s: says %q, want %q", c.name, r.Status, c.status)
 		}
-		if got := fieldValue(r, "resolution"); got != c.resolution {
-			t.Errorf("%s: resolution reads %q, want %q", c.name, got, c.resolution)
+		if got := fieldValue(r, "resolution"); got != "(no field resolution)" {
+			t.Errorf("%s: a card reads a resolution %q, which the directory no longer holds", c.name, got)
 		}
 		if r.Answerable != c.answerable {
 			t.Errorf("%s: answerable %v, want %v", c.name, r.Answerable, c.answerable)
@@ -275,10 +269,9 @@ func fieldValue(r recordReply, label string) string {
 // projection shows every field the listing prints, in the listing's order,
 // and names the call and the head of its digest for a confirmation.
 func TestACardShowsTheListingsFieldsInItsOrder(t *testing.T) {
-	r := recordOf(tableEntry(controlv1.ApprovalState_APPROVAL_STATE_REJECTED, approvals.ResolutionPending, time.Minute, "duty-officer", tableView()), tableNow, true)
+	r := recordOf(tableEntry(controlv1.ApprovalState_APPROVAL_STATE_REJECTED, time.Minute, "duty-officer", tableView()), tableNow, true)
 	want := []fieldReply{
 		{"state", "rejected"},
-		{"resolution", "pending"},
 		{"request", "req-rec1"},
 		{"action digest", tableDigest},
 		{"bundle digest", ""},
@@ -317,7 +310,7 @@ func TestAProjectionThatIsNotThisRecordsShowsNone(t *testing.T) {
 		"another digest":   {otherDigest, "none: the projection beside this record describes another approval"},
 		"none":             {nil, "none: the projection is missing or would not decode"},
 	} {
-		r := recordOf(tableEntry(controlv1.ApprovalState_APPROVAL_STATE_PENDING, approvals.ResolutionPending, time.Minute, "", c.view), tableNow, true)
+		r := recordOf(tableEntry(controlv1.ApprovalState_APPROVAL_STATE_PENDING, time.Minute, "", c.view), tableNow, true)
 		if r.Readable != nil || r.ReadableNote != c.note || fieldValue(r, "readable") != c.note || fieldValue(r, "principal") != "(no field principal)" {
 			t.Errorf("%s: readable %+v, note %q, fields %v", name, r.Readable, r.ReadableNote, r.Fields)
 		}

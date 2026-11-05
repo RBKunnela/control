@@ -469,8 +469,8 @@ so a forged record cannot graft events onto a trail. The plane checks every
 field of an answer against its own record of the hold
 (<code>internal/gateway/resume.go</code>; <code>TestThePipelineNeverTrustsTheStoresApproval</code>
 in <code>internal/gateway/store_test.go</code>).</li>
-<li>A writer of that directory can still deny a chosen action and bundle, and
-leave evidence naming an approval that was never used (ADR-0016).</li>
+<li>A writer of that directory can still deny a chosen action and bundle
+(ADR-0016); only the plane's ledger marks an approval spent.</li>
 <li>The gateway binary holds none of the approver's code, no private-key
 parser and no code that makes or lowers a floor, so the process that serves
 agents cannot answer an approval, read a signing key or reset its own floor

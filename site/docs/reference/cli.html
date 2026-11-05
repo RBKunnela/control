@@ -187,9 +187,9 @@ refuse on a platform without permission bits
 (<a href="/docs/adr/0018-keys-and-bundles-on-disk">ADR-0018</a>).</p>
 <p>Both answering commands require <code>--approver-id</code>, a claim nothing checks;
 flags come before the directory and the approval id.</p>
-<p><code>approvals list</code> prints, for each record, what the plane wrote — its state,
-its resolution and both digests — and beside it the readable fields of the
-projection the plane wrote at hold time. Those readable fields are not bound
+<p><code>approvals list</code> prints, for each record, its state and both digests, and
+beside them the readable fields of the projection the plane wrote at hold
+time; whether a retry spent an approval is the plane's own ledger's. Those readable fields are not bound
 to the action digest beside them, since the binding is over argument bytes no
 record holds; the listing says so above the records. A listing the store
 reports incomplete exits 1 and names what it could not read.</p>
@@ -199,9 +199,8 @@ plane. Where no plane holds the directory they say so on stderr: no held
 call waits for the answer, since a hold does not outlive its plane, and a
 plane that keeps a hold journal records it on that call's trail as too late.</p>
 <p>Both commands refuse, writing nothing, an approval id that is absent, one
-an approver answered already, one the plane consumed, one the plane closed
-without resuming, one past its expiry, and an approver id or a reason over
-its bound — each on its own line, naming what to do about it.</p>
+an approver answered already, one past its expiry, and an approver id or a
+reason over its bound — each on its own line, naming what to do about it.</p>
 <p>The <code>pause</code> commands write and read the pause file a plane names in
 <code>pause.file</code> (<a href="/docs/adr/0019-an-operator-can-pause-calls">ADR-0019</a>), and
 <a href="/docs/concepts/enforcement-modes">concepts/enforcement-modes.md</a> says what a

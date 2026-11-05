@@ -141,8 +141,8 @@ func TestAResumeBehindItsRequestSpendsNothing(t *testing.T) {
 	r.clock.set(base().Add(-time.Minute))
 	d := r.admit(retry(t, "req-2"), refundArgs())
 	expectBlock(t, d, verdictDeny, codeApprovalExpired, gateway.PDPType)
-	if got := r.store.consumed.Load(); got != 0 {
-		t.Fatalf("Consume was called %d time(s) behind the request; want none", got)
+	if got := r.spent(); got != 0 {
+		t.Fatalf("Spend was called %d time(s) behind the request; want none", got)
 	}
 	if entries := r.journal.Entries(); len(entries) != 1 {
 		t.Fatalf("the journal keeps %d entries, want the hold's", len(entries))
@@ -215,8 +215,8 @@ func TestAResumeBehindADecisionItReliedOnSpendsNothing(t *testing.T) {
 			sc.arm(script...)
 			d := r.admit(retry(t, "req-2"), refundArgs())
 			served := sc.disarm()
-			if got := r.store.consumed.Load(); got != 0 {
-				t.Fatalf("Consume was called %d time(s) behind a decision; want none", got)
+			if got := r.spent(); got != 0 {
+				t.Fatalf("Spend was called %d time(s) behind a decision; want none", got)
 			}
 			if served != len(script) {
 				t.Fatalf("the resume read the clock %d time(s); the script is for %d", served, len(script))

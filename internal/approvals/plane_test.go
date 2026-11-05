@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"sync"
 	"testing"
 	"time"
 
@@ -31,8 +30,8 @@ func answerAt(t *testing.T, dir string, at time.Time) {
 }
 
 // TestAHeldRequestIsFoundBeforeAnybodyAnswersIt. A retry is recognised as the
-// same request from the record; what nobody has answered is refused by
-// Consume, not hidden from Find.
+// same request from the record; what nobody has answered reads as pending,
+// not hidden from Find.
 func TestAHeldRequestIsFoundBeforeAnybodyAnswersIt(t *testing.T) {
 	p, _ := openPlane(t)
 	ctx := t.Context()
@@ -44,17 +43,15 @@ func TestAHeldRequestIsFoundBeforeAnybodyAnswersIt(t *testing.T) {
 	if rec.Approval.GetState() != controlv1.ApprovalState_APPROVAL_STATE_PENDING {
 		t.Fatalf("the held record reads %s", rec.Approval.GetState())
 	}
-	if rec.Resolution != approvals.ResolutionPending {
-		t.Fatalf("resolution = %v, want pending", rec.Resolution)
-	}
-	if _, err := p.Consume(ctx, h.Binding, "req-1", firstApproval, minted); !errors.Is(err, approvals.ErrNoApproval) {
-		t.Fatalf("consuming a record nobody answered = %v, want ErrNoApproval", err)
+	if rec.Approval.GetApproverId() != "" || rec.Approval.GetDecidedAt() != nil {
+		t.Fatalf("the held record carries an answer: %v", rec.Approval)
 	}
 }
 
 // TestAnApprovalGivenBesideThePlaneResumesTheHeldRequest is the whole point of
 // the package: the plane holds, another handle answers, and the plane reads
-// the answer back and spends it exactly once.
+// the answer back as often as it asks, writing nothing: spending it is the
+// plane's ledger's to record.
 func TestAnApprovalGivenBesideThePlaneResumesTheHeldRequest(t *testing.T) {
 	p, dir := openPlane(t)
 	ctx := t.Context()
@@ -72,18 +69,11 @@ func TestAnApprovalGivenBesideThePlaneResumesTheHeldRequest(t *testing.T) {
 		t.Fatalf("approver_id = %q, the answer named approver-1", got)
 	}
 
-	got, err := p.Consume(ctx, h.Binding, "req-1", firstApproval, minted.Add(2*time.Minute))
-	if err != nil {
-		t.Fatalf("consuming: %v", err)
+	if again := findOne(t, p, h.Binding, minted.Add(3*time.Minute)); again.Approval.GetState() != controlv1.ApprovalState_APPROVAL_STATE_APPROVED {
+		t.Fatalf("a second read returned state %s", again.Approval.GetState())
 	}
-	if got.GetState() != controlv1.ApprovalState_APPROVAL_STATE_APPROVED {
-		t.Fatalf("consume returned state %s", got.GetState())
-	}
-	if _, err := p.Consume(ctx, h.Binding, "req-1", firstApproval, minted.Add(3*time.Minute)); !errors.Is(err, approvals.ErrApprovalConsumed) {
-		t.Fatalf("the second consume has to be refused as consumed, got %v", err)
-	}
-	if names := recordNames(t, dir); !slices.Equal(names, []string{firstApproval + ".3-consumed.rec"}) {
-		t.Fatalf("after a consume the furthest name alone stands, got %v", names)
+	if names := recordNames(t, dir); !slices.Equal(names, []string{firstApproval + ".1-answered.rec"}) {
+		t.Fatalf("after the answer the answered name alone stands, got %v", names)
 	}
 }
 
@@ -110,8 +100,6 @@ func TestTheZeroHandlesApproveNothing(t *testing.T) {
 	calls := map[string]error{
 		"plane hold":      p.Hold(ctx, held(t, firstApproval, "req-1"), minted),
 		"plane find":      second(p.Find(ctx, binding, minted)),
-		"plane consume":   secondApproval(p.Consume(ctx, binding, "req-1", firstApproval, minted)),
-		"plane resolve":   p.Resolve(ctx, binding, "req-1", firstApproval, approvals.ResolutionNotResumed, minted),
 		"plane prune":     secondInt(p.Prune(ctx, minted)),
 		"plane close":     p.Close(),
 		"approver list":   secondListing(a.List(ctx)),
@@ -125,11 +113,10 @@ func TestTheZeroHandlesApproveNothing(t *testing.T) {
 	}
 }
 
-func second(_ []approvals.Record, err error) error          { return err }
-func secondInt(_ int, err error) error                      { return err }
-func secondListing(_ approvals.Listing, err error) error    { return err }
-func secondApproval(_ *controlv1.Approval, err error) error { return err }
-func secondAnswered(_ approvals.Answered, err error) error  { return err }
+func second(_ []approvals.Record, err error) error         { return err }
+func secondInt(_ int, err error) error                     { return err }
+func secondListing(_ approvals.Listing, err error) error   { return err }
+func secondAnswered(_ approvals.Answered, err error) error { return err }
 
 // TestASecondPlaneIsRefusedByThePlaneLock asserts the refusal is the lock and
 // not the directory: the same directory opens for an approver while the plane
@@ -278,17 +265,20 @@ func TestAnExpiredApprovalResumesNothing(t *testing.T) {
 	if _, err := p.Find(ctx, h.Binding, expires); !errors.Is(err, approvals.ErrNoApproval) {
 		t.Fatalf("at the expiry = %v, want ErrNoApproval", err)
 	}
-	if _, err := p.Consume(ctx, h.Binding, "req-1", firstApproval, expires); !errors.Is(err, approvals.ErrApprovalExpired) {
-		t.Fatalf("consuming at the expiry = %v, want ErrApprovalExpired", err)
+	if names := recordNames(t, dir); len(names) != 1 {
+		t.Fatalf("a read drops nothing, %v is left", names)
+	}
+	if n, err := p.Prune(ctx, expires); n != 1 || err != nil {
+		t.Fatalf("pruning at the expiry = %d, %v; want the record", n, err)
 	}
 	if names := recordNames(t, dir); len(names) != 0 {
-		t.Fatalf("an expired record is dropped by the consuming path, %v is left", names)
+		t.Fatalf("a pruned record leaves %v", names)
 	}
 }
 
-// TestARejectedApprovalIsReturnedBesideItsRefusal, and the record is dropped,
-// as the memory store does.
-func TestARejectedApprovalIsReturnedBesideItsRefusal(t *testing.T) {
+// TestARejectedApprovalIsReadAsItStands: Find hands back the rejection with
+// its reason, and nothing is dropped: the record goes when it expires.
+func TestARejectedApprovalIsReadAsItStands(t *testing.T) {
 	p, dir := openPlane(t)
 	ctx := t.Context()
 	h := held(t, firstApproval, "req-1")
@@ -299,20 +289,17 @@ func TestARejectedApprovalIsReturnedBesideItsRefusal(t *testing.T) {
 	if _, err := a.Answer(ctx, firstApproval, controlv1.ApprovalState_APPROVAL_STATE_REJECTED, "approver-1", "no", minted.Add(time.Minute)); err != nil {
 		t.Fatalf("rejecting: %v", err)
 	}
-	got, err := p.Consume(ctx, h.Binding, "req-1", firstApproval, minted.Add(2*time.Minute))
-	if !errors.Is(err, approvals.ErrApprovalRejected) {
-		t.Fatalf("consuming a rejected record = %v, want ErrApprovalRejected", err)
+	rec := findOne(t, p, h.Binding, minted.Add(2*time.Minute))
+	if rec.Approval.GetState() != controlv1.ApprovalState_APPROVAL_STATE_REJECTED || rec.Approval.GetReason() != "no" {
+		t.Fatalf("the rejection reads %s for %q", rec.Approval.GetState(), rec.Approval.GetReason())
 	}
-	if got.GetState() != controlv1.ApprovalState_APPROVAL_STATE_REJECTED {
-		t.Fatalf("the refusal carries the record it read, got state %s", got.GetState())
-	}
-	if names := recordNames(t, dir); len(names) != 0 {
-		t.Fatalf("a rejected record is dropped, %v is left", names)
+	if names := recordNames(t, dir); !slices.Equal(names, []string{firstApproval + ".1-answered.rec"}) {
+		t.Fatalf("a read of a rejection drops nothing, got %v", names)
 	}
 }
 
 // TestAMultiUseRecordIsNotHonoured. The plane will hold one, because the field
-// is the producer's; it will never spend one.
+// is the producer's; what it judges an answer by never lets it be spent.
 func TestAMultiUseRecordIsNotHonoured(t *testing.T) {
 	p, dir := openPlane(t)
 	ctx := t.Context()
@@ -322,185 +309,9 @@ func TestAMultiUseRecordIsNotHonoured(t *testing.T) {
 		t.Fatalf("holding: %v", err)
 	}
 	answerAt(t, dir, minted.Add(time.Minute))
-	if _, err := p.Consume(ctx, h.Binding, "req-1", firstApproval, minted.Add(2*time.Minute)); !errors.Is(err, approvals.ErrMultiUse) {
-		t.Fatalf("consuming a multi-use record = %v, want ErrMultiUse", err)
-	}
-}
-
-// TestOneConsumeWinsUnderConcurrency: the compare-and-swap is the link, and
-// every loser is told the record was consumed rather than being handed one.
-func TestOneConsumeWinsUnderConcurrency(t *testing.T) {
-	p, dir := openPlane(t)
-	ctx := t.Context()
-	h := held(t, firstApproval, "req-1")
-	if err := p.Hold(ctx, h, minted); err != nil {
-		t.Fatalf("holding: %v", err)
-	}
-	answerAt(t, dir, minted.Add(time.Minute))
-
-	const goroutines = 8
-	var wg sync.WaitGroup
-	results := make([]error, goroutines)
-	approvalsOut := make([]*controlv1.Approval, goroutines)
-	start := make(chan struct{})
-	for i := range goroutines {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			<-start
-			approvalsOut[i], results[i] = p.Consume(ctx, h.Binding, "req-1", firstApproval, minted.Add(2*time.Minute))
-		}()
-	}
-	close(start)
-	wg.Wait()
-
-	won := 0
-	for i, err := range results {
-		switch {
-		case err == nil:
-			won++
-			if approvalsOut[i].GetApproverId() != "approver-1" {
-				t.Errorf("the winner was handed %v", approvalsOut[i])
-			}
-		case errors.Is(err, approvals.ErrApprovalConsumed):
-		default:
-			t.Errorf("goroutine %d = %v, want nil or ErrApprovalConsumed", i, err)
-		}
-	}
-	if won != 1 {
-		t.Fatalf("%d goroutines consumed one record", won)
-	}
-}
-
-// TestResolvingUnderConcurrencyLeavesOneRecord: the compare-and-swap is the
-// link, and a pass that lost the race asked for the outcome that is on disk,
-// so it is told nothing went wrong.
-func TestResolvingUnderConcurrencyLeavesOneRecord(t *testing.T) {
-	p, dir := openPlane(t)
-	ctx := t.Context()
-	h := held(t, firstApproval, "req-1")
-	if err := p.Hold(ctx, h, minted); err != nil {
-		t.Fatalf("holding: %v", err)
-	}
-	const goroutines = 8
-	var wg sync.WaitGroup
-	results := make([]error, goroutines)
-	start := make(chan struct{})
-	for i := range goroutines {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			<-start
-			results[i] = p.Resolve(ctx, h.Binding, "req-1", firstApproval, approvals.ResolutionNotResumed, minted)
-		}()
-	}
-	close(start)
-	wg.Wait()
-	for i, err := range results {
-		if err != nil {
-			t.Errorf("goroutine %d = %v, want nil", i, err)
-		}
-	}
-	if names := recordNames(t, dir); !slices.Equal(names, []string{firstApproval + ".2-not-resumed.rec"}) {
-		t.Fatalf("one resolved name stands, got %v", names)
-	}
-	if _, err := p.Consume(ctx, h.Binding, "req-1", firstApproval, minted.Add(time.Minute)); !errors.Is(err, approvals.ErrNoApproval) {
-		t.Fatalf("a resolved record = %v, want ErrNoApproval", err)
-	}
-}
-
-// TestAStoreResolvesARecordAsNotResumedAndNothingElse. Only the consuming
-// path marks a record spent.
-func TestAStoreResolvesARecordAsNotResumedAndNothingElse(t *testing.T) {
-	p, _ := openPlane(t)
-	ctx := t.Context()
-	h := held(t, firstApproval, "req-1")
-	if err := p.Hold(ctx, h, minted); err != nil {
-		t.Fatalf("holding: %v", err)
-	}
-	for _, resolution := range []approvals.Resolution{
-		approvals.ResolutionUnspecified,
-		approvals.ResolutionPending,
-		approvals.ResolutionConsumed,
-	} {
-		if err := p.Resolve(ctx, h.Binding, "req-1", firstApproval, resolution, minted); !errors.Is(err, approvals.ErrResolution) {
-			t.Errorf("resolving as %v = %v, want ErrResolution", resolution, err)
-		}
-	}
-	if err := p.Resolve(ctx, h.Binding, "req-1", firstApproval, approvals.ResolutionNotResumed, time.Time{}); !errors.Is(err, approvals.ErrZeroTime) {
-		t.Errorf("resolving at a zero clock = %v, want ErrZeroTime", err)
-	}
-	if err := p.Resolve(ctx, h.Binding, "req-9", firstApproval, approvals.ResolutionNotResumed, minted); !errors.Is(err, approvals.ErrNoApproval) {
-		t.Errorf("resolving a request nothing holds = %v, want ErrNoApproval", err)
-	}
-	if err := p.Resolve(ctx, otherBinding(t), "req-1", firstApproval, approvals.ResolutionNotResumed, minted); !errors.Is(err, approvals.ErrNoApproval) {
-		t.Errorf("resolving under another binding = %v, want ErrNoApproval", err)
-	}
-}
-
-// TestAnExpiredRecordIsResolvedRatherThanDropped: a plane that comes back long
-// after it lost the hold still closes it.
-func TestAnExpiredRecordIsResolvedRatherThanDropped(t *testing.T) {
-	p, dir := openPlane(t)
-	ctx := t.Context()
-	h := held(t, firstApproval, "req-1")
-	if err := p.Hold(ctx, h, minted); err != nil {
-		t.Fatalf("holding: %v", err)
-	}
-	if err := p.Resolve(ctx, h.Binding, "req-1", firstApproval, approvals.ResolutionNotResumed, expires.Add(time.Hour)); err != nil {
-		t.Fatalf("resolving an expired record: %v", err)
-	}
-	if names := recordNames(t, dir); !slices.Equal(names, []string{firstApproval + ".2-not-resumed.rec"}) {
-		t.Fatalf("the record is resolved, not dropped; got %v", names)
-	}
-}
-
-// TestAnOrphansRecordIsNotSpent: the plane never consumes a record it does not
-// hold, so the next identical call is held anew rather than told an action ran.
-func TestAnOrphansRecordIsNotSpent(t *testing.T) {
-	p, dir := openPlane(t)
-	ctx := t.Context()
-	h := held(t, firstApproval, "req-1")
-	if err := p.Hold(ctx, h, minted); err != nil {
-		t.Fatalf("holding: %v", err)
-	}
-	answerAt(t, dir, minted.Add(time.Minute))
-	if err := p.Resolve(ctx, h.Binding, "req-1", firstApproval, approvals.ResolutionNotResumed, minted.Add(time.Minute)); err != nil {
-		t.Fatalf("resolving the orphan: %v", err)
-	}
-	_, err := p.Consume(ctx, h.Binding, "req-1", firstApproval, minted.Add(2*time.Minute))
-	if !errors.Is(err, approvals.ErrNoApproval) {
-		t.Fatalf("a not-resumed record = %v, want ErrNoApproval so the call is held anew", err)
-	}
-	if errors.Is(err, approvals.ErrApprovalConsumed) {
-		t.Fatal("a record nothing spent must never read as consumed")
-	}
-	if _, err := p.Find(ctx, h.Binding, minted.Add(2*time.Minute)); !errors.Is(err, approvals.ErrNoApproval) {
-		t.Fatalf("a not-resumed record is not live, got %v", err)
-	}
-	if err := p.Resolve(ctx, h.Binding, "req-1", firstApproval, approvals.ResolutionNotResumed, minted.Add(2*time.Minute)); err != nil {
-		t.Fatalf("resolving twice asks for the outcome on disk, got %v", err)
-	}
-}
-
-// TestAConsumedRecordCannotBeResolved: the two terminal names are ordered, and
-// the furthest one wins.
-func TestAConsumedRecordCannotBeResolved(t *testing.T) {
-	p, dir := openPlane(t)
-	ctx := t.Context()
-	h := held(t, firstApproval, "req-1")
-	if err := p.Hold(ctx, h, minted); err != nil {
-		t.Fatalf("holding: %v", err)
-	}
-	answerAt(t, dir, minted.Add(time.Minute))
-	if _, err := p.Consume(ctx, h.Binding, "req-1", firstApproval, minted.Add(2*time.Minute)); err != nil {
-		t.Fatalf("consuming: %v", err)
-	}
-	if err := p.Resolve(ctx, h.Binding, "req-1", firstApproval, approvals.ResolutionNotResumed, minted.Add(3*time.Minute)); !errors.Is(err, approvals.ErrApprovalConsumed) {
-		t.Fatalf("resolving a consumed record = %v, want ErrApprovalConsumed", err)
-	}
-	if _, err := p.Consume(ctx, h.Binding, "req-1", firstApproval, expires.Add(time.Hour)); !errors.Is(err, approvals.ErrApprovalConsumed) {
-		t.Fatalf("a consumed record says so past the expiry too, got %v", err)
+	rec := findOne(t, p, h.Binding, minted.Add(2*time.Minute))
+	if got := approval.Consumable(rec.Approval, minted.Add(2*time.Minute)); got != approval.StandingMultiUse {
+		t.Fatalf("a multi-use record stands %v, want multi-use", got)
 	}
 }
 
@@ -575,10 +386,9 @@ func TestAZeroClockIsRefused(t *testing.T) {
 	binding := bindingOf(t, "req-1")
 	var zero time.Time
 	calls := map[string]error{
-		"hold":    p.Hold(ctx, held(t, firstApproval, "req-1"), zero),
-		"find":    second(p.Find(ctx, binding, zero)),
-		"consume": secondApproval(p.Consume(ctx, binding, "req-1", firstApproval, zero)),
-		"prune":   secondInt(p.Prune(ctx, zero)),
+		"hold":  p.Hold(ctx, held(t, firstApproval, "req-1"), zero),
+		"find":  second(p.Find(ctx, binding, zero)),
+		"prune": secondInt(p.Prune(ctx, zero)),
 	}
 	for name, err := range calls {
 		if !errors.Is(err, approvals.ErrZeroTime) {
@@ -652,8 +462,8 @@ func TestPruneForgetsWhatExpired(t *testing.T) {
 }
 
 // TestACutScanAnswersNothing: a directory past the bound is read only as far
-// as the bound, so Find, Consume and Resolve refuse rather than answer from
-// the records the scan happened to reach.
+// as the bound, so Find refuses rather than answer from the records the scan
+// happened to reach.
 func TestACutScanAnswersNothing(t *testing.T) {
 	p, dir := openPlane(t)
 	ctx := t.Context()
@@ -673,12 +483,6 @@ func TestACutScanAnswersNothing(t *testing.T) {
 	binding := bindingOf(t, "req-APPROVAL2")
 	if found, err := bounded.Find(ctx, binding, minted); !errors.Is(err, approvals.ErrTooManyRecords) {
 		t.Errorf("Find over a cut scan = %d record(s), %v; want ErrTooManyRecords", len(found), err)
-	}
-	if _, err := bounded.Consume(ctx, binding, "req-APPROVAL2", "APPROVAL2", minted); !errors.Is(err, approvals.ErrTooManyRecords) {
-		t.Errorf("Consume past the cut = %v, want ErrTooManyRecords", err)
-	}
-	if err := bounded.Resolve(ctx, binding, "req-APPROVAL2", "APPROVAL2", approvals.ResolutionNotResumed, minted); !errors.Is(err, approvals.ErrTooManyRecords) {
-		t.Errorf("Resolve past the cut = %v, want ErrTooManyRecords", err)
 	}
 }
 
@@ -814,85 +618,42 @@ func TestAPlaneStartsWhileAnApproverProbesTheLock(t *testing.T) {
 	}
 }
 
-// TestAConsumedRecordComesBackFromFindUntilItExpires. It is the plane's proof
-// that an execution spent the approval, and the only thing that lets the next
-// identical call be told the action already ran instead of being held anew.
-// A store that hid it would leave that answer unreachable while the direction
-// still looked safe.
-func TestAConsumedRecordComesBackFromFindUntilItExpires(t *testing.T) {
-	p, dir := openPlane(t)
-	ctx := t.Context()
-	h := held(t, firstApproval, "req-1")
-	if err := p.Hold(ctx, h, minted); err != nil {
-		t.Fatalf("holding: %v", err)
-	}
-	answerAt(t, dir, minted.Add(time.Minute))
-	if _, err := p.Consume(ctx, h.Binding, "req-1", firstApproval, minted.Add(2*time.Minute)); err != nil {
-		t.Fatalf("consuming: %v", err)
-	}
-
-	rec := findOne(t, p, h.Binding, minted.Add(3*time.Minute))
-	if rec.Resolution != approvals.ResolutionConsumed {
-		t.Fatalf("resolution = %v, want consumed: the next identical call cannot be told the action ran", rec.Resolution)
-	}
-	if rec.RequestID != "req-1" || rec.Approval.GetApproverId() != "approver-1" {
-		t.Fatalf("the record came back as %v", rec)
-	}
-
-	// The bound is the expiry, as it is for every other record.
-	if _, err := p.Find(ctx, h.Binding, expires.Add(-time.Nanosecond)); err != nil {
-		t.Fatalf("one nanosecond before the expiry the proof still stands: %v", err)
-	}
-	if _, err := p.Find(ctx, h.Binding, expires); !errors.Is(err, approvals.ErrNoApproval) {
-		t.Fatalf("at the expiry = %v, want ErrNoApproval", err)
-	}
-}
-
-// threeResolutions leaves one record of each resolution under one binding:
-// three requests of one action share a binding, because the canonical action
-// digest leaves identifiers out.
-func threeResolutions(t *testing.T) (*approvals.Plane, approval.Binding) {
-	t.Helper()
+// TestFindReturnsEveryStateUnderOneBinding: three requests of one action
+// share a binding, because the canonical action digest leaves identifiers out,
+// and Find hands back each, held or answered, as it stands. No record says
+// what became of it after that.
+func TestFindReturnsEveryStateUnderOneBinding(t *testing.T) {
 	p, dir := openPlane(t)
 	ctx := t.Context()
 	binding := bindingOf(t, "req-pending")
-	for _, id := range []string{"PENDING", "SPENT", "GIVENUP"} {
+	for _, id := range []string{"PENDING", "APPROVED", "REJECTED"} {
 		if err := p.Hold(ctx, held(t, id, "req-"+id), minted); err != nil {
 			t.Fatalf("holding %s: %v", id, err)
 		}
 	}
 	a := openApprover(t, dir)
-	for _, id := range []string{"SPENT", "GIVENUP"} {
-		if _, err := a.Answer(ctx, id, controlv1.ApprovalState_APPROVAL_STATE_APPROVED, "approver-1", "", minted.Add(time.Minute)); err != nil {
+	for id, answer := range map[string]controlv1.ApprovalState{
+		"APPROVED": controlv1.ApprovalState_APPROVAL_STATE_APPROVED,
+		"REJECTED": controlv1.ApprovalState_APPROVAL_STATE_REJECTED,
+	} {
+		if _, err := a.Answer(ctx, id, answer, "approver-1", "", minted.Add(time.Minute)); err != nil {
 			t.Fatalf("answering %s: %v", id, err)
 		}
 	}
-	if _, err := p.Consume(ctx, binding, "req-SPENT", "SPENT", minted.Add(2*time.Minute)); err != nil {
-		t.Fatalf("consuming: %v", err)
-	}
-	if err := p.Resolve(ctx, binding, "req-GIVENUP", "GIVENUP", approvals.ResolutionNotResumed, minted.Add(2*time.Minute)); err != nil {
-		t.Fatalf("resolving: %v", err)
-	}
-	return p, binding
-}
-
-// TestFindTellsTheThreeResolutionsApart under one binding: the two stores have
-// to agree about what a caller may read, and a caller reads the resolution.
-func TestFindTellsTheThreeResolutionsApart(t *testing.T) {
-	p, binding := threeResolutions(t)
-	found, err := p.Find(t.Context(), binding, minted.Add(3*time.Minute))
+	found, err := p.Find(ctx, binding, minted.Add(3*time.Minute))
 	if err != nil {
 		t.Fatalf("finding: %v", err)
 	}
-	got := map[string]approvals.Resolution{}
+	got := map[string]controlv1.ApprovalState{}
 	for _, rec := range found {
-		got[rec.ApprovalID] = rec.Resolution
+		got[rec.ApprovalID] = rec.Approval.GetState()
 	}
-	want := map[string]approvals.Resolution{
-		"PENDING": approvals.ResolutionPending,
-		"SPENT":   approvals.ResolutionConsumed,
+	want := map[string]controlv1.ApprovalState{
+		"PENDING":  controlv1.ApprovalState_APPROVAL_STATE_PENDING,
+		"APPROVED": controlv1.ApprovalState_APPROVAL_STATE_APPROVED,
+		"REJECTED": controlv1.ApprovalState_APPROVAL_STATE_REJECTED,
 	}
 	if !maps.Equal(got, want) {
-		t.Fatalf("Find returned %v, want %v: a record the plane gave up on proves nothing about an execution and does not come back, and a spent one is the proof that it does", got, want)
+		t.Fatalf("Find returned %v, want %v", got, want)
 	}
 }
