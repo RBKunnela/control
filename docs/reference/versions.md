@@ -34,7 +34,7 @@ version. [status.md](../status.md) is the inventory.
 | Floor directories (`schema_version`) | `1.0` | `1.x` | `experimental` | [cli.md](cli.md#guardana-control) |
 | Scenario (`kind`) | — | `agent-scenario/v1alpha1` | `experimental` | [scenario-format.md](scenario-format.md#the-document) |
 | Pause file (`schema_version`) | `2` | `1`, `2` | `experimental` | [cli.md](cli.md#guardana-control) |
-| Approvals directory (`schema_version`) | `2.0` | `2.x` | `experimental` | [approvals](../concepts/approvals-and-the-held-call.md#what-is-held-and-by-whom) |
+| Approvals directory (`schema_version`) | `2.1` | `2.x` | `experimental` | [approvals](../concepts/approvals-and-the-held-call.md#what-is-held-and-by-whom) |
 | Hold journal (`schema_version`) | `1.0` | `1.x` | `experimental` | [approvals](../concepts/approvals-and-the-held-call.md#a-hold-the-plane-loses) |
 | Spent ledger (`schema_version`) | `1.0` | `1.x` | `experimental` | [approvals](../concepts/approvals-and-the-held-call.md#an-approval-is-spent-once) |
 | Hook profile (`kind`) | — | `hook-profile/v1alpha1` | `experimental` | [runtime-profiles](../extending/runtime-profiles.md#the-profile) |
@@ -72,7 +72,9 @@ one quoted key per line, carries none either.
   directories.** Any minor of major 1 is read. A member the reader does not
   know is refused, so a file a later minor extended is refused when that
   member arrives, never read with it dropped.
-- **Approvals directory.** Any minor of major 2 is read. A 1.0 directory
+- **Approvals directory.** Any minor of major 2 is read. A 2.1 record names
+  the authority holding it and the call's tenant and project; a 2.0 record
+  names none of them and is read as held under `directory`. A 1.0 directory
   kept the plane's spent mark beside the answers, so it is refused: empty
   it; its holds expire within `approvals.ttl`.
 - **Run record.** Any minor of major 2 is read. A record of major 1 names no

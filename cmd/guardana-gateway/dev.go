@@ -179,7 +179,13 @@ func (d *devPlane) describe(stdout io.Writer, page string, o devOptions) {
 		{"freshness_key", "made in this process apart from the bundle key, held in memory to renew the statement, and never written"},
 		{"renewal", d.renewal},
 		{"trail_command", brand.Gateway + " trail " + shellWord(st.path(stateTrail))},
+		{"inbox", st.path(stateInbox)},
+		{"operator_key", st.operatorKeyFile()},
+		{"operator", devOperator + " of roster " + devRosterID + ", whose trust root was made in this process and cleared once it signed; " +
+			"its key is in the state directory, so this account can approve: a dev plane separates no duties"},
 		{"approvals_command", brand.CLI + " approvals list " + shellWord(st.path(stateApprovals))},
+		{"approve_command", brand.CLI + " approvals approve --key " + shellWord(st.operatorKeyFile()) + " --inbox " +
+			shellWord(st.path(stateInbox)) + " -- " + shellWord(st.path(stateApprovals)) + " <approval-id>"},
 		{"pause_command", brand.CLI + " pause add --global -- " + shellWord(st.path(statePause))},
 		{"scenario_command", scenarioCommand(o)},
 	} {

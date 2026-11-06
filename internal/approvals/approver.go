@@ -35,7 +35,7 @@ type Approver struct {
 // It opens whether or not a plane holds the directory: a listing is worth
 // having either way, and Listing.PlaneRunning says which it was.
 func OpenApprover(dir string, opts ...Option) (*Approver, error) {
-	s, err := openStore(dir, false, opts)
+	s, err := openStore(dir, openApprover, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -90,31 +90,35 @@ func (a *Approver) List(ctx context.Context) (Listing, error) {
 	if a == nil {
 		return Listing{}, ErrClosed
 	}
-	if err := a.s.usable(); err != nil {
+	return a.s.list(ctx)
+}
+
+func (s *store) list(ctx context.Context) (Listing, error) {
+	if err := s.usable(); err != nil {
 		return Listing{}, err
 	}
 	if err := ctx.Err(); err != nil {
 		return Listing{}, err
 	}
-	a.s.mu.Lock()
-	defer a.s.mu.Unlock()
-	if err := a.s.usable(); err != nil {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.usable(); err != nil {
 		return Listing{}, err
 	}
-	if err := a.s.judge(); err != nil {
+	if err := s.judge(); err != nil {
 		return Listing{}, err
 	}
-	held, err := planeHoldsLock(a.s.root, a.s.dir)
+	held, err := planeHoldsLock(s.root, s.dir)
 	if err != nil {
 		return Listing{}, err
 	}
-	l, err := a.s.scan()
+	l, err := s.scan()
 	if err != nil {
 		return Listing{}, err
 	}
 	out := Listing{Complete: l.complete, PlaneRunning: held}
 	for _, id := range l.ids {
-		rec, st, err := a.s.readRecord(id, l.state[id])
+		rec, st, err := s.readRecord(id, l.state[id])
 		if errors.Is(err, fs.ErrNotExist) {
 			continue
 		}
@@ -123,15 +127,15 @@ func (a *Approver) List(ctx context.Context) (Listing, error) {
 			out.Complete = false
 			continue
 		}
-		out.Entries = append(out.Entries, Entry{Record: rec, View: a.view(id, &out)})
+		out.Entries = append(out.Entries, Entry{Record: rec, View: s.view(id, &out)})
 	}
 	return out, nil
 }
 
 // view reads the projection of id, or reports it as a problem and returns nil.
 // A projection is not truth and a listing does not fail over one.
-func (a *Approver) view(id string, out *Listing) *View {
-	raw, err := a.s.readBounded(id+viewSuffix, a.s.opts.maxRecordBytes)
+func (s *store) view(id string, out *Listing) *View {
+	raw, err := s.readBounded(id+viewSuffix, s.opts.maxRecordBytes)
 	if err != nil {
 		out.Problems = append(out.Problems, Problem{Name: id + viewSuffix, Err: err})
 		return nil
@@ -178,7 +182,8 @@ type Answered struct {
 // instant after it reads the answer like any other, so the flag understates
 // and never overstates, and nothing about the record depends on it.
 //
-// It refuses, writing nothing at all: any other answer with ErrApprovalAnswer,
+// It refuses, writing nothing at all: a record held under the signed
+// authority with ErrSignedHold, any other answer with ErrApprovalAnswer,
 // an approver id or a reason outside its bound with ErrApproverID or
 // ErrReason, a zero decidedAt with ErrZeroTime, an id that cannot name a file
 // with ErrRecordName, an unknown id with ErrNoApproval, an approval answered
@@ -266,6 +271,8 @@ func (a *Approver) pending(approvalID string, decidedAt time.Time) (Record, erro
 		return Record{}, ErrNoApproval
 	case err != nil:
 		return Record{}, err
+	case rec.HeldUnder() == HeldUnderSigned:
+		return Record{}, ErrSignedHold
 	case st == stateAnswered:
 		return Record{}, ErrApprovalAnswered
 	case rec.Approval.GetState() != controlv1.ApprovalState_APPROVAL_STATE_PENDING:

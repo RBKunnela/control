@@ -368,6 +368,9 @@ func writeRecord(t *testing.T, path string, a *controlv1.Approval, binding appro
 		"request_id":     a.GetRequestId(),
 		"binding":        string(binding),
 		"approval":       json.RawMessage(raw),
+		"authority":      approvals.HeldUnderDirectory,
+		"tenant":         "acme",
+		"project":        "orders",
 	})
 	if err != nil {
 		t.Fatalf("json: %v", err)

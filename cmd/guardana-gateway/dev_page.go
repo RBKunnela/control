@@ -21,7 +21,9 @@ const (
 	pageStopWait  = 5 * time.Second
 )
 
-// devApprover is the approver id every answer the page makes carries.
+// devApprover is the approver id the page is started under. A dev plane holds
+// under the signed authority, so the page files no answer; it shows the
+// command that signs one.
 const devApprover = "dev-page"
 
 // pageLine is the one line the page prints on standard output.
@@ -40,13 +42,13 @@ type devPage struct {
 	waitErr error
 }
 
-// startPage starts the page over the plane's approvals directory and pause
-// file, in a process group of its own so a terminal's interrupt reaches dev
+// startPage starts the page over the plane's approvals directory, its inbox
+// and its pause file, in a process group of its own so a terminal's interrupt reaches dev
 // alone, and reads its first line within its bounds.
 func startPage(control sibling, st devState, stderr io.Writer) (*devPage, error) {
 	cmd := exec.Command(control.path, "console", //nolint:gosec // G204: the sibling found beside this binary, run without a shell
 		"--approvals", st.path(stateApprovals), "--pause", st.path(statePause),
-		"--approver-id", devApprover, "--until-stdin-closes")
+		"--approver-id", devApprover, "--inbox", st.path(stateInbox), "--until-stdin-closes")
 	cmd.Stderr = stderr
 	ownProcessGroup(cmd)
 	stdin, err := cmd.StdinPipe()

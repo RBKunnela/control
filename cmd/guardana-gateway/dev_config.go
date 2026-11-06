@@ -16,10 +16,10 @@ import (
 )
 
 // devSet is every key dev gives a value of its own, and silentSet the keys it
-// adds for a silent decision point. Every key under approvals is dev's too,
-// set or left at its default, so a demo that tunes the store is refused
-// rather than half obeyed; so is every key under pdp with a silent decision
-// point.
+// adds for a silent decision point. Every key under approvals, trust and
+// operators is dev's too, set or left at its default, so a demo that tunes
+// the store or the signed authority is refused rather than half obeyed; so is
+// every key under pdp with a silent decision point.
 var devSet = []string{
 	"listener.address",
 	"health.address",
@@ -33,6 +33,13 @@ var devSet = []string{
 	"approvals.authority",
 	"approvals.dir",
 	"approvals.hold_journal_dir",
+	"approvals.inbox_dir",
+	"trust.root_public_key",
+	"trust.roster",
+	"trust.roster_id",
+	"trust.floor_dir",
+	"operators.authenticator.kind",
+	"operators.authorizer.kind",
 	"pause.file",
 	"evidence.dir",
 	"export.endpoint",
@@ -52,9 +59,9 @@ var silentSet = []string{
 // ownedPrefixes is what dev owns beyond the keys the layer sets.
 func (l devLayer) ownedPrefixes() []string {
 	if _, silent := l["pdp.identifier"]; silent {
-		return []string{"approvals.", "runs.", "pdp."}
+		return []string{"approvals.", "runs.", "trust.", "operators.", "pdp."}
 	}
-	return []string{"approvals.", "runs."}
+	return []string{"approvals.", "runs.", "trust.", "operators."}
 }
 
 // refuseEnvironment names the first variable under the product's prefix. Dev
@@ -86,23 +93,30 @@ type devKeys struct {
 // there, each a host:port.
 func newLayer(st devState, keys devKeys, listen, health, collector, token, silent string) devLayer {
 	l := devLayer{
-		"listener.address":            listen,
-		"health.address":              health,
-		"policy.bundle_file":          st.path(stateBundle),
-		"policy.key_id":               policykey.KeyID(keys.bundle),
-		"policy.public_key":           policykey.FormatPublic(keys.bundle),
-		"policy.statement_file":       st.path(stateStatement),
-		"policy.state_dir":            st.path(stateFloors),
-		"policy.freshness_key_id":     policykey.KeyID(keys.freshness),
-		"policy.freshness_public_key": policykey.FormatPublic(keys.freshness),
-		"approvals.authority":         gatewayconfig.AuthorityDirectory,
-		"approvals.dir":               st.path(stateApprovals),
-		"approvals.hold_journal_dir":  st.path(stateHolds),
-		"pause.file":                  st.path(statePause),
-		"evidence.dir":                st.path(stateSpool),
-		"export.endpoint":             "http://" + collector + logsPath,
-		"export.allow_plaintext":      "true",
-		devAuthorizationKey:           "Bearer " + token,
+		"listener.address":             listen,
+		"health.address":               health,
+		"policy.bundle_file":           st.path(stateBundle),
+		"policy.key_id":                policykey.KeyID(keys.bundle),
+		"policy.public_key":            policykey.FormatPublic(keys.bundle),
+		"policy.statement_file":        st.path(stateStatement),
+		"policy.state_dir":             st.path(stateFloors),
+		"policy.freshness_key_id":      policykey.KeyID(keys.freshness),
+		"policy.freshness_public_key":  policykey.FormatPublic(keys.freshness),
+		"approvals.authority":          gatewayconfig.AuthoritySigned,
+		"approvals.dir":                st.path(stateApprovals),
+		"approvals.hold_journal_dir":   st.path(stateHolds),
+		"approvals.inbox_dir":          st.path(stateInbox),
+		"trust.root_public_key":        st.path(stateRootKey),
+		"trust.roster":                 st.path(stateRoster),
+		"trust.roster_id":              devRosterID,
+		"trust.floor_dir":              st.path(stateTrustFlr),
+		"operators.authenticator.kind": "roster",
+		"operators.authorizer.kind":    "roster",
+		"pause.file":                   st.path(statePause),
+		"evidence.dir":                 st.path(stateSpool),
+		"export.endpoint":              "http://" + collector + logsPath,
+		"export.allow_plaintext":       "true",
+		devAuthorizationKey:            "Bearer " + token,
 	}
 	if silent != "" {
 		l["pdp.identifier"] = "http://" + silent
@@ -192,7 +206,8 @@ func fileSets(path string, l devLayer, key string) bool {
 			first = err
 		}
 	}
-	if defaultOf(key) == "" && strings.HasPrefix(first.Error(), key+": no value") {
+	if defaultOf(key) == "" && (strings.HasPrefix(first.Error(), key+": no value") ||
+		strings.HasPrefix(first.Error(), key+": the "+gatewayconfig.AuthoritySigned+" authority needs it")) {
 		// A key with no default that the file left out refuses the load
 		// without the layer's value by its own name.
 		return false

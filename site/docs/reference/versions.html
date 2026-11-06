@@ -206,7 +206,7 @@ version. <a href="/docs/status">status.md</a> is the inventory.</p>
 </tr>
 <tr>
 <td>Approvals directory (<code>schema_version</code>)</td>
-<td><code>2.0</code></td>
+<td><code>2.1</code></td>
 <td><code>2.x</code></td>
 <td><code>experimental</code></td>
 <td><a href="/docs/concepts/approvals-and-the-held-call#what-is-held-and-by-whom">approvals</a></td>
@@ -368,7 +368,9 @@ root states, the hold journal, the spent ledger and the floor
 directories.</strong> Any minor of major 1 is read. A member the reader does not
 know is refused, so a file a later minor extended is refused when that
 member arrives, never read with it dropped.</li>
-<li><strong>Approvals directory.</strong> Any minor of major 2 is read. A 1.0 directory
+<li><strong>Approvals directory.</strong> Any minor of major 2 is read. A 2.1 record names
+the authority holding it and the call's tenant and project; a 2.0 record
+names none of them and is read as held under <code>directory</code>. A 1.0 directory
 kept the plane's spent mark beside the answers, so it is refused: empty
 it; its holds expire within <code>approvals.ttl</code>.</li>
 <li><strong>Run record.</strong> Any minor of major 2 is read. A record of major 1 names no

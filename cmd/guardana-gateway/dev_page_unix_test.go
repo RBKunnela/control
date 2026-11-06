@@ -102,13 +102,20 @@ func (c *pageClient) record(t *testing.T, approvalID string) pageRecord {
 	return pageRecord{}
 }
 
-// approve approves the held call through the page, carrying the digest the
-// page lists for its record.
-func (c *pageClient) approve(t *testing.T, held answered) {
+// approve tries to approve the held call through the page, carrying the
+// digest the page lists for its record, which a dev plane's page refuses
+// naming the signing command; then signs the approval with that command, the
+// dev operator's key and the plane's inbox dev printed.
+func (c *pageClient) approve(t *testing.T, held answered, values map[string]string) {
 	t.Helper()
 	rec := c.record(t, held.approvalID)
-	if code, out := c.post(t, "/api/approve", map[string]string{"id": held.approvalID, "reason": "", "action_digest": rec.ActionDigest}); code != http.StatusOK {
-		t.Fatalf("approving answered %d %q", code, out)
+	code, out := c.post(t, "/api/approve", map[string]string{"id": held.approvalID, "reason": "", "action_digest": rec.ActionDigest})
+	if code != http.StatusConflict || !strings.Contains(out, "approvals approve --key") || !strings.Contains(out, values["inbox"]) {
+		t.Fatalf("approving on the page answered %d %q, want a refusal naming the signing command", code, out)
+	}
+	if code, _, stderr := approvalsCommand(t, "approve", "--key", values["operator_key"], "--inbox", values["inbox"],
+		values["approvals"], held.approvalID); code != 0 {
+		t.Fatalf("signing the approval: exit %d, %q", code, stderr)
 	}
 }
 
@@ -140,8 +147,9 @@ func (c *pageClient) pauseAll(t *testing.T, healthz string) func() {
 	}
 }
 
-// TestAHeldCallAnsweredOnThePage: a call held for an approval is approved
-// through the page's API with the digest the page listed; with a pause in
+// TestAHeldCallAnsweredOnThePage: a call held for an approval is shown on the
+// page, which refuses to answer it, and is approved by the command the page
+// names, signed with the dev operator's key; with a pause in
 // force the retry is blocked and the approval stays unspent; once the pause
 // is lifted the retry runs on the held trail and spends it, so the same call
 // after it is refused as already used.
@@ -153,14 +161,14 @@ func TestAHeldCallAnsweredOnThePage(t *testing.T) {
 	if held.kind != scenario.AnswerPending || held.approvalID == "" {
 		t.Fatalf("the update answered %+v, want pending", held)
 	}
-	page.approve(t, held)
+	page.approve(t, held, values)
 	lift := page.pauseAll(t, values["healthz"])
 	paused := callOnce(t, values["mcp"], "update_order", "ord-10")
 	if paused.kind != scenario.AnswerBlocked || !slices.Equal(paused.codes, []string{"PAUSED"}) {
 		t.Fatalf("the retry under the pause answered %+v, want blocked PAUSED", paused)
 	}
-	if rec := page.record(t, held.approvalID); rec.State != "APPROVAL_STATE_APPROVED" {
-		t.Fatalf("after the paused retry the record is %+v, want approved", rec)
+	if rec := page.record(t, held.approvalID); rec.State != "APPROVAL_STATE_PENDING" {
+		t.Fatalf("after the paused retry the record is %+v, want the plane's own pending record", rec)
 	}
 	lift()
 	resumed := callOnce(t, values["mcp"], "update_order", "ord-10")

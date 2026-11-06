@@ -118,12 +118,22 @@ adds and lifts pauses. It writes exactly what the <code>approvals</code> and <co
 commands write (<a href="/docs/reference/cli">cli.md</a>), and it adds no authority: it runs as
 whoever starts it, and anyone who can write the approvals directory or the
 pause file can already do everything the page does.</p>
-<pre><code>guardana-control console --approvals &lt;dir&gt; [--pause &lt;f&gt;] --approver-id &lt;id&gt; [--until-stdin-closes]
+<pre><code>guardana-control console --approvals &lt;dir&gt; [--pause &lt;f&gt;] [--approver-id &lt;id&gt;] [--inbox &lt;dir&gt;]
+    [--until-stdin-closes]
 </code></pre>
 <p>Every answer carries <code>--approver-id</code>. It is the starter's claim, recorded as
 given; the page has no field that changes it, and nothing authenticates it.
 An id the approvals store would refuse, an empty one included, is refused
 before the page starts.</p>
+<p>The page holds no operator key, so it answers no hold under
+<code>approvals.authority: signed</code>. It shows such a hold's approval id, action
+digest, tenant and project, and the <code>approvals approve</code> and <code>reject</code> commands
+that sign an answer, naming <code>--inbox</code> when given; an approval or a rejection
+of it is refused with a 409 naming them. With <code>--inbox</code> and no
+<code>--approver-id</code> the page only reads the directory, which may then be another
+account's through its group (<code>0750</code>, files <code>0640</code>), answers nothing, and
+refuses to start under the account that owns the directory, which is the
+plane's.</p>
 <h2 id="what-it-prints">What it prints</h2>
 <p>It listens on <code>127.0.0.1</code> at a port the system picks and prints exactly one
 line on stdout:</p>

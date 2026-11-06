@@ -72,7 +72,9 @@ group or the world may write it, and each record is written `0600`.
 
 **Under `signed`, only a roster operator granted the call's project
 approves**, by a signed `approval-answer/v1alpha1` in `approvals.inbox_dir`
-that names the hold member for member. Any valid rejection wins; an answer
+that names the hold member for member, signed by `approvals approve --key`;
+a claim for a signed hold is refused, and the console answers none. Any
+valid rejection wins; an answer
 the plane could not judge leaves the call `INDETERMINATE`. Only an inbox the plane
 owns is pruned
 ([ADR-0073](../adr/0073-an-approval-counts-only-as-the-plane-judges-it.md)).
@@ -135,7 +137,7 @@ named rather than hidden, and `doctor` and `/healthz` both say it out loud.
 | Kept by | What | Used for |
 | --- | --- | --- |
 | the pipeline, in memory | the held request: its identifiers, the approval it minted, the envelope, the decision `POLICY_DECIDED` recorded, the binding, where the trail stands, the expiry | what a retry is compared with, and what resumes; every answer is checked against it field by field |
-| the approval store | the file store: one record per held request, under its binding, holding the approval and the request id, never an envelope, a decision or a trail; the memory store: the whole hold, in the plane's memory | which holds are kept; outside `signed`, the answer |
+| the approval store | the file store: one record per held request, under its binding, holding the approval, request id, authority, tenant and project, never an envelope, a decision or a trail; the memory store: the whole hold, in the plane's memory | which holds are kept; outside `signed`, the answer |
 | the ledger, beside the journal | a mark per approval spent or given up | spending once |
 | the hold journal, where configured | one entry per hold: the trail's identifiers and position, the binding, the approval and the expiry | closing a hold this plane lost to a restart |
 | the agent | `approval_id`, `action_digest`, `expires_at`, `retry_after` | retrying the same call after `retry_after` |
@@ -298,10 +300,8 @@ Each of these has to be positive, or the plane refuses to start.
   retry from another run of the same principal and agent is held anew. The
   binding names no run, so once the approval is spent the same action from
   any run is blocked as already used (ADR-0034).
-- A lost hold is closed and never resumed, because rehydrating it would need
-  the envelope's data labels and run context on disk to compare a retry
-  against, and would run an effect for a call answered pending long ago
-  (ADR-0016).
+- A lost hold is closed and never resumed: rehydrating it would need the
+  envelope's labels and run context on disk (ADR-0016).
 - The spend is one compare-and-swap in the plane's ledger, and every field an
   approval is honoured on is checked, so a lying store cannot run a call the
   enforcement point did not hold (ADR-0013, ADR-0066).

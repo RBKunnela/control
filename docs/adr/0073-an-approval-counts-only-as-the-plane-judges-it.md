@@ -114,9 +114,14 @@ newer roster within the roster's lifetime, as ADR-0071 says.
 
 ## Consequences
 
-The approvals directory stays, as a listing of held calls. The approver's
-signing command is a later change; until it lands, a signed answer is
-written by hand or by the test helper. `Find` still lists the held records,
+The approvals directory stays, as a listing of held calls, and each record
+says which authority holds it. Approving under signed is the approvals
+command's, which signs with `--key` from the plane's record of the hold; the
+console holds no operator key, so it shows a signed hold and that command and
+answers nothing. Under signed the plane writes the directory's files `0640`
+for an operators' group to read; the command warns when it signs as the
+directory's owner, since the separation holds only from an operator's own
+account. `Find` still lists the held records,
 so a retry is paired with its hold and a record of a spent hold refuses the
 next identical call.
 

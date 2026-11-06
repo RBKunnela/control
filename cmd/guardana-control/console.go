@@ -23,7 +23,7 @@ import (
 // spells what follows it.
 const (
 	consoleName = "console"
-	consoleForm = "--approvals <dir> [--pause <f>] --approver-id <id> [--until-stdin-closes]"
+	consoleForm = "--approvals <dir> [--pause <f>] [--approver-id <id>] [--inbox <dir>]\n      [--until-stdin-closes]"
 )
 
 // consoleStopWait bounds how long a stopping page waits for requests in
@@ -31,8 +31,8 @@ const (
 const consoleStopWait = time.Second
 
 type consoleFlags struct {
-	dir, pauseFile, approverID string
-	untilStdinCloses           bool
+	dir, pauseFile, approverID, inbox string
+	untilStdinCloses                  bool
 }
 
 func consoleFlagsOf(command string, out io.Writer) (*flag.FlagSet, *consoleFlags) {
@@ -41,6 +41,7 @@ func consoleFlagsOf(command string, out io.Writer) (*flag.FlagSet, *consoleFlags
 	flags.StringVar(&c.dir, "approvals", "", "the approvals directory the page lists and answers")
 	flags.StringVar(&c.pauseFile, "pause", "", "the pause file the page shows and writes")
 	flags.StringVar(&c.approverID, "approver-id", "", "who is answering, recorded on every answer as claimed and never authenticated")
+	flags.StringVar(&c.inbox, "inbox", "", "the plane's approvals.inbox_dir, named in the command that signs a hold; without --approver-id the page only reads, as an operator's own account")
 	flags.BoolVar(&c.untilStdinCloses, "until-stdin-closes", false, "stop when standard input reaches its end")
 	return flags, &c
 }
@@ -70,8 +71,11 @@ func serveConsole(ctx context.Context, args []string, stdin io.Reader, stdout, s
 		return usageError(stderr, consoleName, "takes flags only")
 	case c.dir == "":
 		return usageError(stderr, consoleName, "--approvals names the approvals directory the page answers")
+	case c.inbox != "" && c.approverID == "":
+		return serveReader(ctx, c, stdin, stdout, stderr)
 	case c.approverID == "":
-		return usageError(stderr, consoleName, "--approver-id names who is answering; an approval nobody claims is not an answer")
+		return usageError(stderr, consoleName, "--approver-id names who is answering; an approval nobody claims is not an answer; "+
+			"--inbox alone lists for signed answers")
 	}
 	if err := console.CheckApproverID(c.approverID); err != nil {
 		return usageError(stderr, consoleName, "--approver-id: "+err.Error())
@@ -80,8 +84,23 @@ func serveConsole(ctx context.Context, args []string, stdin io.Reader, stdout, s
 	if err != nil {
 		return fail(stderr, consoleName, err)
 	}
-	status := servePage(ctx, c, store, stdin, stdout, stderr)
+	status := servePage(ctx, c, console.Options{Approvals: store, ApproverID: c.approverID, Inbox: c.inbox}, stdin, stdout, stderr)
 	if err := store.Close(); err != nil && status == exitOK {
+		return fail(stderr, consoleName, err)
+	}
+	return status
+}
+
+// serveReader serves a page that only reads the approvals directory, as an
+// operator under the signed authority: it answers nothing and shows the
+// command that signs each hold.
+func serveReader(ctx context.Context, c *consoleFlags, stdin io.Reader, stdout, stderr io.Writer) int {
+	r, err := approvals.OpenReader(c.dir)
+	if err != nil {
+		return fail(stderr, consoleName, err)
+	}
+	status := servePage(ctx, c, console.Options{Reader: r, Inbox: c.inbox}, stdin, stdout, stderr)
+	if err := r.Close(); err != nil && status == exitOK {
 		return fail(stderr, consoleName, err)
 	}
 	return status
@@ -89,16 +108,14 @@ func serveConsole(ctx context.Context, args []string, stdin io.Reader, stdout, s
 
 // servePage binds an IP literal on the loopback, never a name another
 // resolver could answer, and serves the page on it.
-func servePage(ctx context.Context, c *consoleFlags, store *approvals.Approver, stdin io.Reader, stdout, stderr io.Writer) int {
+func servePage(ctx context.Context, c *consoleFlags, o console.Options, stdin io.Reader, stdout, stderr io.Writer) int {
 	ln, err := (&net.ListenConfig{}).Listen(ctx, "tcp4", "127.0.0.1:0")
 	if err != nil {
 		return fail(stderr, consoleName, err)
 	}
 	token := console.NewToken()
-	handler, err := console.New(console.Options{
-		Approvals: store, Directory: c.dir, PauseFile: c.pauseFile, ApproverID: c.approverID,
-		Host: ln.Addr().String(), Token: token,
-	})
+	o.Directory, o.PauseFile, o.Host, o.Token = c.dir, c.pauseFile, ln.Addr().String(), token
+	handler, err := console.New(o)
 	if err != nil {
 		return fail(stderr, consoleName, errors.Join(err, ln.Close()))
 	}

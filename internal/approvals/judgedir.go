@@ -11,7 +11,7 @@ import (
 // account. It takes no lock, reads no record and creates nothing, so a
 // command that only inspects may call it while a plane serves.
 func JudgeDirectory(dir string) error {
-	root, _, err := openRoot(dir)
+	root, _, err := openRoot(dir, false)
 	if err != nil {
 		return fmt.Errorf("%s: %w", dir, err)
 	}

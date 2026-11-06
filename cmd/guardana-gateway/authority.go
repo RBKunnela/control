@@ -157,12 +157,16 @@ func otherKeys(cfg *gatewayconfig.Config) ([]ed25519.PublicKey, error) {
 	return out, nil
 }
 
-// openSigned makes the start checks and opens the roster, the authenticator
+// openSigned makes the start checks, checkSignedStart's where startCheck is
+// nil, and opens the roster, the authenticator
 // and the authorizer. The roster id is the configuration file's alone, so a
 // floor directory that lists several ids never lets a roster of another one
 // in, and the roster's first read is held to a timeout.
-func openSigned(ctx context.Context, cfg *gatewayconfig.Config) (*signedPorts, error) {
-	if err := checkSignedStart(cfg); err != nil {
+func openSigned(ctx context.Context, cfg *gatewayconfig.Config, startCheck func(*gatewayconfig.Config) error) (*signedPorts, error) {
+	if startCheck == nil {
+		startCheck = checkSignedStart
+	}
+	if err := startCheck(cfg); err != nil {
 		return nil, err
 	}
 	root, err := readRouteKey(cfg.Resolve(cfg.Trust.RootPublicKey))
@@ -210,7 +214,7 @@ func (p *plane) openAuthority(ctx context.Context) error {
 		p.authority, p.authorityKind = &claimAuthority{plane: p.records}, gateway.AuthorityDirectory
 		return nil
 	case gatewayconfig.AuthoritySigned:
-		ports, err := openSigned(ctx, p.cfg)
+		ports, err := openSigned(ctx, p.cfg, p.signedStart)
 		if err != nil {
 			return err
 		}

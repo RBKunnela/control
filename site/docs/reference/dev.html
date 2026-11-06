@@ -137,7 +137,7 @@ believes it applies;</li>
 <code>policy.public_key</code>, <code>policy.statement_file</code>, <code>policy.state_dir</code>,
 <code>policy.freshness_key_id</code>, <code>policy.freshness_public_key</code>, <code>pause.file</code>,
 <code>evidence.dir</code>, <code>export.endpoint</code>,
-<code>export.allow_plaintext</code>, every <code>approvals</code> key and every <code>runs</code> key, since
+<code>export.allow_plaintext</code>, every <code>approvals</code>, <code>trust</code> and <code>operators</code> key and every <code>runs</code> key, since
 dev serves local runs only, and with <code>--decision-point=silent</code> every <code>pdp</code>
 key;</li>
 <li>a <code>stdio</code> listener, and any address that is not an IP literal on the
@@ -156,8 +156,17 @@ it has anyway may not be seen, and dev's own value applies.</p>
 the demo's tenant and project and to a credential drawn for this plane and
 held in memory only,
 <code>policy.bundle</code>, <code>policy.statement</code>, the bundle's freshness statement,
-<code>floors/</code>, the plane's floor directory, made by <code>guardana-control policy state init --kind plane</code>, <code>pause.json</code>, made by <code>guardana-control pause init</code>, and <code>settings.txt</code>, every scalar key the plane resolved. The directory
-is left behind when dev stops.</p>
+<code>floors/</code>, the plane's floor directory, made by <code>guardana-control policy state init --kind plane</code>, <code>pause.json</code>, made by <code>guardana-control pause init</code>, <code>settings.txt</code>, every scalar key the plane resolved, and what the
+<code>signed</code> approval authority a dev plane runs under reads: <code>inbox/</code>;
+<code>operator/</code>, a key pair made by <code>guardana-control policy keygen</code>; and
+<code>trust/</code>, a roster <code>dev</code> naming that key as operator <code>dev-operator</code> for the
+demo's tenant and project, <code>root.pub</code>, the public half of a trust root made
+in dev's memory and cleared once it signed, and <code>floors/</code>, made by
+<code>guardana-control operators floor init</code>. The operator's key is in the state
+directory, so the plane's own account can approve: a dev plane separates no
+duties, and its start skips the placement checks <code>run</code> makes under <code>signed</code>,
+taking only the trust dev laid out. The directory is left behind when dev
+stops.</p>
 <p>The bundle is signed under an Ed25519 key made in dev's memory for that one
 bundle. The key is never written, and dev clears its own copy once the
 bundle is signed; copies the standard library makes while signing are not
@@ -188,8 +197,9 @@ any tool behind the plane, can call tools as the listener's principal.</p>
 (<a href="/docs/reference/console">console.md</a>); every path above, the floor directory as
 <code>state_dir</code>; <code>mode</code>, <code>bundle</code>, <code>digest</code>, <code>key_id</code> and <code>key</code>;
 <code>freshness_key_id</code> and <code>freshness_key</code>; <code>renewal</code>, how often the statement
-is renewed; and the commands that read the trail, list the approvals, pause
-every call and run a scenario. The page's token reaches nothing but that one
+is renewed; <code>inbox</code>, <code>operator_key</code> and <code>operator</code>; and the commands that
+read the trail, list the approvals, sign an approval, pause every call and
+run a scenario. The page's token reaches nothing but that one
 line: no argument, variable, file or log of dev's.</p>
 <p>A renewal changes no digest, so a scenario that runs past the budget keeps
 its verdicts. A renewal that fails is said on stderr; once the budget runs

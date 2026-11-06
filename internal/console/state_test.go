@@ -240,7 +240,7 @@ func TestEachRecordSaysWhatItCan(t *testing.T) {
 		{"a state no answer names", tableEntry(controlv1.ApprovalState_APPROVAL_STATE_UNSPECIFIED, time.Minute, "", tableView()), true,
 			"State APPROVAL_STATE_UNSPECIFIED.", false},
 	} {
-		r := recordOf(c.entry, tableNow, c.plane)
+		r := claimPage.recordOf(c.entry, tableNow, c.plane)
 		if r.Status != c.status {
 			t.Errorf("%s: says %q, want %q", c.name, r.Status, c.status)
 		}
@@ -269,7 +269,7 @@ func fieldValue(r recordReply, label string) string {
 // projection shows every field the listing prints, in the listing's order,
 // and names the call and the head of its digest for a confirmation.
 func TestACardShowsTheListingsFieldsInItsOrder(t *testing.T) {
-	r := recordOf(tableEntry(controlv1.ApprovalState_APPROVAL_STATE_REJECTED, time.Minute, "duty-officer", tableView()), tableNow, true)
+	r := claimPage.recordOf(tableEntry(controlv1.ApprovalState_APPROVAL_STATE_REJECTED, time.Minute, "duty-officer", tableView()), tableNow, true)
 	want := []fieldReply{
 		{"state", "rejected"},
 		{"request", "req-rec1"},
@@ -310,7 +310,7 @@ func TestAProjectionThatIsNotThisRecordsShowsNone(t *testing.T) {
 		"another digest":   {otherDigest, "none: the projection beside this record describes another approval"},
 		"none":             {nil, "none: the projection is missing or would not decode"},
 	} {
-		r := recordOf(tableEntry(controlv1.ApprovalState_APPROVAL_STATE_PENDING, time.Minute, "", c.view), tableNow, true)
+		r := claimPage.recordOf(tableEntry(controlv1.ApprovalState_APPROVAL_STATE_PENDING, time.Minute, "", c.view), tableNow, true)
 		if r.Readable != nil || r.ReadableNote != c.note || fieldValue(r, "readable") != c.note || fieldValue(r, "principal") != "(no field principal)" {
 			t.Errorf("%s: readable %+v, note %q, fields %v", name, r.Readable, r.ReadableNote, r.Fields)
 		}
@@ -356,3 +356,6 @@ func TestThePagesApproverCheckIsTheStores(t *testing.T) {
 		t.Fatalf("the table holds %d accepted and %d refused ids; it cannot tell the two checks apart", accepted, refused)
 	}
 }
+
+// claimPage is a page over an approver's handle, which never touches it here.
+var claimPage = &page{o: Options{Approvals: &approvals.Approver{}}}

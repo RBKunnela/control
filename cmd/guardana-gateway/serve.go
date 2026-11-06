@@ -80,6 +80,18 @@ func startLine(cfg *gatewayconfig.Config) string {
 // cannot start is released before the refusal returns.
 func startPlane(ctx context.Context, cfg *gatewayconfig.Config, stderr io.Writer, tokenPath string) (*plane, error) {
 	p, err := build(cfg, newLogger(cfg.LogLevel, stderr), time.Now(), roleServe, tokenPath)
+	return startBuilt(ctx, p, err)
+}
+
+// startDevSigned is startPlane for a dev plane, held to signedStart in place
+// of checkSignedStart, with no run token file.
+func startDevSigned(ctx context.Context, cfg *gatewayconfig.Config, stderr io.Writer, signedStart func(*gatewayconfig.Config) error) (*plane, error) {
+	p, err := buildChecked(cfg, newLogger(cfg.LogLevel, stderr), time.Now(), roleServe, "", signedStart)
+	return startBuilt(ctx, p, err)
+}
+
+// startBuilt starts the adapter of a plane build returned.
+func startBuilt(ctx context.Context, p *plane, err error) (*plane, error) {
 	if err != nil {
 		return nil, err
 	}

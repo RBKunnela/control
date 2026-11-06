@@ -61,6 +61,7 @@ func devScenario(ctx context.Context, in devInputs, dir string, s *scenario.Scen
 	writeLine(stdout, oneLine(s.ID)+" plane: state in "+oneLine(d.state.dir))
 	status := exitCouldNotRun
 	target, err := targetOf(d.cfg)
+	target.operatorKey, target.inbox = d.state.operatorKeyFile(), d.state.path(stateInbox)
 	if err == nil {
 		r := &runner{plane: target, trail: d.state.path(stateTrail), control: in.control,
 			timeout: defaultScenarioTimeout, http: &http.Client{}, out: stdout}

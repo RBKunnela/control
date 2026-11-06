@@ -74,17 +74,18 @@ The key reaches the command only as a path, and no refusal quotes it. Both
 refuse on a platform without permission bits
 ([ADR-0018](../adr/0018-keys-and-bundles-on-disk.md)).
 
-Both answering commands require `--approver-id`, a claim nothing checks;
-flags come before the directory and the approval id.
+Flags come first. `--key` signs from the plane's record of the hold, read
+through the operators' group (`0750` directory, `0640` files), and files
+`<approval id>.<key id>-<decision>.answer`, mode `0644`, never replacing one;
+run as the plane's account it warns. `--approver-id` is a claim, refused for
+a signed hold.
 
-`approvals list` prints, for each record, its state and both digests, and
-beside them the readable fields of the projection the plane wrote at hold
-time; whether a retry spent an approval is the plane's own ledger's. Those readable fields are not bound
-to the action digest beside them, since the binding is over argument bytes no
-record holds; the listing says so above the records. A listing the store
+`approvals list` prints, for each record, its state, both digests and the
+readable fields of the projection the plane wrote at hold time, which are
+not bound to the digest; the listing says so. A listing the store
 reports incomplete exits 1 and names what it could not read.
 
-`approvals approve` and `approvals reject` write the answer whether or not a
+A claim is written whether or not a
 plane runs, and exit 0 either way: the record waits for the next
 plane. Where no plane holds the directory they say so on stderr: no held
 call waits for the answer, since a hold does not outlive its plane, and a
@@ -147,8 +148,10 @@ usage:
   guardana-control policy state reset --kind plane|signer --bundle-id <id> --reason <text>
       (--empty | --serial <n> --digest <d> --issued-at <t>) <dir>
   guardana-control approvals list <dir>
-  guardana-control approvals approve --approver-id <id> [--reason <text>] <dir> <approval-id>
-  guardana-control approvals reject --approver-id <id> [--reason <text>] <dir> <approval-id>
+  guardana-control approvals approve (--key <file> --inbox <dir> | --approver-id <id>)
+      [--reason <text>] <dir> <approval-id>
+  guardana-control approvals reject (--key <file> --inbox <dir> | --approver-id <id>)
+      [--reason <text>] <dir> <approval-id>
   guardana-control pause init <file>
   guardana-control pause add (--global | --provider <p> [--action <k> [--name <n>]]
       | --run <id> | --agent <id> | --principal <id>) [--reason <r>] <f>
@@ -185,8 +188,11 @@ usage:
       --stops <dir>
   guardana-control hook (--profile <id> | --profile-file <file>) --socket <path>
       --state-dir <dir>
-  guardana-control console --approvals <dir> [--pause <f>] --approver-id <id> [--until-stdin-closes]
+  guardana-control console --approvals <dir> [--pause <f>] [--approver-id <id>] [--inbox <dir>]
+      [--until-stdin-closes]
 
+Under approvals.authority: signed a plane takes only an answer an operator signs with
+--key into its inbox, and refuses every claim. Under directory:
 Write access to the approvals directory is the approval authority:
 --approver-id is a claim recorded as given, never an identity.
 An id that could read as authn:, mixes scripts or holds a hidden or restyled character is refused.

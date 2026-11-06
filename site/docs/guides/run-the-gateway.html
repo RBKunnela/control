@@ -284,7 +284,7 @@ complete. Then change the mode and restart.</p>
 <h3 id="8-let-a-person-answer-a-held-call">8. Let a person answer a held call</h3>
 <pre><code class="language-yaml">approvals:
   authority: signed             # or directory, with the next two keys alone
-  dir: /var/lib/guardana/approvals
+  dir: /var/lib/guardana/approvals    # the plane&#39;s, the operators&#39; group, mode 0750, setgid where needed
   hold_journal_dir: /var/lib/guardana/holds
   inbox_dir: /var/lib/guardana/inbox   # the plane&#39;s, the operators&#39; group, mode 1770
 trust:
@@ -298,12 +298,12 @@ operators:
   authorizer:
     kind: roster
 </code></pre>
-<p>Under <code>directory</code>, write access to <code>approvals.dir</code> is the approval authority
-and <code>--approver-id</code> is a claim (<a href="/docs/reference/cli">reference/cli.md</a>).
-Under <code>signed</code>, an answer is an operator's signed file
-<code>&lt;approval id&gt;.&lt;label&gt;.answer</code>, at most 16 per approval, 32 KiB each
-(<a href="/docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it">ADR-0073</a>). A
-lost hold never runs; the next start closes its trail
+<p>Under <code>directory</code>, whoever writes <code>approvals.dir</code> approves, by a claim
+(<a href="/docs/reference/cli">reference/cli.md</a>). Under <code>signed</code>, an operator signs
+with <code>approvals approve --key</code> from their own account, reading the plane's
+<code>0640</code> files
+(<a href="/docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it">ADR-0073</a>).
+No test here runs a second account. A lost hold never runs; the next start closes its trail
 (<a href="/docs/concepts/approvals-and-the-held-call">concepts/approvals-and-the-held-call.md</a>).</p>
 <h3 id="9-set-the-evidence-rules-on-purpose">9. Set the evidence rules on purpose</h3>
 <table>

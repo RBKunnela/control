@@ -278,7 +278,7 @@ func TestARefusalQuotesNoControlCharacterAndNoUnboundedRun(t *testing.T) {
 		t.Fatalf("holding: %v", err)
 	}
 	hostile := strings.Repeat("A", 4000) + "\x1b[2J\x07"
-	body := replaceInBody(t, readFile(t, dir, "APPROVAL1.0-held.rec"), `"schema_version":"2.0"`,
+	body := replaceInBody(t, readFile(t, dir, "APPROVAL1.0-held.rec"), `"schema_version":"2.1"`,
 		`"schema_version":`+mustJSON(t, hostile))
 	writeFile(t, dir, "APPROVAL1.0-held.rec", reframe(t, body))
 	_, err := p.Find(t.Context(), h.Binding, minted)

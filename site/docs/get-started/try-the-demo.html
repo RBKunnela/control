@@ -181,19 +181,17 @@ the <code>request_id</code> and <code>decision_id</code> the plane recorded for 
 <p>The answer is marked <code>pending</code>, with the text <code>APPROVAL_PENDING</code>, an
 <code>approval_id</code> and when it expires. Nothing reached the orders server.</p>
 <p>Open the <code>page</code> link in your browser within ten minutes of the start; the
-link works once. Under <strong>Held calls</strong> the update waits. Press <strong>Approve</strong>,
-check that the confirmation names <code>update_order</code> on <code>orders</code>, and press
-<strong>Yes, approve</strong>.</p>
+link works once. Under <strong>Held calls</strong> the update waits, with its action
+digest and the command that signs an approval of it: a dev plane takes only
+an answer an operator signs, and the page holds no key. Run the
+<code>approve_command</code> dev printed, with the <code>approval_id</code>:</p>
+<pre><code>bin/guardana-control approvals approve --key &lt;state&gt;/operator/signing.key --inbox &lt;state&gt;/inbox -- &lt;state&gt;/approvals &lt;approval_id&gt;
+</code></pre>
 <p>Now make the same call again, with the same arguments. It runs, and its
 <code>request_id</code> is the held one's: the retry resumed the held request. An
 approval covers one exact call: the same update with other arguments would
 be held as a request of its own.</p>
-<p>The page records the same approval as <code>guardana-control approvals approve</code>
-does. Without a
-browser, answer from the terminal instead, with the <code>approvals</code> path and the
-<code>approval_id</code>:</p>
-<pre><code>bin/guardana-control approvals approve --approver-id you &lt;state&gt;/approvals &lt;approval_id&gt;
-</code></pre>
+<p>It prints the action digest it signed; check it is the one the page shows.</p>
 <h2 id="5-pause-the-orders-server">5. Pause the orders server</h2>
 <p>On the page, under <strong>Pauses</strong>, choose <strong>every call to one upstream</strong>, type
 <code>orders</code>, give a reason and press <strong>Pause</strong>. Once the plane has read its pause

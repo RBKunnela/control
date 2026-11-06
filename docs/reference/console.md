@@ -15,13 +15,24 @@ whoever starts it, and anyone who can write the approvals directory or the
 pause file can already do everything the page does.
 
 ```
-guardana-control console --approvals <dir> [--pause <f>] --approver-id <id> [--until-stdin-closes]
+guardana-control console --approvals <dir> [--pause <f>] [--approver-id <id>] [--inbox <dir>]
+    [--until-stdin-closes]
 ```
 
 Every answer carries `--approver-id`. It is the starter's claim, recorded as
 given; the page has no field that changes it, and nothing authenticates it.
 An id the approvals store would refuse, an empty one included, is refused
 before the page starts.
+
+The page holds no operator key, so it answers no hold under
+`approvals.authority: signed`. It shows such a hold's approval id, action
+digest, tenant and project, and the `approvals approve` and `reject` commands
+that sign an answer, naming `--inbox` when given; an approval or a rejection
+of it is refused with a 409 naming them. With `--inbox` and no
+`--approver-id` the page only reads the directory, which may then be another
+account's through its group (`0750`, files `0640`), answers nothing, and
+refuses to start under the account that owns the directory, which is the
+plane's.
 
 ## What it prints
 

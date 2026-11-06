@@ -35,7 +35,7 @@ type Plane struct {
 // it briefly. A plane that is genuinely running holds it for its whole life,
 // and the refusal it earns is only delayed.
 func OpenPlane(dir string, opts ...Option) (*Plane, error) {
-	s, err := openStore(dir, true, opts)
+	s, err := openStore(dir, openPlane, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (p *Plane) Hold(ctx context.Context, h Hold, now time.Time) error {
 		return err
 	}
 	defer p.s.mu.Unlock()
-	rec, err := heldRecord(h, p.s.opts.maxApprovalWindow)
+	rec, err := heldRecord(h, p.s.opts.authority, p.s.opts.maxApprovalWindow)
 	if err != nil {
 		return err
 	}
@@ -140,10 +140,11 @@ func (p *Plane) Release(ctx context.Context, binding approval.Binding, requestID
 	return p.s.drop(approvalID)
 }
 
-// heldRecord turns a hold into the record it is written as, and refuses a hold
-// that is not the plane's own freshly minted one: an approval that already
-// carries an answer is one the plane would be granting itself.
-func heldRecord(h Hold, maxWindow time.Duration) (Record, error) {
+// heldRecord turns a hold into the record it is written as, under authority
+// and naming the envelope's tenant and project, and refuses a hold that is
+// not the plane's own freshly minted one: an approval that already carries an
+// answer is one the plane would be granting itself.
+func heldRecord(h Hold, authority string, maxWindow time.Duration) (Record, error) {
 	a := h.Approval
 	switch {
 	case a == nil:
@@ -163,6 +164,9 @@ func heldRecord(h Hold, maxWindow time.Duration) (Record, error) {
 		RequestID:     a.GetRequestId(),
 		Binding:       h.Binding,
 		Approval:      proto.CloneOf(a),
+		Authority:     authority,
+		Tenant:        h.Envelope.GetTenantId(),
+		Project:       h.Envelope.GetProjectId(),
 	}
 	if err := rec.check(maxWindow); err != nil {
 		return Record{}, err

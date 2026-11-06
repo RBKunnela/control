@@ -133,3 +133,33 @@ func TestFloorInitTakesOnlyARosterIDThePortTakes(t *testing.T) {
 		}
 	}
 }
+
+// TestARosterChangedSinceItWasReadIsNotReplaced: a roster of another root
+// put at --out after roster sign first read it, here once it holds the lock,
+// as a writer that skips the lock could, passes the serial check, which reads
+// only this root's rosters; it is refused all the same, and --out keeps it.
+func TestARosterChangedSinceItWasReadIsNotReplaced(t *testing.T) {
+	tr := newRosterTree(t)
+	now := time.Date(2026, 10, 30, 9, 0, 0, 0, time.UTC)
+	if code, _, stderr := rosterSignAt(t, tr, trust.DefaultLifetime, now); code != exitOK {
+		t.Fatalf("the first signing answered %d: %q", code, stderr)
+	}
+	other, _, err := trust.SignDocument([]byte(rosterSource(seeded(0x61).Public().(ed25519.PublicKey))), now, trust.DefaultLifetime, seeded(0x73))
+	if err != nil {
+		t.Fatal(err)
+	}
+	planted, err := trust.MarshalFile(other)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeFixture(t, tr.source, strings.Replace(rosterSource(seeded(0x61).Public().(ed25519.PublicKey)), `"serial":3`, `"serial":4`, 1))
+	afterRosterLock = func() { writeFixture(t, tr.out, string(planted)) }
+	defer func() { afterRosterLock = func() {} }()
+	code, stdout, stderr := rosterSignAt(t, tr, trust.DefaultLifetime, now.Add(time.Minute))
+	if code != exitFail || stdout != "" || !strings.Contains(stderr, "changed since roster sign first read it") {
+		t.Errorf("exit %d, stdout %q, stderr %q; want the changed file refused", code, stdout, stderr)
+	}
+	if got := readFile(t, tr.out); got != string(planted) {
+		t.Error("--out was replaced after it changed under the signer")
+	}
+}

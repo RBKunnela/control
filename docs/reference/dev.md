@@ -37,7 +37,7 @@ Before it creates or binds anything, dev refuses, with status 1:
   `policy.public_key`, `policy.statement_file`, `policy.state_dir`,
   `policy.freshness_key_id`, `policy.freshness_public_key`, `pause.file`,
   `evidence.dir`, `export.endpoint`,
-  `export.allow_plaintext`, every `approvals` key and every `runs` key, since
+  `export.allow_plaintext`, every `approvals`, `trust` and `operators` key and every `runs` key, since
   dev serves local runs only, and with `--decision-point=silent` every `pdp`
   key;
 - a `stdio` listener, and any address that is not an IP literal on the
@@ -60,8 +60,17 @@ held in memory only,
 `policy.bundle`, `policy.statement`, the bundle's freshness statement,
 `floors/`, the plane's floor directory, made by `guardana-control policy
 state init --kind plane`, `pause.json`, made by `guardana-control pause
-init`, and `settings.txt`, every scalar key the plane resolved. The directory
-is left behind when dev stops.
+init`, `settings.txt`, every scalar key the plane resolved, and what the
+`signed` approval authority a dev plane runs under reads: `inbox/`;
+`operator/`, a key pair made by `guardana-control policy keygen`; and
+`trust/`, a roster `dev` naming that key as operator `dev-operator` for the
+demo's tenant and project, `root.pub`, the public half of a trust root made
+in dev's memory and cleared once it signed, and `floors/`, made by
+`guardana-control operators floor init`. The operator's key is in the state
+directory, so the plane's own account can approve: a dev plane separates no
+duties, and its start skips the placement checks `run` makes under `signed`,
+taking only the trust dev laid out. The directory is left behind when dev
+stops.
 
 The bundle is signed under an Ed25519 key made in dev's memory for that one
 bundle. The key is never written, and dev clears its own copy once the
@@ -97,8 +106,9 @@ One `name: value` line each, on stdout: `mcp`, the address an agent calls;
 ([console.md](console.md)); every path above, the floor directory as
 `state_dir`; `mode`, `bundle`, `digest`, `key_id` and `key`;
 `freshness_key_id` and `freshness_key`; `renewal`, how often the statement
-is renewed; and the commands that read the trail, list the approvals, pause
-every call and run a scenario. The page's token reaches nothing but that one
+is renewed; `inbox`, `operator_key` and `operator`; and the commands that
+read the trail, list the approvals, sign an approval, pause every call and
+run a scenario. The page's token reaches nothing but that one
 line: no argument, variable, file or log of dev's.
 
 A renewal changes no digest, so a scenario that runs past the budget keeps

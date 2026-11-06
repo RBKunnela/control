@@ -129,6 +129,14 @@ func AnswerFileName(approvalID, label string) (string, error) {
 	return approvalID + "." + label + answerSuffix, nil
 }
 
+// cutAnswerName splits an answer file's name into its approval id and its
+// label, and reports false for a name without the answer suffix or a label.
+func cutAnswerName(name string) (id, label string, ok bool) {
+	stem, suffixed := strings.CutSuffix(name, answerSuffix)
+	id, label, ok = strings.Cut(stem, ".")
+	return id, label, ok && suffixed
+}
+
 func answerLabel(label string) bool {
 	return label != "" && len(label) <= MaxAnswerLabelBytes && approvals.CheckApprovalID(label) == nil
 }
@@ -184,8 +192,8 @@ func (in *Inbox) list(approvalID string) ([]string, bool, error) {
 	truncated := len(entries) > MaxInboxEntries
 	var names []string
 	for _, e := range entries[:min(len(entries), MaxInboxEntries)] {
-		id, label, ok := strings.Cut(strings.TrimSuffix(e.Name(), answerSuffix), ".")
-		if !strings.HasSuffix(e.Name(), answerSuffix) || !ok || approvals.CheckApprovalID(id) != nil || !answerLabel(label) {
+		id, label, ok := cutAnswerName(e.Name())
+		if !ok || approvals.CheckApprovalID(id) != nil || !answerLabel(label) {
 			in.counts[InboxForeignName]++
 			continue
 		}
@@ -331,8 +339,8 @@ func (in *Inbox) pruneEach(ctx context.Context, d *os.File, cutoff time.Time, li
 // pruneOne removes name when it is an answer file of an approval no longer
 // held, last modified at or before cutoff.
 func (in *Inbox) pruneOne(name string, cutoff time.Time, live func(string) bool, out *Pruned) {
-	id, label, ok := strings.Cut(strings.TrimSuffix(name, answerSuffix), ".")
-	if !strings.HasSuffix(name, answerSuffix) || !ok || approvals.CheckApprovalID(id) != nil || !answerLabel(label) || live(id) {
+	id, label, ok := cutAnswerName(name)
+	if !ok || approvals.CheckApprovalID(id) != nil || !answerLabel(label) || live(id) {
 		return
 	}
 	info, err := in.root.Lstat(name)

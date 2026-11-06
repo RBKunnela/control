@@ -127,7 +127,7 @@ func callScript(t *testing.T, mcp, tool, args string) answer {
 // runs, the update is held, an approval lets the same update resume on the
 // held request, the trail command finds both requests whole, and the
 // counters show two executions and one hold. The page is not driven here: the
-// approval is filed with the approvals command the page writes through.
+// approval is signed with the approvals command the page names.
 func TestTheTutorialsCallsBehaveAsItSays(t *testing.T) {
 	d, v := startInteractiveDev(t)
 	read := callScript(t, v["mcp"], "read_order", `{"id":"ord-1"}`)
@@ -140,7 +140,7 @@ func TestTheTutorialsCallsBehaveAsItSays(t *testing.T) {
 		t.Fatalf("the update answered %+v, want pending with an approval id", held)
 	}
 	gateway, _ := builtDemo(t)
-	approve(t, filepath.Join(filepath.Dir(gateway), brand.CLI), v["approvals"], held.meta("approval_id"))
+	approve(t, filepath.Join(filepath.Dir(gateway), brand.CLI), v, held.meta("approval_id"))
 	resumed := callScript(t, v["mcp"], "update_order", update)
 	if resumed.Result.IsError || resumed.meta("answer") != "" || resumed.meta("request_id") != held.meta("request_id") {
 		t.Fatalf("the retry answered %+v, want a result on request %s", resumed, held.meta("request_id"))
@@ -167,11 +167,12 @@ func requireRecorded(t *testing.T, gateway string, v map[string]string, requests
 	}
 }
 
-// approve files an approval with the approvals command, which is what the
-// page writes through.
-func approve(t *testing.T, control, dir, id string) {
+// approve signs an approval with the approvals command and the dev
+// operator's key, which is what the page names for a dev plane's hold.
+func approve(t *testing.T, control string, v map[string]string, id string) {
 	t.Helper()
-	if out, err := exec.Command(control, "approvals", "approve", "--approver-id", "tester", dir, id).CombinedOutput(); err != nil { //nolint:gosec // G204: the binary this test built
+	cmd := exec.Command(control, "approvals", "approve", "--key", v["operator_key"], "--inbox", v["inbox"], v["approvals"], id) //nolint:gosec // G204: the binary this test built
+	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("approving: %v\n%s", err, out)
 	}
 }

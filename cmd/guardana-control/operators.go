@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"time"
 
@@ -102,7 +104,7 @@ func rosterSign(v rosterSignValues, source string, now time.Time, stdout, stderr
 	if err != nil {
 		return fail(stderr, rosterSignName, err)
 	}
-	if err := replaceRoster(out, d, key, body); err != nil {
+	if err := replaceRoster(out, prev, d, key, body); err != nil {
 		return fail(stderr, rosterSignName, err)
 	}
 	lines := "roster_id: " + d.ID() + "\n" +
@@ -128,10 +130,13 @@ var rosterLockWait = 10 * time.Second
 var afterRosterLock = func() {}
 
 // replaceRoster holds the output directory's lock while it reads --out again,
-// checks the serial against what it holds now and replaces it, so of two
+// checks the serial against what it holds now, refuses when it no longer
+// holds read, the envelope found before the lock, and replaces it, so of two
 // signers of one roster id and serial only the first writes: the check before
-// the lock was taken refuses early, and only this one decides.
-func replaceRoster(out string, next trust.Document, key ed25519.PrivateKey, body []byte) (err error) {
+// the lock was taken refuses early, and only this one decides. A file that
+// changed in between is refused whatever it now holds, since another root's
+// roster or another id would pass the serial check and be replaced unseen.
+func replaceRoster(out string, read *trust.Envelope, next trust.Document, key ed25519.PrivateKey, body []byte) (err error) {
 	root, err := os.OpenRoot(filepath.Dir(out))
 	if err != nil {
 		return fmt.Errorf("--out %s: %w", out, err)
@@ -154,6 +159,9 @@ func replaceRoster(out string, next trust.Document, key ed25519.PrivateKey, body
 	}
 	if err := higherThan(prev, next, key); err != nil {
 		return fmt.Errorf("--out %s: %w", out, err)
+	}
+	if !sameEnvelope(read, prev) {
+		return fmt.Errorf("--out %s changed since roster sign first read it; nothing was written, so read it and sign again", out)
 	}
 	if err := ondisk.ReplaceIn(root, filepath.Base(out), body, rosterFileMode); err != nil {
 		return fmt.Errorf("--out %s: %w", out, err)
@@ -216,6 +224,18 @@ func envelopeAt(out string, raw []byte, err error) (*trust.Envelope, error) {
 		return nil, notARoster(out)
 	}
 	return &env, nil
+}
+
+// sameEnvelope reports whether a and b are both absent or the same envelope,
+// signature for signature.
+func sameEnvelope(a, b *trust.Envelope) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return a.PayloadType == b.PayloadType && bytes.Equal(a.Payload, b.Payload) &&
+		slices.EqualFunc(a.Signatures, b.Signatures, func(x, y trust.Signature) bool {
+			return x.KeyID == y.KeyID && bytes.Equal(x.Signature, y.Signature)
+		})
 }
 
 func notARoster(out string) error {

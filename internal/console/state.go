@@ -11,6 +11,7 @@ import (
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/approvals"
+	"github.com/guardana/control/internal/brand"
 	"github.com/guardana/control/internal/keytext"
 )
 
@@ -23,6 +24,7 @@ import (
 // pause file.
 type stateReply struct {
 	ApproverID string         `json:"approver_id"`
+	Who        string         `json:"who"`
 	Approvals  approvalsReply `json:"approvals"`
 	Pause      *pauseReply    `json:"pause"`
 }
@@ -70,6 +72,13 @@ type recordReply struct {
 	Fields       []fieldReply   `json:"fields"`
 	Answerable   bool           `json:"answerable"`
 	Confirm      string         `json:"confirm"`
+	// Signed is a record held under the signed authority, which the page
+	// never answers; SignWith is the commands that do, and Tenant and
+	// Project what they sign beside the digest.
+	Signed   bool     `json:"signed"`
+	Tenant   string   `json:"tenant"`
+	Project  string   `json:"project"`
+	SignWith []string `json:"sign_with"`
 	// requested is when the plane held the request, which orders the cards.
 	requested time.Time
 }
@@ -105,7 +114,7 @@ const (
 )
 
 func (p *page) state(w http.ResponseWriter, r *http.Request, _ any) {
-	out := stateReply{ApproverID: keytext.Printable(p.o.ApproverID), Approvals: p.listing(r)}
+	out := stateReply{ApproverID: keytext.Printable(p.o.ApproverID), Who: p.who(), Approvals: p.listing(r)}
 	if p.o.PauseFile != "" {
 		out.Pause = pauseState(p.o.PauseFile)
 	}
@@ -114,7 +123,7 @@ func (p *page) state(w http.ResponseWriter, r *http.Request, _ any) {
 
 func (p *page) listing(r *http.Request) approvalsReply {
 	out := approvalsReply{Directory: keytext.Printable(p.o.Directory), Gone: goneFromListing, Banner: []string{}, Problems: []problemReply{}, Records: []recordReply{}}
-	l, err := p.o.Approvals.List(r.Context())
+	l, err := p.list(r.Context())
 	if err != nil {
 		out.Error = keytext.Printable(err.Error())
 		out.Plane = planeUnknown
@@ -138,7 +147,7 @@ func (p *page) listing(r *http.Request) approvalsReply {
 	}
 	now := p.now()
 	for _, e := range l.Entries {
-		out.Records = append(out.Records, recordOf(e, now, running))
+		out.Records = append(out.Records, p.recordOf(e, now, running))
 	}
 	// A card keeps its place on the page while it is open, and a new hold
 	// goes after every card already shown: approval ids are random, and an
@@ -156,7 +165,7 @@ func (p *page) listing(r *http.Request) approvalsReply {
 // and says what became of it with a plane running or not. ApprovalID and
 // ActionDigest are the handles an answer carries back, and are kept as the
 // record holds them; every value the card shows is printable.
-func recordOf(e approvals.Entry, now time.Time, planeRunning bool) recordReply {
+func (p *page) recordOf(e approvals.Entry, now time.Time, planeRunning bool) recordReply {
 	a := e.Record.Approval
 	rec := recordReply{
 		ApprovalID:   e.Record.ApprovalID,
@@ -189,9 +198,14 @@ func recordOf(e approvals.Entry, now time.Time, planeRunning bool) recordReply {
 			Requested:   v.RequestedAt.UTC().Format(time.RFC3339),
 		}
 	}
+	if e.Record.HeldUnder() == approvals.HeldUnderSigned {
+		rec.Signed = true
+		rec.Tenant, rec.Project = keytext.Printable(e.Record.Tenant), keytext.Printable(e.Record.Project)
+		rec.SignWith = p.signCommands(e.Record.ApprovalID)
+	}
 	rec.Status = statusOf(rec, planeRunning)
 	rec.Fields = fieldsOf(rec)
-	rec.Answerable = a.GetState() == controlv1.ApprovalState_APPROVAL_STATE_PENDING && !rec.Expired
+	rec.Answerable = a.GetState() == controlv1.ApprovalState_APPROVAL_STATE_PENDING && !rec.Expired && p.mayClaim(e.Record)
 	rec.Confirm = confirmOf(rec)
 	return rec
 }
@@ -207,8 +221,12 @@ func statusOf(r recordReply, planeRunning bool) string {
 	}
 	switch r.State {
 	case controlv1.ApprovalState_APPROVAL_STATE_PENDING.String():
-		if r.Expired {
+		switch {
+		case r.Expired:
 			return "Past its expiry. No answer is accepted."
+		case r.Signed:
+			return "Held under the signed authority until " + r.Expires +
+				". This page answers nothing: an operator signs the answer with the command below."
 		}
 		return "Waiting for an answer until " + r.Expires + "."
 	case controlv1.ApprovalState_APPROVAL_STATE_APPROVED.String():
@@ -238,6 +256,12 @@ func fieldsOf(r recordReply) []fieldReply {
 	}
 	if r.AnsweredBy != "" {
 		out = append(out, fieldReply{"answered by", r.AnsweredBy}, fieldReply{"answered at", r.AnsweredAt})
+	}
+	if r.Signed {
+		out = append(out, fieldReply{"tenant", r.Tenant}, fieldReply{"project", r.Project})
+		for _, c := range r.SignWith {
+			out = append(out, fieldReply{"sign with", c})
+		}
 	}
 	if v := r.Readable; v != nil {
 		return append(out,
@@ -282,4 +306,45 @@ func stamp(ts *timestamppb.Timestamp) string {
 		return "none"
 	}
 	return ts.AsTime().UTC().Format(time.RFC3339)
+}
+
+// signCommands are the approvals commands that sign an answer to approvalID,
+// approve and then reject, with the inbox this page was told of, each path
+// one shell word and the directory after "--", so a name starting with a dash
+// is not read as a flag.
+func (p *page) signCommands(approvalID string) []string {
+	inbox := "<the plane's approvals.inbox_dir>"
+	if p.o.Inbox != "" {
+		inbox = shellWord(p.o.Inbox)
+	}
+	var out []string
+	for _, verb := range []string{"approve", "reject"} {
+		out = append(out, keytext.Printable(brand.CLI+" approvals "+verb+" --key <operator key file> --inbox "+inbox+" -- "+
+			shellWord(p.o.Directory)+" "+shellWord(approvalID)))
+	}
+	return out
+}
+
+// shellWord is s as one word of a POSIX shell: as it stands when it holds
+// only characters no shell treats specially, single-quoted otherwise.
+func shellWord(s string) string {
+	if s != "" && strings.Trim(s, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_./:=+@%,") == "" {
+		return s
+	}
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+// mayClaim reports whether this page may file a claim for rec: a page over
+// the approver's handle, for a record held under the directory.
+func (p *page) mayClaim(rec approvals.Record) bool {
+	return p.o.Approvals != nil && rec.HeldUnder() != approvals.HeldUnderSigned
+}
+
+// who is the sentence the page says of whoever answers through it.
+func (p *page) who() string {
+	if p.o.Approvals == nil {
+		return "This page holds no operator key and answers nothing; each hold shows the command that signs its answer."
+	}
+	return "Answering as " + keytext.Printable(p.o.ApproverID) +
+		". This name is recorded on each answer as given; nothing checks it. A hold under the signed authority shows the command that signs it."
 }

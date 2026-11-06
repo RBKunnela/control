@@ -118,7 +118,9 @@ canon cannot, as for an integer past 2^53-1, the proposal must carry no hash,
 or the step differs on `args`. The runner prints the principal and agent that first proposal names.
 
 An operator step runs `guardana-control approvals approve|reject` or
-`pause add|remove`: the binary named by `--control`, a bare name meaning the
+`pause add|remove`; under `dev`, an approval step signs with dev's operator
+key, so the step's `approver` is not what the trail records. The binary is
+the one named by `--control`, a bare name meaning the
 file in the working directory, or the one beside `guardana-gateway`, never
 one found on the search path, and only one that reports the same version.
 Two builds that both report `dev` pass that check whatever tree they come

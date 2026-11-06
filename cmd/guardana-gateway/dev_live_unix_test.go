@@ -271,8 +271,9 @@ func stateFiles(t *testing.T, state string) map[string][]byte {
 // and the page draws its token after it starts, so the process checks catch
 // only a token handed to the page, or to dev, at its start; dev starts no
 // process after the page. The state directory holds the names dev.md lists
-// and no file under it holds a private key as PEM or PKCS#8, raw or base64;
-// a key written in another form is caught only by a name the list lacks.
+// and no file under it but the dev operator's key, readable by this account
+// alone, holds a private key as PEM or PKCS#8, raw or base64; a key written
+// in another form is caught only by a name the list lacks.
 func TestTheTokenStaysOnDevsStdout(t *testing.T) {
 	t.Parallel()
 	p, values, state := devDemo(t, "5ms")
@@ -285,7 +286,7 @@ func TestTheTokenStaysOnDevsStdout(t *testing.T) {
 			t.Errorf("the arguments or the environment of %d carry the token", pid)
 		}
 	}
-	if names, want := stateNames(t, state), []string{"approvals", "floors", "holds", "pause.json", "policy.bundle", "policy.statement", "settings.txt", "spool", "trail"}; !slices.Equal(names, want) {
+	if names, want := stateNames(t, state), []string{"approvals", "floors", "holds", "inbox", "operator", "pause.json", "policy.bundle", "policy.statement", "settings.txt", "spool", "trail", "trust"}; !slices.Equal(names, want) {
 		t.Errorf("the state directory holds %q, want %q", names, want)
 	}
 	prefix := []byte(policykey.PKCS8Prefix)
@@ -295,7 +296,11 @@ func TestTheTokenStaysOnDevsStdout(t *testing.T) {
 		"the PKCS#8 prefix of a key":       prefix,
 		"the base64 of a key body's start": []byte(base64.StdEncoding.EncodeToString(prefix[:len(prefix)/3*3])),
 	}
+	operatorKey := ownerOnly(t, filepath.Join(state, "operator", "signing.key"))
 	for path, raw := range stateFiles(t, state) {
+		if path == operatorKey {
+			continue
+		}
 		for what, text := range unwritten {
 			if bytes.Contains(raw, text) {
 				t.Errorf("%s holds %s", path, what)
@@ -305,4 +310,14 @@ func TestTheTokenStaysOnDevsStdout(t *testing.T) {
 	if strings.Contains(p.stderr.String(), token) {
 		t.Error("dev's log carries the token")
 	}
+}
+
+// ownerOnly fails unless path is a file only this account may read, and
+// returns it.
+func ownerOnly(t *testing.T, path string) string {
+	t.Helper()
+	if info, err := os.Stat(path); err != nil || info.Mode().Perm() != 0o600 {
+		t.Errorf("%s: %v %v, want a file only this account reads", path, info, err)
+	}
+	return path
 }

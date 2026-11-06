@@ -32,6 +32,7 @@ type options struct {
 	maxRecords        int
 	maxRecordBytes    int
 	maxApprovalWindow time.Duration
+	authority         string
 	steps             func(step string)
 }
 
@@ -80,6 +81,19 @@ func WithMaxApprovalWindow(d time.Duration) Option {
 	}
 }
 
+// WithAuthority names the authority a plane holds its requests under, which
+// every record it writes says: HeldUnderSigned, where no claim filed in the
+// directory answers a hold, or HeldUnderDirectory, the default.
+func WithAuthority(kind string) Option {
+	return func(o *options) error {
+		if kind != HeldUnderDirectory && kind != HeldUnderSigned {
+			return fmt.Errorf("%w: authority %q is not %s or %s", ErrInvalidOption, cause(kind), HeldUnderDirectory, HeldUnderSigned)
+		}
+		o.authority = kind
+		return nil
+	}
+}
+
 // store is one directory, opened once. Both handles embed it, and neither
 // exports it: a composite literal of either from another package has no open
 // store, so every method on it fails closed.
@@ -99,6 +113,9 @@ type store struct {
 	// opened is the directory as it was judged at open, and every call is
 	// judged against it again.
 	opened dirID
+	// reader is a handle that writes nothing, on a directory that may be
+	// another account's: its files are judged against the directory's owner.
+	reader bool
 }
 
 // storeMarker says the directory is an approvals store. A directory that does
@@ -114,25 +131,37 @@ const markerKind = "approvals"
 
 var markerKeys = []string{"schema_version", "kind"}
 
+// opener is which handle opens a directory.
+type opener uint8
+
+const (
+	openPlane opener = iota
+	openApprover
+	openReader
+)
+
 // openStore opens dir. The plane takes the directory's exclusive lock and
-// sweeps the temporary files a crash left; the approver takes no lock and
-// sweeps nothing, because it is not alone in the directory.
-func openStore(dir string, plane bool, opts []Option) (*store, error) {
+// sweeps the temporary files a crash left; the approver and the reader take
+// no lock and sweep nothing, because they are not alone in the directory.
+// Only the reader opens a directory another account owns.
+func openStore(dir string, by opener, opts []Option) (*store, error) {
+	plane := by == openPlane
 	o := options{
 		maxRecords:        DefaultMaxRecords,
 		maxRecordBytes:    DefaultMaxRecordBytes,
 		maxApprovalWindow: DefaultMaxApprovalWindow,
+		authority:         HeldUnderDirectory,
 	}
 	for _, apply := range opts {
 		if err := apply(&o); err != nil {
 			return nil, err
 		}
 	}
-	root, opened, err := openRoot(dir)
+	root, opened, err := openRoot(dir, by == openReader)
 	if err != nil {
 		return nil, err
 	}
-	s := &store{dir: dir, root: root, opts: o, unlock: root.Close, opened: opened}
+	s := &store{dir: dir, root: root, opts: o, unlock: root.Close, opened: opened, reader: by == openReader}
 	s.step(stepOpened)
 	if plane {
 		held, err := lockDirWaiting(root, dir)

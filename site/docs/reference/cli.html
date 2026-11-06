@@ -185,15 +185,16 @@ place.</p>
 <p>The key reaches the command only as a path, and no refusal quotes it. Both
 refuse on a platform without permission bits
 (<a href="/docs/adr/0018-keys-and-bundles-on-disk">ADR-0018</a>).</p>
-<p>Both answering commands require <code>--approver-id</code>, a claim nothing checks;
-flags come before the directory and the approval id.</p>
-<p><code>approvals list</code> prints, for each record, its state and both digests, and
-beside them the readable fields of the projection the plane wrote at hold
-time; whether a retry spent an approval is the plane's own ledger's. Those readable fields are not bound
-to the action digest beside them, since the binding is over argument bytes no
-record holds; the listing says so above the records. A listing the store
+<p>Flags come first. <code>--key</code> signs from the plane's record of the hold, read
+through the operators' group (<code>0750</code> directory, <code>0640</code> files), and files
+<code>&lt;approval id&gt;.&lt;key id&gt;-&lt;decision&gt;.answer</code>, mode <code>0644</code>, never replacing one;
+run as the plane's account it warns. <code>--approver-id</code> is a claim, refused for
+a signed hold.</p>
+<p><code>approvals list</code> prints, for each record, its state, both digests and the
+readable fields of the projection the plane wrote at hold time, which are
+not bound to the digest; the listing says so. A listing the store
 reports incomplete exits 1 and names what it could not read.</p>
-<p><code>approvals approve</code> and <code>approvals reject</code> write the answer whether or not a
+<p>A claim is written whether or not a
 plane runs, and exit 0 either way: the record waits for the next
 plane. Where no plane holds the directory they say so on stderr: no held
 call waits for the answer, since a hold does not outlive its plane, and a
@@ -247,8 +248,10 @@ profile's statuses, <a href="/docs/extending/runtime-profiles">extending/runtime
   guardana-control policy state reset --kind plane|signer --bundle-id &lt;id&gt; --reason &lt;text&gt;
       (--empty | --serial &lt;n&gt; --digest &lt;d&gt; --issued-at &lt;t&gt;) &lt;dir&gt;
   guardana-control approvals list &lt;dir&gt;
-  guardana-control approvals approve --approver-id &lt;id&gt; [--reason &lt;text&gt;] &lt;dir&gt; &lt;approval-id&gt;
-  guardana-control approvals reject --approver-id &lt;id&gt; [--reason &lt;text&gt;] &lt;dir&gt; &lt;approval-id&gt;
+  guardana-control approvals approve (--key &lt;file&gt; --inbox &lt;dir&gt; | --approver-id &lt;id&gt;)
+      [--reason &lt;text&gt;] &lt;dir&gt; &lt;approval-id&gt;
+  guardana-control approvals reject (--key &lt;file&gt; --inbox &lt;dir&gt; | --approver-id &lt;id&gt;)
+      [--reason &lt;text&gt;] &lt;dir&gt; &lt;approval-id&gt;
   guardana-control pause init &lt;file&gt;
   guardana-control pause add (--global | --provider &lt;p&gt; [--action &lt;k&gt; [--name &lt;n&gt;]]
       | --run &lt;id&gt; | --agent &lt;id&gt; | --principal &lt;id&gt;) [--reason &lt;r&gt;] &lt;f&gt;
@@ -285,8 +288,11 @@ profile's statuses, <a href="/docs/extending/runtime-profiles">extending/runtime
       --stops &lt;dir&gt;
   guardana-control hook (--profile &lt;id&gt; | --profile-file &lt;file&gt;) --socket &lt;path&gt;
       --state-dir &lt;dir&gt;
-  guardana-control console --approvals &lt;dir&gt; [--pause &lt;f&gt;] --approver-id &lt;id&gt; [--until-stdin-closes]
+  guardana-control console --approvals &lt;dir&gt; [--pause &lt;f&gt;] [--approver-id &lt;id&gt;] [--inbox &lt;dir&gt;]
+      [--until-stdin-closes]
 
+Under approvals.authority: signed a plane takes only an answer an operator signs with
+--key into its inbox, and refuses every claim. Under directory:
 Write access to the approvals directory is the approval authority:
 --approver-id is a claim recorded as given, never an identity.
 An id that could read as authn:, mixes scripts or holds a hidden or restyled character is refused.

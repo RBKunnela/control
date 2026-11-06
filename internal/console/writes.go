@@ -10,6 +10,7 @@ import (
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/approvals"
+	"github.com/guardana/control/internal/brand"
 	"github.com/guardana/control/internal/keytext"
 	"github.com/guardana/control/internal/pause"
 )
@@ -71,13 +72,17 @@ func (p *page) reject(w http.ResponseWriter, r *http.Request, body any) {
 // digest the approver confirmed. The store never changes a record's digest
 // once it is held, so the record compared is the record answered.
 func (p *page) answer(w http.ResponseWriter, r *http.Request, b *answerBody, state controlv1.ApprovalState, word string) {
-	digest, err := p.digestOf(r.Context(), b.ID)
+	rec, err := p.recordFor(r.Context(), b.ID)
 	if err != nil {
 		refuseStore(w, err)
 		return
 	}
-	if b.ActionDigest != digest {
+	if b.ActionDigest != rec.Approval.GetActionDigest() {
 		refuse(w, http.StatusConflict, digestMismatch)
+		return
+	}
+	if !p.mayClaim(rec) {
+		refuse(w, http.StatusConflict, p.noClaim(rec))
 		return
 	}
 	done, err := p.o.Approvals.Answer(r.Context(), b.ID, state, p.o.ApproverID, b.Reason, p.now())
@@ -96,34 +101,46 @@ func (p *page) answer(w http.ResponseWriter, r *http.Request, b *answerBody, sta
 const unlisted = "the listing of the directory was incomplete and does not name this approval, " +
 	"so whether it is held is unknown and nothing was written"
 
-// digestOf reads the action digest of the record listed under approvalID, so
-// no answer is filed without a digest to compare. An id the store cannot
-// hold, and one the listing names among its problems, are refused as the
-// store words it; an id a complete listing does not name is no approval, and
-// one an incomplete listing does not name is unknown.
-func (p *page) digestOf(ctx context.Context, approvalID string) (string, error) {
+// recordFor reads the record listed under approvalID, so no answer is filed
+// without a digest to compare and an authority to judge. An id the store
+// cannot hold, and one the listing names among its problems, are refused as
+// the store words it; an id a complete listing does not name is no approval,
+// and one an incomplete listing does not name is unknown.
+func (p *page) recordFor(ctx context.Context, approvalID string) (approvals.Record, error) {
 	if err := approvals.CheckApprovalID(approvalID); err != nil {
-		return "", err
+		return approvals.Record{}, err
 	}
-	l, err := p.o.Approvals.List(ctx)
+	l, err := p.list(ctx)
 	if err != nil {
-		return "", err
+		return approvals.Record{}, err
 	}
 	for _, e := range l.Entries {
 		if e.Record.ApprovalID == approvalID {
-			return e.Record.Approval.GetActionDigest(), nil
+			return e.Record, nil
 		}
 	}
 	// A record's names are its id and a suffix after a dot, which no id holds.
 	for _, pr := range l.Problems {
 		if strings.HasPrefix(pr.Name, approvalID+".") {
-			return "", listedProblem{pr.Err}
+			return approvals.Record{}, listedProblem{pr.Err}
 		}
 	}
 	if !l.Complete {
-		return "", listedProblem{errors.New(unlisted)}
+		return approvals.Record{}, listedProblem{errors.New(unlisted)}
 	}
-	return "", approvals.ErrNoApproval
+	return approvals.Record{}, approvals.ErrNoApproval
+}
+
+// noClaim is the refusal of an answer this page may not file: a hold under
+// the signed authority names the commands that sign it, and a page over the
+// reader files no claim at all.
+func (p *page) noClaim(rec approvals.Record) string {
+	if rec.HeldUnder() == approvals.HeldUnderSigned {
+		return "this approval is held under the signed authority, and this page holds no operator key, so nothing was written; " +
+			"sign the answer with: " + strings.Join(p.signCommands(rec.ApprovalID), " or ")
+	}
+	return "this page was started for signed answers and files no claim, so nothing was written; " +
+		"answer it with " + brand.CLI + " approvals approve --approver-id <id> as the plane's account"
 }
 
 // listedProblem is what the listing says against an answer: what is wrong

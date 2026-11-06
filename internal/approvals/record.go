@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/crc32"
+	"slices"
 	"strings"
 	"time"
 
@@ -17,12 +18,24 @@ import (
 	"github.com/guardana/control/internal/canon"
 	"github.com/guardana/control/internal/core/approval"
 	"github.com/guardana/control/internal/policy/strictjson"
+	"github.com/guardana/control/pkg/contract"
 )
 
 // SchemaVersion is the version this build writes. A record whose major
 // differs is refused: a reader that skipped what it could not name would
-// answer about an approval it did not understand.
-const SchemaVersion = "2.0"
+// answer about an approval it did not understand. 2.0 is read too, as a hold
+// under the directory authority that names no tenant or project.
+const SchemaVersion = "2.1"
+
+// legacyVersion is the one earlier minor this build reads.
+const legacyVersion = "2.0"
+
+// The authorities a record says it is held under: whether an approver's claim
+// in this directory can answer it, or only an answer an operator signed.
+const (
+	HeldUnderDirectory = "directory"
+	HeldUnderSigned    = "signed"
+)
 
 // Record is the durable record, and the whole of what the plane reads back. It
 // carries no envelope, no decision and no position in a trail, so a writer of
@@ -41,6 +54,13 @@ type Record struct {
 	Binding approval.Binding
 	// Approval is the approval as it stands.
 	Approval *controlv1.Approval
+	// Authority is the authority the plane held the request under,
+	// HeldUnderDirectory or HeldUnderSigned. A 2.0 record names none and is
+	// read as held under the directory.
+	Authority string
+	// Tenant and Project are the held request's, which a signed answer
+	// names; a 2.0 record carries neither.
+	Tenant, Project string
 }
 
 // A record on disk is a header and one JSON object:
@@ -71,9 +91,26 @@ type wireRecord struct {
 	RequestID     string          `json:"request_id"`
 	Binding       string          `json:"binding"`
 	Approval      json.RawMessage `json:"approval"`
+	Authority     string          `json:"authority,omitempty"`
+	Tenant        string          `json:"tenant,omitempty"`
+	Project       string          `json:"project,omitempty"`
 }
 
-var wireKeys = []string{"schema_version", "approval_id", "request_id", "binding", "approval"}
+// legacyKeys are a 2.0 record's members, and heldKeys a 2.1 record's, each
+// one of which it carries.
+var (
+	legacyKeys = []string{"schema_version", "approval_id", "request_id", "binding", "approval"}
+	heldKeys   = append(slices.Clone(legacyKeys), "authority", "tenant", "project")
+)
+
+// HeldUnder is the authority r is held under; a 2.0 record is held under the
+// directory.
+func (r Record) HeldUnder() string {
+	if r.SchemaVersion == legacyVersion {
+		return HeldUnderDirectory
+	}
+	return r.Authority
+}
 
 // check holds a record to what it claims about itself, in either direction. A
 // record that disagrees with itself is refused rather than read as if one half
@@ -143,6 +180,9 @@ func (r Record) checkIdentity() error {
 	if err := checkApprovalVersion(r.Approval.GetSchemaVersion()); err != nil {
 		return err
 	}
+	if err := r.checkHolder(); err != nil {
+		return err
+	}
 	if got := r.Approval.GetApprovalId(); got != r.ApprovalID {
 		return fmt.Errorf("%w: the approval names %q, the record %q", ErrRecordMismatch, cause(got), cause(r.ApprovalID))
 	}
@@ -159,13 +199,39 @@ func (r Record) checkIdentity() error {
 	return nil
 }
 
+// checkHolder holds a 2.1 record to an authority this build names and to
+// identifiers for its tenant and project, which under signed a signed answer
+// could name, and a 2.0 record to carrying none of the three.
+func (r Record) checkHolder() error {
+	if r.SchemaVersion == legacyVersion {
+		if r.Authority != "" || r.Tenant != "" || r.Project != "" {
+			return fmt.Errorf("%w: a %s record names no authority, tenant or project", ErrMalformed, legacyVersion)
+		}
+		return nil
+	}
+	if r.Authority != HeldUnderDirectory && r.Authority != HeldUnderSigned {
+		return fmt.Errorf("%w: held under %q, not %s or %s", ErrInvalidHold, cause(r.Authority), HeldUnderDirectory, HeldUnderSigned)
+	}
+	for _, id := range [...]struct{ name, v string }{{"tenant", r.Tenant}, {"project", r.Project}} {
+		if contract.CheckIdentifier(id.v) != nil {
+			return fmt.Errorf("%w: the %s is not an identifier", ErrInvalidHold, id.name)
+		}
+		// Only a signed answer names these, within its own bound; a hold no
+		// answer can name could never be approved.
+		if r.Authority == HeldUnderSigned && (id.v == "" || len(id.v) > MaxAnswerIDBytes) {
+			return fmt.Errorf("%w: under %s the %s is 1 to %d bytes, as a signed answer names it", ErrInvalidHold, HeldUnderSigned, id.name, MaxAnswerIDBytes)
+		}
+	}
+	return nil
+}
+
 // checkSchemaVersion refuses a version this build does not read. The major is
 // what decides: a later minor may add a field, and the unknown-field rule
 // refuses that record too, so nothing is dropped in silence. A 1.0 directory
 // kept the spent mark beside the answers, so its operator is told what to do.
 func checkSchemaVersion(v string) error {
 	if !strictjson.IsVersion(v, "2") {
-		return fmt.Errorf("%w: %q; this build reads approvals 2.0 and refuses 1.0: empty the directory, whose holds expire within approvals.ttl",
+		return fmt.Errorf("%w: %q; this build reads approvals 2.0 and 2.1 and refuses 1.0: empty the directory, whose holds expire within approvals.ttl",
 			ErrSchemaVersion, cause(v))
 	}
 	return nil
@@ -202,6 +268,9 @@ func encodeRecord(r Record, maxBody int, maxWindow time.Duration) ([]byte, error
 		RequestID:     r.RequestID,
 		Binding:       string(r.Binding),
 		Approval:      compact.Bytes(),
+		Authority:     r.Authority,
+		Tenant:        r.Tenant,
+		Project:       r.Project,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrMalformed, err)
@@ -225,7 +294,7 @@ func decodeRecord(data []byte, maxBody int, maxWindow time.Duration) (Record, er
 	if err != nil {
 		return Record{}, err
 	}
-	if err := checkMembers(body, wireKeys...); err != nil {
+	if err := checkMembers(body, heldKeys...); err != nil {
 		return Record{}, err
 	}
 	var w wireRecord
@@ -241,6 +310,11 @@ func decodeRecord(data []byte, maxBody int, maxWindow time.Duration) (Record, er
 	if err := checkSchemaVersion(w.SchemaVersion); err != nil {
 		return Record{}, err
 	}
+	if w.SchemaVersion == legacyVersion {
+		if err := checkMembers(body, legacyKeys...); err != nil {
+			return Record{}, err
+		}
+	}
 	a := &controlv1.Approval{}
 	// DiscardUnknown stays false: a field this build cannot name is refused
 	// here too, rather than dropped on the way in.
@@ -253,6 +327,9 @@ func decodeRecord(data []byte, maxBody int, maxWindow time.Duration) (Record, er
 		RequestID:     w.RequestID,
 		Binding:       approval.Binding(w.Binding),
 		Approval:      a,
+		Authority:     w.Authority,
+		Tenant:        w.Tenant,
+		Project:       w.Project,
 	}
 	if err := r.checkStanding(maxWindow); err != nil {
 		return Record{}, err

@@ -196,7 +196,7 @@ complete. Then change the mode and restart.
 ```yaml
 approvals:
   authority: signed             # or directory, with the next two keys alone
-  dir: /var/lib/guardana/approvals
+  dir: /var/lib/guardana/approvals    # the plane's, the operators' group, mode 0750, setgid where needed
   hold_journal_dir: /var/lib/guardana/holds
   inbox_dir: /var/lib/guardana/inbox   # the plane's, the operators' group, mode 1770
 trust:
@@ -211,12 +211,12 @@ operators:
     kind: roster
 ```
 
-Under `directory`, write access to `approvals.dir` is the approval authority
-and `--approver-id` is a claim ([reference/cli.md](../reference/cli.md)).
-Under `signed`, an answer is an operator's signed file
-`<approval id>.<label>.answer`, at most 16 per approval, 32 KiB each
-([ADR-0073](../adr/0073-an-approval-counts-only-as-the-plane-judges-it.md)). A
-lost hold never runs; the next start closes its trail
+Under `directory`, whoever writes `approvals.dir` approves, by a claim
+([reference/cli.md](../reference/cli.md)). Under `signed`, an operator signs
+with `approvals approve --key` from their own account, reading the plane's
+`0640` files
+([ADR-0073](../adr/0073-an-approval-counts-only-as-the-plane-judges-it.md)).
+No test here runs a second account. A lost hold never runs; the next start closes its trail
 ([concepts/approvals-and-the-held-call.md](../concepts/approvals-and-the-held-call.md)).
 
 ### 9. Set the evidence rules on purpose

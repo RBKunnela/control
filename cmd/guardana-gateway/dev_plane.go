@@ -203,7 +203,7 @@ func startDevPlane(ctx context.Context, in devInputs, dir string, log io.Writer)
 	if err != nil {
 		return nil, errors.Join(err, closeAll(listeners))
 	}
-	if err = d.configure(in.config, newLayer(st, keys, addr(1), addr(2), addr(0), token, d.takeSilent(listeners))); err != nil {
+	if err = d.configure(ctx, in, newLayer(st, keys, addr(1), addr(2), addr(0), token, d.takeSilent(listeners))); err != nil {
 		return nil, errors.Join(err, closeAll(listeners))
 	}
 	coll := collectorConfig{dir: st.path(stateTrail), tenant: d.cfg.TenantID, project: d.cfg.ProjectID, cred: cred,
@@ -211,7 +211,7 @@ func startDevPlane(ctx context.Context, in devInputs, dir string, log io.Writer)
 	if d.coll, err = startCollector(listeners[0], coll, log); err != nil {
 		return nil, errors.Join(err, closeAll(listeners[1:]))
 	}
-	if d.plane, err = startPlane(ctx, d.cfg, log, ""); err != nil {
+	if d.plane, err = startDevSigned(ctx, d.cfg, log, devSignedStart(st)); err != nil {
 		return nil, errors.Join(silentAdvice(err, in.silent), closeAll(listeners[1:]), d.coll.stop())
 	}
 	d.signer.start(ctx, log)
@@ -238,11 +238,15 @@ func startDevPlane(ctx context.Context, in devInputs, dir string, log io.Writer)
 	return d, nil
 }
 
-// configure resolves the demo's configuration under the layer, sets how often
-// the statement is renewed for it, and writes the settings it resolved.
-func (d *devPlane) configure(config string, l devLayer) error {
-	cfg, err := resolveDemo(config, l)
+// configure resolves the demo's configuration under the layer, lays out the
+// signed authority for its tenant and project, sets how often the statement
+// is renewed for it, and writes the settings it resolved.
+func (d *devPlane) configure(ctx context.Context, in devInputs, l devLayer) error {
+	cfg, err := resolveDemo(in.config, l)
 	if err != nil {
+		return err
+	}
+	if err := d.layOutTrust(ctx, in.control, cfg.TenantID, cfg.ProjectID); err != nil {
 		return err
 	}
 	if d.renewal, err = d.signer.schedule(cfg); err != nil {

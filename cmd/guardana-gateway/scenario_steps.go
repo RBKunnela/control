@@ -204,6 +204,11 @@ func (p *play) answer(ctx context.Context, verb string, a *scenario.Approval) er
 		return fmt.Errorf("step[%d] was not answered with a pending approval", a.Step)
 	}
 	args := []string{"approvals", verb, "--approver-id", a.Approver}
+	if p.r.plane.operatorKey != "" {
+		// A signed answer names its operator by the key alone, so the
+		// scenario's approver is not what the trail records.
+		args = []string{"approvals", verb, "--key", p.r.plane.operatorKey, "--inbox", p.r.plane.inbox}
+	}
 	if a.Reason != "" {
 		args = append(args, "--reason", a.Reason)
 	}

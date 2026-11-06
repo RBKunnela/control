@@ -50,6 +50,15 @@ const (
 	// ErrDecidedAt is a record answered before it was requested or after it
 	// expired.
 	ErrDecidedAt Error = "approvals: the record was decided outside the window it was held for"
+	// ErrSignedHold is a claim for a record the plane holds under the signed
+	// authority, which reads no claim filed in this directory.
+	ErrSignedHold Error = "approvals: the request is held under the signed authority, which takes no claim filed in this directory, only an answer an operator signs into the plane's inbox"
+	// ErrNotSigned is a signed answer to a record held under another
+	// authority, which reads no inbox.
+	ErrNotSigned Error = "approvals: the request is not held under the signed authority, so no plane reads a signed answer to it"
+	// ErrAnswerFiled is a signed answer whose file name the inbox holds
+	// already. Nothing replaces an answer file.
+	ErrAnswerFiled Error = "approvals: the inbox holds an answer file of that name already, and nothing replaces one"
 	// ErrExpiryWindow is a record whose expiry stands further from its request
 	// than the longest window this plane could have minted.
 	ErrExpiryWindow Error = "approvals: the record expires further from its request than the plane could mint"

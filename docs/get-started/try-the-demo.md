@@ -106,23 +106,21 @@ The answer is marked `pending`, with the text `APPROVAL_PENDING`, an
 `approval_id` and when it expires. Nothing reached the orders server.
 
 Open the `page` link in your browser within ten minutes of the start; the
-link works once. Under **Held calls** the update waits. Press **Approve**,
-check that the confirmation names `update_order` on `orders`, and press
-**Yes, approve**.
+link works once. Under **Held calls** the update waits, with its action
+digest and the command that signs an approval of it: a dev plane takes only
+an answer an operator signs, and the page holds no key. Run the
+`approve_command` dev printed, with the `approval_id`:
+
+```
+bin/guardana-control approvals approve --key <state>/operator/signing.key --inbox <state>/inbox -- <state>/approvals <approval_id>
+```
 
 Now make the same call again, with the same arguments. It runs, and its
 `request_id` is the held one's: the retry resumed the held request. An
 approval covers one exact call: the same update with other arguments would
 be held as a request of its own.
 
-The page records the same approval as `guardana-control approvals approve`
-does. Without a
-browser, answer from the terminal instead, with the `approvals` path and the
-`approval_id`:
-
-```
-bin/guardana-control approvals approve --approver-id you <state>/approvals <approval_id>
-```
+It prints the action digest it signed; check it is the one the page shows.
 
 ## 5. Pause the orders server
 

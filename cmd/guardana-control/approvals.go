@@ -15,6 +15,7 @@ import (
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/approvals"
 	"github.com/guardana/control/internal/brand"
+	"github.com/guardana/control/internal/policykey"
 )
 
 // The names these commands report themselves under, which are the words that
@@ -26,16 +27,19 @@ const (
 )
 
 // approvalAuthority is what the help and docs/reference/cli.md both say about
-// who may answer an approval. Whoever can write the directory can approve; the
-// approver id is recorded beside the answer and nothing authenticates it.
-const approvalAuthority = "Write access to the approvals directory is the approval authority:\n" +
+// who may answer an approval. Under the directory authority whoever can write
+// the directory approves, and the approver id is a claim; under the signed
+// authority only an answer an operator signs into the inbox counts.
+const approvalAuthority = "Under approvals.authority: signed a plane takes only an answer an operator signs with\n" +
+	"--key into its inbox, and refuses every claim. Under directory:\n" +
+	"Write access to the approvals directory is the approval authority:\n" +
 	"--approver-id is a claim recorded as given, never an identity.\n" +
 	"An id that could read as authn:, mixes scripts or holds a hidden or restyled character is refused."
 
 // answerForm is how the two answering commands spell what follows their two
 // words. The flags come first because the flag package stops reading them at
 // the first argument that is not one.
-const answerForm = "--approver-id <id> [--reason <text>] <dir> <approval-id>"
+const answerForm = "(--key <file> --inbox <dir> | --approver-id <id>)\n      [--reason <text>] <dir> <approval-id>"
 
 // unbound is what a listing says, once and before the records, about the
 // readable fields beside each digest: the binding is over the authorized
@@ -56,8 +60,10 @@ const unspent = "whether a retry spent an approved record is the plane's own rec
 // approvals there are".
 var errIncomplete = errors.New("the listing is incomplete: what it shows is not every record under the directory")
 
-// answer is what an approver names beside the approval they are answering.
-type answer struct{ approverID, reason string }
+// answer is what an approver names beside the approval they are answering:
+// an approver id to claim it, or an operator key and the plane's inbox to
+// sign it.
+type answer struct{ approverID, reason, key, inbox string }
 
 // answerFlags declares the flags the two answering commands share, writing the
 // flag package's own diagnostics to out. The help's form and the parser both
@@ -65,6 +71,8 @@ type answer struct{ approverID, reason string }
 func answerFlags(command string, out io.Writer) (*flag.FlagSet, *answer) {
 	flags := commandFlags(command, out)
 	var a answer
+	flags.StringVar(&a.key, "key", "", "the operator's private key file, which signs the answer")
+	flags.StringVar(&a.inbox, "inbox", "", "the plane's approvals.inbox_dir, where the signed answer is filed")
 	flags.StringVar(&a.approverID, "approver-id", "", "who is answering, recorded as claimed and never authenticated")
 	flags.StringVar(&a.reason, "reason", "", "why, recorded on the approval")
 	return flags, &a
@@ -84,8 +92,9 @@ func rejectCommand(args []string, stdout, stderr io.Writer) int {
 	return answerApproval(rejectName, controlv1.ApprovalState_APPROVAL_STATE_REJECTED, args, stdout, stderr)
 }
 
-// answerApproval parses one command's own arguments and files one answer. Both
-// commands require an approver id, including the one that refuses: an answer
+// answerApproval parses one command's own arguments and files one answer:
+// signed with --key into --inbox, or claimed with --approver-id. Both
+// commands require one of the two, including the one that refuses: an answer
 // nobody claims tells whoever reads the evidence later nothing at all.
 func answerApproval(command string, state controlv1.ApprovalState, args []string, stdout, stderr io.Writer) int {
 	flags, ans := answerFlags(command, stderr)
@@ -95,8 +104,11 @@ func answerApproval(command string, state controlv1.ApprovalState, args []string
 	if flags.NArg() != 2 {
 		return usageError(stderr, command, "takes a directory and an approval id, with every flag before them")
 	}
-	if ans.approverID == "" {
-		return usageError(stderr, command, "--approver-id names who is answering; an approval nobody claims is not an answer")
+	if msg := answerFormRefusal(*ans, args); msg != "" {
+		return usageError(stderr, command, msg)
+	}
+	if ans.key != "" {
+		return signAnswer(command, signedDecision(state), *ans, flags.Arg(0), flags.Arg(1), stdout, stderr)
 	}
 	store, err := approvals.OpenApprover(flags.Arg(0))
 	if err != nil {
@@ -107,6 +119,25 @@ func answerApproval(command string, state controlv1.ApprovalState, args []string
 		return fail(stderr, command, err)
 	}
 	return status
+}
+
+// answerFormRefusal is the refusal of flags that are neither the signing form
+// nor the claiming form, or "". It checks the arguments of the signing form
+// for key text once they are parsed, which is still before any file is read
+// or any line printed; the claiming form's fields are held to the store's own
+// rule, whose refusals say which field is wrong.
+func answerFormRefusal(ans answer, args []string) string {
+	switch {
+	case (ans.key == "") != (ans.inbox == ""):
+		return "--key and --inbox go together: a signed answer is filed in the plane's inbox"
+	case ans.key != "" && ans.approverID != "":
+		return "--approver-id is a claim, and a signed answer names its operator by --key alone"
+	case ans.key != "" && policykey.CheckArguments(args) != nil:
+		return policykey.ErrKeyText.Error()
+	case ans.key == "" && ans.approverID == "":
+		return "--key and --inbox sign an answer, --approver-id claims one; an approval nobody answers for is not an answer"
+	}
+	return ""
 }
 
 // fileAnswer writes the answer and reports what the store made of it. The
@@ -170,6 +201,12 @@ func answerHint(err error) string {
 		return "the approval is past its expiry; nothing was written"
 	case errors.Is(err, approvals.ErrNoApproval):
 		return "this directory holds no record under that approval id; nothing was written"
+	case errors.Is(err, approvals.ErrSignedHold):
+		return "sign the answer instead with --key <operator key file> --inbox <the plane's approvals.inbox_dir>; nothing was written"
+	case errors.Is(err, approvals.ErrNotSigned):
+		return "answer it with --approver-id instead; nothing was filed"
+	case errors.Is(err, approvals.ErrAnswerFiled):
+		return "any account that may write the inbox can take a name, so check that file before answering again; nothing was replaced"
 	}
 	return ""
 }

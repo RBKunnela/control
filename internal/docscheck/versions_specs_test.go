@@ -130,6 +130,7 @@ func versionSpecs() map[string]versionSpec {
 		"Approvals directory": {
 			cites: []versionCite{
 				{"internal/approvals/record.go#SchemaVersion", writes},
+				{"internal/approvals/record.go#legacyVersion", reads},
 				{"internal/approvals/record.go#checkSchemaVersion/major", readsMajor},
 			},
 		},

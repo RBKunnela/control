@@ -73,10 +73,11 @@ func (o dirID) sameDirectory(now dirID) error {
 
 // openRoot opens dir as a root, and judges the directory the root holds: a
 // directory a group or the world may write, or another account owns, would
-// make every approval theirs.
+// make every approval theirs. anyOwner lets another account own it, for a
+// handle that writes nothing there.
 // Every file this store reads or writes after this is named through the root,
 // so a directory put at dir later is never read or written through it.
-func openRoot(dir string) (*os.Root, dirID, error) {
+func openRoot(dir string, anyOwner bool) (*os.Root, dirID, error) {
 	// The trailing "." fails on anything but a directory rather than wait on
 	// a named pipe put at dir.
 	root, err := os.OpenRoot(dir + string(os.PathSeparator) + ".")
@@ -94,7 +95,7 @@ func openRoot(dir string) (*os.Root, dirID, error) {
 	if err != nil {
 		return nil, dirID{}, errors.Join(err, root.Close())
 	}
-	if euid := effectiveUID(); euid < 0 || int64(id.uid) != int64(euid) {
+	if euid := effectiveUID(); !anyOwner && (euid < 0 || int64(id.uid) != int64(euid)) {
 		return nil, dirID{}, errors.Join(fmt.Errorf("%w: owned by uid %d", ErrOwner, id.uid), root.Close())
 	}
 	return root, id, nil

@@ -2,7 +2,9 @@
 // stylesheet, and a JSON API that lists and answers approvals and writes
 // pauses through internal/approvals and internal/pause, as the approvals and
 // pause commands do. It adds no authority: whoever can write the directory
-// and the pause file can already do everything the page does.
+// and the pause file can already do everything the page does. It holds no
+// operator key, so a hold under the signed authority is shown with the
+// command that signs it and never answered here.
 //
 // The page is reachable only at the one loopback address it was bound to.
 // The token it was started with is good for one thing, once: the script
@@ -12,6 +14,7 @@
 package console
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
@@ -68,17 +71,26 @@ var securityHeaders = [...][2]string{
 
 // Options is what one page serves.
 type Options struct {
-	// Approvals is the approver's handle on the directory. The page never
-	// closes it.
+	// Approvals is the approver's handle on the directory, for a page that
+	// files claims. The page never closes it.
 	Approvals *approvals.Approver
+	// Reader is a read-only handle on the directory, for a page of an
+	// operator under the signed authority, set in place of Approvals. Such a
+	// page files nothing: approving under signed is the approvals command's,
+	// which signs with an operator key this page never holds.
+	Reader *approvals.Reader
+	// Inbox is the plane's approvals.inbox_dir, named in the signing command
+	// the page shows, or empty where the page does not know it.
+	Inbox string
 	// Directory is the approvals directory as the operator named it, shown on
 	// the page and never opened by it.
 	Directory string
 	// PauseFile is the pause file the page reads and writes, or empty for a
 	// page that shows and writes no pause.
 	PauseFile string
-	// ApproverID is recorded on every answer the page files. It is the
-	// starter's claim, and nothing authenticates it.
+	// ApproverID is recorded on every claim the page files. It is the
+	// starter's claim, and nothing authenticates it. A page over a Reader
+	// files no claim and takes none.
 	ApproverID string
 	// Host is the address the page was bound to, exactly as a browser names
 	// it in Host: 127.0.0.1 and the port.
@@ -101,9 +113,13 @@ func NewToken() string {
 // not 127.0.0.1 and a port, a token that is not NewToken's shape, and an
 // approver id the store would refuse on every answer. The printed token's
 // life starts now.
+//
+// A page over a Reader refuses to start as the account that owns the
+// directory, which is the plane's: under the signed authority the plane's
+// own account may not answer for an operator.
 func New(o Options) (http.Handler, error) {
-	if o.Approvals == nil {
-		return nil, errors.New("console: no approvals store")
+	if err := checkHandles(o); err != nil {
+		return nil, err
 	}
 	ap, err := netip.ParseAddrPort(o.Host)
 	if err != nil || ap.Addr() != netip.AddrFrom4([4]byte{127, 0, 0, 1}) || ap.Port() == 0 || ap.String() != o.Host {
@@ -112,14 +128,35 @@ func New(o Options) (http.Handler, error) {
 	if raw, err := base64.RawURLEncoding.DecodeString(o.Token); err != nil || len(raw) != tokenBytes {
 		return nil, errors.New("console: the token is not 32 bytes in unpadded base64url")
 	}
-	if err := CheckApproverID(o.ApproverID); err != nil {
-		return nil, err
+	if o.Approvals != nil {
+		if err := CheckApproverID(o.ApproverID); err != nil {
+			return nil, err
+		}
 	}
 	now := o.Now
 	if now == nil {
 		now = time.Now
 	}
-	return &page{o: o, origin: "http://" + o.Host, now: now, printedUntil: now().Add(PrintedTokenLife)}, nil
+	list := o.Reader.List
+	if o.Approvals != nil {
+		list = o.Approvals.List
+	}
+	return &page{o: o, list: list, origin: "http://" + o.Host, now: now, printedUntil: now().Add(PrintedTokenLife)}, nil
+}
+
+// checkHandles refuses a page with no approvals handle or two, an approver
+// id beside the reader, and a reader under the plane's own account.
+func checkHandles(o Options) error {
+	switch {
+	case (o.Approvals == nil) == (o.Reader == nil):
+		return errors.New("console: one approvals handle, the approver's or the reader's")
+	case o.Reader != nil && o.ApproverID != "":
+		return errors.New("console: a page over the reader files no claim and takes no approver id")
+	case o.Reader != nil && o.Reader.PlaneAccount():
+		return errors.New("console: this process runs as the account that owns the approvals directory, which is the plane's; " +
+			"under the signed authority run the page as an operator's own account")
+	}
+	return nil
 }
 
 // CheckApproverID holds an approver id to what the approvals store holds an
@@ -132,6 +169,7 @@ func CheckApproverID(id string) error {
 
 type page struct {
 	o      Options
+	list   func(context.Context) (approvals.Listing, error)
 	origin string
 	now    func() time.Time
 

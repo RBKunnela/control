@@ -187,8 +187,7 @@
   }
 
   function render(state) {
-    byId("who").textContent = "Answering as " + oneLine(state.approver_id) +
-      ". This name is recorded on each answer as given; nothing checks it.";
+    byId("who").textContent = oneLine(state.who);
     renderApprovals(state.approvals);
     var pause = JSON.stringify(state.pause);
     if (pause !== shownPause) {

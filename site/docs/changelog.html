@@ -151,6 +151,14 @@ signer's grants let them approve the call's tenant and project. It reads
 <code>operators.authenticator</code>, <code>operators.authorizer</code> and <code>approvals.authority</code>,
 and <code>pipeline_answers_refused_total</code> counts the answers it did not take, by
 cause (<a href="/docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it">ADR-0073</a>).</li>
+<li><code>approvals approve|reject --key &lt;file&gt; --inbox &lt;dir&gt;</code> signs an answer
+with an operator's key from the plane's own record of the hold and files it
+in the inbox, never replacing a file; a key file the group or others may
+read is refused. <code>console --inbox &lt;dir&gt;</code> names the inbox in the command
+each signed hold shows, and without <code>--approver-id</code> only reads, refusing to
+start as the plane's account. <code>dev</code> runs its plane under <code>signed</code>, with a
+roster and an operator key of its own, and prints <code>inbox</code>, <code>operator_key</code>
+and <code>approve_command</code>.</li>
 </ul>
 <h3 id="changed">Changed</h3>
 <ul>
@@ -164,7 +172,15 @@ every directory. <code>/healthz</code> reports <code>approvals.authority</code> 
 resolution and takes the held or the answered name only. A <code>1.0</code> directory
 or record is refused with a message naming both versions; empty the
 directory, whose holds expire within <code>approvals.ttl</code>. <code>approvals list</code> and
-the console no longer print a resolution.</li>
+the console no longer print a resolution. A record is <code>2.1</code>: it names the
+authority holding it and the call's tenant and project. Under <code>signed</code> the
+plane writes its files <code>0640</code>, for an operators' group to read.</li>
+<li><strong>Breaking:</strong> a claim (<code>approvals approve|reject --approver-id</code>, or the
+console) for a hold under <code>signed</code> is refused naming the signing command,
+where it was written and ignored; the console answers no signed hold. On a
+<code>dev</code> plane the page shows the hold and the command, and approves nothing.</li>
+<li><code>operators roster sign</code> refuses, writing nothing, when <code>--out</code> changed
+between its first read and the replace under the lock.</li>
 <li>The pause commands write pause file <code>2</code>; a plane and the commands read <code>1</code>
 as before.</li>
 <li>The gateway applies the <code>read_only</code>, <code>restrict_resources</code> and

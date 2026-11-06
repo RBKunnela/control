@@ -288,11 +288,18 @@ func openApprovals(cfg *gatewayconfig.Config) (gateway.ApprovalStore, *approvals
 	}
 	// The window is the plane's own TTL: a record standing further from its
 	// request than this plane could ever mint is one it did not write, and a
-	// forged record cannot outlast a window it did not choose.
+	// forged record cannot outlast a window it did not choose. Every record
+	// says which authority holds it, so an approver's command refuses a claim
+	// a signed plane would never read.
+	heldUnder := approvals.HeldUnderDirectory
+	if cfg.Approvals.Authority == gatewayconfig.AuthoritySigned {
+		heldUnder = approvals.HeldUnderSigned
+	}
 	p, err := approvals.OpenPlane(cfg.Resolve(cfg.Approvals.Dir),
 		approvals.WithMaxRecords(cfg.Approvals.MaxRecords),
 		approvals.WithMaxRecordBytes(cfg.Approvals.MaxRecordBytes),
-		approvals.WithMaxApprovalWindow(cfg.Approvals.TTL))
+		approvals.WithMaxApprovalWindow(cfg.Approvals.TTL),
+		approvals.WithAuthority(heldUnder))
 	if err != nil {
 		return nil, nil, fmt.Errorf("approvals.dir: %w", err)
 	}

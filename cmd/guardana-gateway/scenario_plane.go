@@ -32,7 +32,11 @@ var listenerProtocol = map[string]string{
 type planeTarget struct {
 	mcpURL, protocol, healthURL string
 	approvals, pauseFile        string
-	callTimeout                 time.Duration
+	// operatorKey and inbox sign an answer where the plane holds under the
+	// signed authority and the runner was handed an operator's key; dev
+	// alone hands one over.
+	operatorKey, inbox string
+	callTimeout        time.Duration
 }
 
 // targetOf takes everything a runner reaches from the plane's own
@@ -50,7 +54,7 @@ func targetOf(cfg *gatewayconfig.Config) (planeTarget, error) {
 		healthURL: "http://" + cfg.Health.Address + "/healthz", pauseFile: cfg.Resolve(cfg.Pause.File),
 		callTimeout: cfg.Upstream.CallTimeout,
 	}
-	if cfg.Approvals.Authority == gatewayconfig.AuthorityDirectory {
+	if cfg.Approvals.Authority == gatewayconfig.AuthorityDirectory || cfg.Approvals.Authority == gatewayconfig.AuthoritySigned {
 		t.approvals = cfg.Resolve(cfg.Approvals.Dir)
 	}
 	return t, nil

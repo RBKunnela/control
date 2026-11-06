@@ -60,6 +60,10 @@ type plane struct {
 	authorityKind gateway.AuthorityKind
 	signed        *signedPorts
 	inbox         *inbox.Inbox
+	// signedStart is the start check of the signed authority, and nil for
+	// checkSignedStart: only a dev plane, whose trust root dev drew itself,
+	// is held to another.
+	signedStart func(*gatewayconfig.Config) error
 	// holds is the seam the pipeline writes its journal through, and journal
 	// the directory behind it. Both are nil where no journal is configured.
 	holds   gateway.HoldJournal
@@ -118,6 +122,12 @@ const (
 // address: everything that can be refused is refused here, before anything
 // serves.
 func build(cfg *gatewayconfig.Config, logger *slog.Logger, now time.Time, r role, tokenPath string) (*plane, error) {
+	return buildChecked(cfg, logger, now, r, tokenPath, nil)
+}
+
+// buildChecked is build with the signed authority's start check, nil for
+// checkSignedStart.
+func buildChecked(cfg *gatewayconfig.Config, logger *slog.Logger, now time.Time, r role, tokenPath string, signedStart func(*gatewayconfig.Config) error) (*plane, error) {
 	if err := servedKind(cfg.Listener.Kind); err != nil {
 		return nil, err
 	}
@@ -125,7 +135,8 @@ func build(cfg *gatewayconfig.Config, logger *slog.Logger, now time.Time, r role
 	if err != nil {
 		return nil, err
 	}
-	p := &plane{cfg: cfg, logger: logger, role: r, holder: pp.holder, policy: pp, started: now, grace: shutdownGrace, callBound: callBound(cfg)}
+	p := &plane{cfg: cfg, logger: logger, role: r, holder: pp.holder, policy: pp, started: now, grace: shutdownGrace, callBound: callBound(cfg),
+		signedStart: signedStart}
 	if p.poller, err = openPause(cfg, logger, p.strayIDs); err != nil {
 		return nil, errors.Join(err, p.close())
 	}
