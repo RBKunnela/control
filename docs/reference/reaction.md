@@ -158,7 +158,7 @@ lock and leaves the floor as it was; what the start refuses fails. It prints
 the route's id, serial and digest, the floor, the list's id, state and age,
 the count of active stops and the first 64 of them, the stops among them naming
 no run of the plane's project, and each rule whose lifetime ends a stop
-before its run can end; a listed stop whose run's record cannot be read leaves it unknown. `/healthz` answers the same,
+before its run can end; a listed stop whose run's record cannot be read leaves it unknown. `/healthz` counts the same,
 rule lifetimes apart, under `stops`, with the unknown state's cause, the
 list's use of its bounds and its reads; an unknown state answers `503`, and a list past nine
 tenths of a bound is `degraded`. `/metrics` counts the reads, the failed ones

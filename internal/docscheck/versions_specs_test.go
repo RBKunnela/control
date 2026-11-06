@@ -243,6 +243,9 @@ func versionSpecs() map[string]versionSpec {
 				{"internal/findinglog/check.go#SchemaVersion02", writes | reads},
 			},
 		},
+		"Health answer": {
+			cites: []versionCite{{"cmd/" + brand.Gateway + "/health.go#healthSchema", writes}},
+		},
 		"Findings export": {
 			name:  func() string { return findinglog.ExportFormat },
 			cites: []versionCite{{"internal/findinglog/export.go#ExportVersion", writes}},

@@ -17,7 +17,9 @@ import (
 
 	findingv1alpha1 "github.com/guardana/control/api/gen/go/guardana/control/finding/v1alpha1"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/brand"
 	"github.com/guardana/control/internal/findinglog"
+	"github.com/guardana/control/internal/gatewayconfig"
 	"github.com/guardana/control/internal/reaction"
 )
 
@@ -31,6 +33,7 @@ const codeRunStopped = "RUN_STOPPED"
 func TestAStopRefusesItsRunsNextCallAndNoOthers(t *testing.T) {
 	rp := newRunsPlane(t, "stateless_http")
 	route := rp.withRoute()
+	socket := rp.withHealthSocket()
 	sp := rp.start()
 	first, second := rp.open(), rp.open()
 	agentA, agentB := agentUnder(t, sp.listen, first.token), agentUnder(t, sp.listen, second.token)
@@ -51,9 +54,42 @@ func TestAStopRefusesItsRunsNextCallAndNoOthers(t *testing.T) {
 	}
 
 	state := stopsHealth(t, sp.health)
-	if state.State != "stopped" || state.Active != 1 || len(state.Entries) != 1 || state.Entries[0].RunID != first.id || len(state.UnheldRuns) != 0 {
+	if state.State != "stopped" || state.Active != 1 || len(state.Entries) != 0 || state.Unheld != 0 || state.Unread != 0 {
 		t.Errorf("/healthz stops = %+v", state)
 	}
+	expectStopOf(t, socket, first.id)
+	sp.proc.stop(t)
+	if _, err := os.Lstat(socket); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("health.socket outlived the plane: %v", err)
+	}
+}
+
+// expectStopOf fails unless the health socket at socket names one active
+// stop, of run, held by the runs directory.
+func expectStopOf(t *testing.T, socket, run string) {
+	t.Helper()
+	whole := stopsOverSocket(t, socket)
+	if whole.Active != 1 || len(whole.Entries) != 1 || whole.Entries[0].RunID != run || len(whole.UnheldRuns) != 0 {
+		t.Errorf("health.socket stops = %+v, want the stop of %s", whole, run)
+	}
+}
+
+// stopsOverSocket reads the stops object of the whole answer on the health
+// socket at path.
+func stopsOverSocket(t *testing.T, path string) stopsAnswer {
+	t.Helper()
+	resp, err := socketClient(path).Get("http://plane/healthz")
+	if err != nil {
+		t.Fatalf("reading health.socket: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	var answer struct {
+		Stops stopsAnswer `json:"stops"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&answer); err != nil {
+		t.Fatalf("decoding health.socket: %v", err)
+	}
+	return answer.Stops
 }
 
 // TestAChildsFindingStopsTheChildAndNotItsParentOrASibling runs the built
@@ -64,6 +100,7 @@ func TestAStopRefusesItsRunsNextCallAndNoOthers(t *testing.T) {
 func TestAChildsFindingStopsTheChildAndNotItsParentOrASibling(t *testing.T) {
 	rp := newRunsPlane(t, "stateless_http")
 	rp.withRoute()
+	socket := rp.withHealthSocket()
 	sp := rp.start()
 	root := rp.open()
 	child, sibling := rp.open("--parent", root.id, "--ttl", "30m"), rp.open("--parent", root.id, "--ttl", "30m")
@@ -91,10 +128,16 @@ func TestAChildsFindingStopsTheChildAndNotItsParentOrASibling(t *testing.T) {
 	if n := rp.up.count(toolReadTicket); n != ran+2 {
 		t.Errorf("the root's and the sibling's calls ran the upstream %d times, want 2", n-ran)
 	}
-	state := stopsHealth(t, sp.health)
-	if state.Active != 1 || len(state.Entries) != 1 || state.Entries[0].RunID != child.id {
-		t.Errorf("/healthz stops = %+v, want the child's stop alone", state)
-	}
+	expectStopOf(t, socket, child.id)
+}
+
+// withHealthSocket has the plane answer the whole health answer on a socket,
+// and returns its path.
+func (rp *runsPlane) withHealthSocket() string {
+	rp.t.Helper()
+	socket := shortSocketPath(rp.t)
+	rp.env = append(rp.env, brand.Env(gatewayconfig.EnvName("health.socket"))+"="+socket)
+	return socket
 }
 
 // reactTo writes a confirmed finding about run into a findings log and runs

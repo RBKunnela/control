@@ -120,6 +120,10 @@ Date: 2026-09-24</p>
 <p>Amended by <a href="/docs/adr/0072-the-collector-keeps-bounded-segments-of-one-project-behind-a-credential">ADR-0072</a>:
 <code>collect</code> writes a bounded directory of segments bound to one tenant and
 project, requires a credential, and <code>--out</code> is gone.</p>
+<p>Amended when export gained a Unix socket: <code>collect --listen unix:///path</code>
+listens on a socket as well as on the loopback, and a plane sends to it only
+once the socket's peer is <code>export.collector_uid</code>
+(<a href="/docs/status">docs/status.md</a>).</p>
 <h2 id="context">Context</h2>
 <p>A plane exports its evidence to an OpenTelemetry collector over OTLP/HTTP, and
 <code>export.endpoint</code> is required: a plane whose spool nobody drains fills its

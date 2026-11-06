@@ -51,9 +51,31 @@ verify one.
   start as the plane's account. `dev` runs its plane under `signed`, with a
   roster and an operator key of its own, and prints `inbox`, `operator_key`
   and `approve_command`.
+- `export.endpoint: unix:///path` with the required `export.collector_uid`
+  sends the evidence over a Unix socket. On every connection the plane reads
+  the peer's account (`SO_PEERCRED` on Linux, `LOCAL_PEERCRED` on macOS) and
+  writes nothing, the credential included, to another or to one it cannot
+  name; the records stay in the spool, the attempt counts as
+  `exporter.retried_peer`, and each cause is logged once.
+  `guardana-gateway collect --listen unix:///path` creates such a socket and
+  prints the `export.collector_uid` to set; `--listen host:port` works as
+  before. Other platforms refuse both keys at load.
+- `health.socket` serves the whole health answer, run ids included, on a
+  Unix socket of mode `0600` that answers only the plane's own account and
+  `health.socket_uid`; any other peer is closed unanswered. Anything at the
+  path but a stale socket of the plane's account is refused, and the plane
+  removes its socket when it stops.
+- `doctor` warns of every TCP `export.endpoint`, naming the unix form.
 
 ### Changed
 
+- **Breaking:** `/healthz` answers `"schema": "2"` and names no run: `stops`
+  carries the counts `unheld` and `unread`, and leaves out `entries`,
+  `unheld_runs` and `unread_runs`, which only `health.socket` answers. A
+  reader of the old shape finds no `schema` member.
+- TCP export stays in this release with a `doctor` warning and goes in 0.17:
+  over plaintext, whoever holds the port while the collector is down
+  receives the credential. Move to `export.endpoint: unix:///path`.
 - **Breaking:** `approvals.authority` (`memory`, `directory` or `signed`)
   replaces `approvals.provider` and has no default. A configuration without
   it, or with the old key, is refused naming both; `provider: file` becomes

@@ -8,6 +8,9 @@ on whose run a token names, and
 [ADR-0058](0058-a-copy-an-import-never-read-is-doubt-for-the-runs-it-claimed.md)
 on what holds a source when no event of the run was read.
 
+Amended when `/healthz` stopped naming runs: it counts the unheld stops, and
+only `health.socket` lists their runs ([docs/status.md](../status.md)).
+
 ## Context
 
 A run's record named a tenant, a principal and an agent, and a plane resolved

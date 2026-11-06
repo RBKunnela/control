@@ -118,6 +118,8 @@ Date: 2026-10-28</p>
 on whose run a token names, and
 <a href="/docs/adr/0058-a-copy-an-import-never-read-is-doubt-for-the-runs-it-claimed">ADR-0058</a>
 on what holds a source when no event of the run was read.</p>
+<p>Amended when <code>/healthz</code> stopped naming runs: it counts the unheld stops, and
+only <code>health.socket</code> lists their runs (<a href="/docs/status">docs/status.md</a>).</p>
 <h2 id="context">Context</h2>
 <p>A run's record named a tenant, a principal and an agent, and a plane resolved
 a token for the identity its listener gives. Two planes of different projects

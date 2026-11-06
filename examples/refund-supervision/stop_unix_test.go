@@ -71,7 +71,7 @@ func (tr tree) stopAndLift(t *testing.T, pl livePlane, first openedRun, s superv
 	if out := tr.stops(t); strings.Contains(out, "\nstop line ") || !strings.Contains(out, "\ncovered: 0, lifts: 1\n") {
 		t.Fatalf("stops list printed %q after the lift, want no stop and one lift", out)
 	}
-	waitForStops(t, pl.health, "clear", "")
+	waitForStops(t, pl.health, "clear", 0)
 	expectOwnOrder(t, "the first run's call after the lift", pl.first.call(t, newSpan(91), "read_order", map[string]string{"id": "ord-1"}))
 	return refused
 }
@@ -83,7 +83,7 @@ func (tr tree) stopAndLift(t *testing.T, pl livePlane, first openedRun, s superv
 func (tr tree) stop(t *testing.T, pl livePlane, first openedRun, s supervision, rule string, notStopping int) string {
 	t.Helper()
 	tr.react(t, first, s, rule, notStopping)
-	waitForStops(t, pl.health, "stopped", first.id)
+	waitForStops(t, pl.health, "stopped", 1)
 	refused := pl.first.call(t, newSpan(90), "read_order", map[string]string{"id": "ord-1"})
 	if !refused.Result.IsError || refused.codes() != `["RUN_STOPPED"]` || refused.meta("request_id") == "" {
 		t.Fatalf("the stopped run's call answered %+v, want a block by RUN_STOPPED", refused)
@@ -136,37 +136,29 @@ func expectOwnOrder(t *testing.T, what string, a answer) {
 	}
 }
 
-// waitForStops reads the plane's /healthz until its stop state is state and
-// it lists exactly the stop of run, or none when run is empty, within ten
-// seconds.
-func waitForStops(t *testing.T, health, state, run string) {
+// waitForStops reads the plane's /healthz until its stop state is state with
+// active stops of runs the runs directory holds, within ten seconds. /healthz
+// names no run; the calls that follow show which run is stopped.
+func waitForStops(t *testing.T, health, state string, active int) {
 	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
 	for {
 		got := stopsHealth(t, health)
-		var runs []string
-		for _, e := range got.Entries {
-			runs = append(runs, e.RunID)
-		}
-		var want []string
-		if run != "" {
-			want = []string{run}
-		}
-		if got.State == state && slices.Equal(runs, want) {
+		if got.State == state && got.Active == active && got.Unheld == 0 && got.Unread == 0 {
 			return
 		}
 		if time.Now().After(deadline) {
-			t.Fatalf("/healthz said stops %q with runs %q within 10s, want %q with %q", got.State, runs, state, want)
+			t.Fatalf("/healthz said stops %+v within 10s, want %q with %d active", got, state, active)
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
 }
 
 type stopsState struct {
-	State   string `json:"state"`
-	Entries []struct {
-		RunID string `json:"run_id"`
-	} `json:"entries"`
+	State  string `json:"state"`
+	Active int    `json:"active"`
+	Unheld int    `json:"unheld"`
+	Unread int    `json:"unread"`
 }
 
 func stopsHealth(t *testing.T, health string) stopsState {

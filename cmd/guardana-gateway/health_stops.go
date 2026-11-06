@@ -14,7 +14,9 @@ import (
 // the state and why an unknown one is unknown, how old the read is, the
 // active stops, at most reaction.MaxListedEntries of them, the list's use of
 // its bounds, the active stops naming a run the runs directory does not hold
-// for the plane's project, and what the reader counted. A plane with no route says only disabled.
+// for the plane's project, and what the reader counted. A plane with no route
+// says only disabled. The entries and the runs they name are the whole
+// answer's; counted leaves them out.
 type stopsAnswer struct {
 	State  string       `json:"state"`
 	Cause  string       `json:"cause,omitempty"`
@@ -32,7 +34,9 @@ type stopsAnswer struct {
 	Degraded bool `json:"degraded"`
 	// UnheldRuns are the listed stops' runs the runs directory holds no
 	// record of for the plane's project, and UnreadRuns those whose record
-	// could not be read.
+	// could not be read; Unheld and Unread count them.
+	Unheld     int            `json:"unheld"`
+	Unread     int            `json:"unread"`
 	UnheldRuns []string       `json:"unheld_runs"`
 	UnreadRuns []string       `json:"unread_runs"`
 	Polls      map[string]any `json:"polls,omitempty"`
@@ -91,6 +95,7 @@ func (p *plane) stopsAnswer(snap reaction.Snapshot, now time.Time) stopsAnswer {
 		})
 	}
 	out.UnheldRuns, out.UnreadRuns = unheldRuns(p.runsDir, p.cfg.ProjectID, entries)
+	out.Unheld, out.Unread = len(out.UnheldRuns), len(out.UnreadRuns)
 	if u := held.Usage(); u != (reaction.Usage{}) {
 		out.Usage = &usageAnswer{Bytes: u.Bytes, MaxBytes: reaction.MaxListBytes, Lines: u.Lines, MaxLines: reaction.MaxListLines}
 		out.Degraded = u.Degraded()
@@ -145,4 +150,26 @@ func unheldRuns(dir *runs.Plane, project string, entries []reaction.Entry) (unhe
 		}
 	}
 	return unheld, unread
+}
+
+// countedHealth is the health answer as GET /healthz gives it: the stops'
+// entries and the runs they name left out, their counts kept, so no run id
+// reaches a listener any local account can read.
+type countedHealth struct {
+	healthAnswer
+	Stops countedStops `json:"stops"`
+}
+
+// countedStops shadows the members of stopsAnswer that name runs with
+// members that are always empty and so never encoded.
+type countedStops struct {
+	stopsAnswer
+	Entries    *struct{} `json:"entries,omitempty"`
+	UnheldRuns *struct{} `json:"unheld_runs,omitempty"`
+	UnreadRuns *struct{} `json:"unread_runs,omitempty"`
+}
+
+// counted is a as GET /healthz answers it.
+func (a healthAnswer) counted() countedHealth {
+	return countedHealth{healthAnswer: a, Stops: countedStops{stopsAnswer: a.Stops}}
 }

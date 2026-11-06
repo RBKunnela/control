@@ -139,6 +139,7 @@ edit made here does not survive the next run.
 | `guardana_control_exporter_refused_total` | counter |  | `Exporter.Refused` | Answers 400, 413 and 422, which refuse the records themselves. |
 | `guardana_control_exporter_retries_total` | counter |  | `Exporter.Retries` | Requests sent again after an answer that neither accepts nor refuses the records. |
 | `guardana_control_exporter_retried_transport_total` | counter |  | `Exporter.RetriedTransport` | Retries after no answer: a timeout or a connection failure. |
+| `guardana_control_exporter_retried_peer_total` | counter |  | `Exporter.RetriedPeer` | Retries after a unix collector socket's peer was another account or none the platform named; nothing was sent on it. |
 | `guardana_control_exporter_retried_redirect_total` | counter |  | `Exporter.RetriedRedirect` | Retries after a 3xx, which is never followed. |
 | `guardana_control_exporter_retried_auth_total` | counter |  | `Exporter.RetriedAuth` | Retries after a 401, 403 or 407. |
 | `guardana_control_exporter_retried_throttled_total` | counter |  | `Exporter.RetriedThrottled` | Retries after a 408 or 429. |

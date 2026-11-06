@@ -189,8 +189,8 @@ evidence:
   dir: spool
 
 export:
-  endpoint: http://127.0.0.1:4318/v1/logs
-  allow_plaintext: true         # a plaintext collector is a loopback one, and you say so
+  endpoint: unix:///run/collector/logs.sock
+  collector_uid: 1001           # the collector&#39;s account
 
 upstreams:
   - name: orders
@@ -242,7 +242,8 @@ agent needs. Take the fingerprint from <code>doctor</code> and add an override:<
 <p>The fingerprint covers the whole definition: a tool whose description or
 schema changes is unclassified again until you look at it.</p>
 <h3 id="6-read-the-health">6. Read the health</h3>
-<pre><code>curl -s http://127.0.0.1:8081/healthz | jq
+<pre><code>curl -s http://127.0.0.1:8081/healthz | jq     # schema 2: counts, no run ids
+curl -s --unix-socket /run/guardana/health.sock http://plane/healthz | jq   # with health.socket: the runs too, to this account alone
 </code></pre>
 <p><code>policy.freshness</code> is <code>confirmed</code>, <code>unconfirmed</code> or <code>expired</code>, beside its
 expiry and poll counts. A plane with an unconfirmed policy answers <code>&quot;status&quot;:&quot;degraded&quot;</code> with <code>200</code>; one halted, or whose

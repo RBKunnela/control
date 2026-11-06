@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"sync"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/peercred"
 	"github.com/guardana/control/internal/spool"
 )
 
@@ -47,12 +49,20 @@ type Exporter struct {
 	reader *spool.Reader
 	client *http.Client
 	log    *slog.Logger
+	// target is the URL each request is posted to.
+	target string
 	// where is the endpoint as logs name it: its scheme and host, since a
-	// userinfo, a path or a query can hold a credential.
+	// userinfo, a path or a query can hold a credential, and a unix socket's
+	// path, which holds none.
 	where  string
 	secret []string
 	// encode is the seam a test makes the encoder fail through.
 	encode func([]*controlv1.Event) ([]byte, error)
+	// peerUID reads a unix endpoint's peer; a test names another account
+	// through it.
+	peerUID func(net.Conn) (uint32, error)
+	// peerLogged holds each cause of a refused peer already logged.
+	peerLogged sync.Map
 
 	// running is held for the length of a Run, so a second one is refused.
 	running atomic.Bool
@@ -79,17 +89,20 @@ func New(opts Options, r *spool.Reader) (*Exporter, error) {
 		return nil, err
 	}
 	opts.fill()
-	e := &Exporter{opts: opts, reader: r, log: opts.Logger, encode: encode}
+	e := &Exporter{opts: opts, reader: r, log: opts.Logger, encode: encode, peerUID: peercred.UID, target: opts.Endpoint}
 	e.client = &http.Client{}
 	if opts.Client != nil {
 		c := *opts.Client
 		e.client = &c
 	}
+	e.where = (&url.URL{Scheme: u.Scheme, Host: u.Host}).String()
+	if u.Scheme == "unix" {
+		e.client.Transport, e.target, e.where = e.unixTransport(u.Path, *opts.CollectorUID), unixTarget, "unix://"+u.Path
+	}
 	e.client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	if e.log == nil {
 		e.log = slog.Default()
 	}
-	e.where = (&url.URL{Scheme: u.Scheme, Host: u.Host}).String()
 	if u.User != nil {
 		e.secret = append(e.secret, u.User.String())
 	}
@@ -111,6 +124,7 @@ func (e *Exporter) Stats() Stats {
 		PartialRejected:  e.partial.Load(),
 		Refused:          e.refused.Load(),
 		RetriedTransport: e.counters[classTransport].Load(),
+		RetriedPeer:      e.counters[classPeer].Load(),
 		RetriedRedirect:  e.counters[classRedirect].Load(),
 		RetriedAuth:      e.counters[classAuth].Load(),
 		RetriedThrottled: e.counters[classThrottled].Load(),

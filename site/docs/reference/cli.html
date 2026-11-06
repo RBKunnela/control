@@ -336,7 +336,7 @@ tombstones first, while no <code>collect</code> holds them. <code>spool drain</c
 (<a href="/docs/reference/scenario-format">scenario-format.md</a>); it exits 1 when one differed, and
 2, a failure too, when one could not run.</p>
 <p><code>dev</code>: <a href="/docs/reference/dev">dev.md</a>.</p>
-<pre><code>usage: guardana-gateway [run --config &lt;file&gt; [--run-token-file &lt;file&gt;] | doctor --config &lt;file&gt; | collect --listen &lt;addr&gt; --dir &lt;dir&gt; --tenant &lt;id&gt; --project &lt;id&gt; --credential-file &lt;file&gt; [--segment-bytes &lt;n&gt;] [--max-bytes &lt;n&gt;] | trail [segments] [export [--after &lt;cursor&gt;] [--limit &lt;n&gt;] [--max-bytes &lt;n&gt;] [--request &lt;id&gt;]... [--run &lt;id&gt;]... [--tenant &lt;id&gt;]... [--project &lt;id&gt;]... [--kind &lt;kind&gt;]...] &lt;file or dir&gt; | prune --through &lt;segment&gt; &lt;dir&gt; | spool drain &lt;dir&gt; &lt;out&gt; | scenario run --config &lt;file&gt; --trail &lt;file&gt; [--control &lt;file&gt;] [--timeout &lt;d&gt;] &lt;path&gt;... | dev --config &lt;file&gt; --policy &lt;file&gt; [--decision-point=silent] [--state &lt;dir&gt;] [--scenario &lt;file&gt;]...]
+<pre><code>usage: guardana-gateway [run --config &lt;file&gt; [--run-token-file &lt;file&gt;] | doctor --config &lt;file&gt; | collect --listen &lt;addr&gt;|unix:///&lt;path&gt; --dir &lt;dir&gt; --tenant &lt;id&gt; --project &lt;id&gt; --credential-file &lt;file&gt; [--segment-bytes &lt;n&gt;] [--max-bytes &lt;n&gt;] | trail [segments] [export [--after &lt;cursor&gt;] [--limit &lt;n&gt;] [--max-bytes &lt;n&gt;] [--request &lt;id&gt;]... [--run &lt;id&gt;]... [--tenant &lt;id&gt;]... [--project &lt;id&gt;]... [--kind &lt;kind&gt;]...] &lt;file or dir&gt; | prune --through &lt;segment&gt; &lt;dir&gt; | spool drain &lt;dir&gt; &lt;out&gt; | scenario run --config &lt;file&gt; --trail &lt;file&gt; [--control &lt;file&gt;] [--timeout &lt;d&gt;] &lt;path&gt;... | dev --config &lt;file&gt; --policy &lt;file&gt; [--decision-point=silent] [--state &lt;dir&gt;] [--scenario &lt;file&gt;]...]
 
 run
   -config string
@@ -354,7 +354,7 @@ collect
   -dir string
     	the directory of trail segments to append what arrives to, created when absent
   -listen string
-    	the loopback address to listen on, host:port; port 0 takes a free one
+    	the loopback address to listen on, host:port, where port 0 takes a free one; or unix:///&lt;path&gt;, a socket created there that a plane reaches with export.collector_uid set to this account
   -max-bytes int
     	the bytes the segments not pruned may hold; past them every request is answered 503 until an operator prunes, and nothing is pruned automatically (default 1073741824)
   -project string

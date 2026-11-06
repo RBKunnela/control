@@ -40,7 +40,7 @@ const (
 	defaultMaxBytes     int64 = 1 << 30
 )
 
-const collectForm = "--listen <addr> --dir <dir> --tenant <id> --project <id> --credential-file <file> " +
+const collectForm = "--listen <addr>|unix:///<path> --dir <dir> --tenant <id> --project <id> --credential-file <file> " +
 	"[--segment-bytes <n>] [--max-bytes <n>]"
 
 // collectorConfig is what a collector keeps and whom it takes it from.
@@ -51,7 +51,8 @@ type collectorConfig struct {
 }
 
 func declareCollect(flags *flag.FlagSet) commandFunc {
-	listen := flags.String("listen", "", "the loopback address to listen on, host:port; port 0 takes a free one")
+	listen := flags.String("listen", "", "the loopback address to listen on, host:port, where port 0 takes a free one; "+
+		"or unix:///<path>, a socket created there that a plane reaches with export.collector_uid set to this account")
 	dir := flags.String("dir", "", "the directory of trail segments to append what arrives to, created when absent")
 	tenant := flags.String("tenant", "", "the tenant the trail is bound to; an event of another is refused")
 	project := flags.String("project", "", "the project the trail is bound to; an event of another is refused")
@@ -62,7 +63,7 @@ func declareCollect(flags *flag.FlagSet) commandFunc {
 		"every request is answered 503 until an operator prunes, and nothing is pruned automatically")
 	return func(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		for _, f := range []struct{ value, name, says string }{
-			{*listen, "listen", "the loopback address to listen on"},
+			{*listen, "listen", "the loopback address or the unix socket to listen on"},
 			{*dir, "dir", "the directory of trail segments to append to"},
 			{*tenant, "tenant", "the tenant the trail is bound to"},
 			{*project, "project", "the project the trail is bound to"},
@@ -119,17 +120,14 @@ func readCredential(path string) (otel.Credential, error) {
 	return cred, nil
 }
 
-// collect receives OTLP/HTTP logs on a loopback address and appends the
-// evidence each one carries to the trail segments in cfg.dir, until ctx ends.
-// A plane reaches a plaintext collector only under export.allow_plaintext and
-// only on a loopback IP literal, so nothing else is listened on; the
-// credential keeps any other local account from writing to the trail or
-// filling its bound.
+// collect receives OTLP/HTTP logs on a loopback address or a unix socket and
+// appends the evidence each one carries to the trail segments in cfg.dir,
+// until ctx ends. A plane reaches a plaintext collector only under
+// export.allow_plaintext and only on a loopback IP literal, so nothing else
+// is listened on; the credential keeps any other local account from writing
+// to the trail or filling its bound.
 func collect(ctx context.Context, listen string, cfg collectorConfig, stdout, stderr io.Writer) int {
-	if err := loopbackOnly(listen); err != nil {
-		return fail(stderr, "collect", err)
-	}
-	ln, err := (&net.ListenConfig{}).Listen(ctx, "tcp", listen)
+	ln, err := collectListener(ctx, listen)
 	if err != nil {
 		return fail(stderr, "collect", err)
 	}
@@ -138,9 +136,9 @@ func collect(ctx context.Context, listen string, cfg collectorConfig, stdout, st
 		return fail(stderr, "collect", fmt.Errorf("--dir %w", err))
 	}
 	if _, err := fmt.Fprintf(stdout, "collect: listening on %s\ncollect: appending to %s for tenant %s, project %s\n"+
-		"collect: a plane sends here with export.endpoint: %s, export.allow_plaintext: true and "+
+		"collect: a plane sends here with export.endpoint: %s, %s and "+
 		"export.headers.Authorization: Bearer <the credential>\n",
-		c.url, oneLine(cfg.dir), shown(cfg.tenant), shown(cfg.project), c.url); err != nil {
+		c.url, oneLine(cfg.dir), shown(cfg.tenant), shown(cfg.project), c.url, c.planeSetting); err != nil {
 		return fail(stderr, "collect", errors.Join(fmt.Errorf("writing to standard output: %w", err), c.stop()))
 	}
 	select {
@@ -158,10 +156,13 @@ func collect(ctx context.Context, listen string, cfg collectorConfig, stdout, st
 // the trail file it appends to, the URL a plane sends to, and what Serve
 // returned once it stops.
 type collector struct {
-	srv    *http.Server
-	trail  *trailfile.Log
-	url    string
-	served chan error
+	srv   *http.Server
+	trail *trailfile.Log
+	url   string
+	// planeSetting is the key beside export.endpoint a plane needs to send
+	// here.
+	planeSetting string
+	served       chan error
 }
 
 // startCollector opens the trail segments in cfg.dir and serves ln until
@@ -187,9 +188,13 @@ func startCollector(ln net.Listener, cfg collectorConfig, stderr io.Writer) (*co
 			IdleTimeout:       collectIdleTimeout,
 			ErrorLog:          slog.NewLogLogger(log.Handler(), slog.LevelWarn),
 		},
-		trail:  w,
-		url:    "http://" + ln.Addr().String() + logsPath,
-		served: make(chan error, 1),
+		trail:        w,
+		url:          "http://" + ln.Addr().String() + logsPath,
+		planeSetting: "export.allow_plaintext: true",
+		served:       make(chan error, 1),
+	}
+	if ln.Addr().Network() == "unix" {
+		c.url, c.planeSetting = "unix://"+ln.Addr().String(), "export.collector_uid: "+strconv.Itoa(os.Geteuid())
 	}
 	go func() { c.served <- c.srv.Serve(ln) }()
 	return c, nil
@@ -211,7 +216,7 @@ func (c *collector) stop() error {
 // literal as its host.
 func loopbackOnly(addr string) error {
 	if err := loopback.Check(addr); err != nil {
-		return fmt.Errorf("--listen %w; collect listens on the loopback only", err)
+		return fmt.Errorf("--listen %w; collect listens on the loopback or a unix socket only", err)
 	}
 	return nil
 }

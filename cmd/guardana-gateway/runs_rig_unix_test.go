@@ -106,6 +106,8 @@ type runsPlane struct {
 	config           string
 	up               *runsUpstream
 	collector        *acceptingCollector
+	// env is what the plane's environment holds beside the configuration.
+	env []string
 }
 
 // newRunsPlane lays out a plane of runsProject whose listener is kind, with
@@ -213,7 +215,7 @@ type servingPlane struct {
 func (rp *runsPlane) start() *servingPlane {
 	rp.t.Helper()
 	cmd := exec.Command(rp.gateway, "run", "--config", rp.config) //nolint:gosec // G204: the binary this test built
-	cmd.Env = environ()
+	cmd.Env = environ(rp.env...)
 	p := &process{cmd: cmd, out: &syncBuffer{}}
 	cmd.Stdout, cmd.Stderr = p.out, p.out
 	if err := cmd.Start(); err != nil {

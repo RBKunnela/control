@@ -21,6 +21,9 @@ const (
 	// classRefused is 400, 413 and 422: the collector refuses the records.
 	classRefused
 	classTransport
+	// classPeer is a unix endpoint's peer of another account, or of none
+	// the platform could name.
+	classPeer
 	classRedirect
 	classAuth
 	classThrottled

@@ -11,6 +11,11 @@ Amended by [ADR-0072](0072-the-collector-keeps-bounded-segments-of-one-project-b
 `collect` writes a bounded directory of segments bound to one tenant and
 project, requires a credential, and `--out` is gone.
 
+Amended when export gained a Unix socket: `collect --listen unix:///path`
+listens on a socket as well as on the loopback, and a plane sends to it only
+once the socket's peer is `export.collector_uid`
+([docs/status.md](../status.md)).
+
 ## Context
 
 A plane exports its evidence to an OpenTelemetry collector over OTLP/HTTP, and

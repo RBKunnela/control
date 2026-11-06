@@ -301,7 +301,7 @@ the exporter work in records from there.</p>
 </tr>
 <tr>
 <td>Deliver</td>
-<td>the exporter rewinds to the acknowledged position, takes a batch of up to <code>MaxBatch</code> records within <code>Linger</code>, keeps at most <code>InFlight</code> requests unacknowledged, and sends each event as one OTLP log record over HTTP</td>
+<td>the exporter rewinds to the acknowledged position, takes a batch of up to <code>MaxBatch</code> records within <code>Linger</code>, keeps at most <code>InFlight</code> requests unacknowledged, and sends each event as one OTLP log record over HTTP; to a <code>unix:///path</code> endpoint it writes on a connection only once the socket's peer is <code>export.collector_uid</code>, read from the kernel each time</td>
 <td>a second <code>Run</code> on one exporter, which would let each run acknowledge what the other took</td>
 </tr>
 <tr>
@@ -311,7 +311,7 @@ the exporter work in records from there.</p>
 </tr>
 <tr>
 <td>Retry</td>
-<td>any answer that is not an acceptance or a refusal of the records, a transport error, a redirect, an auth or throttling status, a server error, an acceptance that does not parse or runs past 64 KiB, is sent again with a backoff that doubles up to <code>MaxBackoff</code>, for as long as it takes</td>
+<td>any answer that is not an acceptance or a refusal of the records, a transport error, a redirect, an auth or throttling status, a server error, an acceptance that does not parse or runs past 64 KiB, a unix socket's peer of another account or of none the kernel names, is sent again with a backoff that doubles up to <code>MaxBackoff</code>, for as long as it takes</td>
 <td>never: a collector outage fills the spool and nothing else</td>
 </tr>
 <tr>

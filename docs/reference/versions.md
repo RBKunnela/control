@@ -55,6 +55,7 @@ version. [status.md](../status.md) is the inventory.
 | Reaction route (`kind`) | — | `reaction-route/v1alpha1` | `experimental` | [contracts.md](../contracts.md#the-route) |
 | Stop list (`version`) | `1.0` | `1.0` | `experimental` | [contracts.md](../contracts.md#the-stop-list) |
 | Lift (`kind`, `version`) | `reaction-lift/v1alpha1`, `1.0` | `reaction-lift/v1alpha1`, `1.0` | `experimental` | [contracts.md](../contracts.md#the-lift) |
+| Health answer (`schema`) | `2` | — | `experimental` | [run the gateway](../guides/run-the-gateway.md#6-read-the-health) |
 
 The gateway's configuration file and a `policy test` case carry no version.
 Each refuses a key it does not know, so a file that names a key a later

@@ -88,6 +88,8 @@ var configFields = []field[Config]{
 	stringField("listener.agent.version", "", false, func(c *Config) *string { return &c.Listener.AgentVersion }),
 
 	stringField("health.address", "127.0.0.1:8081", false, func(c *Config) *string { return &c.Health.Address }),
+	filePath(stringField("health.socket", "", false, func(c *Config) *string { return &c.Health.Socket })),
+	accountField("health.socket_uid", func(c *Config) *AccountID { return &c.Health.SocketUID }),
 
 	stringField("policy.bundle_id", "", true, func(c *Config) *string { return &c.Policy.BundleID }),
 	filePath(stringField("policy.bundle_file", "", true, func(c *Config) *string { return &c.Policy.BundleFile })),
@@ -150,6 +152,7 @@ var configFields = []field[Config]{
 
 	address(stringField("export.endpoint", "", true, func(c *Config) *string { return &c.Export.Endpoint })),
 	boolField("export.allow_plaintext", "false", func(c *Config) *bool { return &c.Export.AllowPlaintext }),
+	accountField("export.collector_uid", func(c *Config) *AccountID { return &c.Export.CollectorUID }),
 	durationField("export.timeout", "10s", func(c *Config) *time.Duration { return &c.Export.Timeout }),
 	intField("export.in_flight", "4", func(c *Config) *int { return &c.Export.InFlight }),
 	intField("export.max_batch", "128", func(c *Config) *int { return &c.Export.MaxBatch }),

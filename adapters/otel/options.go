@@ -13,9 +13,15 @@ import (
 // Options configure an exporter once, at New.
 type Options struct {
 	// Endpoint is the collector's OTLP/HTTP logs URL. It has to be https,
-	// unless AllowPlaintext says otherwise. Its userinfo and query are sent
+	// unless AllowPlaintext says otherwise, or unix:///path, a Unix socket
+	// the logs are posted to at UnixLogsPath. Its userinfo and query are sent
 	// and never logged.
 	Endpoint string
+	// CollectorUID is the account a unix endpoint's collector runs as, which
+	// such an endpoint requires and any other refuses. The exporter reads the
+	// peer's account on every connection it opens and sends nothing, the
+	// headers included, on one of another account.
+	CollectorUID *uint32
 	// AllowPlaintext lets the endpoint be http. It is the named risk of a
 	// collector reached over plaintext: anyone on the path can forge the
 	// acceptance that releases the evidence, and the headers travel in the
@@ -72,6 +78,9 @@ type Stats struct {
 	Retries uint64
 	// RetriedTransport is no answer: a timeout or a connection failure.
 	RetriedTransport uint64
+	// RetriedPeer is a unix endpoint's connection closed unused because its
+	// peer was not CollectorUID or could not be named.
+	RetriedPeer uint64
 	// RetriedRedirect is a 3xx, which is never followed.
 	RetriedRedirect uint64
 	// RetriedAuth is 401, 403 and 407.
@@ -111,6 +120,10 @@ func (o Options) endpoint() (*url.URL, error) {
 	switch {
 	case err != nil:
 		return nil, fmt.Errorf("%w: the endpoint does not parse as a URL", ErrInvalidOptions)
+	case u.Scheme == "unix":
+		return u, o.checkUnix(u)
+	case o.CollectorUID != nil:
+		return nil, fmt.Errorf("%w: CollectorUID is set for an endpoint that is not a unix socket", ErrInvalidOptions)
 	case (u.Scheme != "http" && u.Scheme != "https") || u.Host == "":
 		return nil, fmt.Errorf("%w: the endpoint is not an http(s) URL with a host", ErrInvalidOptions)
 	case u.Scheme == "http" && !o.AllowPlaintext:

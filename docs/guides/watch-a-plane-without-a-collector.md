@@ -43,8 +43,8 @@ guardana-gateway collect --listen 127.0.0.1:4318 --dir trail/plane \
 ```
 
 It listens on a loopback IP address only, so `0.0.0.0`, another host and
-`localhost` are refused, and it prints the URL it listens on and the
-directory it appends to. It runs until Ctrl-C or `SIGTERM`, and waits up to
+`localhost` are refused, or with `--listen unix:///<path>` on a new socket.
+It prints where it listens, the directory and the plane's keys. It runs until Ctrl-C or `SIGTERM`, and waits up to
 ten seconds for the requests in flight. One collect holds a directory at a
 time; a second one is refused.
 
@@ -165,7 +165,8 @@ The live segment is never pruned.
 - An event sent again after its segment was pruned is written again, and a
   trail whose first events were pruned fails the chain check.
 - Before collect is up, whoever binds its loopback port first is sent the
-  token in plaintext by the plane's next retry.
+  token in plaintext by the plane's next retry, which goes in 0.17; a socket's
+  peer must be `export.collector_uid`.
 - At 10,000 sealed segments a request that needs a seal is answered 503 until
   a prune; past that, each seal drops the oldest tombstone.
 - `trail` checks each chain's shape: its links, its order and its identifiers.

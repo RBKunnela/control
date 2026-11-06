@@ -24,7 +24,8 @@ type listening struct {
 
 // bind takes every address this configuration asks for before anything serves:
 // the enforcement API's socket, or the agent-facing listener when it speaks
-// HTTP, and the plane's own answers when an address is configured for them.
+// HTTP, and the plane's own answers when an address or a socket is configured
+// for them.
 // An address that is taken is a refusal, and whatever was bound before it is
 // released.
 func (p *plane) bind(stdout io.Writer, listen listenFunc) ([]listening, error) {
@@ -37,6 +38,9 @@ func (p *plane) bind(stdout io.Writer, listen listenFunc) ([]listening, error) {
 		writeLine(stdout, "listening for tools on "+ln.Addr().String())
 	}
 	bound, err := p.bindTCP(stdout, listen)
+	if err == nil {
+		bound, err = p.bindHealthSocket(stdout, bound)
+	}
 	if err != nil && p.socket != nil {
 		err = errors.Join(err, p.socket.Close())
 	}

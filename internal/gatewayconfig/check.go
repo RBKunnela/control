@@ -20,7 +20,7 @@ func (c *Config) check() error {
 	if err := checkRequired(c, configFields, ""); err != nil {
 		return err
 	}
-	for _, check := range []func() error{c.checkKindKeys, c.checkIdentifiers, c.checkListener, c.checkSessionIdle, c.checkMaxSessions, c.checkPolicy, c.checkPDP, c.checkApprovals, c.checkPause, c.checkRuns, c.checkReaction, c.checkFlow, c.checkEvidence, c.checkExport, c.checkShaping, c.checkTimeouts, c.checkUpstreams, c.checkOverrides} {
+	for _, check := range []func() error{c.checkKindKeys, c.checkIdentifiers, c.checkListener, c.checkSessionIdle, c.checkMaxSessions, c.checkPolicy, c.checkPDP, c.checkApprovals, c.checkPause, c.checkRuns, c.checkReaction, c.checkFlow, c.checkEvidence, c.checkLocalSockets, c.checkExport, c.checkShaping, c.checkTimeouts, c.checkUpstreams, c.checkOverrides} {
 		if err := check(); err != nil {
 			return err
 		}
@@ -279,9 +279,10 @@ func (c *Config) checkEvidence() error {
 	return nil
 }
 
-// checkExport refuses an endpoint that is not a collector's URL.
+// checkExport refuses an endpoint that is not a collector's URL;
+// checkLocalSockets has judged a unix one.
 func (c *Config) checkExport() error {
-	if !httpURL(c.Export.Endpoint) {
+	if _, unix := UnixEndpoint(c.Export.Endpoint); !unix && !httpURL(c.Export.Endpoint) {
 		return notHTTP("export.endpoint", c.Export.Endpoint)
 	}
 	return nil

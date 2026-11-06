@@ -86,7 +86,7 @@ func exporterCounters(s otel.Stats) map[string]any {
 	return map[string]any{
 		"acknowledged": s.Acknowledged, "quarantined": s.Quarantined,
 		"partial_rejected": s.PartialRejected, "refused": s.Refused, "retries": s.Retries,
-		"retried_transport": s.RetriedTransport, "retried_redirect": s.RetriedRedirect,
+		"retried_transport": s.RetriedTransport, "retried_peer": s.RetriedPeer, "retried_redirect": s.RetriedRedirect,
 		"retried_auth": s.RetriedAuth, "retried_throttled": s.RetriedThrottled,
 		"retried_server": s.RetriedServer, "retried_answer": s.RetriedAnswer,
 		"retried_status": s.RetriedStatus,

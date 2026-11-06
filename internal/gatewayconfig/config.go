@@ -72,9 +72,12 @@ type ListenerConfig struct {
 	MaxSessions       int
 }
 
-// HealthConfig is the plane's own answers.
+// HealthConfig is the plane's own answers: counts on Address, and the whole
+// answer on Socket to the plane's own account and SocketUID.
 type HealthConfig struct {
-	Address string
+	Address   string
+	Socket    string
+	SocketUID AccountID
 }
 
 // PolicyConfig pins the bundle the plane serves and the key it verifies with,
@@ -198,12 +201,15 @@ type ExportConfig struct {
 	// and read the headers.
 	AllowPlaintext bool
 	Headers        map[string]string
-	Timeout        time.Duration
-	InFlight       int
-	MaxBatch       int
-	Linger         time.Duration
-	Backoff        time.Duration
-	MaxBackoff     time.Duration
+	// CollectorUID is the account a unix endpoint's collector has to run
+	// as; the credential is sent to no other.
+	CollectorUID AccountID
+	Timeout      time.Duration
+	InFlight     int
+	MaxBatch     int
+	Linger       time.Duration
+	Backoff      time.Duration
+	MaxBackoff   time.Duration
 }
 
 // ListConfig is what tools/list subtracts and for how long a shaped list

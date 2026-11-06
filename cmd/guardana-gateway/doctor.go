@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -156,18 +155,6 @@ func capabilityList(c gateway.Capabilities) string {
 		return "nothing"
 	}
 	return strings.Join(out, ", ")
-}
-
-// export reads the endpoint as a URL and says where records will go. It sends
-// nothing: a collector that is down must not stop a gateway from starting, so
-// its reachability is not a check this makes.
-func (d *examination) export(context.Context) (string, string, string) {
-	u, err := url.Parse(d.cfg.Export.Endpoint)
-	if err != nil || u.Host == "" {
-		return verdictFail, "export", fmt.Sprintf("%q is not a URL", d.cfg.Export.Endpoint)
-	}
-	return verdictOK, "export", fmt.Sprintf("OTLP/HTTP JSON logs to %s://%s%s, %d header(s), at most %d record(s) per request, %d in flight",
-		u.Scheme, u.Host, u.EscapedPath(), len(d.cfg.Export.Headers), d.cfg.Export.MaxBatch, d.cfg.Export.InFlight)
 }
 
 // seams builds every seam `run` builds but the spool and the durable approval

@@ -15,10 +15,16 @@ import (
 	"github.com/guardana/control/internal/reaction"
 )
 
-// healthAnswer is what GET /healthz says about the plane. It carries no
+// healthSchema names the shape of the health answer, so a reader tells it
+// from an answer with no schema member.
+const healthSchema = "2"
+
+// healthAnswer is what the plane says about itself. It carries no
 // configuration and no credential: the mode, the bundle it serves, what each
-// seam counted, and whether the plane still takes material calls.
+// seam counted, and whether the plane still takes material calls. GET
+// /healthz answers it counted; health.socket answers it whole.
 type healthAnswer struct {
+	Schema  string       `json:"schema"`
 	Status  string       `json:"status"`
 	Mode    string       `json:"mode"`
 	Adapter string       `json:"adapter"`
@@ -164,7 +170,7 @@ func (p *plane) serveHealth(w http.ResponseWriter, _ *http.Request) {
 	if !ok {
 		status = http.StatusServiceUnavailable
 	}
-	writeJSON(w, p.logger, status, answer)
+	writeJSON(w, p.logger, status, answer.counted())
 }
 
 // health reads every seam's counters, the pause and stop states before the
@@ -185,6 +191,7 @@ func (p *plane) health(src gateway.PauseSource, clock func() time.Time) (healthA
 	// its records uncounted.
 	spoolStats, spoolErr := p.spool.Stats()
 	answer := healthAnswer{
+		Schema:    healthSchema,
 		Status:    "ok",
 		Mode:      p.cfg.ModeName,
 		Adapter:   p.seam().Name(),

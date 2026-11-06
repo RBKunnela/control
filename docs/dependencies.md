@@ -71,13 +71,13 @@ page is wrong.
   v1.1.3 (MIT), its JSON encoder and that encoder's assembly kernels;
   `github.com/yosida95/uritemplate/v3` v3.0.2 (BSD-3-Clause, the text in its
   `LICENSE` file), which expands resource templates; `golang.org/x/oauth2`
-  v0.35.0, `golang.org/x/sync` v0.23.0, `golang.org/x/sys` v0.48.0 and
-  `golang.org/x/time` v0.15.0 (all BSD-3-Clause), for the bearer-token
-  middleware, the transports' concurrency helpers, system calls and its rate
-  limiter. They sit in the request path with the module that brings them, and a
+  v0.35.0, `golang.org/x/sync` v0.23.0, `golang.org/x/sys` v0.48.0, also a
+  direct dependency below, and `golang.org/x/time` v0.15.0 (all
+  BSD-3-Clause), for the bearer-token middleware, the transports'
+  concurrency helpers, system calls and its rate limiter. They sit in the request path with the module that brings them, and a
   bump to any of them is read the same way.
 
-Beside those, code that ships imports only protobuf; `go list -deps
+Beside those, code that ships imports only protobuf and `golang.org/x/sys`; `go list -deps
 ./adapters/mcp` names the set above and nothing more. The test-only entry and Goldmark, both below, are the only other modules this
 repository imports itself. `examples/evidence-report`
 is a module of its own that requires this one through a `replace`, so it reaches
@@ -113,6 +113,27 @@ imported outside that part, by the adapter and by the gateway's command.
   by hand rather than followed.
 - Request path: yes. It is the filesystem the gateway runs on, so a digest
   bump is read, as a dependency bump is, rather than merged on a green gate.
+
+### `golang.org/x/sys` v0.48.0
+
+- Problem it solves: naming the account on the other end of a Unix socket,
+  `SO_PEERCRED` on Linux and `LOCAL_PEERCRED` on macOS, which the plane reads
+  before it sends the collector's credential on a `unix://` export endpoint
+  and before it answers `health.socket`. `internal/peercred/` is its only
+  importer.
+- Why the standard library will not do: `syscall` reads `SO_PEERCRED` on
+  Linux only and has no `xucred` for macOS; writing the `getsockopt` call and
+  the structure's layout by hand per platform is what this module already
+  does, generated from the system headers.
+- Licence: BSD-3-Clause, read from the module's `LICENSE` file, with a
+  separate patent grant in `PATENTS`.
+- Maintenance signal: published from `go.googlesource.com/sys` by the Go
+  project; v0.48.0 is tagged at commit `613e2570718e`, dated 2026-08-31 in the
+  module proxy's record. It was linked into the gateway before, through the
+  MCP module.
+- Request path: yes. A read it gets wrong lets the credential or the whole
+  health answer reach another account, so a version bump is read rather than
+  merged on a green gate.
 
 ## Test-only
 
@@ -153,9 +174,9 @@ binary and none is in the request path.
 | `goimports` | `golang.org/x/tools` | `make fmt`, `make fmt-check` | BSD-3-Clause |
 | `govulncheck` | `golang.org/x/vuln` | `make security`; in binary mode, `scripts/scan-binaries.sh` over every binary of every release archive and the image's binary for each platform, before a release is attested or published | BSD-3-Clause |
 
-Every other module in `go.mod` but Goldmark (below) is marked `// indirect` and arrives through
+Every other module in `go.mod` but Goldmark (below) and `golang.org/x/sys` (above) is marked `// indirect` and arrives through
 those three or through the MCP module: `golang.org/x/mod`, `golang.org/x/sync`,
-`golang.org/x/sys`, `golang.org/x/telemetry`, `golang.org/x/tools` and
+`golang.org/x/telemetry`, `golang.org/x/tools` and
 `golang.org/x/vuln` through the tools; `github.com/google/jsonschema-go`,
 `github.com/segmentio/asm`, `github.com/segmentio/encoding`,
 `github.com/yosida95/uritemplate/v3`, `golang.org/x/oauth2` and

@@ -99,8 +99,8 @@ evidence:
   dir: spool
 
 export:
-  endpoint: http://127.0.0.1:4318/v1/logs
-  allow_plaintext: true         # a plaintext collector is a loopback one, and you say so
+  endpoint: unix:///run/collector/logs.sock
+  collector_uid: 1001           # the collector's account
 
 upstreams:
   - name: orders
@@ -170,7 +170,8 @@ schema changes is unclassified again until you look at it.
 ### 6. Read the health
 
 ```
-curl -s http://127.0.0.1:8081/healthz | jq
+curl -s http://127.0.0.1:8081/healthz | jq     # schema 2: counts, no run ids
+curl -s --unix-socket /run/guardana/health.sock http://plane/healthz | jq   # with health.socket: the runs too, to this account alone
 ```
 
 `policy.freshness` is `confirmed`, `unconfirmed` or `expired`, beside its

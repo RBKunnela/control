@@ -318,20 +318,21 @@ What the plane does today:
 What it does not do:
 
 - **The health listener takes no credential, and the MCP listener none but a
-  run token under `runs.dir`.** Any account that can reach them calls tools as
-  the listener's principal, under any run whose token it holds, and reads the
-  counters. Both default to `127.0.0.1`, which every local account can reach.
+  run token under `runs.dir`.** Any account reaching them calls tools as the
+  listener's principal, under any run whose token it holds, and reads the
+  counters; both default to `127.0.0.1`.
 - **`collect` trusts whoever holds its credential**, answering others 401
   (`TestARequestWithoutTheCredentialIsRefusedBeforeItIsRead`): who reads its
-  file or the plane's configuration, or binds its port while down, gets
+  file or the plane's configuration, or binds its TCP port while down, gets
   it ([ADR-0072](../adr/0072-the-collector-keeps-bounded-segments-of-one-project-behind-a-credential.md)).
 - The spool writes its files `0600` and refuses a directory another account
   owns or that others can write.
-- The checks read the owner and the mode bits; access control lists are not
-  judged. On macOS an extended ACL can let another account write a directory
-  whose mode bits say `0700`, and that directory is not refused: the trail
-  file and the hold journal accept one. On Linux a write an ACL grants another
-  account shows in the group bits, which these checks refuse.
+- A peer `health.socket` or a unix collector admits can pass its connection
+  on (`SCM_RIGHTS`): trust stops at its account.
+- The checks read the owner and mode bits, not access control lists. On
+  macOS an extended ACL can let another account write a `0700` directory,
+  which is not refused: the trail file and the hold journal accept one. On
+  Linux an ACL's grant to another account shows in the group bits, refused.
 
 ## The same local account
 
@@ -375,7 +376,7 @@ What the plane does today:
   included, and a loopback origin is admitted only while the listener is on the
   loopback (`adapters/mcp/listener.go`, `internal/gatewayconfig/check.go`;
   `TestOriginIsValidated`).
-- `collect` listens on a loopback address only (`internal/loopback/`;
+- `collect` listens on the loopback or a socket only (`internal/loopback/`;
   `TestCollectListensOnTheLoopbackOnly`), and `dev` binds and reaches loopback
   IP literals only (`TestDevAddressesAreLoopbackLiterals`).
 
@@ -386,10 +387,11 @@ What it does not do:
   configured principal, under `runs.dir` with a run token they hold. There is no TLS setting on it.
 - The health listener is the same: plain HTTP, no credential, wherever
   `health.address` puts it.
-- A plaintext export stays on the host, unprotected there: an account that
-  can capture loopback traffic reads the headers and the events, and one that
-  holds the collector's port first receives them and can answer with the
-  acceptance that releases a record from the spool.
+- A plaintext export stays on the host, unprotected there: an account
+  capturing loopback traffic reads the headers and the events, and one holding
+  the collector's port first receives them and can answer with the acceptance
+  that releases them; a unix endpoint checks the collector's account
+  (`TestACollectorOfAnotherAccountIsSentNothing`).
 
 ## A tampered release
 

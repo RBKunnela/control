@@ -93,6 +93,8 @@ Rendered from the field table in `internal/gatewayconfig`. Rebuild it with
 | `listener.agent.framework` | `GUARDANA_CONTROL_LISTENER_AGENT_FRAMEWORK` | string |  | no |  |
 | `listener.agent.version` | `GUARDANA_CONTROL_LISTENER_AGENT_VERSION` | string |  | no |  |
 | `health.address` | `GUARDANA_CONTROL_HEALTH_ADDRESS` | string | `127.0.0.1:8081` | no |  |
+| `health.socket` | `GUARDANA_CONTROL_HEALTH_SOCKET` | string |  | no |  |
+| `health.socket_uid` | `GUARDANA_CONTROL_HEALTH_SOCKET_UID` | a numeric user id |  | no |  |
 | `policy.bundle_id` | `GUARDANA_CONTROL_POLICY_BUNDLE_ID` | string |  | yes |  |
 | `policy.bundle_file` | `GUARDANA_CONTROL_POLICY_BUNDLE_FILE` | string |  | yes |  |
 | `policy.key_id` | `GUARDANA_CONTROL_POLICY_KEY_ID` | string |  | yes |  |
@@ -146,6 +148,7 @@ Rendered from the field table in `internal/gatewayconfig`. Rebuild it with
 | `evidence.on_unwritable` | `GUARDANA_CONTROL_EVIDENCE_ON_UNWRITABLE` | one of | `block` | yes | `block`, `allow_reads` |
 | `export.endpoint` | `GUARDANA_CONTROL_EXPORT_ENDPOINT` | string |  | yes |  |
 | `export.allow_plaintext` | `GUARDANA_CONTROL_EXPORT_ALLOW_PLAINTEXT` | true or false | `false` | no |  |
+| `export.collector_uid` | `GUARDANA_CONTROL_EXPORT_COLLECTOR_UID` | a numeric user id |  | no |  |
 | `export.timeout` | `GUARDANA_CONTROL_EXPORT_TIMEOUT` | duration | `10s` | no |  |
 | `export.in_flight` | `GUARDANA_CONTROL_EXPORT_IN_FLIGHT` | integer | `4` | no |  |
 | `export.max_batch` | `GUARDANA_CONTROL_EXPORT_MAX_BATCH` | integer | `128` | no |  |

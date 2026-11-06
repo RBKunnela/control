@@ -159,9 +159,31 @@ each signed hold shows, and without <code>--approver-id</code> only reads, refus
 start as the plane's account. <code>dev</code> runs its plane under <code>signed</code>, with a
 roster and an operator key of its own, and prints <code>inbox</code>, <code>operator_key</code>
 and <code>approve_command</code>.</li>
+<li><code>export.endpoint: unix:///path</code> with the required <code>export.collector_uid</code>
+sends the evidence over a Unix socket. On every connection the plane reads
+the peer's account (<code>SO_PEERCRED</code> on Linux, <code>LOCAL_PEERCRED</code> on macOS) and
+writes nothing, the credential included, to another or to one it cannot
+name; the records stay in the spool, the attempt counts as
+<code>exporter.retried_peer</code>, and each cause is logged once.
+<code>guardana-gateway collect --listen unix:///path</code> creates such a socket and
+prints the <code>export.collector_uid</code> to set; <code>--listen host:port</code> works as
+before. Other platforms refuse both keys at load.</li>
+<li><code>health.socket</code> serves the whole health answer, run ids included, on a
+Unix socket of mode <code>0600</code> that answers only the plane's own account and
+<code>health.socket_uid</code>; any other peer is closed unanswered. Anything at the
+path but a stale socket of the plane's account is refused, and the plane
+removes its socket when it stops.</li>
+<li><code>doctor</code> warns of every TCP <code>export.endpoint</code>, naming the unix form.</li>
 </ul>
 <h3 id="changed">Changed</h3>
 <ul>
+<li><strong>Breaking:</strong> <code>/healthz</code> answers <code>&quot;schema&quot;: &quot;2&quot;</code> and names no run: <code>stops</code>
+carries the counts <code>unheld</code> and <code>unread</code>, and leaves out <code>entries</code>,
+<code>unheld_runs</code> and <code>unread_runs</code>, which only <code>health.socket</code> answers. A
+reader of the old shape finds no <code>schema</code> member.</li>
+<li>TCP export stays in this release with a <code>doctor</code> warning and goes in 0.17:
+over plaintext, whoever holds the port while the collector is down
+receives the credential. Move to <code>export.endpoint: unix:///path</code>.</li>
 <li><strong>Breaking:</strong> <code>approvals.authority</code> (<code>memory</code>, <code>directory</code> or <code>signed</code>)
 replaces <code>approvals.provider</code> and has no default. A configuration without
 it, or with the old key, is refused naming both; <code>provider: file</code> becomes

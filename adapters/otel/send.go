@@ -84,6 +84,10 @@ func (e *Exporter) settle(ctx context.Context, events []*controlv1.Event, a answ
 		}
 		e.log.Warn("otel: collector refused a record; sending it again",
 			append(a.fields(), "refusals", *refusals)...)
+	case a.class == classPeer:
+		*refusals = 0
+		e.counters[a.class].Add(1)
+		e.notePeer(a.err)
 	default:
 		*refusals = 0
 		e.counters[a.class].Add(1)
@@ -126,7 +130,7 @@ func (e *Exporter) quarantine(events []*controlv1.Event, why string, fields ...a
 func (e *Exporter) post(ctx context.Context, body []byte, batch int) answer {
 	ctx, cancel := context.WithTimeout(ctx, e.opts.Timeout)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, e.opts.Endpoint, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, e.target, bytes.NewReader(body))
 	if err != nil {
 		return answer{class: classTransport, err: err}
 	}
@@ -135,7 +139,11 @@ func (e *Exporter) post(ctx context.Context, body []byte, batch int) answer {
 		req.Header.Set(k, v)
 	}
 	resp, err := e.client.Do(req)
-	if err != nil {
+	var peer *peerRefusal
+	switch {
+	case errors.As(err, &peer):
+		return answer{class: classPeer, err: err}
+	case err != nil:
 		return answer{class: classTransport, err: err}
 	}
 	defer resp.Body.Close() //nolint:errcheck // the answer is read; nothing to lose on close

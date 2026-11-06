@@ -436,20 +436,21 @@ leaves the record pending (<code>internal/console/</code>;
 <p>What it does not do:</p>
 <ul>
 <li><strong>The health listener takes no credential, and the MCP listener none but a
-run token under <code>runs.dir</code>.</strong> Any account that can reach them calls tools as
-the listener's principal, under any run whose token it holds, and reads the
-counters. Both default to <code>127.0.0.1</code>, which every local account can reach.</li>
+run token under <code>runs.dir</code>.</strong> Any account reaching them calls tools as the
+listener's principal, under any run whose token it holds, and reads the
+counters; both default to <code>127.0.0.1</code>.</li>
 <li><strong><code>collect</code> trusts whoever holds its credential</strong>, answering others 401
 (<code>TestARequestWithoutTheCredentialIsRefusedBeforeItIsRead</code>): who reads its
-file or the plane's configuration, or binds its port while down, gets
+file or the plane's configuration, or binds its TCP port while down, gets
 it (<a href="/docs/adr/0072-the-collector-keeps-bounded-segments-of-one-project-behind-a-credential">ADR-0072</a>).</li>
 <li>The spool writes its files <code>0600</code> and refuses a directory another account
 owns or that others can write.</li>
-<li>The checks read the owner and the mode bits; access control lists are not
-judged. On macOS an extended ACL can let another account write a directory
-whose mode bits say <code>0700</code>, and that directory is not refused: the trail
-file and the hold journal accept one. On Linux a write an ACL grants another
-account shows in the group bits, which these checks refuse.</li>
+<li>A peer <code>health.socket</code> or a unix collector admits can pass its connection
+on (<code>SCM_RIGHTS</code>): trust stops at its account.</li>
+<li>The checks read the owner and mode bits, not access control lists. On
+macOS an extended ACL can let another account write a <code>0700</code> directory,
+which is not refused: the trail file and the hold journal accept one. On
+Linux an ACL's grant to another account shows in the group bits, refused.</li>
 </ul>
 <h2 id="the-same-local-account">The same local account</h2>
 <p>The plane's account is the authority for everything on disk. <strong>Any process
@@ -489,7 +490,7 @@ agents cannot answer an approval, read a signing key or reset its own floor
 included, and a loopback origin is admitted only while the listener is on the
 loopback (<code>adapters/mcp/listener.go</code>, <code>internal/gatewayconfig/check.go</code>;
 <code>TestOriginIsValidated</code>).</li>
-<li><code>collect</code> listens on a loopback address only (<code>internal/loopback/</code>;
+<li><code>collect</code> listens on the loopback or a socket only (<code>internal/loopback/</code>;
 <code>TestCollectListensOnTheLoopbackOnly</code>), and <code>dev</code> binds and reaches loopback
 IP literals only (<code>TestDevAddressesAreLoopbackLiterals</code>).</li>
 </ul>
@@ -500,10 +501,11 @@ anything but the loopback, it lets anyone who reaches it call tools as the
 configured principal, under <code>runs.dir</code> with a run token they hold. There is no TLS setting on it.</li>
 <li>The health listener is the same: plain HTTP, no credential, wherever
 <code>health.address</code> puts it.</li>
-<li>A plaintext export stays on the host, unprotected there: an account that
-can capture loopback traffic reads the headers and the events, and one that
-holds the collector's port first receives them and can answer with the
-acceptance that releases a record from the spool.</li>
+<li>A plaintext export stays on the host, unprotected there: an account
+capturing loopback traffic reads the headers and the events, and one holding
+the collector's port first receives them and can answer with the acceptance
+that releases them; a unix endpoint checks the collector's account
+(<code>TestACollectorOfAnotherAccountIsSentNothing</code>).</li>
 </ul>
 <h2 id="a-tampered-release">A tampered release</h2>
 <p>What the project does today: the release workflow builds the archives from a
