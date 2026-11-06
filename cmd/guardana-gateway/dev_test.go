@@ -242,7 +242,7 @@ func TestDevRefusesAStdioListener(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(d.config, bytes.Replace(raw, []byte("kind: stateless_http"), []byte("kind: stdio"), 1), 0o600); err != nil { //nolint:gosec // G703: a file under the test's own directory
+	if err := os.WriteFile(d.config, bytes.Replace(raw, []byte("kind: stateless_http"), []byte("kind: stdio"), 1), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	state := filepath.Join(t.TempDir(), "state")

@@ -98,7 +98,7 @@ func place(t *testing.T, dir, name string, data []byte, perm os.FileMode) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(path, data, perm); err != nil { //nolint:gosec // G703: a path under this test's own temporary directory
+	if err := os.WriteFile(path, data, perm); err != nil {
 		t.Fatal(err)
 	}
 }

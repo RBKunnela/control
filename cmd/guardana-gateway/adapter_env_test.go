@@ -102,7 +102,7 @@ func environmentTree(t *testing.T) tree {
 		"    command: "+strconv.Quote(self)+"\n    args:\n      - -test.run=^TestHelperReportsItsEnvironment$\n"+
 			"      - -test.timeout=5m\n      - "+reportEnvironment+"\n    env:\n      - ORDERS_REGION\n", 1)
 	doc += "\npdp:\n  identifier: https://pdp.example.test\n"
-	if err := os.WriteFile(tr.config, []byte(doc), 0o600); err != nil { //nolint:gosec // G703: the configuration copy under the test's temp dir
+	if err := os.WriteFile(tr.config, []byte(doc), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	setEnv(t, "export.headers.authorization", headerSentinel)
@@ -195,7 +195,7 @@ func TestDoctorPrintsAnUpstreamsEnvNamesNeverValues(t *testing.T) {
 	}
 	doc := strings.Replace(string(raw), "    endpoint: http://127.0.0.1:1/mcp\n",
 		"    command: server\n    env:\n      - ORDERS_REGION\n      - ORDERS_ZONE\n", 1)
-	if err := os.WriteFile(tr.config, []byte(doc), 0o600); err != nil { //nolint:gosec // G703: the configuration copy under the test's temp dir
+	if err := os.WriteFile(tr.config, []byte(doc), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("ORDERS_REGION", unrelatedSentinel)

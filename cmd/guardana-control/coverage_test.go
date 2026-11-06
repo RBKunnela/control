@@ -102,7 +102,7 @@ func newCoverageTree(t *testing.T, morePaths string) coverageTree {
 
 func writeFixture(t *testing.T, path, body string) {
 	t.Helper()
-	if err := os.WriteFile(path, []byte(body), 0o600); err != nil { //nolint:gosec // G703: a path in this test's own directory
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -196,7 +196,7 @@ func TestAnotherFileSwappedInAfterTheListingIsRefused(t *testing.T) {
 			t.Fatal(err)
 		}
 		copied := filepath.Join(t.TempDir(), "copy")
-		if err := os.WriteFile(copied, body, 0o600); err != nil { //nolint:gosec // G703: a name under the test's own temporary directory
+		if err := os.WriteFile(copied, body, 0o600); err != nil {
 			t.Fatal(err)
 		}
 		if err := os.Rename(copied, path); err != nil {

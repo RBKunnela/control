@@ -125,7 +125,7 @@ func copyTree(t *testing.T, from, to string) {
 		if err != nil {
 			return err
 		}
-		return os.WriteFile(target, raw, 0o600) //nolint:gosec // G703: a path under the test's temp dir
+		return os.WriteFile(target, raw, 0o600)
 	})
 	if err != nil {
 		t.Fatal(err)

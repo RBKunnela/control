@@ -118,7 +118,7 @@ func neutralWith(t *testing.T, was, now string) string {
 		t.Fatalf("%s is not in the neutral profile once", was)
 	}
 	profile := filepath.Join(t.TempDir(), "profile.json")
-	if err := os.WriteFile(profile, bytes.Replace(raw, []byte(was), []byte(now), 1), 0o600); err != nil { //nolint:gosec // G703: a path in this test's own directory
+	if err := os.WriteFile(profile, bytes.Replace(raw, []byte(was), []byte(now), 1), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	return profile

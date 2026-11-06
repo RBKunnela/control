@@ -30,7 +30,7 @@ func copyFixture(t *testing.T, from, to string, mode os.FileMode) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(to, raw, mode); err != nil { //nolint:gosec // G703: a path in this test's own directory
+	if err := os.WriteFile(to, raw, mode); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -128,7 +128,7 @@ func TestObserveImportOfAConflictExitsOne(t *testing.T) {
 	if changed == string(raw) {
 		t.Fatal("the fixture names no read_file to change")
 	}
-	if err := os.WriteFile(tr.input, []byte(changed), 0o600); err != nil { //nolint:gosec // G703: a path in this test's own directory
+	if err := os.WriteFile(tr.input, []byte(changed), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	code, out, stderr := invoke(t, tr.importArgs()...)

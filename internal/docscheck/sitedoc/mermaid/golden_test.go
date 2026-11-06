@@ -163,7 +163,7 @@ func TestHelperDrawsTheGoldens(t *testing.T) {
 	if out == "" {
 		t.Skip("runs only as the fresh process of TestTheSameSourceDrawsTheSameBytes")
 	}
-	if err := os.WriteFile(out, drawAll(t), 0o600); err != nil { //nolint:gosec // G703: the parent test passes a path under its own temporary directory
+	if err := os.WriteFile(out, drawAll(t), 0o600); err != nil {
 		t.Fatalf("writing the drawings: %v", err)
 	}
 }

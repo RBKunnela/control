@@ -252,7 +252,7 @@ func withOverride(t *testing.T, tr tree, fingerprint string) {
 	}
 	override := "\noverrides:\n  - upstream: orders\n    tool: read_order\n    fingerprint: " + fingerprint +
 		"\n    effect: READ\n    resource_type: order\n    resource_from: /id\n"
-	if err := os.WriteFile(filepath.Clean(tr.config), append(raw, override...), 0o600); err != nil { //nolint:gosec // G703: the configuration under the test's temp dir
+	if err := os.WriteFile(filepath.Clean(tr.config), append(raw, override...), 0o600); err != nil {
 		t.Fatalf("writing the configuration: %v", err)
 	}
 }

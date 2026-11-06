@@ -80,7 +80,7 @@ operators:
 
 func writeTestFile(t *testing.T, path string, raw []byte) {
 	t.Helper()
-	if err := os.WriteFile(path, raw, 0o600); err != nil { //nolint:gosec // G703: a file under the test's temp dir
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
 		t.Fatal(err)
 	}
 }

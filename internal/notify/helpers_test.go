@@ -95,7 +95,7 @@ func hang(dir string, holdStderr, exit bool) int {
 	if child.Start() != nil {
 		return 9
 	}
-	if os.WriteFile(filepath.Join(dir, "grandchild"), []byte(strconv.Itoa(child.Process.Pid)), 0o600) != nil { //nolint:gosec // G703: the directory the test that started this helper named
+	if os.WriteFile(filepath.Join(dir, "grandchild"), []byte(strconv.Itoa(child.Process.Pid)), 0o600) != nil {
 		return 9
 	}
 	if !exit {

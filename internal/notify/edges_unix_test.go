@@ -153,7 +153,7 @@ func TestALogChangedAfterItWasReadStopsTheRun(t *testing.T) {
 					t.Fatalf("line %d holds no %s", c.line, c.old)
 				}
 				lines[c.line] = edited
-				mustDo(t, os.WriteFile(path, []byte(strings.Join(lines, "")), 0o600)) //nolint:gosec // G703: the log of the test's own directory
+				mustDo(t, os.WriteFile(path, []byte(strings.Join(lines, "")), 0o600))
 				return osOps.openLog(path)
 			}
 			o := r.options(!c.delivered)

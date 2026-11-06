@@ -25,6 +25,15 @@ linters:
   settings:
     gocyclo:
       min-complexity: 12
+    gosec:
+      excludes:
+        # G703's taint analysis reaches a different verdict on the same line
+        # by platform and by the size of the package around it: a file added
+        # to the gateway's command package made linux/amd64 stop flagging an
+        # untouched line that darwin and linux/arm64 still flag. Under
+        # allow-unused that fails a change where it runs and passes it
+        # elsewhere. G304 still holds every path a file is opened by.
+        - G703
     nolintlint:
       # A //nolint names its linter and says why, and one that no longer
       # suppresses anything is reported, so an exemption cannot outlive the

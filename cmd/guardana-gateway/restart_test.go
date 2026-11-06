@@ -153,7 +153,7 @@ func withTransferOverride(t *testing.T, tr tree, fingerprint string) {
 	override := "\noverrides:\n  - upstream: orders\n    tool: " + toolTransfer +
 		"\n    fingerprint: " + fingerprint +
 		"\n    effect: TRANSACT\n    resource_type: account\n    resource_from: /account\n"
-	if err := os.WriteFile(filepath.Clean(tr.config), append(raw, override...), 0o600); err != nil { //nolint:gosec // G703: the configuration copy under this test's own temporary tree
+	if err := os.WriteFile(filepath.Clean(tr.config), append(raw, override...), 0o600); err != nil {
 		t.Fatalf("writing the configuration: %v", err)
 	}
 }

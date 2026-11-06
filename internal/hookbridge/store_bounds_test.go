@@ -39,7 +39,7 @@ func TestAPublishIsBoundedAt4KiB(t *testing.T) {
 // would: a temporary name holding body.
 func writeTemp(t *testing.T, dir, name, body string) {
 	t.Helper()
-	if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil { //nolint:gosec // G703: a name in this test's own directory
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -57,7 +57,7 @@ func flipBit(t *testing.T, path string, at int64) {
 		t.Fatal(err)
 	}
 	b[at] ^= 0x01
-	if err := os.WriteFile(path, b, 0o600); err != nil { //nolint:gosec // G703: a segment the test wrote under its temp dir
+	if err := os.WriteFile(path, b, 0o600); err != nil {
 		t.Fatal(err)
 	}
 }

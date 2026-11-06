@@ -84,7 +84,7 @@ func dropTombstones(t *testing.T, dir string, n int) {
 		t.Fatalf("the manifest does not begin with %d tombstones: %s", n, m)
 	}
 	m = strings.Replace(m[:first]+m[next:], `"dropped":0,`, fmt.Sprintf(`"dropped":%d,`, n), 1)
-	if err := os.WriteFile(path, []byte(m), 0o600); err != nil { //nolint:gosec // G703: the test's own directory
+	if err := os.WriteFile(path, []byte(m), 0o600); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -151,7 +151,7 @@ func exportsWholeAlone(t *testing.T, path string) {
 		t.Fatal(err)
 	}
 	alone := filepath.Join(t.TempDir(), "trail.jsonl")
-	if err := os.WriteFile(alone, raw, 0o600); err != nil { //nolint:gosec // G703: the test's own directory
+	if err := os.WriteFile(alone, raw, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	var out bytes.Buffer

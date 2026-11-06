@@ -89,7 +89,7 @@ func newTree(t *testing.T) tree {
 		t.Fatalf("reading the fixture configuration: %v", err)
 	}
 	config := filepath.Join(dir, fixtureConfig)
-	if err := os.WriteFile(config, raw, 0o600); err != nil { //nolint:gosec // G703: the configuration copy under the test's temp dir
+	if err := os.WriteFile(config, raw, 0o600); err != nil {
 		t.Fatalf("writing the configuration: %v", err)
 	}
 	// Nothing of the environment reaches a test's configuration unless the

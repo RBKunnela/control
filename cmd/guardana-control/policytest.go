@@ -69,7 +69,7 @@ func caseFiles(dir string) ([]string, error) {
 		if !strings.HasSuffix(e.Name(), ".json") {
 			continue
 		}
-		info, err := os.Stat(filepath.Join(dir, e.Name())) //nolint:gosec // G703: an entry ReadDir listed in the directory the operator named
+		info, err := os.Stat(filepath.Join(dir, e.Name()))
 		if err != nil {
 			return nil, err
 		}

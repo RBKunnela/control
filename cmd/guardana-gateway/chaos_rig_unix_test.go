@@ -93,7 +93,7 @@ func TestHelperServesAStdioUpstream(t *testing.T) {
 // disk before the process can die.
 func record(t *testing.T, path, line string) {
 	t.Helper()
-	f, err := os.OpenFile(filepath.Clean(path), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) //nolint:gosec // G703: a path in this test's own directory
+	f, err := os.OpenFile(filepath.Clean(path), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		t.Fatalf("opening the upstream's log: %v", err)
 	}

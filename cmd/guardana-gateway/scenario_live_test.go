@@ -150,7 +150,7 @@ func (m mutant) write(t *testing.T) string {
 		t.Fatalf("the mutant of %s changes nothing", m.file)
 	}
 	path := filepath.Join(t.TempDir(), m.file)
-	if err := os.WriteFile(path, []byte(mutated), 0o600); err != nil { //nolint:gosec // G703: a file under the test's own directory
+	if err := os.WriteFile(path, []byte(mutated), 0o600); err != nil {
 		t.Fatalf("writing the mutant: %v", err)
 	}
 	return path
@@ -197,7 +197,7 @@ func TestADifferenceOutranksAScenarioThatCouldNotRun(t *testing.T) {
 		t.Fatal("allowed-read.json names no bundle to change")
 	}
 	stopped := filepath.Join(t.TempDir(), "other-bundle.json")
-	if err := os.WriteFile(stopped, []byte(elsewhere), 0o600); err != nil { //nolint:gosec // G703: a file under the test's own directory
+	if err := os.WriteFile(stopped, []byte(elsewhere), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	differs := mutant{"blocked-transfer.json", `"verdict": "DENY"`, `"verdict": "ALLOW"`, 1, 0, "decided.verdict"}
@@ -322,7 +322,7 @@ func TestNoScenarioIsNotAPass(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(bad, raw, 0o600); err != nil { //nolint:gosec // G703: a file under the test's own directory
+	if err := os.WriteFile(bad, raw, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	out, err = runBinary(gatewayBin, "scenario", "run", "--config", absent, "--trail", filepath.Join(empty, "trail.jsonl"),

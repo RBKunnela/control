@@ -128,7 +128,7 @@ func TestDoctorPrintsNoKeyTextFromAnUpstreamOrAnOverride(t *testing.T) {
 		{"/" + body, []string{`orders -> command server (2 arguments)`, `orders/[key text withheld] is READ on order from "[key text withheld]"`}},
 		{body, []string{`overrides.0.resource_from: classify: the resource pointer is not RFC 6901`}},
 	} {
-		if err := os.WriteFile(tr.config, []byte(doc+override(c.from)), 0o600); err != nil { //nolint:gosec // G703: the configuration copy under the test's temp dir
+		if err := os.WriteFile(tr.config, []byte(doc+override(c.from)), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		out := doctorOutput(t, tr.config)

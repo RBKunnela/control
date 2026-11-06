@@ -169,7 +169,7 @@ func couldNotRun(stderr io.Writer, err error) int {
 func scenarioFiles(paths []string) ([]string, error) {
 	var out []string
 	for _, p := range paths {
-		info, err := os.Stat(p) //nolint:gosec // G703: the operator's own argument, only read
+		info, err := os.Stat(p)
 		if err != nil {
 			return nil, err
 		}

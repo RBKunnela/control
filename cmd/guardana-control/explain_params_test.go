@@ -32,7 +32,7 @@ func legacyCaseDir(t *testing.T) string {
 	legacy := strings.Replace(string(raw), anchor, anchor+`,
           {"type": "cap_rate", "params": {"per_minute": "60"}, "advisory": true}`, 1)
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "legacy.json"), []byte(legacy), 0o600); err != nil { //nolint:gosec // G703: a path in this test's own directory
+	if err := os.WriteFile(filepath.Join(dir, "legacy.json"), []byte(legacy), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	return dir

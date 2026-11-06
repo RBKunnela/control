@@ -263,7 +263,7 @@ func (r *rig) writeStatement(serial int64, digest string, at time.Time) {
 
 func (r *rig) write(path string, raw []byte) {
 	r.t.Helper()
-	if err := os.WriteFile(path, raw, 0o600); err != nil { //nolint:gosec // G703: a file under the test's own directory
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
 		r.t.Fatal(err)
 	}
 }

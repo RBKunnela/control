@@ -93,7 +93,7 @@ func TestTrailPrintsOneLinePerTrail(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = w.Close() }()
-	if err := os.WriteFile(path, whole, 0o600); err != nil { //nolint:gosec // G703: the test's own temp file
+	if err := os.WriteFile(path, whole, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	status, stdout, stderr := trailCommand(t, path)

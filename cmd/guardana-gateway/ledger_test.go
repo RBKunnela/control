@@ -100,7 +100,7 @@ func TestNoNameAnApproverWritesReadsAsSpentOrSettled(t *testing.T) {
 			forged := append([]byte(`{"resolution":"consumed",`), body[at+1:]...)
 			writeFramed(t, path, forged)
 			return func() {
-				if err := os.WriteFile(path, framed, 0o600); err != nil { //nolint:gosec // G703: the test's own temporary directory
+				if err := os.WriteFile(path, framed, 0o600); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -139,7 +139,7 @@ func plantCopy(t *testing.T, records, from, name string) func() {
 		t.Fatalf("reading %s: %v", from, err)
 	}
 	path := filepath.Join(records, name)
-	if err := os.WriteFile(path, raw, 0o600); err != nil { //nolint:gosec // G703: the test's own temporary directory
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
 		t.Fatalf("planting %s: %v", name, err)
 	}
 	return func() {

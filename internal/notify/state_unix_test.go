@@ -65,7 +65,7 @@ func TestAnotherLogIsRefused(t *testing.T) {
 	recorded, err := os.ReadFile(digest) //nolint:gosec // G304: the test's own file
 	mustDo(t, err)
 	for _, body := range []string{"zz\n", strings.ToUpper(string(recorded)), strings.TrimSuffix(string(recorded), "\n")} {
-		mustDo(t, os.WriteFile(digest, []byte(body), 0o600)) //nolint:gosec // G703: the state directory the test made
+		mustDo(t, os.WriteFile(digest, []byte(body), 0o600))
 		_, err = Run(t.Context(), r.options(false))
 		wantIs(t, "a digest "+strconv.Quote(body), err, ErrState)
 	}

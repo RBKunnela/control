@@ -241,7 +241,7 @@ func droppedTrail(t *testing.T) string {
 		t.Fatalf("the manifest is not the one this test edits: %s", m)
 	}
 	m = strings.Replace(m[:first]+m[second:], `"dropped":0,`, `"dropped":1,`, 1)
-	if err := os.WriteFile(path, []byte(m), 0o600); err != nil { //nolint:gosec // G703: the test's own directory
+	if err := os.WriteFile(path, []byte(m), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	return dir

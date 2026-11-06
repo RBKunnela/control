@@ -71,7 +71,7 @@ func runPreflight(t *testing.T, preflight, out string, rc int) (string, string, 
 	call := filepath.Join(bin, "call")
 	stub := "#!/bin/sh\n[ \"$PWD\" = \"$REPO_ROOT\" ] && echo \"$*\" >\"$GO_STUB_CALL\"\n" +
 		"printf '%s\\n' \"$GO_STUB_OUT\"\nexit \"$GO_STUB_RC\"\n"
-	if err := os.WriteFile(filepath.Join(bin, "go"), []byte(stub), 0o700); err != nil { //nolint:gosec // G306, G703: an executable stub in this test's own directory
+	if err := os.WriteFile(filepath.Join(bin, "go"), []byte(stub), 0o700); err != nil { //nolint:gosec // G306: an executable stub in this test's own directory
 		t.Fatal(err)
 	}
 	cmd := exec.Command(bash, "-c", "set -euo pipefail\n"+preflight+"\nrequire_security_owned") //nolint:gosec // G204: bash from PATH running this repository's own function

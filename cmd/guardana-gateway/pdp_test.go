@@ -122,7 +122,7 @@ func withConfig(t *testing.T, tr tree, text string) {
 	if err != nil {
 		t.Fatalf("reading the configuration: %v", err)
 	}
-	if err := os.WriteFile(filepath.Clean(tr.config), append(raw, text...), 0o600); err != nil { //nolint:gosec // G703: the configuration under the test's temp dir
+	if err := os.WriteFile(filepath.Clean(tr.config), append(raw, text...), 0o600); err != nil {
 		t.Fatalf("writing the configuration: %v", err)
 	}
 }

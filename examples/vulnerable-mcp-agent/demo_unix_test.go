@@ -78,7 +78,7 @@ func buildDemo(root string) error {
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(dir, "demo.yaml"), raw, 0o600) //nolint:gosec // G703: a file under the test's own directory
+	return os.WriteFile(filepath.Join(dir, "demo.yaml"), raw, 0o600)
 }
 
 // demoRun is what one run of dev wrote and how it ended.
@@ -266,7 +266,7 @@ func (m demoMutant) write(t *testing.T, dir string) string {
 	}
 	mutated := strings.Join(parts[:m.nth], m.old) + m.new + parts[m.nth]
 	path := filepath.Join(dir, m.file)
-	if err := os.WriteFile(path, []byte(mutated), 0o600); err != nil { //nolint:gosec // G703: a file under the test's own directory
+	if err := os.WriteFile(path, []byte(mutated), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	return path
