@@ -430,17 +430,18 @@ test in <code>internal/docscheck</code> holds the table to the registry, and the
 own tests hold every code it emits to the registry and to the verdict of the
 step that emits it.</p>
 <h2 id="decoding-and-validation">Decoding and validation</h2>
-<p>What a receiver calls, and what it refuses. Seven functions in
+<p>What a receiver calls, and what it refuses. Eight functions in
 <a href="https://github.com/guardana/control/tree/main/pkg/contract">pkg/contract</a>, all <code>implemented</code>:</p>
 <pre><code class="language-go">func Decode(b []byte) (*controlv1.ActionEnvelope, error)     // binary protobuf
 func DecodeJSON(b []byte) (*controlv1.ActionEnvelope, error) // protojson
 func Validate(env *controlv1.ActionEnvelope) error
 func ValidateUnclassified(env *controlv1.ActionEnvelope) error
 func CheckIdentifier(s string) error                         // the string rule below
+func CheckID(s string) error                                 // the same, required and bounded
 func CheckHost(host string) error                            // the host rule below
 func CheckMapKey(key string) error                           // the map-key rule below
 </code></pre>
-<p>The three <code>Check</code> functions are <code>Validate</code>'s own value rules, exported so that
+<p><code>CheckIdentifier</code>, <code>CheckHost</code> and <code>CheckMapKey</code> are <code>Validate</code>'s own value rules, exported so that
 whatever names an identifier, a host or a map key outside an envelope, the
 evidence builder and the policy parser first, holds it to the same rule rather
 than to a second copy. A rule that names a spelling no envelope can carry never
@@ -448,6 +449,13 @@ matches, so a DENY on it never fires and nobody is told. Each checks what a
 value holds, not whether there is one: <code>&quot;&quot;</code> passes all three. Each refusal is
 a <code>ValidationError</code> with no field, wrapping <code>ErrInvalidValue</code>, and a test holds
 each function to <code>Validate</code>'s verdict and reason on the field it governs.</p>
+<p><code>CheckID</code> is the rule for an identifier that must be present: <code>&quot;&quot;</code> is refused
+as <code>ErrMissingField</code>, more than <code>MaxStringBytes</code> bytes as <code>ErrTooLarge</code>, and
+anything else as <code>CheckIdentifier</code> decides, and a test holds it to <code>Validate</code>'s
+verdict and reason on <code>request_id</code>. The kernel, the policy reader, the
+procedure reader, the classification and the gateway's configuration call it
+rather than keeping a copy of the bound (<a href="/docs/adr/0074-pkg-contract-exports-one-rule-for-a-required-identifier">ADR-0074</a>).
+Its refusal never repeats the string.</p>
 <p><code>ValidateUnclassified</code> applies every rule of <code>Validate</code>, from the same code and
 in the same order, except the effect class's presence and the fields a class
 requires (<code>EffectRequires</code>). It is for a receiver holding an envelope nothing

@@ -9,10 +9,10 @@ import (
 	"github.com/guardana/control/pkg/contract"
 )
 
-// checkUpstreams refuses an upstream whose name no envelope can carry, one
-// that names neither a URL nor a command, or both, arguments or variables
-// without a command, and a variable a command may not receive. An enforce_api
-// listener has none, which checkKindKeys holds.
+// checkUpstreams refuses an upstream whose name no envelope can carry or
+// another upstream has, one that names neither a URL nor a command, or both,
+// arguments or variables without a command, and a variable a command may not
+// receive. An enforce_api listener has none, which checkKindKeys holds.
 func (c *Config) checkUpstreams() error {
 	if c.Listener.Kind == ListenerEnforceAPI {
 		return nil
@@ -20,10 +20,17 @@ func (c *Config) checkUpstreams() error {
 	if len(c.Upstreams) == 0 {
 		return fmt.Errorf("upstreams: no upstream; the gateway has nothing to serve")
 	}
+	first := make(map[string]int, len(c.Upstreams))
 	for i := range c.Upstreams {
 		if err := c.checkUpstream(i); err != nil {
 			return err
 		}
+		// A call and an override name their upstream by it, so a second
+		// upstream of one name could never be reached.
+		if j, ok := first[c.Upstreams[i].Name]; ok {
+			return fmt.Errorf("upstreams.%d.name: the name of upstreams.%d; each upstream needs its own", i, j)
+		}
+		first[c.Upstreams[i].Name] = i
 	}
 	return nil
 }
@@ -62,11 +69,9 @@ func (c *Config) checkUpstream(i int) error {
 // classification of one upstream's tool, which the adapter would let replace
 // the first.
 func (c *Config) checkOverrides() error {
-	names := map[string]int{}
+	names := make(map[string]int, len(c.Upstreams))
 	for i, up := range c.Upstreams {
-		if _, ok := names[up.Name]; !ok {
-			names[up.Name] = i
-		}
+		names[up.Name] = i
 	}
 	type tool struct{ upstream, name string }
 	seen := make(map[tool]int, len(c.Overrides))

@@ -128,16 +128,10 @@ func (c Classification) checkRequirements() error {
 }
 
 // CheckEnvelopeString refuses a string a classification puts in an envelope
-// that no envelope can carry: empty, longer than contract.MaxStringBytes, or
-// refused by contract.CheckIdentifier. The refusal never repeats the string.
+// that no envelope can carry, one contract.CheckID refuses. The refusal never
+// repeats the string.
 func CheckEnvelopeString(s string) error {
-	switch {
-	case s == "":
-		return fmt.Errorf("%w: empty", ErrString)
-	case len(s) > contract.MaxStringBytes:
-		return fmt.Errorf("%w: %d bytes, past the %d an envelope's string takes", ErrString, len(s), contract.MaxStringBytes)
-	}
-	if err := contract.CheckIdentifier(s); err != nil {
+	if err := contract.CheckID(s); err != nil {
 		return fmt.Errorf("%w: %w", ErrString, err)
 	}
 	return nil

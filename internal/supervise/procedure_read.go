@@ -89,14 +89,11 @@ func (r *reader) identOf(raw json.RawMessage, where string) string {
 
 // identText checks s as a contract identifier.
 func (r *reader) identText(s, where string) string {
-	switch {
-	case r.err != nil:
-	case s == "" || len(s) > contract.MaxStringBytes:
-		r.fail(fmt.Errorf("%s is %d bytes, bounds 1 and %d", where, len(s), contract.MaxStringBytes))
-	default:
-		if err := contract.CheckIdentifier(s); err != nil {
-			r.fail(fmt.Errorf("%s: %w", where, err))
-		}
+	if r.err != nil {
+		return s
+	}
+	if err := contract.CheckID(s); err != nil {
+		r.fail(fmt.Errorf("%s: %w", where, err))
 	}
 	return s
 }

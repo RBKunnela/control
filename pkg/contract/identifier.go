@@ -31,6 +31,24 @@ func CheckIdentifier(s string) error {
 	return nil
 }
 
+// CheckID refuses a string that cannot be a required identifier: empty, as
+// ErrMissingField; longer than MaxStringBytes, as ErrTooLarge; or refused by
+// CheckIdentifier. It is the one rule for an identifier that must be present
+// outside an envelope, a policy's id, a configured tenant, a request id read
+// back, so that no caller keeps a copy of the bound beside the rule.
+//
+// The refusal is a *ValidationError with no Field and never repeats the
+// string.
+func CheckID(s string) error {
+	switch {
+	case s == "":
+		return &ValidationError{Err: ErrMissingField}
+	case len(s) > MaxStringBytes:
+		return &ValidationError{Err: fmt.Errorf("%w: %d bytes, past the %d an identifier takes", ErrTooLarge, len(s), MaxStringBytes)}
+	}
+	return CheckIdentifier(s)
+}
+
 // identifierProblem is CheckIdentifier's rule without the wrapper, so the walk
 // can attach the field it found the string in.
 func identifierProblem(s string) error {

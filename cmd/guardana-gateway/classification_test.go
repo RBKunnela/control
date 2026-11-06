@@ -198,7 +198,7 @@ func enforceConfig(t *testing.T, tool enforce.Tool) enforce.Config {
 	t.Cleanup(func() { _ = os.RemoveAll(dir) })
 	return enforce.Config{
 		Socket: filepath.Join(dir, "s"), ExecutionLifetime: time.Minute, Environment: "dev",
-		Identity: enforce.Identity{Principal: &controlv1.Principal{Id: "p"}, Agent: &controlv1.Agent{Id: "a"}},
+		Identity: enforce.Identity{Principal: &controlv1.Principal{Id: "p", TenantId: "acme"}, Agent: &controlv1.Agent{Id: "a"}},
 		Runs:     runsDir{}, Tools: []enforce.Tool{tool}, Clock: time.Now, NewID: newID,
 	}
 }

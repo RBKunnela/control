@@ -144,6 +144,12 @@ type Config struct {
 // discard an obligation's shorter one.
 const ErrCallTimeout Error = "mcp: the call timeout cannot be negative"
 
+// ErrPlaneKey is a ProjectID, TenantID or Environment, or an upstream's
+// TenantID or Environment, that is set and that contract.CheckID refuses:
+// every envelope carries the first three, and a call to the upstream the
+// other two.
+const ErrPlaneKey Error = "mcp: a project, tenant or environment no envelope can carry"
+
 // ErrNoScanSet is a configuration with no set of secrets: a forgotten wiring
 // would otherwise turn the scan of answers off unseen.
 const ErrNoScanSet Error = "mcp: no set of secrets to scan answers for"
@@ -172,6 +178,9 @@ func checkConfig(cfg Config) error {
 	}
 	names, err := checkUpstreams(cfg.Upstreams)
 	if err != nil {
+		return err
+	}
+	if err := checkPlaneIDs(cfg); err != nil {
 		return err
 	}
 	if err := checkOverrides(cfg.Overrides, names); err != nil {
@@ -242,6 +251,41 @@ func checkUpstreams(upstreams []Upstream) (map[string]bool, error) {
 	return names, nil
 }
 
+// checkPlaneIDs refuses a ProjectID, TenantID or Environment, of the listener
+// or of an upstream, or a string of the listener's identity or its
+// authentication strength, that is set and that contract.CheckID refuses:
+// Validate holds every one of them to the identifier rule and its bound. An
+// empty one is refused by checkUpstreamKeys where an override needs it.
+func checkPlaneIDs(cfg Config) error {
+	type field struct {
+		name, value string
+		err         Error
+	}
+	p, a := cfg.Listener.Identity.Principal, cfg.Listener.Identity.Agent
+	fields := []field{
+		{"ProjectID", cfg.ProjectID, ErrPlaneKey}, {"TenantID", cfg.TenantID, ErrPlaneKey}, {"Environment", cfg.Environment, ErrPlaneKey},
+		{"Listener.Identity.Principal.Id", p.GetId(), ErrIdentity}, {"Listener.Identity.Principal.Type", p.GetType(), ErrIdentity},
+		{"Listener.Identity.Principal.AuthnStrength", p.GetAuthnStrength(), ErrIdentity},
+		{"Listener.Identity.Principal.TenantId", p.GetTenantId(), ErrIdentity},
+		{"Listener.Identity.Agent.Id", a.GetId(), ErrIdentity}, {"Listener.Identity.Agent.InstanceId", a.GetInstanceId(), ErrIdentity},
+		{"Listener.Identity.Agent.Framework", a.GetFramework(), ErrIdentity}, {"Listener.Identity.Agent.Version", a.GetVersion(), ErrIdentity},
+		{"Listener.Identity.Agent.ModelRef", a.GetModelRef(), ErrIdentity}, {"Listener.AuthnStrength", cfg.Listener.AuthnStrength, ErrIdentity},
+	}
+	for i, up := range cfg.Upstreams {
+		fields = append(fields, field{fmt.Sprintf("Upstreams[%d].TenantID", i), up.TenantID, ErrPlaneKey},
+			field{fmt.Sprintf("Upstreams[%d].Environment", i), up.Environment, ErrPlaneKey})
+	}
+	for _, f := range fields {
+		if f.value == "" {
+			continue
+		}
+		if err := contract.CheckID(f.value); err != nil {
+			return fmt.Errorf("%w: %s: %w", f.err, f.name, err)
+		}
+	}
+	return nil
+}
+
 // checkOverrides refuses an entry that cannot classify, naming the key
 // classify.Check refuses, and a second entry for one upstream's tool, which
 // the manifest would let replace the first.
@@ -267,10 +311,11 @@ func checkOverrides(overrides []Override, names map[string]bool) error {
 }
 
 // checkUpstreamKeys refuses an override whose envelope needs, by the
-// contract's table, the environment, the resource's or the resource's tenant
-// while the value it is read from, the listener's or the override's
-// upstream's, is empty: every call to the tool would be refused, OBSERVE
-// included. checkOverrides has found each override's upstream.
+// contract's table, the environment, the resource's, the resource's tenant or
+// the principal's while the value it is read from, the listener's or the
+// override's upstream's, is empty: every call to the tool would be refused,
+// OBSERVE included. An authenticated listener's principal takes its tenant
+// from the identity too. checkOverrides has found each override's upstream.
 func checkUpstreamKeys(cfg Config) error {
 	for i, o := range cfg.Overrides {
 		required := contract.EffectRequires(o.Effect)
@@ -282,6 +327,8 @@ func checkUpstreamKeys(cfg Config) error {
 			return fmt.Errorf("%w: Overrides[%d]: %s needs Upstreams[%d].Environment, which is empty", ErrOverride, i, o.Effect, up)
 		case cfg.Upstreams[up].TenantID == "" && slices.Contains(required, "resource.tenant_id"):
 			return fmt.Errorf("%w: Overrides[%d]: %s needs Upstreams[%d].TenantID, which is empty", ErrOverride, i, o.Effect, up)
+		case cfg.Listener.Identity.Principal.GetTenantId() == "" && slices.Contains(required, "principal.tenant_id"):
+			return fmt.Errorf("%w: Overrides[%d]: %s needs Listener.Identity.Principal.TenantId, which is empty", ErrOverride, i, o.Effect)
 		}
 	}
 	return nil

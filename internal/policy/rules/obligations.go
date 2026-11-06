@@ -86,7 +86,7 @@ func (g Grammar) accepts(s string) bool {
 		return err == nil && n >= canon.MinSafeInteger
 	case GrammarIdentifiers:
 		return everyEntry(s, func(id string) bool {
-			return len(id) <= contract.MaxStringBytes && contract.CheckIdentifier(id) == nil
+			return contract.CheckID(id) == nil
 		})
 	case GrammarResourcePrefix:
 		return resourcePrefix(s)
@@ -112,7 +112,7 @@ func everyEntry(s string, ok func(string) bool) bool {
 // passes UnderPrefix under prefix s: s itself, or, below the byte bound, s
 // with one plain byte after it.
 func resourcePrefix(s string) bool {
-	if s == "" || len(s) > contract.MaxStringBytes || contract.CheckIdentifier(s) != nil {
+	if contract.CheckID(s) != nil {
 		return false
 	}
 	return UnderPrefix(s, s) || len(s) < contract.MaxStringBytes && UnderPrefix(s+"a", s)

@@ -75,6 +75,17 @@ verify one.
   between its first read and the replace under the lock.
 - The pause commands write pause file `2`; a plane and the commands read `1`
   as before.
+- **Breaking:** `project_id`, `tenant_id`, `environment`, the
+  `listener.principal.*` and `listener.agent.*` keys and an upstream's
+  `tenant_id` and `environment` are refused when the file loads, naming the
+  key, if the contract's identifier rule refuses them, white space at either
+  end for one; such a configuration loaded and had every call refused. Two
+  upstreams with one name are refused at load, naming both, rather than when
+  the gateway starts. `adapters/mcp.New` and `adapters/enforce.New` refuse the
+  same values, any string of the listener's identity, and a `TRANSACT` or
+  `IDENTITY_OR_ACCESS` tool while the listener's principal has no tenant.
+  `pkg/contract.CheckID` is the one rule for a required identifier
+  ([ADR-0074](docs/adr/0074-pkg-contract-exports-one-rule-for-a-required-identifier.md)).
 - The gateway applies the `read_only`, `restrict_resources` and
   `deny_external_sink` obligations itself, for every adapter, before an
   approval is asked for. The enforcement API and the hook bridge, which denied

@@ -743,6 +743,9 @@ func TestExportedFunctionSetIsClosed(t *testing.T) {
 		"DecodeJSON":      true,
 		"Validate":        true,
 		"CheckIdentifier": true,
+		// The identifier rule with presence and its bound, for an identifier
+		// a caller requires (ADR-0074).
+		"CheckID": true,
 		// Validate's checks without the effect class's, for the receiver of
 		// an envelope nothing classified (ADR-0067).
 		"ValidateUnclassified": true,

@@ -116,6 +116,9 @@ func checkConfig(cfg Config) error {
 	if err := checkTools(cfg.Tools); err != nil {
 		return err
 	}
+	if err := checkPlaneIDs(cfg); err != nil {
+		return err
+	}
 	if err := checkPlaneKeys(cfg); err != nil {
 		return err
 	}
@@ -193,10 +196,38 @@ func checkTool(tool Tool) error {
 	return nil
 }
 
+// checkPlaneIDs refuses a ProjectID, TenantID or Environment, or a string of
+// the identity, that is set and that contract.CheckID refuses: Validate holds
+// every one of them to the identifier rule and its bound. An empty one is
+// refused by checkListener or checkPlaneKeys where it is needed.
+func checkPlaneIDs(cfg Config) error {
+	p, a := cfg.Identity.Principal, cfg.Identity.Agent
+	for _, f := range []struct {
+		name, value string
+		err         Error
+	}{
+		{"ProjectID", cfg.ProjectID, ErrPlaneKey}, {"TenantID", cfg.TenantID, ErrPlaneKey}, {"Environment", cfg.Environment, ErrPlaneKey},
+		{"Identity.Principal.Id", p.GetId(), ErrIdentity}, {"Identity.Principal.Type", p.GetType(), ErrIdentity},
+		{"Identity.Principal.AuthnStrength", p.GetAuthnStrength(), ErrIdentity}, {"Identity.Principal.TenantId", p.GetTenantId(), ErrIdentity},
+		{"Identity.Agent.Id", a.GetId(), ErrIdentity}, {"Identity.Agent.InstanceId", a.GetInstanceId(), ErrIdentity},
+		{"Identity.Agent.Framework", a.GetFramework(), ErrIdentity}, {"Identity.Agent.Version", a.GetVersion(), ErrIdentity},
+		{"Identity.Agent.ModelRef", a.GetModelRef(), ErrIdentity},
+	} {
+		if f.value == "" {
+			continue
+		}
+		if err := contract.CheckID(f.value); err != nil {
+			return fmt.Errorf("%w: %s: %w", f.err, f.name, err)
+		}
+	}
+	return nil
+}
+
 // checkPlaneKeys refuses a tool whose envelope needs, by the contract's
 // table, the environment or the resource's while Environment, which both are
-// read from, is empty, or the resource's tenant while TenantID is: every call
-// to the tool would be refused, OBSERVE included.
+// read from, is empty, the resource's tenant while TenantID is, or the
+// principal's while the listener's principal has none: every call to the tool
+// would be refused, OBSERVE included.
 func checkPlaneKeys(cfg Config) error {
 	for i, tool := range cfg.Tools {
 		required := contract.EffectRequires(tool.Effect)
@@ -206,6 +237,8 @@ func checkPlaneKeys(cfg Config) error {
 			return fmt.Errorf("%w: tools[%d]: %s needs Environment, which is empty", ErrTool, i, effect)
 		case cfg.TenantID == "" && slices.Contains(required, "resource.tenant_id"):
 			return fmt.Errorf("%w: tools[%d]: %s needs TenantID, which is empty", ErrTool, i, effect)
+		case cfg.Identity.Principal.GetTenantId() == "" && slices.Contains(required, "principal.tenant_id"):
+			return fmt.Errorf("%w: tools[%d]: %s needs Identity.Principal.TenantId, which is empty", ErrTool, i, effect)
 		}
 	}
 	return nil

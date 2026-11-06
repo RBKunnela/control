@@ -20,7 +20,7 @@ func (c *Config) check() error {
 	if err := checkRequired(c, configFields, ""); err != nil {
 		return err
 	}
-	for _, check := range []func() error{c.checkKindKeys, c.checkListener, c.checkSessionIdle, c.checkMaxSessions, c.checkPolicy, c.checkPDP, c.checkApprovals, c.checkPause, c.checkRuns, c.checkReaction, c.checkFlow, c.checkEvidence, c.checkExport, c.checkShaping, c.checkTimeouts, c.checkUpstreams, c.checkOverrides} {
+	for _, check := range []func() error{c.checkKindKeys, c.checkIdentifiers, c.checkListener, c.checkSessionIdle, c.checkMaxSessions, c.checkPolicy, c.checkPDP, c.checkApprovals, c.checkPause, c.checkRuns, c.checkReaction, c.checkFlow, c.checkEvidence, c.checkExport, c.checkShaping, c.checkTimeouts, c.checkUpstreams, c.checkOverrides} {
 		if err := check(); err != nil {
 			return err
 		}

@@ -360,7 +360,7 @@ func (d *decision) obligations(verdict controlv1.Verdict) []*controlv1.Obligatio
 // rule and its bound, so a refusal about the identifier never copies it.
 func requestID(env *controlv1.ActionEnvelope) string {
 	id := env.GetRequestId()
-	if len(id) > contract.MaxStringBytes || contract.CheckIdentifier(id) != nil {
+	if contract.CheckID(id) != nil {
 		return ""
 	}
 	return id

@@ -149,8 +149,10 @@ func classificationRule() (string, error) {
 		"envelope needs a resource id (" + joinAnd(needsID) + ") needs `resource_from`, and\n" +
 		joinAnd(needsZone) + " needs `trust_zone`; " + joinAnd(needsEnv) + " need `environment` set, and in\n" +
 		"an override its upstream's `environment` too, and in an override " + joinAnd(needsTenant) + "\n" +
-		"need the upstream's `tenant_id`; a tool's `name` and `provider`, and an upstream's\n" +
-		"`name`, which is every call's `action.provider`, are identifiers of at most " + strconv.Itoa(contract.MaxStringBytes) + " bytes too. An identifier is held to the contract's rule\n" +
+		"need the upstream's `tenant_id`; a tool's `name` and `provider`, an upstream's `name`,\n" +
+		"which is every call's `action.provider`, `project_id`, the `listener.principal.*` and\n" +
+		"`listener.agent.*` keys, and the plane's and each upstream's\n" +
+		"`tenant_id` and `environment` are identifiers of at most " + strconv.Itoa(contract.MaxStringBytes) + " bytes too. An identifier is held to the contract's rule\n" +
 		"([contracts](../contracts.md#decoding-and-validation)): invalid UTF-8 is refused, and so\n" +
 		"are White_Space at either end and, anywhere, a space other than U+0020, a code point in\n" +
 		"Cc, Cf, Zl or Zp, or a Default_Ignorable_Code_Point.", nil
@@ -178,7 +180,7 @@ func lead(listDefault, classificationRule string) string {
 		"key and are not in the table: an MCP HTTP listener needs `listener.address`, and only a\n" +
 		"`stateful_http` listener takes `listener.session_idle`, from one minute to a day, and\n" +
 		"`listener.max_sessions`, from 1 to 16384; an upstream\n" +
-		"needs exactly one of `endpoint` and `command`; `evidence.fsync_interval` is needed\n" +
+		"needs a `name` no other upstream has and exactly one of `endpoint` and `command`; `evidence.fsync_interval` is needed\n" +
 		"under the `interval` policy and refused under `every_record`; `approvals.authority`\n" +
 		"`directory` and `signed` need `approvals.dir` and `approvals.hold_journal_dir`, and that\n" +
 		"journal directory may be neither the spool's nor the approvals directory, nor inside\n" +

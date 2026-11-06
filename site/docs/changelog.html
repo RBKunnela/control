@@ -183,6 +183,17 @@ where it was written and ignored; the console answers no signed hold. On a
 between its first read and the replace under the lock.</li>
 <li>The pause commands write pause file <code>2</code>; a plane and the commands read <code>1</code>
 as before.</li>
+<li><strong>Breaking:</strong> <code>project_id</code>, <code>tenant_id</code>, <code>environment</code>, the
+<code>listener.principal.*</code> and <code>listener.agent.*</code> keys and an upstream's
+<code>tenant_id</code> and <code>environment</code> are refused when the file loads, naming the
+key, if the contract's identifier rule refuses them, white space at either
+end for one; such a configuration loaded and had every call refused. Two
+upstreams with one name are refused at load, naming both, rather than when
+the gateway starts. <code>adapters/mcp.New</code> and <code>adapters/enforce.New</code> refuse the
+same values, any string of the listener's identity, and a <code>TRANSACT</code> or
+<code>IDENTITY_OR_ACCESS</code> tool while the listener's principal has no tenant.
+<code>pkg/contract.CheckID</code> is the one rule for a required identifier
+(<a href="/docs/adr/0074-pkg-contract-exports-one-rule-for-a-required-identifier">ADR-0074</a>).</li>
 <li>The gateway applies the <code>read_only</code>, <code>restrict_resources</code> and
 <code>deny_external_sink</code> obligations itself, for every adapter, before an
 approval is asked for. The enforcement API and the hook bridge, which denied

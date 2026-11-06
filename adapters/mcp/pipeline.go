@@ -35,10 +35,11 @@ const (
 	// authenticator on a listener that has no HTTP request to authenticate,
 	// or a cap on sessions that is negative or on a listener that keeps none.
 	ErrListener Error = "mcp: the listener is not one this build serves"
-	// ErrIdentity is a listener with no principal or no agent configured, or
-	// an authenticated listener whose configured principal carries more than
-	// a tenant and a type: the user and what is known about them come from
-	// the token, never from configuration.
+	// ErrIdentity is a listener with no principal or no agent configured, an
+	// authenticated listener whose configured principal carries more than a
+	// tenant and a type: the user and what is known about them come from the
+	// token, never from configuration; or a string of the identity, or the
+	// authentication strength, that is set and that contract.CheckID refuses.
 	ErrIdentity Error = "mcp: the listener's configured identity is missing or claims what only a token may say"
 	// ErrUpstream is no upstream, an upstream without a transport or with a
 	// name no envelope can carry as its action.provider, or two upstreams
@@ -47,8 +48,8 @@ const (
 	// ErrOverride is an override that names no known upstream, no tool or no
 	// fingerprint, classifies a tool another override does, carries a
 	// classification classify.Check refuses, whose *classify.Error it wraps,
-	// or is of a class that needs an environment the listener or its upstream
-	// leaves empty.
+	// or is of a class that needs an environment or a tenant the listener,
+	// its principal or its upstream leaves empty.
 	ErrOverride Error = "mcp: a manifest override is incomplete or out of bounds"
 	// ErrShaping is a list shaping this build does not know.
 	ErrShaping Error = "mcp: the list shaping is not one this build knows"

@@ -8,8 +8,8 @@ import "github.com/guardana/control/pkg/contract"
 const MaxSerial = 1<<53 - 1
 
 // ValidID reports whether id is an id a bundle, a statement or a route can
-// carry: 1 to contract.MaxStringBytes bytes the contract's identifier rule
-// takes, the rule a policy document holds its own id to.
+// carry: one contract.CheckID takes, the rule a policy document holds its own
+// id to.
 func ValidID(id string) bool {
-	return id != "" && len(id) <= contract.MaxStringBytes && contract.CheckIdentifier(id) == nil
+	return contract.CheckID(id) == nil
 }

@@ -104,7 +104,7 @@ func checkDecisionPoint(id string) error {
 	if id == "" {
 		return nil
 	}
-	if len(id) > contract.MaxStringBytes || contract.CheckIdentifier(id) != nil {
+	if contract.CheckID(id) != nil {
 		return ErrDecisionPoint
 	}
 	if strings.ContainsAny(id, "@?#") {

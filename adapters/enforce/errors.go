@@ -19,14 +19,20 @@ const (
 	// above MaxBodyBytes.
 	ErrBodyBound Error = "enforce: the body bound is outside its limits"
 	// ErrIdentity is a listener with no principal, no principal id or no
-	// agent id: the run a token names is checked against this identity.
+	// agent id, or a string of the identity that is set and that
+	// contract.CheckID refuses: the run a token names is checked against this
+	// identity, and every envelope carries it.
 	ErrIdentity Error = "enforce: the listener's identity is missing"
+	// ErrPlaneKey is a ProjectID, TenantID or Environment that is set and
+	// that contract.CheckID refuses: every envelope carries all three.
+	ErrPlaneKey Error = "enforce: a project, tenant or environment no envelope can carry"
 	// ErrNoRuns is a nil run resolver: every request presents a run token.
 	ErrNoRuns Error = "enforce: no run resolver"
 	// ErrTool is an empty tool table, a name another tool has, a name or a
-	// provider no envelope can carry, an effect class that needs a delegation
-	// or an environment Environment leaves empty, or a classification
-	// classify.Check refuses. A refusal of one key wraps a *classify.Error
+	// provider no envelope can carry, an effect class that needs a delegation,
+	// an environment Environment leaves empty or a tenant TenantID or the
+	// listener's principal leaves empty, or a classification classify.Check
+	// refuses. A refusal of one key wraps a *classify.Error
 	// naming it.
 	ErrTool Error = "enforce: the tool table is empty, incomplete or out of bounds"
 	// ErrBound is a negative bound on kept handles, on a run's open

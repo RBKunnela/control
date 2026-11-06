@@ -121,7 +121,7 @@ Required matters only where the default is empty. Some requirements depend on an
 key and are not in the table: an MCP HTTP listener needs <code>listener.address</code>, and only a
 <code>stateful_http</code> listener takes <code>listener.session_idle</code>, from one minute to a day, and
 <code>listener.max_sessions</code>, from 1 to 16384; an upstream
-needs exactly one of <code>endpoint</code> and <code>command</code>; <code>evidence.fsync_interval</code> is needed
+needs a <code>name</code> no other upstream has and exactly one of <code>endpoint</code> and <code>command</code>; <code>evidence.fsync_interval</code> is needed
 under the <code>interval</code> policy and refused under <code>every_record</code>; <code>approvals.authority</code>
 <code>directory</code> and <code>signed</code> need <code>approvals.dir</code> and <code>approvals.hold_journal_dir</code>, and that
 journal directory may be neither the spool's nor the approvals directory, nor inside
@@ -134,8 +134,10 @@ an envelope the contract takes: <code>resource_type</code> is an identifier of a
 envelope needs a resource id (<code>WRITE</code>, <code>DELETE</code>, <code>TRANSACT</code>, <code>IDENTITY_OR_ACCESS</code> and <code>CONFIGURE</code>) needs <code>resource_from</code>, and
 <code>COMMUNICATE</code> needs <code>trust_zone</code>; <code>WRITE</code>, <code>DELETE</code> and <code>CONFIGURE</code> need <code>environment</code> set, and in
 an override its upstream's <code>environment</code> too, and in an override <code>TRANSACT</code> and <code>IDENTITY_OR_ACCESS</code>
-need the upstream's <code>tenant_id</code>; a tool's <code>name</code> and <code>provider</code>, and an upstream's
-<code>name</code>, which is every call's <code>action.provider</code>, are identifiers of at most 1024 bytes too. An identifier is held to the contract's rule
+need the upstream's <code>tenant_id</code>; a tool's <code>name</code> and <code>provider</code>, an upstream's <code>name</code>,
+which is every call's <code>action.provider</code>, <code>project_id</code>, the <code>listener.principal.*</code> and
+<code>listener.agent.*</code> keys, and the plane's and each upstream's
+<code>tenant_id</code> and <code>environment</code> are identifiers of at most 1024 bytes too. An identifier is held to the contract's rule
 (<a href="/docs/contracts#decoding-and-validation">contracts</a>): invalid UTF-8 is refused, and so
 are White_Space at either end and, anywhere, a space other than U+0020, a code point in
 Cc, Cf, Zl or Zp, or a Default_Ignorable_Code_Point. An <code>enforce_api</code> listener serves the enforcement API on the Unix

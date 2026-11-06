@@ -283,7 +283,7 @@ step that emits it.
 
 ## Decoding and validation
 
-What a receiver calls, and what it refuses. Seven functions in
+What a receiver calls, and what it refuses. Eight functions in
 [pkg/contract](../pkg/contract/), all `implemented`:
 
 ```go
@@ -292,11 +292,12 @@ func DecodeJSON(b []byte) (*controlv1.ActionEnvelope, error) // protojson
 func Validate(env *controlv1.ActionEnvelope) error
 func ValidateUnclassified(env *controlv1.ActionEnvelope) error
 func CheckIdentifier(s string) error                         // the string rule below
+func CheckID(s string) error                                 // the same, required and bounded
 func CheckHost(host string) error                            // the host rule below
 func CheckMapKey(key string) error                           // the map-key rule below
 ```
 
-The three `Check` functions are `Validate`'s own value rules, exported so that
+`CheckIdentifier`, `CheckHost` and `CheckMapKey` are `Validate`'s own value rules, exported so that
 whatever names an identifier, a host or a map key outside an envelope, the
 evidence builder and the policy parser first, holds it to the same rule rather
 than to a second copy. A rule that names a spelling no envelope can carry never
@@ -304,6 +305,14 @@ matches, so a DENY on it never fires and nobody is told. Each checks what a
 value holds, not whether there is one: `""` passes all three. Each refusal is
 a `ValidationError` with no field, wrapping `ErrInvalidValue`, and a test holds
 each function to `Validate`'s verdict and reason on the field it governs.
+
+`CheckID` is the rule for an identifier that must be present: `""` is refused
+as `ErrMissingField`, more than `MaxStringBytes` bytes as `ErrTooLarge`, and
+anything else as `CheckIdentifier` decides, and a test holds it to `Validate`'s
+verdict and reason on `request_id`. The kernel, the policy reader, the
+procedure reader, the classification and the gateway's configuration call it
+rather than keeping a copy of the bound ([ADR-0074](adr/0074-pkg-contract-exports-one-rule-for-a-required-identifier.md)).
+Its refusal never repeats the string.
 
 `ValidateUnclassified` applies every rule of `Validate`, from the same code and
 in the same order, except the effect class's presence and the fields a class
