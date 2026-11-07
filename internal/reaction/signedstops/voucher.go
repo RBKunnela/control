@@ -87,7 +87,7 @@ type Ports struct {
 	plane reaction.Plane
 }
 
-var _ reaction.Voucher = (*Ports)(nil)
+var _ reaction.ContextVoucher = (*Ports)(nil)
 
 // NewPorts is the voucher over authn and authz for plane, or ErrOptions.
 func NewPorts(authn operators.Authenticator, authz operators.Authorizer, plane reaction.Plane) (*Ports, error) {
@@ -104,11 +104,16 @@ func (p *Ports) Plane() reaction.Plane { return p.plane }
 // plane's tenant and project. An unavailable answer is ErrAuthority, never a
 // refusal a retry could turn into a pass.
 func (p *Ports) Vouch(kind reaction.SignedKind, env reaction.Envelope) (reaction.Signer, error) {
+	return p.VouchContext(context.Background(), kind, env)
+}
+
+// VouchContext is Vouch with each call to the ports held to ctx: one that
+// ends before they answer is ErrAuthority.
+func (p *Ports) VouchContext(ctx context.Context, kind reaction.SignedKind, env reaction.Envelope) (reaction.Signer, error) {
 	r, ok := rules[kind]
 	if !ok {
 		return reaction.Signer{}, ErrKind
 	}
-	ctx := context.Background()
 	who := p.authn.Authenticate(ctx, r.act, env)
 	switch who.State() {
 	case operators.AuthAuthenticated:

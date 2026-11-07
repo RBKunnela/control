@@ -32,12 +32,18 @@ carried or restored after it.
 A plane reads the route, the header and each lift through its operator ports
 and refuses a document no operator with the act's grant over its tenant and
 project signed; ports that cannot answer read as `operator ports
-unavailable`, never as a refusal or a pass. The stop list floor, which `stops
+unavailable`, never as a refusal or a pass. At every read of the list it
+asks its ports again, within one poll interval, about the route, the header
+and one lift of each operator who signed one, so revoking any of them,
+taking the route's admin grant away, or ports that do not answer in time
+make the stop state unknown until they answer again; a route refused then
+reads as `a route no operator vouches for`. The stop list floor, which `stops
 floor init --tenant --project` makes and `reaction.stops_floor_dir` names, is
 kept for the tenant the listener serves (`listener.principal.tenant_id` when set,
 else `tenant_id`) and the project. It keeps the highest header serial the
 plane took, that header's digest, and the length and SHA-256 of the part of
-that list the plane accepted, raised each time that part grows. A plane
+that list the plane accepted, held to at every read and raised under the
+floor's lock each time that part grows. A plane
 refuses a list below the floor's serial, one at that serial with another head,
 one above it whose `previous` is not the floor's head, and, as a broken chain,
 one at that serial shorter than the part the floor holds or beginning with

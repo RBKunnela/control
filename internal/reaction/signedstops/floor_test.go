@@ -206,8 +206,8 @@ func TestTheFloorRefusesAListOffTheChain(t *testing.T) {
 		{"a fresh list above the floor", c.fresh(t, "stops3", 3), stoplist.ErrChain},
 		{"another list at the floor's serial", c.fresh(t, "stops4", 2), stoplist.ErrForked},
 	} {
-		if _, err := c.take(t, r.l); !errors.Is(err, r.want) {
-			t.Errorf("%s: %v, want %v", r.name, err, r.want)
+		if _, err := c.take(t, r.l); !errors.Is(err, r.want) || errors.Is(err, stoplist.ErrFloor) {
+			t.Errorf("%s: %v, want %v and not a floor the plane cannot use", r.name, err, r.want)
 		}
 	}
 	c.expectFloor(t, "after the refusals", 2, second)

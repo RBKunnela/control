@@ -41,11 +41,13 @@ type Restored struct {
 // RestoreUnsigned rewrites live, an unsigned runs directory, from backup, a
 // copy of one, and closes every run at now: each run either holds is written
 // closed, a close already recorded kept, and each root's state is the join
-// of the two, a state lost beside its record joined as lostState. It
-// refuses one id held as two runs with ErrTwoHistories and a signed layout
-// on either side with ErrLayout, and makes a missing live a runs directory.
-// An empty backup is none: live's runs are closed all the same. It holds
-// live's lock, and step is called before each write.
+// of the two, a state lost beside its record joined as lostState. Each
+// state is written under the root's lock, the one Plane.Raise takes, and
+// joined with what it holds then, so a plane that raises the root meanwhile
+// is never lowered. It refuses one id held as two runs with ErrTwoHistories
+// and a signed layout on either side with ErrLayout, and makes a missing
+// live a runs directory. An empty backup is none: live's runs are closed all
+// the same. It holds live's lock, and step is called before each write.
 func RestoreUnsigned(ctx context.Context, live, backup string, now time.Time, step func(string) error) (_ Restored, err error) {
 	if now.IsZero() {
 		return Restored{}, ErrZeroTime
@@ -83,7 +85,7 @@ func RestoreUnsigned(ctx context.Context, live, backup string, now time.Time, st
 	if err != nil {
 		return Restored{}, err
 	}
-	return a.writeMerged(cur, merged, step)
+	return a.writeMerged(ctx, cur, merged, step)
 }
 
 // CheckRestoreUnsigned refuses what RestoreUnsigned would refuse of live
@@ -244,20 +246,20 @@ func sameRun(a, b Record) bool {
 
 // writeMerged writes each root's lock and state, then each record, wherever
 // it differs from what cur holds, so a root never has a record without them.
-func (a *Admin) writeMerged(cur, merged flatRuns, step func(string) error) (Restored, error) {
+func (a *Admin) writeMerged(ctx context.Context, cur, merged flatRuns, step func(string) error) (Restored, error) {
 	var out Restored
 	for _, root := range sortedKeys(merged.states) {
 		s := merged.states[root]
 		if have, ok := cur.states[root]; ok && have == s {
 			continue
 		}
-		if err := step("state " + root); err != nil {
+		wrote, err := a.d.writeState(ctx, root, s, step)
+		if err != nil {
 			return out, err
 		}
-		if err := a.d.writeState(root, s); err != nil {
-			return out, err
+		if wrote {
+			out.States++
 		}
-		out.States++
 	}
 	for _, id := range sortedKeys(merged.records) {
 		rec := merged.records[id]
@@ -279,16 +281,60 @@ func (a *Admin) writeMerged(cur, merged flatRuns, step func(string) error) (Rest
 	return out, nil
 }
 
-// writeState writes root's lock file where it is missing, then its state.
-func (d *dir) writeState(root string, s State) error {
-	if err := d.createEmpty(root + lockSuffix); err != nil {
-		return err
+// writeState writes root's lock file where it is missing, then joins s into
+// its state under that lock. A state missing there takes s as it is.
+func (d *dir) writeState(ctx context.Context, root string, s State, step func(string) error) (bool, error) {
+	switch _, err := d.root.Lstat(root + lockSuffix); {
+	case errors.Is(err, fs.ErrNotExist):
+		if err := step("lock " + root); err != nil {
+			return false, err
+		}
+		if err := d.createEmpty(root + lockSuffix); err != nil {
+			return false, err
+		}
+	case err != nil:
+		return false, err
 	}
-	body, err := encodeState(root, s)
+	return d.joinLocked(ctx, root, s, initialState, step)
+}
+
+// joinLocked joins s into root's state under the root's lock, the one
+// Plane.Raise takes, reading the state under it, so a raise another writer
+// makes lands wholly before or after the join and is never lowered. A
+// missing state joins s from missing and is written whatever the join; the
+// result is whether the state was written.
+func (d *dir) joinLocked(ctx context.Context, root string, s, missing State, step func(string) error) (_ bool, err error) {
+	lock, err := d.openRegular(root+lockSuffix, os.O_RDWR)
 	if err != nil {
-		return err
+		return false, fmt.Errorf("the lock of %s: %w", root, err)
 	}
-	return d.replace(root+stateTemp, root+stateSuffix, body)
+	defer func() { err = errors.Join(err, lock.Close()) }()
+	if err := lockWaiting(ctx, lock); err != nil {
+		return false, err
+	}
+	have, err := d.readState(root)
+	gone := errors.Is(err, fs.ErrNotExist)
+	switch {
+	case gone:
+		have = missing
+	case err != nil:
+		return false, err
+	}
+	next := JoinStates(have, s)
+	if next == have && !gone {
+		return false, nil
+	}
+	body, err := encodeState(root, next)
+	if err != nil {
+		return false, err
+	}
+	if err := step("state " + root); err != nil {
+		return false, err
+	}
+	if err := d.stillLocked(lock, root); err != nil {
+		return false, err
+	}
+	return true, d.replace(root+stateTemp, root+stateSuffix, body)
 }
 
 func sortedKeys[V any](m map[string]V) []string {

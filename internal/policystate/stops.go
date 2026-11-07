@@ -149,17 +149,29 @@ func ReadStops(dir, tenant, project string) (_ StopsFloor, err error) {
 
 // RaiseStops holds the directory's exclusive lock while it reads the stop list
 // floor of next's tenant and project, and takes next: a serial above the
-// floor's, or a longer accepted part at its serial and head, replaces the file
-// whole, and the floor's own serial, head and part leave it as they were. It
-// refuses a lower serial with ErrStopsBelowFloor, the floor's serial with
-// another head with ErrStopsForked, a shorter part or one of the floor's
-// length with another SHA-256 with ErrStopsRewritten, and a serial, digest or
-// length no stop list carries with ErrStopsInvalid, each leaving the file as
-// it was, and every refusal ReadStops makes. Whether a longer part begins with
-// the floor's is the caller's to check before. It never creates a directory, a
-// marker or a floor file, and waits for the lock until ctx ends.
+// floor's replaces the file whole, and the floor's own serial, head and part
+// leave it as they were. It refuses a lower serial with ErrStopsBelowFloor,
+// the floor's serial with another head with ErrStopsForked, any other part at
+// the floor's serial and head with ErrStopsRewritten, a longer one included,
+// since only RaiseStopsHeld sees that it begins with the floor's, and a
+// serial, digest or length no stop list carries with ErrStopsInvalid, each
+// leaving the file as it was, and every refusal ReadStops makes. It never
+// creates a directory, a marker or a floor file, and waits for the lock until
+// ctx ends.
 func RaiseStops(ctx context.Context, dir string, next StopsFloor) (StopsFloor, error) {
 	return raiseSerial(ctx, dir, next)
+}
+
+// RaiseStopsHeld is RaiseStops that, under the same lock, holds next to the
+// floor as stored then with hold, and refuses with hold's refusal, leaving
+// the file as it was. It takes a longer accepted part at the floor's serial
+// and head, which hold must refuse unless the list's bytes begin with the
+// floor's part. A nil hold is ErrStopsInvalid.
+func RaiseStopsHeld(ctx context.Context, dir string, next StopsFloor, hold func(stored StopsFloor) error) (StopsFloor, error) {
+	if hold == nil {
+		return StopsFloor{}, fmt.Errorf("%w: no hold", ErrStopsInvalid)
+	}
+	return raiseSerialHeld(ctx, dir, next, hold)
 }
 
 var stopsRefusals = serialRefusals{invalid: ErrStopsInvalid, below: ErrStopsBelowFloor, forked: ErrStopsForked, rewritten: ErrStopsRewritten}

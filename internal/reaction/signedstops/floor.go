@@ -26,28 +26,38 @@ func NewFloor(dir, tenant, project string) (Floor, error) {
 	return Floor{dir: dir, tenant: tenant, project: project}, nil
 }
 
-// Take holds l, a 2.0 list a judge accepted from content, to the floor and
-// raises the floor to l's header and accepted part, waiting for the floor's
-// lock until ctx ends. A plane calls it whenever its accepted part grows. It
-// refuses what Hold refuses, and with stoplist.ErrFloor a floor it cannot
-// read or raise.
+// Take holds l, a 2.0 list a judge accepted from content, to the floor as
+// stored under the floor's lock and raises the floor to l's header and
+// accepted part under that same lock, waiting for it until ctx ends, so a
+// raise by another reader between this one's read and its raise is what l
+// is held to. A floor that already stands at l is only read and held to,
+// without the lock. A plane calls it at every read it accepts. It refuses
+// what Hold refuses, and with stoplist.ErrFloor a floor it cannot read or
+// raise.
 func (f Floor) Take(ctx context.Context, l reaction.List, content []byte) (policystate.StopsFloor, error) {
 	h := l.Header().Signed
 	if h.Digest == "" {
 		return policystate.StopsFloor{}, fmt.Errorf("%w: the list's header is not signed", stoplist.ErrFloor)
 	}
-	stored, err := policystate.ReadStops(f.dir, f.tenant, f.project)
-	if err != nil {
-		return policystate.StopsFloor{}, fmt.Errorf("%w: %w", stoplist.ErrFloor, err)
-	}
-	if err := Hold(stored, l, content); err != nil {
-		return policystate.StopsFloor{}, err
-	}
 	p := l.Prefix()
-	raised, err := policystate.RaiseStops(ctx, f.dir, policystate.StopsFloor{
+	next := policystate.StopsFloor{
 		Tenant: f.tenant, Project: f.project, Serial: h.Serial, Digest: h.Digest, Length: p.Length(), Prefix: sumDigest(p.Sum()),
+	}
+	if stored, err := policystate.ReadStops(f.dir, f.tenant, f.project); err == nil && stored == next {
+		if err := Hold(stored, l, content); err != nil {
+			return policystate.StopsFloor{}, err
+		}
+		return stored, nil
+	}
+	var refused error
+	raised, err := policystate.RaiseStopsHeld(ctx, f.dir, next, func(stored policystate.StopsFloor) error {
+		refused = Hold(stored, l, content)
+		return refused
 	})
-	if err != nil {
+	switch {
+	case refused != nil:
+		return policystate.StopsFloor{}, refused
+	case err != nil:
 		return policystate.StopsFloor{}, floorRefusal(err)
 	}
 	return raised, nil

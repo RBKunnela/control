@@ -32,6 +32,9 @@ type Plane struct {
 	signed  bool
 	records string
 	counts  *signedCounts
+	// uncarried holds the closes a carry failed to write, which notReplayed
+	// counts as carried until writeHeld writes them.
+	uncarried closeSet
 }
 
 // OpenPlane opens dir for a plane. It refuses a group- or world-writable
@@ -61,7 +64,9 @@ func OpenPlane(dir string) (*Plane, error) {
 // Signed reports whether the handle reads a signed layout.
 func (p *Plane) Signed() bool { return p != nil && p.signed }
 
-// Close releases the handle. A later call answers ErrClosed.
+// Close releases the handle, writing first, on a signed layout, every close
+// it holds that state/ did not take; one still refused is in the error. A
+// later call answers ErrClosed.
 func (p *Plane) Close() error {
 	if p == nil || p.d == nil {
 		return ErrClosed
@@ -69,7 +74,11 @@ func (p *Plane) Close() error {
 	if p.st == p.d || p.st == nil {
 		return p.d.close()
 	}
-	return errors.Join(p.d.close(), p.st.close())
+	var held error
+	if p.uncarried.size() > 0 {
+		held = p.writeHeld()
+	}
+	return errors.Join(held, p.d.close(), p.st.close())
 }
 
 // begin holds both directories open for one call.
@@ -111,7 +120,10 @@ type Run struct {
 // On a signed layout a record the judge does not take, or one that is not
 // signed, is CauseUnreadable after the secret is shown right; a closed record
 // taken is carried into state/ before CauseClosed is answered, and an open
-// record of a run whose close was carried is CauseClosed with ErrReplayed. A
+// record of a run whose close was carried is CauseClosed with ErrReplayed.
+// Every close the handle holds unwritten is written first, and while it
+// holds maxUncarried of them every token is CauseUnreadable with
+// ErrUncarried. A
 // run admitted there has its root's state and lock in state/ before Resolve
 // answers, which it makes at the root's first admission.
 func (p *Plane) Resolve(ctx context.Context, token string, who Identity, now time.Time) (Run, error) {
@@ -125,7 +137,7 @@ func (p *Plane) Resolve(ctx context.Context, token string, who Identity, now tim
 	if p == nil {
 		return Run{}, refuse(CauseUnreadable, ErrClosed)
 	}
-	end, err := p.begin(ctx)
+	end, err := p.beginResolve(ctx)
 	if err != nil {
 		return Run{}, refuse(CauseUnreadable, err)
 	}
@@ -153,6 +165,22 @@ func (p *Plane) Resolve(ctx context.Context, token string, who Identity, now tim
 	return Run{ID: rec.ID, Root: rec.Root, Who: rec.Who, Expires: rec.ExpiresAt}, nil
 }
 
+// beginResolve is begin for Resolve, which on a signed layout writes the
+// held closes first and refuses while the handle holds too many, counting
+// the resolves under way.
+func (p *Plane) beginResolve(ctx context.Context) (func(), error) {
+	end, err := p.begin(ctx)
+	if err != nil || !p.signed {
+		return end, err
+	}
+	done, err := p.ready()
+	if err != nil {
+		end()
+		return nil, err
+	}
+	return func() { done(); end() }, nil
+}
+
 // admit makes, on a signed layout, the state of the root of a run Resolve
 // admits, where the root has none yet.
 func (p *Plane) admit(rec Record) error {
@@ -173,7 +201,7 @@ func (p *Plane) standing(ctx context.Context, stored SignedRecord, who Identity)
 	if p.signed {
 		if err := p.take(ctx, stored); err != nil {
 			if closesAnyway(rec, err) {
-				p.carry(rec.ID)
+				err = errors.Join(err, p.carry(rec.ID))
 			}
 			return refuse(CauseUnreadable, err)
 		}
@@ -182,10 +210,11 @@ func (p *Plane) standing(ctx context.Context, stored SignedRecord, who Identity)
 	case rec.Who != who:
 		return refuse(CauseIdentity, nil)
 	case rec.Closed():
+		var err error
 		if p.signed {
-			p.carry(rec.ID)
+			err = p.carry(rec.ID)
 		}
-		return refuse(CauseClosed, nil)
+		return refuse(CauseClosed, err)
 	}
 	switch err := p.notReplayed(rec); {
 	case errors.Is(err, ErrReplayed):

@@ -47,7 +47,12 @@ close that replaced it.
   call or at its start, it writes the run's close there, and an open record
   of a run whose close it holds is refused as closed. A close bound to this
   directory and signed by a roster operator key is carried even once its
-  signer may no longer operate there.
+  signer may no longer operate there. A close the plane cannot write is held
+  in its memory and written at its next signed resolve of any run, its
+  start or its stop, whichever finds `state/` writable; holding 64, it
+  refuses every signed resolve. A start that cannot carry a close refuses,
+  naming the run. `/healthz` counts each failed write as `carry_failed`
+  under `runs.signed`.
 - The plane makes a root's state and then its lock in `state/` at the root's
   first admitted call; a missing state reads as the start only while its
   lock is missing too, and blocks the root's calls after.
@@ -71,7 +76,10 @@ runs are opened again into a new, empty directory. Nothing changes under
 can still remove a carried close, and remove a root's state together with its
 lock, which the next call makes again clean; with both it can undo a close and
 what the run took in. A close the plane neither resolved nor found at its
-start can be undone by whoever may write `records/`. `supervise` and `react`
+start can be undone by whoever may write `records/`. A close `state/` did
+not take protects only the plane that read it: another plane sharing
+`runs.dir` takes the open record put back, and so does this one restarted
+after a crash before the write. `supervise` and `react`
 read `records/` without `state/`, so they do not see a carried close. Records are
 group-readable, so the plane's account belongs to the records' group.
 

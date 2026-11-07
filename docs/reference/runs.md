@@ -128,8 +128,8 @@ or project, or by a key the roster does not grant `operate` refuses its calls
 as `unreadable`. When the plane takes a closed record, at a call or when it
 starts, it writes the close into `state/`, and the open record put back
 after is refused as `closed`. `/healthz` counts under `runs.signed` the
-records judged, each refusal cause and the closes carried; `doctor` counts
-the records by state and by signer.
+records judged, each refusal cause, the closes carried and `carry_failed`,
+held per plane; `doctor` counts records by state and signer.
 
 ## What a plane does with a token
 

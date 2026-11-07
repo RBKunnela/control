@@ -9,16 +9,20 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/guardana/control/internal/files"
 )
 
-// RestoreSigned carries the close of every run whose record live's or
-// backup's records/ names into live's state/, and joins each state backup's
-// state/ holds into live's. A state live's state/ lacks is a root's first
-// only while live holds neither its lock file nor a record of its id; with
-// either, it was lost, and joins as lostState. It reads the records' names
-// and judges no record: a close carried is the safe side. It writes nothing
-// to records/, and step is called before each write. An empty backup is
-// none: live's runs are closed all the same.
+// RestoreSigned carries into live's state/ the close of every run whose
+// record live's or backup's records/ names, or whose close backup's state/
+// holds, and joins each state backup's state/ holds into live's under the
+// root's lock, the one Plane.Raise takes, so a plane sharing the directory
+// that raises the root meanwhile is never lowered. A state live's state/
+// lacks is a root's first only while live holds neither its lock file nor a
+// record of its id; with either, it was lost, and joins as lostState. It
+// reads the records' names and judges no record: a close carried is the safe
+// side. It writes nothing to records/, and step is called before each write.
+// An empty backup is none: live's runs are closed all the same.
 func RestoreSigned(ctx context.Context, live, backup string, step func(string) error) (out Restored, err error) {
 	if err := ctx.Err(); err != nil {
 		return Restored{}, err
@@ -48,7 +52,7 @@ func RestoreSigned(ctx context.Context, live, backup string, step func(string) e
 		return Restored{}, err
 	}
 	out.Carried = len(ids)
-	out.States, err = joinSigned(live, states, recorded, step)
+	out.States, err = joinSigned(ctx, live, states, recorded, step)
 	return out, err
 }
 
@@ -83,36 +87,65 @@ func CheckRestoreSigned(live, backup string) (err error) {
 // many it wrote. A missing one counts as lostState where its lock file
 // stands or recorded holds its id, and as a root's first otherwise, and is
 // written whatever the join.
-func joinSigned(live string, states map[string]State, recorded map[string]bool, step func(string) error) (n int, err error) {
+func joinSigned(ctx context.Context, live string, states map[string]State, recorded map[string]bool, step func(string) error) (n int, err error) {
 	st, err := openState(live)
 	if err != nil {
 		return 0, err
 	}
 	defer func() { err = errors.Join(err, st.close()) }()
 	for _, root := range sortedKeys(states) {
-		have, err := st.readState(root)
-		missing := errors.Is(err, fs.ErrNotExist)
-		switch {
-		case missing:
-			if have, err = missingState(st, root, recorded[root]); err != nil {
-				return n, err
-			}
-		case err != nil:
+		wrote, err := st.startSigned(root, states[root], recorded[root], step)
+		if err == nil && !wrote {
+			wrote, err = st.joinLocked(ctx, root, states[root], lostState, step)
+		}
+		if err != nil {
 			return n, err
 		}
-		next := JoinStates(have, states[root])
-		if next == have && !missing {
-			continue
+		if wrote {
+			n++
 		}
-		if err := step("state " + root); err != nil {
-			return n, err
-		}
-		if err := st.writeSignedState(root, next); err != nil {
-			return n, err
-		}
-		n++
 	}
 	return n, nil
+}
+
+// startSigned makes root's state, joined from s, and then its lock file,
+// where state/ holds neither: the order and the no-replace write startRoot
+// uses, so a plane starting the root at the same time keeps the state one of
+// the two made, and the other's join takes the lock. Where only the lock file
+// is missing it makes that, and it returns false whenever it made no state.
+func (d *dir) startSigned(root string, s State, recorded bool, step func(string) error) (bool, error) {
+	switch _, err := d.root.Lstat(root + lockSuffix); {
+	case err == nil:
+		return false, nil
+	case !errors.Is(err, fs.ErrNotExist):
+		return false, err
+	}
+	switch _, err := d.root.Lstat(root + stateSuffix); {
+	case err == nil:
+		if err := step("lock " + root); err != nil {
+			return false, err
+		}
+		return false, d.createEmpty(root + lockSuffix)
+	case !errors.Is(err, fs.ErrNotExist):
+		return false, err
+	}
+	base, err := missingState(d, root, recorded)
+	if err != nil {
+		return false, err
+	}
+	body, err := encodeState(root, JoinStates(base, s))
+	if err != nil {
+		return false, err
+	}
+	if err := step("state " + root); err != nil {
+		return false, err
+	}
+	err = files.CreateNoReplaceIn(d.root, root+stateSuffix, body, d.mode)
+	made := err == nil
+	if err != nil && !errors.Is(err, files.ErrExists) {
+		return false, err
+	}
+	return made, d.createEmpty(root + lockSuffix)
 }
 
 // missingState is what a root whose state file st lacks starts a join from:
@@ -129,8 +162,8 @@ func missingState(st *dir, root string, recorded bool) (State, error) {
 	return State{}, err
 }
 
-// signedBackup is the run ids backup's records/ names and the states its
-// state/ holds; an empty backup is none.
+// signedBackup is the run ids backup's records/ names or its state/ holds
+// a close of, and the states its state/ holds; an empty backup is none.
 func signedBackup(backup string) ([]string, map[string]State, error) {
 	if backup == "" {
 		return nil, map[string]State{}, nil
@@ -139,11 +172,11 @@ func signedBackup(backup string) ([]string, map[string]State, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	states, err := signedStates(backup)
+	states, closed, err := signedStates(backup)
 	if err != nil {
 		return nil, nil, err
 	}
-	return ids, states, nil
+	return append(ids, closed...), states, nil
 }
 
 // CarryClosed writes into the state/ of dir, a signed layout, the close of
@@ -205,46 +238,37 @@ func signedIDs(dir string) ([]string, error) {
 	return ids, nil
 }
 
-// signedStates is every state dir's state/ holds, by root.
-func signedStates(dir string) (map[string]State, error) {
+// signedStates is every state dir's state/ holds, by root, and every run id
+// it holds a close of.
+func signedStates(dir string) (map[string]State, []string, error) {
 	st, err := openDir(filepath.Join(dir, StateDir), roleState, ownedByThisUser)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer func() { _ = st.close() }()
 	entries, err := st.readDir()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if _, err := st.scan(entries); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	out := map[string]State{}
+	var closed []string
 	for _, e := range entries {
+		if id, ok := strings.CutSuffix(e.Name(), closedSuffix); ok && checkRunID(id) == nil {
+			closed = append(closed, id)
+			continue
+		}
 		root, ok := strings.CutSuffix(e.Name(), stateSuffix)
 		if !ok || checkRunID(root) != nil {
 			continue
 		}
 		s, err := st.readState(root)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		out[root] = s
 	}
-	return out, nil
-}
-
-// writeSignedState writes root's state, then its lock file where it is
-// missing, the order a plane starts a root in: a lock file without a state
-// reads as a state lost, so a write stopped between the two is never taken
-// for one.
-func (d *dir) writeSignedState(root string, s State) error {
-	body, err := encodeState(root, s)
-	if err != nil {
-		return err
-	}
-	if err := d.replace(root+stateTemp, root+stateSuffix, body); err != nil {
-		return err
-	}
-	return d.createEmpty(root + lockSuffix)
+	return out, closed, nil
 }

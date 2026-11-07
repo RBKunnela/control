@@ -28,8 +28,8 @@ func stopsAt(serial int64, digest string, length int64, prefix string) policysta
 }
 
 // TestRaiseStopsHoldsTheAcceptedPartAtItsSerial: at the floor's serial and
-// head a longer part is taken, and a shorter one or one of its length with
-// other bytes is refused, the file left as it was.
+// head a longer part is taken only through a hold, and a shorter one or one
+// of its length with other bytes is refused, the file left as it was.
 func TestRaiseStopsHoldsTheAcceptedPartAtItsSerial(t *testing.T) {
 	dir := stopsDir(t)
 	file := filepath.Join(dir, "stops.floor.json")
@@ -45,8 +45,26 @@ func TestRaiseStopsHoldsTheAcceptedPartAtItsSerial(t *testing.T) {
 		}
 	}
 	expectStopsRefusals(t, dir)
-	if f, err := policystate.RaiseStops(t.Context(), dir, stopsAt(5, d5, 41, d5)); err != nil || f.Length != 41 || f.Prefix != d5 {
-		t.Errorf("RaiseStops to one byte more = %+v, %v", f, err)
+	if f, err := policystate.RaiseStops(t.Context(), dir, stopsAt(5, d5, 41, d5)); !errors.Is(err, policystate.ErrStopsRewritten) {
+		t.Errorf("RaiseStops to one byte more, held to nothing = %+v, %v; want ErrStopsRewritten", f, err)
+	}
+	if got := readFile(t, file); got != stopsAt5T1A {
+		t.Errorf("a longer part held to nothing changed the floor file to %q", got)
+	}
+	expectGrowthHeld(t, dir)
+}
+
+// expectGrowthHeld expects a floor at serial 5 of 40 bytes to take one byte
+// more through a hold given the floor as stored, and then the next serial.
+func expectGrowthHeld(t *testing.T, dir string) {
+	t.Helper()
+	var held policystate.StopsFloor
+	hold := func(stored policystate.StopsFloor) error { held = stored; return nil }
+	if f, err := policystate.RaiseStopsHeld(t.Context(), dir, stopsAt(5, d5, 41, d5), hold); err != nil || f.Length != 41 || f.Prefix != d5 {
+		t.Errorf("RaiseStopsHeld to one byte more = %+v, %v", f, err)
+	}
+	if held != stopsAt(5, d5, 40, d6) {
+		t.Errorf("the hold was given %+v, want the floor as stored", held)
 	}
 	if f, err := policystate.RaiseStops(t.Context(), dir, stopsAt(6, d6, 10, d6)); err != nil || f.Serial != 6 || f.Length != 10 {
 		t.Errorf("RaiseStops to the next serial with a shorter list = %+v, %v; a new serial is a new list", f, err)
@@ -103,5 +121,40 @@ func TestAStopsFloorRefusesWhatNoListCarries(t *testing.T) {
 	}
 	if _, err := policystate.ReadStops(dir, "t1", "A"); !errors.Is(err, policystate.ErrMalformed) {
 		t.Errorf("ReadStops of a floor without its part = %v, want ErrMalformed", err)
+	}
+}
+
+// TestRaiseStopsHeldRefusesWhatItsHoldRefusesOfTheFloorAsStored: the hold
+// is given the floor a raise stored after the caller read it, its refusal
+// is RaiseStopsHeld's and leaves the file as it was, and no hold is
+// refused.
+func TestRaiseStopsHeldRefusesWhatItsHoldRefusesOfTheFloorAsStored(t *testing.T) {
+	dir := stopsDir(t)
+	file := filepath.Join(dir, "stops.floor.json")
+	read, err := policystate.ReadStops(dir, "t1", "A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := policystate.RaiseStops(t.Context(), dir, stopsAt(5, d5, 40, d6)); err != nil {
+		t.Fatal(err)
+	}
+	refusal := errors.New("not the floor the caller read")
+	hold := func(stored policystate.StopsFloor) error {
+		if stored != read {
+			return refusal
+		}
+		return nil
+	}
+	if f, err := policystate.RaiseStopsHeld(t.Context(), dir, stopsAt(5, d5, 80, d5), hold); !errors.Is(err, refusal) {
+		t.Errorf("RaiseStopsHeld over a floor raised since the read = %+v, %v; want the hold's refusal", f, err)
+	}
+	if got := readFile(t, file); got != stopsAt5T1A {
+		t.Errorf("a refused hold changed the floor file to %q", got)
+	}
+	if _, err := policystate.RaiseStopsHeld(t.Context(), dir, stopsAt(6, d6, 10, d6), nil); !errors.Is(err, policystate.ErrStopsInvalid) {
+		t.Errorf("RaiseStopsHeld with no hold = %v, want ErrStopsInvalid", err)
+	}
+	if got := readFile(t, file); got != stopsAt5T1A {
+		t.Errorf("a raise with no hold changed the floor file to %q", got)
 	}
 }

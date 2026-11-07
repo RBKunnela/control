@@ -177,8 +177,8 @@ into an owner-only <code>state-restore-*</code> directory under <code>$TMPDIR</c
 only that copy, which a killed restore leaves behind.</p>
 <h2 id="what-a-restore-does">What a restore does</h2>
 <ul>
-<li>Plane floor, per bundle id: the higher serial of the backup's and the
-live one, with its digest, stamped issued and latest at the restore time,
+<li>Plane floor, per bundle id either side holds: the higher serial of the
+two, with its digest, stamped issued and latest at the restore time,
 rounded up to the whole second; a plane started within that second
 refuses until it passes. The bundle's own statement, issued before the
 restore, confirms nothing; the next renewal does. Two digests at one
@@ -192,9 +192,9 @@ Two heads at one serial, or two parts no list shows as one history,
 refuse.</li>
 <li>Runs: every run closed at the restore time. Under <code>directory</code> each record
 either side holds is written closed, keeping an earlier close; under
-<code>signed</code>, <code>state/&lt;id&gt;.closed</code> is written for every run the backup or
-<code>records/</code> names, so an open record put back later is refused. Each
-root's taint is the join of both sides, and a state lost beside its
+<code>signed</code>, <code>state/&lt;id&gt;.closed</code> is written for every run either side
+names, so an open record put back later is refused. Each root's taint is
+the join of both sides under its lock, and a state lost beside its
 record, or under <code>signed</code> beside its lock file, counts as untrusted with
 an unknown read.</li>
 <li>Pause: under <code>directory</code> the union of both files' entries; an id holding

@@ -137,7 +137,12 @@ lifts from. <code>stops init</code>, <code>lift</code> and <code>list</code> tak
 each signing says on standard error what it signed. The plane holds the
 header and the part of the list it accepted to a stop list floor in the new
 <code>reaction.stops_floor_dir</code>, which <code>stops floor init</code> makes for the
-listener's tenant, and refuses a list cut back below it; <code>/healthz</code> gives the header serial and
+listener's tenant, and refuses a list cut back below it, also at a read
+that found nothing new. At every read it asks the operator ports again,
+within one poll interval, about the route, the header and each lift's
+signer, so a revoked operator, a route admin without the grant, or ports
+that do not answer in time make the stop state unknown;
+<code>/healthz</code> gives the header serial and
 <code>health.socket</code> also who signed the header and the route (ADR-0077).</li>
 <li><code>guardana-control state backup &lt;config&gt; &lt;dir&gt;</code> copies a stopped plane's
 floors, runs, pause file and stop list into a new owner-only directory
@@ -146,9 +151,11 @@ the approvals store or a key. <code>state restore &lt;config&gt; &lt;dir&gt;</co
 backup of another plane or a tampered one, restores only the bytes it
 verified, holds the spool's and the journal's locks, checks every class
 before its first write, raises every floor to the higher of the two,
-stamps a plane floor at the restore time rounded up to the second so the
-old statement confirms nothing, closes every run and joins taint, a state
-lost beside its lock or record as the worst. Under <code>directory</code> it keeps a
+stamps every plane floor, one only live holds included, at the restore
+time rounded up to the second so the old statement confirms nothing,
+closes every run, a run named only by a close the backup carried
+included, and joins taint under each root's lock, a state lost beside
+its lock or record as the worst. Under <code>directory</code> it keeps a
 stop list that holds the backup's, carries the backup's into a new list
 where none survived, and refuses two histories; under <code>signed</code> it writes
 no operator file, raises the stop list floor in its own order, and names
@@ -174,7 +181,12 @@ does not vouch for, of another tenant, project or directory, or unsigned,
 and say on standard error what they signed. A plane refuses a <code>records/</code>
 or a record its own account owns. When the plane takes a closed record it carries the close into
 <code>state/</code>, at a call or at its start, so the open record put back is
-refused; a close whose signer may no longer operate there is carried too. A record
+refused; a close whose signer may no longer operate there is carried too. A
+close <code>state/</code> does not take is held and refused as carried, written at
+the next signed resolve, start or stop that can, and counted as
+<code>carry_failed</code>; holding 64, the plane refuses every signed resolve, and a
+start that cannot carry one refuses, naming the run. A held close protects
+only its own plane. A record
 copied from another path counts in neither; planes that use one path on two
 hosts must differ in tenant or project. The plane writes a root's state at
 its first admitted call and blocks the root's calls when that state is later

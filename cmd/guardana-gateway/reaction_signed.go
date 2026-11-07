@@ -16,7 +16,7 @@ import (
 )
 
 // stopListRead is how a plane reads its stop list: whose account owns it,
-// and what each growth of the part it accepted is held to.
+// and what each read it accepts is held to.
 type stopListRead struct {
 	owner stoplist.Owner
 	take  func(reaction.List, []byte) error
@@ -33,8 +33,8 @@ type stopsAuthority struct {
 }
 
 // read is the signed read: a list another account owns, unless planeOwned,
-// whose header and accepted part are held to the floor and raise it each
-// time the part grows.
+// whose header and accepted part are held to the floor at every read and
+// raise it each time the part grows.
 func (a *stopsAuthority) read() stopListRead {
 	owner := stoplist.OwnedByAnother
 	if a.planeOwned {

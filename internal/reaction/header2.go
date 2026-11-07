@@ -1,6 +1,7 @@
 package reaction
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/guardana/control/internal/canon"
@@ -184,13 +185,13 @@ func SignedHeaderLine(env Envelope) ([]byte, error) {
 
 // judgeSignedHeader holds a 2.0 header to its route: the same plane's
 // tenant, project and stop list file, and a signer the route's voucher
-// vouches for under the stop list act.
-func judgeSignedHeader(r Route, h Header, env Envelope) (Signer, error) {
+// vouches for under the stop list act, asked within ctx.
+func judgeSignedHeader(ctx context.Context, r Route, h Header, env Envelope) (Signer, error) {
 	s := h.Signed
 	if s.TenantID != r.tenantID || s.ProjectID != r.projectID {
 		return Signer{}, ErrHeaderOther
 	}
-	signer, err := vouched(r.voucher, VouchHeader, env, s.TenantID, s.ProjectID, s.File)
+	signer, err := vouchedWithin(ctx, r.voucher, VouchHeader, env, s.TenantID, s.ProjectID, s.File)
 	if err != nil {
 		return Signer{}, fmt.Errorf("%w: %w", ErrHeaderUnsigned, err)
 	}

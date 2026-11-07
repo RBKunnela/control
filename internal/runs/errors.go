@@ -93,6 +93,10 @@ const (
 	// ErrReplayed is an open record of a run whose closed record the plane
 	// took: the open one was put back after the close.
 	ErrReplayed Error = "runs: the run's close was taken, and its open record was put back"
+	// ErrUncarried is a signed resolve refused while the plane holds as many
+	// closes state/ did not take as it may, since another it could not hold
+	// would be forgotten.
+	ErrUncarried Error = "runs: too many closes held unwritten"
 	// ErrPlaneOwned is a signed layout's records/, or a record in it, that
 	// the account of the plane reading it owns, and so could rewrite.
 	ErrPlaneOwned Error = "runs: under the signed authority the plane's own account owns the records"

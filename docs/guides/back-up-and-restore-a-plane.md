@@ -79,8 +79,8 @@ only that copy, which a killed restore leaves behind.
 
 ## What a restore does
 
-- Plane floor, per bundle id: the higher serial of the backup's and the
-  live one, with its digest, stamped issued and latest at the restore time,
+- Plane floor, per bundle id either side holds: the higher serial of the
+  two, with its digest, stamped issued and latest at the restore time,
   rounded up to the whole second; a plane started within that second
   refuses until it passes. The bundle's own statement, issued before the
   restore, confirms nothing; the next renewal does. Two digests at one
@@ -94,9 +94,9 @@ only that copy, which a killed restore leaves behind.
   refuse.
 - Runs: every run closed at the restore time. Under `directory` each record
   either side holds is written closed, keeping an earlier close; under
-  `signed`, `state/<id>.closed` is written for every run the backup or
-  `records/` names, so an open record put back later is refused. Each
-  root's taint is the join of both sides, and a state lost beside its
+  `signed`, `state/<id>.closed` is written for every run either side
+  names, so an open record put back later is refused. Each root's taint is
+  the join of both sides under its lock, and a state lost beside its
   record, or under `signed` beside its lock file, counts as untrusted with
   an unknown read.
 - Pause: under `directory` the union of both files' entries; an id holding

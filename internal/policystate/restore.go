@@ -28,18 +28,18 @@ type Restored struct {
 }
 
 // RestorePlane raises the floors of live, a plane floor directory, to the
-// floors backup holds, a copy of one, and stamps every floor it holds a
+// floors backup holds, a copy of one, and stamps every floor either holds a
 // serial for at now: the higher serial of the two with its digest, issued
 // at now and latest at now, so no statement issued before now confirms that
-// serial again. now is rounded up to the whole second, the precision of a
-// statement's issuedAt, so none issued earlier in now's second confirms
-// either. It refuses the same serial with two digests with
-// policy.ErrFloorSerialReused and a clock behind either floor's latest
-// issuedAt with policy.ErrClockBehindFloor, before it writes that id. An id
-// neither holds a serial for is listed and given no file, so a start refuses
-// until the operator resets it. An id only live lists is left as it is. A
-// missing live is built under a temporary sibling name and renamed into
-// place.
+// serial again. A floor only live holds is stamped at its own serial. now is
+// rounded up to the whole second, the precision of a statement's issuedAt,
+// so none issued earlier in now's second confirms either. It refuses the
+// same serial with two digests with policy.ErrFloorSerialReused and a clock
+// behind either floor's latest issuedAt with policy.ErrClockBehindFloor,
+// before it writes that id. An id neither holds a serial for is listed and
+// given no file, so a start refuses until the operator resets it. An empty
+// backup is none: live's floors are stamped all the same. A missing live is
+// built under a temporary sibling name and renamed into place.
 func RestorePlane(ctx context.Context, live, backup string, now time.Time, step Step) (Restored, error) {
 	return restoreFloors(ctx, planeKind(now), live, backup, step)
 }
@@ -53,6 +53,7 @@ func planeKind(now time.Time) floorKind[Record] {
 	at := stampAt(now)
 	return floorKind[Record]{
 		listEmpty:   true,
+		stampsLive:  true,
 		judge:       func(d *dir, e []os.DirEntry) ([]string, error) { return d.judgeContents(e, KindPlane) },
 		writeMarker: func(d *dir, ids []string, create bool) error { return d.writeMarker(KindPlane, ids, create) },
 		maxIDs:      MaxBundleIDs,
@@ -228,7 +229,11 @@ func higherSerial[F serialFloor[F]](cur *F, bk F) (F, bool, error) {
 type floorKind[V any] struct {
 	// listEmpty lists an id neither directory holds a serial for, with no
 	// file, rather than leave it out.
-	listEmpty   bool
+	listEmpty bool
+	// stampsLive restores an id only live lists, or one the backup lists
+	// with no file, from its own floor, as restored(cur, *cur), rather than
+	// leave it as it is.
+	stampsLive  bool
 	judge       func(*dir, []os.DirEntry) ([]string, error)
 	writeMarker func(d *dir, ids []string, create bool) error
 	maxIDs      int
@@ -271,12 +276,56 @@ func restoreFloors[V any](ctx context.Context, k floorKind[V], live, backup stri
 	if err != nil {
 		return Restored{}, err
 	}
+	liveOnly := liveOnlyIDs(k, listed, held)
 	for _, id := range ids {
 		if err := restoreOne(k, d, &listed, id, held[id], step, &out); err != nil {
 			return out, err
 		}
 	}
-	return out, nil
+	return out, stampLive(k, d, liveOnly, step, &out)
+}
+
+// liveOnlyIDs is every id of listed the backup does not list, where k stamps
+// such an id, and none otherwise.
+func liveOnlyIDs[V any](k floorKind[V], listed []string, held map[string]*V) []string {
+	if !k.stampsLive {
+		return nil
+	}
+	var out []string
+	for _, id := range listed {
+		if _, ok := held[id]; !ok {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
+// stampLive restores each of ids, which only live lists, from its own floor.
+func stampLive[V any](k floorKind[V], d *dir, ids []string, step Step, out *Restored) error {
+	for _, id := range ids {
+		if err := stampOwn(k, d, id, step, out); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// stampOwn restores id from its own floor, where that holds a serial.
+func stampOwn[V any](k floorKind[V], d *dir, id string, step Step, out *Restored) error {
+	cur, err := k.read(d, id)
+	switch {
+	case errors.Is(err, ErrNoFloor):
+		return nil
+	case err != nil:
+		return err
+	case !k.hasSerial(cur):
+		return nil
+	}
+	next, write, err := k.restored(&cur, cur)
+	if err != nil {
+		return err
+	}
+	return writeIf(k, d, id, next, write, step, out)
 }
 
 // checkFloors refuses what restoreFloors would refuse by k's rules, writing
@@ -341,9 +390,13 @@ func restoreOne[V any](k floorKind[V], d *dir, listed *[]string, id string, bk *
 }
 
 // nextFloor is the floor a restore writes for one id from cur and bk, and
-// false where it writes none: a backup with no file, or no serial on either
-// side, leaves the id as it is.
+// false where it writes none: no serial on either side leaves the id as it
+// is, and so does a backup with no file, except where k stamps live's own
+// floor as it stamps an id only live lists.
 func nextFloor[V any](k floorKind[V], cur, bk *V) (V, bool, error) {
+	if bk == nil && k.stampsLive && cur != nil && k.hasSerial(*cur) {
+		return k.restored(cur, *cur)
+	}
 	if bk == nil || (!k.hasSerial(*bk) && (cur == nil || !k.hasSerial(*cur))) {
 		var none V
 		return none, false, nil
@@ -366,8 +419,11 @@ func writeIf[V any](k floorKind[V], d *dir, id string, next V, write bool, step 
 }
 
 // readBackup reads every id backup lists and the floor it holds for each;
-// an id whose file is gone maps to nil.
+// an id whose file is gone maps to nil. An empty backup lists none.
 func readBackup[V any](k floorKind[V], backup string) ([]string, map[string]*V, error) {
+	if backup == "" {
+		return nil, map[string]*V{}, nil
+	}
 	d, err := openDir(backup)
 	if err != nil {
 		return nil, nil, err

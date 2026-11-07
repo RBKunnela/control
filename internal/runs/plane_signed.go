@@ -33,10 +33,15 @@ func (p *Plane) take(ctx context.Context, sr SignedRecord) error {
 }
 
 // notReplayed refuses, with ErrReplayed, an open record of a run whose close
-// state/ holds. It is nil off a signed layout and for a closed record.
+// state/ holds or the handle failed to carry. It is nil off a signed layout
+// and for a closed record.
 func (p *Plane) notReplayed(rec Record) error {
 	if !p.signed || rec.Closed() {
 		return nil
+	}
+	if p.uncarried.has(rec.ID) {
+		p.counts.refused(ErrReplayed)
+		return fmt.Errorf("%w: %s, whose close was not carried", ErrReplayed, rec.ID)
 	}
 	f, err := p.st.openRegular(rec.ID+closedSuffix, os.O_RDONLY)
 	switch {
@@ -63,14 +68,122 @@ func closesAnyway(rec Record, err error) bool {
 
 // carry writes the close of run id into state/, where it outlives the closed
 // record: a run once closed stays closed whatever records/ holds later. A
-// close carried already is left as it is.
-func (p *Plane) carry(id string) bool {
+// close carried already is left as it is. A close it fails to write is held
+// in the handle instead, so the run's open record put back is refused, until
+// writeHeld writes it.
+func (p *Plane) carry(id string) error {
+	p.uncarried.writing.Lock()
+	defer p.uncarried.writing.Unlock()
 	if err := p.st.createEmpty(id + closedSuffix); err != nil {
+		p.uncarried.add(id)
 		p.counts.add("carry_failed")
-		return false
+		return fmt.Errorf("the close of %s was not carried: %w", id, err)
 	}
 	p.counts.add("closes_carried")
-	return true
+	return nil
+}
+
+// maxUncarried is the most closes a plane holds that state/ did not take.
+// Holding one more could fail, and a close forgotten would let the run's open
+// record count again, so at the bound the plane refuses every signed resolve,
+// counting with the closes held each resolve admitted, which may hold one.
+const maxUncarried = 64
+
+// writeHeld writes into state/ every close the handle holds, dropping each
+// once written, and returns what still refused, each naming its run and
+// counted as carry_failed. A signed resolve calls it first, as do the survey
+// and Close, so a held close reaches state/ as soon as state/ takes it.
+func (p *Plane) writeHeld() error {
+	p.uncarried.writing.Lock()
+	defer p.uncarried.writing.Unlock()
+	var errs []error
+	for _, id := range p.uncarried.list() {
+		if err := p.st.createEmpty(id + closedSuffix); err != nil {
+			p.counts.add("carry_failed")
+			errs = append(errs, fmt.Errorf("the close of %s was not carried: %w", id, err))
+			continue
+		}
+		p.uncarried.remove(id)
+		p.counts.add("closes_carried")
+	}
+	return errors.Join(errs...)
+}
+
+// ready writes the held closes and admits one resolve, refusing with
+// ErrUncarried while the closes held and the resolves admitted reach
+// maxUncarried. The resolve calls the func it returns when it ends.
+func (p *Plane) ready() (func(), error) {
+	err := p.writeHeld()
+	if n, ok := p.uncarried.admit(maxUncarried); !ok {
+		return nil, errors.Join(fmt.Errorf("%w: %d held", ErrUncarried, n), err)
+	}
+	return p.uncarried.done, nil
+}
+
+// closeSet is a set of run ids safe for concurrent use, with the resolves
+// admitted that may each add one.
+type closeSet struct {
+	mu       sync.Mutex
+	ids      map[string]bool
+	admitted int
+	// writing makes a close's write and the set's change one step, so a
+	// write that finds another's file half made never drops the id.
+	writing sync.Mutex
+}
+
+// admit counts one more resolve and reports true, or the ids held and false
+// where they and the resolves counted already reach bound.
+func (c *closeSet) admit(bound int) (int, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if len(c.ids)+c.admitted >= bound {
+		return len(c.ids), false
+	}
+	c.admitted++
+	return 0, true
+}
+
+func (c *closeSet) done() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.admitted--
+}
+
+func (c *closeSet) remove(id string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.ids, id)
+}
+
+func (c *closeSet) size() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return len(c.ids)
+}
+
+func (c *closeSet) list() []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	out := make([]string, 0, len(c.ids))
+	for id := range c.ids {
+		out = append(out, id)
+	}
+	return out
+}
+
+func (c *closeSet) add(id string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.ids == nil {
+		c.ids = map[string]bool{}
+	}
+	c.ids[id] = true
+}
+
+func (c *closeSet) has(id string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.ids[id]
 }
 
 // createEmpty creates the empty file name and forces it and the directory to
@@ -110,7 +223,9 @@ type Survey struct {
 // the close of each closed record its judge takes, so that the open record
 // put back after a close the plane never resolved is refused all the same.
 // A serving plane calls it at its start. A record that does not count is
-// counted and left: it refuses only the calls it would cover.
+// counted and left: it refuses only the calls it would cover. A close it
+// cannot write, one the handle held among them, stops the read with an error
+// naming the run, which a serving plane does not start past.
 func (p *Plane) CarryCloses(ctx context.Context, bound int, now time.Time) (Survey, error) {
 	return p.survey(ctx, bound, now, true)
 }
@@ -133,6 +248,11 @@ func (p *Plane) survey(ctx context.Context, bound int, now time.Time, carry bool
 		return Survey{}, err
 	}
 	defer end()
+	if carry {
+		if err := p.writeHeld(); err != nil {
+			return Survey{}, err
+		}
+	}
 	entries, err := p.d.readDir()
 	if err != nil {
 		return Survey{}, err
@@ -146,14 +266,16 @@ func (p *Plane) survey(ctx context.Context, bound int, now time.Time, carry bool
 		ids = ids[:bound]
 	}
 	for _, id := range ids {
-		p.surveyOne(ctx, id, now, carry, &out)
+		if err := p.surveyOne(ctx, id, now, carry, &out); err != nil {
+			return out, err
+		}
 	}
 	return out, nil
 }
 
 // surveyOne judges the record of id and counts it into out, carrying its
-// close where carry.
-func (p *Plane) surveyOne(ctx context.Context, id string, now time.Time, carry bool, out *Survey) {
+// close where carry; the error is a close it could not carry.
+func (p *Plane) surveyOne(ctx context.Context, id string, now time.Time, carry bool, out *Survey) error {
 	out.Records++
 	stored, err := p.d.readStored(id)
 	var by SignedBy
@@ -165,24 +287,34 @@ func (p *Plane) surveyOne(ctx context.Context, id string, now time.Time, carry b
 	}
 	if err != nil {
 		out.Refused[recordCause(err)]++
-		if carry && closesAnyway(stored.Record, err) && p.carry(id) {
-			out.Carried++
+		if carry && closesAnyway(stored.Record, err) {
+			return p.carryCounted(id, out)
 		}
-		return
+		return nil
 	}
 	out.Signers[by.Subject]++
 	rec := stored.Record
 	switch {
 	case rec.Closed():
 		out.Closed++
-		if carry && p.carry(id) {
-			out.Carried++
+		if carry {
+			return p.carryCounted(id, out)
 		}
 	case now.IsZero() || !now.Before(rec.ExpiresAt):
 		out.Expired++
 	default:
 		out.Open++
 	}
+	return nil
+}
+
+// carryCounted carries the close of id and counts it into out.
+func (p *Plane) carryCounted(id string, out *Survey) error {
+	if err := p.carry(id); err != nil {
+		return err
+	}
+	out.Carried++
+	return nil
 }
 
 // RecordCauses is every label a record that did not count is counted under,

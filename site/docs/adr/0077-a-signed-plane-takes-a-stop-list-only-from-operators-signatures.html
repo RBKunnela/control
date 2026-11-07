@@ -146,11 +146,18 @@ cleaned path of the route file or the stop list it was signed for, links
 on the way to its directory resolved. A plane compares it with its own, so
 a copy to another plane of the same tenant and project is refused.</li>
 <li>A plane reads the route, the header and each lift through its operator
-ports. The stop list floor in <code>reaction.stops_floor_dir</code> is a serial floor
+ports. A signed list is judged again at every poll: the plane asks its
+ports again, within one poll interval, about the route, the header and one
+lift of each operator who signed one, since the ports answer by key, and a
+refusal or no answer in time makes the stop state unknown, never clear. The
+stop list floor in <code>reaction.stops_floor_dir</code> is a serial floor
 of the kind the route and pause floors are, kept for the listener's tenant
 and the project: the header serial the plane took, the header's digest,
 and the length and SHA-256 of the part of that list the plane accepted,
-raised each time that part grows. A list below it, at its serial with
+held to at every poll and raised under the floor's lock each time that part
+grows, so a raise by another reader of the floor is what a list is held
+to. A list
+below it, at its serial with
 another head, above it naming another previous head, or at its serial
 shorter than that part or beginning with other bytes is refused. A carry
 given the floor refuses an old list cut back below that part.</li>
@@ -192,10 +199,13 @@ the plane's reach. A lift made against one list never ends a stop of a list
 carried or restored after it.</p>
 <h2 id="validation">Validation</h2>
 <p><code>internal/reaction</code> tests each refusal of a signed route, header, stop,
-covered line and lift, and a lift for one head refused under another;
+covered line and lift, a lift for one head refused under another, and a
+list accepted before whose route admin, header or lift signer the roster
+revokes, or whose ports stop answering or answer after the interval;
 <code>internal/reaction/signedstops</code> tests both vouchers, the floor's chain, a
-list cut back across a restart and in a carry, and a copy between two planes
-of one project; <code>internal/reaction/stopwrite</code> and
+list cut back across a restart and in a carry, a raise by another reader
+between a read and a raise or before an unchanged read, and a copy between
+two planes of one project; <code>internal/reaction/stopwrite</code> and
 <code>internal/reaction/stoplist</code> test the writer's chain and the reader's owner
 checks; <code>cmd/guardana-gateway</code> and <code>cmd/guardana-control</code> test the start
 refusals, the floor raised at start, a start over a list cut back, and the

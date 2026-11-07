@@ -160,11 +160,17 @@ header's digest; a lift names the digest of the header it lifts from,
 carried or restored after it.</p>
 <p>A plane reads the route, the header and each lift through its operator ports
 and refuses a document no operator with the act's grant over its tenant and
-project signed; ports that cannot answer read as <code>operator ports unavailable</code>, never as a refusal or a pass. The stop list floor, which <code>stops floor init --tenant --project</code> makes and <code>reaction.stops_floor_dir</code> names, is
+project signed; ports that cannot answer read as <code>operator ports unavailable</code>, never as a refusal or a pass. At every read of the list it
+asks its ports again, within one poll interval, about the route, the header
+and one lift of each operator who signed one, so revoking any of them,
+taking the route's admin grant away, or ports that do not answer in time
+make the stop state unknown until they answer again; a route refused then
+reads as <code>a route no operator vouches for</code>. The stop list floor, which <code>stops floor init --tenant --project</code> makes and <code>reaction.stops_floor_dir</code> names, is
 kept for the tenant the listener serves (<code>listener.principal.tenant_id</code> when set,
 else <code>tenant_id</code>) and the project. It keeps the highest header serial the
 plane took, that header's digest, and the length and SHA-256 of the part of
-that list the plane accepted, raised each time that part grows. A plane
+that list the plane accepted, held to at every read and raised under the
+floor's lock each time that part grows. A plane
 refuses a list below the floor's serial, one at that serial with another head,
 one above it whose <code>previous</code> is not the floor's head, and, as a broken chain,
 one at that serial shorter than the part the floor holds or beginning with

@@ -36,11 +36,18 @@ or another plane's, being put in place.
   on the way to its directory resolved. A plane compares it with its own, so
   a copy to another plane of the same tenant and project is refused.
 - A plane reads the route, the header and each lift through its operator
-  ports. The stop list floor in `reaction.stops_floor_dir` is a serial floor
+  ports. A signed list is judged again at every poll: the plane asks its
+  ports again, within one poll interval, about the route, the header and one
+  lift of each operator who signed one, since the ports answer by key, and a
+  refusal or no answer in time makes the stop state unknown, never clear. The
+  stop list floor in `reaction.stops_floor_dir` is a serial floor
   of the kind the route and pause floors are, kept for the listener's tenant
   and the project: the header serial the plane took, the header's digest,
   and the length and SHA-256 of the part of that list the plane accepted,
-  raised each time that part grows. A list below it, at its serial with
+  held to at every poll and raised under the floor's lock each time that part
+  grows, so a raise by another reader of the floor is what a list is held
+  to. A list
+  below it, at its serial with
   another head, above it naming another previous head, or at its serial
   shorter than that part or beginning with other bytes is refused. A carry
   given the floor refuses an old list cut back below that part.
@@ -87,10 +94,13 @@ carried or restored after it.
 ## Validation
 
 `internal/reaction` tests each refusal of a signed route, header, stop,
-covered line and lift, and a lift for one head refused under another;
+covered line and lift, a lift for one head refused under another, and a
+list accepted before whose route admin, header or lift signer the roster
+revokes, or whose ports stop answering or answer after the interval;
 `internal/reaction/signedstops` tests both vouchers, the floor's chain, a
-list cut back across a restart and in a carry, and a copy between two planes
-of one project; `internal/reaction/stopwrite` and
+list cut back across a restart and in a carry, a raise by another reader
+between a read and a raise or before an unchanged read, and a copy between
+two planes of one project; `internal/reaction/stopwrite` and
 `internal/reaction/stoplist` test the writer's chain and the reader's owner
 checks; `cmd/guardana-gateway` and `cmd/guardana-control` test the start
 refusals, the floor raised at start, a start over a list cut back, and the

@@ -157,19 +157,26 @@ and the operator may write.</li>
 without linking either, so the approver's binary still reaches neither
 the gateway nor evidence. Where the system has no file lock, both
 commands refuse.</li>
-<li>Every floor ends at the higher serial of the backup's and the live one. A
-plane floor is stamped with issued and latest at the restore time rounded
-up to the second, a raise in the floor's own order, so no statement issued
-before the restore confirms that serial again. The floor format does not
+<li>Every floor ends at the higher serial of the backup's and the live one.
+Every plane floor the restore leaves, one only live holds and one of a
+backup with no plane floors included, is stamped with issued and latest
+at the restore time rounded up to the second, a raise in the floor's own
+order, so no statement issued before the restore confirms that serial
+again. The floor format does not
 change. The stop list floor rises in its own order: the higher serial, and
 at one serial and head the longer accepted part where the live list or
 the backup's copy begins with both parts; anything else is refused.</li>
 <li>Every run closes at the restore time. Under <code>signed</code> the restore writes
-<code>state/&lt;id&gt;.closed</code> for every run the backup or <code>records/</code> names, the
-close ADR-0076 carries, so an open record put back later is refused.
-Taint is joined: untrusted where either side is, the higher read, unknown
-above all. A state lost beside its lock file or its record joins as
-untrusted with an unknown read under both authorities.</li>
+<code>state/&lt;id&gt;.closed</code> for every run the backup or <code>records/</code> names, by a
+record or by a carried close, the close ADR-0076 carries, so an open
+record put back later is refused. Taint is joined: untrusted where either
+side is, the higher read, unknown above all. Each root's state is read and
+written under the root's lock, the one a plane raises it under, so a plane
+sharing the runs directory that raises a root meanwhile is never lowered.
+A close such a plane holds because <code>state/</code> did not take it is in no
+file, so the restore cannot carry it (ADR-0076). A state lost beside its
+lock file or its record joins as untrusted with an unknown read under
+both authorities.</li>
 <li>Under <code>directory</code> the pause file is the union of both; under <code>signed</code>
 only the pause floor is raised, and <code>doctor</code> names what an operator puts
 back.</li>

@@ -85,13 +85,15 @@ type Route struct {
 	digest    string
 	// The members of a v1alpha2 route, zero in a v1alpha1 one: the project,
 	// the bound route file, the signing key, and, once VerifySignedRoute took
-	// it, the voucher its list's signatures are judged by and its signer.
+	// it, the voucher its list's signatures are judged by, its signer and
+	// the envelope that voucher is asked about again.
 	signed    bool
 	projectID string
 	file      string
 	keyID     string
 	voucher   Voucher
 	signer    Signer
+	env       Envelope
 }
 
 // Signed reports whether the route is a v1alpha2 route, which an operator

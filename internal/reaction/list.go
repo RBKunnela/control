@@ -86,6 +86,9 @@ type seen struct {
 	// a clock read behind it refuses the list, as judging every line would.
 	latest     time.Time
 	latestLine int64
+	// vouched is the signed documents a judge of a signed list asks the
+	// voucher about again: the header and one lift of each signer.
+	vouched []vouchedDoc
 }
 
 // fork is a copy of s that a judge may add to without writing s.
@@ -95,6 +98,6 @@ func (s *seen) fork() seen {
 	}
 	return seen{
 		stops: slices.Clip(s.stops), findings: maps.Clone(s.findings), lifts: maps.Clone(s.lifts),
-		through: maps.Clone(s.through), latest: s.latest, latestLine: s.latestLine,
+		through: maps.Clone(s.through), latest: s.latest, latestLine: s.latestLine, vouched: slices.Clip(s.vouched),
 	}
 }

@@ -2,8 +2,10 @@ package reaction
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"path"
+	"slices"
 
 	"github.com/guardana/control/internal/policy/strictjson"
 )
@@ -65,21 +67,34 @@ type Signer struct {
 // level kind needs, or refuses; nothing it answers is read as a pass unless
 // the error is nil. An error wrapping ErrUnanswered says it could not
 // answer, which a plane reports apart from a refusal. It is asked only about
-// a body whose tenant, project and file are the plane's.
+// a body whose tenant, project and file are the plane's. Once it took a
+// document, what it answers about it depends only on the kind and the key
+// that signed it, so a judge asks it again about one document of each.
 type Voucher interface {
 	Plane() Plane
 	Vouch(kind SignedKind, env Envelope) (Signer, error)
 }
 
+// ContextVoucher is a Voucher that holds what it asks to ctx: a judge that
+// asks again within a poll's deadline asks through it, and an ended ctx is
+// an error wrapping ErrUnanswered.
+type ContextVoucher interface {
+	Voucher
+	VouchContext(ctx context.Context, kind SignedKind, env Envelope) (Signer, error)
+}
+
 // The refusals of a signed document as a whole, whatever its format.
 const (
-	ErrNoVoucher   Error = "reaction: a signed format is judged with no voucher for its plane"
-	ErrOtherPlane  Error = "reaction: the signed document names another tenant or project than the plane's"
-	ErrOtherFile   Error = "reaction: the signed document is bound to another file than the plane reads"
-	ErrUnvouched   Error = "reaction: no operator granted the act signed the document"
-	ErrUnanswered  Error = "reaction: the voucher could not answer who signed the document"
-	ErrSignedShape Error = "reaction: the signed envelope is not one signature of its format's payload type within its bound"
-	ErrSignerKey   Error = "reaction: the signed body names another key or algorithm than its signature"
+	ErrNoVoucher  Error = "reaction: a signed format is judged with no voucher for its plane"
+	ErrOtherPlane Error = "reaction: the signed document names another tenant or project than the plane's"
+	ErrOtherFile  Error = "reaction: the signed document is bound to another file than the plane reads"
+	ErrUnvouched  Error = "reaction: no operator granted the act signed the document"
+	// ErrRouteUnvouched is a route a poll asked the voucher about again and
+	// the voucher no longer takes from its signer.
+	ErrRouteUnvouched Error = "reaction: no operator granted the route act signs the route any longer"
+	ErrUnanswered     Error = "reaction: the voucher could not answer who signed the document"
+	ErrSignedShape    Error = "reaction: the signed envelope is not one signature of its format's payload type within its bound"
+	ErrSignerKey      Error = "reaction: the signed body names another key or algorithm than its signature"
 )
 
 // signedBody is the body of env when it is one signature of payloadType
@@ -112,6 +127,12 @@ func signedBody(env Envelope, payloadType string) ([]byte, error) {
 // vouched holds tenant, project and file to v's plane, the file to the
 // route's or the list's as want names, and asks v who signed env for kind.
 func vouched(v Voucher, kind SignedKind, env Envelope, tenant, project, file string) (Signer, error) {
+	return vouchedWithin(context.Background(), v, kind, env, tenant, project, file)
+}
+
+// vouchedWithin is vouched held to ctx: an ended ctx, or an answer that came
+// after it ended, is ErrUnanswered, and a ContextVoucher is asked under ctx.
+func vouchedWithin(ctx context.Context, v Voucher, kind SignedKind, env Envelope, tenant, project, file string) (Signer, error) {
 	if v == nil {
 		return Signer{}, ErrNoVoucher
 	}
@@ -126,11 +147,78 @@ func vouched(v Voucher, kind SignedKind, env Envelope, tenant, project, file str
 	if want == "" || file != want {
 		return Signer{}, fmt.Errorf("%w: it names %q, and the plane reads %q", ErrOtherFile, file, want)
 	}
-	s, err := v.Vouch(kind, env)
+	if err := ctx.Err(); err != nil {
+		return Signer{}, fmt.Errorf("%w: %w: %w", ErrUnvouched, ErrUnanswered, err)
+	}
+	var s Signer
+	var err error
+	if cv, ok := v.(ContextVoucher); ok {
+		s, err = cv.VouchContext(ctx, kind, env)
+	} else {
+		s, err = v.Vouch(kind, env)
+	}
+	if err == nil && ctx.Err() != nil {
+		err = fmt.Errorf("%w: answered after %w", ErrUnanswered, ctx.Err())
+	}
 	if err != nil {
 		return Signer{}, fmt.Errorf("%w: %w", ErrUnvouched, err)
 	}
 	return s, nil
+}
+
+// vouchedDoc is a signed document of a list a voucher took: its line, kind
+// and envelope, the tenant, project and file its body names, and its signer.
+type vouchedDoc struct {
+	line                  int64
+	kind                  SignedKind
+	env                   Envelope
+	tenant, project, file string
+	signer                Signer
+}
+
+// took records d unless s holds a document of its kind and signer already.
+func (s *seen) took(d vouchedDoc) {
+	if !slices.ContainsFunc(s.vouched, func(o vouchedDoc) bool { return o.kind == d.kind && o.signer == d.signer }) {
+		s.vouched = append(s.vouched, d)
+	}
+}
+
+// vouchAgain asks a signed route's voucher again, within ctx, about the
+// route and each document s holds, s nil holding none, and refuses the first
+// it no longer takes from the same signer, or cannot answer about, as the
+// route's or the line's refusal when it was first judged.
+func vouchAgain(ctx context.Context, route Route, s *seen) error {
+	if !route.signed {
+		return nil
+	}
+	if err := sameSigner(ctx, route.voucher, vouchedDoc{kind: VouchRoute, env: route.env, tenant: route.tenantID,
+		project: route.projectID, file: route.file, signer: route.signer}); err != nil {
+		return fmt.Errorf("the route: %w: %w", ErrRouteUnvouched, err)
+	}
+	if s == nil {
+		return nil
+	}
+	for _, d := range s.vouched {
+		err := sameSigner(ctx, route.voucher, d)
+		if err == nil {
+			continue
+		}
+		refusal := ErrSignedLiftUnvouched
+		if d.kind == VouchHeader {
+			refusal = ErrHeaderUnsigned
+		}
+		return &LineError{Line: d.line, Err: fmt.Errorf("%w: %w", refusal, err)}
+	}
+	return nil
+}
+
+// sameSigner refuses d unless v, asked within ctx, takes it from its signer.
+func sameSigner(ctx context.Context, v Voucher, d vouchedDoc) error {
+	who, err := vouchedWithin(ctx, v, d.kind, d.env, d.tenant, d.project, d.file)
+	if err == nil && who != d.signer {
+		err = fmt.Errorf("%w: the key now names %q, not %q", ErrUnvouched, who.Subject, d.signer.Subject)
+	}
+	return err
 }
 
 // boundFile reads raw as a bound path: absolute, clean, at most

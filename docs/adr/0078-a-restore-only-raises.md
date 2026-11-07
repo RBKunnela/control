@@ -47,19 +47,26 @@ signature over a union nobody judged.
   without linking either, so the approver's binary still reaches neither
   the gateway nor evidence. Where the system has no file lock, both
   commands refuse.
-- Every floor ends at the higher serial of the backup's and the live one. A
-  plane floor is stamped with issued and latest at the restore time rounded
-  up to the second, a raise in the floor's own order, so no statement issued
-  before the restore confirms that serial again. The floor format does not
+- Every floor ends at the higher serial of the backup's and the live one.
+  Every plane floor the restore leaves, one only live holds and one of a
+  backup with no plane floors included, is stamped with issued and latest
+  at the restore time rounded up to the second, a raise in the floor's own
+  order, so no statement issued before the restore confirms that serial
+  again. The floor format does not
   change. The stop list floor rises in its own order: the higher serial, and
   at one serial and head the longer accepted part where the live list or
   the backup's copy begins with both parts; anything else is refused.
 - Every run closes at the restore time. Under `signed` the restore writes
-  `state/<id>.closed` for every run the backup or `records/` names, the
-  close ADR-0076 carries, so an open record put back later is refused.
-  Taint is joined: untrusted where either side is, the higher read, unknown
-  above all. A state lost beside its lock file or its record joins as
-  untrusted with an unknown read under both authorities.
+  `state/<id>.closed` for every run the backup or `records/` names, by a
+  record or by a carried close, the close ADR-0076 carries, so an open
+  record put back later is refused. Taint is joined: untrusted where either
+  side is, the higher read, unknown above all. Each root's state is read and
+  written under the root's lock, the one a plane raises it under, so a plane
+  sharing the runs directory that raises a root meanwhile is never lowered.
+  A close such a plane holds because `state/` did not take it is in no
+  file, so the restore cannot carry it (ADR-0076). A state lost beside its
+  lock file or its record joins as untrusted with an unknown read under
+  both authorities.
 - Under `directory` the pause file is the union of both; under `signed`
   only the pause floor is raised, and `doctor` names what an operator puts
   back.

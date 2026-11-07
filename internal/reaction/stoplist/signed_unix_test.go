@@ -49,13 +49,13 @@ func TestAListThePlanesAccountOwnsIsRefusedUnderOwnedByAnother(t *testing.T) {
 	}
 }
 
-// TestTakeHoldsEveryGrowthOfTheAcceptedPart: Take sees the list the poller
-// opens on and each read whose accepted part grew, with the bytes read, and
-// not a read that added nothing; a refusal of a growth makes that read
-// Unknown, keeps the part accepted before and is asked again at the next
-// read; a refusal at the first read is a poller that never opens, naming the
-// refusal's cause.
-func TestTakeHoldsEveryGrowthOfTheAcceptedPart(t *testing.T) {
+// TestTakeHoldsEveryAcceptedRead: Take sees the list the poller opens on
+// and every read it accepts, with the bytes read, a read that added nothing
+// among them; a refusal of a growth makes that read Unknown, keeps the part
+// accepted before and is asked again at the next read; a refusal of a read
+// that added nothing makes it Unknown too; a refusal at the first read is a
+// poller that never opens, naming the refusal's cause.
+func TestTakeHoldsEveryAcceptedRead(t *testing.T) {
 	first := stoppingList(t)
 	dir := listDir(t, first)
 	var took []int
@@ -81,8 +81,12 @@ func TestTakeHoldsEveryGrowthOfTheAcceptedPart(t *testing.T) {
 	}
 	refuse = nil
 	expect(t, "grown", p.Poll(), reaction.Stopped, "", len(grown), [2]bool{true, true})
-	if want := []int{len(first), len(grown), len(grown)}; !slices.Equal(took, want) {
+	if want := []int{len(first), len(first), len(grown), len(grown)}; !slices.Equal(took, want) {
 		t.Fatalf("Take saw lists of %v bytes, want %v", took, want)
+	}
+	refuse = fmt.Errorf("%w: a floor raised past it", ErrChain)
+	if s := p.Poll(); s.State() != reaction.Unknown || s.Cause() != CauseChain || s.Accepted().Length() != int64(len(grown)) {
+		t.Fatalf("a read that added nothing, Take refused: %v %q, %d bytes accepted", s.State(), s.Cause(), s.Accepted().Length())
 	}
 	refusal := fmt.Errorf("%w: serial 1, the floor's 2", ErrBelowFloor)
 	_, err = Open(Options{Dir: listDir(t, first), Route: testRoute(t), Interval: poll, Clock: clock.read,

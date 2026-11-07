@@ -166,7 +166,7 @@ func openSignedRoute(env Envelope, v Voucher) (Route, error) {
 	if err != nil {
 		return Route{}, fmt.Errorf("the route: %w", err)
 	}
-	r.voucher, r.signer = v, s
+	r.voucher, r.signer, r.env = v, s, env
 	return r, nil
 }
 

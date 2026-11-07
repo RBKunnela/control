@@ -1,6 +1,7 @@
 package reaction
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/guardana/control/internal/canon"
@@ -103,6 +104,12 @@ func readSignedLift(body []byte) (SignedLift, error) {
 // is h's; the tenant and project are r's; the file is the plane's stop list;
 // and r's voucher vouches for the signer under the lift act.
 func VerifySignedLiftLine(l LiftLine, h Header, r Route) (SignedLift, Signer, error) {
+	return verifySignedLiftLine(context.Background(), l, h, r)
+}
+
+// verifySignedLiftLine is VerifySignedLiftLine with the voucher asked
+// within ctx.
+func verifySignedLiftLine(ctx context.Context, l LiftLine, h Header, r Route) (SignedLift, Signer, error) {
 	if !r.signed || h.Signed.Digest == "" {
 		return SignedLift{}, Signer{}, fmt.Errorf("%w: a signed lift is judged in a 2.0 list under a v1alpha2 route", ErrSignedLiftMismatch)
 	}
@@ -118,7 +125,7 @@ func VerifySignedLiftLine(l LiftLine, h Header, r Route) (SignedLift, Signer, er
 		signed.TenantID != r.tenantID || signed.Project != r.projectID {
 		return SignedLift{}, Signer{}, ErrSignedLiftMismatch
 	}
-	who, err := vouched(r.voucher, VouchLift, l.Envelope, signed.TenantID, signed.Project, signed.File)
+	who, err := vouchedWithin(ctx, r.voucher, VouchLift, l.Envelope, signed.TenantID, signed.Project, signed.File)
 	if err != nil {
 		return SignedLift{}, Signer{}, fmt.Errorf("%w: %w", ErrSignedLiftUnvouched, err)
 	}

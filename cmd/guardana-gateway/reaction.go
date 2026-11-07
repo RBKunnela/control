@@ -51,8 +51,8 @@ func (p *plane) stopSource() gateway.StopSource {
 // start; the floor is never created here. Without a route it returns nil.
 //
 // Under the signed authority the route is an operator's, taken through
-// authority; the list is read as an operator's and each new header it takes
-// is held to and raises the stop list floor.
+// authority; the list is read as an operator's, each read it accepts is held
+// to the stop list floor, and a part that grew raises it.
 func openStops(cfg *gatewayconfig.Config, logger *slog.Logger, authority *stopsAuthority) (*planeStops, error) {
 	if !cfg.Reaction.Configured() {
 		return nil, nil

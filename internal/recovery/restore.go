@@ -99,6 +99,16 @@ func (r *restorer) paths(c class) (live, from string, err error) {
 	return live, filepath.Join(r.dir, filepath.FromSlash(c.name)), err
 }
 
+// restorePaths is paths for a restore of class c, with from empty where the
+// backup holds no copy of c, which a class restored regardless reads as none.
+func (r *restorer) restorePaths(c class) (live, from string, err error) {
+	live, from, err = r.paths(c)
+	if !r.held[c.name] {
+		from = ""
+	}
+	return live, from, err
+}
+
 func (r *restorer) signed() bool { return r.cfg.Approvals.Authority == gatewayconfig.AuthoritySigned }
 
 // check refuses what restoring class c would refuse, and writes nothing.
@@ -106,7 +116,7 @@ func (r *restorer) check(c class) error {
 	if !r.restores(c) {
 		return nil
 	}
-	live, from, err := r.paths(c)
+	live, from, err := r.restorePaths(c)
 	if err != nil {
 		return err
 	}
@@ -114,9 +124,6 @@ func (r *restorer) check(c class) error {
 	case ClassPlaneFloor, ClassRouteFloor, ClassAuthorityFloor, ClassPauseFloor, ClassStopsFloor:
 		return r.checkFloor(c, live, from)
 	case ClassRuns:
-		if !r.held[ClassRuns] {
-			from = ""
-		}
 		if r.signed() {
 			return runs.CheckRestoreSigned(live, from)
 		}
@@ -156,12 +163,13 @@ func (r *restorer) checkFloor(c class, live, from string) error {
 }
 
 // class restores one class: from the backup's copy where it holds one, and
-// the runs whether or not it does, since every run closes at a restore.
+// the runs and the plane floor whether or not it does, since every run
+// closes and every plane floor is stamped at a restore.
 func (r *restorer) class(c class) error {
 	if !r.restores(c) {
 		return nil
 	}
-	live, from, err := r.paths(c)
+	live, from, err := r.restorePaths(c)
 	if err != nil {
 		return err
 	}
@@ -204,19 +212,16 @@ func (r *restorer) class(c class) error {
 }
 
 // restores reports whether a restore touches class c: configured, under an
-// authority it applies to, and held by the backup, or the runs, which close
-// whether or not it holds them.
+// authority it applies to, and held by the backup, or the runs, which close,
+// and the plane floor, which is stamped, whether or not it holds them.
 func (r *restorer) restores(c class) bool {
 	if c.value(r.cfg) == "" || !c.applies(r.cfg.Approvals.Authority) {
 		return false
 	}
-	return r.held[c.name] || c.name == ClassRuns
+	return r.held[c.name] || c.name == ClassRuns || c.name == ClassPlaneFloor
 }
 
 func (r *restorer) runs(live, from string, signed bool, step func(string) error) (string, error) {
-	if !r.held[ClassRuns] {
-		from = ""
-	}
 	if signed {
 		got, err := runs.RestoreSigned(r.ctx, live, from, step)
 		if from != "" {
