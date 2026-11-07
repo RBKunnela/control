@@ -172,7 +172,7 @@ stop that becomes active, expires or is lifted, with its finding id.
 - A call already handed out when the stop is read is not cut:
   the stop bites on the run's next call, within one poll interval of the line
   being written.
-- Any process of the plane's account can add a stop the route allows for any
+- Outside `signed`, any process of the plane's account can add a stop the route allows for any
   opened run of its tenant, or block every call by writing a line the route
   refuses. It cannot lift a stop without the lift key, nor shorten the list
   while a plane runs unseen, but it can start a new list and restart the

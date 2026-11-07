@@ -198,8 +198,8 @@ any tool behind the plane, can call tools as the listener's principal.</p>
 <h2 id="what-it-prints">What it prints</h2>
 <p>One <code>name: value</code> line each, on stdout: <code>mcp</code>, the address an agent calls;
 <code>healthz</code> and <code>metrics</code>; <code>page</code>, the line <code>guardana-control console</code> printed
-(<a href="/docs/reference/console">console.md</a>); every path above, the floor directory as
-<code>state_dir</code>; <code>mode</code>, <code>bundle</code>, <code>digest</code>, <code>key_id</code> and <code>key</code>;
+(<a href="/docs/reference/console">console.md</a>); the state directory and every path above but
+<code>pausefloor/</code>, <code>operator/</code> and <code>trust/</code>, the floor directory as <code>state_dir</code>; <code>mode</code>, <code>bundle</code>, <code>digest</code>, <code>key_id</code> and <code>key</code>;
 <code>freshness_key_id</code> and <code>freshness_key</code>; <code>renewal</code>, how often the statement
 is renewed; <code>inbox</code>, <code>operator_key</code> and <code>operator</code>; and the commands that
 read the trail, list the approvals, sign an approval, pause every call and

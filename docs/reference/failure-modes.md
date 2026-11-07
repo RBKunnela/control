@@ -17,7 +17,7 @@ security boundary ([status](../status.md)).
 | Failure | The call | Reason code | The agent gets | Recovers by itself | Test |
 | --- | --- | --- | --- | --- | --- |
 | Collector gone, then back | runs | none | the upstream's answer | yes | `TestACollectorThatIsGoneBlocksNoCallAndGetsEveryRecordBack` |
-| Spool full | blocked before its effect | `EVIDENCE_UNAVAILABLE` | a tool result with `isError: true` and the code | yes, once draining frees room; quarantined records count until `quarantine.log` is removed with the plane stopped | `TestAFullSpoolBlocksCallsUntilTheCollectorDrainsIt` |
+| Spool full | blocked before its effect | `EVIDENCE_UNAVAILABLE` | a tool result with `isError: true` and the code | yes, once draining frees room; quarantined records count until `spool drain` empties it with the plane stopped | `TestAFullSpoolBlocksCallsUntilTheCollectorDrainsIt` |
 | Decision point silent | blocked | `PDP_TIMEOUT` | `isError` and the code | yes, each call asks again | `TestAnAskPastTheConfiguredTimeoutIsATimeout`, `TestEveryEffectClassUnderEveryAnswer` |
 | Decision point wrong or gone | blocked | `PDP_ANSWER_REFUSED`, `PDP_UNAVAILABLE` | `isError` and the code | yes, each call asks again | `TestAWrongOrAbsentDecisionPointBlocksOnARunningPlane` |
 | `stdio` upstream dies mid-call | sent once, never retried | none | a JSON-RPC error | no: restart the plane | `TestAStdioUpstreamThatDiesMidCallIsNeverASuccess` |
@@ -43,8 +43,6 @@ The exporter resends with a backoff growing to `export.max_backoff`; every recor
 call is blocked until the spool is full. Once a collector answers again, every record it accepts
 arrives, at least once, so it tells copies apart by `event_id`; one refused
 with `400`, `413` or `422` three times running goes to `quarantine.log`.
-`TestCollectorOutageBlocksNoDecision` in `internal/gateway/e2e/` holds the
-same for a collector answering `503`.
 
 ## Spool full
 
@@ -53,8 +51,7 @@ A record that would take the bytes on disk and the reservations past
 `evidence.on_unwritable` is `allow_reads`. The block is not recorded: its
 record is the one that failed. A running call writes its closing record into
 the room its `ACTION_STARTED` reserved; bytes past it are checked like any
-record's (`TestAClosingRecordWritesOnAFullSpool`). Calls run again once the
-spool has released what the collector accepted.
+record's (`TestAClosingRecordWritesOnAFullSpool`).
 
 ## Decision point silent, wrong or gone
 
@@ -68,8 +65,7 @@ read as an allow ([threat model](../concepts/threat-model.md)).
 
 ## An upstream that dies mid-call
 
-The upstream took the call and no answer came back. The
-agent gets a JSON-RPC error, never a result; the call is not sent again, and
+The agent gets a JSON-RPC error, never a result; the call is not sent again, and
 its trail ends `ACTION_FAILED` with an `UNKNOWN` result and
 `tool_protocol_status: error`, never `ACTION_COMPLETED`.
 
@@ -108,8 +104,11 @@ bytes accepted before, blocks every call until one does. `/healthz` answers
 `missing`, `unreadable`, `a link`, `writable by others`, `owned by another
 account`, `never read`, `too large`, `malformed`, `another route`, `header
 changed`, `shrunk`, `rewritten`, `a stop the route does not permit`, `a line
-dated ahead`, `a lift that does not verify`, `clock unusable`, `stale` or
-`read ahead`. The trail of each call ends
+dated ahead`, `a lift that does not verify`, `clock unusable`, `stale`,
+`read ahead`; under `signed` also `another format version`, `a header that
+does not verify`, `another plane's`, `operator ports unavailable`, `owned by
+the plane's account`, `below its floor`, `forked at its floor`, `a broken
+chain` or `floor unusable`. Each call's trail ends
 `ACTION_BLOCKED` with the code. A shrunk or rewritten list stays unknown
 until `stops init --carry` copies its unlifted stops to a new list and the
 plane restarts ([reaction.md](reaction.md)).

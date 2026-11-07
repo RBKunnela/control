@@ -230,8 +230,10 @@ name; the records stay in the spool, the attempt counts as
 prints the <code>export.collector_uid</code> to set; <code>--listen host:port</code> works as
 before. Other platforms refuse both keys at load.</li>
 <li><code>health.socket</code> serves the whole health answer, run ids included, on a
-Unix socket of mode <code>0600</code> that answers only the plane's own account and
-<code>health.socket_uid</code>; any other peer is closed unanswered. Anything at the
+Unix socket that answers only the plane's own account and
+<code>health.socket_uid</code>; any other peer is closed unanswered. The socket is
+<code>0600</code>, or <code>0666</code> with <code>health.socket_uid</code>, so that account can connect
+and the peer's account alone decides. Anything at the
 path but a stale socket of the plane's account is refused, and the plane
 removes its socket when it stops.</li>
 <li><code>doctor</code> warns of every TCP <code>export.endpoint</code>, naming the unix form.</li>

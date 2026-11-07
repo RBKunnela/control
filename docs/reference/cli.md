@@ -110,9 +110,9 @@ takes that id; removing the last entry leaves a file pausing nothing,
 because a missing file blocks every call. `pause list` prints one line per
 entry, its reason included, or `no entries`.
 
-Write access to the pause file is the authority to pause and to lift one:
-any process running as the plane's user can empty the file, so run the commands
-as that user. They refuse, writing nothing, a file or directory the group or
+Outside `signed`, write access to the pause file is the authority to pause
+and to lift: any process of the plane's user can empty the file, so run the
+commands as that user. They refuse, writing nothing, a file or directory the group or
 others may write or another account owns, a link, a file the plane would
 refuse to read, a second scope or none, a name, a reason or a scope the file
 cannot hold, and a 65th entry, each on one line that does not repeat the
@@ -135,7 +135,7 @@ is [coverage.md](coverage.md), `supervise`, `notify` and `findings export`
 and `react` [reaction.md](reaction.md), and `hook`, exiting with its
 profile's statuses, [extending/runtime-profiles.md](../extending/runtime-profiles.md).
 
-`console` serves a page that answers approvals and writes pauses:
+`console` answers approvals and, outside `signed`, writes pauses:
 [console.md](console.md).
 
 <!-- generated: go test ./cmd/guardana-control -run TestCLIPage -->

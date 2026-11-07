@@ -27,7 +27,7 @@ A record, a state or a lock file another user owns or a group or the world
 may write is refused when it is read, and a token naming such a record
 resolves as unreadable. A temporary file a crash left while the directory was
 being made is ignored.
-Write access to it is the authority to open and to close a run, so keep it
+Outside `signed`, write access to it is the authority to open and to close a run, so keep it
 beside the approvals directory and back it up with it.
 
 A plane reads a record by its id and writes only a root run's state, under

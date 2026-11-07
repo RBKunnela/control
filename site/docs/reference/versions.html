@@ -395,7 +395,8 @@ that still may stop a run.</p>
 <ul>
 <li><strong>Wire messages, the evidence export, the runs directory's marker and
 root states, the hold journal, the spent ledger and the floor
-directories.</strong> Any minor of major 1 is read. A member the reader does not
+directories,</strong> a bundle's, a signer's, a trust roster's, a route's, a
+signed pause file's and a stop list's alike. Any minor of major 1 is read. A member the reader does not
 know is refused, so a file a later minor extended is refused when that
 member arrives, never read with it dropped.</li>
 <li><strong>Approvals directory.</strong> Any minor of major 2 is read. A 2.1 record names
@@ -403,7 +404,7 @@ the authority holding it and the call's tenant and project; a 2.0 record
 names none of them and is read as held under <code>directory</code>. A 1.0 directory
 kept the plane's spent mark beside the answers, so it is refused: empty
 it; its holds expire within <code>approvals.ttl</code>.</li>
-<li><strong>Run record.</strong> Any minor of major 2 is read, except in a signed layout's
+<li><strong>Run record.</strong> Any minor of major 2 is read, except in a signed runs directory's
 <code>records/</code>, which reads major 3 alone. A record of major 1 names no
 project, so it is refused, never read as any project's run: open the run
 again (<a href="/docs/reference/runs#runs-an-earlier-release-opened">runs.md</a>).</li>

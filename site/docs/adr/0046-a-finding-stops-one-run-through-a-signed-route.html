@@ -140,6 +140,9 @@ descriptor and that a route names the detectors it accepts;
 under <code>approvals.authority: signed</code> roster operators sign the route, the
 stop list's header and each lift, bound to the plane's files, and a stop list
 floor holds the header's serial and digest; no route or lift key exists there.</p>
+<p>Amended when <code>/healthz</code> stopped naming runs: it counts the active and unheld
+stops and leaves out their entries, which only <code>health.socket</code> lists
+(<a href="/docs/reference/versions">versions</a>).</p>
 <h2 id="context">Context</h2>
 <p>ADR-0039 decided that a reaction turns a finding into a stop of one run's later
 calls, under a route signed with a key apart from the policy key, and that a

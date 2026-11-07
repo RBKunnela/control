@@ -13,6 +13,11 @@ cursor names in a log of segments. Builds on
 Amends [ADR-0066](0066-each-decision-about-authority-is-a-port.md)
 properties 1, 3 and 6 for RecordLog until it has a second kind.
 
+Amended when export gained a Unix socket: on `export.endpoint: unix:///path`
+the plane sends only to a peer of `export.collector_uid`, so it authenticates
+that collector; over TCP it still does not, and `doctor` warns of every TCP
+endpoint ([docs/status.md](../status.md)).
+
 ## Context
 
 `collect` appended everything it received to one file that never rotated, and

@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/guardana/control/internal/pause"
 )
 
 // runDevToEnd runs dev with args to its end, bounded, and returns its exit
@@ -238,4 +240,34 @@ func decisionsOn(t *testing.T, path string) (n int, digests map[string]bool, con
 		}
 	}
 	return n, digests, confirmed
+}
+
+// TestDevLiftsAPauseNoStepLifted: on a dev plane, which takes a pause only
+// signed, a scenario that pauses a tool and never lifts the pause passes, and
+// the entry it added is gone from the signed pause file once it ends.
+func TestDevLiftsAPauseNoStepLifted(t *testing.T) {
+	t.Parallel()
+	doc := `{"kind": "agent-scenario/v1alpha1", "about": "A pause no step lifts is lifted when the scenario ends.",
+	  "plane": {"mode": "APPROVE", "bundle": {"id": "scenario-fixture"}},
+	  "steps": [
+	    {"pause": {"provider": "orders", "action": "tool", "name": "read_order", "reason": "left in place"}},
+	    {"call": {"tool": "read_order", "args": {"id": "ord-1"},
+	      "answer": {"kind": "blocked", "codes": ["PAUSED"]},
+	      "decided": {"verdict": "ALLOW", "codes": ["RULE_ALLOW"], "obligations": []},
+	      "trail": {"request": "new", "kinds": ["ACTION_PROPOSED", "POLICY_DECIDED", "ACTION_BLOCKED"]}}}]}`
+	scenarioFile := filepath.Join(t.TempDir(), "pause-left.json")
+	if err := os.WriteFile(scenarioFile, []byte(doc), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	d := writeDemo(t, newLiveUpstream(t).url, "5ms", "")
+	state := filepath.Join(t.TempDir(), "state")
+	code, stdout, stderr := runDevToEnd(t, 2*time.Minute, "--config", d.config, "--policy", d.policy,
+		"--state", state, "--scenario", scenarioFile)
+	if code != exitOK || !strings.HasSuffix(stdout, "pause-left.json passed\n") {
+		t.Fatalf("exit %d, want 0 and passed:\n%s\n%s", code, stdout, stderr)
+	}
+	l, err := pause.List(filepath.Join(state, "1-pause-left.json", "pause", "pause.json"))
+	if err != nil || l.Signed == nil || len(l.Entries) != 0 {
+		t.Errorf("the pause file holds %+v, %v; want signed and empty", l, err)
+	}
 }

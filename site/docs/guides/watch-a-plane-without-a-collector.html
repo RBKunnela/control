@@ -120,7 +120,7 @@ without <code>export.endpoint</code>. On a first run, or on a small plane you wa
 have no collector. <code>guardana-gateway collect</code> is one: it takes what a plane
 exports over OTLP/HTTP and appends it, argument and result previews cleared,
 to a directory of trail segments, and <code>guardana-gateway trail</code> reads it back,
-one line per request. The plane exports exactly as it would to any collector.
+one line per request.
 Both commands are <code>experimental</code>; <a href="/docs/status">status.md</a> is the inventory.</p>
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
@@ -137,11 +137,11 @@ this account may read.</li>
 <pre><code class="language-sh">(umask 077 &amp;&amp; od -An -N32 -tx1 /dev/urandom | tr -d &#39; \n&#39; &gt; collector.credential)
 </code></pre>
 <h3 id="2-start-the-collector">2. Start the collector</h3>
-<pre><code class="language-sh">guardana-gateway collect --listen 127.0.0.1:4318 --dir trail/plane \
+<pre><code class="language-sh">guardana-gateway collect --listen unix:///run/collector/logs.sock --dir trail/plane \
   --tenant acme --project orders --credential-file collector.credential
 </code></pre>
-<p>It listens on a loopback IP address only, so <code>0.0.0.0</code>, another host and
-<code>localhost</code> are refused, or with <code>--listen unix:///&lt;path&gt;</code> on a new socket.
+<p><code>--listen 127.0.0.1:4318</code> takes a loopback IP address instead, which <code>doctor</code>
+warns of: <code>0.0.0.0</code>, another host and <code>localhost</code> are refused.
 It prints where it listens, the directory and the plane's keys. It runs until Ctrl-C or <code>SIGTERM</code>, and waits up to
 ten seconds for the requests in flight. One collect holds a directory at a
 time; a second one is refused.</p>
@@ -167,15 +167,16 @@ again, and the plane keeps the records in its spool.</p>
 <h3 id="3-point-the-plane-at-it">3. Point the plane at it</h3>
 <p>In the plane's configuration:</p>
 <pre><code class="language-yaml">export:
-  endpoint: http://127.0.0.1:4318/v1/logs
-  allow_plaintext: true
+  endpoint: unix:///run/collector/logs.sock
+  collector_uid: 1001     # the account collect runs as, which it printed
 </code></pre>
 <p>Give it the header through the environment, so the token stays out of
 <code>plane.yaml</code>, which a plane reads whatever the group and others may read:</p>
 <pre><code class="language-sh">export GUARDANA_CONTROL_EXPORT_HEADERS_AUTHORIZATION=&#34;Bearer $(cat collector.credential)&#34;
 guardana-gateway run --config plane.yaml
 </code></pre>
-<p><code>allow_plaintext</code> is the named risk of an unencrypted endpoint. The header's
+<p>Over TCP, <code>endpoint: http://127.0.0.1:4318/v1/logs</code> needs
+<code>allow_plaintext: true</code>, the named risk of an unencrypted endpoint. The header's
 value is a credential and is never printed. A plane sending no credential or
 another one is answered 401, sends again, and blocks its material calls once
 its spool is full; collect logs the first refusal, then a count once a
@@ -239,9 +240,9 @@ until its spool is full and material calls are blocked.</li>
 write evidence into the trail, including a chain made up to pass the check.</li>
 <li>An event sent again after its segment was pruned is written again, and a
 trail whose first events were pruned fails the chain check.</li>
-<li>Before collect is up, whoever binds its loopback port first is sent the
-token in plaintext by the plane's next retry, which goes in 0.17; a socket's
-peer must be <code>export.collector_uid</code>.</li>
+<li>Over TCP, the plane's next retry sends the token in plaintext to whoever
+binds collect's loopback port first, before collect is up; TCP export is
+removed in 0.17. A socket's peer must be <code>export.collector_uid</code>.</li>
 <li>At 10,000 sealed segments a request that needs a seal is answered 503 until
 a prune; past that, each seal drops the oldest tombstone.</li>
 <li><code>trail</code> checks each chain's shape: its links, its order and its identifiers.

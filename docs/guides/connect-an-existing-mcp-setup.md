@@ -95,7 +95,9 @@ guardana-gateway collect --listen 127.0.0.1:4318 --dir trail --tenant local --pr
 ```
 
 The plane writes its evidence to the spool and ships it here, with the
-credential; the trail directory is what step 9 reads.
+credential; the trail directory is what step 9 reads. `doctor` warns of this
+TCP endpoint, since TCP export is removed in 0.17; a unix socket is
+[watch a plane without a collector](watch-a-plane-without-a-collector.md).
 
 ### 5. Check the classification
 

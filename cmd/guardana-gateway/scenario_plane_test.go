@@ -96,16 +96,19 @@ func TestServingRefusesAPolicyThatIsNotConfirmed(t *testing.T) {
 }
 
 // TestServingWaitsOutALatePauseRead: a pause state that is unknown only
-// because the plane's last read aged past its bound is a read running late,
-// read again until the timeout; any other unknown cause is refused at once.
+// because the plane's last read aged past its bound, or because a signed
+// read outran the one interval it is held to, is a read running late, read
+// again until the timeout; any other unknown cause is refused at once.
 func TestServingWaitsOutALatePauseRead(t *testing.T) {
-	stale := healthDoc{status: http.StatusServiceUnavailable, pauseState: "unknown", cause: "stale"}
 	lifted := healthDoc{pauseState: "clear"}
-	if s, err := scriptedPlane(t, stale, stale, lifted).serving(context.Background()); err != nil || s.pauseState != "clear" {
-		t.Errorf("a late read that catches up: %+v, %v", s, err)
-	}
-	if _, err := scriptedPlane(t, stale).serving(context.Background()); err == nil || !strings.Contains(err.Error(), "answered 503") {
-		t.Errorf("a read that never catches up: err = %v", err)
+	for _, cause := range []string{"stale", "authority unavailable"} {
+		late := healthDoc{status: http.StatusServiceUnavailable, pauseState: "unknown", cause: cause}
+		if s, err := scriptedPlane(t, late, late, lifted).serving(context.Background()); err != nil || s.pauseState != "clear" {
+			t.Errorf("%s: a late read that catches up: %+v, %v", cause, s, err)
+		}
+		if _, err := scriptedPlane(t, late).serving(context.Background()); err == nil || !strings.Contains(err.Error(), "answered 503") {
+			t.Errorf("%s: a read that never catches up: err = %v", cause, err)
+		}
 	}
 	malformed := healthDoc{status: http.StatusServiceUnavailable, pauseState: "unknown", cause: "malformed"}
 	if _, err := scriptedPlane(t, malformed, lifted).serving(context.Background()); err == nil || !strings.Contains(err.Error(), "answered 503") {

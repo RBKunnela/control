@@ -53,7 +53,7 @@ lift key, which signs the end of a stop. Here they sit on one machine,
 outside the plane's state; in use, keep the private keys off the plane's host.
 This guide's plane runs under `approvals.authority: directory`. Under `signed`
 there is no route or lift key: roster operators sign the route, the stop
-list's header and each lift, as
+list header and each lift, as
 [signed reaction](../reference/reaction-signed.md) says.
 
 ```
@@ -120,6 +120,8 @@ guardana-gateway collect --listen 127.0.0.1:4318 --dir trail/plane --tenant acme
   --credential-file state/collector.credential
 ```
 
+`doctor` warns of this TCP endpoint, since TCP export is removed in 0.17; a unix
+socket is [watch a plane without a collector](watch-a-plane-without-a-collector.md).
 Open both runs as step 5 shows first. Then check the configuration; every
 check line should begin `ok`:
 

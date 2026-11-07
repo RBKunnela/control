@@ -123,7 +123,7 @@ before each step that cannot be undone, as the next section says.
 ## Pausing calls
 
 An operator stops one tool, one upstream, one run, one agent, one principal
-or everything without a restart by writing an entry into the pause file
+or everything without a restart by writing an entry into the file
 `pause.file` names, with `guardana-control pause add`, and lifts it with
 `pause remove`. An entry has one of six scopes:
 
@@ -179,12 +179,12 @@ approvals store or a sink that syncs can outlast a snapshot; a state that
 covers the call or cannot be read blocks it there. A file that is missing, a
 link, writable by the group or others, in a directory they may write or whose
 own name is a link, owned, or in a directory owned, by another account than
-the plane's, too large, malformed or of an
+the plane's outside `signed`, too large, malformed or of an
 unknown version, and a snapshot older than three intervals or dated ahead of
 the plane's clock, are all an unknown state: every call is blocked with
 `PAUSE_STATE_UNAVAILABLE` and `/healthz` answers 503 naming the cause. The
 same checks at start refuse the start, and the commands refuse a directory
-another account owns, so run them as the plane's user. Deleting the file
+another account owns, so run them as the file's owner. Deleting the file
 therefore blocks everything; it never lifts a pause. A plane without
 `pause.file` is disabled and says so.
 

@@ -53,9 +53,9 @@ func TestASignedPauseFileIsNeverWrittenByThePage(t *testing.T) {
 	s := serve(t, dir, file)
 	for _, c := range []struct{ path, body, command string }{
 		{"/api/pause", `{"scope":{"kind":"action","provider":"payments","action":"tool","name":"refund"},"reason":"card fraud"}`,
-			brand.CLI + " pause add --key <operator key file> --provider payments --action tool --name refund --reason 'card fraud' -- " + file},
-		{"/api/pause", `{"scope":{"kind":"run","id":"run-1"},"reason":""}`, brand.CLI + " pause add --key <operator key file> --run run-1 -- " + file},
-		{"/api/unpause", `{"id":"g"}`, brand.CLI + " pause remove --key <operator key file> -- " + file + " g"},
+			brand.CLI + " pause add --key <operator key file> --roster <the plane's trust.roster> --root-key <the plane's trust.root_public_key> --provider payments --action tool --name refund --reason 'card fraud' -- " + file},
+		{"/api/pause", `{"scope":{"kind":"run","id":"run-1"},"reason":""}`, brand.CLI + " pause add --key <operator key file> --roster <the plane's trust.roster> --root-key <the plane's trust.root_public_key> --run run-1 -- " + file},
+		{"/api/unpause", `{"id":"g"}`, brand.CLI + " pause remove --key <operator key file> --roster <the plane's trust.roster> --root-key <the plane's trust.root_public_key> -- " + file + " g"},
 	} {
 		a := s.do(t, s.write(c.path, c.body))
 		var refused struct{ Error string }

@@ -137,7 +137,13 @@ stdio plane.</li>
 </code></pre>
 <p>It must be yours and writable by nobody else, and apart from the spool, the
 approvals directory, the hold journal and the pause file's directory. The
-first <code>runs open</code> makes it a runs directory; a plane refuses it before that.</p>
+first <code>runs open</code> makes it a runs directory; a plane refuses it before that.
+This guide's plane runs under <code>approvals.authority</code> <code>memory</code> or <code>directory</code>.
+Under <code>signed</code> the directory holds <code>records/</code>, an operator's, and <code>state/</code>,
+the plane's, and an operator opens and closes each run from their own account
+with <code>--key</code>, <code>--roster</code> and <code>--root-key</code>, a close also with <code>--tenant</code> and
+<code>--project</code>
+(<a href="/docs/reference/runs#a-signed-runs-directory">a signed runs directory</a>).</p>
 <h3 id="2-open-a-run-per-task">2. Open a run per task</h3>
 <pre><code>guardana-control runs open --project orders --tenant acme --principal-type service \
   --principal agent-runner --agent orders-assistant --ttl 8h /var/lib/guardana/runs

@@ -225,7 +225,7 @@ func (p *play) finish(ctx context.Context) error {
 	var errs []error
 	removed := false
 	for _, step := range slices.Sorted(maps.Keys(p.added)) {
-		if _, err := p.r.control.run(ctx, "pause", "remove", "--", p.r.plane.pauseFile, p.added[step]); err != nil {
+		if _, err := p.r.control.run(ctx, slices.Concat([]string{"pause", "remove"}, p.signWith(), []string{"--", p.r.plane.pauseFile, p.added[step]})...); err != nil {
 			errs = append(errs, fmt.Errorf("the entry of step[%d]: %w", step, err))
 			continue
 		}

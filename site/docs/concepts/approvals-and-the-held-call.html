@@ -121,9 +121,10 @@ retry that is the same request again resumes it; the approval is consumed
 once, binds to one action digest under one bundle, and expires
 (<a href="/docs/adr/0013-mcp-interception-approvals-and-modes">ADR-0013</a>,
 <a href="/docs/adr/0011-contract-corrections-before-publication">ADR-0011</a>).</p>
-<p><a href="/docs/adr/0016-approval-providers-and-the-lost-hold">ADR-0016</a> says who may
-answer, an approver writing a file in the approvals directory, and what
-becomes of a hold the plane loses.</p>
+<p><a href="/docs/adr/0016-approval-providers-and-the-lost-hold">ADR-0016</a> says what
+becomes of a hold the plane loses, and
+<a href="/docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it">ADR-0073</a>
+which answer counts.</p>
 <h2 id="one-held-request-end-to-end">One held request, end to end</h2>
 <figure class="dg-text" id="diagram-1"><figcaption>One held request, end to end</figcaption><p>The call is held and the agent told it is pending; an approver answers in the store; the agent&#39;s identical retry is decided again, the answer is checked and spent once in the plane&#39;s ledger, and only the authorized bytes reach the upstream. <a href="https://github.com/guardana/control/blob/main/docs/concepts/approvals-and-the-held-call.md">Drawn on GitHub</a>.</p><details><summary>The diagram's source</summary><pre><code class="language-mermaid">sequenceDiagram
     accTitle: One held request, end to end
@@ -262,9 +263,9 @@ hand-out, or move a journal entry that may stand out of <code>held</code>, leave
 trail open, reserves its request id until restart so no other call writes under
 it, and counts it in <code>held_trails_left_open</code>; after hand-out it counts
 <code>sink_failures_after_effect</code>. The next start reports its entry, if any.</p>
-<p><strong>A plane configured without <code>approvals.hold_journal_dir</code> does not close a hold
-it loses.</strong> That is the behaviour of a plane under the memory authority, it is
-named rather than hidden, and <code>doctor</code> and <code>/healthz</code> both say it out loud.</p>
+<p><strong>A plane under <code>memory</code> keeps no hold journal and does not close a hold it
+loses.</strong> The other two authorities require <code>approvals.hold_journal_dir</code>, and
+<code>doctor</code> and <code>/healthz</code> both say it out loud.</p>
 <h2 id="what-is-held-and-by-whom">What is held, and by whom</h2>
 <table>
 <thead>
@@ -291,7 +292,7 @@ named rather than hidden, and <code>doctor</code> and <code>/healthz</code> both
 <td>spending once</td>
 </tr>
 <tr>
-<td>the hold journal, where configured</td>
+<td>the hold journal, outside <code>memory</code></td>
 <td>one entry per hold: the trail's identifiers and position, the binding, the approval and the expiry</td>
 <td>closing a hold this plane lost to a restart</td>
 </tr>
@@ -453,7 +454,7 @@ one the retry equals, oldest first.</p>
 </tr>
 <tr>
 <td>the plane stopped while the request was held</td>
-<td>at its next start: <code>APPROVAL_DECIDED</code> with the answer and <code>ACTION_BLOCKED</code> with <code>APPROVAL_NOT_RESUMED</code> or <code>APPROVAL_REJECTED</code>, or <code>APPROVAL_EXPIRED</code> and <code>ACTION_BLOCKED</code> with <code>APPROVAL_EXPIRED</code> or <code>APPROVAL_STATE_UNKNOWN</code>; nothing at all where no journal is configured</td>
+<td>at its next start: <code>APPROVAL_DECIDED</code> with the answer and <code>ACTION_BLOCKED</code> with <code>APPROVAL_NOT_RESUMED</code> or <code>APPROVAL_REJECTED</code>, or <code>APPROVAL_EXPIRED</code> and <code>ACTION_BLOCKED</code> with <code>APPROVAL_EXPIRED</code> or <code>APPROVAL_STATE_UNKNOWN</code>; nothing at all under <code>memory</code></td>
 <td>nothing: that connection was answered pending long ago, and a later identical call is held anew or, if the plane had spent the approval, refused <code>APPROVAL_ALREADY_USED</code> until it expires</td>
 </tr>
 </tbody>

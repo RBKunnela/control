@@ -105,8 +105,8 @@ A demo's `upstreams[].command` runs as you. Run only demos you trust.
 
 One `name: value` line each, on stdout: `mcp`, the address an agent calls;
 `healthz` and `metrics`; `page`, the line `guardana-control console` printed
-([console.md](console.md)); every path above, the floor directory as
-`state_dir`; `mode`, `bundle`, `digest`, `key_id` and `key`;
+([console.md](console.md)); the state directory and every path above but
+`pausefloor/`, `operator/` and `trust/`, the floor directory as `state_dir`; `mode`, `bundle`, `digest`, `key_id` and `key`;
 `freshness_key_id` and `freshness_key`; `renewal`, how often the statement
 is renewed; `inbox`, `operator_key` and `operator`; and the commands that
 read the trail, list the approvals, sign an approval, pause every call and

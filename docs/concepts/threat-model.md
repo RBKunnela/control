@@ -11,8 +11,7 @@ Nothing in this repository is a security boundary yet
 ([status](../status.md), [SECURITY.md](../../SECURITY.md)). This page says
 what the plane is built to protect, from whom, what it does about each of them
 today, and where it stops. Each defence names the code that makes it and,
-where one exists, the test that exercises it. The inventory of
-what exists is [status](../status.md); this page keeps no list of its own.
+where one exists, the test that exercises it.
 
 ## What is in scope
 
@@ -24,8 +23,10 @@ what exists is [status](../status.md); this page keeps no list of its own.
 - The policy key, `policy keygen`, `policy sign` and the signed bundle a plane
   loads; the freshness key, `policy renew`, the statement it writes and the
   serial floors that keep a bundle current.
-- The runs directory and the `runs` commands: a record there is the
-  authority to open a run ([reference/runs](../reference/runs.md)).
+- The runs directory and the `runs` commands: a record there, under `signed`
+  only an operator's signed one, opens a run ([reference/runs](../reference/runs.md)).
+- The trust roster and the operator keys that sign under
+  `approvals.authority: signed`.
 - `observe`, `coverage`, `supervise` and `notify`, which read files after the
   fact and decide nothing; `notify` runs a program the operator names.
 - The release archives, the container image, and what proves where they came
@@ -49,9 +50,7 @@ outside the plane. They appear below as parties the plane has to deal with.
 ## Who it is meant to stop
 
 The main attacker is **the agent itself**, when it is wrong or when content it
-read steers it. The others are a hostile or compromised MCP server, a decision
-point that is slow, wrong or hostile, another account on the plane's machine,
-the plane's own account, someone on the network, and a tampered release.
+read steers it. Each of the others has a section below.
 
 ## Trust boundaries
 
@@ -90,13 +89,12 @@ Sources: `adapters/mcp/listener.go`, `cmd/guardana-gateway/adapter.go`,
 `internal/console/console.go`, `cmd/guardana-gateway/collect.go`,
 `adapters/authzen/mapping.go`.
 
-The boxes are the boundaries. A dotted line is either a path that goes around
+A dotted line is either a path that goes around
 the plane or a write that the file checks refuse. The account is the strongest boundary this
 build has: the approvals directory, the pause file, the hold journal, the
 trail file and the key are each refused when the group or the world may write
-them, and the pause file, the hold journal, the trail file and the key also
-when another account owns them.
-Inside that account nothing is separated from anything.
+them, and the hold journal, the trail file and the key also when another
+account owns them.
 
 ## An agent that is wrong or steered
 
@@ -143,9 +141,8 @@ What it does not do:
   pause among them, and an untranslatable call still block. `mode` has no
   default, so a plane runs in `OBSERVE` only when configured so
   ([ADR-0032](../adr/0032-the-enforcement-mode-has-no-default.md)).
-- It does not read what a call means. Policy decides on who calls, the
-  action and its effect class, the resource, the destination, the data labels
-  and the run's flow ([policy format](../reference/policy-format.md)). No
+- It does not read what a call means
+  ([policy format](../reference/policy-format.md)). No
   constraint reads the arguments, which enter as a hash, except the one value
   an override's `resource_from` points at. A harmful call that a rule allows
   runs.
@@ -154,7 +151,7 @@ What it does not do:
   around it. Which network paths and credentials an agent holds is the
   operator's to arrange.
 - It does not know who the end user is. No configuration key wires an
-  authenticator, so every call on a listener is the one configured principal
+  end user's authenticator, so every call on a listener is the one configured principal
   ([MCP coverage](../reference/mcp-coverage.md)), and a pause names no tenant.
 - The flow state is a lower bound: a run starts clean, and the user's prompt,
   the tools' descriptions and tools outside the plane are not tracked
@@ -272,15 +269,13 @@ What the plane does today:
 - The configuration file is refused when it, or any directory or link on its
   path from the root, is owned by an account other than the plane's or root,
   or another account may write it (a sticky directory, or root's on a
-  read-only mount, excepted), and when it has a second name. The path is
-  walked as the kernel walks it. The group's write bit is refused too: on
+  read-only mount, excepted), and when it has a second name. The group's write bit is refused too: on
   macOS every account shares `staff`, and under a POSIX access control list
   the group bits are the mask a named account writes through
   (`internal/gatewayconfig/pathwalk.go`;
   `TestEveryDirectoryOnThePathIsJudged`, `TestALinkIsJudgedWhereItLies`,
   `TestAFileWithASecondNameIsRefused`). A read-only mount is root's word;
-  another mount may still write the directory. A darwin access control list
-  granting write is not read. A Nix store with `auto-optimise-store` gives
+  another mount may still write the directory. A Nix store with `auto-optimise-store` gives
   the file a second name, so it is refused.
 - The approvals directory is refused when another account owns it or the
   group or the world may write it. It is judged again at every call, and a
@@ -288,8 +283,8 @@ What the plane does today:
   (`internal/approvals/dirid.go`; `TestADirectoryAnotherAccountOwnsIsRefused`,
   `TestADirectoryOthersMayWriteIsRefused`,
   `TestADirectoryLoosenedAfterOpenIsRefusedByBothHandles`).
-- A pause file or its directory owned by another account, or writable by the
-  group or the world, is an unknown pause state, and the plane blocks every
+- A pause file or its directory owned by another account (under `signed`, by
+  the plane's), or writable by the group or the world, is an unknown pause state, and the plane blocks every
   call (`internal/pause/snapshot.go`;
   `TestAPauseFileOwnedByAnotherAccountIsUnknown`).
 - The hold journal's directory is refused when the group or the world may
@@ -324,7 +319,8 @@ What it does not do:
 - **`collect` trusts whoever holds its credential**, answering others 401
   (`TestARequestWithoutTheCredentialIsRefusedBeforeItIsRead`): who reads its
   file or the plane's configuration, or binds its TCP port while down, gets
-  it ([ADR-0072](../adr/0072-the-collector-keeps-bounded-segments-of-one-project-behind-a-credential.md)).
+  it ([ADR-0072](../adr/0072-the-collector-keeps-bounded-segments-of-one-project-behind-a-credential.md));
+  `doctor` warns of every TCP `export.endpoint`.
 - The spool writes its files `0600` and refuses a directory another account
   owns or that others can write.
 - A peer `health.socket` or a unix collector admits can pass its connection
@@ -336,11 +332,10 @@ What it does not do:
 
 ## The same local account
 
-The plane's account is the authority for everything on disk. **Any process
-running as that account can approve, reject, pause and lift a pause, sign a
-bundle or a statement with a key it can read, lower a policy's floor, read the
-plane's environment, its header
-credentials included, and rewrite the evidence.** That includes a
+The plane's account controls everything on disk no operator signs. **Any process running as that account can sign a bundle or a statement
+with a key it can read, lower a floor, read the plane's environment, its header
+credentials included, and rewrite the evidence; outside
+`approvals.authority: signed` it can also approve, reject, pause and unpause.** That includes a
 `stdio` upstream, the page's starter, and a tool behind the plane that can
 write files ([ADR-0016](../adr/0016-approval-providers-and-the-lost-hold.md),
 [ADR-0019](../adr/0019-an-operator-can-pause-calls.md),
@@ -356,6 +351,12 @@ What bounds it:
   in `internal/gateway/store_test.go`).
 - A writer of that directory can still deny a chosen action and bundle
   (ADR-0016); only the plane's ledger marks an approval spent.
+- Under `signed`, approvals, pauses, runs and stop lists count only signed by
+  roster operators, and the plane refuses to start when its account may write
+  the pause file, the run records or the stop list (ADR-0075, ADR-0076,
+  ADR-0077). The plane's account still owns the roster, pause, route and stop list
+  floors: it can lower one, or withhold a newer roster until its current one
+  expires.
 - The gateway binary holds none of the approver's code, no private-key
   parser and no code that makes or lowers a floor, so the process that serves
   agents cannot answer an approval, read a signing key or reset its own floor

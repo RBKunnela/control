@@ -36,8 +36,8 @@ flowchart LR
     OP -->|configuration, bundle, mode| GW
     AG -->|tools/call| GW
     GW -->|the calls it lets through| SRV
-    GW -->|held call, as a record in the directory of file approvals| APR
-    APR -->|approval for one digest| GW
+    GW -->|held call, as a record in the approvals directory| APR
+    APR -->|an answer for one digest: a claim, or an operator's signature| GW
     BUNDLE -->|verified, read again each poll| GW
     GW -->|evidence, OTLP logs| COL
     GW -->|a call a veto rule routes there| PDP
@@ -116,9 +116,9 @@ Sources: `cmd/guardana-gateway/build.go`, `cmd/guardana-control/main.go`,
 | Spool | `internal/spool/` | The segmented log on disk with a budget, a quarantine and recovery. |
 | AuthZEN client | `adapters/authzen/` | Asks the organization's decision point about one call whose decision turns on its answer, and reads the answer strictly; the answer can only veto. |
 | OTLP exporter | `adapters/otel/` | Drains the spool to a collector and acknowledges only the protocol's own answer. |
-| Approval store | `internal/approvals/` | Reads and checks the records in the directory an approver answers in; the pipeline compares an answer with its own record of the hold. |
+| Approval store | `internal/approvals/` | Reads and checks the records in the approvals directory and, under `signed`, the operators' signed answers in the inbox; the pipeline compares an answer with its own record of the hold. |
 | Hold journal | `internal/holdjournal/` | The plane's own durable record of its holds, so the next start closes the trail of one it lost, or counts it left open. |
-| Commands | `cmd/guardana-control/` | The `policy`, `approvals`, `pause` and `runs` commands and the `console` page, without a plane; `observe`, `coverage`, `supervise` and `notify` read files after the fact. |
+| Commands | `cmd/guardana-control/` | The `policy`, `approvals`, `operators`, `pause` and `runs` commands and the `console` page, without a plane; `observe`, `coverage`, `supervise` and `notify` read files after the fact. |
 
 ## The request path
 
@@ -381,7 +381,7 @@ Sources: `ROADMAP.md`, `internal/gateway/pause.go`, `adapters/authzen/client.go`
 | `internal/spool/` | The evidence spool on disk, [ADR-0014](../adr/0014-evidence-spool-and-sinks.md) | `experimental` |
 | `internal/gatewayconfig/` | The gateway's configuration: its fields, the file reader and the loader | `experimental` |
 | `internal/brand/` | The product name every other package reads | `implemented` |
-| `internal/approvals/`, `internal/holdjournal/` | The file approval provider and the plane's hold journal, [ADR-0016](../adr/0016-approval-providers-and-the-lost-hold.md) | `experimental` |
+| `internal/approvals/`, `internal/holdjournal/` | The approvals directory and inbox, and the plane's hold journal and ledger, [ADR-0016](../adr/0016-approval-providers-and-the-lost-hold.md), [ADR-0073](../adr/0073-an-approval-counts-only-as-the-plane-judges-it.md) | `experimental` |
 | `cmd/guardana-control/` | The `policy` commands | `implemented` |
 | `cmd/guardana-control/` | The `approvals`, `pause`, `runs`, `observe`, `coverage`, `supervise` and `notify` commands and the `console` page | `experimental` |
 | `cmd/guardana-gateway/` | The plane: `run`, `doctor`, `collect`, `trail`, `prune`, `scenario` and `dev` | `experimental` |

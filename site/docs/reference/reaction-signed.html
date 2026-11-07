@@ -161,7 +161,7 @@ carried or restored after it.</p>
 <p>A plane reads the route, the header and each lift through its operator ports
 and refuses a document no operator with the act's grant over its tenant and
 project signed; ports that cannot answer read as <code>operator ports unavailable</code>, never as a refusal or a pass. The stop list floor, which <code>stops floor init --tenant --project</code> makes and <code>reaction.stops_floor_dir</code> names, is
-kept for the tenant the listener serves (<code>listener.principal_tenant</code> when set,
+kept for the tenant the listener serves (<code>listener.principal.tenant_id</code> when set,
 else <code>tenant_id</code>) and the project. It keeps the highest header serial the
 plane took, that header's digest, and the length and SHA-256 of the part of
 that list the plane accepted, raised each time that part grows. A plane

@@ -218,23 +218,30 @@ func askRaw(t *testing.T, path string) []byte {
 
 // TestTheHealthSocketClosesAnotherAccountUnanswered: a peer of an account
 // the socket does not answer, or one whose account cannot be named, gets
-// not a byte; the configured other account is answered.
+// not a byte; the configured other account is answered. With
+// health.socket_uid the socket is 0666, so that account may connect where
+// connecting takes write permission, and the peer check alone admits;
+// without it the socket stays 0600.
 func TestTheHealthSocketClosesAnotherAccountUnanswered(t *testing.T) {
 	for name, tc := range map[string]struct {
 		uid      func(net.Conn) (uint32, error)
 		allow    string
+		mode     os.FileMode
 		answered bool
 	}{
-		"another account":                  {func(net.Conn) (uint32, error) { return 4242, nil }, "", false},
-		"another account than the allowed": {func(net.Conn) (uint32, error) { return 4242, nil }, "4243", false},
-		"no account named":                 {func(net.Conn) (uint32, error) { return 0, errors.New("fixture: no answer") }, "", false},
-		"no account named, beside uid 0":   {func(net.Conn) (uint32, error) { return 0, errors.New("fixture: no answer") }, "0", false},
-		"the allowed account":              {func(net.Conn) (uint32, error) { return 4242, nil }, "4242", true},
+		"another account":                  {func(net.Conn) (uint32, error) { return 4242, nil }, "", 0o600, false},
+		"another account than the allowed": {func(net.Conn) (uint32, error) { return 4242, nil }, "4243", 0o666, false},
+		"no account named":                 {func(net.Conn) (uint32, error) { return 0, errors.New("fixture: no answer") }, "", 0o600, false},
+		"no account named, beside uid 0":   {func(net.Conn) (uint32, error) { return 0, errors.New("fixture: no answer") }, "0", 0o666, false},
+		"the allowed account":              {func(net.Conn) (uint32, error) { return 4242, nil }, "4242", 0o666, true},
 	} {
 		t.Run(name, func(t *testing.T) {
 			path := shortSocketPath(t)
 			p, _, _ := stoppedRuns(t, path, tc.allow)
 			serveSocket(t, p, tc.uid)
+			if info, err := os.Lstat(path); err != nil || info.Mode().Type() != os.ModeSocket || info.Mode().Perm() != tc.mode {
+				t.Fatalf("the socket is %v, %v; want a socket of mode %04o", info, err, tc.mode)
+			}
 			got := askRaw(t, path)
 			if answered := len(got) > 0; answered != tc.answered {
 				t.Errorf("answered %v (%q), want %v", answered, got, tc.answered)

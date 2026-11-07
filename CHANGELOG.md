@@ -120,8 +120,10 @@ verify one.
   prints the `export.collector_uid` to set; `--listen host:port` works as
   before. Other platforms refuse both keys at load.
 - `health.socket` serves the whole health answer, run ids included, on a
-  Unix socket of mode `0600` that answers only the plane's own account and
-  `health.socket_uid`; any other peer is closed unanswered. Anything at the
+  Unix socket that answers only the plane's own account and
+  `health.socket_uid`; any other peer is closed unanswered. The socket is
+  `0600`, or `0666` with `health.socket_uid`, so that account can connect
+  and the peer's account alone decides. Anything at the
   path but a stale socket of the plane's account is refused, and the plane
   removes its socket when it stops.
 - `doctor` warns of every TCP `export.endpoint`, naming the unix form.

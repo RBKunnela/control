@@ -150,7 +150,7 @@ decisions.</p>
 </tr>
 </tbody>
 </table>
-<p>No configuration key wires an authenticator, so every call is made by the
+<p>No configuration key wires an end user's authenticator, so every call is made by the
 principal the operator configured. <code>_meta.clientInfo</code> is a run-context tag no
 digest covers. A request with a body gets 30 seconds for it, and 30 seconds
 per 64 KiB slice of its answer: a client reading slower is cut, and one reading
@@ -230,7 +230,7 @@ child process (<code>upstreams[].command</code>).</p>
 </tr>
 <tr>
 <td>Telling one approver from another</td>
-<td>Write access to the approvals directory is the approval authority, and <code>approver_id</code> is a claim (ADR-0016)</td>
+<td>Under <code>directory</code>, write access to the approvals directory is the approval authority and <code>approver_id</code> a claim (ADR-0016); under <code>signed</code>, a roster operator's key (ADR-0073)</td>
 </tr>
 <tr>
 <td>A client other than the library's own</td>
@@ -278,8 +278,7 @@ when it is not <code>none</code> in a mode that does not enforce.</p>
 <p>A preview carries no arguments, so no resource id. A tool whose effect class
 needs the id is no verdict at preview and stays listed; one whose only <code>ALLOW</code>
 reads the id stays listed, marked <code>DECIDED_PER_CALL</code> under <code>annotate</code>, unless
-a rule denies it without its arguments. Shaping subtracts what policy denies,
-never what it could not decide.</p>
+a rule denies it without its arguments.</p>
 <h2 id="the-codes-the-adapter-mints">The codes the adapter mints</h2>
 <p>A <code>tools/call</code> answers a block and a pending state as a tool result with
 <code>isError: true</code>, the fields below in its <code>_meta</code> under <code>&lt;ns&gt;/</code> and no

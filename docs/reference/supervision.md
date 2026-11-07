@@ -22,6 +22,7 @@ no plane reads what they write
 guardana-control supervise --procedure <file> --runs <dir> --run <run-id> --findings <dir>
     [--evidence <export>]... [--source <descriptor> --log <dir>]...
     [--view <file> [--view-all]]
+    [--roster <file> --root-key <file> --tenant <t> --project <p>]
 guardana-control notify --findings <dir> --state <dir> [--init] [--timeout <duration>]
     -- <program> [<arg>]...
 ```

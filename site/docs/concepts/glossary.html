@@ -241,6 +241,11 @@ for the same thing; the right column is where the code defines it.</p>
 <td><code>gapRecord</code> in <code>internal/lineexport/records.go</code></td>
 </tr>
 <tr>
+<td>health socket</td>
+<td>the Unix socket <code>health.socket</code> names; the plane serves its whole health answer there, with the run ids and signers <code>/healthz</code> leaves out, to its own account and to <code>health.socket_uid</code>, and closes any other peer unanswered</td>
+<td><code>bindHealthSocket</code> in <code>cmd/guardana-gateway/health_socket.go</code></td>
+</tr>
+<tr>
 <td>import report</td>
 <td>the record an import appends after the observations it kept: the source, the receive time, the input's size and first line's digest, the counts, and the earliest and latest event times; what says when a source was last heard</td>
 <td><code>ImportReport</code> in <code>api/proto/guardana/control/observe/v1alpha1/observation.proto</code></td>
@@ -316,6 +321,11 @@ for the same thing; the right column is where the code defines it.</p>
 <td><code>internal/spool/frame.go</code></td>
 </tr>
 <tr>
+<td>roster operator</td>
+<td>a key the trust roster names for a person, granted a tenant, a project and a level: <code>read</code>, <code>operate</code> or <code>admin</code>, each including the one before; <code>operate</code> approves, pauses, and signs a run record, a stop list header and a lift, <code>admin</code> also a route</td>
+<td><code>RoleOperator</code> and <code>Level</code> in <code>internal/trust/format.go</code>, the acts in <code>internal/operators/answer.go</code></td>
+</tr>
+<tr>
 <td>run tree</td>
 <td>the runs a <code>0.2</code> report lists with the supervised run, each naming its parent: under <code>inherit</code> the root's whole tree, every member judged; under <code>separate</code> the run's children, not judged</td>
 <td><code>RunTreeMember</code> in <code>api/proto/guardana/control/finding/v1alpha1/report.proto</code></td>
@@ -332,8 +342,18 @@ for the same thing; the right column is where the code defines it.</p>
 </tr>
 <tr>
 <td>serial floor</td>
-<td>the newest statement a plane or a signer has accepted for a bundle id, kept on disk; a bundle below it, or at its serial with another digest, is refused, across restarts</td>
-<td><code>policy.Floor</code> in <code>internal/policy/floor.go</code>, stored by <code>internal/policystate/</code></td>
+<td>the newest serial a plane or a signer has accepted, kept on disk in a floor directory of one kind: a bundle's (<code>plane</code>, <code>signer</code>), a trust roster's (<code>authority</code>), a route's, a signed pause file's or a stop list's; a document below it, or at its serial with another digest, is refused, across restarts</td>
+<td><code>policy.Floor</code> in <code>internal/policy/floor.go</code>, the kinds in <code>internal/policystate/</code></td>
+</tr>
+<tr>
+<td>signed authority</td>
+<td><code>approvals.authority: signed</code>; a plane under it, a signed plane, takes an approval, a pause, a run and a stop list only as a roster operator signed it for the plane's tenant and project, refuses to start when its own account may write the pause file, <code>records/</code>, the route or the stops directory, and holds the roster, the pause file, the route and the stop list each to a serial floor</td>
+<td><code>AuthoritySigned</code> in <code>internal/gatewayconfig/config.go</code>, <a href="/docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it">ADR-0073</a>, <a href="/docs/adr/0075-a-signed-plane-takes-a-pause-only-from-an-operators-signature">ADR-0075</a>, <a href="/docs/adr/0076-a-signed-plane-takes-a-run-only-from-an-operators-signature">ADR-0076</a>, <a href="/docs/adr/0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatures">ADR-0077</a></td>
+</tr>
+<tr>
+<td>signed run record</td>
+<td>a run record <code>3.0</code> in <code>runs.dir</code>'s <code>records/</code>, signed by a roster operator granted <code>operate</code> for the run's tenant and project and bound to that directory; the only record a signed plane counts; the plane copies each close it takes into <code>state/</code>, so the run's open record put back later is refused</td>
+<td><code>SignedRecordVersion</code> in <code>internal/runs/signed.go</code>, judged by <code>internal/runs/signedruns/</code>, <a href="/docs/reference/runs#a-signed-runs-directory">reference/runs</a></td>
 </tr>
 <tr>
 <td>snapshot</td>
@@ -349,6 +369,11 @@ for the same thing; the right column is where the code defines it.</p>
 <td>spool</td>
 <td>the evidence sink that writes disk: an append-only, checksummed, bounded log an exporter drains and acknowledges</td>
 <td><code>spool.Spool</code> in <code>internal/spool/spool.go</code></td>
+</tr>
+<tr>
+<td>stop list header</td>
+<td>the first line of a stop list <code>2.0</code>: an envelope over a <code>reaction-list-header/2.0</code> body a roster operator signs, naming the list, its serial, the plane's tenant, project and stop list file, the route and, for a list carried from another, the previous header's digest; a lift names it and the stop list floor keeps it</td>
+<td><code>HeaderSigned</code> in <code>internal/reaction/header2.go</code>, <a href="/docs/reference/reaction-signed">reference/reaction-signed</a></td>
 </tr>
 <tr>
 <td>trail file</td>
@@ -367,7 +392,7 @@ for the same thing; the right column is where the code defines it.</p>
 </tr>
 <tr>
 <td>trust roster</td>
-<td>the signed file that names operator keys and the tenant, project and level each may act on, under a pinned root, for at most 7 days at a serial that only climbs; no plane reads one yet</td>
+<td>the signed file that names operator keys and the tenant, project and level each may act on, under a pinned root, for at most 7 days at a serial that only climbs; a plane reads one only under the signed authority, through <code>trust.*</code></td>
 <td><code>internal/trust/</code>, <a href="/docs/adr/0071-operators-are-named-by-a-signed-roster">ADR-0071</a></td>
 </tr>
 <tr>

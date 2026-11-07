@@ -37,7 +37,8 @@ is published with each release, whose notes name its digest.
    - Upstream addresses the container can reach. A `command` upstream has
      nothing to run in this image.
    - The collector at an `https` endpoint. A plaintext export is admitted only
-     to a loopback IP literal, which here is the container itself.
+     to a loopback IP literal, which here is the container itself, and
+     `doctor` warns of any TCP endpoint, since TCP export is removed in 0.17.
    - `policy.state_dir: /var/lib/guardana/floors`, a volume that outlives the
      container, beside the spool and the approvals directory. Make it on the
      host with `guardana-control policy state init --kind plane --bundle-id <bundle id>
@@ -55,7 +56,9 @@ is published with each release, whose notes name its digest.
    - The pause file and the approvals and hold journal directories, if you
      use them, on volumes owned by 65532. The plane refuses them when the
      group or others may write them, and the pause file when another account
-     owns it.
+     owns it. Under `approvals.authority: signed` it is the reverse for the
+     pause file, the run records and the stop list: an operator's account
+     owns them, and the plane refuses them when 65532 may write them.
 2. Run it by digest, with the port published on the host's loopback only:
 
    ```

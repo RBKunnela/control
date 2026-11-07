@@ -27,9 +27,14 @@ func noPause(command string) string {
 		"sign it with: " + command
 }
 
+// signFlags are the pause flags of a signed write: the operator's key and
+// the plane's roster and trust root, which pause add and remove need beside
+// it and this page does not know.
+const signFlags = "--key <operator key file> --roster <the plane's trust.roster> --root-key <the plane's trust.root_public_key>"
+
 // pauseCommand is the pause add command that signs the pause b asks for.
 func (p *page) pauseCommand(b *pauseBody) string {
-	words := []string{brand.CLI, "pause", "add", "--key", "<operator key file>"}
+	words := []string{brand.CLI, "pause", "add", signFlags}
 	s := b.Scope
 	switch pause.ScopeKind(s.Kind) {
 	case pause.ScopeGlobal:
@@ -53,5 +58,5 @@ func (p *page) pauseCommand(b *pauseBody) string {
 
 // unpauseCommand is the pause remove command that signs the lift of id.
 func (p *page) unpauseCommand(id string) string {
-	return keytext.Printable(brand.CLI + " pause remove --key <operator key file> -- " + shellWord(p.o.PauseFile) + " " + shellWord(id))
+	return keytext.Printable(brand.CLI + " pause remove " + signFlags + " -- " + shellWord(p.o.PauseFile) + " " + shellWord(id))
 }

@@ -244,7 +244,7 @@ to the plane, no field of the contract holds it, and no adapter reads it.</p>
 <tr>
 <td>the runs directory, <code>runs.dir</code></td>
 <td>each run's record, its project, tenant, principal, agent, lifetime and the SHA-256 of its token's secret, and each root run's flow state</td>
-<td>the operator's account, in a directory only it may write, until the operator removes them</td>
+<td>the operator's account, in a directory only it may write, until the operator removes them; under <code>approvals.authority: signed</code>, <code>records/</code> is the operators', each record also naming its signer's key id and the <code>records/</code> path, and <code>state/</code> the plane's</td>
 </tr>
 <tr>
 <td>the spool, <code>evidence.dir</code></td>
@@ -264,7 +264,12 @@ to the plane, no field of the contract holds it, and no adapter reads it.</p>
 <tr>
 <td>the approvals directory</td>
 <td>per held call, the approval record and a projection: principal, agent, tool, upstream, resource type and id, effect class, rule ids, times</td>
-<td>the plane's account: records are <code>0600</code>, and the directory is refused when another account owns it or others may write it</td>
+<td>the plane's account: records are <code>0600</code>, and the directory is refused when another account owns it or others may write it; under <code>approvals.authority: signed</code> the plane writes them <code>0640</code> for an operators' group</td>
+</tr>
+<tr>
+<td>the inbox, <code>approvals.inbox_dir</code></td>
+<td>per signed answer, the tenant, project, request and approval ids, both digests, the decision, its time, the optional reason and the signer's key id</td>
+<td>the operators' group the directory admits; each answer is <code>0644</code></td>
 </tr>
 <tr>
 <td>the approvals page and <code>approvals list</code></td>
@@ -287,9 +292,19 @@ to the plane, no field of the contract holds it, and no adapter reads it.</p>
 <td>the plane's account: the directory is owner-only and its files <code>0600</code></td>
 </tr>
 <tr>
+<td>the other floor directories, <code>trust.floor_dir</code>, <code>pause.floor_dir</code>, <code>reaction.floor_dir</code> and <code>reaction.stops_floor_dir</code></td>
+<td>the serial and digest of the newest roster, signed pause file, route and stop list header taken, with the tenant and project for the pause file and the stop list, and the length and digest of the stop list part accepted</td>
+<td>the plane's account, as <code>policy.state_dir</code></td>
+</tr>
+<tr>
+<td>the trust roster, <code>trust.roster</code></td>
+<td>per operator key, its subject, public key and grants</td>
+<td>any account the file's modes let read it</td>
+</tr>
+<tr>
 <td>the pause file</td>
-<td>each entry's scope and its optional reason</td>
-<td>the plane's account, and any account the file's and directory's modes let read it</td>
+<td>each entry's scope and its optional reason; a signed one also the tenant, project, its path, serial and signer's key id</td>
+<td>the plane's account, and any account the file's and directory's modes let read it; under <code>approvals.authority: signed</code> the operator's account, never the plane's</td>
 </tr>
 <tr>
 <td>the stop list, <code>reaction.stops</code></td>
@@ -303,7 +318,7 @@ to the plane, no field of the contract holds it, and no adapter reads it.</p>
 </tr>
 <tr>
 <td><code>/metrics</code> and <code>/healthz</code></td>
-<td>counts and states; <code>/healthz</code> also the mode, the bundle's id, version, digest and serial, its confirmation and expiry times, the id of every pause entry with the share of calls it covers, the ids of those that match no listed tool, and a signed pause's serial and floor; with a route, also the route's id, serial and digest, its floor's serial and digest, the stop list's <code>list_id</code>, state and age, and how many stops are active and how many of their runs the runs directory does not hold for the plane's project or cannot read; <code>health.socket</code> adds the subject and key id that signed the pause and, for each active stop up to 64, its entry id, run id, finding id, rule id and expiry, and those runs' ids, and under <code>approvals.authority: signed</code> the subject and key id of the operators who signed the stop list's header and the route. No metric label carries an identifier, a digest or free text; <code>pipeline_blocks_total</code> is labelled with a reason code (<a href="/docs/reference/metrics">reference/metrics</a>)</td>
+<td>counts and states; <code>/healthz</code> also the mode, the bundle's id, version, digest and serial, its confirmation and expiry times, the id of every pause entry with the share of calls it covers, the ids of those that match no listed tool, and a signed pause's serial and floor; with a route, also the route's id, serial and digest, its floor's serial and digest, the stop list's <code>list_id</code>, state, age and stop list header's serial, and how many stops are active and how many of their runs the runs directory does not hold for the plane's project or cannot read; <code>health.socket</code> adds the subject and key id that signed the pause and, for each active stop up to 64, its entry id, run id, finding id, rule id and expiry, and those runs' ids, and under <code>approvals.authority: signed</code> the subject and key id of the operators who signed the stop list's header and the route. No metric label carries an identifier, a digest or free text; <code>pipeline_blocks_total</code> is labelled with a reason code (<a href="/docs/reference/metrics">reference/metrics</a>)</td>
 <td>anyone who reaches <code>health.address</code>, which takes no credential; <code>health.socket</code>, the plane's account and <code>health.socket_uid</code></td>
 </tr>
 <tr>

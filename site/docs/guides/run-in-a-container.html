@@ -145,7 +145,8 @@ which is mounted read-only.</li>
 <li>Upstream addresses the container can reach. A <code>command</code> upstream has
 nothing to run in this image.</li>
 <li>The collector at an <code>https</code> endpoint. A plaintext export is admitted only
-to a loopback IP literal, which here is the container itself.</li>
+to a loopback IP literal, which here is the container itself, and
+<code>doctor</code> warns of any TCP endpoint, since TCP export is removed in 0.17.</li>
 <li><code>policy.state_dir: /var/lib/guardana/floors</code>, a volume that outlives the
 container, beside the spool and the approvals directory. Make it on the
 host with <code>guardana-control policy state init --kind plane --bundle-id &lt;bundle id&gt; floors</code>, then <code>chown -R 65532 floors</code>: the plane refuses a floor directory another user
@@ -162,7 +163,9 @@ reads it again every <code>policy.poll_interval</code>.</li>
 <li>The pause file and the approvals and hold journal directories, if you
 use them, on volumes owned by 65532. The plane refuses them when the
 group or others may write them, and the pause file when another account
-owns it.</li>
+owns it. Under <code>approvals.authority: signed</code> it is the reverse for the
+pause file, the run records and the stop list: an operator's account
+owns them, and the plane refuses them when 65532 may write them.</li>
 </ul>
 </li>
 <li>

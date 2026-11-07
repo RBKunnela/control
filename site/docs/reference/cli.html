@@ -218,9 +218,9 @@ only the id it drew for the entry, and <code>pause remove &lt;file&gt; &lt;id&gt
 takes that id; removing the last entry leaves a file pausing nothing,
 because a missing file blocks every call. <code>pause list</code> prints one line per
 entry, its reason included, or <code>no entries</code>.</p>
-<p>Write access to the pause file is the authority to pause and to lift one:
-any process running as the plane's user can empty the file, so run the commands
-as that user. They refuse, writing nothing, a file or directory the group or
+<p>Outside <code>signed</code>, write access to the pause file is the authority to pause
+and to lift: any process of the plane's user can empty the file, so run the
+commands as that user. They refuse, writing nothing, a file or directory the group or
 others may write or another account owns, a link, a file the plane would
 refuse to read, a second scope or none, a name, a reason or a scope the file
 cannot hold, and a 65th entry, each on one line that does not repeat the
@@ -239,7 +239,7 @@ is <a href="/docs/reference/coverage">coverage.md</a>, <code>supervise</code>, <
 <a href="/docs/guides/test-a-procedure">guides/test-a-procedure.md</a>, <code>route</code>, <code>stops</code>
 and <code>react</code> <a href="/docs/reference/reaction">reaction.md</a>, and <code>hook</code>, exiting with its
 profile's statuses, <a href="/docs/extending/runtime-profiles">extending/runtime-profiles.md</a>.</p>
-<p><code>console</code> serves a page that answers approvals and writes pauses:
+<p><code>console</code> answers approvals and, outside <code>signed</code>, writes pauses:
 <a href="/docs/reference/console">console.md</a>.</p>
 <pre><code>usage:
   guardana-control policy lint &lt;file&gt;

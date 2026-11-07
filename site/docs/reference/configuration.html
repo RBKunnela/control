@@ -163,11 +163,17 @@ may be negative. <code>runs.dir</code> may not be, hold or sit inside the spool,
 approvals directory, the hold journal or the pause file's directory, needs a
 <code>listener.principal.type</code>, and refuses <code>flow.max_runs</code>, which bounds only the runs a
 plane keeps in memory. <code>reaction.route</code>, <code>reaction.public_key</code>, <code>reaction.floor_dir</code> and
-<code>reaction.stops</code> are set together or not at all; a route needs <code>runs.dir</code>,
+<code>reaction.stops</code> are set together or not at all, under <code>signed</code> with
+<code>reaction.stops_floor_dir</code> in place of <code>reaction.public_key</code>, which it refuses, and
+every other authority refuses <code>reaction.stops_floor_dir</code>; a route needs <code>runs.dir</code>,
 <code>reaction.poll_interval</code> takes 100ms to a minute, and the stops directory may not be,
 hold or sit inside the runs directory, the spool, the approvals directory, the hold
-journal, either floor directory or the pause file's directory, compared through
-symbolic links too. Every <code>pdp.</code> key is refused while <code>pdp.identifier</code> is empty,
+journal, the policy, route, stop list or pause floor directory or the pause file's
+directory, compared through
+symbolic links too. A <code>unix:///path</code> <code>export.endpoint</code> needs <code>export.collector_uid</code>
+and refuses <code>export.allow_plaintext</code>, any other refuses <code>export.collector_uid</code>, and
+<code>health.socket_uid</code> needs <code>health.socket</code>; a platform that cannot name a socket peer's
+account refuses both sockets. Every <code>pdp.</code> key is refused while <code>pdp.identifier</code> is empty,
 since it would apply to no decision point, and the identifier is written into every
 decision that consulted the decision point, so a credential goes in <code>pdp.headers</code>,
 never in it. Other directories are compared as paths and not as what they

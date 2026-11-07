@@ -139,8 +139,8 @@ is outside it and talks to it over a protocol it does not own.</p>
     OP --&gt;|configuration, bundle, mode| GW
     AG --&gt;|tools/call| GW
     GW --&gt;|the calls it lets through| SRV
-    GW --&gt;|held call, as a record in the directory of file approvals| APR
-    APR --&gt;|approval for one digest| GW
+    GW --&gt;|held call, as a record in the approvals directory| APR
+    APR --&gt;|an answer for one digest: a claim, or an operator&#39;s signature| GW
     BUNDLE --&gt;|verified, read again each poll| GW
     GW --&gt;|evidence, OTLP logs| COL
     GW --&gt;|a call a veto rule routes there| PDP
@@ -261,7 +261,7 @@ local approvals page.</p>
 <tr>
 <td>Approval store</td>
 <td><code>internal/approvals/</code></td>
-<td>Reads and checks the records in the directory an approver answers in; the pipeline compares an answer with its own record of the hold.</td>
+<td>Reads and checks the records in the approvals directory and, under <code>signed</code>, the operators' signed answers in the inbox; the pipeline compares an answer with its own record of the hold.</td>
 </tr>
 <tr>
 <td>Hold journal</td>
@@ -271,7 +271,7 @@ local approvals page.</p>
 <tr>
 <td>Commands</td>
 <td><code>cmd/guardana-control/</code></td>
-<td>The <code>policy</code>, <code>approvals</code>, <code>pause</code> and <code>runs</code> commands and the <code>console</code> page, without a plane; <code>observe</code>, <code>coverage</code>, <code>supervise</code> and <code>notify</code> read files after the fact.</td>
+<td>The <code>policy</code>, <code>approvals</code>, <code>operators</code>, <code>pause</code> and <code>runs</code> commands and the <code>console</code> page, without a plane; <code>observe</code>, <code>coverage</code>, <code>supervise</code> and <code>notify</code> read files after the fact.</td>
 </tr>
 </tbody>
 </table>
@@ -543,7 +543,7 @@ and audited by someone who did not write it.</li>
 </tr>
 <tr>
 <td><code>internal/approvals/</code>, <code>internal/holdjournal/</code></td>
-<td>The file approval provider and the plane's hold journal, <a href="/docs/adr/0016-approval-providers-and-the-lost-hold">ADR-0016</a></td>
+<td>The approvals directory and inbox, and the plane's hold journal and ledger, <a href="/docs/adr/0016-approval-providers-and-the-lost-hold">ADR-0016</a>, <a href="/docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it">ADR-0073</a></td>
 <td><code>experimental</code></td>
 </tr>
 <tr>

@@ -21,7 +21,7 @@ decisions.
 | `stateful_http` | `2025-11-25` and older | the listener's configuration | A `2026-07-28` request gets `-32022` and the versions served, so a client renegotiates. Sessions end idle after `listener.session_idle`; past `listener.max_sessions` live, an open gets `503` |
 | `stdio` | one agent over a pipe | the listener's configuration | Nothing authenticates a pipe |
 
-No configuration key wires an authenticator, so every call is made by the
+No configuration key wires an end user's authenticator, so every call is made by the
 principal the operator configured. `_meta.clientInfo` is a run-context tag no
 digest covers. A request with a body gets 30 seconds for it, and 30 seconds
 per 64 KiB slice of its answer: a client reading slower is cut, and one reading
@@ -50,7 +50,7 @@ child process (`upstreams[].command`).
 | `notifications/tools/list_changed` toward the agent | The library emits it only for its own registry, empty here, so the listener declares it sends none; an agent refreshes when `list.ttl` runs out |
 | An upstream's own notifications and server-initiated requests, other than a changed tool list | Only a changed tool list is handled, by refreshing the manifest; sampling, roots and progress from an upstream reach no agent |
 | Resuming a hold the plane lost | A hold does not survive a restart, and its call never runs. With a hold journal the next start closes its trail, with the approver's answer and `APPROVAL_NOT_RESUMED` or as expired, or counts it left open; without one it stays open (ADR-0016) |
-| Telling one approver from another | Write access to the approvals directory is the approval authority, and `approver_id` is a claim (ADR-0016) |
+| Telling one approver from another | Under `directory`, write access to the approvals directory is the approval authority and `approver_id` a claim (ADR-0016); under `signed`, a roster operator's key (ADR-0073) |
 | A client other than the library's own | Only the MCP project's Python SDK, over HTTP, in `make check-mcp-client` on the [filesystem guide](../guides/connect-an-existing-mcp-setup.md); other clients and stdio are not exercised |
 | A tool classified `SPAWN_OR_DELEGATE` | The contract requires a delegation chain for that class and the listener carries none, so every such call is refused as `REQUIRED_FIELD_ABSENT` before a rule or a decision point is read |
 | What a run read outside the gateway | A run, without `runs.dir`, is the listener's principal and starts clean at each restart; on stdio a run lasts its client's one connection. The user's prompt, tool descriptions and tools not behind the gateway are not tracked, and a call carries no data label, so a `flow` rule blocks every untrusted destination after untrusted input. A `resources/read` and a `prompts/get` carry no declared result, so each leaves its run untrusted and unknown from then on (ADR-0021) |
@@ -69,8 +69,7 @@ when it is not `none` in a mode that does not enforce.
 A preview carries no arguments, so no resource id. A tool whose effect class
 needs the id is no verdict at preview and stays listed; one whose only `ALLOW`
 reads the id stays listed, marked `DECIDED_PER_CALL` under `annotate`, unless
-a rule denies it without its arguments. Shaping subtracts what policy denies,
-never what it could not decide.
+a rule denies it without its arguments.
 
 ## The codes the adapter mints
 

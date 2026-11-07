@@ -14,7 +14,7 @@ without `export.endpoint`. On a first run, or on a small plane you watch yoursel
 have no collector. `guardana-gateway collect` is one: it takes what a plane
 exports over OTLP/HTTP and appends it, argument and result previews cleared,
 to a directory of trail segments, and `guardana-gateway trail` reads it back,
-one line per request. The plane exports exactly as it would to any collector.
+one line per request.
 Both commands are `experimental`; [status.md](../status.md) is the inventory.
 
 ## Prerequisites
@@ -38,12 +38,12 @@ Both commands are `experimental`; [status.md](../status.md) is the inventory.
 ### 2. Start the collector
 
 ```sh
-guardana-gateway collect --listen 127.0.0.1:4318 --dir trail/plane \
+guardana-gateway collect --listen unix:///run/collector/logs.sock --dir trail/plane \
   --tenant acme --project orders --credential-file collector.credential
 ```
 
-It listens on a loopback IP address only, so `0.0.0.0`, another host and
-`localhost` are refused, or with `--listen unix:///<path>` on a new socket.
+`--listen 127.0.0.1:4318` takes a loopback IP address instead, which `doctor`
+warns of: `0.0.0.0`, another host and `localhost` are refused.
 It prints where it listens, the directory and the plane's keys. It runs until Ctrl-C or `SIGTERM`, and waits up to
 ten seconds for the requests in flight. One collect holds a directory at a
 time; a second one is refused.
@@ -76,8 +76,8 @@ In the plane's configuration:
 
 ```yaml
 export:
-  endpoint: http://127.0.0.1:4318/v1/logs
-  allow_plaintext: true
+  endpoint: unix:///run/collector/logs.sock
+  collector_uid: 1001     # the account collect runs as, which it printed
 ```
 
 Give it the header through the environment, so the token stays out of
@@ -88,7 +88,8 @@ export GUARDANA_CONTROL_EXPORT_HEADERS_AUTHORIZATION="Bearer $(cat collector.cre
 guardana-gateway run --config plane.yaml
 ```
 
-`allow_plaintext` is the named risk of an unencrypted endpoint. The header's
+Over TCP, `endpoint: http://127.0.0.1:4318/v1/logs` needs
+`allow_plaintext: true`, the named risk of an unencrypted endpoint. The header's
 value is a credential and is never printed. A plane sending no credential or
 another one is answered 401, sends again, and blocks its material calls once
 its spool is full; collect logs the first refusal, then a count once a
@@ -164,9 +165,9 @@ The live segment is never pruned.
   write evidence into the trail, including a chain made up to pass the check.
 - An event sent again after its segment was pruned is written again, and a
   trail whose first events were pruned fails the chain check.
-- Before collect is up, whoever binds its loopback port first is sent the
-  token in plaintext by the plane's next retry, which goes in 0.17; a socket's
-  peer must be `export.collector_uid`.
+- Over TCP, the plane's next retry sends the token in plaintext to whoever
+  binds collect's loopback port first, before collect is up; TCP export is
+  removed in 0.17. A socket's peer must be `export.collector_uid`.
 - At 10,000 sealed segments a request that needs a seal is answered 503 until
   a prune; past that, each seal drops the oldest tombstone.
 - `trail` checks each chain's shape: its links, its order and its identifiers.

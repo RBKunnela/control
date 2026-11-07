@@ -32,6 +32,10 @@ under `approvals.authority: signed` roster operators sign the route, the
 stop list's header and each lift, bound to the plane's files, and a stop list
 floor holds the header's serial and digest; no route or lift key exists there.
 
+Amended when `/healthz` stopped naming runs: it counts the active and unheld
+stops and leaves out their entries, which only `health.socket` lists
+([versions](../reference/versions.md)).
+
 ## Context
 
 ADR-0039 decided that a reaction turns a finding into a stop of one run's later

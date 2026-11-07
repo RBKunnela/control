@@ -182,7 +182,9 @@ The credential is any 32 to 512 printable bytes with no space:</p>
     --credential-file collector.credential
 </code></pre>
 <p>The plane writes its evidence to the spool and ships it here, with the
-credential; the trail directory is what step 9 reads.</p>
+credential; the trail directory is what step 9 reads. <code>doctor</code> warns of this
+TCP endpoint, since TCP export is removed in 0.17; a unix socket is
+<a href="/docs/guides/watch-a-plane-without-a-collector">watch a plane without a collector</a>.</p>
 <h3 id="5-check-the-classification">5. Check the classification</h3>
 <pre><code>guardana-gateway doctor --config plane.yaml
 </code></pre>

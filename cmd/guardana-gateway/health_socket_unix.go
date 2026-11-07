@@ -19,12 +19,13 @@ import (
 // staleHealthDial bounds the dial that tells a stale socket from a live one.
 const staleHealthDial = time.Second
 
-// listenHealthSocket binds a socket at path that only this account may
-// open, with mode 0600, in a directory healthDir admits before the bind and
-// after it. A socket of this account that refuses connections is what a
-// plane that did not stop leaves, and is replaced; anything else at the path
-// is refused and left as it is. reachable says health.socket_uid names
-// another account, which may then search the directory.
+// listenHealthSocket binds a socket at path in a directory healthDir admits
+// before the bind and after it. A socket of this account that refuses
+// connections is what a plane that did not stop leaves, and is replaced;
+// anything else at the path is refused and left as it is. reachable says
+// health.socket_uid names another account, which may then search the
+// directory and connect: the socket is 0666, since connecting takes write
+// permission on it, and the peer check is what admits. Otherwise it is 0600.
 func listenHealthSocket(path string, reachable bool) (net.Listener, error) {
 	dir := filepath.Dir(path)
 	if err := healthDir(dir, reachable); err != nil {
@@ -33,7 +34,11 @@ func listenHealthSocket(path string, reachable bool) (net.Listener, error) {
 	if err := clearStaleHealthSocket(path); err != nil {
 		return nil, err
 	}
-	ln, err := bindSocket(path, 0o600)
+	mode := fs.FileMode(0o600)
+	if reachable {
+		mode = 0o666
+	}
+	ln, err := bindSocket(path, mode)
 	if err != nil {
 		return nil, fmt.Errorf("health.socket: %w", err)
 	}

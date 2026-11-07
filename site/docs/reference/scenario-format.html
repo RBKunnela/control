@@ -276,8 +276,8 @@ which for <code>step[n]</code> is the held call's, or the step differs on <code>
 canon cannot, as for an integer past 2^53-1, the proposal must carry no hash,
 or the step differs on <code>args</code>. The runner prints the principal and agent that first proposal names.</p>
 <p>An operator step runs <code>guardana-control approvals approve|reject</code> or
-<code>pause add|remove</code>; under <code>dev</code>, an approval step signs with dev's operator
-key, so the step's <code>approver</code> is not what the trail records. The binary is
+<code>pause add|remove</code>; under <code>dev</code>, an approval or a pause step signs with dev's
+operator key, so an approval step's <code>approver</code> is not what the trail records. The binary is
 the one named by <code>--control</code>, a bare name meaning the
 file in the working directory, or the one beside <code>guardana-gateway</code>, never
 one found on the search path, and only one that reports the same version.

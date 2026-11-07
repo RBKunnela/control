@@ -79,7 +79,8 @@ that still may stop a run.
 
 - **Wire messages, the evidence export, the runs directory's marker and
   root states, the hold journal, the spent ledger and the floor
-  directories.** Any minor of major 1 is read. A member the reader does not
+  directories,** a bundle's, a signer's, a trust roster's, a route's, a
+  signed pause file's and a stop list's alike. Any minor of major 1 is read. A member the reader does not
   know is refused, so a file a later minor extended is refused when that
   member arrives, never read with it dropped.
 - **Approvals directory.** Any minor of major 2 is read. A 2.1 record names
@@ -87,7 +88,7 @@ that still may stop a run.
   names none of them and is read as held under `directory`. A 1.0 directory
   kept the plane's spent mark beside the answers, so it is refused: empty
   it; its holds expire within `approvals.ttl`.
-- **Run record.** Any minor of major 2 is read, except in a signed layout's
+- **Run record.** Any minor of major 2 is read, except in a signed runs directory's
   `records/`, which reads major 3 alone. A record of major 1 names no
   project, so it is refused, never read as any project's run: open the run
   again ([runs.md](runs.md#runs-an-earlier-release-opened)).

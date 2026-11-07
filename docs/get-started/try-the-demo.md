@@ -124,16 +124,25 @@ It prints the action digest it signed; check it is the one the page shows.
 
 ## 5. Pause the orders server
 
-On the page, under **Pauses**, choose **every call to one upstream**, type
-`orders`, give a reason and press **Pause**. Once the plane has read its pause
-file, which the demo has it do every half second, the read
+A dev plane's pause file is signed, so the page shows its pauses and writes
+none. Run the `pause_command` dev printed, with `--provider orders` in place
+of `--global`:
+
+```
+bin/guardana-control pause add --provider orders --key <state>/operator/signing.key \
+  --roster <state>/trust/roster.json --root-key <state>/trust/root.pub -- <state>/pause/pause.json
+```
+
+It prints the entry's id. Once the plane has read its pause file, which the
+demo has it do every half second, the read
 
 ```
 examples/vulnerable-mcp-agent/call.sh "$MCP" read_order '{"id":"ord-1"}'
 ```
 
-is blocked with `PAUSED`, although the policy allows it. Press **Lift this
-pause** and the same call runs again.
+is blocked with `PAUSED`, although the policy allows it. Run `pause remove`
+with the same `--key`, `--roster` and `--root-key`, the file and that id, and
+the same call runs again.
 
 ## 6. Read the trail and the counters
 

@@ -34,7 +34,7 @@ and refuses a document no operator with the act's grant over its tenant and
 project signed; ports that cannot answer read as `operator ports
 unavailable`, never as a refusal or a pass. The stop list floor, which `stops
 floor init --tenant --project` makes and `reaction.stops_floor_dir` names, is
-kept for the tenant the listener serves (`listener.principal_tenant` when set,
+kept for the tenant the listener serves (`listener.principal.tenant_id` when set,
 else `tenant_id`) and the project. It keeps the highest header serial the
 plane took, that header's digest, and the length and SHA-256 of the part of
 that list the plane accepted, raised each time that part grows. A plane

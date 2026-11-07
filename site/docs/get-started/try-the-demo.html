@@ -195,13 +195,19 @@ approval covers one exact call: the same update with other arguments would
 be held as a request of its own.</p>
 <p>It prints the action digest it signed; check it is the one the page shows.</p>
 <h2 id="5-pause-the-orders-server">5. Pause the orders server</h2>
-<p>On the page, under <strong>Pauses</strong>, choose <strong>every call to one upstream</strong>, type
-<code>orders</code>, give a reason and press <strong>Pause</strong>. Once the plane has read its pause
-file, which the demo has it do every half second, the read</p>
+<p>A dev plane's pause file is signed, so the page shows its pauses and writes
+none. Run the <code>pause_command</code> dev printed, with <code>--provider orders</code> in place
+of <code>--global</code>:</p>
+<pre><code>bin/guardana-control pause add --provider orders --key &lt;state&gt;/operator/signing.key \
+  --roster &lt;state&gt;/trust/roster.json --root-key &lt;state&gt;/trust/root.pub -- &lt;state&gt;/pause/pause.json
+</code></pre>
+<p>It prints the entry's id. Once the plane has read its pause file, which the
+demo has it do every half second, the read</p>
 <pre><code>examples/vulnerable-mcp-agent/call.sh &#34;$MCP&#34; read_order &#39;{&#34;id&#34;:&#34;ord-1&#34;}&#39;
 </code></pre>
-<p>is blocked with <code>PAUSED</code>, although the policy allows it. Press <strong>Lift this
-pause</strong> and the same call runs again.</p>
+<p>is blocked with <code>PAUSED</code>, although the policy allows it. Run <code>pause remove</code>
+with the same <code>--key</code>, <code>--roster</code> and <code>--root-key</code>, the file and that id, and
+the same call runs again.</p>
 <h2 id="6-read-the-trail-and-the-counters">6. Read the trail and the counters</h2>
 <p>The plane's evidence, the events of each call, went through its spool, a
 directory on disk, to the collector, which appends it to the trail. Run

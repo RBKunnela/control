@@ -15,9 +15,10 @@ once, binds to one action digest under one bundle, and expires
 ([ADR-0013](../adr/0013-mcp-interception-approvals-and-modes.md),
 [ADR-0011](../adr/0011-contract-corrections-before-publication.md)).
 
-[ADR-0016](../adr/0016-approval-providers-and-the-lost-hold.md) says who may
-answer, an approver writing a file in the approvals directory, and what
-becomes of a hold the plane loses.
+[ADR-0016](../adr/0016-approval-providers-and-the-lost-hold.md) says what
+becomes of a hold the plane loses, and
+[ADR-0073](../adr/0073-an-approval-counts-only-as-the-plane-judges-it.md)
+which answer counts.
 
 ## One held request, end to end
 
@@ -128,9 +129,9 @@ trail open, reserves its request id until restart so no other call writes under
 it, and counts it in `held_trails_left_open`; after hand-out it counts
 `sink_failures_after_effect`. The next start reports its entry, if any.
 
-**A plane configured without `approvals.hold_journal_dir` does not close a hold
-it loses.** That is the behaviour of a plane under the memory authority, it is
-named rather than hidden, and `doctor` and `/healthz` both say it out loud.
+**A plane under `memory` keeps no hold journal and does not close a hold it
+loses.** The other two authorities require `approvals.hold_journal_dir`, and
+`doctor` and `/healthz` both say it out loud.
 
 ## What is held, and by whom
 
@@ -139,7 +140,7 @@ named rather than hidden, and `doctor` and `/healthz` both say it out loud.
 | the pipeline, in memory | the held request: its identifiers, the approval it minted, the envelope, the decision `POLICY_DECIDED` recorded, the binding, where the trail stands, the expiry | what a retry is compared with, and what resumes; every answer is checked against it field by field |
 | the approval store | the file store: one record per held request, under its binding, holding the approval, request id, authority, tenant and project, never an envelope, a decision or a trail; the memory store: the whole hold, in the plane's memory | which holds are kept; outside `signed`, the answer |
 | the ledger, beside the journal | a mark per approval spent or given up | spending once |
-| the hold journal, where configured | one entry per hold: the trail's identifiers and position, the binding, the approval and the expiry | closing a hold this plane lost to a restart |
+| the hold journal, outside `memory` | one entry per hold: the trail's identifiers and position, the binding, the approval and the expiry | closing a hold this plane lost to a restart |
 | the agent | `approval_id`, `action_digest`, `expires_at`, `retry_after` | retrying the same call after `retry_after` |
 
 The store answers which of its records are still there and whether one was
@@ -214,7 +215,7 @@ Sources: `internal/gateway/approve.go`, `internal/gateway/resume.go`,
 | the store would not keep the hold, or `MaxHeld` holds stand | `APPROVAL_EXPIRED`, `ACTION_BLOCKED` with `INDETERMINATE`, `EVIDENCE_UNAVAILABLE`: the window it opened is closed first, since nothing else may follow a request for approval | that block |
 | the hold was dropped or resumed before the flip to running, or the store or the ledger cannot answer | this call's own trail: `ACTION_PROPOSED`, `POLICY_DECIDED`, `ACTION_BLOCKED` with `INDETERMINATE`, `EVIDENCE_UNAVAILABLE` | that block |
 | the trail cannot be written | nothing more: the block is not recorded either | `INDETERMINATE`, `EVIDENCE_UNAVAILABLE` |
-| the plane stopped while the request was held | at its next start: `APPROVAL_DECIDED` with the answer and `ACTION_BLOCKED` with `APPROVAL_NOT_RESUMED` or `APPROVAL_REJECTED`, or `APPROVAL_EXPIRED` and `ACTION_BLOCKED` with `APPROVAL_EXPIRED` or `APPROVAL_STATE_UNKNOWN`; nothing at all where no journal is configured | nothing: that connection was answered pending long ago, and a later identical call is held anew or, if the plane had spent the approval, refused `APPROVAL_ALREADY_USED` until it expires |
+| the plane stopped while the request was held | at its next start: `APPROVAL_DECIDED` with the answer and `ACTION_BLOCKED` with `APPROVAL_NOT_RESUMED` or `APPROVAL_REJECTED`, or `APPROVAL_EXPIRED` and `ACTION_BLOCKED` with `APPROVAL_EXPIRED` or `APPROVAL_STATE_UNKNOWN`; nothing at all under `memory` | nothing: that connection was answered pending long ago, and a later identical call is held anew or, if the plane had spent the approval, refused `APPROVAL_ALREADY_USED` until it expires |
 
 A consumed approval stays consumed when the upstream call then fails, because
 the effect may have happened; that failure is a new request.
