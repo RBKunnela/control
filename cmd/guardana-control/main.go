@@ -4,7 +4,7 @@
 // `pause` commands, the `runs` commands, `observe`, `coverage`, the
 // `procedure` commands (lint and test), `supervise`, `notify`, `findings
 // export`, `route sign`, the `operators` commands (roster sign and floor
-// init), the `stops` commands (init, lift and list), `react`,
+// init), the `stops` commands (init, lift, list and floor init), `react`,
 // and `console`, the page that answers approvals and writes pauses, are the
 // commands with behaviour, and docs/guides/write-and-test-a-policy.md,
 // docs/guides/test-a-procedure.md and docs/reference/cli.md are their pages.
@@ -151,6 +151,7 @@ var commands = []subcommand{
 	{"stops", "init", stopsInitForm, stopsInitFlagSet, stopsInitCommand, writes},
 	{"stops", "lift", stopsLiftForm, stopsLiftFlagSet, stopsLiftCommand, writes},
 	{"stops", "list", stopsListForm, stopsListFlagSet, stopsListCommand, inspects},
+	{"stops", "floor init", stopsFloorInitForm, stopsFloorInitFlagSet, stopsFloorInitCommand, writes},
 	{"react", "", reactForm, reactFlagSet, reactCommand, writes},
 	{"hook", "", hookForm, hookFlagSet, hookCommand, writes},
 	{"console", "", consoleForm, consoleFlagSet, consoleCommand, writes},

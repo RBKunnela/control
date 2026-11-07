@@ -169,6 +169,9 @@ var ownRefusal = map[string]func(missing string) []string{
 		return []string{"--route", m, "--public-key", m, "--key", m, "--run", "run-" + strings.Repeat("0", 32), m}
 	},
 	"stops list": func(m string) []string { return []string{"--route", m, "--public-key", m, m} },
+	"stops floor init": func(m string) []string {
+		return []string{"--tenant", "acme", "--project", "orders", filepath.Join(m, "floor")}
+	},
 	"react": func(m string) []string {
 		return []string{"--findings", m, "--runs", m, "--route", m, "--public-key", m, "--stops", m}
 	},
@@ -289,7 +292,8 @@ func TestHelpNamesEveryCommand(t *testing.T) {
 		"Write access to the runs directory is the authority to open and to close a run",
 		"Write access to a floor directory is the authority to lower its floors;\npolicy state reset is the one way that records why.",
 		"Only the lift key lifts a stop while a plane runs; write access to the stops directory\n" +
-			"adds any stop the route allows and, across a restart, can start a new list with none.",
+			"adds any stop the route allows and, across a restart, can start a new list with none;\n" +
+			"under approvals.authority signed, an admin signs the route and an operator each header and lift.",
 	} {
 		if !strings.Contains(helpText(), authority) {
 			t.Errorf("the help does not say %q", authority)

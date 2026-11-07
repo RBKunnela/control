@@ -29,6 +29,18 @@ const (
 	ErrFileChanged      Error = "stoplist: the stop list changed while it was opened"
 	ErrTooLarge         Error = "stoplist: the stop list is over its bound of bytes"
 	ErrNoPermissionBits Error = "stoplist: this platform keeps no permission bits to check"
+	// ErrPlaneOwned is a list or its directory owned by the plane's own
+	// account under the signed authority, which that account could rewrite.
+	ErrPlaneOwned Error = "stoplist: under the signed authority the plane's own account owns it"
+)
+
+// The refusals of a signed list against the plane's stop list floor, which
+// the floor's taker wraps.
+const (
+	ErrBelowFloor Error = "stoplist: the signed list's serial is below the plane's stop list floor"
+	ErrForked     Error = "stoplist: the signed list's serial is the floor's and its head is another"
+	ErrChain      Error = "stoplist: the signed list does not follow the floor: it rises above it naming another previous list, or cuts or changes lines the floor holds"
+	ErrFloor      Error = "stoplist: the stop list floor cannot be read or raised"
 )
 
 // The refusals of the poller.
@@ -49,12 +61,20 @@ const (
 	CauseLink       reaction.Cause = "a link"
 	CauseMode       reaction.Cause = "writable by others"
 	CauseOwner      reaction.Cause = "owned by another account"
+	CausePlaneOwned reaction.Cause = "owned by the plane's account"
+	CauseBelowFloor reaction.Cause = "below its floor"
+	CauseForked     reaction.Cause = "forked at its floor"
+	CauseChain      reaction.Cause = "a broken chain"
+	CauseFloor      reaction.Cause = "floor unusable"
 )
 
 // Causes is every cause a poller's snapshot can report: the file's, then the
 // judge's. The slice is a copy.
 func Causes() []reaction.Cause {
-	return append([]reaction.Cause{CauseMissing, CauseUnreadable, CauseLink, CauseMode, CauseOwner}, reaction.Causes()...)
+	return append([]reaction.Cause{
+		CauseMissing, CauseUnreadable, CauseLink, CauseMode, CauseOwner,
+		CausePlaneOwned, CauseBelowFloor, CauseForked, CauseChain, CauseFloor,
+	}, reaction.Causes()...)
 }
 
 // CauseOf names the cause of a read that failed with err. A refusal it does
@@ -69,6 +89,8 @@ func CauseOf(err error) reaction.Cause {
 		{ErrFileMode, CauseMode}, {ErrDirMode, CauseMode},
 		{ErrFileOwner, CauseOwner}, {ErrDirOwner, CauseOwner},
 		{ErrTooLarge, reaction.CauseTooLarge},
+		{ErrPlaneOwned, CausePlaneOwned}, {ErrBelowFloor, CauseBelowFloor}, {ErrForked, CauseForked},
+		{ErrChain, CauseChain}, {ErrFloor, CauseFloor},
 	} {
 		if errors.Is(err, c.err) {
 			return c.cause

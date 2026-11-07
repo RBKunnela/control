@@ -69,7 +69,7 @@ func TestParseRouteRefuses(t *testing.T) {
 		{"a member twice", edit(`"serial": 7,`, `"serial": 7, "serial": 8,`), reaction.ErrRouteRepeated},
 		{"a member twice, once escaped", edit(`"serial": 7,`, `"serial": 7, "seri\u0061l": 8,`), reaction.ErrRouteRepeated},
 		{"a rule member twice", edit(`"rule_version": "1", "expires`, `"rule_version": "1", "rule_version": "1", "expires`), reaction.ErrRouteRepeated},
-		{"another kind", edit(`reaction-route/v1alpha1`, `reaction-route/v1alpha2`), reaction.ErrRouteKind},
+		{"another kind", edit(`reaction-route/v1alpha1`, `reaction-route/v1alpha3`), reaction.ErrRouteKind},
 		{"a kind that is not a string", edit(`"reaction-route/v1alpha1"`, `1`), reaction.ErrRouteKind},
 		{"no kind", edit(`"kind": "reaction-route/v1alpha1",`, ``), reaction.ErrRouteMember},
 		{"an unknown member", edit(`"serial": 7,`, `"serial": 7, "x": 1,`), reaction.ErrRouteMember},

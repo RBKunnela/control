@@ -21,12 +21,14 @@ func TestCausesNameEachCauseOnce(t *testing.T) {
 	}
 	for _, want := range []reaction.Cause{
 		"missing", "unreadable", "a link", "writable by others", "owned by another account", "too large", "shrunk", "never read",
+		"owned by the plane's account", "below its floor", "forked at its floor", "a broken chain", "floor unusable",
+		"operator ports unavailable",
 	} {
 		if !slices.Contains(all, want) {
 			t.Errorf("Causes lacks %q", want)
 		}
 	}
-	if len(all) != 5+len(reaction.Causes()) {
-		t.Errorf("Causes holds %d, want the 5 of the file and the judge's %d", len(all), len(reaction.Causes()))
+	if len(all) != 10+len(reaction.Causes()) {
+		t.Errorf("Causes holds %d, want the 10 of the file and the judge's %d", len(all), len(reaction.Causes()))
 	}
 }

@@ -75,6 +75,7 @@
 <li><a href="/docs/reference/observations">Observations</a></li>
 <li><a href="/docs/reference/policy-explain">Policy explain</a></li>
 <li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
 <li><a href="/docs/reference/reaction">Reaction</a></li>
 <li><a href="/docs/reference/reason-codes">Reason codes</a></li>
 <li><a href="/docs/reference/run-view">Run view</a></li>
@@ -340,21 +341,21 @@ version. <a href="/docs/status">status.md</a> is the inventory.</p>
 <tr>
 <td>Reaction route (<code>kind</code>)</td>
 <td>—</td>
-<td><code>reaction-route/v1alpha1</code></td>
+<td><code>reaction-route/v1alpha1</code>, <code>reaction-route/v1alpha2</code></td>
 <td><code>experimental</code></td>
 <td><a href="/docs/contracts#the-route">contracts.md</a></td>
 </tr>
 <tr>
 <td>Stop list (<code>version</code>)</td>
-<td><code>1.0</code></td>
-<td><code>1.0</code></td>
+<td><code>1.0</code>, <code>2.0</code></td>
+<td><code>1.0</code>, <code>2.0</code></td>
 <td><code>experimental</code></td>
 <td><a href="/docs/contracts#the-stop-list">contracts.md</a></td>
 </tr>
 <tr>
 <td>Lift (<code>kind</code>, <code>version</code>)</td>
-<td><code>reaction-lift/v1alpha1</code>, <code>1.0</code></td>
-<td><code>reaction-lift/v1alpha1</code>, <code>1.0</code></td>
+<td><code>reaction-lift/v1alpha1</code>, <code>1.0</code>, <code>reaction-lift/v1alpha2</code></td>
+<td><code>reaction-lift/v1alpha1</code>, <code>1.0</code>, <code>reaction-lift/v1alpha2</code></td>
 <td><code>experimental</code></td>
 <td><a href="/docs/contracts#the-lift">contracts.md</a></td>
 </tr>
@@ -376,7 +377,12 @@ spool frames its segments with no version at all, so a spool another release
 wrote is not promised readable. <code>notify</code>'s <code>--state</code> list of delivered alerts,
 one quoted key per line, carries none either. A plane under
 <code>approvals.authority: signed</code> reads pause file <code>3</code> alone, and any other <code>1</code>
-and <code>2</code> alone.</p>
+and <code>2</code> alone. It reads a <code>reaction-route/v1alpha2</code> route alone, with stop
+list <code>2.0</code>, whose signed header is <code>reaction-list-header/2.0</code>, and lift
+<code>reaction-lift/v1alpha2</code>; any other plane reads a <code>v1alpha1</code> route alone,
+with stop list <code>1.0</code> and lift <code>reaction-lift/v1alpha1</code>. A <code>1.0</code> list is not
+carried into <code>2.0</code>: start a new list, and <code>react</code> stops again the findings
+that still may stop a run.</p>
 <h2 id="reading-files-an-older-release-wrote">Reading files an older release wrote</h2>
 <ul>
 <li><strong>Wire messages, the evidence export, the runs directory's marker and
@@ -475,6 +481,7 @@ accepts a version the page does not name.</p>
 <li><a href="/docs/reference/observations">Observations</a></li>
 <li><a href="/docs/reference/policy-explain">Policy explain</a></li>
 <li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
 <li><a href="/docs/reference/reaction">Reaction</a></li>
 <li><a href="/docs/reference/reason-codes">Reason codes</a></li>
 <li><a href="/docs/reference/run-view">Run view</a></li>

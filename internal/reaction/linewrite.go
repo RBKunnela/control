@@ -24,6 +24,9 @@ const ErrLineMarshal Error = "reaction: the line would not read back as itself"
 // Marshal is the header's line, its newline left out, refused unless
 // ParseLine reads it back as h.
 func (h Header) Marshal() ([]byte, error) {
+	if h.Signed != (HeaderSigned{}) {
+		return nil, fmt.Errorf("%w: a 2.0 header is the line of its signed envelope (SignedHeaderLine)", ErrLineMarshal)
+	}
 	return marshalLine(Line{Kind: KindHeader, Header: h}, map[string]any{
 		memberKind: kindHeader, memberVersion: ListVersion, memberListID: h.ListID, memberRouteID: h.RouteID,
 		memberRouteSerial: h.RouteSerial, memberRouteDigest: h.RouteDigest,
@@ -34,41 +37,60 @@ func (h Header) Marshal() ([]byte, error) {
 // reads it back as s: an entry id that is not EntryID's of the finding id,
 // or a time that is not a whole second, among the rest.
 func (s Stop) Marshal() ([]byte, error) {
-	return marshalLine(Line{Kind: KindStop, Stop: s}, map[string]any{
+	members := map[string]any{
 		memberKind: kindStop, memberVersion: ListVersion, memberEntryID: s.EntryID, memberTenantID: s.TenantID,
 		memberRunID: s.RunID, memberFindingID: s.FindingID, memberProcedure: s.ProcedureID,
 		memberProcVersion: s.ProcedureVersion, memberProcDigest: s.ProcedureDigest, memberRuleID: s.RuleID,
 		memberRuleVer: s.RuleVersion, memberCreatedAt: policy.FormatIssuedAt(s.CreatedAt),
 		memberExpiresAt: policy.FormatIssuedAt(s.ExpiresAt),
-	})
+	}
+	// A 2.0 stop names its project and scope, and a 1.0 stop neither.
+	if s.ProjectID != "" || s.Scope != "" {
+		members[memberVersion], members[memberProjectID], members[memberScope] = SignedListVersion, s.ProjectID, s.Scope
+	}
+	return marshalLine(Line{Kind: KindStop, Stop: s}, members)
 }
 
 // Marshal is the covered line, its newline left out, refused unless
 // ParseLine reads it back as c.
 func (c Covered) Marshal() ([]byte, error) {
-	return marshalLine(Line{Kind: KindCovered, Covered: c}, map[string]any{
+	members := map[string]any{
 		memberKind: kindCovered, memberVersion: ListVersion, memberFindingID: c.FindingID,
 		memberTenantID: c.TenantID, memberRunID: c.RunID, memberCreatedAt: policy.FormatIssuedAt(c.CreatedAt),
-	})
+	}
+	if c.ProjectID != "" {
+		members[memberVersion], members[memberProjectID] = SignedListVersion, c.ProjectID
+	}
+	return marshalLine(Line{Kind: KindCovered, Covered: c}, members)
 }
 
 // Marshal is the lift line, its newline left out, refused unless ParseLine
 // reads it back as l. It checks no signature: Judge does.
 func (l LiftLine) Marshal() ([]byte, error) {
-	sigs := make([]any, 0, len(l.Envelope.Signatures))
-	for _, s := range l.Envelope.Signatures {
+	version := ListVersion
+	// A lift an operator signed goes in a 2.0 list, and a lift key's in 1.0.
+	if l.Envelope.PayloadType == SignedLiftPayloadType {
+		version = SignedListVersion
+	}
+	return marshalLine(Line{Kind: KindLift, Lift: l}, map[string]any{
+		memberKind: kindLift, memberVersion: version, memberRunID: l.RunID, memberThrough: l.ThroughLine,
+		memberEnvelope: envelopeMembers(l.Envelope),
+	})
+}
+
+// envelopeMembers is env as a line spells it.
+func envelopeMembers(env Envelope) map[string]any {
+	sigs := make([]any, 0, len(env.Signatures))
+	for _, s := range env.Signatures {
 		sigs = append(sigs, map[string]any{
 			memberSigKeyID: s.KeyID, memberSigSignature: base64.StdEncoding.EncodeToString(s.Signature),
 		})
 	}
-	return marshalLine(Line{Kind: KindLift, Lift: l}, map[string]any{
-		memberKind: kindLift, memberVersion: ListVersion, memberRunID: l.RunID, memberThrough: l.ThroughLine,
-		memberEnvelope: map[string]any{
-			memberPayloadType: l.Envelope.PayloadType,
-			memberPayload:     base64.StdEncoding.EncodeToString(l.Envelope.Payload),
-			memberSignatures:  sigs,
-		},
-	})
+	return map[string]any{
+		memberPayloadType: env.PayloadType,
+		memberPayload:     base64.StdEncoding.EncodeToString(env.Payload),
+		memberSignatures:  sigs,
+	}
 }
 
 func marshalLine(want Line, members map[string]any) ([]byte, error) {
@@ -97,7 +119,8 @@ func sameLine(a, b Line) bool {
 		return sameStop(a.Stop, b.Stop)
 	case KindCovered:
 		x, y := a.Covered, b.Covered
-		return x.FindingID == y.FindingID && x.TenantID == y.TenantID && x.RunID == y.RunID && x.CreatedAt.Equal(y.CreatedAt)
+		return x.FindingID == y.FindingID && x.TenantID == y.TenantID && x.RunID == y.RunID && x.ProjectID == y.ProjectID &&
+			x.CreatedAt.Equal(y.CreatedAt)
 	case KindLift:
 		return a.Lift.RunID == b.Lift.RunID && a.Lift.ThroughLine == b.Lift.ThroughLine && sameEnvelope(a.Lift.Envelope, b.Lift.Envelope)
 	}

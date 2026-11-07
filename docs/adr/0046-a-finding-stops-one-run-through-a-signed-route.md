@@ -27,6 +27,11 @@ which decides that a finding's source class comes from its detector's signed
 descriptor and that a route names the detectors it accepts;
 [status.md](../status.md) says how much of it a plane does today.
 
+Amended by [ADR-0077](0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatures.md):
+under `approvals.authority: signed` roster operators sign the route, the
+stop list's header and each lift, bound to the plane's files, and a stop list
+floor holds the header's serial and digest; no route or lift key exists there.
+
 ## Context
 
 ADR-0039 decided that a reaction turns a finding into a stop of one run's later

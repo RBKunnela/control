@@ -13,8 +13,9 @@ route refuses the run's later calls `RUN_STOPPED`, and no other run's. It is
 `experimental`: [status.md](../status.md) is the inventory,
 [ADR-0046](../adr/0046-a-finding-stops-one-run-through-a-signed-route.md) and
 [ADR-0047](../adr/0047-a-procedure-states-its-exceptions-resources-and-children.md)
-the records, and [contracts.md](../contracts.md#the-reaction-route-and-the-stop-list)
-gives the formats. `examples/refund-supervision/` runs it on a live plane.
+the records, [contracts.md](../contracts.md#the-reaction-route-and-the-stop-list)
+the formats and [signed reaction](reaction-signed.md) the signed authority's.
+`examples/refund-supervision/` runs it on a live plane.
 
 ```
 guardana-control route sign --key <file> --out <file> <route.json>
@@ -119,7 +120,7 @@ open.
 At start, a plane with `reaction.route` refuses to serve unless all four of
 `reaction.route`, `reaction.public_key`, `reaction.floor_dir` and
 `reaction.stops` are set, with `runs.dir`; the route verifies under the key
-`reaction.public_key` names; its tenant is the listener's; the route key, the lift key, the policy key and the freshness key
+`reaction.public_key` names; its tenant is the listener's; the route, lift, policy and freshness keys
 are four keys, compared as points up to their sign; the floor takes the route;
 and the first read of the list finds a state it can serve.
 

@@ -11,9 +11,12 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/guardana/control/internal/brand"
 	ondisk "github.com/guardana/control/internal/files"
+	"github.com/guardana/control/internal/policy/bundle"
 	"github.com/guardana/control/internal/policykey"
 	"github.com/guardana/control/internal/reaction"
+	"github.com/guardana/control/internal/reaction/signedstops"
 	"github.com/guardana/control/internal/supervise"
 )
 
@@ -25,7 +28,8 @@ const (
 // stopsAuthority is what the help and docs/reference/cli.md both say about
 // who may stop a run and who may lift a stop.
 const stopsAuthority = "Only the lift key lifts a stop while a plane runs; write access to the stops directory\n" +
-	"adds any stop the route allows and, across a restart, can start a new list with none."
+	"adds any stop the route allows and, across a restart, can start a new list with none;\n" +
+	"under approvals.authority signed, an admin signs the route and an operator each header and lift."
 
 // routeFileMode is the mode route sign writes with: a signed route is
 // public, as a freshness statement is.
@@ -36,7 +40,7 @@ type routeSignPaths struct{ key, out string }
 func routeSignFlags(command string, out io.Writer) (*flag.FlagSet, *routeSignPaths) {
 	flags := commandFlags(command, out)
 	var p routeSignPaths
-	flags.StringVar(&p.key, "key", "", "the private key file keygen wrote for the route key")
+	flags.StringVar(&p.key, "key", "", "the private key file of the route key, or the operator's for a v1alpha2 route")
 	flags.StringVar(&p.out, "out", "", "the signed route file to write, replacing only a signed route")
 	return flags, &p
 }
@@ -71,7 +75,7 @@ func routeSign(keyPath, out, document string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return fail(stderr, routeSignName, fmt.Errorf("document %s: %w", document, err))
 	}
-	route, err := reaction.ParseRoute(raw)
+	route, err := reaction.ParseRouteDocument(raw)
 	if err != nil {
 		return fail(stderr, routeSignName, fmt.Errorf("document %s: %w", document, err))
 	}
@@ -87,7 +91,7 @@ func routeSign(keyPath, out, document string, stdout, stderr io.Writer) int {
 		return fail(stderr, routeSignName, fmt.Errorf("--key: %w", err))
 	}
 	defer clear(key)
-	env, err := reaction.SignRoute(route, key)
+	env, route, err := routeEnvelope(raw, route, out, key, stderr)
 	if err != nil {
 		return fail(stderr, routeSignName, err)
 	}
@@ -157,7 +161,8 @@ func checkRouteOut(out string) error {
 	if err != nil {
 		return fmt.Errorf("--out %s: %w", out, err)
 	}
-	if env, err := reaction.ParseRouteFile(raw); err != nil || env.PayloadType != reaction.RoutePayloadType {
+	if env, err := reaction.ParseRouteFile(raw); err != nil ||
+		(env.PayloadType != reaction.RoutePayloadType && env.PayloadType != reaction.SignedRoutePayloadType) {
 		return notARoute
 	}
 	return nil
@@ -193,4 +198,52 @@ func readSignedRoute(routeFlag, path, publicKey string, verify func(reaction.Env
 		return reaction.Route{}, fmt.Errorf("%s %s: %w", routeFlag, path, err)
 	}
 	return r, nil
+}
+
+// routeEnvelope signs route, read from doc: a v1alpha2 route for the file at
+// out, saying on stderr what it signed, and a v1alpha1 route as it is.
+func routeEnvelope(doc []byte, route reaction.Route, out string, key ed25519.PrivateKey, stderr io.Writer) (reaction.Envelope, reaction.Route, error) {
+	if !route.Signed() {
+		env, err := reaction.SignRoute(route, key)
+		return env, route, err
+	}
+	env, signed, err := signedRouteEnvelope(doc, out, key)
+	if err != nil {
+		return reaction.Envelope{}, reaction.Route{}, err
+	}
+	writeLine(stderr, routeSignedLine(signed))
+	return env, signed, nil
+}
+
+// signedRouteEnvelope signs the v1alpha2 route document doc with the
+// operator's key for the route file out, bound as the plane binds it, and
+// returns the envelope and the route it signs.
+func signedRouteEnvelope(doc []byte, out string, key ed25519.PrivateKey) (reaction.Envelope, reaction.Route, error) {
+	bound, err := signedstops.BindingOf(out)
+	if err != nil {
+		return reaction.Envelope{}, reaction.Route{}, fmt.Errorf("--out %s: %w", out, err)
+	}
+	keyID := policykey.KeyID(publicHalf(key))
+	body, err := reaction.SignedRouteBody(doc, keyID, bound)
+	if err != nil {
+		return reaction.Envelope{}, reaction.Route{}, err
+	}
+	route, err := reaction.ParseRoute(body)
+	if err != nil {
+		return reaction.Envelope{}, reaction.Route{}, err
+	}
+	sig, err := bundle.SignBytesAs(reaction.SignedRoutePayloadType, body, key)
+	if err != nil {
+		return reaction.Envelope{}, reaction.Route{}, fmt.Errorf("--key: %w", err)
+	}
+	return reaction.Envelope{PayloadType: reaction.SignedRoutePayloadType, Payload: body,
+		Signatures: []reaction.Signature{{KeyID: keyID, Signature: sig}}}, route, nil
+}
+
+// routeSignedLine is what a signed v1alpha2 route says it signed, on
+// standard error.
+func routeSignedLine(r reaction.Route) string {
+	return fmt.Sprintf("%s: %s: signed route %s serial %d for tenant %s project %s of %s, %d rule(s), digest %s",
+		brand.CLI, routeSignName, oneLine(r.ID()), r.Serial(), oneLine(r.TenantID()), oneLine(r.ProjectID()),
+		oneLine(r.File()), len(r.Rules()), r.Digest())
 }

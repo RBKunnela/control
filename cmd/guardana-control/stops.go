@@ -21,37 +21,59 @@ import (
 )
 
 const (
-	stopsInitName = "stops init"
-	stopsLiftName = "stops lift"
-	stopsListName = "stops list"
-	stopsInitForm = "--route <file> --public-key <file>\n" +
-		"      [--carry <dir> --carry-route <file>] <dir>"
-	stopsLiftForm = "--route <file> --public-key <file> --key <file> --run <run-id>\n" +
-		"      [--through <line>] <dir>"
-	stopsListForm = "--route <file> --public-key <file> <dir>"
+	stopsInitName      = "stops init"
+	stopsLiftName      = "stops lift"
+	stopsListName      = "stops list"
+	stopsFloorInitName = "stops floor init"
+	stopsInitForm      = "--route <f> (--public-key <f> | --roster <f> --root-key <f> --key <k>\n" +
+		"      [--serial <n>]) [--carry <dir> --carry-route <file> [--stops-floor <dir>]] <dir>"
+	stopsLiftForm = "--route <f> (--public-key <f> | --roster <f> --root-key <f>) --key <k>\n" +
+		"      --run <run-id> [--through <line>] <dir>"
+	stopsListForm      = "--route <f> (--public-key <f> | --roster <f> --root-key <f>) <dir>"
+	stopsFloorInitForm = "--tenant <t> --project <p> <dir>"
 )
 
 // stopsLockWait bounds how long a writer waits for another writer's lock on
 // a stops directory. A plane never takes it.
 const stopsLockWait = 10 * time.Second
 
-// routeFlags is the signed route every stops command and react judge by.
-type routeFlags struct{ route, publicKey string }
+// routeFlags is the signed route every stops command and react judge by: a
+// v1alpha1 route under its route key, or a v1alpha2 route under the roster
+// verified under the trust root.
+type routeFlags struct{ route, publicKey, roster, rootKey string }
 
 func (r *routeFlags) declare(flags *flag.FlagSet) {
 	flags.StringVar(&r.route, "route", "", "the signed route file route sign wrote")
-	flags.StringVar(&r.publicKey, "public-key", "", "the public key file of the route key")
+	flags.StringVar(&r.publicKey, "public-key", "", "the public key file of the route key, for a v1alpha1 route")
+	flags.StringVar(&r.roster, "roster", "", "the plane's trust.roster, for a v1alpha2 route an operator signed")
+	flags.StringVar(&r.rootKey, "root-key", "", "the plane's trust.root_public_key, which the roster has to verify under")
 }
 
-func (r routeFlags) set() bool { return r.route != "" && r.publicKey != "" }
+// set reports whether the flags name a route and one way to verify it: the
+// route key, or the roster with its trust root.
+func (r routeFlags) set() bool {
+	keyed, rostered := r.publicKey != "", r.roster != "" || r.rootKey != ""
+	return r.route != "" && keyed != rostered && (keyed || (r.roster != "" && r.rootKey != ""))
+}
 
-func (r routeFlags) verified() (reaction.Route, error) {
-	return verifiedRoute("--route", r.route, r.publicKey)
+// signed reports whether the flags verify a v1alpha2 route.
+func (r routeFlags) signed() bool { return r.publicKey == "" }
+
+// verified is the route the flags name, verified, a v1alpha2 one bound to
+// the stop list in dir.
+func (r routeFlags) verified(dir string) (reaction.Route, error) {
+	if !r.signed() {
+		return verifiedRoute("--route", r.route, r.publicKey)
+	}
+	return rosterRoute("--route", r.route, r.roster, r.rootKey, dir, reaction.VerifySignedRoute)
 }
 
 type stopsInitArgs struct {
 	routeFlags
 	carry, carryRoute string
+	key               string
+	serial            int64
+	stopsFloor        string
 }
 
 func stopsInitFlags(command string, out io.Writer) (*flag.FlagSet, *stopsInitArgs) {
@@ -60,6 +82,9 @@ func stopsInitFlags(command string, out io.Writer) (*flag.FlagSet, *stopsInitArg
 	a.declare(flags)
 	flags.StringVar(&a.carry, "carry", "", "the stops directory of the list to carry into the new one")
 	flags.StringVar(&a.carryRoute, "carry-route", "", "the signed route the list carried from is judged against")
+	flags.StringVar(&a.key, "key", "", "the operator's private key file, which signs a 2.0 list's header")
+	flags.Int64Var(&a.serial, "serial", 1, "a new 2.0 list's first serial, taken only by a plane whose stop list floor holds none; a carry takes the next")
+	flags.StringVar(&a.stopsFloor, "stops-floor", "", "the plane's reaction.stops_floor_dir, which a signed carry holds the old list to")
 	return flags, a
 }
 
@@ -68,11 +93,29 @@ func stopsInitFlagSet(command string, out io.Writer) *flag.FlagSet {
 	return flags
 }
 
+// usable reports whether the flags name a route and its check, a key exactly
+// when the route is signed, --carry and --carry-route together, a --serial
+// only for a new signed list and a --stops-floor only for a signed carry.
+func (a stopsInitArgs) usable(serialGiven bool) bool {
+	return a.set() && (a.carry == "") == (a.carryRoute == "") && (a.key != "") == a.signed() &&
+		(!serialGiven || (a.signed() && a.carry == "")) && (a.stopsFloor == "" || (a.signed() && a.carry != ""))
+}
+
 func stopsInitCommand(args []string, stdout, stderr io.Writer) int {
+	if err := policykey.CheckArguments(args); err != nil {
+		return usageError(stderr, stopsInitName, err.Error())
+	}
 	flags, a := stopsInitFlags(stopsInitName, io.Discard)
-	if err := flags.Parse(args); err != nil || flags.NArg() != 1 || !a.set() || (a.carry == "") != (a.carryRoute == "") {
+	err := flags.Parse(args)
+	serialGiven := false
+	flags.Visit(func(f *flag.Flag) { serialGiven = serialGiven || f.Name == "serial" })
+	if err != nil || flags.NArg() != 1 || !a.usable(serialGiven) {
 		return usageError(stderr, stopsInitName,
-			"takes --route and --public-key, --carry and --carry-route together or neither, then the stops directory")
+			"takes --route with --public-key, or with --roster, --root-key and --key, --carry and --carry-route together or neither, "+
+				"a --serial only for a new signed list, a --stops-floor only for a signed carry, then the stops directory")
+	}
+	if a.signed() {
+		return stopsInitSigned(*a, flags.Arg(0), time.Now(), stdout, stderr)
 	}
 	return stopsInit(*a, flags.Arg(0), time.Now(), stdout, stderr)
 }
@@ -81,7 +124,7 @@ func stopsInitCommand(args []string, stdout, stderr io.Writer) int {
 // list in --carry, judged against --carry-route under the same route key,
 // into it.
 func stopsInit(a stopsInitArgs, dir string, now time.Time, stdout, stderr io.Writer) int {
-	route, err := a.verified()
+	route, err := a.verified(dir)
 	if err != nil {
 		return fail(stderr, stopsInitName, err)
 	}
@@ -119,7 +162,7 @@ func stopsLiftFlags(command string, out io.Writer) (*flag.FlagSet, *stopsLiftArg
 	flags := commandFlags(command, out)
 	a := &stopsLiftArgs{}
 	a.declare(flags)
-	flags.StringVar(&a.key, "key", "", "the private key file keygen wrote for the route's lift key")
+	flags.StringVar(&a.key, "key", "", "the private key file of the route's lift key, or the operator's for a v1alpha2 route")
 	flags.StringVar(&a.run, "run", "", "the opened run whose stops the lift ends")
 	flags.Int64Var(&a.through, "through", 0, "the last line the lift ends; the list's last complete line when left out")
 	return flags, a
@@ -142,7 +185,10 @@ func stopsLiftCommand(args []string, stdout, stderr io.Writer) int {
 	flags.Visit(func(f *flag.Flag) { throughGiven = throughGiven || f.Name == "through" })
 	if err != nil || flags.NArg() != 1 || !a.set() || a.key == "" || a.run == "" || (throughGiven && a.through <= 0) {
 		return usageError(stderr, stopsLiftName,
-			"takes --route, --public-key, --key and --run, a --through above zero if any, then the stops directory")
+			"takes --route with --public-key or with --roster and --root-key, --key and --run, a --through above zero if any, then the stops directory")
+	}
+	if a.signed() {
+		return stopsLiftSigned(*a, flags.Arg(0), time.Now(), stdout, stderr)
 	}
 	return stopsLift(*a, flags.Arg(0), time.Now(), stdout, stderr)
 }
@@ -151,7 +197,7 @@ func stopsLiftCommand(args []string, stdout, stderr io.Writer) int {
 // route, the key, which must be the route's lift key, the list, a lift that
 // would end no stop, then the lift as the plane's judge reads it.
 func stopsLift(a stopsLiftArgs, dir string, now time.Time, stdout, stderr io.Writer) int {
-	route, err := a.verified()
+	route, err := a.verified(dir)
 	if err != nil {
 		return fail(stderr, stopsLiftName, err)
 	}
@@ -207,7 +253,7 @@ func stopsListFlagSet(command string, out io.Writer) *flag.FlagSet {
 func stopsListCommand(args []string, stdout, stderr io.Writer) int {
 	flags, a := stopsListFlags(stopsListName, io.Discard)
 	if err := flags.Parse(args); err != nil || flags.NArg() != 1 || !a.set() {
-		return usageError(stderr, stopsListName, "takes --route and --public-key, then the stops directory")
+		return usageError(stderr, stopsListName, "takes --route with --public-key or with --roster and --root-key, then the stops directory")
 	}
 	return stopsList(a.routeFlags, flags.Arg(0), time.Now(), stdout, stderr)
 }
@@ -216,7 +262,7 @@ func stopsListCommand(args []string, stdout, stderr io.Writer) int {
 // judge it: the header, each stop no lift ended and whether it is active,
 // the covered lines and lifts counted, and the use of the bounds.
 func stopsList(r routeFlags, dir string, now time.Time, stdout, stderr io.Writer) int {
-	route, err := r.verified()
+	route, err := r.verified(dir)
 	if err != nil {
 		return fail(stderr, stopsListName, err)
 	}
@@ -286,12 +332,19 @@ func judgedList(dir string, route reaction.Route, now time.Time) (reaction.List,
 func activeAt(e reaction.Entry, now time.Time) bool { return e.ActiveAt(now, time.Time{}) }
 
 func headerLines(h reaction.Header) []string {
-	return []string{
+	lines := []string{
 		"list_id: " + oneLine(h.ListID),
 		"route_id: " + oneLine(h.RouteID),
 		"route_serial: " + strconv.FormatInt(h.RouteSerial, 10),
 		"route_digest: " + oneLine(h.RouteDigest),
 	}
+	if s := h.Signed; s.Digest != "" {
+		lines = append(lines, "serial: "+strconv.FormatInt(s.Serial, 10), "head: "+s.Digest, "signed by key: "+oneLine(s.KeyID))
+		if s.Previous != "" {
+			lines = append(lines, "previous: "+s.Previous)
+		}
+	}
+	return lines
 }
 
 // emit prints lines, and on a failed write says the list in dir was changed

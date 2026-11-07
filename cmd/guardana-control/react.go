@@ -15,6 +15,7 @@ import (
 
 	findingv1alpha1 "github.com/guardana/control/api/gen/go/guardana/control/finding/v1alpha1"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/approvals"
 	"github.com/guardana/control/internal/findinglog"
 	"github.com/guardana/control/internal/policy"
 	"github.com/guardana/control/internal/reaction"
@@ -24,14 +25,18 @@ import (
 
 const (
 	reactName = "react"
-	reactForm = "--findings <dir> --runs <dir> --route <file> --public-key <file>\n" +
-		"      --stops <dir> [" + runsReadHint + "]"
+	reactForm = "--findings <dir> --runs <dir> --route <file>\n" +
+		"      (--public-key <f> | --roster <f> --root-key <f> --approvals <dir>) --stops <dir>\n" +
+		"      [--tenant <t> --project <p>]"
 )
 
 type reactArgs struct {
 	routeFlags
 	read                  runsReadFlags
 	findings, runs, stops string
+	// approvals is the plane's approvals directory, whose owner is the
+	// plane's account, which react under the signed authority is not.
+	approvals string
 	// lockWait bounds each wait for another writer's lock on --stops, and
 	// nothing else.
 	lockWait time.Duration
@@ -41,10 +46,11 @@ func reactFlags(command string, out io.Writer) (*flag.FlagSet, *reactArgs) {
 	flags := commandFlags(command, out)
 	a := &reactArgs{lockWait: stopsLockWait}
 	a.declare(flags)
-	a.read.declare(flags)
+	a.read.declareScope(flags)
 	flags.StringVar(&a.findings, "findings", "", "the findings log directory supervise writes")
 	flags.StringVar(&a.runs, "runs", "", "the runs directory, read and never written")
 	flags.StringVar(&a.stops, "stops", "", "the stops directory stops init started")
+	flags.StringVar(&a.approvals, "approvals", "", "the plane's approvals.dir, for a v1alpha2 route: a guard, react will not run as the account that owns it")
 	return flags, a
 }
 
@@ -59,8 +65,9 @@ func reactFlagSet(command string, out io.Writer) *flag.FlagSet {
 func reactCommand(args []string, stdout, stderr io.Writer) int {
 	flags, a := reactFlags(reactName, io.Discard)
 	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || !a.set() ||
-		a.findings == "" || a.runs == "" || a.stops == "" {
-		return usageError(stderr, reactName, "takes --findings, --runs, --route, --public-key and --stops, and no argument")
+		a.findings == "" || a.runs == "" || a.stops == "" || (a.approvals != "") != a.signed() {
+		return usageError(stderr, reactName,
+			"takes --findings, --runs, --route, --public-key or --roster, --root-key and --approvals, and --stops, and no argument")
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -79,7 +86,12 @@ var beforeStopsLock = func() {}
 // wrote and its summary.
 func react(ctx context.Context, a reactArgs, clock func() time.Time, stdout, stderr io.Writer) int {
 	now := clock().UTC().Truncate(time.Second)
-	route, err := a.verified()
+	if a.signed() {
+		if err := notPlaneAccount(a.approvals); err != nil {
+			return fail(stderr, reactName, err)
+		}
+	}
+	route, err := a.verified(a.stops)
 	if err != nil {
 		return fail(stderr, reactName, err)
 	}
@@ -91,7 +103,9 @@ func react(ctx context.Context, a reactArgs, clock func() time.Time, stdout, std
 	if err != nil {
 		return fail(stderr, reactName, fmt.Errorf("--findings %s: %w", a.findings, err))
 	}
-	lookup, closeRuns, err := openRunsLookup(a.runs, a.read)
+	read := a.read
+	read.routeRoster, read.routeRootKey = a.roster, a.rootKey
+	lookup, closeRuns, err := openRunsLookup(a.runs, read)
 	if err != nil {
 		return fail(stderr, reactName, fmt.Errorf("--runs %s: %w", a.runs, err))
 	}
@@ -241,12 +255,13 @@ func (r *reactor) run(id string) (reaction.RunFacts, error) {
 func (r *reactor) claim(fr *findingv1alpha1.FindingRecord, run reaction.RunFacts, now time.Time) (reaction.StopClaim, bool) {
 	proc, f := fr.GetProcedure(), fr.GetFinding()
 	c := reaction.StopClaim{
-		TenantID: fr.GetTenantId(), ProcedureID: proc.GetProcedureId(), ProcedureVersion: proc.GetVersion(),
+		TenantID: fr.GetTenantId(), ProjectID: projectOf(r.route, fr), ProcedureID: proc.GetProcedureId(), ProcedureVersion: proc.GetVersion(),
 		ProcedureDigest: proc.GetDigest(), RuleID: f.GetRuleId(), RuleVersion: f.GetRuleVersion(), CreatedAt: now,
 	}
 	for _, rule := range r.route.Rules() {
 		if rule.ProcedureID == c.ProcedureID && rule.ProcedureVersion == c.ProcedureVersion &&
 			rule.ProcedureDigest == c.ProcedureDigest && rule.RuleID == c.RuleID && rule.RuleVersion == c.RuleVersion {
+			c.Scope = rule.Scope
 			c.ExpiresAt = ceilSecond(run.ExpiresAt)
 			limit := rule.Lifetime
 			if limit == 0 {
@@ -274,7 +289,8 @@ func (r *reactor) write(fr *findingv1alpha1.FindingRecord, run reaction.RunFacts
 		if !ok {
 			return reaction.Stop{}, errNotStopping
 		}
-		return reaction.Stop{EntryID: reaction.EntryID(id), TenantID: c.TenantID, RunID: runID, FindingID: id,
+		return reaction.Stop{EntryID: reaction.EntryID(id), TenantID: c.TenantID, ProjectID: c.ProjectID, Scope: c.Scope,
+			RunID: runID, FindingID: id,
 			ProcedureID: c.ProcedureID, ProcedureVersion: c.ProcedureVersion, ProcedureDigest: c.ProcedureDigest,
 			RuleID: c.RuleID, RuleVersion: c.RuleVersion, CreatedAt: c.CreatedAt, ExpiresAt: c.ExpiresAt}, nil
 	}
@@ -314,6 +330,33 @@ func (r *reactor) write(fr *findingv1alpha1.FindingRecord, run reaction.RunFacts
 	r.stops++
 	r.written = append(r.written, fmt.Sprintf("stop line %d run %s finding %s rule %s expires_at %s",
 		n, oneLine(runID), oneLine(id), oneLine(s.RuleID), policy.FormatIssuedAt(s.ExpiresAt)))
+	return nil
+}
+
+// projectOf is the project a stop of fr names under route: the finding's
+// under a v1alpha2 route, and none under a v1alpha1 route, whose lines
+// name no project.
+func projectOf(route reaction.Route, fr *findingv1alpha1.FindingRecord) string {
+	if !route.Signed() {
+		return ""
+	}
+	return fr.GetProjectId()
+}
+
+// notPlaneAccount refuses this process when it owns the approvals directory
+// at dir, which makes it the plane's account: the signal the console takes.
+func notPlaneAccount(dir string) error {
+	r, err := approvals.OpenReader(dir)
+	if err != nil {
+		return fmt.Errorf("--approvals %s: %w", dir, err)
+	}
+	plane := r.PlaneAccount()
+	if err := r.Close(); err != nil {
+		return fmt.Errorf("--approvals %s: %w", dir, err)
+	}
+	if plane {
+		return errPlaneAccount
+	}
 	return nil
 }
 

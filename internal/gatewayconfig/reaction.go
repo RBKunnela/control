@@ -25,6 +25,10 @@ type ReactionConfig struct {
 	FloorDir     string
 	Stops        string
 	PollInterval time.Duration
+	// StopsFloorDir is the stop list floor's directory, which only the
+	// signed authority reads: its route, header and lifts are an operator's,
+	// and no route key is set.
+	StopsFloorDir string
 }
 
 // Configured reports whether a route is configured; the load refuses a
@@ -44,13 +48,26 @@ const (
 // name, and a stop list's directory that shares a path with one the plane or
 // its commands lock or own.
 func (c *Config) checkReaction() error {
-	var set, missing []string
-	for _, k := range []struct{ key, value string }{
+	keyed := []struct{ key, value string }{
 		{"reaction.route", c.Reaction.Route},
-		{"reaction.public_key", c.Reaction.PublicKey},
 		{"reaction.floor_dir", c.Reaction.FloorDir},
 		{"reaction.stops", c.Reaction.Stops},
-	} {
+	}
+	together := "reaction.route, reaction.public_key, reaction.floor_dir and reaction.stops"
+	refused := struct{ key, value string }{"reaction.stops_floor_dir", c.Reaction.StopsFloorDir}
+	if c.Approvals.Authority == AuthoritySigned {
+		together = "reaction.route, reaction.floor_dir, reaction.stops and reaction.stops_floor_dir under the signed authority"
+		keyed = append(keyed, refused)
+		refused = struct{ key, value string }{"reaction.public_key", c.Reaction.PublicKey}
+	} else {
+		keyed = append(keyed, struct{ key, value string }{"reaction.public_key", c.Reaction.PublicKey})
+	}
+	if refused.value != "" {
+		return fmt.Errorf("%s: set, and the %s authority reads no such key; under signed an operator signs the route and its lifts, and the plane keeps a stop list floor (ADR-0077)",
+			refused.key, c.Approvals.Authority)
+	}
+	var set, missing []string
+	for _, k := range keyed {
 		if k.value == "" {
 			missing = append(missing, k.key)
 		} else {
@@ -64,8 +81,8 @@ func (c *Config) checkReaction() error {
 		}
 		return nil
 	case len(missing) > 0:
-		return fmt.Errorf("%s: not set, and %s is; a route is configured with all of reaction.route, reaction.public_key, reaction.floor_dir and reaction.stops, or with none (ADR-0046)",
-			strings.Join(missing, ", "), strings.Join(set, ", "))
+		return fmt.Errorf("%s: not set, and %s is; a route is configured with all of %s, or with none (ADR-0046)",
+			strings.Join(missing, ", "), strings.Join(set, ", "), together)
 	case c.Reaction.PollInterval < minStopPoll || c.Reaction.PollInterval > maxStopPoll:
 		return fmt.Errorf("reaction.poll_interval: %v is outside %v to %v", c.Reaction.PollInterval, minStopPoll, maxStopPoll)
 	case c.Runs.Dir == "":
@@ -86,6 +103,8 @@ func (c *Config) checkStopsDir() error {
 		{"approvals.hold_journal_dir", c.Approvals.HoldJournalDir},
 		{"policy.state_dir", c.Policy.StateDir},
 		{"reaction.floor_dir", c.Reaction.FloorDir},
+		{"reaction.stops_floor_dir", c.Reaction.StopsFloorDir},
+		{"pause.floor_dir", c.Pause.FloorDir},
 	}
 	if c.Pause.File != "" {
 		others = append(others, struct{ key, dir string }{"pause.file", filepath.Dir(c.Resolve(c.Pause.File))})
@@ -147,6 +166,13 @@ func asResolved(dir string) (string, error) {
 	return dir, nil
 }
 
+func routeFormat(r reaction.Route) string {
+	if r.Signed() {
+		return reaction.SignedRouteKind
+	}
+	return reaction.RouteKind
+}
+
 // ListenerTenant is the tenant of the listener's principal: its own, or the
 // plane's.
 func (c *Config) ListenerTenant() string {
@@ -156,15 +182,28 @@ func (c *Config) ListenerTenant() string {
 	return c.TenantID
 }
 
-// CheckRoute holds a route verified under routeKey to this configuration:
-// its tenant is the listener's, and the route key, the route's lift key, the
-// policy key and the freshness key are four keys, no two of them one as
-// reaction.DistinctKeys compares them, since one private key signs for a
-// point and its negation and would then speak for two authorities.
+// CheckRoute holds a route to this configuration: its tenant is the
+// listener's, and its format the authority's. A v1alpha2 route names the
+// plane's project. For a v1alpha1 route, verified under routeKey, the route
+// key, the route's lift key, the policy key and the freshness key are four
+// keys, no two of them one as reaction.DistinctKeys compares them, since one
+// private key signs for a point and its negation and would then speak for
+// two authorities.
 func (c *Config) CheckRoute(route reaction.Route, routeKey ed25519.PublicKey) error {
 	if tenant := c.ListenerTenant(); route.TenantID() != tenant {
 		return fmt.Errorf("reaction.route: its tenant_id is %s and the listener's tenant is %s; a plane stops runs of its own tenant only (ADR-0046)",
 			quoteValue(route.TenantID()), quoteValue(tenant))
+	}
+	if route.Signed() != (c.Approvals.Authority == AuthoritySigned) {
+		return fmt.Errorf("reaction.route: a %s route under the %s authority; under signed only a v1alpha2 route an operator signed is read, and elsewhere only a v1alpha1 route (ADR-0077)",
+			routeFormat(route), c.Approvals.Authority)
+	}
+	if route.Signed() {
+		if route.ProjectID() != c.ProjectID {
+			return fmt.Errorf("reaction.route: its project_id is %s and the plane's project is %s (ADR-0077)",
+				quoteValue(route.ProjectID()), quoteValue(c.ProjectID))
+		}
+		return nil
 	}
 	policyKey, err := policykey.ParsePublic(c.Policy.PublicKey)
 	if err != nil {

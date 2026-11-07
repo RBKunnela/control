@@ -40,12 +40,48 @@ func step(s string) {
 // by: another owner may rewrite either whatever its mode says.
 var effectiveUID = os.Geteuid
 
+// Owner is whose account the list and its directory have to be owned by. A
+// writer, and a plane under any authority but signed, needs them its own. A
+// plane under the signed authority reads a list its operators write and
+// refuses one its own account owns, which it could rewrite; AnyOwner is for a
+// plane whose one account is the operators' too, which only a test or a dev
+// plane is.
+type Owner uint8
+
+// The owners.
+const (
+	OwnedByThisUser Owner = iota
+	OwnedByAnother
+	AnyOwner
+)
+
+// judge refuses, with mine, an entry this process's effective user does not
+// own under OwnedByThisUser, with ErrPlaneOwned one it owns under
+// OwnedByAnother, and nothing under AnyOwner.
+func (o Owner) judge(info fs.FileInfo, mine Error) error {
+	if o == AnyOwner {
+		return nil
+	}
+	err := files.CheckOwnedBy(info, effectiveUID())
+	switch {
+	case o == OwnedByThisUser && err != nil:
+		return fmt.Errorf("%w: %w", mine, err)
+	case o == OwnedByAnother && err == nil:
+		return ErrPlaneOwned
+	case o == OwnedByAnother && !errors.Is(err, files.ErrOwner):
+		return fmt.Errorf("%w: %w", mine, err)
+	}
+	return nil
+}
+
 // OpenDir opens the directory holding the stop list and returns a root on it.
 // The open refuses a link at dir and never waits on a named pipe; the mode
 // and the owner are judged on the opened descriptor; and the root is proven
 // to be that same directory, so a directory swapped in under the path after
 // the check is never read or written.
-func OpenDir(dir string) (*os.Root, error) {
+func OpenDir(dir string) (*os.Root, error) { return openDirAs(dir, OwnedByThisUser) }
+
+func openDirAs(dir string, owner Owner) (*os.Root, error) {
 	if !files.PermissionBits {
 		return nil, ErrNoPermissionBits
 	}
@@ -66,8 +102,8 @@ func OpenDir(dir string) (*os.Root, error) {
 	if judged.Mode().Perm()&forbidden != 0 {
 		return nil, fmt.Errorf("%w: mode %04o", ErrDirMode, judged.Mode().Perm())
 	}
-	if err := files.CheckOwnedBy(judged, effectiveUID()); err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrDirOwner, err)
+	if err := owner.judge(judged, ErrDirOwner); err != nil {
+		return nil, err
 	}
 	step(stepOpened)
 	// The trailing "." fails on anything but a directory rather than wait on
@@ -107,6 +143,10 @@ func Named(root *os.Root) (fs.FileInfo, error) {
 // named: the same file, regular, writable by no one but its owner, and owned
 // by this process's effective user. Every check reads the opened descriptor.
 func CheckOpened(named fs.FileInfo, f *os.File) error {
+	return checkOpenedAs(named, f, OwnedByThisUser)
+}
+
+func checkOpenedAs(named fs.FileInfo, f *os.File, owner Owner) error {
 	info, err := f.Stat()
 	if err != nil {
 		return err
@@ -119,18 +159,18 @@ func CheckOpened(named fs.FileInfo, f *os.File) error {
 	case info.Mode().Perm()&forbidden != 0:
 		return fmt.Errorf("%w: mode %04o", ErrFileMode, info.Mode().Perm())
 	}
-	if err := files.CheckOwnedBy(info, effectiveUID()); err != nil {
-		return fmt.Errorf("%w: %w", ErrFileOwner, err)
-	}
-	return nil
+	return owner.judge(info, ErrFileOwner)
 }
 
 // Read reads the stop list in dir with every check OpenDir, Named and
 // CheckOpened make, and refuses one over reaction.MaxListBytes without
 // reading past it. Nothing is locked: the writer only appends, and the judge
 // leaves out a line being written.
-func Read(dir string) ([]byte, error) {
-	root, err := OpenDir(dir)
+func Read(dir string) ([]byte, error) { return ReadAs(dir, OwnedByThisUser) }
+
+// ReadAs is Read with the list and its directory owned as owner says.
+func ReadAs(dir string, owner Owner) ([]byte, error) {
+	root, err := openDirAs(dir, owner)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +184,7 @@ func Read(dir string) ([]byte, error) {
 		return nil, missing(err)
 	}
 	defer func() { _ = f.Close() }()
-	if err := CheckOpened(named, f); err != nil {
+	if err := checkOpenedAs(named, f, owner); err != nil {
 		return nil, err
 	}
 	raw, err := io.ReadAll(io.LimitReader(f, reaction.MaxListBytes+1))

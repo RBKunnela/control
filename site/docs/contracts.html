@@ -75,6 +75,7 @@
 <li><a href="/docs/reference/observations">Observations</a></li>
 <li><a href="/docs/reference/policy-explain">Policy explain</a></li>
 <li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
 <li><a href="/docs/reference/reaction">Reaction</a></li>
 <li><a href="/docs/reference/reason-codes">Reason codes</a></li>
 <li><a href="/docs/reference/run-view">Run view</a></li>
@@ -1782,6 +1783,52 @@ of at most 4 KiB.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="under-the-signed-authority">Under the signed authority</h3>
+<p>Under <code>approvals.authority: signed</code>
+(<a href="/docs/adr/0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatures">ADR-0077</a>)
+each of the three is one DSSE signature by a roster operator over a body of
+at most 16 KiB in its canonical form, which names <code>alg</code> <code>ed25519</code>, the
+signature's <code>keyId</code>, <code>tenant_id</code>, <code>project_id</code> and <code>file</code>: the absolute,
+cleaned path of the route file or of <code>stops.jsonl</code> it was signed for, at most
+1024 bytes, with every link on the way to its directory resolved. A plane
+refuses a body whose tenant, project or file is not its own.</p>
+<table>
+<thead>
+<tr>
+<th>Document</th>
+<th>Payload type</th>
+<th><code>kind</code></th>
+<th>Members besides the five above</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Route</td>
+<td><code>application/vnd.agent-reaction-route.v1alpha2+json</code></td>
+<td><code>reaction-route/v1alpha2</code></td>
+<td><code>route_id</code>, <code>serial</code>, <code>rules</code>, each rule as above with <code>scope</code> <code>run</code> and no route-wide <code>scope</code> or <code>lift_public_key</code></td>
+</tr>
+<tr>
+<td>Stop list header</td>
+<td><code>application/vnd.agent-stop-list-header+json</code></td>
+<td><code>reaction-list-header/2.0</code></td>
+<td><code>list_id</code>, <code>serial</code>, <code>route_id</code>, <code>route_serial</code>, <code>route_digest</code>, and <code>previous</code>, the digest of the header carried from, only in a carried list</td>
+</tr>
+<tr>
+<td>Lift</td>
+<td><code>application/vnd.agent-reaction-lift.v1alpha2+json</code></td>
+<td><code>reaction-lift/v1alpha2</code></td>
+<td><code>list_head</code>, the digest of the header of the list it lifts in, <code>run_id</code>, <code>through_line</code></td>
+</tr>
+</tbody>
+</table>
+<p>A list under a <code>v1alpha2</code> route is version <code>2.0</code>: its header line is
+<code>{&quot;envelope&quot;:…,&quot;kind&quot;:&quot;header&quot;,&quot;version&quot;:&quot;2.0&quot;}</code>, a <code>stop</code> line adds
+<code>project_id</code> and <code>scope</code> <code>run</code>, a <code>covered</code> line adds <code>project_id</code>, and a
+<code>lift</code> line's envelope is a <code>v1alpha2</code> lift. A header's digest is <code>sha256:</code>
+and the lowercase hex SHA-256 of its signed body. Every line of a list is of
+one version, and a <code>2.0</code> line is refused under a <code>v1alpha1</code> route, as a
+<code>1.0</code> one is under a <code>v1alpha2</code> route.</p>
 <h3 id="the-codes">The codes</h3>
 <table>
 <thead>
@@ -2034,6 +2081,7 @@ closing records.</p>
 <li><a href="/docs/reference/observations">Observations</a></li>
 <li><a href="/docs/reference/policy-explain">Policy explain</a></li>
 <li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
 <li><a href="/docs/reference/reaction">Reaction</a></li>
 <li><a href="/docs/reference/reason-codes">Reason codes</a></li>
 <li><a href="/docs/reference/run-view">Run view</a></li>

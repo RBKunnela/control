@@ -18,6 +18,10 @@ const (
 	// ListVersion is the one version a stop list line may name, in this one
 	// spelling, as a lift's.
 	ListVersion = "1.0"
+	// SignedListVersion is the version of every line of a stop list judged
+	// against a v1alpha2 route: its header signed by an operator, its stops
+	// and covered lines naming the project, and its lifts v1alpha2.
+	SignedListVersion = "2.0"
 	// MaxLineBytes bounds one line of a stop list, its newline left out.
 	MaxLineBytes = 64 << 10
 	// MaxFindingIDBytes bounds the finding id a line names.
@@ -84,6 +88,9 @@ type Header struct {
 	RouteID     string
 	RouteSerial int64
 	RouteDigest string
+	// Signed is what an operator signed of a 2.0 header, and the zero value
+	// in a 1.0 one.
+	Signed HeaderSigned
 }
 
 // HeaderFor is the header of a list with listID judged against r.
@@ -94,7 +101,9 @@ func HeaderFor(r Route, listID string) Header {
 // Stop is a stop line: one finding stops one run of one tenant from
 // CreatedAt until ExpiresAt, unless a lift ends it first.
 type Stop struct {
-	EntryID, TenantID, RunID, FindingID            string
+	EntryID, TenantID, RunID, FindingID string
+	// ProjectID and Scope are set in a 2.0 line and empty in a 1.0 one.
+	ProjectID, Scope                               string
 	ProcedureID, ProcedureVersion, ProcedureDigest string
 	RuleID, RuleVersion                            string
 	CreatedAt, ExpiresAt                           time.Time
@@ -103,7 +112,7 @@ type Stop struct {
 // Claim is what the stop says of itself that a route judges.
 func (s Stop) Claim() StopClaim {
 	return StopClaim{
-		TenantID: s.TenantID, ProcedureID: s.ProcedureID, ProcedureVersion: s.ProcedureVersion,
+		TenantID: s.TenantID, ProjectID: s.ProjectID, Scope: s.Scope, ProcedureID: s.ProcedureID, ProcedureVersion: s.ProcedureVersion,
 		ProcedureDigest: s.ProcedureDigest, RuleID: s.RuleID, RuleVersion: s.RuleVersion,
 		CreatedAt: s.CreatedAt, ExpiresAt: s.ExpiresAt,
 	}
@@ -113,7 +122,9 @@ func (s Stop) Claim() StopClaim {
 // written so the finding is named and never becomes a stop of its own.
 type Covered struct {
 	FindingID, TenantID, RunID string
-	CreatedAt                  time.Time
+	// ProjectID is set in a 2.0 line and empty in a 1.0 one.
+	ProjectID string
+	CreatedAt time.Time
 }
 
 // LiftLine is a lift line: the run and line its clear fields name, and the
@@ -128,10 +139,13 @@ type LiftLine struct {
 // Kind names is set.
 type Line struct {
 	Kind    LineKind
-	Header  Header
-	Stop    Stop
-	Covered Covered
-	Lift    LiftLine
+	Version string
+	// HeaderEnvelope is a 2.0 header line's signed envelope.
+	HeaderEnvelope Envelope
+	Header         Header
+	Stop           Stop
+	Covered        Covered
+	Lift           LiftLine
 }
 
 // EntryID is "stp-" and the first 32 lowercase hex digits of SHA-256 over
@@ -158,22 +172,11 @@ func ParseLine(raw []byte) (Line, error) {
 		return Line{}, err
 	}
 	kind, _ := strictjson.String(o[memberKind])
-	if v, ok := strictjson.String(o[memberVersion]); ok && v != ListVersion {
+	v, ok := strictjson.String(o[memberVersion])
+	if ok && v != ListVersion && v != SignedListVersion {
 		return Line{}, ErrLineVersion
 	}
-	var l Line
-	switch kind {
-	case kindHeader:
-		l.Kind, err = KindHeader, readHeader(o, &l.Header)
-	case kindStop:
-		l.Kind, err = KindStop, readStop(o, &l.Stop)
-	case kindCovered:
-		l.Kind, err = KindCovered, readCovered(o, &l.Covered)
-	case kindLift:
-		l.Kind, err = KindLift, readLiftLine(o, &l.Lift)
-	default:
-		return Line{}, ErrLineKind
-	}
+	l, err := readKind(o, kind, v)
 	if err != nil {
 		return Line{}, err
 	}
@@ -188,6 +191,31 @@ func ParseLine(raw []byte) (Line, error) {
 		return Line{}, ErrLineCanonical
 	}
 	return l, nil
+}
+
+// readKind reads the members of a line of kind at version v.
+func readKind(o strictjson.Object, kind, v string) (Line, error) {
+	l := Line{Version: v}
+	signed := v == SignedListVersion
+	var err error
+	switch kind {
+	case kindHeader:
+		l.Kind = KindHeader
+		if signed {
+			l.Header, l.HeaderEnvelope, err = readSignedHeaderLine(o)
+		} else {
+			err = readHeader(o, &l.Header)
+		}
+	case kindStop:
+		l.Kind, err = KindStop, readStop(o, signed, &l.Stop)
+	case kindCovered:
+		l.Kind, err = KindCovered, readCovered(o, signed, &l.Covered)
+	case kindLift:
+		l.Kind, err = KindLift, readLiftLine(o, &l.Lift)
+	default:
+		return Line{}, ErrLineKind
+	}
+	return l, err
 }
 
 func lineMembers(o strictjson.Object, names ...string) error {
@@ -218,15 +246,42 @@ func readHeader(o strictjson.Object, h *Header) error {
 	return digestOf(o, memberRouteDigest, &h.RouteDigest)
 }
 
-func readStop(o strictjson.Object, s *Stop) error {
-	err := lineMembers(o, memberEntryID, memberTenantID, memberRunID, memberFindingID, memberProcedure,
-		memberProcVersion, memberProcDigest, memberRuleID, memberRuleVer, memberCreatedAt, memberExpiresAt)
-	if err != nil {
+func readStop(o strictjson.Object, signed bool, s *Stop) error {
+	names := []string{memberEntryID, memberTenantID, memberRunID, memberFindingID, memberProcedure,
+		memberProcVersion, memberProcDigest, memberRuleID, memberRuleVer, memberCreatedAt, memberExpiresAt}
+	if signed {
+		names = append(names, memberProjectID, memberScope)
+	}
+	if err := lineMembers(o, names...); err != nil {
 		return err
 	}
 	if err := readRunFields(o, &s.FindingID, &s.TenantID, &s.RunID); err != nil {
 		return err
 	}
+	if signed {
+		if err := readStopScope(o, s); err != nil {
+			return err
+		}
+	}
+	if err := readStopRule(o, s); err != nil {
+		return err
+	}
+	if err := timeOf(o, memberCreatedAt, &s.CreatedAt); err != nil {
+		return err
+	}
+	if err := timeOf(o, memberExpiresAt, &s.ExpiresAt); err != nil {
+		return err
+	}
+	entryID, ok := strictjson.String(o[memberEntryID])
+	if !ok || entryID != EntryID(s.FindingID) {
+		return ErrEntryID
+	}
+	s.EntryID = entryID
+	return nil
+}
+
+// readStopRule reads the procedure and the rule a stop names.
+func readStopRule(o strictjson.Object, s *Stop) error {
 	for _, f := range [...]struct {
 		name string
 		into *string
@@ -243,26 +298,36 @@ func readStop(o strictjson.Object, s *Stop) error {
 		return fmt.Errorf("%w: %s", ErrLineValue, memberProcDigest)
 	}
 	s.ProcedureDigest = digest
-	if err := timeOf(o, memberCreatedAt, &s.CreatedAt); err != nil {
-		return err
-	}
-	if err := timeOf(o, memberExpiresAt, &s.ExpiresAt); err != nil {
-		return err
-	}
-	entryID, ok := strictjson.String(o[memberEntryID])
-	if !ok || entryID != EntryID(s.FindingID) {
-		return ErrEntryID
-	}
-	s.EntryID = entryID
 	return nil
 }
 
-func readCovered(o strictjson.Object, c *Covered) error {
-	if err := lineMembers(o, memberFindingID, memberTenantID, memberRunID, memberCreatedAt); err != nil {
+// readStopScope reads the project and the scope a 2.0 stop names.
+func readStopScope(o strictjson.Object, s *Stop) error {
+	if err := identifierOf(o, memberProjectID, MaxProjectIDBytes, &s.ProjectID); err != nil {
+		return err
+	}
+	if scope, ok := strictjson.String(o[memberScope]); !ok || scope != ScopeRun {
+		return fmt.Errorf("%w: %s", ErrLineValue, memberScope)
+	}
+	s.Scope = ScopeRun
+	return nil
+}
+
+func readCovered(o strictjson.Object, signed bool, c *Covered) error {
+	names := []string{memberFindingID, memberTenantID, memberRunID, memberCreatedAt}
+	if signed {
+		names = append(names, memberProjectID)
+	}
+	if err := lineMembers(o, names...); err != nil {
 		return err
 	}
 	if err := readRunFields(o, &c.FindingID, &c.TenantID, &c.RunID); err != nil {
 		return err
+	}
+	if signed {
+		if err := identifierOf(o, memberProjectID, MaxProjectIDBytes, &c.ProjectID); err != nil {
+			return err
+		}
 	}
 	return timeOf(o, memberCreatedAt, &c.CreatedAt)
 }

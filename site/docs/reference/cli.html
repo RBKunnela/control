@@ -75,6 +75,7 @@
 <li><a href="/docs/reference/observations">Observations</a></li>
 <li><a href="/docs/reference/policy-explain">Policy explain</a></li>
 <li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
 <li><a href="/docs/reference/reaction">Reaction</a></li>
 <li><a href="/docs/reference/reason-codes">Reason codes</a></li>
 <li><a href="/docs/reference/run-view">Run view</a></li>
@@ -284,13 +285,15 @@ profile's statuses, <a href="/docs/extending/runtime-profiles">extending/runtime
   guardana-control operators roster sign --key &lt;file&gt; --out &lt;file&gt;
       [--valid-for &lt;duration&gt;] &lt;roster.json&gt;
   guardana-control operators floor init --roster-id &lt;id&gt; &lt;dir&gt;
-  guardana-control stops init --route &lt;file&gt; --public-key &lt;file&gt;
-      [--carry &lt;dir&gt; --carry-route &lt;file&gt;] &lt;dir&gt;
-  guardana-control stops lift --route &lt;file&gt; --public-key &lt;file&gt; --key &lt;file&gt; --run &lt;run-id&gt;
-      [--through &lt;line&gt;] &lt;dir&gt;
-  guardana-control stops list --route &lt;file&gt; --public-key &lt;file&gt; &lt;dir&gt;
-  guardana-control react --findings &lt;dir&gt; --runs &lt;dir&gt; --route &lt;file&gt; --public-key &lt;file&gt;
-      --stops &lt;dir&gt; [--roster &lt;file&gt; --root-key &lt;file&gt; --tenant &lt;t&gt; --project &lt;p&gt;]
+  guardana-control stops init --route &lt;f&gt; (--public-key &lt;f&gt; | --roster &lt;f&gt; --root-key &lt;f&gt; --key &lt;k&gt;
+      [--serial &lt;n&gt;]) [--carry &lt;dir&gt; --carry-route &lt;file&gt; [--stops-floor &lt;dir&gt;]] &lt;dir&gt;
+  guardana-control stops lift --route &lt;f&gt; (--public-key &lt;f&gt; | --roster &lt;f&gt; --root-key &lt;f&gt;) --key &lt;k&gt;
+      --run &lt;run-id&gt; [--through &lt;line&gt;] &lt;dir&gt;
+  guardana-control stops list --route &lt;f&gt; (--public-key &lt;f&gt; | --roster &lt;f&gt; --root-key &lt;f&gt;) &lt;dir&gt;
+  guardana-control stops floor init --tenant &lt;t&gt; --project &lt;p&gt; &lt;dir&gt;
+  guardana-control react --findings &lt;dir&gt; --runs &lt;dir&gt; --route &lt;file&gt;
+      (--public-key &lt;f&gt; | --roster &lt;f&gt; --root-key &lt;f&gt; --approvals &lt;dir&gt;) --stops &lt;dir&gt;
+      [--tenant &lt;t&gt; --project &lt;p&gt;]
   guardana-control hook (--profile &lt;id&gt; | --profile-file &lt;file&gt;) --socket &lt;path&gt;
       --state-dir &lt;dir&gt;
   guardana-control console --approvals &lt;dir&gt; [--pause &lt;f&gt;] [--approver-id &lt;id&gt;] [--inbox &lt;dir&gt;]
@@ -309,7 +312,8 @@ A token acts as its run until it expires or is closed, and runs open prints it o
 Write access to a floor directory is the authority to lower its floors;
 policy state reset is the one way that records why.
 Only the lift key lifts a stop while a plane runs; write access to the stops directory
-adds any stop the route allows and, across a restart, can start a new list with none.
+adds any stop the route allows and, across a restart, can start a new list with none;
+under approvals.authority signed, an admin signs the route and an operator each header and lift.
 The trust root names every operator key until its roster expires, and each signing
 needs a higher serial; write access to its floor directory lowers the floor.
 </code></pre>
@@ -467,6 +471,7 @@ dev
 <li><a href="/docs/reference/observations">Observations</a></li>
 <li><a href="/docs/reference/policy-explain">Policy explain</a></li>
 <li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
 <li><a href="/docs/reference/reaction">Reaction</a></li>
 <li><a href="/docs/reference/reason-codes">Reason codes</a></li>
 <li><a href="/docs/reference/run-view">Run view</a></li>

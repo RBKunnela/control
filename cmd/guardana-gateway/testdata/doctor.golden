@@ -65,6 +65,7 @@ ok      configuration <tree>/doctor.yaml parses, 25 key(s) set, the rest at thei
        reaction.public_key                                   (default)
        reaction.floor_dir                                    (default)
        reaction.stops                                        (default)
+       reaction.stops_floor_dir                              (default)
        reaction.poll_interval       1s                       (default)
        evidence.dir                 spool                    (<tree>/doctor.yaml:34)
        evidence.max_bytes           1073741824               (default)

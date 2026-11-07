@@ -185,13 +185,15 @@ usage:
   guardana-control operators roster sign --key <file> --out <file>
       [--valid-for <duration>] <roster.json>
   guardana-control operators floor init --roster-id <id> <dir>
-  guardana-control stops init --route <file> --public-key <file>
-      [--carry <dir> --carry-route <file>] <dir>
-  guardana-control stops lift --route <file> --public-key <file> --key <file> --run <run-id>
-      [--through <line>] <dir>
-  guardana-control stops list --route <file> --public-key <file> <dir>
-  guardana-control react --findings <dir> --runs <dir> --route <file> --public-key <file>
-      --stops <dir> [--roster <file> --root-key <file> --tenant <t> --project <p>]
+  guardana-control stops init --route <f> (--public-key <f> | --roster <f> --root-key <f> --key <k>
+      [--serial <n>]) [--carry <dir> --carry-route <file> [--stops-floor <dir>]] <dir>
+  guardana-control stops lift --route <f> (--public-key <f> | --roster <f> --root-key <f>) --key <k>
+      --run <run-id> [--through <line>] <dir>
+  guardana-control stops list --route <f> (--public-key <f> | --roster <f> --root-key <f>) <dir>
+  guardana-control stops floor init --tenant <t> --project <p> <dir>
+  guardana-control react --findings <dir> --runs <dir> --route <file>
+      (--public-key <f> | --roster <f> --root-key <f> --approvals <dir>) --stops <dir>
+      [--tenant <t> --project <p>]
   guardana-control hook (--profile <id> | --profile-file <file>) --socket <path>
       --state-dir <dir>
   guardana-control console --approvals <dir> [--pause <f>] [--approver-id <id>] [--inbox <dir>]
@@ -210,7 +212,8 @@ A token acts as its run until it expires or is closed, and runs open prints it o
 Write access to a floor directory is the authority to lower its floors;
 policy state reset is the one way that records why.
 Only the lift key lifts a stop while a plane runs; write access to the stops directory
-adds any stop the route allows and, across a restart, can start a new list with none.
+adds any stop the route allows and, across a restart, can start a new list with none;
+under approvals.authority signed, an admin signs the route and an operator each header and lift.
 The trust root names every operator key until its roster expires, and each signing
 needs a higher serial; write access to its floor directory lowers the floor.
 ```

@@ -75,6 +75,7 @@
 <li><a href="/docs/reference/observations">Observations</a></li>
 <li><a href="/docs/reference/policy-explain">Policy explain</a></li>
 <li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
 <li><a href="/docs/reference/reaction">Reaction</a></li>
 <li><a href="/docs/reference/reason-codes">Reason codes</a></li>
 <li><a href="/docs/reference/run-view">Run view</a></li>
@@ -146,7 +147,11 @@ export PATH=&#34;$WORK/bin:$PATH&#34;
 <h3 id="2-sign-the-policy">2. Sign the policy</h3>
 <p>Make four keys: the policy's, the freshness statement's, the route's and the
 lift key, which signs the end of a stop. Here they sit on one machine,
-outside the plane's state; in use, keep the private keys off the plane's host.</p>
+outside the plane's state; in use, keep the private keys off the plane's host.
+This guide's plane runs under <code>approvals.authority: directory</code>. Under <code>signed</code>
+there is no route or lift key: roster operators sign the route, the stop
+list's header and each lift, as
+<a href="/docs/reference/reaction-signed">signed reaction</a> says.</p>
 <pre><code>$ cd &#34;$WORK&#34;
 $ guardana-control policy keygen --out keys/bundle
 key_id: ed25519-640a7a9ba6644930
@@ -410,6 +415,7 @@ map have their own pages: <a href="/docs/reference/observations">observations.md
 <li><a href="/docs/reference/observations">Observations</a></li>
 <li><a href="/docs/reference/policy-explain">Policy explain</a></li>
 <li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
 <li><a href="/docs/reference/reaction">Reaction</a></li>
 <li><a href="/docs/reference/reason-codes">Reason codes</a></li>
 <li><a href="/docs/reference/run-view">Run view</a></li>

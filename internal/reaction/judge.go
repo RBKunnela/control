@@ -28,7 +28,7 @@ const (
 	ErrListRewritten Error = "reaction: the stop list does not begin with the prefix accepted before"
 	ErrHeaderPlace   Error = "reaction: the header is not the stop list's first line, or not its only header"
 	ErrFindingAgain  Error = "reaction: a finding id is named by two lines"
-	ErrCoveredRun    Error = "reaction: a covered line names another tenant than the route's"
+	ErrCoveredRun    Error = "reaction: a covered line names another tenant or project than the route's"
 	ErrStopRefused   Error = "reaction: a stop is one the route does not permit"
 	ErrDatedAhead    Error = "reaction: a line's created_at is later than the plane's clock and its tolerance"
 	ErrLiftOrder     Error = "reaction: a lift names a line at or after itself"
@@ -36,6 +36,7 @@ const (
 	ErrLiftUnsigned  Error = "reaction: a lift's envelope does not verify under the route's lift key"
 	ErrLiftMismatch  Error = "reaction: a lift's signed run, line, list or route is not what its line and header name"
 	ErrJudgeClock    Error = "reaction: the plane's clock or tolerance is not usable"
+	ErrListVersion   Error = "reaction: a stop list line's version is not the one its route's lists are written in"
 )
 
 // judging is one judge's walk over a list's new lines.
@@ -44,6 +45,7 @@ type judging struct {
 	now       time.Time
 	tolerance time.Duration
 	header    Header
+	signer    Signer
 	seen      seen
 	firstNew  int
 	lifted    bool
@@ -130,6 +132,9 @@ func judgeable(route Route, rules func(Route) error, content []byte, now time.Ti
 	if err := rules(route); err != nil {
 		return nil, 0, err
 	}
+	if route.signed && route.voucher == nil {
+		return nil, 0, fmt.Errorf("%w: the route was not taken through VerifySignedRoute", ErrNoVoucher)
+	}
 	if !policy.UsableTime(now) || tolerance < 0 {
 		return nil, 0, ErrJudgeClock
 	}
@@ -186,7 +191,7 @@ func walk(route Route, from List, complete []byte, lines int64, sum [sha256.Size
 	if lines == 0 {
 		return List{}, fmt.Errorf("%w: the list holds no line", ErrHeaderPlace)
 	}
-	j := judging{route: route, now: now, tolerance: tolerance, header: from.header, seen: from.seen.fork()}
+	j := judging{route: route, now: now, tolerance: tolerance, header: from.header, signer: from.signer, seen: from.seen.fork()}
 	j.firstNew = len(j.seen.stops)
 	rest := complete[from.prefix.length:]
 	for n := from.usage.Lines + 1; len(rest) > 0; n++ {
@@ -198,6 +203,7 @@ func walk(route Route, from List, complete []byte, lines int64, sum [sha256.Size
 	}
 	l := List{
 		header: j.header,
+		signer: j.signer,
 		usage:  Usage{Bytes: int64(len(complete)), Lines: lines},
 		prefix: Prefix{length: int64(len(complete)), sum: sum, header: from.prefix.header},
 		seen:   &j.seen,
@@ -225,9 +231,16 @@ func (j *judging) line(n int64, raw []byte) error {
 	if (n == 1) != (l.Kind == KindHeader) {
 		return ErrHeaderPlace
 	}
+	want := ListVersion
+	if j.route.signed {
+		want = SignedListVersion
+	}
+	if l.Version != want {
+		return fmt.Errorf("%w: %s, and the route's lists are %s", ErrListVersion, l.Version, want)
+	}
 	switch l.Kind {
 	case KindHeader:
-		return j.headerLine(l.Header)
+		return j.headerLine(l.Header, l.HeaderEnvelope)
 	case KindStop:
 		return j.stopLine(n, l.Stop)
 	case KindCovered:
@@ -237,9 +250,16 @@ func (j *judging) line(n int64, raw []byte) error {
 	}
 }
 
-func (j *judging) headerLine(h Header) error {
+func (j *judging) headerLine(h Header, env Envelope) error {
 	if h.RouteID != j.route.id || h.RouteSerial != j.route.serial || h.RouteDigest != j.route.digest {
 		return ErrListRoute
+	}
+	if j.route.signed {
+		signer, err := judgeSignedHeader(j.route, h, env)
+		if err != nil {
+			return err
+		}
+		j.signer = signer
 	}
 	j.header = h
 	return nil
@@ -263,7 +283,7 @@ func (j *judging) coveredLine(n int64, c Covered) error {
 	if err := j.named(n, c.FindingID, c.CreatedAt); err != nil {
 		return err
 	}
-	if c.TenantID != j.route.tenantID {
+	if c.TenantID != j.route.tenantID || c.ProjectID != j.route.projectID {
 		return ErrCoveredRun
 	}
 	return nil
@@ -293,7 +313,13 @@ func (j *judging) liftLine(n int64, l LiftLine) error {
 	if j.seen.lifts[key] {
 		return ErrLiftAgain
 	}
-	if _, err := VerifyLiftLine(l, j.header, j.route); err != nil {
+	var err error
+	if j.route.signed {
+		_, _, err = VerifySignedLiftLine(l, j.header, j.route)
+	} else {
+		_, err = VerifyLiftLine(l, j.header, j.route)
+	}
+	if err != nil {
 		return err
 	}
 	j.seen.lifts[key] = true
@@ -309,6 +335,9 @@ func (j *judging) liftLine(n int64, l LiftLine) error {
 func VerifyLiftLine(l LiftLine, h Header, r Route) (Lift, error) {
 	if r.digest == "" {
 		return Lift{}, fmt.Errorf("%w: no route was read", ErrListRoute)
+	}
+	if r.signed {
+		return Lift{}, fmt.Errorf("%w: a v1alpha2 route's lifts are signed by operators", ErrLiftUnsigned)
 	}
 	signed, err := VerifyLift(l.Envelope, r.liftKey)
 	if err != nil {

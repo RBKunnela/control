@@ -491,18 +491,18 @@ func TestVersionsPinRefusesAPageThatDisagrees(t *testing.T) {
 		change func(page string, found map[string]string) string
 		want   string
 	}{
-		"a written version edited":          {edit("| Stop list (`version`) | `1.0` |", "| Stop list (`version`) | `1.1` |"), "written [1.1], the code writes [1.0]"},
+		"a written version edited":          {edit("| Stop list (`version`) | `1.0`, `2.0` |", "| Stop list (`version`) | `1.1`, `2.0` |"), "written [1.1 2.0], the code writes [1.0 2.0]"},
 		"a read version dropped":            {edit("| — | `0.1`, `0.2` | `experimental` | [supervision.md]", "| — | `0.1` | `experimental` | [supervision.md]"), "the code reads [0.1 0.2]"},
 		"a read version the reader refuses": {edit("| — | `0.1`, `0.2` | `experimental` | [supervision.md]", "| — | `0.1`, `0.2`, `0.3` | `experimental` | [supervision.md]"), "0.3 is read, and the reader refuses it"},
 		"a major the reader refuses":        {edit("| `1.0` | `1.x` | `stable` |", "| `1.0` | `2.x` | `stable` |"), "the reader refuses it"},
 		"a row this test does not know":     {edit("\n\nThe gateway's", "\n| Notes file (`v`) | — | `1` | `experimental` | [x](x.md) |\n\nThe gateway's"), `"Notes file" is a format this test does not know`},
 		"a row removed":                     {edit("| Lift (`kind`, `version`) |", "Lift (`kind`, `version`) |"), `has no row for "Lift"`},
-		"another row claiming stable":       {edit("| `1.0` | `1.0` | `experimental` |", "| `1.0` | `1.0` | `stable` |"), "only the wire messages are stable"},
+		"another row claiming stable":       {edit("| `1.0`, `2.0` | `1.0`, `2.0` | `experimental` |", "| `1.0`, `2.0` | `1.0`, `2.0` | `stable` |"), "only the wire messages are stable"},
 		"a wrong format name":               {edit("(`"+findinglog.ExportFormat+"`)", "(`findings-export`)"), `names "findings-export"`},
 		"a constant changed in the code": {func(s string, f map[string]string) string {
 			f["internal/reaction/lift.go#LiftVersion"] = "1.1"
 			return s
-		}, "the code writes [1.1 reaction-lift/v1alpha1]"},
+		}, "the code writes [1.1 reaction-lift/v1alpha1 reaction-lift/v1alpha2]"},
 		"a constant gone from the code": {func(s string, f map[string]string) string {
 			delete(f, "internal/runs/strict.go#checkSchemaVersion/major")
 			return s

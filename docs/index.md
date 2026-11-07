@@ -61,6 +61,7 @@ with `make docs-gen`; an edit made here does not survive the next run.
 - [Observations](reference/observations.md): The source descriptor and its kinds, what an import of OpenTelemetry GenAI spans keeps and drops, the observation log and its export.
 - [Policy explain](reference/policy-explain.md): What `guardana-control policy explain` reads, every line it prints, which rule decided and which input a rule could not read, and its bounds.
 - [Policy document format](reference/policy-format.md): Every member of an agent-policy/v1alpha1 document, the values each admits, the bounds, and the members of a policy test case.
+- [Signed reaction](reference/reaction-signed.md): How a signed plane takes its route, stop list header and lifts from roster operators, holds them to a stop list floor, and which commands sign them.
 - [Reaction](reference/reaction.md): The signed route, the stop list and the commands that write them, and how a plane refuses a stopped run's calls and reports its stops.
 - [Reason codes](reference/reason-codes.md): Every reason code a decision may carry, with its number and the verdict it usually accompanies.
 - [Run view](reference/run-view.md): The page guardana-control supervise --view draws for one run, what each mark on it means, and what the command refuses to overwrite.
@@ -172,3 +173,4 @@ with `make docs-gen`; an edit made here does not survive the next run.
 - [ADR-0074: pkg/contract exports one rule for a required identifier](adr/0074-pkg-contract-exports-one-rule-for-a-required-identifier.md): accepted
 - [ADR-0075: A signed plane takes a pause only from an operator's signature](adr/0075-a-signed-plane-takes-a-pause-only-from-an-operators-signature.md): accepted
 - [ADR-0076: A signed plane takes a run only from an operator's signature](adr/0076-a-signed-plane-takes-a-run-only-from-an-operators-signature.md): accepted
+- [ADR-0077: A signed plane takes a stop list only from operators' signatures](adr/0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatures.md): accepted

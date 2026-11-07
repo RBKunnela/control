@@ -85,3 +85,4 @@ request with `Status: proposed`, and set it to `accepted` when it merges.
 | [0074](0074-pkg-contract-exports-one-rule-for-a-required-identifier.md) | `pkg/contract` exports one rule for a required identifier |
 | [0075](0075-a-signed-plane-takes-a-pause-only-from-an-operators-signature.md) | A signed plane takes a pause only from an operator's signature |
 | [0076](0076-a-signed-plane-takes-a-run-only-from-an-operators-signature.md) | A signed plane takes a run only from an operator's signature |
+| [0077](0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatures.md) | A signed plane takes a stop list only from operators' signatures |

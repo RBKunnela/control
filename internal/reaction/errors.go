@@ -28,11 +28,11 @@ const (
 	ErrRouteTooLarge     Error = "reaction: the route is over its bound"
 	ErrRouteJSON         Error = "reaction: the route is not one strict JSON object"
 	ErrRouteRepeated     Error = "reaction: the route names a member twice"
-	ErrRouteKind         Error = "reaction: the route's kind is not " + RouteKind
+	ErrRouteKind         Error = "reaction: the route's kind is not " + RouteKind + " or " + SignedRouteKind
 	ErrRouteMember       Error = "reaction: the route holds a member its format does not have, or lacks one it requires"
 	ErrRouteValue        Error = "reaction: a route member holds a value of the wrong type, form or length"
 	ErrRouteSerial       Error = "reaction: the route's serial is not an integer from 1 to 2^53-1"
-	ErrRouteScope        Error = "reaction: the route's scope is not " + ScopeRun
+	ErrRouteScope        Error = "reaction: the route's or a rule's scope is not " + ScopeRun
 	ErrRouteRules        Error = "reaction: the route holds no rule, or more than its bound"
 	ErrRouteRuleRepeated Error = "reaction: the route names one rule twice"
 	ErrRouteLifetime     Error = "reaction: a rule's expires_seconds is not an integer from 60 to the longest run lifetime"
@@ -71,6 +71,8 @@ const (
 // Route.Permits's refusals of a stop's claim.
 const (
 	ErrClaimTenant   Error = "reaction: the stop's tenant is not the route's"
+	ErrClaimProject  Error = "reaction: the stop's project is not the route's"
+	ErrClaimScope    Error = "reaction: the stop's scope is not its rule's"
 	ErrClaimRule     Error = "reaction: the stop's procedure and rule are no rule of the route"
 	ErrClaimTimes    Error = "reaction: the stop's created_at and expires_at are not two usable times in order"
 	ErrClaimLifetime Error = "reaction: the stop lasts longer than its rule allows"

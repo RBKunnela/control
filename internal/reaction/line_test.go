@@ -138,7 +138,7 @@ func TestParseLineRefusesEachKindMalformed(t *testing.T) {
 		{"no kind", r(headerGolden, `"kind":"header",`, ``, 1), reaction.ErrLineKind},
 		{"an unknown kind", r(headerGolden, `"kind":"header"`, `"kind":"pause"`, 1), reaction.ErrLineKind},
 		{"a kind in capitals", r(headerGolden, `"kind":"header"`, `"kind":"HEADER"`, 1), reaction.ErrLineKind},
-		{"version 2.0", r(headerGolden, `"1.0"`, `"2.0"`, 1), reaction.ErrLineVersion},
+		{"version 3.0", r(headerGolden, `"1.0"`, `"3.0"`, 1), reaction.ErrLineVersion},
 		{"version 1.1", r(headerGolden, `"1.0"`, `"1.1"`, 1), reaction.ErrLineVersion},
 		{"version 1", r(headerGolden, `"1.0"`, `"1"`, 1), reaction.ErrLineVersion},
 		{"version 01.0", r(headerGolden, `"1.0"`, `"01.0"`, 1), reaction.ErrLineVersion},

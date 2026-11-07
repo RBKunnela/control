@@ -91,7 +91,8 @@ func AppendFinding(ctx context.Context, dir string, route reaction.Route, clock 
 			return e.RunID == s.RunID && e.TenantID == s.TenantID && e.ActiveAt(now, time.Time{}) && !e.ExpiresAt.Before(s.ExpiresAt)
 		})
 		if covered {
-			return reaction.Covered{FindingID: s.FindingID, TenantID: s.TenantID, RunID: s.RunID, CreatedAt: s.CreatedAt}.Marshal()
+			return reaction.Covered{FindingID: s.FindingID, TenantID: s.TenantID, RunID: s.RunID, ProjectID: s.ProjectID,
+				CreatedAt: s.CreatedAt}.Marshal()
 		}
 		return s.Marshal()
 	})

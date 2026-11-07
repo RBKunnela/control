@@ -44,6 +44,7 @@ type Entry struct {
 // once a judge returns it.
 type List struct {
 	header  Header
+	signer  Signer
 	prefix  Prefix
 	usage   Usage
 	entries []Entry
@@ -52,6 +53,10 @@ type List struct {
 
 // Header is the list's header.
 func (l List) Header() Header { return l.header }
+
+// Signer is who signed a 2.0 list's header, and the zero Signer in a 1.0
+// list.
+func (l List) Signer() Signer { return l.signer }
 
 // Prefix is what the judge accepted, to hand the next judge.
 func (l List) Prefix() Prefix { return l.prefix }

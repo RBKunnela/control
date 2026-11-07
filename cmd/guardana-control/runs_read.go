@@ -18,11 +18,20 @@ var errUnsignedJudged = errors.New("--roster, --root-key, --tenant and --project
 // root it verifies under, and the plane's tenant and project.
 type runsReadFlags struct {
 	roster, rootKey, tenant, project valueList
+	// routeRoster and routeRootKey are a command's --roster and --root-key
+	// when it declares them for a route too, the same plane's files.
+	routeRoster, routeRootKey string
 }
 
 func (f *runsReadFlags) declare(flags *flag.FlagSet) {
 	flags.Var(&f.roster, "roster", "for a signed --runs: the plane's trust.roster `file`, which every record read has to be signed under; given once")
 	flags.Var(&f.rootKey, "root-key", "for a signed --runs: the plane's trust.root_public_key `file`, which the roster has to verify under; given once")
+	f.declareScope(flags)
+}
+
+// declareScope declares only --tenant and --project, for a command whose
+// --roster and --root-key are its route's.
+func (f *runsReadFlags) declareScope(flags *flag.FlagSet) {
 	flags.Var(&f.tenant, "tenant", "for a signed --runs: the plane's tenant, which every record read has to be of; given once")
 	flags.Var(&f.project, "project", "for a signed --runs: the plane's project, which every record read has to be of; given once")
 }
@@ -34,6 +43,12 @@ func (f runsReadFlags) any() bool {
 // judge is the roster judge the flags make, refused unless each of the four
 // is given once.
 func (f runsReadFlags) judge() (runs.Judge, error) {
+	if len(f.roster) == 0 && f.routeRoster != "" {
+		f.roster = valueList{f.routeRoster}
+	}
+	if len(f.rootKey) == 0 && f.routeRootKey != "" {
+		f.rootKey = valueList{f.routeRootKey}
+	}
 	for _, l := range []valueList{f.roster, f.rootKey, f.tenant, f.project} {
 		if len(l) != 1 || l[0] == "" {
 			return nil, fmt.Errorf("%w: a signed runs directory is read with %s, each once", runs.ErrUnjudged, runsReadHint)

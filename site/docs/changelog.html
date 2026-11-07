@@ -75,6 +75,7 @@
 <li><a href="/docs/reference/observations">Observations</a></li>
 <li><a href="/docs/reference/policy-explain">Policy explain</a></li>
 <li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
 <li><a href="/docs/reference/reaction">Reaction</a></li>
 <li><a href="/docs/reference/reason-codes">Reason codes</a></li>
 <li><a href="/docs/reference/run-view">Run view</a></li>
@@ -122,6 +123,21 @@ verify one.</p>
 <h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.15.0...HEAD">Unreleased</a></h2>
 <h3 id="added">Added</h3>
 <ul>
+<li>Under <code>approvals.authority: signed</code> roster operators sign the reaction
+documents, bound to the plane's route file or stop list: an <code>admin</code> signs a
+<code>reaction-route/v1alpha2</code> route with <code>route sign --key</code>, naming a
+<code>project_id</code> and a <code>scope</code> on each rule; an operator signs stop list <code>2.0</code>'s
+header with <code>stops init --key</code>, at any <code>--serial</code> while the plane's floor
+holds none or, carried, at the next serial naming the old header, the old
+list held to the plane's floor with <code>--stops-floor</code>; and an operator signs a
+<code>reaction-lift/v1alpha2</code> lift with <code>stops lift --key</code>, naming the header it
+lifts from. <code>stops init</code>, <code>lift</code> and <code>list</code> take <code>--roster</code> and
+<code>--root-key</code> and judge what is on disk through the roster before they sign;
+each signing says on standard error what it signed. The plane holds the
+header and the part of the list it accepted to a stop list floor in the new
+<code>reaction.stops_floor_dir</code>, which <code>stops floor init</code> makes for the
+listener's tenant, and refuses a list cut back below it; <code>/healthz</code> gives the header serial and
+<code>health.socket</code> also who signed the header and the route (ADR-0077).</li>
 <li>Under <code>approvals.authority: signed</code> the pause file is version <code>3</code>, signed
 by a roster operator granted <code>operate</code> over the plane's tenant and project:
 <code>pause init --key &lt;k&gt; --tenant &lt;t&gt; --project &lt;p&gt;</code> makes one bound to its
@@ -207,6 +223,14 @@ removes its socket when it stops.</li>
 </ul>
 <h3 id="changed">Changed</h3>
 <ul>
+<li><strong>Breaking:</strong> under <code>approvals.authority: signed</code> a <code>v1alpha1</code> route, a
+<code>1.0</code> stop list, a lift of the route's lift key and <code>reaction.public_key</code>
+are refused; <code>reaction.stops_floor_dir</code> is required with <code>reaction.route</code>;
+the plane refuses to start when its own account may write the route file,
+the stops directory or either's directory, and refuses at the read one that
+account owns. <code>react</code> needs <code>--approvals</code> and will not run as the account
+that owns it. A <code>1.0</code> list is not carried into <code>2.0</code>: start a new list.
+Nothing changes under <code>memory</code> or <code>directory</code>.</li>
 <li><strong>Breaking:</strong> <code>/healthz</code> answers <code>&quot;schema&quot;: &quot;2&quot;</code> and names no run: <code>stops</code>
 carries the counts <code>unheld</code> and <code>unread</code>, and leaves out <code>entries</code>,
 <code>unheld_runs</code> and <code>unread_runs</code>, which only <code>health.socket</code> answers. A
@@ -2476,6 +2500,7 @@ independence of this project from Guardana
 <li><a href="/docs/reference/observations">Observations</a></li>
 <li><a href="/docs/reference/policy-explain">Policy explain</a></li>
 <li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
 <li><a href="/docs/reference/reaction">Reaction</a></li>
 <li><a href="/docs/reference/reason-codes">Reason codes</a></li>
 <li><a href="/docs/reference/run-view">Run view</a></li>

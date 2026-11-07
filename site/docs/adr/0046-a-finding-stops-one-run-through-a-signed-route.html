@@ -75,6 +75,7 @@
 <li><a href="/docs/reference/observations">Observations</a></li>
 <li><a href="/docs/reference/policy-explain">Policy explain</a></li>
 <li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
 <li><a href="/docs/reference/reaction">Reaction</a></li>
 <li><a href="/docs/reference/reason-codes">Reason codes</a></li>
 <li><a href="/docs/reference/run-view">Run view</a></li>
@@ -134,6 +135,10 @@ an upgrade drops no stop and brings no lifted one back.</p>
 which decides that a finding's source class comes from its detector's signed
 descriptor and that a route names the detectors it accepts;
 <a href="/docs/status">status.md</a> says how much of it a plane does today.</p>
+<p>Amended by <a href="/docs/adr/0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatures">ADR-0077</a>:
+under <code>approvals.authority: signed</code> roster operators sign the route, the
+stop list's header and each lift, bound to the plane's files, and a stop list
+floor holds the header's serial and digest; no route or lift key exists there.</p>
 <h2 id="context">Context</h2>
 <p>ADR-0039 decided that a reaction turns a finding into a stop of one run's later
 calls, under a route signed with a key apart from the policy key, and that a
@@ -425,6 +430,7 @@ and <code>react</code>, the first run's next call is refused and the second's ru
 <li><a href="/docs/reference/observations">Observations</a></li>
 <li><a href="/docs/reference/policy-explain">Policy explain</a></li>
 <li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
 <li><a href="/docs/reference/reaction">Reaction</a></li>
 <li><a href="/docs/reference/reason-codes">Reason codes</a></li>
 <li><a href="/docs/reference/run-view">Run view</a></li>

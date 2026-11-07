@@ -182,8 +182,10 @@ func (p *plane) open(r role, tokenPath string) error {
 		return p.wire()
 	}
 	var err error
-	if p.stops, err = openStops(p.cfg, p.logger); err != nil {
-		return err
+	if !signedStops(p.cfg) {
+		if p.stops, err = openStops(p.cfg, p.logger, nil); err != nil {
+			return err
+		}
 	}
 	store, records, err := openApprovals(p.cfg)
 	if err != nil {
@@ -193,9 +195,23 @@ func (p *plane) open(r role, tokenPath string) error {
 	if err := p.openAuthority(context.Background()); err != nil {
 		return err
 	}
+	if err := p.openSignedReaders(); err != nil {
+		return err
+	}
 	if err := p.openRunsDir(tokenPath); err != nil {
 		return err
 	}
+	holds, journal, err := openJournal(p.cfg)
+	if err != nil {
+		return err
+	}
+	p.holds, p.journal = holds, journal
+	return p.wire()
+}
+
+// openSignedReaders opens the readers of the pause file and the stop list
+// that judge through the operator ports, which only the signed authority has.
+func (p *plane) openSignedReaders() error {
 	if signedPause(p.cfg) {
 		judge, err := p.pauseJudge()
 		if err != nil {
@@ -205,12 +221,15 @@ func (p *plane) open(r role, tokenPath string) error {
 			return err
 		}
 	}
-	holds, journal, err := openJournal(p.cfg)
+	if !signedStops(p.cfg) {
+		return nil
+	}
+	authority, err := p.stopsAuthority()
 	if err != nil {
 		return err
 	}
-	p.holds, p.journal = holds, journal
-	return p.wire()
+	p.stops, err = openStops(p.cfg, p.logger, authority)
+	return err
 }
 
 // wire builds the adapter the listener's kind serves, the decision point's

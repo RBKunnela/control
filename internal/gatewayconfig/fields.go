@@ -141,6 +141,7 @@ var configFields = []field[Config]{
 	filePath(stringField("reaction.public_key", "", false, func(c *Config) *string { return &c.Reaction.PublicKey })),
 	filePath(stringField("reaction.floor_dir", "", false, func(c *Config) *string { return &c.Reaction.FloorDir })),
 	filePath(stringField("reaction.stops", "", false, func(c *Config) *string { return &c.Reaction.Stops })),
+	filePath(stringField("reaction.stops_floor_dir", "", false, func(c *Config) *string { return &c.Reaction.StopsFloorDir })),
 	durationField("reaction.poll_interval", "1s", func(c *Config) *time.Duration { return &c.Reaction.PollInterval }),
 
 	filePath(stringField("evidence.dir", "", true, func(c *Config) *string { return &c.Evidence.Dir })),

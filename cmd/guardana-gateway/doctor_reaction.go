@@ -8,6 +8,7 @@ import (
 
 	"github.com/guardana/control/internal/policystate"
 	"github.com/guardana/control/internal/reaction"
+	"github.com/guardana/control/internal/reaction/stoplist"
 	"github.com/guardana/control/internal/runs"
 )
 
@@ -22,7 +23,16 @@ func (d *examination) reaction(context.Context) (string, string, string) {
 	if !d.cfg.Reaction.Configured() {
 		return verdictOK, "reaction", "disabled: reaction.route is not set, so no finding stops a run"
 	}
-	route, err := readRoute(d.cfg)
+	var (
+		route reaction.Route
+		read  = stopListRead{owner: stoplist.OwnedByThisUser}
+		err   error
+	)
+	if signedStops(d.cfg) {
+		route, read, err = d.signedRoute()
+	} else {
+		route, err = readRoute(d.cfg)
+	}
 	if err != nil {
 		return verdictFail, "reaction", err.Error() + "; run refuses to start on it"
 	}
@@ -34,7 +44,7 @@ func (d *examination) reaction(context.Context) (string, string, string) {
 	if err != nil {
 		return verdictFail, "reaction", fmt.Sprintf("reaction.floor_dir: %v; run refuses to start on it", err)
 	}
-	poller, err := openStopList(d.cfg, route, nil)
+	poller, err := openStopList(d.cfg, route, nil, read)
 	if err != nil {
 		return verdictFail, "reaction", err.Error() + "; run refuses to start on it"
 	}
@@ -42,18 +52,14 @@ func (d *examination) reaction(context.Context) (string, string, string) {
 	now := time.Now()
 	entries, active := snap.ActiveEntries(now, now)
 	checked := d.printStops(entries)
-	for _, r := range route.Rules() {
-		if r.Lifetime != 0 && r.Lifetime < runs.MaxTTL {
-			writeLine(d.out, fmt.Sprintf("       rule %s %s of procedure %s %s ends a stop after %s, before its run can end at %s",
-				oneLine(r.RuleID), oneLine(r.RuleVersion), oneLine(r.ProcedureID), oneLine(r.ProcedureVersion), r.Lifetime, runs.MaxTTL))
-		}
-	}
+	d.printShortLifetimes(route)
 	usage := snap.Usage()
 	found := fmt.Sprintf("route %s serial %d digest %s, floor %s in %s; list %s in %s is %s, read %s ago, every %s; %d active stop(s); %d of %d bytes and %d of %d lines",
 		oneLine(route.ID()), route.Serial(), route.Digest(), routeFloorText(floor), filepath.ToSlash(floorDir),
 		oneLine(snap.Header().ListID), filepath.ToSlash(d.cfg.Resolve(d.cfg.Reaction.Stops)), snap.State(),
 		now.Sub(snap.ReadAt()).Round(time.Millisecond), d.cfg.Reaction.PollInterval, active,
 		usage.Bytes, reaction.MaxListBytes, usage.Lines, reaction.MaxListLines)
+	found += signersText(route, snap)
 	if usage.Degraded() {
 		found += "; degraded: past nine tenths of a bound, so few more stops can be written"
 	}
@@ -61,6 +67,29 @@ func (d *examination) reaction(context.Context) (string, string, string) {
 		return verdictUnknown, "reaction", found + "; whether each listed stop's run is held is unknown"
 	}
 	return verdictOK, "reaction", found
+}
+
+// printShortLifetimes prints each rule of route whose lifetime ends a stop
+// before its run can end.
+func (d *examination) printShortLifetimes(route reaction.Route) {
+	for _, r := range route.Rules() {
+		if r.Lifetime != 0 && r.Lifetime < runs.MaxTTL {
+			writeLine(d.out, fmt.Sprintf("       rule %s %s of procedure %s %s ends a stop after %s, before its run can end at %s",
+				oneLine(r.RuleID), oneLine(r.RuleVersion), oneLine(r.ProcedureID), oneLine(r.ProcedureVersion), r.Lifetime, runs.MaxTTL))
+		}
+	}
+}
+
+// signersText names who signed the route and the list's header, or nothing
+// when the list carries no signer.
+func signersText(route reaction.Route, snap reaction.Snapshot) string {
+	signer := snap.AcceptedList().Signer()
+	if signer.KeyID == "" {
+		return ""
+	}
+	return fmt.Sprintf("; route signed by %s (key %s), list header serial %d signed by %s (key %s)",
+		oneLine(route.Signer().Subject), oneLine(route.Signer().KeyID), snap.Header().Signed.Serial,
+		oneLine(signer.Subject), oneLine(signer.KeyID))
 }
 
 // printStops prints each listed active stop and, where the runs directory can

@@ -140,6 +140,7 @@ Rendered from the field table in `internal/gatewayconfig`. Rebuild it with
 | `reaction.public_key` | `GUARDANA_CONTROL_REACTION_PUBLIC_KEY` | string |  | no |  |
 | `reaction.floor_dir` | `GUARDANA_CONTROL_REACTION_FLOOR_DIR` | string |  | no |  |
 | `reaction.stops` | `GUARDANA_CONTROL_REACTION_STOPS` | string |  | no |  |
+| `reaction.stops_floor_dir` | `GUARDANA_CONTROL_REACTION_STOPS_FLOOR_DIR` | string |  | no |  |
 | `reaction.poll_interval` | `GUARDANA_CONTROL_REACTION_POLL_INTERVAL` | duration | `1s` | no |  |
 | `evidence.dir` | `GUARDANA_CONTROL_EVIDENCE_DIR` | string |  | yes |  |
 | `evidence.max_bytes` | `GUARDANA_CONTROL_EVIDENCE_MAX_BYTES` | bytes, plain or with KiB, MiB, GiB | `1GiB` | no |  |

@@ -40,6 +40,17 @@ type stopsAnswer struct {
 	UnheldRuns []string       `json:"unheld_runs"`
 	UnreadRuns []string       `json:"unread_runs"`
 	Polls      map[string]any `json:"polls,omitempty"`
+	// Signed is a 2.0 list's header serial, and on the whole answer alone
+	// who signed it and the route.
+	Signed *stopsSigned `json:"signed,omitempty"`
+}
+
+type stopsSigned struct {
+	Serial       int64  `json:"serial"`
+	Subject      string `json:"subject,omitempty"`
+	KeyID        string `json:"key_id,omitempty"`
+	RouteSubject string `json:"route_subject,omitempty"`
+	RouteKeyID   string `json:"route_key_id,omitempty"`
 }
 
 type routeAnswer struct {
@@ -79,6 +90,10 @@ func (p *plane) stopsAnswer(snap reaction.Snapshot, now time.Time) stopsAnswer {
 	// The list the plane holds, which an unknown read leaves in place.
 	held := snap.AcceptedList()
 	out.ListID = held.Header().ListID
+	if h := held.Header().Signed; h.Digest != "" {
+		out.Signed = &stopsSigned{Serial: h.Serial, Subject: held.Signer().Subject, KeyID: held.Signer().KeyID,
+			RouteSubject: route.Signer().Subject, RouteKeyID: route.Signer().KeyID}
+	}
 	if !snap.ReadAt().IsZero() {
 		age := now.Sub(snap.ReadAt()).Milliseconds()
 		out.AgeMS = &age
@@ -169,13 +184,17 @@ type countedStops struct {
 	UnreadRuns *struct{} `json:"unread_runs,omitempty"`
 }
 
-// counted is a as GET /healthz answers it, the signed pause's operator left
-// out as well.
+// counted is a as GET /healthz answers it, the operators who signed the
+// pause, the stop list and the route left out as well.
 func (a healthAnswer) counted() countedHealth {
 	if a.Pause.Signed != nil {
 		signed := *a.Pause.Signed
 		signed.Subject, signed.KeyID = "", ""
 		a.Pause.Signed = &signed
+	}
+	if a.Stops.Signed != nil {
+		signed := stopsSigned{Serial: a.Stops.Signed.Serial}
+		a.Stops.Signed = &signed
 	}
 	return countedHealth{healthAnswer: a, Stops: countedStops{stopsAnswer: a.Stops}}
 }

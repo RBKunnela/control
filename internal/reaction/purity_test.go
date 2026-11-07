@@ -24,7 +24,7 @@ import (
 // or draws randomness, except through a name impureNames refuses.
 var allowedStdlib = []string{
 	"bytes", "context", "crypto/ed25519", "crypto/sha256", "encoding/base64", "encoding/hex", "encoding/json",
-	"errors", "fmt", "hash", "maps", "math", "slices", "strconv", "strings", "time", "unicode/utf8",
+	"errors", "fmt", "hash", "maps", "math", "path", "slices", "strconv", "strings", "time", "unicode/utf8",
 }
 
 // allowedModule are the packages of this module those files may import. Each

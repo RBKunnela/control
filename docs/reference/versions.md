@@ -53,9 +53,9 @@ version. [status.md](../status.md) is the inventory.
 | Finding records and log (`guardana.control.finding.v1alpha1`) | `0.1`, `0.2` | `0.1`, `0.2` | `experimental` | [supervision.md](supervision.md#the-finding-record-and-its-log) |
 | Findings export (`guardana.control.findings-export`) | `0.1` | — | `experimental` | [supervision.md](supervision.md#findings-export) |
 | Enforcement API (`guardana.control.enforce.v1alpha1`) | `v1alpha1` | `v1alpha1` | `experimental` | [contracts.md](../contracts.md#the-enforcement-api) |
-| Reaction route (`kind`) | — | `reaction-route/v1alpha1` | `experimental` | [contracts.md](../contracts.md#the-route) |
-| Stop list (`version`) | `1.0` | `1.0` | `experimental` | [contracts.md](../contracts.md#the-stop-list) |
-| Lift (`kind`, `version`) | `reaction-lift/v1alpha1`, `1.0` | `reaction-lift/v1alpha1`, `1.0` | `experimental` | [contracts.md](../contracts.md#the-lift) |
+| Reaction route (`kind`) | — | `reaction-route/v1alpha1`, `reaction-route/v1alpha2` | `experimental` | [contracts.md](../contracts.md#the-route) |
+| Stop list (`version`) | `1.0`, `2.0` | `1.0`, `2.0` | `experimental` | [contracts.md](../contracts.md#the-stop-list) |
+| Lift (`kind`, `version`) | `reaction-lift/v1alpha1`, `1.0`, `reaction-lift/v1alpha2` | `reaction-lift/v1alpha1`, `1.0`, `reaction-lift/v1alpha2` | `experimental` | [contracts.md](../contracts.md#the-lift) |
 | Health answer (`schema`) | `2` | — | `experimental` | [run the gateway](../guides/run-the-gateway.md#6-read-the-health) |
 
 The gateway's configuration file and a `policy test` case carry no version.
@@ -67,7 +67,12 @@ spool frames its segments with no version at all, so a spool another release
 wrote is not promised readable. `notify`'s `--state` list of delivered alerts,
 one quoted key per line, carries none either. A plane under
 `approvals.authority: signed` reads pause file `3` alone, and any other `1`
-and `2` alone.
+and `2` alone. It reads a `reaction-route/v1alpha2` route alone, with stop
+list `2.0`, whose signed header is `reaction-list-header/2.0`, and lift
+`reaction-lift/v1alpha2`; any other plane reads a `v1alpha1` route alone,
+with stop list `1.0` and lift `reaction-lift/v1alpha1`. A `1.0` list is not
+carried into `2.0`: start a new list, and `react` stops again the findings
+that still may stop a run.
 
 ## Reading files an older release wrote
 

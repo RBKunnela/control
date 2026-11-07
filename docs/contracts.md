@@ -2,7 +2,7 @@
 title: Wire contracts
 summary: What the v1 messages are versioned by, what a receiver refuses them for, and how the evidence events chain.
 type: spec
-covers: [api/proto/guardana/control/v1/**, api/gen/go/guardana/control/v1/**, api/proto/guardana/control/enforce/**, api/gen/go/guardana/control/enforce/**, pkg/contract/**, internal/canon/**, internal/evidence/chain.go, internal/evidence/version.go, internal/trailfile/export.go, internal/trailfile/export_records.go, internal/trailfile/cursor.go, internal/lineexport/**, internal/runs/record.go, internal/runs/state.go, internal/reaction/route.go, internal/reaction/line.go, internal/reaction/lift.go, internal/reaction/envelope.go, internal/reaction/judge.go, testdata/contracts/**, testdata/digest/**, testdata/enforce/**, testdata/export/**]
+covers: [api/proto/guardana/control/v1/**, api/gen/go/guardana/control/v1/**, api/proto/guardana/control/enforce/**, api/gen/go/guardana/control/enforce/**, pkg/contract/**, internal/canon/**, internal/evidence/chain.go, internal/evidence/version.go, internal/trailfile/export.go, internal/trailfile/export_records.go, internal/trailfile/cursor.go, internal/lineexport/**, internal/runs/record.go, internal/runs/state.go, internal/reaction/route.go, internal/reaction/line.go, internal/reaction/lift.go, internal/reaction/envelope.go, internal/reaction/judge.go, internal/reaction/signed.go, internal/reaction/route2.go, internal/reaction/header2.go, internal/reaction/lift2.go, testdata/contracts/**, testdata/digest/**, testdata/enforce/**, testdata/export/**]
 stability: stable
 ---
 
@@ -1419,6 +1419,31 @@ of at most 4 KiB.
 | `route_digest` | the header's, and the route's |
 | `run_id` | the lift line's |
 | `through_line` | the lift line's: the last line whose stops of that run it ends |
+
+### Under the signed authority
+
+Under `approvals.authority: signed`
+([ADR-0077](adr/0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatures.md))
+each of the three is one DSSE signature by a roster operator over a body of
+at most 16 KiB in its canonical form, which names `alg` `ed25519`, the
+signature's `keyId`, `tenant_id`, `project_id` and `file`: the absolute,
+cleaned path of the route file or of `stops.jsonl` it was signed for, at most
+1024 bytes, with every link on the way to its directory resolved. A plane
+refuses a body whose tenant, project or file is not its own.
+
+| Document | Payload type | `kind` | Members besides the five above |
+| --- | --- | --- | --- |
+| Route | `application/vnd.agent-reaction-route.v1alpha2+json` | `reaction-route/v1alpha2` | `route_id`, `serial`, `rules`, each rule as above with `scope` `run` and no route-wide `scope` or `lift_public_key` |
+| Stop list header | `application/vnd.agent-stop-list-header+json` | `reaction-list-header/2.0` | `list_id`, `serial`, `route_id`, `route_serial`, `route_digest`, and `previous`, the digest of the header carried from, only in a carried list |
+| Lift | `application/vnd.agent-reaction-lift.v1alpha2+json` | `reaction-lift/v1alpha2` | `list_head`, the digest of the header of the list it lifts in, `run_id`, `through_line` |
+
+A list under a `v1alpha2` route is version `2.0`: its header line is
+`{"envelope":…,"kind":"header","version":"2.0"}`, a `stop` line adds
+`project_id` and `scope` `run`, a `covered` line adds `project_id`, and a
+`lift` line's envelope is a `v1alpha2` lift. A header's digest is `sha256:`
+and the lowercase hex SHA-256 of its signed body. Every line of a list is of
+one version, and a `2.0` line is refused under a `v1alpha1` route, as a
+`1.0` one is under a `v1alpha2` route.
 
 ### The codes
 

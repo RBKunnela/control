@@ -262,14 +262,20 @@ func versionSpecs() map[string]versionSpec {
 			cites: []versionCite{{"internal/findinglog/export.go#ExportVersion", writes}},
 		},
 		"Reaction route": {
-			cites: []versionCite{{"internal/reaction/route.go#RouteKind", reads}},
+			cites: []versionCite{
+				{"internal/reaction/route.go#RouteKind", reads},
+				{"internal/reaction/route2.go#SignedRouteKind", reads},
+			},
 			refuses: func(v string) (bool, error) {
 				_, err := reaction.ParseRoute([]byte(`{"kind":` + strconv.Quote(v) + `}`))
 				return errors.Is(err, reaction.ErrRouteKind), nil
 			},
 		},
 		"Stop list": {
-			cites: []versionCite{{"internal/reaction/line.go#ListVersion", writes | reads}},
+			cites: []versionCite{
+				{"internal/reaction/line.go#ListVersion", writes | reads},
+				{"internal/reaction/line.go#SignedListVersion", writes | reads},
+			},
 			refuses: func(v string) (bool, error) {
 				_, err := reaction.ParseLine([]byte(`{"kind":"header","version":` + strconv.Quote(v) + `}`))
 				return errors.Is(err, reaction.ErrLineVersion), nil
@@ -279,6 +285,7 @@ func versionSpecs() map[string]versionSpec {
 			cites: []versionCite{
 				{"internal/reaction/lift.go#LiftKind", writes | reads},
 				{"internal/reaction/lift.go#LiftVersion", writes | reads},
+				{"internal/reaction/lift2.go#SignedLiftKind", writes | reads},
 			},
 		},
 	}

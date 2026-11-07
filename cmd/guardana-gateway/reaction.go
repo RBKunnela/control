@@ -49,15 +49,29 @@ func (p *plane) stopSource() gateway.StopSource {
 // start refused for its list leaves the floor as it was. A route below its
 // floor, at it with another digest, or with no floor at all refuses the
 // start; the floor is never created here. Without a route it returns nil.
-func openStops(cfg *gatewayconfig.Config, logger *slog.Logger) (*planeStops, error) {
+//
+// Under the signed authority the route is an operator's, taken through
+// authority; the list is read as an operator's and each new header it takes
+// is held to and raises the stop list floor.
+func openStops(cfg *gatewayconfig.Config, logger *slog.Logger, authority *stopsAuthority) (*planeStops, error) {
 	if !cfg.Reaction.Configured() {
 		return nil, nil
 	}
-	route, err := readRoute(cfg)
+	var (
+		route reaction.Route
+		err   error
+		read  = stopListRead{owner: stoplist.OwnedByThisUser}
+	)
+	if authority == nil {
+		route, err = readRoute(cfg)
+	} else {
+		route, err = readSignedRoute(cfg, authority.voucher, authority.planeOwned)
+		read = authority.read()
+	}
 	if err != nil {
 		return nil, err
 	}
-	poller, err := openStopList(cfg, route, logger)
+	poller, err := openStopList(cfg, route, logger, read)
 	if err != nil {
 		return nil, err
 	}
@@ -73,15 +87,18 @@ func openStops(cfg *gatewayconfig.Config, logger *slog.Logger) (*planeStops, err
 	return &planeStops{route: route, floor: floor, poller: poller}, nil
 }
 
-// openStopList opens the reader of the stop list judged against route. It
-// takes no lock and writes nothing, so doctor opens it too.
-func openStopList(cfg *gatewayconfig.Config, route reaction.Route, logger *slog.Logger) (*stoplist.Poller, error) {
+// openStopList opens the reader of the stop list judged against route, read
+// as read says. With no floor to take it takes no lock and writes nothing,
+// so doctor opens it too.
+func openStopList(cfg *gatewayconfig.Config, route reaction.Route, logger *slog.Logger, read stopListRead) (*stoplist.Poller, error) {
 	poller, err := stoplist.Open(stoplist.Options{
 		Dir:      cfg.Resolve(cfg.Reaction.Stops),
 		Route:    route,
 		Interval: cfg.Reaction.PollInterval,
 		Clock:    time.Now,
 		Logger:   logger,
+		Owner:    read.owner,
+		Take:     read.take,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("reaction.stops: %w", err)
