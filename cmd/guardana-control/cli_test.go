@@ -127,6 +127,8 @@ var ownRefusal = map[string]func(missing string) []string{
 	"policy state init": func(m string) []string {
 		return []string{"--kind", "signer", "--bundle-id", "orders-policy", filepath.Join(m, "floors")}
 	},
+	"state backup":  func(m string) []string { return []string{m, filepath.Join(m, "backup")} },
+	"state restore": func(m string) []string { return []string{m, filepath.Join(m, "backup")} },
 	"policy state reset": func(m string) []string {
 		return []string{"--kind", "signer", "--bundle-id", "orders-policy", "--empty", "--reason", "r", m}
 	},

@@ -46,6 +46,7 @@ floor, then writes the statement it signs with the freshness key. `policy
 state init` and `reset` make and lower floors
 ([ADR-0038](../adr/0038-a-signed-freshness-statement-and-a-serial-floor.md));
 a reset reaches a running plane's clock check only when it restarts.
+`state backup|restore`: [the guide](../guides/back-up-and-restore-a-plane.md).
 
 `policy keygen` creates the directory `--out` names, mode `0700`, and refuses a
 path that exists. Into it go `signing.key`, the private key as one PKCS#8 PEM
@@ -150,6 +151,8 @@ usage:
       (--bundle-id <id> | --route-id <id>) <dir>
   guardana-control policy state reset --kind plane|signer --bundle-id <id> --reason <text>
       (--empty | --serial <n> --digest <d> --issued-at <t>) <dir>
+  guardana-control state backup <config> <dir>
+  guardana-control state restore <config> <dir>
   guardana-control approvals list <dir>
   guardana-control approvals approve (--key <file> --inbox <dir> | --approver-id <id>)
       [--reason <text>] <dir> <approval-id>

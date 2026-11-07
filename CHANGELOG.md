@@ -28,6 +28,20 @@ verify one.
   `reaction.stops_floor_dir`, which `stops floor init` makes for the
   listener's tenant, and refuses a list cut back below it; `/healthz` gives the header serial and
   `health.socket` also who signed the header and the route (ADR-0077).
+- `guardana-control state backup <config> <dir>` copies a stopped plane's
+  floors, runs, pause file and stop list into a new owner-only directory
+  under a `backup.json` manifest `0.1`, never the spool, the hold journal,
+  the approvals store or a key. `state restore <config> <dir>` refuses a
+  backup of another plane or a tampered one, restores only the bytes it
+  verified, holds the spool's and the journal's locks, checks every class
+  before its first write, raises every floor to the higher of the two,
+  stamps a plane floor at the restore time rounded up to the second so the
+  old statement confirms nothing, closes every run and joins taint, a state
+  lost beside its lock or record as the worst. Under `directory` it keeps a
+  stop list that holds the backup's, carries the backup's into a new list
+  where none survived, and refuses two histories; under `signed` it writes
+  no operator file, raises the stop list floor in its own order, and names
+  the files to put back (ADR-0078).
 - Under `approvals.authority: signed` the pause file is version `3`, signed
   by a roster operator granted `operate` over the plane's tenant and project:
   `pause init --key <k> --tenant <t> --project <p>` makes one bound to its

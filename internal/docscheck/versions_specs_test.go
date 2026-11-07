@@ -30,6 +30,7 @@ import (
 	"github.com/guardana/control/internal/pause"
 	"github.com/guardana/control/internal/policy/rules"
 	"github.com/guardana/control/internal/reaction"
+	"github.com/guardana/control/internal/recovery"
 	"github.com/guardana/control/internal/scenario"
 	"github.com/guardana/control/internal/segmentlog"
 	"github.com/guardana/control/internal/supervise"
@@ -108,6 +109,17 @@ func versionSpecs() map[string]versionSpec {
 			cites: []versionCite{
 				{"internal/policystate/format.go#SchemaVersion", writes},
 				{"internal/policystate/format.go#checkSchemaVersion/major", readsMajor},
+			},
+		},
+		"State backup manifest": {
+			cites: []versionCite{
+				{"internal/recovery/manifest.go#ManifestVersion", writes},
+				{"internal/recovery/manifest.go#manifestMajor", readsMajor},
+			},
+			refuses: func(v string) (bool, error) {
+				_, err := recovery.ParseManifest([]byte(`{"schema_version":` + strconv.Quote(v) + `,"kind":"state-backup","authority":"directory",` +
+					`"tenant":"t","project":"p","taken_at":"2026-01-01T00:00:00Z","entries":[]}`))
+				return errors.Is(err, recovery.ErrVersion), nil
 			},
 		},
 		"Scenario": {

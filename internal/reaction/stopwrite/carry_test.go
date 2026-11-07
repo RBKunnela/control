@@ -288,3 +288,28 @@ func TestCarryRepairsAListBrokenAtALine(t *testing.T) {
 		noList(t, "a refused header", dir)
 	})
 }
+
+// TestCarriedLinesAreWhatACarryWritesAfterItsHeader: the lines after a
+// carried list's header are CarriedLines of the old list, so a reader can
+// tell a carry of a list from another list without its header.
+func TestCarriedLinesAreWhatACarryWritesAfterItsHeader(t *testing.T) {
+	r := testRoute(t)
+	old := oldList(t, r, true)
+	dir := emptyDir(t)
+	now := clock0.Add(time.Minute)
+	if _, err := stopwrite.Carry(bg, old, r, dir, r, now); err != nil {
+		t.Fatalf("Carry: %v", err)
+	}
+	carried := content(t, dir)
+	_, rest, _ := bytes.Cut(carried, []byte{'\n'})
+	got, err := stopwrite.CarriedLines(r, content(t, old), now)
+	if err != nil {
+		t.Fatalf("CarriedLines: %v", err)
+	}
+	if len(got) == 0 || !bytes.Equal(got, rest) {
+		t.Fatalf("CarriedLines =\n%s\nthe carry wrote after its header\n%s", got, rest)
+	}
+	if _, err := stopwrite.CarriedLines(r, []byte("not a list\n"), now); err == nil {
+		t.Fatal("CarriedLines of no list: no error")
+	}
+}

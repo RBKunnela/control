@@ -12,6 +12,9 @@ Amends [ADR-0012](0012-policy-kernel-semantics.md) and
 Amended by [ADR-0055](0055-a-call-is-handed-out-only-while-its-policy-stands.md): a newer bundle, or a statement
 that lapses, also withholds a call decided before it and not yet handed out.
 
+Amended by [ADR-0078](0078-a-restore-only-raises.md): a restore stamps a floor
+at the higher serial, issued and latest at the restore time.
+
 ## Context
 
 A plane reads its bundle once, at start. Installing the same bundle again

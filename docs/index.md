@@ -17,6 +17,7 @@ with `make docs-gen`; an edit made here does not survive the next run.
 
 ## Guides
 
+- [Back up and restore a plane](guides/back-up-and-restore-a-plane.md): Copy a stopped plane's floors, runs, pause file and stop list, and after a loss raise them back so no floor ends lower, every run is closed and no hold resumes.
 - [Connect an existing MCP setup](guides/connect-an-existing-mcp-setup.md): Put the plane between an MCP client and a server you already use, classify the server's tools, hold its writes for approval, and end in a local report.
 - [Decide a tool of your own](guides/decide-a-tool-of-your-own.md): Serve the enforcement API, classify your tools by name, and have a client ask before each call and report how it ended, under one policy and trail.
 - [Keep two tasks apart](guides/keep-two-tasks-apart.md): Open a run per task in a runs directory, point a plane at it, and give each agent its token, so what one task took in never decides another's calls.
@@ -174,3 +175,4 @@ with `make docs-gen`; an edit made here does not survive the next run.
 - [ADR-0075: A signed plane takes a pause only from an operator's signature](adr/0075-a-signed-plane-takes-a-pause-only-from-an-operators-signature.md): accepted
 - [ADR-0076: A signed plane takes a run only from an operator's signature](adr/0076-a-signed-plane-takes-a-run-only-from-an-operators-signature.md): accepted
 - [ADR-0077: A signed plane takes a stop list only from operators' signatures](adr/0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatures.md): accepted
+- [ADR-0078: A restore only raises](adr/0078-a-restore-only-raises.md): accepted

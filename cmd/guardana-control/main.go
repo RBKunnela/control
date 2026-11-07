@@ -1,6 +1,7 @@
 // Command line entry point for the product. Without arguments it answers with
 // the version and the status line; the `policy` commands (lint, test,
-// explain, keygen, sign, renew and state), the `approvals` commands, the
+// explain, keygen, sign, renew and state), `state backup` and `state
+// restore`, the `approvals` commands, the
 // `pause` commands, the `runs` commands, `observe`, `coverage`, the
 // `procedure` commands (lint and test), `supervise`, `notify`, `findings
 // export`, `route sign`, the `operators` commands (roster sign and floor
@@ -125,6 +126,8 @@ var commands = []subcommand{
 	{"policy", "renew", renewForm, renewFlagSet, renewCommand, writes},
 	{"policy", "state init", stateInitForm, stateInitFlagSet, stateInitCommand, writes},
 	{"policy", "state reset", stateResetForm, stateResetFlagSet, stateResetCommand, writes},
+	{"state", "backup", stateForm, stateFlagSet, stateBackupCommand, writes},
+	{"state", "restore", stateForm, stateFlagSet, stateRestoreCommand, writes},
 	{"approvals", "list", "<dir>", nil, func(args []string, stdout, stderr io.Writer) int { return approvalsList(args[0], stdout, stderr) }, inspects},
 	{"approvals", "approve", answerForm, answerFlagSet, approveCommand, writes},
 	{"approvals", "reject", answerForm, answerFlagSet, rejectCommand, writes},

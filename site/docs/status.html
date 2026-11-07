@@ -33,6 +33,7 @@
 <li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
 </ul>
 <h2>Guides</h2><ul>
+<li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
@@ -343,6 +344,11 @@ already holds a package doc and a test holds nothing that decides.</li>
 <td><code>internal/runs/</code> (the runs directory: a record per run, a state and a lock file per root run, two openers kept apart by the compiler), <code>runs open</code>, <code>close</code>, <code>list</code> and <code>prune</code> in <code>cmd/guardana-control/</code> (<code>prune</code> removes whole trees whose every run expired, after copying them into a new owner-only archive, leaves a tree whose root is live, and names each expired tree it keeps: one with a run that has not expired, a held state lock or a file it cannot read), <code>runs.dir</code> and <code>run --run-token-file</code> in <code>cmd/guardana-gateway/</code>, the <code>Run-Token</code> check in <code>adapters/mcp/</code>, <a href="/docs/adr/0034-a-run-the-operator-opens-has-an-identity-of-its-own">ADR-0034</a>, <a href="/docs/adr/0068-a-run-belongs-to-one-project">ADR-0068</a>, <a href="/docs/guides/keep-two-tasks-apart">guides/keep-two-tasks-apart.md</a>. A plane with <code>runs.dir</code> admits a call only under a token that resolves for the plane's <code>project_id</code> and the listener's principal and agent, judged on every request and every message; a run record is <code>2.0</code> and names its project, and one of <code>1.0</code> is refused; a run tree, <code>supervise</code>, <code>react</code> and <code>doctor</code> hold a run to its record's project (<a href="/docs/adr/0068-a-run-belongs-to-one-project">ADR-0068</a>); a call reads its root's state once and raises it before <code>ACTION_STARTED</code>, and a state it cannot read or raise blocks the call; a hold resumes only from its own run. Write access to the runs directory is the authority to open a run, for every project that shares it, except under <code>approvals.authority: signed</code>, where the directory holds <code>records/</code> the plane only reads and <code>state/</code> it writes, and a run counts only from a <code>3.0</code> record an operator granted <code>operate</code> signed with <code>--key</code> for that <code>records/</code> and its tenant and project, judged by <code>internal/runs/signedruns/</code> at every call, with each close the plane takes carried into <code>state/</code> so the open record put back is refused (<a href="/docs/adr/0076-a-signed-plane-takes-a-run-only-from-an-operators-signature">ADR-0076</a>); a token acts as its run until it expires or is closed; a run closed after its call passed the listener still runs that call; <code>dev</code> and scenarios serve local runs only</td>
 </tr>
 <tr>
+<td>Backup and restore of a plane's authority state</td>
+<td><code>experimental</code></td>
+<td><code>internal/recovery/</code>, <code>state backup</code> and <code>state restore</code> in <code>cmd/guardana-control/</code>, <a href="/docs/guides/back-up-and-restore-a-plane">guides/back-up-and-restore-a-plane.md</a>, <a href="/docs/adr/0078-a-restore-only-raises">ADR-0078</a>. A backup copies the floors, the runs, the pause file and the stop list under a manifest <code>0.1</code>, never the spool, the hold journal, the approvals store or a key; a restore reads only the bytes it verified, holds the spool's and the journal's locks, checks every class before it writes, raises every floor to the higher of the two, stamps a plane floor at the restore time, closes every run and joins taint. Under <code>directory</code> it carries the backup's stop list into a new list where none survived and refuses two histories; under <code>signed</code> it writes no operator file and raises the stop list floor. After the route was replaced, the restore refuses the backup's stop list, and a signed stop list floor put back at the backup's serial refuses a list carried twice since, each until an operator takes the guide's way back. The manifest is unsigned: its hashes catch corruption, not a hostile writer of the backup. A raw volume restore is unsupported.</td>
+</tr>
+<tr>
 <td>Agent-to-agent (A2A) adapter</td>
 <td><code>planned</code></td>
 <td><code>adapters/</code></td>
@@ -554,6 +560,7 @@ never withheld from the open build, whatever its status above.</p>
 <li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
 </ul>
 <h2>Guides</h2><ul>
+<li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>

@@ -33,6 +33,7 @@
 <li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
 </ul>
 <h2>Guides</h2><ul>
+<li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
@@ -122,6 +123,8 @@ Date: 2026-10-02</p>
 <a href="/docs/adr/0034-a-run-the-operator-opens-has-an-identity-of-its-own">ADR-0034</a>.</p>
 <p>Amended by <a href="/docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands">ADR-0055</a>: a newer bundle, or a statement
 that lapses, also withholds a call decided before it and not yet handed out.</p>
+<p>Amended by <a href="/docs/adr/0078-a-restore-only-raises">ADR-0078</a>: a restore stamps a floor
+at the higher serial, issued and latest at the restore time.</p>
 <h2 id="context">Context</h2>
 <p>A plane reads its bundle once, at start. Installing the same bundle again
 moves its confirmation to the caller's clock, so &quot;confirmed current&quot; means
@@ -358,6 +361,7 @@ and bundle digest.</li>
 <li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
 </ul>
 <h2>Guides</h2><ul>
+<li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>

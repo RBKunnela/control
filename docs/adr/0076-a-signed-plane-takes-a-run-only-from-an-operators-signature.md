@@ -10,6 +10,9 @@ roster of [ADR-0071](0071-operators-are-named-by-a-signed-roster.md), as
 [ADR-0075](0075-a-signed-plane-takes-a-pause-only-from-an-operators-signature.md)
 does for the pause.
 
+Amended by [ADR-0078](0078-a-restore-only-raises.md): a restore carries the
+close of every run the backup or `records/` names into `state/`.
+
 ## Context
 
 Under ADR-0034 write access to the runs directory is the authority to open

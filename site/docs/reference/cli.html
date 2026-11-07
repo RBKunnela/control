@@ -33,6 +33,7 @@
 <li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
 </ul>
 <h2>Guides</h2><ul>
+<li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
@@ -161,7 +162,8 @@ approvals directory, from outside the gateway process.</p>
 <p><code>policy renew</code> verifies the bundle against its public key, raises a signer's
 floor, then writes the statement it signs with the freshness key. <code>policy state init</code> and <code>reset</code> make and lower floors
 (<a href="/docs/adr/0038-a-signed-freshness-statement-and-a-serial-floor">ADR-0038</a>);
-a reset reaches a running plane's clock check only when it restarts.</p>
+a reset reaches a running plane's clock check only when it restarts.
+<code>state backup|restore</code>: <a href="/docs/guides/back-up-and-restore-a-plane">the guide</a>.</p>
 <p><code>policy keygen</code> creates the directory <code>--out</code> names, mode <code>0700</code>, and refuses a
 path that exists. Into it go <code>signing.key</code>, the private key as one PKCS#8 PEM
 block, mode <code>0600</code>, and <code>signing.pub</code>, the public key as one line of standard
@@ -250,6 +252,8 @@ profile's statuses, <a href="/docs/extending/runtime-profiles">extending/runtime
       (--bundle-id &lt;id&gt; | --route-id &lt;id&gt;) &lt;dir&gt;
   guardana-control policy state reset --kind plane|signer --bundle-id &lt;id&gt; --reason &lt;text&gt;
       (--empty | --serial &lt;n&gt; --digest &lt;d&gt; --issued-at &lt;t&gt;) &lt;dir&gt;
+  guardana-control state backup &lt;config&gt; &lt;dir&gt;
+  guardana-control state restore &lt;config&gt; &lt;dir&gt;
   guardana-control approvals list &lt;dir&gt;
   guardana-control approvals approve (--key &lt;file&gt; --inbox &lt;dir&gt; | --approver-id &lt;id&gt;)
       [--reason &lt;text&gt;] &lt;dir&gt; &lt;approval-id&gt;
@@ -429,6 +433,7 @@ dev
 <li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
 </ul>
 <h2>Guides</h2><ul>
+<li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>

@@ -109,37 +109,62 @@ func carry(ctx context.Context, from string, fromRoute reaction.Route, dir strin
 		if err != nil {
 			return err
 		}
-		list := part.list
 		h, header, err := next(part)
 		if err != nil {
 			return err
 		}
 		out = Carried{Header: h, LeftOut: part.leftOut, Refused: part.refused}
-		lines := [][]byte{header}
-		kept := map[string]bool{}
-		for _, e := range list.Entries() {
-			line, err := e.Marshal()
-			if err != nil {
-				return fmt.Errorf("%w: %w", ErrRefused, err)
-			}
-			lines = append(lines, line)
-			kept[e.FindingID] = true
-			out.Stops++
-		}
-		covered, err := coveredLines(part.accepted, kept)
+		stops, covered, err := carriedLines(part)
 		if err != nil {
 			return err
 		}
-		out.Covered = len(covered)
+		out.Stops, out.Covered = len(stops), len(covered)
 		if carrying != nil {
 			carrying()
 		}
+		lines := append([][]byte{header}, stops...)
 		return create(ctx, dir, route, now, append(lines, covered...))
 	})
 	if err != nil {
 		return Carried{}, err
 	}
 	return out, nil
+}
+
+// CarriedLines is what Carry writes after the new list's header when it
+// carries old, the bytes of a list judged against route at now: a stop line
+// for every stop of old no lift ended, then a covered line for every other
+// finding old names. A list whose lines after its header begin with them
+// holds what a carry of old would.
+func CarriedLines(route reaction.Route, old []byte, now time.Time) ([]byte, error) {
+	part, err := acceptedPart(route, old, now)
+	if err != nil {
+		return nil, err
+	}
+	stops, covered, err := carriedLines(part)
+	if err != nil {
+		return nil, err
+	}
+	var out []byte
+	for _, line := range append(stops, covered...) {
+		out = append(append(out, line...), '\n')
+	}
+	return out, nil
+}
+
+// carriedLines is the stop lines and the covered lines a carry of p writes.
+func carriedLines(p part) (stops, covered [][]byte, err error) {
+	kept := map[string]bool{}
+	for _, e := range p.list.Entries() {
+		line, err := e.Marshal()
+		if err != nil {
+			return nil, nil, fmt.Errorf("%w: %w", ErrRefused, err)
+		}
+		stops = append(stops, line)
+		kept[e.FindingID] = true
+	}
+	covered, err = coveredLines(p.accepted, kept)
+	return stops, covered, err
 }
 
 // part is what a carry takes of an old list: the list a plane accepts, its

@@ -26,8 +26,10 @@ type field[T any] struct {
 	credential bool
 	// address says the value is a URL, printed through ShowAddress.
 	address bool
-	set     func(*T, string) error
-	show    func(*T) string
+	// file says the value names a file or a directory.
+	file bool
+	set  func(*T, string) error
+	show func(*T) string
 }
 
 // enumKind is the kind of a key that takes one of a closed set of spellings;
@@ -69,6 +71,7 @@ var errKeyTextInPath = errors.New("holds a PEM marker or the start of a key file
 // filePath marks a key whose value names a file or a directory: one that
 // holds key text is a key pasted where its path belongs, and is refused.
 func filePath[T any](f field[T]) field[T] {
+	f.file = true
 	set := f.set
 	f.set = func(t *T, v string) error {
 		if policykey.HoldsKeyText(v) {

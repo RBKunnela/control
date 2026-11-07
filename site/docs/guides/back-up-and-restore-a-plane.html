@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Back up and restore a plane · Guardana Control</title>
+<meta name="description" content="Copy a stopped plane&#39;s floors, runs, pause file and stop list, and after a loss raise them back so no floor ends lower, every run is closed and no hold resumes."/>
+<link rel="canonical" href="https://control.guardana.dev/docs/guides/back-up-and-restore-a-plane"/>
+<meta name="theme-color" content="#0B8F80"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="stylesheet" href="/assets/brand/v1/tokens.css"/>
+<link rel="stylesheet" href="/assets/control/control.css"/>
+<link rel="stylesheet" href="/assets/control/docs.css"/>
+</head>
+<body class="doc">
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap bar">
+  <a class="mark" href="/"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 4.5 5.6v6.1c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V5.6z"/><path d="M10.2 8.4v7.8M10.2 12.3h5.3"/></svg><span>Guardana <b>Control</b></span></a>
+  <a class="vlink" href="https://github.com/guardana/control/releases/tag/v0.15.0"><span class="ver">v0.15.0</span></a>
+  <nav aria-label="Primary">
+    <a href="/docs/">Docs</a>
+    <a href="/docs/status">Status</a>
+    <a class="hide-s" href="/docs/roadmap">Roadmap</a>
+    <a class="gh" href="https://github.com/guardana/control" aria-label="GitHub"><svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span class="hide-s">GitHub</span></a>
+  </nav>
+</div></header>
+<div class="wrap shell">
+<details class="mnav">
+<summary>Menu · <b>Back up and restore a plane</b></summary>
+<nav class="inner" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/back-up-and-restore-a-plane" aria-current="page">Back up and restore a plane</a></li>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/egress-access-log">Egress access log</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</details>
+<main id="main" class="prose">
+<h1 id="back-up-and-restore-a-plane">Back up and restore a plane</h1>
+<p>A plane keeps authority state on disk: floors, runs and their taint, a
+pause file and a stop list. <code>state backup</code> copies it; after a loss,
+<code>state restore</code> raises what survived to the backup and never lowers anything
+(<a href="/docs/adr/0078-a-restore-only-raises">ADR-0078</a>). Both are <code>experimental</code>;
+<a href="/docs/status">status.md</a> is the inventory.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li>The plane stopped. Both commands take the spool's and the hold journal's
+locks for their whole run and refuse while a plane holds either. On a
+system without a file lock, Windows among them, both refuse.</li>
+<li>The plane's account and environment: the commands read the configuration
+as the plane does, and a restore writes only what that account owns.</li>
+<li><code>approvals.authority</code> set to <code>directory</code> or <code>signed</code>. Under <code>memory</code> there
+is nothing to restore, and both commands refuse.</li>
+</ul>
+<h2 id="steps">Steps</h2>
+<ol>
+<li>
+<p>Back up into a directory that does not exist yet:</p>
+<pre><code class="language-sh">guardana-control state backup plane.yaml /backups/plane-1
+</code></pre>
+<p>It prints <code>backed up &lt;n&gt; files into /backups/plane-1</code>, and one line for
+each configured path where nothing stood. The directory is made mode
+<code>0700</code>, each copy mode <code>0600</code>, and <code>backup.json</code> is written last: a
+directory without it is no backup.</p>
+</li>
+<li>
+<p>After a loss, make the spool and the hold journal directories again,
+empty and owned by the plane's account, then restore:</p>
+<pre><code class="language-sh">guardana-control state restore plane.yaml /backups/plane-1
+</code></pre>
+<p>It prints what it did per configuration key, the residual below, and
+which signed files to put back. It checks every class before its first
+write, so a refusal leaves the plane's files as they were; a failure
+after that prints what was done before it. Under <code>signed</code>, make the
+runs directory's <code>records/</code> and <code>state/</code> again first: without them the
+restore refuses.</p>
+</li>
+<li>
+<p>Check the plane before it serves:</p>
+<pre><code class="language-sh">guardana-gateway doctor --config plane.yaml
+</code></pre>
+</li>
+</ol>
+<h2 id="what-a-backup-holds">What a backup holds</h2>
+<p><code>backup.json</code>, schema <code>0.1</code>, names the authority, tenant, project and time
+of the backup, and per file its class, configuration key, absolute source,
+path in the backup, SHA-256 and size.
+A restore refuses a backup of another tenant, project or authority, a file
+whose source is not where the configuration puts it today, a size or hash
+that differs, a file the manifest does not list, and a major other than <code>0</code>.</p>
+<p>Copied, each under its class: <code>policy.state_dir</code>, <code>reaction.floor_dir</code>,
+<code>runs.dir</code>, <code>pause.file</code> and <code>reaction.stops</code>, and under <code>signed</code> also
+<code>trust.floor_dir</code>, <code>pause.floor_dir</code> and <code>reaction.stops_floor_dir</code>. Never copied: the spool, the hold journal and its ledger,
+the approvals store and inbox, the trail, the signer's floors, the bundle
+and its statement, the roster, the route and every key.</p>
+<p>The manifest is unsigned: its hashes catch corruption, not a rewrite of the
+backup and its manifest together, so keep the backup where only the plane's
+account and the operator write. A restore copies the files it verified
+into an owner-only <code>state-restore-*</code> directory under <code>$TMPDIR</code> and reads
+only that copy, which a killed restore leaves behind.</p>
+<h2 id="what-a-restore-does">What a restore does</h2>
+<ul>
+<li>Plane floor, per bundle id: the higher serial of the backup's and the
+live one, with its digest, stamped issued and latest at the restore time,
+rounded up to the whole second; a plane started within that second
+refuses until it passes. The bundle's own statement, issued before the
+restore, confirms nothing; the next renewal does. Two digests at one
+serial, or a clock behind either floor, refuse before that id is written.
+An id neither side holds a serial for is listed with no file, so the
+start refuses until <code>policy state reset</code>.</li>
+<li>Route, roster and pause floors: the higher serial of the two. Stop list
+floor: the higher serial; at one serial and head, the longer accepted
+part when the live list or the backup's copy begins with both parts.
+Two heads at one serial, or two parts no list shows as one history,
+refuse.</li>
+<li>Runs: every run closed at the restore time. Under <code>directory</code> each record
+either side holds is written closed, keeping an earlier close; under
+<code>signed</code>, <code>state/&lt;id&gt;.closed</code> is written for every run the backup or
+<code>records/</code> names, so an open record put back later is refused. Each
+root's taint is the join of both sides, and a state lost beside its
+record, or under <code>signed</code> beside its lock file, counts as untrusted with
+an unknown read.</li>
+<li>Pause: under <code>directory</code> the union of both files' entries; an id holding
+two different pauses refuses. Under <code>signed</code> only its floor is raised.</li>
+<li>Stop list: under <code>directory</code>, a surviving list that begins with the
+backup's, or carries it, is kept. With none, the backup's list is carried,
+judged against <code>reaction.route</code>, into a list of a new id holding every
+stop no lift ended, where a lift made for the old list does not verify.
+Any other surviving list is two histories, and the restore refuses;
+moving it aside lets the restore carry the backup's and loses the stops
+added to it since. Under <code>signed</code> the list is an operator's file, and only
+its floor is raised.</li>
+</ul>
+<p>Nothing held resumes: the journal, the ledger and the approvals store are
+never written, so a lost hold stays lost and a spent approval stays spent.
+A missing floor directory is built under a temporary name and renamed into
+place; a restore stopped at any write and run again ends where an unbroken
+one does.</p>
+<h2 id="verify">Verify</h2>
+<p><code>doctor</code> reads each signed file against the raised floors. Under <code>signed</code>
+the restore never writes an operator's file: the pause file, the stop list
+and <code>records/</code> among them. Put back the newest signed copy you hold, the
+backup's only when you hold none newer; the plane takes it wherever the
+raised floor still does. A lower signed pause file blocks every call until
+an operator signs a new one.</p>
+<h2 id="take-a-stop-list-back">Take a stop list back</h2>
+<p>Under <code>signed</code>, a stop list floor put back at the backup's serial takes only
+a list whose previous head is the backup's. To reach a list carried twice
+since, let the plane take the chain in serial order, or put the newest list
+back under a new floor, which takes the first list it reads:</p>
+<pre><code class="language-sh">mv &lt;reaction.stops_floor_dir&gt; &lt;aside&gt;
+guardana-control stops floor init --tenant &lt;t&gt; --project &lt;p&gt; &lt;reaction.stops_floor_dir&gt;
+</code></pre>
+<p>Under <code>directory</code> the backup holds no route, so once <code>reaction.route</code> was
+replaced, restore with the old route back in its place, then put the
+current one back and carry the list the restore wrote into a new directory
+that replaces <code>reaction.stops</code>:</p>
+<pre><code class="language-sh">guardana-control stops init --carry &lt;reaction.stops&gt; --carry-route &lt;old route&gt; \
+  --route &lt;current route&gt; --public-key &lt;route key&gt; &lt;new dir&gt;
+</code></pre>
+<p>With the route key replaced too, no carry reaches the current route.</p>
+<h2 id="limits">Limits</h2>
+<ul>
+<li>A statement issued before the restore above the restored floor's serial
+still confirms within <code>policy.max_stale</code>.</li>
+<li>A run neither the backup nor <code>records/</code> names reopens only through an
+operator's signed write.</li>
+<li>An older signed file put back, the backup's among them, brings back a
+grant revoked, a route changed or a pause signed after the backup.</li>
+<li>A stop added after the backup is lost with the list, and one lifted after
+it is back until an operator lifts it again.</li>
+<li>A floor file removed beside its marker is restored from the backup, as
+if its directory were lost.</li>
+<li>A plane started while a restore runs may raise <code>policy.state_dir</code> before
+the spool's lock refuses it. It only raises.</li>
+<li>Copying a volume back by hand is unsupported: it lowers floors, reopens
+closed runs, resumes holds and lets spent approvals count again.</li>
+</ul>
+<h2 id="roll-back">Roll back</h2>
+<p>A restore only raises, so it has no undo. <code>policy state reset</code> lowers a
+plane floor, recording why; a new run is opened with <code>runs open</code>.</p>
+<p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/guides/back-up-and-restore-a-plane.md">docs/guides/back-up-and-restore-a-plane.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.15.0, and <a href="https://github.com/guardana/control/tree/v0.15.0/docs">its documentation</a> is in its tag.</p>
+</main>
+<nav class="side" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/back-up-and-restore-a-plane" aria-current="page">Back up and restore a plane</a></li>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/egress-access-log">Egress access log</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</div>
+<footer class="foot"><div class="wrap row">
+  <p>Guardana Control · Apache-2.0</p>
+  <ul>
+    <li><a href="https://github.com/guardana/control">GitHub</a></li>
+    <li><a href="https://github.com/guardana/control/releases">Releases</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/SECURITY.md">Security</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/LICENSE">Licence Apache-2.0</a></li>
+    <li><a href="https://github.com/guardana/control/blob/main/TRADEMARKS.md">Trademarks</a></li>
+  </ul>
+</div></footer>
+</body>
+</html>
