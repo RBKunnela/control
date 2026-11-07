@@ -23,7 +23,7 @@ An open-source AI agent supervision framework that checks recorded runs against 
 
 [Run the local demo](docs/get-started/try-the-demo.md): allow a call, block
 another and approve one exact action, without Go or a model key.
-[Connect your MCP setup](docs/guides/connect-an-existing-mcp-setup.md) afterwards.
+[Connect your MCP setup](docs/guides/connect-an-existing-mcp-setup.md) next.
 
 The gateway is `experimental`. Caller identity comes from configuration.
 The evidence trail is not tamper-evident. Do not deploy this as a security
@@ -41,11 +41,14 @@ boundary. [Status](docs/status.md) is the inventory of what exists.
   recorded run against its procedure, and stop its later calls where a signed
   route allows:
   [supervision](docs/guides/supervise-and-stop-a-run.md).
+- Under `approvals.authority: signed`, take approvals, pauses, runs and stop
+  routes only from operators named in a signed roster:
+  [who may approve](docs/concepts/approvals-and-the-held-call.md#who-may-approve).
 - Block a tool whose definition no longer matches its reviewed fingerprint,
   except under `OBSERVE`: [MCP gateway](docs/concepts/mcp-gateway.md).
 
-Supervision and reaction run when you invoke them. A stop does not interrupt
-an operation already running. Paths around the gateway stay outside its control.
+Supervision and reaction run when you invoke them. A stop never interrupts
+a running operation. Paths around the gateway stay outside its control.
 
 ## The 1.0 goal: observe, supervise, react
 
@@ -59,8 +62,8 @@ goal is `planned` ([roadmap](ROADMAP.md)):
 - **React** within scoped authority: inform, alert, request review, hold an
   exact action for approval, pause calls or stop further actions.
 
-Full observation means coverage of connected paths with unknowns visible.
-It does not mean every action is visible or controllable. Sensors report;
+Full observation means coverage of connected paths with unknowns visible,
+not every action visible or controllable. Sensors report;
 enforcement points decide before effects. Read
 [the product model](docs/concepts/control-and-supervision.md).
 
@@ -74,11 +77,11 @@ arguments. Evidence names the policy version and records the outcome.
 ```mermaid
 flowchart LR
     accTitle: How a tool call is decided today
-    accDescr: The enforcement point decides an agent's proposed call from the built-in policy engine, an external decision point that can only veto, and an approval provider when a person has to approve. An allowed call goes to the tool or API. Decisions are appended to the evidence, which is exported over OpenTelemetry; a call whose record cannot be appended is blocked, unless the operator let a read run unrecorded.
+    accDescr: The enforcement point decides an agent's proposed call from the built-in policy engine, an external decision point that can only veto, and the approval authority when a person has to approve. An allowed call goes to the tool or API. Decisions are appended to the evidence, which is exported over OpenTelemetry; a call whose record cannot be appended is blocked, unless the operator let a read run unrecorded.
     AG[Agent] --> PEP[Enforcement point]
     POL[Built-in policy engine] --> PEP
     PDP[External PDP] -.->|can veto| PEP
-    APR[Approval provider] --> PEP
+    APR[Approval authority] --> PEP
     PEP -->|allowed call| TOOL[Tool or API]
     PEP --> EV[(Append-only evidence)]
     EV --> OTEL[OpenTelemetry export]
@@ -107,8 +110,8 @@ The `planned` target connects enforcement and observation through one
 vocabulary ([ADR-0039](docs/adr/0039-many-channels-into-one-core.md)).
 An [Enforcement API](docs/adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api.md)
 (`experimental`) is distinct from AuthZEN vetoes: custom tools ask before
-acting and report completion or abort. A cooperating client enforces its answer; that path is
-decided, not enforced by the receiver.
+acting and report completion or abort. A cooperating client enforces its
+answer; the receiver does not.
 
 ```mermaid
 flowchart TB
@@ -158,14 +161,13 @@ flowchart TB
 
 ## Install
 
-Each release has archives for Linux and macOS on amd64 and arm64, holding both
-binaries, `guardana-gateway` and `guardana-control`. Download one from the
-[releases page](https://github.com/guardana/control/releases), check it against
-the signed `checksums.txt` as [RELEASING.md](RELEASING.md) shows, and put the
+Each release has archives of `guardana-gateway` and `guardana-control` for
+Linux and macOS on amd64 and arm64. Download one from
+[releases](https://github.com/guardana/control/releases), check it against
+the signed `checksums.txt` ([RELEASING.md](RELEASING.md)) and put the
 binaries on your `PATH`.
 
-With Go 1.27.3 or later, build from source; such a binary reports version
-`dev`:
+With Go 1.27.3 or later, build from source (version `dev`):
 
 ```bash
 go install github.com/guardana/control/cmd/guardana-gateway@latest

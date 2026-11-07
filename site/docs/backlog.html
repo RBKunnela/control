@@ -253,13 +253,13 @@ mappings.</p>
 <td>B13</td>
 <td>Authenticate operators and scope authority</td>
 <td>none</td>
-<td>Reader/operator/admin capabilities are receiver-enforced; approval authority comes from authentication, through the operator ports of <a href="/docs/adr/0071-operators-are-named-by-a-signed-roster">ADR-0071</a>, the plane verifies each signed approval answer, and only the plane marks an approval spent, in its own store. Cross-project reads and operations are refused; a pause or a stop names its actual run, agent or principal scope; the pause file, the runs, the routes and the stop list's header are signed; <code>/healthz</code> names no run. Only an authenticated author may sign a reaction route. Two users and overlapping runs pass adversarial tests. MCP upstream credentials remain separate from inbound credentials. The collector is authenticated to the plane on a unix socket with a peer-credential check</td>
+<td>Reader/operator/admin capabilities are receiver-enforced. Cross-project reads and operations are refused; a stop names its actual agent or principal scope. Two users and overlapping runs pass adversarial tests. MCP upstream credentials remain separate from inbound credentials. The collector takes evidence only on its unix socket, and the TCP export is removed</td>
 </tr>
 <tr>
 <td>B14</td>
 <td>Add retention and recovery</td>
 <td>none</td>
-<td>Rotation, disk budget, cursor expiry, duplicates, interrupted export and backup/restore are tested for evidence and observations. A restored process cannot reuse spent approval authority or forget its rollback floor. Read-only inspection cannot mutate recovery state without saying so. The findings and observation logs take the RecordLog port, which then moves to its consumer with a read interface, a kind selector, its bounds and its diagnostics (<a href="/docs/adr/0072-the-collector-keeps-bounded-segments-of-one-project-behind-a-credential">ADR-0072</a>)</td>
+<td>Rotation, disk budget, cursor expiry, duplicates, interrupted export and backup/restore are tested for evidence and observations. A restored process cannot reuse spent approval authority. Read-only inspection cannot mutate recovery state without saying so. The findings and observation logs take the RecordLog port, which then moves to its consumer with a read interface, a kind selector, its bounds and its diagnostics (<a href="/docs/adr/0072-the-collector-keeps-bounded-segments-of-one-project-behind-a-credential">ADR-0072</a>)</td>
 </tr>
 <tr>
 <td>B26</td>
