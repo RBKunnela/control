@@ -129,10 +129,29 @@ own path, and <code>pause add</code> and <code>pause remove</code> with <code>--
 <code>--root-key</code> check the file they start from against the roster before they
 sign it at the next serial. The plane checks it at every read and raises a
 floor in the new <code>pause.floor_dir</code>, which <code>pause floor init</code> makes, so an
-older signed file put back is refused after a restart too, and a copy of
-another plane's file is refused. <code>/healthz</code> gives the serial and the floor
+older signed file put back is refused after a restart too, and a copy from
+another path is refused; planes that use one path on two hosts must differ
+in tenant or project, or a copy between them is taken. <code>/healthz</code> gives the serial and the floor
 under <code>pause.signed</code>, <code>health.socket</code> also the signer, and <code>doctor</code> checks
 the file without raising the floor (ADR-0075).</li>
+<li>Under <code>approvals.authority: signed</code> a run counts only from a record <code>3.0</code>
+an operator granted <code>operate</code> signed for the run's tenant and project and
+for the plane's own <code>runs.dir</code>: <code>runs open</code> and <code>runs close</code> take
+<code>--key &lt;k&gt; --roster &lt;r&gt; --root-key &lt;p&gt;</code>, <code>runs close</code> also the plane's
+<code>--tenant</code> and <code>--project</code>; they refuse to sign over a record the roster
+does not vouch for, of another tenant, project or directory, or unsigned,
+and say on standard error what they signed. A plane refuses a <code>records/</code>
+or a record its own account owns. When the plane takes a closed record it carries the close into
+<code>state/</code>, at a call or at its start, so the open record put back is
+refused; a close whose signer may no longer operate there is carried too. A record
+copied from another path counts in neither; planes that use one path on two
+hosts must differ in tenant or project. The plane writes a root's state at
+its first admitted call and blocks the root's calls when that state is later
+removed. <code>supervise</code> and <code>react</code> read a signed layout only with
+<code>--roster</code>, <code>--root-key</code>, <code>--tenant</code> and <code>--project</code>, and take a record
+only as the plane would. <code>/healthz</code> counts the records judged and refused by cause under
+<code>runs.signed</code>, and <code>doctor</code> counts the records by state and by signer
+(ADR-0076).</li>
 <li><code>pause add --run &lt;id&gt;</code>, <code>--agent &lt;id&gt;</code> and <code>--principal &lt;id&gt;</code> pause one
 opened run, or every run under a root, one agent or one principal. A run
 is named by its id from <code>runs open</code>, and any other spelling is refused. Each is
@@ -195,6 +214,13 @@ reader of the old shape finds no <code>schema</code> member.</li>
 <li>TCP export stays in this release with a <code>doctor</code> warning and goes in 0.17:
 over plaintext, whoever holds the port while the collector is down
 receives the credential. Move to <code>export.endpoint: unix:///path</code>.</li>
+<li><strong>Breaking:</strong> under <code>approvals.authority: signed</code> <code>runs.dir</code> holds
+<code>records/</code>, the operators', and <code>state/</code>, the plane's; a runs directory of
+unsigned records, and a <code>2.0</code> record in <code>records/</code>, are refused. The plane
+refuses to start when its own account may write <code>records/</code> or a directory
+on its path, or owns <code>records/</code>, and <code>runs open</code> and <code>runs close</code> without <code>--key</code> refuse the
+directory, naming the flags. Open the runs again into a new, empty
+directory with <code>--key</code>.</li>
 <li><strong>Breaking:</strong> under <code>approvals.authority: signed</code> a pause file of version
 <code>1</code> or <code>2</code> blocks every call, <code>pause.floor_dir</code> is required with
 <code>pause.file</code>, and the plane refuses to start when its own account may write

@@ -19,6 +19,7 @@ const (
 	stateSuffix  = ".state.json"
 	stateTemp    = ".state.tmp"
 	lockSuffix   = ".lock"
+	closedSuffix = ".closed"
 
 	idPrefix  = "run-"
 	idHexLen  = 32
@@ -27,9 +28,28 @@ const (
 	secretTextLen = 43
 )
 
-// suffixes is every name a run id may carry. Nothing else under the
-// directory is the directory's.
-var suffixes = [...]string{recordSuffix, recordTemp, stateSuffix, stateTemp, lockSuffix}
+// role is which directory of a layout a dir is, and so which names it holds.
+type role uint8
+
+const (
+	// roleFlat is the one directory of an unsigned layout: records, states
+	// and locks side by side, all the plane's account's.
+	roleFlat role = iota
+	// roleRecords is a signed layout's records/: the operators' signed
+	// records, which a plane only reads.
+	roleRecords
+	// roleState is a signed layout's state/: the plane's states, locks and
+	// the closes it carried, which no operator command writes.
+	roleState
+)
+
+// suffixes is every name a run id may carry in a directory of each role.
+// Nothing else under the directory is the directory's.
+var suffixes = map[role][]string{
+	roleFlat:    {recordSuffix, recordTemp, stateSuffix, stateTemp, lockSuffix},
+	roleRecords: {recordSuffix, recordTemp},
+	roleState:   {stateSuffix, stateTemp, lockSuffix, closedSuffix},
+}
 
 type kind uint8
 
@@ -40,17 +60,18 @@ const (
 	kindOther
 )
 
-// classify says what a name under the directory is, and for a record the run
-// id it holds. A temporary name of internal/files is what a crash while the
-// marker was created leaves, and nothing reads it.
-func classify(name string) (kind, string) {
-	if name == markerFile {
+// classify says what a name under a directory of role r is, and for a record
+// the run id it holds. A temporary name of internal/files is what a crash
+// while the marker, or a root's first state in state/, was created leaves,
+// and nothing reads it; a state directory has no marker.
+func classify(name string, r role) (kind, string) {
+	if r != roleState && name == markerFile {
 		return kindMarker, ""
 	}
 	if files.IsTemp(name) {
 		return kindOther, ""
 	}
-	for _, s := range suffixes {
+	for _, s := range suffixes[r] {
 		if id, ok := strings.CutSuffix(name, s); ok && checkRunID(id) == nil {
 			if s == recordSuffix {
 				return kindRecord, id

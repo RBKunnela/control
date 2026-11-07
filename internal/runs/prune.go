@@ -55,6 +55,10 @@ type RefusedTree struct {
 // go one at a time, children first and the root's record before its state, so
 // a prune stopped part way leaves every tree it did not finish either whole
 // or as a root with fewer runs, and every file it removed in the archive.
+//
+// On a signed layout a prune reads and removes records/ alone: state/ is the
+// plane's, so a pruned root's state, lock and carried closes stay there, and
+// no plane serves a run with no record.
 func (a *Admin) Prune(ctx context.Context, req PruneRequest) (Pruned, error) {
 	return a.prune(ctx, req, nil)
 }
@@ -138,7 +142,7 @@ func (d *dir) trees() (map[string][]Record, error) {
 	if err != nil {
 		return nil, err
 	}
-	ids, err := scan(entries)
+	ids, err := d.scan(entries)
 	if err != nil {
 		return nil, err
 	}
@@ -177,6 +181,11 @@ func (d *dir) newArchive(path string) (*os.Root, error) {
 	if os.SameFile(parent, here) {
 		return nil, fmt.Errorf("%w: %q is inside it", ErrArchive, clip(path))
 	}
+	if d.role == roleRecords {
+		if top, err := os.Stat(filepath.Dir(d.name)); err != nil || os.SameFile(parent, top) {
+			return nil, fmt.Errorf("%w: %q is beside records/ and state/", ErrArchive, clip(path))
+		}
+	}
 	if err := os.Mkdir(path, 0o700); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrArchive, err)
 	}
@@ -205,11 +214,13 @@ func (d *dir) pruneTree(root string, members []Record, cutoff time.Time, archive
 	if err != nil {
 		return 0, err
 	}
-	lock, err := d.lockTree(root)
-	if err != nil {
-		return 0, err
+	if d.role == roleFlat {
+		lock, err := d.lockTree(root)
+		if err != nil {
+			return 0, err
+		}
+		defer func() { err = errors.Join(err, lock.Close()) }()
 	}
-	defer func() { err = errors.Join(err, lock.Close()) }()
 	copies, err := d.treeFiles(root, order)
 	if err != nil {
 		return 0, &treeRefusal{err: err}
@@ -278,11 +289,15 @@ type treeFile struct {
 // treeFiles reads every record of the tree and the root's state, refusing a
 // state that does not decode as the root's.
 func (d *dir) treeFiles(root string, order []Record) ([]treeFile, error) {
-	if _, err := d.readState(root); err != nil {
-		return nil, fmt.Errorf("the state of %s: %w", root, err)
+	names := recordNames(order)
+	if d.role == roleFlat {
+		if _, err := d.readState(root); err != nil {
+			return nil, fmt.Errorf("the state of %s: %w", root, err)
+		}
+		names = append([]string{root + stateSuffix}, names...)
 	}
-	out := make([]treeFile, 0, len(order)+1)
-	for _, name := range append([]string{root + stateSuffix}, recordNames(order)...) {
+	out := make([]treeFile, 0, len(names))
+	for _, name := range names {
 		body, err := d.readFile(name)
 		if err != nil {
 			return nil, err
@@ -308,7 +323,10 @@ func (d *dir) removeTree(root string, order []Record) error {
 	for i := len(order) - 1; i > 0; i-- {
 		names = append(names, order[i].ID+recordSuffix, order[i].ID+recordTemp)
 	}
-	names = append(names, root+recordTemp, root+recordSuffix, root+stateTemp, root+stateSuffix, root+lockSuffix)
+	names = append(names, root+recordTemp, root+recordSuffix)
+	if d.role == roleFlat {
+		names = append(names, root+stateTemp, root+stateSuffix, root+lockSuffix)
+	}
 	for _, name := range names {
 		if err := d.root.Remove(name); err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return err

@@ -22,14 +22,17 @@ const (
 	superviseName = "supervise"
 	superviseForm = "--procedure <file> --runs <dir> --run <run-id> --findings <dir>\n" +
 		"      [--evidence <export>]... [--source <descriptor> --log <dir>]...\n" +
-		"      [--view <file> [--view-all]]"
+		"      [--view <file> [--view-all]]\n" +
+		"      [" + runsReadHint + "]"
 	superviseUsage = "takes --procedure, --runs, --run and --findings once each, any --evidence, " +
-		"each --source with its --log, in order, and --view at most once"
+		"each --source with its --log, in order, --view at most once, and for a signed --runs " +
+		"--roster, --root-key, --tenant and --project once each"
 )
 
 type superviseArgs struct {
 	procedure, runs, run, findings, evidence, sources, logs, view valueList
 	viewAll                                                       bool
+	read                                                          runsReadFlags
 }
 
 func superviseFlags(command string, out io.Writer) (*flag.FlagSet, *superviseArgs) {
@@ -43,6 +46,7 @@ func superviseFlags(command string, out io.Writer) (*flag.FlagSet, *superviseArg
 	flags.Var(&a.logs, "log", "the observation log `dir` of the --source in the same place; one with no log yet was never heard; repeatable")
 	flags.Var(&a.findings, "findings", "the findings log `dir`, owner-only; given once")
 	flags.Var(&a.view, "view", "a `file` to draw the run in as one page, mode 0600, replacing only a page drawn before; given once")
+	a.read.declare(flags)
 	flags.BoolVar(&a.viewAll, "view-all", false, "draw every call on the --view page, up to its bound, not each finding's neighbourhood")
 	return flags, a
 }
@@ -199,7 +203,7 @@ func readSuperviseInput(a *superviseArgs) (supervise.Input, error) {
 	if in.Procedure, err = supervise.ReadProcedure(raw); err != nil {
 		return in, refusedInput("procedure", a.procedure[0], err)
 	}
-	if in.Run, in.Tree, err = readRun(a.runs[0], a.run[0], in.Procedure.Children()); err != nil {
+	if in.Run, in.Tree, err = readRun(a.runs[0], a.run[0], in.Procedure.Children(), a.read); err != nil {
 		return in, err
 	}
 	for _, path := range a.evidence {

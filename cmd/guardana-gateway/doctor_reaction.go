@@ -72,7 +72,7 @@ func (d *examination) printStops(entries []reaction.Entry) (checked bool) {
 	checked = true
 	var dir *runs.Plane
 	if d.cfg.Runs.Dir != "" {
-		opened, err := runs.OpenPlane(d.cfg.Resolve(d.cfg.Runs.Dir))
+		opened, err := d.openRunsCheck()
 		if err != nil {
 			writeLine(d.out, "       the runs directory cannot be opened, so no stop's run is checked: "+oneLine(err.Error()))
 			checked = len(entries) == 0

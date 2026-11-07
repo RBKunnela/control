@@ -177,6 +177,12 @@ func versionSpecs() map[string]versionSpec {
 				{"internal/runs/strict.go#checkRecordVersion/major", readsMajor},
 			},
 		},
+		"Signed run record": {
+			cites: []versionCite{
+				{"internal/runs/signed.go#SignedRecordVersion", writes},
+				{"internal/runs/signed.go#decodeSignedBody/major", readsMajor},
+			},
+		},
 		"Enforcement API": {
 			name: func() string { return protoPackage(&enforcev1alpha1.AdmitRequest{}) },
 			cites: []versionCite{

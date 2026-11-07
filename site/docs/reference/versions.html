@@ -254,6 +254,13 @@ version. <a href="/docs/status">status.md</a> is the inventory.</p>
 <td><a href="/docs/contracts#the-runs-directory">contracts.md</a></td>
 </tr>
 <tr>
+<td>Signed run record (<code>schema_version</code>)</td>
+<td><code>3.0</code></td>
+<td><code>3.x</code></td>
+<td><code>experimental</code></td>
+<td><a href="/docs/reference/runs#a-signed-runs-directory">runs.md</a></td>
+</tr>
+<tr>
 <td>Observation records and log (<code>guardana.control.observe.v1alpha1</code>)</td>
 <td><code>0.1</code>, <code>0.2</code>, <code>0.3</code></td>
 <td><code>0.1</code>, <code>0.2</code>, <code>0.3</code></td>
@@ -382,7 +389,8 @@ the authority holding it and the call's tenant and project; a 2.0 record
 names none of them and is read as held under <code>directory</code>. A 1.0 directory
 kept the plane's spent mark beside the answers, so it is refused: empty
 it; its holds expire within <code>approvals.ttl</code>.</li>
-<li><strong>Run record.</strong> Any minor of major 2 is read. A record of major 1 names no
+<li><strong>Run record.</strong> Any minor of major 2 is read, except in a signed layout's
+<code>records/</code>, which reads major 3 alone. A record of major 1 names no
 project, so it is refused, never read as any project's run: open the run
 again (<a href="/docs/reference/runs#runs-an-earlier-release-opened">runs.md</a>).</li>
 <li><strong>Policy document, scenario, reaction route, freshness statement and

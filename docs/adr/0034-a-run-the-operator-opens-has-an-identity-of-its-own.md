@@ -22,6 +22,11 @@ Amended by [ADR-0068](0068-a-run-belongs-to-one-project.md):
 a run record names its project, a plane resolves a token only under its own
 `project_id`, and a record of major 1 is refused.
 
+Amended by [ADR-0076](0076-a-signed-plane-takes-a-run-only-from-an-operators-signature.md):
+under `approvals.authority: signed` the runs directory holds `records/` and
+`state/`, and a plane takes a run only from a `3.0` record an operator signed
+for its own `records/`.
+
 ## Context
 
 ADR-0021 keys a run by the listener and the principal and agent it resolves.

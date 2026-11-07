@@ -2,7 +2,7 @@
 title: Runs
 summary: The runs directory, what runs open, close, list and prune print and refuse, and what a plane with runs.dir does with a token.
 type: reference
-covers: [cmd/guardana-control/runs.go, internal/runs/**, cmd/guardana-gateway/runs.go, adapters/mcp/runs.go]
+covers: [cmd/guardana-control/runs.go, cmd/guardana-control/runs_signed.go, cmd/guardana-control/runs_read.go, internal/runs/**, cmd/guardana-gateway/runs.go, cmd/guardana-gateway/doctor_runs.go, adapters/mcp/runs.go]
 ---
 
 # Runs
@@ -98,6 +98,39 @@ whole prune.
 
 No command repeats a token, or a value given as a run id that is not one.
 
+## A signed runs directory
+
+Under `approvals.authority: signed` the directory holds `records/`, owned by
+the operators' account, mode `0750`, its records `0640`, and `state/`, owned
+by the plane's account, mode `0700`, and nothing else
+([ADR-0076](../adr/0076-a-signed-plane-takes-a-run-only-from-an-operators-signature.md)).
+`runs open` with `--key <operator key> --roster <roster>
+--root-key <root public key>` makes an empty directory one, giving
+`state/` to the account that ran it: `chown` it to the plane's account, and
+put that account in `records/`'s group. A plane refuses an unsigned
+directory and a `records/` or record its own account owns, and will not
+start when that account may write `records/` or a directory on its path.
+
+Each record is a `3.0` envelope an operator granted `operate` signed for the
+run's tenant and project and for one `records/`, named by its absolute path
+with links resolved, so a copy between two paths counts in neither; planes
+using one path on two hosts must differ in tenant or project, or a copy
+between them counts. With the three flags (`runs close` adds the plane's `--tenant` and
+`--project`), `runs open` and `runs close` check the parent and the record a
+close replaces as a plane would, refuse one that fails, and say on standard
+error what they signed. Without `--key` both refuse the directory, naming
+the flags. `runs list` reads it as any directory; `runs prune` removes
+records only. `supervise` and `react` take a record only as a plane would,
+given its `--roster`, `--root-key`, `--tenant` and `--project`.
+
+A record that is unsigned, signed for another directory, of another tenant
+or project, or by a key the roster does not grant `operate` refuses its calls
+as `unreadable`. When the plane takes a closed record, at a call or when it
+starts, it writes the close into `state/`, and the open record put back
+after is refused as `closed`. `/healthz` counts under `runs.signed` the
+records judged, each refusal cause and the closes carried; `doctor` counts
+the records by state and by signer.
+
 ## What a plane does with a token
 
 | Listener | Where the token comes from | A token that does not resolve |
@@ -138,11 +171,8 @@ Move to a new, empty directory, never into the old one: while one `1.0`
 record is left in a directory, `runs list` refuses that whole directory, and
 so does `supervise` of every run under a procedure that reads children. Open
 each run again there with `runs open --project`, point `runs.dir` at it, and
-remove the old directory once no plane names it. No run lives past 720 hours,
-so nothing in the old directory outlives that.
+remove the old directory once no plane names it.
 
-A reopened run starts with a clean flow state. An agent that took in
-untrusted or confidential data under the old run would carry it into the new
-one unmarked, and a flow rule would not see it. End each agent's task and
-start a new one under the new run; never hand a new token to an agent in the
-middle of a task.
+A reopened run starts with a clean flow state, so what an agent took in
+under the old run goes unmarked: end each agent's task and start a new one
+under the new run, never handing a new token to an agent mid-task.

@@ -2,7 +2,7 @@
 title: Format versions
 summary: Every versioned file and message a user writes or reads, the version this tree writes, the versions it reads, and how stable each is.
 type: reference
-covers: [internal/evidence/event.go, internal/evidence/version.go, internal/core/codes.go, adapters/mcp/translate.go, adapters/enforce/**, internal/gateway/decisions.go, internal/gateway/journal.go, internal/trailfile/export.go, internal/coverage/export.go, internal/coverage/inventory.go, internal/policy/rules/rules.go, internal/policy/statement.go, internal/scenario/scenario.go, internal/supervise/ruletable.go, internal/supervise/evaluate.go, internal/supervise/record.go, internal/supervise/report.go, cmd/guardana-control/procedure_cases.go, internal/findinglog/**, internal/observe/version.go, internal/ingest/*/descriptor.go, internal/observelog/export.go, internal/runs/strict.go, internal/reaction/**, internal/pause/*.go, internal/approvals/record.go, internal/holdjournal/**, internal/policystate/format.go, internal/hookbridge/**, internal/enforceclient/client.go, internal/policy/bundle/bundle.go, internal/spool/frame.go]
+covers: [internal/evidence/event.go, internal/evidence/version.go, internal/core/codes.go, adapters/mcp/translate.go, adapters/enforce/**, internal/gateway/decisions.go, internal/gateway/journal.go, internal/trailfile/export.go, internal/coverage/export.go, internal/coverage/inventory.go, internal/policy/rules/rules.go, internal/policy/statement.go, internal/scenario/scenario.go, internal/supervise/ruletable.go, internal/supervise/evaluate.go, internal/supervise/record.go, internal/supervise/report.go, cmd/guardana-control/procedure_cases.go, internal/findinglog/**, internal/observe/version.go, internal/ingest/*/descriptor.go, internal/observelog/export.go, internal/runs/s*.go, internal/reaction/**, internal/pause/*.go, internal/approvals/record.go, internal/holdjournal/**, internal/policystate/format.go, internal/hookbridge/**, internal/enforceclient/client.go, internal/policy/bundle/bundle.go, internal/spool/frame.go]
 generated: go test ./internal/docscheck -run TestVersionsPageIsTheCode
 ---
 
@@ -41,6 +41,7 @@ version. [status.md](../status.md) is the inventory.
 | Hook bridge handles (`version`) | `1.0` | `1.x` | `experimental` | [runtime-profiles](../extending/runtime-profiles.md#what-the-bridge-does) |
 | Runs directory marker and root state (`schema_version`) | `1.0` | `1.x` | `experimental` | [contracts.md](../contracts.md#the-runs-directory) |
 | Run record (`schema_version`) | `2.0` | `2.x` | `experimental` | [contracts.md](../contracts.md#the-runs-directory) |
+| Signed run record (`schema_version`) | `3.0` | `3.x` | `experimental` | [runs.md](runs.md#a-signed-runs-directory) |
 | Observation records and log (`guardana.control.observe.v1alpha1`) | `0.1`, `0.2`, `0.3` | `0.1`, `0.2`, `0.3` | `experimental` | [observations.md](observations.md#the-log) |
 | Source descriptor (`schema_version`) | — | `0.1`, `0.2` | `experimental` | [observations.md](observations.md#the-source-descriptor) |
 | OpenTelemetry GenAI spans, imported | — | conventions `1.41.0`, OTLP `1.11.1` | `experimental` | [observations.md](observations.md#what-an-import-keeps) |
@@ -80,7 +81,8 @@ and `2` alone.
   names none of them and is read as held under `directory`. A 1.0 directory
   kept the plane's spent mark beside the answers, so it is refused: empty
   it; its holds expire within `approvals.ttl`.
-- **Run record.** Any minor of major 2 is read. A record of major 1 names no
+- **Run record.** Any minor of major 2 is read, except in a signed layout's
+  `records/`, which reads major 3 alone. A record of major 1 names no
   project, so it is refused, never read as any project's run: open the run
   again ([runs.md](runs.md#runs-an-earlier-release-opened)).
 - **Policy document, scenario, reaction route, freshness statement and

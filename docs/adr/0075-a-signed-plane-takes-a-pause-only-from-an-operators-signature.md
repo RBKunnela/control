@@ -23,7 +23,7 @@ put back, which lifts every pause added since.
   over a canonical body naming the signing key, the plane's tenant and
   project, the pause file it was signed for, as an absolute path with its
   directory's links resolved, a serial and the entries. The plane compares
-  that path with its own `pause.file`, so a copy into another plane's file is
+  that path with its own `pause.file`, so a copy from another path is
   refused. Versions `1` and `2` are refused there,
   and version `3` is refused under every other authority.
 - At every read the plane takes the file through the authenticator, its own
@@ -60,7 +60,9 @@ Each change rewrites and re-signs the whole file, so two operators writing
 at once is refused, not merged. The writer owns the file and its directory,
 so only one OS account can write a signed pause file; other operators sign
 from it. A writer cannot read the plane's floor: an older file put back is
-signed again at a serial the floor refuses. A signed body is held to the authenticator's
+signed again at a serial the floor refuses. The binding is a path, not a host:
+planes that use one path on two hosts must differ in tenant or project, or a
+copy between them is taken. A signed body is held to the authenticator's
 16 KiB bound, below the file bound of version `2`.
 
 ## Validation

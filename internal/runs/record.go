@@ -1,6 +1,7 @@
 package runs
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 	"time"
@@ -203,8 +204,13 @@ func refuseWithoutProject(raw []byte) error {
 	return fmt.Errorf("%w: %q", ErrMissingField, "project_id")
 }
 
-// decodeRecord reads one record and holds it to check.
+// decodeRecord reads one record of major 2 and holds it to check. A signed
+// record is refused by its version: only a signed layout's records/ reads
+// one.
 func decodeRecord(raw []byte) (Record, error) {
+	if isEnvelope(raw) {
+		return Record{}, fmt.Errorf("%w: a signed record %s, which only a signed layout's records/ holds", ErrSchemaVersion, SignedRecordVersion)
+	}
 	if err := refuseWithoutProject(raw); err != nil {
 		return Record{}, err
 	}
@@ -212,15 +218,31 @@ func decodeRecord(raw []byte) (Record, error) {
 	if err != nil {
 		return Record{}, err
 	}
-	s := make(map[string]string, len(recordKeys))
-	for _, k := range recordKeys {
-		if s[k], err = stringField(f, k); err != nil {
-			return Record{}, err
-		}
+	s, err := stringFields(f, recordKeys)
+	if err != nil {
+		return Record{}, err
 	}
 	if err := checkRecordVersion(s["schema_version"]); err != nil {
 		return Record{}, err
 	}
+	return recordOf(s)
+}
+
+// stringFields reads each of keys as a JSON string.
+func stringFields(f map[string]json.RawMessage, keys []string) (map[string]string, error) {
+	s := make(map[string]string, len(keys))
+	for _, k := range keys {
+		v, err := stringField(f, k)
+		if err != nil {
+			return nil, err
+		}
+		s[k] = v
+	}
+	return s, nil
+}
+
+// recordOf is the record the members of recordKeys spell, held to check.
+func recordOf(s map[string]string) (Record, error) {
 	r := Record{
 		ID:           s["run_id"],
 		Who:          Identity{ProjectID: s["project_id"], TenantID: s["tenant_id"], PrincipalType: s["principal_type"], PrincipalID: s["principal_id"], AgentID: s["agent_id"]},
@@ -228,6 +250,7 @@ func decodeRecord(raw []byte) (Record, error) {
 		Parent:       s["parent"],
 		SecretSHA256: s["secret_sha256"],
 	}
+	var err error
 	if r.OpenedAt, err = parseTime("opened_at", s["opened_at"]); err != nil {
 		return Record{}, err
 	}
@@ -245,18 +268,31 @@ func decodeRecord(raw []byte) (Record, error) {
 	return r, nil
 }
 
-// readRecord reads the record of id and holds it to its name.
+// readRecord reads the record of id, in the format the directory's role
+// holds, and holds it to its name.
 func (d *dir) readRecord(id string) (Record, error) {
+	sr, err := d.readStored(id)
+	return sr.Record, err
+}
+
+// readStored reads the record of id as readRecord does, with its signature's
+// parts where the directory is a signed layout's records/.
+func (d *dir) readStored(id string) (SignedRecord, error) {
 	raw, err := d.readFile(id + recordSuffix)
 	if err != nil {
-		return Record{}, err
+		return SignedRecord{}, err
 	}
-	r, err := decodeRecord(raw)
+	var sr SignedRecord
+	if d.role == roleRecords {
+		sr, err = decodeSignedFile(raw)
+	} else {
+		sr.Record, err = decodeRecord(raw)
+	}
 	if err != nil {
-		return Record{}, fmt.Errorf("record %s: %w", id, err)
+		return SignedRecord{}, fmt.Errorf("record %s: %w", id, err)
 	}
-	if r.ID != id {
-		return Record{}, fmt.Errorf("%w: %s holds run %s", ErrNameMismatch, id+recordSuffix, r.ID)
+	if sr.Record.ID != id {
+		return SignedRecord{}, fmt.Errorf("%w: %s holds run %s", ErrNameMismatch, id+recordSuffix, sr.Record.ID)
 	}
-	return r, nil
+	return sr, nil
 }

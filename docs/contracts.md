@@ -1326,6 +1326,19 @@ edited in place.
 A state only rises: `untrusted` never goes back to `false`, and `max_read`
 never falls, `UNKNOWN` included.
 
+Under `approvals.authority: signed` the directory holds `records/` and
+`state/` ([ADR-0076](adr/0076-a-signed-plane-takes-a-run-only-from-an-operators-signature.md)).
+A record in `records/` is a DSSE envelope of
+`application/vnd.agent-run-record+json` with one signature, over a body in
+its own canonical JSON holding every key of the table above with
+`schema_version` `3.0`, and `alg` (`ed25519`), `keyId` (the signing key's,
+the signature's `keyid`) and `records` (the absolute, cleaned path of the
+`records/` it was signed for, with the links on its way resolved, at most
+512 bytes). Any other minor of major
+`3` is read, and nothing else is read there. `state/` holds the states, the
+roots' lock files, and an empty `<id>.closed` for each run whose closed
+record the plane took.
+
 ## The reaction route and the stop list
 
 What a route and a stop list hold, for an operator who writes a route and a

@@ -191,14 +191,15 @@ therefore blocks everything; it never lifts a pause. A plane without
 Under `approvals.authority: signed` the file is version 3, which an operator
 signs from their own account: `pause init --key <k> --tenant <t> --project <p>`
 makes one, and `pause add` and `pause remove` with `--key`, `--roster` and
-`--root-key` check the file against the roster, then sign it again at the
-next serial. Only the account owning it can write it. It is a DSSE envelope over the entries, the plane's
-`tenant_id` and `project_id`, its own path, the key and a serial; `pause
-floor init` makes the floor. At every read the plane checks the signature against an operator key
-of its trust roster, the tenant and project, a grant of `operate` or `admin`
-there, and the serial against its floor in `pause.floor_dir`, which it raises
-to each serial it takes, so an older signed file replayed is refused after a
-restart too. A file failing any of these, a version 1 or 2 file among them,
+`--root-key` check the file, then re-sign it at the next serial. Only the account owning it can write it. It is a DSSE envelope over the entries, the plane's
+`tenant_id` and `project_id`, its own path, the key and a serial, so a copy
+from another path is refused; one from another host at the same path is taken
+unless tenant or project differ. `pause floor init` makes the
+floor. At every read the plane checks the signature against an operator key
+of its roster, the tenant and project, a grant of `operate` or `admin`
+there, and the serial against its floor in `pause.floor_dir`, raised
+to each serial it takes, so an older file replayed is refused across
+restarts. A file failing any of these, version 1 and 2 included,
 is unknown and blocks every call; the causes are `unsigned`,
 `not authenticated`, `another tenant or project`, `another pause file`,
 `owned by the plane's account`, `not authorized`,
@@ -208,9 +209,9 @@ on its path. `/healthz` gives `pause.signed`'s serial and floor, `health.socket`
 the signer.
 
 The file's directory may not be, or sit inside, the spool's, the approvals
-store's or the hold journal's, which a running plane locks. The check compares
-the directories by identity as well as by path, so a link to one of them, or
-a spelling in another case on a volume that ignores case, is refused too.
+store's or the hold journal's, which a running plane locks. Directories are
+compared by identity and by path, so a link to one, or another case on a
+case-blind volume, is refused too.
 
 A pause bites on every call not yet recorded as started when the plane reads
 it. Nothing already running is cancelled: an execution handed out before

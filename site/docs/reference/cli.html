@@ -262,8 +262,8 @@ profile's statuses, <a href="/docs/extending/runtime-profiles">extending/runtime
   guardana-control pause list &lt;file&gt;
   guardana-control pause floor init --tenant &lt;t&gt; --project &lt;p&gt; &lt;dir&gt;
   guardana-control runs open --project --tenant --principal-type --principal --agent
-      --ttl [--parent] &lt;dir&gt;
-  guardana-control runs close &lt;dir&gt; &lt;run-id&gt;
+      --ttl [--parent] [--key --roster --root-key] &lt;dir&gt;
+  guardana-control runs close [--key --roster --root-key --tenant --project] &lt;dir&gt; &lt;run-id&gt;
   guardana-control runs list &lt;dir&gt;
   guardana-control runs prune --expired-before &lt;time&gt; --archive &lt;dir&gt; &lt;dir&gt;
   guardana-control observe import --source &lt;file&gt; --log &lt;dir&gt; &lt;file&gt;
@@ -275,6 +275,7 @@ profile's statuses, <a href="/docs/extending/runtime-profiles">extending/runtime
   guardana-control supervise --procedure &lt;file&gt; --runs &lt;dir&gt; --run &lt;run-id&gt; --findings &lt;dir&gt;
       [--evidence &lt;export&gt;]... [--source &lt;descriptor&gt; --log &lt;dir&gt;]...
       [--view &lt;file&gt; [--view-all]]
+      [--roster &lt;file&gt; --root-key &lt;file&gt; --tenant &lt;t&gt; --project &lt;p&gt;]
   guardana-control notify --findings &lt;dir&gt; --state &lt;dir&gt; [--init] [--timeout &lt;duration&gt;]
       -- &lt;program&gt; [&lt;arg&gt;]...
   guardana-control findings export --findings &lt;dir&gt; [--after &lt;cursor&gt;] [--limit &lt;n&gt;]
@@ -289,7 +290,7 @@ profile's statuses, <a href="/docs/extending/runtime-profiles">extending/runtime
       [--through &lt;line&gt;] &lt;dir&gt;
   guardana-control stops list --route &lt;file&gt; --public-key &lt;file&gt; &lt;dir&gt;
   guardana-control react --findings &lt;dir&gt; --runs &lt;dir&gt; --route &lt;file&gt; --public-key &lt;file&gt;
-      --stops &lt;dir&gt;
+      --stops &lt;dir&gt; [--roster &lt;file&gt; --root-key &lt;file&gt; --tenant &lt;t&gt; --project &lt;p&gt;]
   guardana-control hook (--profile &lt;id&gt; | --profile-file &lt;file&gt;) --socket &lt;path&gt;
       --state-dir &lt;dir&gt;
   guardana-control console --approvals &lt;dir&gt; [--pause &lt;f&gt;] [--approver-id &lt;id&gt;] [--inbox &lt;dir&gt;]
@@ -303,7 +304,8 @@ An id that could read as authn:, mixes scripts or holds a hidden or restyled cha
 Write access to the pause file is the authority to pause a call and to lift a pause;
 under approvals.authority signed, only a pause file signed with an operator&#39;s --key counts.
 Write access to the runs directory is the authority to open and to close a run;
-a token acts as its run until it expires or is closed, and runs open prints it once.
+under approvals.authority signed, only a record an operator signed with --key counts.
+A token acts as its run until it expires or is closed, and runs open prints it once.
 Write access to a floor directory is the authority to lower its floors;
 policy state reset is the one way that records why.
 Only the lift key lifts a stop while a plane runs; write access to the stops directory

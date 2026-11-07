@@ -163,8 +163,8 @@ usage:
   guardana-control pause list <file>
   guardana-control pause floor init --tenant <t> --project <p> <dir>
   guardana-control runs open --project --tenant --principal-type --principal --agent
-      --ttl [--parent] <dir>
-  guardana-control runs close <dir> <run-id>
+      --ttl [--parent] [--key --roster --root-key] <dir>
+  guardana-control runs close [--key --roster --root-key --tenant --project] <dir> <run-id>
   guardana-control runs list <dir>
   guardana-control runs prune --expired-before <time> --archive <dir> <dir>
   guardana-control observe import --source <file> --log <dir> <file>
@@ -176,6 +176,7 @@ usage:
   guardana-control supervise --procedure <file> --runs <dir> --run <run-id> --findings <dir>
       [--evidence <export>]... [--source <descriptor> --log <dir>]...
       [--view <file> [--view-all]]
+      [--roster <file> --root-key <file> --tenant <t> --project <p>]
   guardana-control notify --findings <dir> --state <dir> [--init] [--timeout <duration>]
       -- <program> [<arg>]...
   guardana-control findings export --findings <dir> [--after <cursor>] [--limit <n>]
@@ -190,7 +191,7 @@ usage:
       [--through <line>] <dir>
   guardana-control stops list --route <file> --public-key <file> <dir>
   guardana-control react --findings <dir> --runs <dir> --route <file> --public-key <file>
-      --stops <dir>
+      --stops <dir> [--roster <file> --root-key <file> --tenant <t> --project <p>]
   guardana-control hook (--profile <id> | --profile-file <file>) --socket <path>
       --state-dir <dir>
   guardana-control console --approvals <dir> [--pause <f>] [--approver-id <id>] [--inbox <dir>]
@@ -204,7 +205,8 @@ An id that could read as authn:, mixes scripts or holds a hidden or restyled cha
 Write access to the pause file is the authority to pause a call and to lift a pause;
 under approvals.authority signed, only a pause file signed with an operator's --key counts.
 Write access to the runs directory is the authority to open and to close a run;
-a token acts as its run until it expires or is closed, and runs open prints it once.
+under approvals.authority signed, only a record an operator signed with --key counts.
+A token acts as its run until it expires or is closed, and runs open prints it once.
 Write access to a floor directory is the authority to lower its floors;
 policy state reset is the one way that records why.
 Only the lift key lifts a stop while a plane runs; write access to the stops directory

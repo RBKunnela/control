@@ -1628,6 +1628,18 @@ edited in place.</p>
 </table>
 <p>A state only rises: <code>untrusted</code> never goes back to <code>false</code>, and <code>max_read</code>
 never falls, <code>UNKNOWN</code> included.</p>
+<p>Under <code>approvals.authority: signed</code> the directory holds <code>records/</code> and
+<code>state/</code> (<a href="/docs/adr/0076-a-signed-plane-takes-a-run-only-from-an-operators-signature">ADR-0076</a>).
+A record in <code>records/</code> is a DSSE envelope of
+<code>application/vnd.agent-run-record+json</code> with one signature, over a body in
+its own canonical JSON holding every key of the table above with
+<code>schema_version</code> <code>3.0</code>, and <code>alg</code> (<code>ed25519</code>), <code>keyId</code> (the signing key's,
+the signature's <code>keyid</code>) and <code>records</code> (the absolute, cleaned path of the
+<code>records/</code> it was signed for, with the links on its way resolved, at most
+512 bytes). Any other minor of major
+<code>3</code> is read, and nothing else is read there. <code>state/</code> holds the states, the
+roots' lock files, and an empty <code>&lt;id&gt;.closed</code> for each run whose closed
+record the plane took.</p>
 <h2 id="the-reaction-route-and-the-stop-list">The reaction route and the stop list</h2>
 <p>What a route and a stop list hold, for an operator who writes a route and a
 program that reads a list. <code>experimental</code>, in <code>internal/reaction/</code>

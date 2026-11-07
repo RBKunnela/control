@@ -129,6 +129,10 @@ not seen there, and that call runs.</p>
 <p>Amended by <a href="/docs/adr/0068-a-run-belongs-to-one-project">ADR-0068</a>:
 a run record names its project, a plane resolves a token only under its own
 <code>project_id</code>, and a record of major 1 is refused.</p>
+<p>Amended by <a href="/docs/adr/0076-a-signed-plane-takes-a-run-only-from-an-operators-signature">ADR-0076</a>:
+under <code>approvals.authority: signed</code> the runs directory holds <code>records/</code> and
+<code>state/</code>, and a plane takes a run only from a <code>3.0</code> record an operator signed
+for its own <code>records/</code>.</p>
 <h2 id="context">Context</h2>
 <p>ADR-0021 keys a run by the listener and the principal and agent it resolves.
 With no authenticator, which is every listener in this build, that is one run

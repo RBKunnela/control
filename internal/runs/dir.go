@@ -37,15 +37,39 @@ type dir struct {
 	root   *os.Root
 	opened dirID
 	open   bool
+	// role says which names the directory holds.
+	role role
+	// owner is whose account the directory and every file read in it have
+	// to be.
+	owner ownership
+	// mode is what a file this handle creates is given.
+	mode fs.FileMode
 }
 
 // effectiveUID is the user a runs directory has to belong to.
 var effectiveUID = os.Geteuid
 
-// openDir opens name and judges it as a directory: the caller judges what it
-// holds, so a plane's binary carries none of the code that makes an empty
-// directory a runs directory.
-func openDir(name string) (*dir, error) {
+// ownership is whose account a directory has to be.
+type ownership uint8
+
+const (
+	// ownedByThisUser is every directory but a plane's records/.
+	ownedByThisUser ownership = iota
+	// ownedByAnother is the records/ a plane under the signed authority
+	// reads: an operators' account owns it and every record in it, and the
+	// plane's own account, which could rewrite them, owns none of them.
+	ownedByAnother
+	// anyOwner is ownedByAnother that lets the plane's own account own
+	// records/, for a plane whose one account is the operator's too.
+	anyOwner
+)
+
+// openDir opens name as a directory of role r and judges it as a directory:
+// the caller judges what it holds, so a plane's binary carries none of the
+// code that makes an empty directory a runs directory. The directory has to
+// be this user's under ownedByThisUser; otherwise its owner owns every file
+// read in it, and under ownedByAnother that owner may not be this user.
+func openDir(name string, r role, o ownership) (*dir, error) {
 	// The trailing "." fails on anything but a directory rather than wait on
 	// a named pipe put at name.
 	root, err := os.OpenRoot(name + string(os.PathSeparator) + ".")
@@ -63,10 +87,27 @@ func openDir(name string) (*dir, error) {
 	if err != nil {
 		return nil, errors.Join(err, root.Close())
 	}
-	if euid := effectiveUID(); euid < 0 || int64(id.uid) != int64(euid) {
-		return nil, errors.Join(fmt.Errorf("%w: owned by uid %d", ErrOwner, id.uid), root.Close())
+	if err := o.judgeDir(id.uid); err != nil {
+		return nil, errors.Join(fmt.Errorf("%s: %w", clip(name), err), root.Close())
 	}
-	return &dir{name: name, root: root, opened: id, open: true}, nil
+	mode := fs.FileMode(0o600)
+	if r == roleRecords {
+		mode = recordsFileMode
+	}
+	return &dir{name: name, root: root, opened: id, open: true, role: r, owner: o, mode: mode}, nil
+}
+
+// judgeDir refuses a directory owned by uid that o does not let it be.
+func (o ownership) judgeDir(uid uint32) error {
+	euid := effectiveUID()
+	mine := euid >= 0 && int64(uid) == int64(euid)
+	switch {
+	case o == ownedByThisUser && !mine:
+		return fmt.Errorf("%w: owned by uid %d", ErrOwner, uid)
+	case o == ownedByAnother && (mine || euid < 0):
+		return fmt.Errorf("%w: uid %d", ErrPlaneOwned, uid)
+	}
+	return nil
 }
 
 // checkContents reads the marker and refuses a directory holding anything
@@ -80,13 +121,17 @@ func (d *dir) checkContents() error {
 }
 
 func (d *dir) judgeContents(entries []os.DirEntry) error {
+	if d.role == roleState {
+		_, err := d.scan(entries)
+		return err
+	}
 	if !slices.ContainsFunc(entries, func(e os.DirEntry) bool { return e.Name() == markerFile }) {
 		return fmt.Errorf("%w: it holds no %s", ErrNotRunsDir, markerFile)
 	}
 	if err := d.readMarker(); err != nil {
 		return err
 	}
-	_, err := scan(entries)
+	_, err := d.scan(entries)
 	return err
 }
 
@@ -202,13 +247,13 @@ func (d *dir) readDir() ([]os.DirEntry, error) {
 // scan returns the run ids that have a record, sorted, and refuses the whole
 // listing over one entry this package did not write: guessing what else is in
 // the directory is how a forged name gets read.
-func scan(entries []os.DirEntry) ([]string, error) {
+func (d *dir) scan(entries []os.DirEntry) ([]string, error) {
 	var ids []string
 	for _, e := range entries {
 		if !e.Type().IsRegular() {
 			return nil, fmt.Errorf("%w: %q is not a regular file", ErrForeignFile, clip(e.Name()))
 		}
-		switch k, id := classify(e.Name()); k {
+		switch k, id := classify(e.Name(), d.role); k {
 		case kindRecord:
 			ids = append(ids, id)
 		case kindMarker, kindOther:
@@ -247,10 +292,21 @@ func (d *dir) openRegular(name string, flag int) (*os.File, error) {
 	if after.Mode().Perm()&writableByOthers != 0 {
 		return nil, errors.Join(fmt.Errorf("%w: %q has mode %04o", ErrForeignFile, clip(name), after.Mode().Perm()), f.Close())
 	}
-	if err := files.CheckOwnedBy(after, effectiveUID()); err != nil {
+	if d.owner == ownedByAnother && files.CheckOwnedBy(after, effectiveUID()) == nil {
+		return nil, errors.Join(fmt.Errorf("%w: %q", ErrPlaneOwned, clip(name)), f.Close())
+	}
+	if err := files.CheckOwnedBy(after, d.fileOwner()); err != nil {
 		return nil, errors.Join(fmt.Errorf("%w: %q: %w", ErrForeignFile, clip(name), err), f.Close())
 	}
 	return f, nil
+}
+
+// fileOwner is the user every file read has to belong to.
+func (d *dir) fileOwner() int {
+	if d.owner != ownedByThisUser {
+		return int(d.opened.uid)
+	}
+	return effectiveUID()
 }
 
 // readFile reads one regular file of at most maxFileBytes. A file of exactly
@@ -293,10 +349,19 @@ func (d *dir) replace(tmp, name string, body []byte) error {
 	return d.syncDir()
 }
 
-// createNew creates name for its owner alone and refuses a name that exists
-// already, a link included, rather than write through it.
+// createNew creates name with the directory's file mode, which a umask
+// does not narrow, so a plane of another account in the records' group can
+// read a record. It refuses a name that exists already, a link included,
+// rather than write through it.
 func (d *dir) createNew(name string) (*os.File, error) {
-	return d.root.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	f, err := d.root.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, d.mode)
+	if err != nil {
+		return nil, err
+	}
+	if err := f.Chmod(d.mode); err != nil {
+		return nil, errors.Join(err, f.Close(), d.root.Remove(name))
+	}
+	return f, nil
 }
 
 func (d *dir) syncDir() error {
@@ -307,7 +372,10 @@ func (d *dir) syncDir() error {
 	return errors.Join(f.Sync(), f.Close())
 }
 
-const markerKind = "runs"
+// markerKind is what the marker of a directory of each role names: an
+// unsigned layout's directory and a signed layout's records/ are told apart
+// by it, so neither is read as the other.
+var markerKind = map[role]string{roleFlat: "runs", roleRecords: "signed-runs"}
 
 var markerKeys = []string{"schema_version", "kind"}
 
@@ -327,16 +395,16 @@ func (d *dir) readMarker() error {
 	if err != nil {
 		return fmt.Errorf("%w: the marker: %w", ErrNotRunsDir, err)
 	}
-	if k, err := stringField(f, "kind"); err != nil || k != markerKind {
+	if k, err := stringField(f, "kind"); err != nil || k != markerKind[d.role] {
 		return fmt.Errorf("%w: the marker names another kind", ErrNotRunsDir)
 	}
 	return nil
 }
 
 func (d *dir) writeMarker() error {
-	body := `{"schema_version":"` + SchemaVersion + `","kind":"` + markerKind + "\"}\n"
-	if err := files.CreateNoReplaceIn(d.root, markerFile, []byte(body), 0o600); err != nil {
+	body := `{"schema_version":"` + SchemaVersion + `","kind":"` + markerKind[d.role] + "\"}\n"
+	if err := files.CreateNoReplaceIn(d.root, markerFile, []byte(body), d.mode); err != nil {
 		return fmt.Errorf("%w: %w", ErrNotRunsDir, err)
 	}
-	return nil
+	return d.root.Chmod(markerFile, d.mode)
 }

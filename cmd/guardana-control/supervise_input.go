@@ -18,14 +18,19 @@ import (
 // procedure reads a root run alone, and refuses a child: a child's events
 // carry its own id, so supervising one alone would judge part of a task as
 // the whole. Only the records of the run's own tree bound the read, never
-// how many other runs the directory holds.
-func readRun(dir, id string, mode supervise.Children) (supervise.Run, []supervise.Run, error) {
+// how many other runs the directory holds. On a signed layout each record
+// read is judged by the roster the flags name, and one the judge refuses
+// refuses the input whole, naming the record: it is no fact of the run.
+func readRun(dir, id string, mode supervise.Children, read runsReadFlags) (supervise.Run, []supervise.Run, error) {
 	if !observe.ValidRunID(id) {
 		return supervise.Run{}, nil, refusedInput("run", id, supervise.ErrRunID)
 	}
 	admin, err := openRuns(runs.OpenAdmin, dir)
 	if err != nil {
 		return supervise.Run{}, nil, refusedInput("runs", dir, err)
+	}
+	if err := read.apply(admin); err != nil {
+		return supervise.Run{}, nil, refusedInput("runs", dir, errors.Join(err, admin.Close()))
 	}
 	recs, err := readFamily(admin, id, mode)
 	err = errors.Join(err, admin.Close())

@@ -54,7 +54,7 @@ func ownDir(t *testing.T) (string, *dir) {
 	if err := os.Mkdir(path, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	d, err := openDir(path)
+	d, err := openDir(path, roleFlat, ownedByThisUser)
 	if err != nil {
 		t.Fatal(err)
 	}

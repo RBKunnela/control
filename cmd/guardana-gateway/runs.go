@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/guardana/control/internal/gateway"
 	"github.com/guardana/control/internal/gatewayconfig"
 	"github.com/guardana/control/internal/runs"
+	"github.com/guardana/control/internal/runs/signedruns"
 )
 
 // maxRunTokenBytes bounds the run token file: a token is a run id, a dot and
@@ -79,8 +81,11 @@ func toGateway(s runs.State) gateway.RunState {
 // returns nil where none is. A stdio plane reads its one token from
 // tokenPath, and a token that does not resolve for the listener's identity
 // refuses the start; an HTTP plane reads a token from each request, so a
-// token file there is refused.
-func openRuns(cfg *gatewayconfig.Config, tokenPath string) (*runs.Plane, string, error) {
+// token file there is refused. Under the signed authority the directory is a
+// signed layout whose records count once judge takes them, whose records/ the
+// plane's own account may own only where planeOwned, and an unsigned one is
+// refused.
+func openRuns(cfg *gatewayconfig.Config, tokenPath string, judge runs.Judge, planeOwned bool) (*runs.Plane, string, error) {
 	stdio := cfg.Listener.Kind == gatewayconfig.ListenerStdio
 	switch {
 	case cfg.Runs.Dir == "" && tokenPath != "":
@@ -92,7 +97,7 @@ func openRuns(cfg *gatewayconfig.Config, tokenPath string) (*runs.Plane, string,
 	case stdio && tokenPath == "":
 		return nil, "", fmt.Errorf("--run-token-file: a stdio plane with runs.dir serves the one run whose token this file holds, and none is named")
 	}
-	plane, err := runs.OpenPlane(cfg.Resolve(cfg.Runs.Dir))
+	plane, err := openRunsPlane(cfg, runs.SignedOptions{Judge: judge, PlaneOwned: planeOwned})
 	if err != nil {
 		return nil, "", fmt.Errorf("runs.dir: %w", err)
 	}
@@ -107,6 +112,75 @@ func openRuns(cfg *gatewayconfig.Config, tokenPath string) (*runs.Plane, string,
 		return nil, "", errors.Join(fmt.Errorf("--run-token-file: %w", err), plane.Close())
 	}
 	return plane, token, nil
+}
+
+// openRunsPlane opens cfg's runs directory as its authority reads it: a
+// signed layout opened with o under the signed authority, an unsigned
+// directory otherwise.
+func openRunsPlane(cfg *gatewayconfig.Config, o runs.SignedOptions) (*runs.Plane, error) {
+	if cfg.Approvals.Authority == gatewayconfig.AuthoritySigned {
+		return runs.OpenSignedPlane(cfg.Resolve(cfg.Runs.Dir), o)
+	}
+	return runs.OpenPlane(cfg.Resolve(cfg.Runs.Dir))
+}
+
+// runsJudge is what a serving plane under the signed authority judges a run
+// record by: its operator ports, the tenant its runs resolve under and its
+// project.
+func (p *plane) runsJudge() (runs.Judge, error) {
+	if p.signed == nil {
+		return nil, nil
+	}
+	j, err := signedruns.New(p.signed.authn, p.signed.authz, listenerTenant(p.cfg), p.cfg.ProjectID)
+	if err != nil {
+		return nil, fmt.Errorf("runs.dir: %w", err)
+	}
+	return j, nil
+}
+
+// openRunsDir opens a serving plane's runs directory, after its operator
+// ports, and carries at once the closes a signed one holds. Only a dev plane,
+// whose one account is the operator's too, reads a records/ its own account
+// owns, as it reads such a pause file.
+func (p *plane) openRunsDir(tokenPath string) error {
+	judge, err := p.runsJudge()
+	if err != nil {
+		return err
+	}
+	if p.runsDir, p.runToken, err = openRuns(p.cfg, tokenPath, judge, p.signedStart != nil); err != nil {
+		return err
+	}
+	return p.carryCloses()
+}
+
+// runsCarryBound is the most records a serving plane reads at its start to
+// carry the closes of.
+const runsCarryBound = 1 << 16
+
+// carryCloses writes into state/ the close of every closed record the plane
+// takes, at its start, so the open record put back after a close no call saw
+// is refused all the same. A record that does not count refuses only its own
+// calls, so it is logged and the start goes on.
+func (p *plane) carryCloses() error {
+	if !p.runsDir.Signed() {
+		return nil
+	}
+	s, err := p.runsDir.CarryCloses(context.Background(), runsCarryBound, time.Now())
+	if err != nil {
+		return fmt.Errorf("runs.dir: %w", err)
+	}
+	refused := 0
+	for _, n := range s.Refused {
+		refused += n
+	}
+	level := slog.LevelInfo
+	if refused > 0 || !s.Complete {
+		level = slog.LevelWarn
+	}
+	p.logger.Log(context.Background(), level, "runs: signed records read at start",
+		"records", s.Records, "open", s.Open, "closed", s.Closed, "closes_carried", s.Carried,
+		"refused", refused, "complete", s.Complete)
+	return nil
 }
 
 // readRunToken reads a token file the way a key file is read (ADR-0018): a
@@ -144,9 +218,12 @@ func listenerRunIdentity(cfg *gatewayconfig.Config) gateway.RunIdentity {
 // runs reports where the plane's runs come from. A plane takes no lock on a
 // runs directory and writes no record there, so opening it here, as run
 // does, changes nothing in it.
-func (d *examination) runs(context.Context) (string, string, string) {
+func (d *examination) runs(ctx context.Context) (string, string, string) {
 	if d.cfg.Runs.Dir == "" {
 		return verdictOK, "runs", "local: one run per principal and agent, kept in memory, so a new process starts clean (ADR-0021)"
+	}
+	if d.cfg.Approvals.Authority == gatewayconfig.AuthoritySigned {
+		return d.signedRuns(ctx)
 	}
 	path := filepath.ToSlash(d.cfg.Resolve(d.cfg.Runs.Dir))
 	plane, err := runs.OpenPlane(d.cfg.Resolve(d.cfg.Runs.Dir))

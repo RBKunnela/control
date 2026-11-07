@@ -92,7 +92,7 @@ func TestSuperviseInputReadsTheTreeTheProcedureAsksFor(t *testing.T) {
 		"0.1":              {supervise.ChildrenUnstated, f.root, nil},
 	} {
 		t.Run(name, func(t *testing.T) {
-			run, tree, err := readRun(tr.runs, c.run, c.mode)
+			run, tree, err := readRun(tr.runs, c.run, c.mode, runsReadFlags{})
 			if err != nil {
 				t.Fatalf("readRun: %v", err)
 			}
@@ -110,12 +110,12 @@ func TestSuperviseInputUnderInheritTakesARootOnly(t *testing.T) {
 	tr := newSupTree(t)
 	f := tr.family(t)
 	for _, mode := range []supervise.Children{supervise.ChildrenInherit, supervise.ChildrenUnstated} {
-		if _, _, err := readRun(tr.runs, f.child, mode); err == nil || !strings.Contains(err.Error(), "a child run") ||
+		if _, _, err := readRun(tr.runs, f.child, mode, runsReadFlags{}); err == nil || !strings.Contains(err.Error(), "a child run") ||
 			!strings.Contains(err.Error(), "--run") {
 			t.Errorf("mode %d: readRun(child) = %v, want a child run refused", mode, err)
 		}
 	}
-	if _, _, err := readRun(tr.runs, f.child, supervise.ChildrenSeparate); err != nil {
+	if _, _, err := readRun(tr.runs, f.child, supervise.ChildrenSeparate, runsReadFlags{}); err != nil {
 		t.Errorf("separate: readRun(child) = %v", err)
 	}
 }
@@ -151,7 +151,7 @@ func TestSuperviseInputRefusesATreeItCannotVouchFor(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			tr := newSupTree(t)
 			c.plant(t, tr)
-			_, tree, err := readRun(tr.runs, tr.run, supervise.ChildrenInherit)
+			_, tree, err := readRun(tr.runs, tr.run, supervise.ChildrenInherit, runsReadFlags{})
 			if !errors.Is(err, c.want) || (c.want == nil && len(tree) != supervise.MaxTreeRuns) {
 				t.Fatalf("readRun = %d runs, %v; want %v", len(tree), err, c.want)
 			}
@@ -174,7 +174,7 @@ func TestSuperviseRunsOfOtherTenantsBoundNoTree(t *testing.T) {
 	if code, stdout, stderr := invoke(t, "runs", "list", tr.runs); code == exitOK || !strings.Contains(stderr, "incomplete") {
 		t.Fatalf("runs list: exit %d, %q, %q; want the listing refused as incomplete", code, stdout, stderr)
 	}
-	_, tree, err := readRun(tr.runs, f.root, supervise.ChildrenInherit)
+	_, tree, err := readRun(tr.runs, f.root, supervise.ChildrenInherit, runsReadFlags{})
 	if err != nil || len(tree) != 3 {
 		t.Fatalf("inherit: %v, %v", treeOf(tree), err)
 	}

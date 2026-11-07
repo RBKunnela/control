@@ -171,3 +171,4 @@ with `make docs-gen`; an edit made here does not survive the next run.
 - [ADR-0073: An approval counts only as the plane judges it, from an authority it names](adr/0073-an-approval-counts-only-as-the-plane-judges-it.md): accepted
 - [ADR-0074: pkg/contract exports one rule for a required identifier](adr/0074-pkg-contract-exports-one-rule-for-a-required-identifier.md): accepted
 - [ADR-0075: A signed plane takes a pause only from an operator's signature](adr/0075-a-signed-plane-takes-a-pause-only-from-an-operators-signature.md): accepted
+- [ADR-0076: A signed plane takes a run only from an operator's signature](adr/0076-a-signed-plane-takes-a-run-only-from-an-operators-signature.md): accepted

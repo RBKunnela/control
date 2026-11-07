@@ -106,7 +106,7 @@ func allOrNone(all bool) string {
 func (d *examination) printCoverage(entries []pause.Entry, stray []strayEntry) string {
 	var dir *runs.Plane
 	if d.cfg.Runs.Dir != "" {
-		if opened, err := runs.OpenPlane(d.cfg.Resolve(d.cfg.Runs.Dir)); err == nil {
+		if opened, err := d.openRunsCheck(); err == nil {
 			dir = opened
 			defer func() {
 				if err := opened.Close(); err != nil {

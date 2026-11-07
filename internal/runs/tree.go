@@ -8,7 +8,8 @@ import (
 )
 
 // Lookup reads the record of run id as Plane.Lookup does, under the
-// directory's lock.
+// directory's lock. In a signed layout it refuses a record JudgeWith's judge
+// does not take, as Tree and Children do each record they keep.
 func (a *Admin) Lookup(ctx context.Context, id string) (_ Record, err error) {
 	if err := checkRunID(id); err != nil {
 		return Record{}, err
@@ -18,7 +19,41 @@ func (a *Admin) Lookup(ctx context.Context, id string) (_ Record, err error) {
 		return Record{}, err
 	}
 	defer func() { err = errors.Join(err, end()) }()
-	return a.d.lookup(id)
+	return a.lookup(ctx, id)
+}
+
+// lookup reads the record of id as dir.lookup does, and in a signed layout
+// refuses one take refuses.
+func (a *Admin) lookup(ctx context.Context, id string) (Record, error) {
+	if !a.Signed() {
+		return a.d.lookup(id)
+	}
+	stored, err := a.d.readStored(id)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return Record{}, fmt.Errorf("%w: %s", ErrNoRun, id)
+	case err != nil:
+		return Record{}, err
+	}
+	if err := a.take(ctx, stored); err != nil {
+		return Record{}, err
+	}
+	rec := stored.Record
+	rec.SecretSHA256 = ""
+	return rec, nil
+}
+
+// take is nil for an unsigned directory, and in a signed layout refuses a
+// record not signed for this records/ or not taken by the judge JudgeWith
+// gave, ErrUnjudged where none was given.
+func (a *Admin) take(ctx context.Context, sr SignedRecord) error {
+	if !a.Signed() {
+		return nil
+	}
+	if _, err := judgeRecord(ctx, sr, a.records, a.judge); err != nil {
+		return fmt.Errorf("record %s: %w", sr.Record.ID, err)
+	}
+	return nil
 }
 
 // Tree reads run root and every run whose root it is: root first, then each
@@ -64,7 +99,7 @@ func (a *Admin) family(ctx context.Context, id string, bound int, keep func(head
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, end()) }()
-	head, err := a.d.lookup(id)
+	head, err := a.lookup(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +108,7 @@ func (a *Admin) family(ctx context.Context, id string, bound int, keep func(head
 			return nil, err
 		}
 	}
-	members, err := a.d.members(head, bound, keep)
+	members, err := a.d.members(head, bound, keep, func(sr SignedRecord) error { return a.take(ctx, sr) })
 	if err != nil {
 		return nil, err
 	}
@@ -81,13 +116,15 @@ func (a *Admin) family(ctx context.Context, id string, bound int, keep func(head
 }
 
 // members reads every record but head's and keeps those keep takes, each of
-// head's tenant, project and root, at most bound-1 of them.
-func (d *dir) members(head Record, bound int, keep func(head, r Record) bool) ([]Record, error) {
+// head's tenant, project and root and taken by take, at most bound-1 of them.
+// A record keep leaves is never judged, so one of another tree refuses
+// nothing.
+func (d *dir) members(head Record, bound int, keep func(head, r Record) bool, take func(SignedRecord) error) ([]Record, error) {
 	entries, err := d.readDir()
 	if err != nil {
 		return nil, err
 	}
-	ids, err := scan(entries)
+	ids, err := d.scan(entries)
 	if err != nil {
 		return nil, err
 	}
@@ -96,12 +133,18 @@ func (d *dir) members(head Record, bound int, keep func(head, r Record) bool) ([
 		if id == head.ID {
 			continue
 		}
-		r, err := d.readRecord(id)
+		sr, err := d.readStored(id)
+		r := sr.Record
 		switch {
 		case err != nil:
 			return nil, err
 		case !keep(head, r):
 			continue
+		}
+		if err := take(sr); err != nil {
+			return nil, err
+		}
+		switch {
 		case r.Who.TenantID != head.Who.TenantID:
 			return nil, fmt.Errorf("%w: %s", ErrTreeTenant, r.ID)
 		case r.Who.ProjectID != head.Who.ProjectID:

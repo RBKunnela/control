@@ -232,6 +232,7 @@ func (p *plane) health(src gateway.PauseSource, clock func() time.Time) (healthA
 		answer.Pipeline = pipelineCounters(stats, p.adapter.Stats())
 		answer.Runs = runCounters(p.runsDir != nil, stats, p.adapter.Stats())
 	}
+	answer.Runs = p.withSignedRuns(answer.Runs)
 	policySnap := p.holder.Current()
 	if policySnap != nil {
 		ref := policySnap.Ref()
@@ -345,4 +346,13 @@ func writeJSON(w http.ResponseWriter, logger *slog.Logger, status int, body any)
 	if _, err := w.Write(append(raw, '\n')); err != nil {
 		logger.Debug("answer not delivered", "err", err)
 	}
+}
+
+// withSignedRuns adds to the runs member what a signed runs directory
+// counted, under signed; elsewhere it is runs as it was.
+func (p *plane) withSignedRuns(runs map[string]any) map[string]any {
+	if p.runsDir.Signed() {
+		runs["signed"] = p.runsDir.SignedCounts()
+	}
+	return runs
 }

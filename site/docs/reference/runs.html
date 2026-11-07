@@ -185,6 +185,34 @@ the command exits 1 when a run under it expires later, a plane holds its state
 lock, or a file of it cannot be read; a record that does not decode refuses the
 whole prune.</p>
 <p>No command repeats a token, or a value given as a run id that is not one.</p>
+<h2 id="a-signed-runs-directory">A signed runs directory</h2>
+<p>Under <code>approvals.authority: signed</code> the directory holds <code>records/</code>, owned by
+the operators' account, mode <code>0750</code>, its records <code>0640</code>, and <code>state/</code>, owned
+by the plane's account, mode <code>0700</code>, and nothing else
+(<a href="/docs/adr/0076-a-signed-plane-takes-a-run-only-from-an-operators-signature">ADR-0076</a>).
+<code>runs open</code> with <code>--key &lt;operator key&gt; --roster &lt;roster&gt; --root-key &lt;root public key&gt;</code> makes an empty directory one, giving
+<code>state/</code> to the account that ran it: <code>chown</code> it to the plane's account, and
+put that account in <code>records/</code>'s group. A plane refuses an unsigned
+directory and a <code>records/</code> or record its own account owns, and will not
+start when that account may write <code>records/</code> or a directory on its path.</p>
+<p>Each record is a <code>3.0</code> envelope an operator granted <code>operate</code> signed for the
+run's tenant and project and for one <code>records/</code>, named by its absolute path
+with links resolved, so a copy between two paths counts in neither; planes
+using one path on two hosts must differ in tenant or project, or a copy
+between them counts. With the three flags (<code>runs close</code> adds the plane's <code>--tenant</code> and
+<code>--project</code>), <code>runs open</code> and <code>runs close</code> check the parent and the record a
+close replaces as a plane would, refuse one that fails, and say on standard
+error what they signed. Without <code>--key</code> both refuse the directory, naming
+the flags. <code>runs list</code> reads it as any directory; <code>runs prune</code> removes
+records only. <code>supervise</code> and <code>react</code> take a record only as a plane would,
+given its <code>--roster</code>, <code>--root-key</code>, <code>--tenant</code> and <code>--project</code>.</p>
+<p>A record that is unsigned, signed for another directory, of another tenant
+or project, or by a key the roster does not grant <code>operate</code> refuses its calls
+as <code>unreadable</code>. When the plane takes a closed record, at a call or when it
+starts, it writes the close into <code>state/</code>, and the open record put back
+after is refused as <code>closed</code>. <code>/healthz</code> counts under <code>runs.signed</code> the
+records judged, each refusal cause and the closes carried; <code>doctor</code> counts
+the records by state and by signer.</p>
 <h2 id="what-a-plane-does-with-a-token">What a plane does with a token</h2>
 <table>
 <thead>
@@ -234,13 +262,10 @@ refuse that run.</p>
 record is left in a directory, <code>runs list</code> refuses that whole directory, and
 so does <code>supervise</code> of every run under a procedure that reads children. Open
 each run again there with <code>runs open --project</code>, point <code>runs.dir</code> at it, and
-remove the old directory once no plane names it. No run lives past 720 hours,
-so nothing in the old directory outlives that.</p>
-<p>A reopened run starts with a clean flow state. An agent that took in
-untrusted or confidential data under the old run would carry it into the new
-one unmarked, and a flow rule would not see it. End each agent's task and
-start a new one under the new run; never hand a new token to an agent in the
-middle of a task.</p>
+remove the old directory once no plane names it.</p>
+<p>A reopened run starts with a clean flow state, so what an agent took in
+under the old run goes unmarked: end each agent's task and start a new one
+under the new run, never handing a new token to an agent mid-task.</p>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/reference/runs.md">docs/reference/runs.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.15.0, and <a href="https://github.com/guardana/control/tree/v0.15.0/docs">its documentation</a> is in its tag.</p>
 </main>
 <nav class="side" aria-label="Documentation">
