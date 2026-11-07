@@ -5,8 +5,11 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
+	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -119,27 +122,51 @@ func (c *pageClient) approve(t *testing.T, held answered, values map[string]stri
 	}
 }
 
-// pauseAll pauses every call through the page, waits for the plane at
-// healthz to read it, and returns a function that lifts it and waits again.
-func (c *pageClient) pauseAll(t *testing.T, healthz string) func() {
+// pauseCommand runs the approver's pause command with args and returns its
+// exit status, standard output and standard error.
+func pauseCommand(t *testing.T, args ...string) (int, string, string) {
 	t.Helper()
-	r := &runner{plane: planeTarget{healthURL: healthz}, timeout: 10 * time.Second, http: &http.Client{}}
+	_, controlBin := builtBinaries(t)
+	cmd := exec.Command(controlBin, append([]string{"pause"}, args...)...) //nolint:gosec // G204: the binary this test built
+	var stdout, stderr strings.Builder
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	err := cmd.Run()
+	var exited *exec.ExitError
+	if err != nil && !errors.As(err, &exited) {
+		t.Fatalf("running the pause command: %v", err)
+	}
+	return cmd.ProcessState.ExitCode(), stdout.String(), stderr.String()
+}
+
+// pauseAll pauses every call with the dev operator's key, after the page,
+// which holds no key, refused to; waits for the plane at healthz to read it;
+// and returns a function that lifts it the same way and waits again.
+func (c *pageClient) pauseAll(t *testing.T, values map[string]string) func() {
+	t.Helper()
+	r := &runner{plane: planeTarget{healthURL: values["healthz"]}, timeout: 10 * time.Second, http: &http.Client{}}
 	code, out := c.post(t, "/api/pause", map[string]any{
 		"scope": map[string]string{"kind": "global", "provider": "", "action": "", "name": ""}, "reason": "",
 	})
-	var added struct {
-		ID string `json:"id"`
+	if code != http.StatusConflict || !strings.Contains(out, "pause add --key") {
+		t.Fatalf("the page answered a pause of a signed plane with %d %q, want 409 naming the signing command", code, out)
 	}
-	if code != http.StatusOK || json.Unmarshal([]byte(out), &added) != nil || added.ID == "" {
-		t.Fatalf("pausing answered %d %q", code, out)
+	sign := []string{"--key", values["operator_key"], "--roster", filepath.Join(values["state"], "trust", "roster.json"),
+		"--root-key", filepath.Join(values["state"], "trust", "root.pub")}
+	code, id, stderr := pauseCommand(t, slices.Concat([]string{"add", "--global"}, sign, []string{"--", values["pause"]})...)
+	id = strings.TrimSpace(id)
+	if code != 0 || id == "" {
+		t.Fatalf("pausing: exit %d, %q", code, stderr)
 	}
 	if err := r.pauseRead(context.Background(), 1); err != nil {
 		t.Fatal(err)
 	}
 	return func() {
 		t.Helper()
-		if code, out := c.post(t, "/api/unpause", map[string]string{"id": added.ID}); code != http.StatusOK {
-			t.Fatalf("lifting the pause answered %d %q", code, out)
+		if code, out := c.post(t, "/api/unpause", map[string]string{"id": id}); code != http.StatusConflict {
+			t.Fatalf("the page answered a lift of a signed plane with %d %q, want 409", code, out)
+		}
+		if code, _, stderr := pauseCommand(t, slices.Concat([]string{"remove"}, sign, []string{"--", values["pause"], id})...); code != 0 {
+			t.Fatalf("lifting the pause: exit %d, %q", code, stderr)
 		}
 		if err := r.pauseRead(context.Background(), 0); err != nil {
 			t.Fatal(err)
@@ -162,7 +189,7 @@ func TestAHeldCallAnsweredOnThePage(t *testing.T) {
 		t.Fatalf("the update answered %+v, want pending", held)
 	}
 	page.approve(t, held, values)
-	lift := page.pauseAll(t, values["healthz"])
+	lift := page.pauseAll(t, values)
 	paused := callOnce(t, values["mcp"], "update_order", "ord-10")
 	if paused.kind != scenario.AnswerBlocked || !slices.Equal(paused.codes, []string{"PAUSED"}) {
 		t.Fatalf("the retry under the pause answered %+v, want blocked PAUSED", paused)

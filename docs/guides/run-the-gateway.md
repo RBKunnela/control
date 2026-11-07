@@ -231,20 +231,25 @@ No test here runs a second account. A lost hold never runs; the next start close
 
 ### 10. Pause a tool
 
-As the plane's user, before setting `pause.file` and restarting:
+Before setting `pause.file` and restarting:
 
 ```
+# directory: as the plane's user
 mkdir -m 700 /srv/pause
 guardana-control pause init /srv/pause/pause.json
+guardana-control pause add --action tool --provider orders --name refund /srv/pause/pause.json
+
+# signed: as the operator, who owns /srv/pause (0750, the plane's group), and floor init as the plane
+guardana-control pause init --key op.key --tenant acme --project orders /srv/pause/pause.json
+guardana-control pause floor init --tenant acme --project orders /var/lib/guardana/pause-floor
+guardana-control pause add --action tool --provider orders --name refund \
+  --key op.key --roster /etc/guardana/roster.json --root-key /etc/guardana/root.pub /srv/pause/pause.json
 ```
 
 ```yaml
 pause:
   file: /srv/pause/pause.json
-```
-
-```
-guardana-control pause add --action tool --provider orders --name refund /srv/pause/pause.json
+  floor_dir: /var/lib/guardana/pause-floor   # signed only
 ```
 
 `refund` is blocked with `PAUSED` until `pause remove`

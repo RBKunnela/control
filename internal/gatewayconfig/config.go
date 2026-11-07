@@ -176,10 +176,12 @@ type OperatorsConfig struct {
 
 // PauseConfig is the operator's pause file and how often the plane reads it
 // (ADR-0019). An empty File configures none, and the plane says it is
-// disabled.
+// disabled. FloorDir is the pause floor directory, read under the signed
+// authority only.
 type PauseConfig struct {
 	File         string
 	PollInterval time.Duration
+	FloorDir     string
 }
 
 // EvidenceConfig is the spool and the one risk setting over it.

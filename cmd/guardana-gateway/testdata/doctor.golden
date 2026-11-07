@@ -58,6 +58,7 @@ ok      configuration <tree>/doctor.yaml parses, 25 key(s) set, the rest at thei
        operators.authorizer.kind                             (default)
        pause.file                                            (default)
        pause.poll_interval          1s                       (default)
+       pause.floor_dir                                       (default)
        runs.dir                                              (default)
        flow.max_runs                64                       (default)
        reaction.route                                        (default)

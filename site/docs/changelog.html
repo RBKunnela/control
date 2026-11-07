@@ -122,6 +122,17 @@ verify one.</p>
 <h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.15.0...HEAD">Unreleased</a></h2>
 <h3 id="added">Added</h3>
 <ul>
+<li>Under <code>approvals.authority: signed</code> the pause file is version <code>3</code>, signed
+by a roster operator granted <code>operate</code> over the plane's tenant and project:
+<code>pause init --key &lt;k&gt; --tenant &lt;t&gt; --project &lt;p&gt;</code> makes one bound to its
+own path, and <code>pause add</code> and <code>pause remove</code> with <code>--key</code>, <code>--roster</code> and
+<code>--root-key</code> check the file they start from against the roster before they
+sign it at the next serial. The plane checks it at every read and raises a
+floor in the new <code>pause.floor_dir</code>, which <code>pause floor init</code> makes, so an
+older signed file put back is refused after a restart too, and a copy of
+another plane's file is refused. <code>/healthz</code> gives the serial and the floor
+under <code>pause.signed</code>, <code>health.socket</code> also the signer, and <code>doctor</code> checks
+the file without raising the floor (ADR-0075).</li>
 <li><code>pause add --run &lt;id&gt;</code>, <code>--agent &lt;id&gt;</code> and <code>--principal &lt;id&gt;</code> pause one
 opened run, or every run under a root, one agent or one principal. A run
 is named by its id from <code>runs open</code>, and any other spelling is refused. Each is
@@ -184,6 +195,13 @@ reader of the old shape finds no <code>schema</code> member.</li>
 <li>TCP export stays in this release with a <code>doctor</code> warning and goes in 0.17:
 over plaintext, whoever holds the port while the collector is down
 receives the credential. Move to <code>export.endpoint: unix:///path</code>.</li>
+<li><strong>Breaking:</strong> under <code>approvals.authority: signed</code> a pause file of version
+<code>1</code> or <code>2</code> blocks every call, <code>pause.floor_dir</code> is required with
+<code>pause.file</code>, and the plane refuses to start when its own account may write
+the pause file or a directory on its path, and refuses a file that account
+owns at every read. <code>dev</code> keeps its pause file in <code>pause/</code>. <code>pause add</code> and <code>pause remove</code>
+without <code>--key</code> refuse a signed file, and the console writes no pause under
+<code>signed</code> or into a signed file, naming the command that signs it.</li>
 <li><strong>Breaking:</strong> <code>approvals.authority</code> (<code>memory</code>, <code>directory</code> or <code>signed</code>)
 replaces <code>approvals.provider</code> and has no default. A configuration without
 it, or with the old key, is refused naming both; <code>provider: file</code> becomes

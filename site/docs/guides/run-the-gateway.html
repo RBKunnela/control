@@ -334,14 +334,21 @@ No test here runs a second account. A lost hold never runs; the next start close
 </tbody>
 </table>
 <h3 id="10-pause-a-tool">10. Pause a tool</h3>
-<p>As the plane's user, before setting <code>pause.file</code> and restarting:</p>
-<pre><code>mkdir -m 700 /srv/pause
+<p>Before setting <code>pause.file</code> and restarting:</p>
+<pre><code># directory: as the plane&#39;s user
+mkdir -m 700 /srv/pause
 guardana-control pause init /srv/pause/pause.json
+guardana-control pause add --action tool --provider orders --name refund /srv/pause/pause.json
+
+# signed: as the operator, who owns /srv/pause (0750, the plane&#39;s group), and floor init as the plane
+guardana-control pause init --key op.key --tenant acme --project orders /srv/pause/pause.json
+guardana-control pause floor init --tenant acme --project orders /var/lib/guardana/pause-floor
+guardana-control pause add --action tool --provider orders --name refund \
+  --key op.key --roster /etc/guardana/roster.json --root-key /etc/guardana/root.pub /srv/pause/pause.json
 </code></pre>
 <pre><code class="language-yaml">pause:
   file: /srv/pause/pause.json
-</code></pre>
-<pre><code>guardana-control pause add --action tool --provider orders --name refund /srv/pause/pause.json
+  floor_dir: /var/lib/guardana/pause-floor   # signed only
 </code></pre>
 <p><code>refund</code> is blocked with <code>PAUSED</code> until <code>pause remove</code>
 (<a href="/docs/concepts/enforcement-modes#pausing-calls">more</a>).</p>

@@ -167,13 +167,18 @@ func answerNotice(id, word string, planeRunning bool) []string {
 }
 
 // pause adds one entry under an id it draws itself, as pause add does, and
-// answers with that id.
+// answers with that id. A page that writes no pause answers with the command
+// that signs it.
 func (p *page) pause(w http.ResponseWriter, r *http.Request, body any) {
 	if p.o.PauseFile == "" {
 		refuse(w, http.StatusNotFound, "this page was started without a pause file")
 		return
 	}
 	b := body.(*pauseBody)
+	if p.writesNoPause() {
+		refuse(w, http.StatusConflict, noPause(p.pauseCommand(b)))
+		return
+	}
 	e := pause.Entry{
 		ID:        rand.Text(),
 		Scope:     pause.Scope{Kind: pause.ScopeKind(b.Scope.Kind), Provider: b.Scope.Provider, Action: b.Scope.Action, Name: b.Scope.Name, ID: b.Scope.ID},
@@ -202,6 +207,10 @@ func (p *page) unpause(w http.ResponseWriter, r *http.Request, body any) {
 		return
 	}
 	b := body.(*unpauseBody)
+	if p.writesNoPause() {
+		refuse(w, http.StatusConflict, noPause(p.unpauseCommand(b.ID)))
+		return
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), pauseLockWait)
 	defer cancel()
 	if err := pause.Remove(ctx, p.o.PauseFile, b.ID); err != nil {

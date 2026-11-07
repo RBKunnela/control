@@ -46,9 +46,9 @@ func TestAFlagRefusalKeepsItsHelp(t *testing.T) {
 	if status := run([]string{"pause", "remove", "-h"}, &stdout, &stderr); status != exitUsage {
 		t.Errorf("pause remove -h: exit %d, want %d", status, exitUsage)
 	}
-	want := "Usage of " + pauseRemoveFlagSet(pauseRemoveName, &bytes.Buffer{}).Name() + ":\n"
-	if stderr.String() != want {
-		t.Errorf("pause remove -h printed %q, want %q", stderr.String(), want)
+	want := "Usage of " + pauseRemoveFlagSet(pauseRemoveName, &bytes.Buffer{}).Name() + ":\n  -key string\n    \tthe operator's private key file"
+	if help := stderr.String(); !strings.HasPrefix(help, want) || strings.Contains(help, `\t`) {
+		t.Errorf("pause remove -h printed %q, want it to begin %q", help, want)
 	}
 	stderr.Reset()
 	run([]string{"approvals", "approve", "-h"}, &stdout, &stderr)

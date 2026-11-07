@@ -199,10 +199,10 @@ version. <a href="/docs/status">status.md</a> is the inventory.</p>
 </tr>
 <tr>
 <td>Pause file (<code>schema_version</code>)</td>
-<td><code>2</code></td>
-<td><code>1</code>, <code>2</code></td>
+<td><code>2</code>, <code>3</code></td>
+<td><code>1</code>, <code>2</code>, <code>3</code></td>
 <td><code>experimental</code></td>
-<td><a href="/docs/reference/cli#guardana-control">cli.md</a></td>
+<td><a href="/docs/concepts/enforcement-modes#pausing-calls">pausing calls</a></td>
 </tr>
 <tr>
 <td>Approvals directory (<code>schema_version</code>)</td>
@@ -367,7 +367,9 @@ policy bundle, a freshness statement, a route and a lift carry no version of
 their own, only the payload type each is signed under, and the evidence
 spool frames its segments with no version at all, so a spool another release
 wrote is not promised readable. <code>notify</code>'s <code>--state</code> list of delivered alerts,
-one quoted key per line, carries none either.</p>
+one quoted key per line, carries none either. A plane under
+<code>approvals.authority: signed</code> reads pause file <code>3</code> alone, and any other <code>1</code>
+and <code>2</code> alone.</p>
 <h2 id="reading-files-an-older-release-wrote">Reading files an older release wrote</h2>
 <ul>
 <li><strong>Wire messages, the evidence export, the runs directory's marker and

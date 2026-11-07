@@ -186,7 +186,8 @@ func (d *devPlane) describe(stdout io.Writer, page string, o devOptions) {
 		{"approvals_command", brand.CLI + " approvals list " + shellWord(st.path(stateApprovals))},
 		{"approve_command", brand.CLI + " approvals approve --key " + shellWord(st.operatorKeyFile()) + " --inbox " +
 			shellWord(st.path(stateInbox)) + " -- " + shellWord(st.path(stateApprovals)) + " <approval-id>"},
-		{"pause_command", brand.CLI + " pause add --global -- " + shellWord(st.path(statePause))},
+		{"pause_command", brand.CLI + " pause add --global --key " + shellWord(st.operatorKeyFile()) + " --roster " + shellWord(st.path(stateRoster)) +
+			" --root-key " + shellWord(st.path(stateRootKey)) + " -- " + shellWord(st.path(statePause))},
 		{"scenario_command", scenarioCommand(o)},
 	} {
 		writeLine(stdout, l[0]+": "+oneLine(l[1]))

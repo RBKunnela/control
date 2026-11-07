@@ -34,6 +34,11 @@ account's through its group (`0750`, files `0640`), answers nothing, and
 refuses to start under the account that owns the directory, which is the
 plane's.
 
+For the same reason that page, and any page over a pause file an operator
+signed, writes no pause: a pause or a lift is refused with a 409 naming the
+`pause add --key` or `pause remove --key` command that signs it, and the
+file is left as it was.
+
 ## What it prints
 
 It listens on `127.0.0.1` at a port the system picks and prints exactly one

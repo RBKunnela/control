@@ -88,11 +88,11 @@ as not sent.
 ## Pause file unreadable
 
 At start, a pause file that is missing, garbled, too large, a link, a
-directory, or writable by the group or others refuses the start, naming
-`pause.file` and the cause (`TestAStartIsRefusedOnEveryUnknownCause`). While
-the plane runs, a read every `pause.poll_interval` that meets one of those
-causes, or cannot read the file, blocks every call until a read finds a whole
-file, and so does a read older than three intervals. `/healthz` answers `503`
+directory, writable by the group or others, or under `signed` not a
+permitted operator's, below the floor or the plane's own, refuses the start,
+naming `pause.file` and the cause (`TestAStartIsRefusedOnEveryUnknownCause`).
+While the plane runs, a read meeting one blocks every call until a read
+finds a whole file, as does one older than three intervals. `/healthz` answers `503`
 with `pause.state: unknown` and the cause
 (`TestHealthAnswers503OnEveryUnknownState`), and the trail of each call ends
 `ACTION_BLOCKED` with the code.

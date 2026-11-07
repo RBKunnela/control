@@ -32,7 +32,8 @@ const (
 	stateBundle    = "policy.bundle"
 	stateStatement = "policy.statement"
 	stateFloors    = "floors"
-	statePause     = "pause.json"
+	statePause     = "pause/pause.json"
+	statePauseFlr  = "pausefloor"
 	stateSettings  = "settings.txt"
 )
 
@@ -299,8 +300,9 @@ func (d *devPlane) signBundle(document []byte) (ed25519.PublicKey, error) {
 }
 
 // layOut makes, through the approver's binary, the one that holds the code
-// that makes them, the plane's floor directory and its pause file, and writes
-// the first statement before the plane starts.
+// that makes it, the plane's floor directory, and writes the first statement
+// before the plane starts. The pause file is signed, so it is made with the
+// signed authority, in layOutTrust.
 func (d *devPlane) layOut(ctx context.Context, control sibling) error {
 	floors := d.state.path(stateFloors)
 	if _, err := control.run(ctx, "policy", "state", "init", "--kind", "plane", "--bundle-id", d.signer.id, floors); err != nil {
@@ -308,9 +310,6 @@ func (d *devPlane) layOut(ctx context.Context, control sibling) error {
 	}
 	if err := d.signer.renew(time.Now()); err != nil {
 		return fmt.Errorf("writing the first freshness statement: %w", err)
-	}
-	if _, err := control.run(ctx, "pause", "init", d.state.path(statePause)); err != nil {
-		return fmt.Errorf("creating the pause file: %w", err)
 	}
 	return nil
 }

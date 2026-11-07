@@ -55,7 +55,7 @@ func TestARequestNamesOneTenantAndOneProject(t *testing.T) {
 		wantPerm(t, name, z.Authorize(t.Context(), alice, req), operators.PermDenied, operators.CauseScope)
 	}
 	wantPerm(t, "a project that reads as a pattern", z.Authorize(t.Context(), alice, approve("t1", "*")), operators.PermDenied, operators.CauseNoGrant)
-	wantPerm(t, "an act this build lacks", z.Authorize(t.Context(), alice, operators.Request{Act: "pause", Tenant: "t1", Project: "A"}), operators.PermDenied, operators.CauseAct)
+	wantPerm(t, "an act this build lacks", z.Authorize(t.Context(), alice, operators.Request{Act: "unknown", Tenant: "t1", Project: "A"}), operators.PermDenied, operators.CauseAct)
 }
 
 func TestOnlyAnAuthenticatedOperatorIsAuthorized(t *testing.T) {

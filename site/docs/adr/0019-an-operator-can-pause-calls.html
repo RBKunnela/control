@@ -135,6 +135,10 @@ refusing those scopes, <code>/healthz</code> and <code>doctor</code> say per ent
 all, some or none of the plane's calls, and name each that covers none. A
 tenant is still no scope. The file is version <code>2</code>; version <code>1</code>, which names
 none of the three, is still read.</p>
+<p>Amended by <a href="/docs/adr/0075-a-signed-plane-takes-a-pause-only-from-an-operators-signature">ADR-0075</a>:
+under <code>approvals.authority: signed</code> the plane takes a pause only from a
+version <code>3</code> file an operator signed, above its pause floor, and refuses
+versions <code>1</code> and <code>2</code>.</p>
 <h2 id="context">Context</h2>
 <p>The registry holds <code>PAUSED</code>, number 24, <code>DENY</code>, and nothing emits it. An
 operator who sees an agent misuse one tool can stop the plane, which stops

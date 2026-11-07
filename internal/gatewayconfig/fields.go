@@ -132,6 +132,7 @@ var configFields = []field[Config]{
 
 	filePath(stringField("pause.file", "", false, func(c *Config) *string { return &c.Pause.File })),
 	durationField("pause.poll_interval", "1s", func(c *Config) *time.Duration { return &c.Pause.PollInterval }),
+	filePath(stringField("pause.floor_dir", "", false, func(c *Config) *string { return &c.Pause.FloorDir })),
 
 	filePath(stringField("runs.dir", "", false, func(c *Config) *string { return &c.Runs.Dir })),
 	intField("flow.max_runs", "64", func(c *Config) *int { return &c.Flow.MaxRuns }),

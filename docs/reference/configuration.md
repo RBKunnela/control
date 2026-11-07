@@ -22,7 +22,8 @@ under the `interval` policy and refused under `every_record`; `approvals.authori
 `directory` and `signed` need `approvals.dir` and `approvals.hold_journal_dir`, and that
 journal directory may be neither the spool's nor the approvals directory, nor inside
 either; `signed` needs, and every other authority refuses, `approvals.inbox_dir`, apart
-from those three, and every `trust.*` and `operators.*` key; and `APPROVE` needs
+from those three, every `trust.*` and `operators.*` key, and with `pause.file`
+`pause.floor_dir`, which may not be, hold or sit in the pause file's directory; and `APPROVE` needs
 `directory` or `signed`, since nothing outside the process answers a request held in
 memory. An entry of `overrides` or `tools` is refused when no call to its tool could carry
 an envelope the contract takes: `resource_type` is an identifier of at most 1024 bytes,
@@ -132,6 +133,7 @@ Rendered from the field table in `internal/gatewayconfig`. Rebuild it with
 | `operators.authorizer.kind` | `GUARDANA_CONTROL_OPERATORS_AUTHORIZER_KIND` | one of |  | no | `roster` |
 | `pause.file` | `GUARDANA_CONTROL_PAUSE_FILE` | string |  | no |  |
 | `pause.poll_interval` | `GUARDANA_CONTROL_PAUSE_POLL_INTERVAL` | duration | `1s` | no |  |
+| `pause.floor_dir` | `GUARDANA_CONTROL_PAUSE_FLOOR_DIR` | string |  | no |  |
 | `runs.dir` | `GUARDANA_CONTROL_RUNS_DIR` | string |  | no |  |
 | `flow.max_runs` | `GUARDANA_CONTROL_FLOW_MAX_RUNS` | integer | `64` | no |  |
 | `reaction.route` | `GUARDANA_CONTROL_REACTION_ROUTE` | string |  | no |  |

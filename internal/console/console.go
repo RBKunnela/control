@@ -3,8 +3,9 @@
 // pauses through internal/approvals and internal/pause, as the approvals and
 // pause commands do. It adds no authority: whoever can write the directory
 // and the pause file can already do everything the page does. It holds no
-// operator key, so a hold under the signed authority is shown with the
-// command that signs it and never answered here.
+// operator key, so a hold under the signed authority, and a pause on a page
+// under it or in a signed pause file, is shown with the command that signs it
+// and never written here.
 //
 // The page is reachable only at the one loopback address it was bound to.
 // The token it was started with is good for one thing, once: the script

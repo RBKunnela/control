@@ -21,6 +21,9 @@ func (c *Config) checkSignedKeys() error {
 			return fmt.Errorf("%s: only the %s authority reads it, and the authority is %s", key, AuthoritySigned, c.Approvals.Authority)
 		}
 	}
+	if err := c.checkSignedPause(); err != nil {
+		return err
+	}
 	if c.Approvals.Authority != AuthoritySigned {
 		return nil
 	}

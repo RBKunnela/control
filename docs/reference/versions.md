@@ -2,7 +2,7 @@
 title: Format versions
 summary: Every versioned file and message a user writes or reads, the version this tree writes, the versions it reads, and how stable each is.
 type: reference
-covers: [internal/evidence/event.go, internal/evidence/version.go, internal/core/codes.go, adapters/mcp/translate.go, adapters/enforce/**, internal/gateway/decisions.go, internal/gateway/journal.go, internal/trailfile/export.go, internal/coverage/export.go, internal/coverage/inventory.go, internal/policy/rules/rules.go, internal/policy/statement.go, internal/scenario/scenario.go, internal/supervise/ruletable.go, internal/supervise/evaluate.go, internal/supervise/record.go, internal/supervise/report.go, cmd/guardana-control/procedure_cases.go, internal/findinglog/**, internal/observe/version.go, internal/ingest/*/descriptor.go, internal/observelog/export.go, internal/runs/strict.go, internal/reaction/**, internal/pause/document.go, internal/approvals/record.go, internal/holdjournal/**, internal/policystate/format.go, internal/hookbridge/**, internal/enforceclient/client.go, internal/policy/bundle/bundle.go, internal/spool/frame.go]
+covers: [internal/evidence/event.go, internal/evidence/version.go, internal/core/codes.go, adapters/mcp/translate.go, adapters/enforce/**, internal/gateway/decisions.go, internal/gateway/journal.go, internal/trailfile/export.go, internal/coverage/export.go, internal/coverage/inventory.go, internal/policy/rules/rules.go, internal/policy/statement.go, internal/scenario/scenario.go, internal/supervise/ruletable.go, internal/supervise/evaluate.go, internal/supervise/record.go, internal/supervise/report.go, cmd/guardana-control/procedure_cases.go, internal/findinglog/**, internal/observe/version.go, internal/ingest/*/descriptor.go, internal/observelog/export.go, internal/runs/strict.go, internal/reaction/**, internal/pause/*.go, internal/approvals/record.go, internal/holdjournal/**, internal/policystate/format.go, internal/hookbridge/**, internal/enforceclient/client.go, internal/policy/bundle/bundle.go, internal/spool/frame.go]
 generated: go test ./internal/docscheck -run TestVersionsPageIsTheCode
 ---
 
@@ -33,7 +33,7 @@ version. [status.md](../status.md) is the inventory.
 | Approval answer (`kind`) | `approval-answer/v1alpha1` | `approval-answer/v1alpha1` | `experimental` | [ADR-0073](../adr/0073-an-approval-counts-only-as-the-plane-judges-it.md) |
 | Floor directories (`schema_version`) | `1.0` | `1.x` | `experimental` | [cli.md](cli.md#guardana-control) |
 | Scenario (`kind`) | — | `agent-scenario/v1alpha1` | `experimental` | [scenario-format.md](scenario-format.md#the-document) |
-| Pause file (`schema_version`) | `2` | `1`, `2` | `experimental` | [cli.md](cli.md#guardana-control) |
+| Pause file (`schema_version`) | `2`, `3` | `1`, `2`, `3` | `experimental` | [pausing calls](../concepts/enforcement-modes.md#pausing-calls) |
 | Approvals directory (`schema_version`) | `2.1` | `2.x` | `experimental` | [approvals](../concepts/approvals-and-the-held-call.md#what-is-held-and-by-whom) |
 | Hold journal (`schema_version`) | `1.0` | `1.x` | `experimental` | [approvals](../concepts/approvals-and-the-held-call.md#a-hold-the-plane-loses) |
 | Spent ledger (`schema_version`) | `1.0` | `1.x` | `experimental` | [approvals](../concepts/approvals-and-the-held-call.md#an-approval-is-spent-once) |
@@ -64,7 +64,9 @@ policy bundle, a freshness statement, a route and a lift carry no version of
 their own, only the payload type each is signed under, and the evidence
 spool frames its segments with no version at all, so a spool another release
 wrote is not promised readable. `notify`'s `--state` list of delivered alerts,
-one quoted key per line, carries none either.
+one quoted key per line, carries none either. A plane under
+`approvals.authority: signed` reads pause file `3` alone, and any other `1`
+and `2` alone.
 
 ## Reading files an older release wrote
 

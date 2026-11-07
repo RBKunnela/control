@@ -121,9 +121,14 @@ func versionSpecs() map[string]versionSpec {
 			cites: []versionCite{
 				{"internal/pause/document.go#SchemaVersion", writes | reads},
 				{"internal/pause/document.go#subsetVersion", reads},
+				{"internal/pause/signed.go#SignedVersion", writes | reads},
 			},
 			refuses: func(v string) (bool, error) {
-				_, err := pause.Parse([]byte(`{"schema_version":` + strconv.Quote(v) + `,"entries":[]}`))
+				if _, err := pause.Parse([]byte(`{"schema_version":` + strconv.Quote(v) + `,"entries":[]}`)); !errors.Is(err, pause.ErrVersion) {
+					return false, nil
+				}
+				body := `{"alg":"ed25519","entries":[],"keyId":"k","project":"p","schema_version":` + strconv.Quote(v) + `,"serial":1,"tenant":"t"}`
+				_, err := pause.ParseSigned([]byte(body))
 				return errors.Is(err, pause.ErrVersion), nil
 			},
 		},

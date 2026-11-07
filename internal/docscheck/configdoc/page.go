@@ -185,7 +185,8 @@ func lead(listDefault, classificationRule string) string {
 		"`directory` and `signed` need `approvals.dir` and `approvals.hold_journal_dir`, and that\n" +
 		"journal directory may be neither the spool's nor the approvals directory, nor inside\n" +
 		"either; `signed` needs, and every other authority refuses, `approvals.inbox_dir`, apart\n" +
-		"from those three, and every `trust.*` and `operators.*` key; and `APPROVE` needs\n" +
+		"from those three, every `trust.*` and `operators.*` key, and with `pause.file`\n" +
+		"`pause.floor_dir`, which may not be, hold or sit in the pause file's directory; and `APPROVE` needs\n" +
 		"`directory` or `signed`, since nothing outside the process answers a request held in\n" +
 		"memory. " + classificationRule + " An `enforce_api` listener serves the enforcement API on the Unix\n" +
 		"socket `listener.socket` names, at most 103 bytes as it resolves; the plane checks that\n" +

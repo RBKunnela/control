@@ -225,6 +225,8 @@ value. A writer waits up to ten seconds for another writer's lock; a
 running plane takes none. A pause blocks every call not yet handed out
 when the plane reads it, within one <code>pause.poll_interval</code>; it cancels
 nothing already running.</p>
+<p>Signed pause files, <code>--key</code> and <code>pause floor init</code>:
+<a href="/docs/concepts/enforcement-modes#pausing-calls">pausing calls</a>.</p>
 <p>The <code>runs</code> commands open, close, list and prune the runs a plane with
 <code>runs.dir</code> serves: <a href="/docs/reference/runs">runs.md</a>.</p>
 <p>The <code>observe</code> commands import spans or access logs into an observation log
@@ -252,11 +254,13 @@ profile's statuses, <a href="/docs/extending/runtime-profiles">extending/runtime
       [--reason &lt;text&gt;] &lt;dir&gt; &lt;approval-id&gt;
   guardana-control approvals reject (--key &lt;file&gt; --inbox &lt;dir&gt; | --approver-id &lt;id&gt;)
       [--reason &lt;text&gt;] &lt;dir&gt; &lt;approval-id&gt;
-  guardana-control pause init &lt;file&gt;
+  guardana-control pause init [--key &lt;k&gt; --tenant &lt;t&gt; --project &lt;p&gt; [--serial &lt;n&gt;]] &lt;file&gt;
   guardana-control pause add (--global | --provider &lt;p&gt; [--action &lt;k&gt; [--name &lt;n&gt;]]
-      | --run &lt;id&gt; | --agent &lt;id&gt; | --principal &lt;id&gt;) [--reason &lt;r&gt;] &lt;f&gt;
-  guardana-control pause remove &lt;file&gt; &lt;id&gt;
+      | --run &lt;id&gt; | --agent &lt;id&gt; | --principal &lt;id&gt;) [--reason &lt;r&gt;]
+      [--key &lt;k&gt; --roster &lt;f&gt; --root-key &lt;f&gt;] &lt;f&gt;
+  guardana-control pause remove [--key &lt;k&gt; --roster &lt;f&gt; --root-key &lt;f&gt;] &lt;file&gt; &lt;id&gt;
   guardana-control pause list &lt;file&gt;
+  guardana-control pause floor init --tenant &lt;t&gt; --project &lt;p&gt; &lt;dir&gt;
   guardana-control runs open --project --tenant --principal-type --principal --agent
       --ttl [--parent] &lt;dir&gt;
   guardana-control runs close &lt;dir&gt; &lt;run-id&gt;
@@ -296,7 +300,8 @@ Under approvals.authority: signed a plane takes only an answer an operator signs
 Write access to the approvals directory is the approval authority:
 --approver-id is a claim recorded as given, never an identity.
 An id that could read as authn:, mixes scripts or holds a hidden or restyled character is refused.
-Write access to the pause file is the authority to pause a call and to lift a pause.
+Write access to the pause file is the authority to pause a call and to lift a pause;
+under approvals.authority signed, only a pause file signed with an operator&#39;s --key counts.
 Write access to the runs directory is the authority to open and to close a run;
 a token acts as its run until it expires or is closed, and runs open prints it once.
 Write access to a floor directory is the authority to lower its floors;

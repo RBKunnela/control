@@ -126,7 +126,8 @@ under the <code>interval</code> policy and refused under <code>every_record</cod
 <code>directory</code> and <code>signed</code> need <code>approvals.dir</code> and <code>approvals.hold_journal_dir</code>, and that
 journal directory may be neither the spool's nor the approvals directory, nor inside
 either; <code>signed</code> needs, and every other authority refuses, <code>approvals.inbox_dir</code>, apart
-from those three, and every <code>trust.*</code> and <code>operators.*</code> key; and <code>APPROVE</code> needs
+from those three, every <code>trust.*</code> and <code>operators.*</code> key, and with <code>pause.file</code>
+<code>pause.floor_dir</code>, which may not be, hold or sit in the pause file's directory; and <code>APPROVE</code> needs
 <code>directory</code> or <code>signed</code>, since nothing outside the process answers a request held in
 memory. An entry of <code>overrides</code> or <code>tools</code> is refused when no call to its tool could carry
 an envelope the contract takes: <code>resource_type</code> is an identifier of at most 1024 bytes,
@@ -654,6 +655,14 @@ allowed.</p>
 <td><code>GUARDANA_CONTROL_PAUSE_POLL_INTERVAL</code></td>
 <td>duration</td>
 <td><code>1s</code></td>
+<td>no</td>
+<td></td>
+</tr>
+<tr>
+<td><code>pause.floor_dir</code></td>
+<td><code>GUARDANA_CONTROL_PAUSE_FLOOR_DIR</code></td>
+<td>string</td>
+<td></td>
 <td>no</td>
 <td></td>
 </tr>

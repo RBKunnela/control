@@ -169,7 +169,13 @@ type countedStops struct {
 	UnreadRuns *struct{} `json:"unread_runs,omitempty"`
 }
 
-// counted is a as GET /healthz answers it.
+// counted is a as GET /healthz answers it, the signed pause's operator left
+// out as well.
 func (a healthAnswer) counted() countedHealth {
+	if a.Pause.Signed != nil {
+		signed := *a.Pause.Signed
+		signed.Subject, signed.KeyID = "", ""
+		a.Pause.Signed = &signed
+	}
 	return countedHealth{healthAnswer: a, Stops: countedStops{stopsAnswer: a.Stops}}
 }

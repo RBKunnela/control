@@ -144,6 +144,9 @@ func (d *examination) pauseFile(context.Context) (string, string, string) {
 	if d.cfg.Pause.File == "" {
 		return verdictOK, "pause", "disabled: pause.file is not set, so no call can be paused without a restart"
 	}
+	if d.cfg.Approvals.Authority == gatewayconfig.AuthoritySigned {
+		return d.signedPauseVerdict()
+	}
 	path := filepath.ToSlash(d.cfg.Resolve(d.cfg.Pause.File))
 	snap := pause.Read(d.cfg.Resolve(d.cfg.Pause.File), time.Now(), d.cfg.Pause.PollInterval)
 	if snap.State() == pause.Unknown {

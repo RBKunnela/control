@@ -38,7 +38,7 @@ func (p *play) pause(ctx context.Context, i int, ps *scenario.Pause) error {
 	if len(reason) > pause.MaxReasonBytes {
 		return fmt.Errorf("the reason leaves no room under the pause file's bound of %d bytes for the marker the runner adds to it", pause.MaxReasonBytes)
 	}
-	args = append(args, "--reason", reason)
+	args = append(append(args, "--reason", reason), p.signWith()...)
 	before, err := p.entryLines(ctx)
 	if err != nil {
 		return err
@@ -58,19 +58,31 @@ func (p *play) pause(ctx context.Context, i int, ps *scenario.Pause) error {
 	return p.r.pauseRead(ctx, p.entries)
 }
 
+// signWith is the flags that sign a pause write with the operator key the
+// runner was handed, judging the file it starts from by the plane's roster,
+// which a signed plane's pause file takes alone; nothing where it was handed
+// no key.
+func (p *play) signWith() []string {
+	if p.r.plane.operatorKey == "" {
+		return nil
+	}
+	return []string{"--key", p.r.plane.operatorKey, "--roster", p.r.plane.roster, "--root-key", p.r.plane.rootKey}
+}
+
 // entryLines is every entry the pause file holds, by id, as the line pause
-// list prints for it.
+// list prints for it. The line a signed file opens with, naming its signer,
+// names no entry.
 func (p *play) entryLines(ctx context.Context) (map[string]string, error) {
 	out, err := p.r.control.run(ctx, "pause", "list", p.r.plane.pauseFile)
 	if err != nil {
 		return nil, fmt.Errorf("listing the pause file's entries: %w", err)
 	}
 	lines := map[string]string{}
-	if out == "no entries\n" {
-		return lines, nil
-	}
 	for line := range strings.Lines(out) {
 		line = strings.TrimSuffix(line, "\n")
+		if line == "no entries" || strings.HasPrefix(line, "signed by key ") {
+			continue
+		}
 		id, _, _ := strings.Cut(line, " ")
 		if id == "" {
 			return nil, fmt.Errorf("%s pause list printed a line that names no entry: %q", brand.CLI, line)
@@ -106,7 +118,7 @@ func (p *play) removeOwn(ctx context.Context, before map[string]string, scope pa
 		return fmt.Errorf("removed no entry: %d of the %d entries new since the add carry its scope and marker, and any of %s may be its",
 			len(own), len(fresh), strings.Join(fresh, ", "))
 	}
-	if _, err := p.r.control.run(ctx, "pause", "remove", "--", p.r.plane.pauseFile, own[0]); err != nil {
+	if _, err := p.r.control.run(ctx, slices.Concat([]string{"pause", "remove"}, p.signWith(), []string{"--", p.r.plane.pauseFile, own[0]})...); err != nil {
 		return fmt.Errorf("removing the entry %s the add left: %w", own[0], err)
 	}
 	return nil
@@ -142,7 +154,7 @@ func (p *play) unpause(ctx context.Context, u *scenario.Unpause) error {
 	if !ok {
 		return fmt.Errorf("step[%d] added no pause entry", u.Step)
 	}
-	if _, err := p.r.control.run(ctx, "pause", "remove", "--", p.r.plane.pauseFile, id); err != nil {
+	if _, err := p.r.control.run(ctx, slices.Concat([]string{"pause", "remove"}, p.signWith(), []string{"--", p.r.plane.pauseFile, id})...); err != nil {
 		return err
 	}
 	delete(p.added, u.Step)

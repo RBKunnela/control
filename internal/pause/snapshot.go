@@ -60,6 +60,19 @@ const (
 	CauseVersion    Cause = "unknown version"
 	CauseStale      Cause = "stale"
 	CauseAhead      Cause = "dated ahead"
+	// The causes of a plane under the signed authority, and of a signed file
+	// under any other.
+	CauseUnsigned        Cause = "unsigned"
+	CauseSignedFile      Cause = "signed, and the authority is not"
+	CauseUnauthenticated Cause = "not authenticated"
+	CauseOtherScope      Cause = "another tenant or project"
+	CauseOtherFile       Cause = "another pause file"
+	CausePlaneOwned      Cause = "owned by the plane's account"
+	CauseUnauthorized    Cause = "not authorized"
+	CauseAuthority       Cause = "authority unavailable"
+	CauseBelowFloor      Cause = "below the floor"
+	CauseForked          Cause = "forked"
+	CauseFloor           Cause = "floor unavailable"
 )
 
 // Causes is every cause a snapshot can report, in the order declared. The
@@ -68,6 +81,8 @@ func Causes() []Cause {
 	return []Cause{
 		CauseNeverRead, CauseMissing, CauseUnreadable, CauseLink, CauseFileMode, CauseDirMode,
 		CauseFileOwner, CauseDirOwner, CauseTooLarge, CauseMalformed, CauseVersion, CauseStale, CauseAhead,
+		CauseUnsigned, CauseSignedFile, CauseUnauthenticated, CauseOtherScope, CauseOtherFile, CausePlaneOwned, CauseUnauthorized,
+		CauseAuthority, CauseBelowFloor, CauseForked, CauseFloor,
 	}
 }
 
@@ -98,6 +113,14 @@ type Snapshot struct {
 	entries []Entry
 	readAt  time.Time
 	maxAge  time.Duration
+	signed  *SignedBy
+}
+
+// SignedBy is who signed the document a signed plane took, its serial, and
+// the floor the plane holds after taking it.
+type SignedBy struct {
+	Subject, KeyID string
+	Serial, Floor  int64
 }
 
 // DisabledSnapshot is the state of a plane with no pause file.
@@ -120,6 +143,15 @@ func (s Snapshot) Detail() string { return s.detail }
 
 // Entries is a copy of the entries in force.
 func (s Snapshot) Entries() []Entry { return slices.Clone(s.entries) }
+
+// SignedBy is who signed the document in force, and false for a snapshot no
+// signed document stands behind.
+func (s Snapshot) SignedBy() (SignedBy, bool) {
+	if s.signed == nil {
+		return SignedBy{}, false
+	}
+	return *s.signed, true
+}
 
 // ReadAt is the plane's clock when the file was read.
 func (s Snapshot) ReadAt() time.Time { return s.readAt }
@@ -164,13 +196,21 @@ func unknown(cause Cause, detail string, at time.Time, interval time.Duration) S
 // that is missing, a link, not a regular file, writable by the group or
 // others, in a directory writable by them, owned or in a directory owned by
 // another account than this process's effective user, unreadable, too large,
-// malformed or of an unknown version reads as Unknown with that cause. Nothing is
-// locked: the writer replaces the file whole, so a read sees one document.
+// malformed, of an unknown version or signed reads as Unknown with that
+// cause: a signed file is read only by ReadSigned. Nothing is locked: the
+// writer replaces the file whole, so a read sees one document.
 func Read(path string, now time.Time, interval time.Duration) Snapshot {
-	doc, err := load(path)
+	f, err := load(path, ownedByThisUser)
+	if err == nil && f.signed != nil {
+		err = fmt.Errorf("%w: %s", ErrSignedFile, path)
+	}
 	if err != nil {
 		return unknown(causeOf(err), bounded(err.Error()), now, interval)
 	}
+	return read(f.doc, now, interval)
+}
+
+func read(doc Document, now time.Time, interval time.Duration) Snapshot {
 	state := Clear
 	if len(doc.Entries) > 0 {
 		state = Paused
@@ -183,63 +223,98 @@ func Read(path string, now time.Time, interval time.Duration) Snapshot {
 // and one replace racing a poll is no reason to block every call.
 const readAttempts = 3
 
-// load reads and parses the file at path with every check Read names.
-func load(path string) (Document, error) {
-	if !permissionBits {
-		return Document{}, ErrNoPermissionBits
+// owner is whose account a pause file and its directory have to be owned
+// by. A writer, and a plane under any authority but signed, needs them its
+// own: another owner may rewrite either whatever its mode says. A plane
+// under the signed authority reads an operator's file and refuses one its
+// own account owns, which it could rewrite; anyOwner is a dev plane's alone,
+// whose one account is the operator's too.
+type owner uint8
+
+const (
+	ownedByThisUser owner = iota
+	ownedByAnother
+	anyOwner
+)
+
+// judge refuses, with mine, an entry this process's effective user does not
+// own under ownedByThisUser, with ErrPlaneOwned one it owns under
+// ownedByAnother, and nothing under anyOwner.
+func (o owner) judge(info fs.FileInfo, mine Error) error {
+	if o == anyOwner {
+		return nil
 	}
-	root, err := openDir(filepath.Dir(path))
+	err := files.CheckOwnedBy(info, effectiveUID())
+	switch {
+	case o == ownedByThisUser && err != nil:
+		return fmt.Errorf("%w: %w", mine, err)
+	case o == ownedByAnother && err == nil:
+		return ErrPlaneOwned
+	case o == ownedByAnother && !errors.Is(err, files.ErrOwner):
+		return fmt.Errorf("%w: %w", mine, err)
+	}
+	return nil
+}
+
+// load reads and decodes the file at path with every check Read names,
+// owners judged under o.
+func load(path string, o owner) (file, error) {
+	if !permissionBits {
+		return file{}, ErrNoPermissionBits
+	}
+	root, err := openDir(filepath.Dir(path), o)
 	if err != nil {
-		return Document{}, err
+		return file{}, err
 	}
 	defer func() { _ = root.Close() }()
 	for attempt := 1; ; attempt++ {
-		doc, err := loadIn(root, path)
+		f, _, err := loadIn(root, path, o)
 		if !errors.Is(err, ErrFileChanged) || attempt == readAttempts {
-			return doc, err
+			return f, err
 		}
 	}
 }
 
-// loadIn reads and parses the pause file at path through root, the directory
-// openDir judged, with every check Read names of the file itself. The root
-// follows a link at the file's own name whatever the flags say, so the file
-// opened has to be the one judged no link.
-func loadIn(root *os.Root, path string) (Document, error) {
+// loadIn reads and decodes the pause file at path through root, the
+// directory openDir judged, with every check Read names of the file itself.
+// The root follows a link at the file's own name whatever the flags say, so
+// the file opened has to be the one judged no link.
+func loadIn(root *os.Root, path string, o owner) (file, []byte, error) {
 	name := filepath.Base(path)
 	named, err := root.Lstat(name)
 	if err != nil {
-		return Document{}, missing(err)
+		return file{}, nil, missing(err)
 	}
 	if named.Mode()&fs.ModeSymlink != 0 {
-		return Document{}, fmt.Errorf("%w: %s", ErrLink, path)
+		return file{}, nil, fmt.Errorf("%w: %s", ErrLink, path)
 	}
 	step(stepFileNamed)
 	f, err := root.OpenFile(name, os.O_RDONLY|openFlags, 0)
 	if err != nil {
-		return Document{}, missing(err)
+		return file{}, nil, missing(err)
 	}
 	defer func() { _ = f.Close() }()
 	info, err := f.Stat()
 	if err != nil {
-		return Document{}, err
+		return file{}, nil, err
 	}
 	switch {
 	case !os.SameFile(named, info):
-		return Document{}, fmt.Errorf("%w: %s", ErrFileChanged, path)
+		return file{}, nil, fmt.Errorf("%w: %s", ErrFileChanged, path)
 	case !info.Mode().IsRegular():
-		return Document{}, fmt.Errorf("%w: %s", ErrNotRegular, info.Mode().Type())
+		return file{}, nil, fmt.Errorf("%w: %s", ErrNotRegular, info.Mode().Type())
 	case info.Mode().Perm()&forbidden != 0:
-		return Document{}, fmt.Errorf("%w: mode %04o", ErrFileMode, info.Mode().Perm())
+		return file{}, nil, fmt.Errorf("%w: mode %04o", ErrFileMode, info.Mode().Perm())
 	}
-	if err := files.CheckOwnedBy(info, effectiveUID()); err != nil {
-		return Document{}, fmt.Errorf("%w: %w", ErrFileOwner, err)
+	if err := o.judge(info, ErrFileOwner); err != nil {
+		return file{}, nil, fmt.Errorf("the file: %w", err)
 	}
 	raw, err := io.ReadAll(io.LimitReader(f, MaxFileBytes+1))
 	if err != nil {
-		return Document{}, err
+		return file{}, nil, err
 	}
-	return Parse(raw)
+	doc, err := decodeFile(raw)
+	return doc, raw, err
 }
 
 func missing(err error) error {
@@ -265,6 +340,17 @@ func causeOf(err error) Cause {
 		{ErrTooLarge, CauseTooLarge},
 		{ErrMalformed, CauseMalformed},
 		{ErrVersion, CauseVersion},
+		{ErrUnsigned, CauseUnsigned},
+		{ErrSignedFile, CauseSignedFile},
+		{ErrUnauthenticated, CauseUnauthenticated},
+		{ErrOtherScope, CauseOtherScope},
+		{ErrOtherFile, CauseOtherFile},
+		{ErrPlaneOwned, CausePlaneOwned},
+		{ErrUnauthorized, CauseUnauthorized},
+		{ErrAuthority, CauseAuthority},
+		{ErrBelowFloor, CauseBelowFloor},
+		{ErrForked, CauseForked},
+		{ErrFloor, CauseFloor},
 	} {
 		if errors.Is(err, c.err) {
 			return c.cause

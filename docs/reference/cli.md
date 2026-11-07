@@ -120,6 +120,9 @@ running plane takes none. A pause blocks every call not yet handed out
 when the plane reads it, within one `pause.poll_interval`; it cancels
 nothing already running.
 
+Signed pause files, `--key` and `pause floor init`:
+[pausing calls](../concepts/enforcement-modes.md#pausing-calls).
+
 The `runs` commands open, close, list and prune the runs a plane with
 `runs.dir` serves: [runs.md](runs.md).
 
@@ -152,11 +155,13 @@ usage:
       [--reason <text>] <dir> <approval-id>
   guardana-control approvals reject (--key <file> --inbox <dir> | --approver-id <id>)
       [--reason <text>] <dir> <approval-id>
-  guardana-control pause init <file>
+  guardana-control pause init [--key <k> --tenant <t> --project <p> [--serial <n>]] <file>
   guardana-control pause add (--global | --provider <p> [--action <k> [--name <n>]]
-      | --run <id> | --agent <id> | --principal <id>) [--reason <r>] <f>
-  guardana-control pause remove <file> <id>
+      | --run <id> | --agent <id> | --principal <id>) [--reason <r>]
+      [--key <k> --roster <f> --root-key <f>] <f>
+  guardana-control pause remove [--key <k> --roster <f> --root-key <f>] <file> <id>
   guardana-control pause list <file>
+  guardana-control pause floor init --tenant <t> --project <p> <dir>
   guardana-control runs open --project --tenant --principal-type --principal --agent
       --ttl [--parent] <dir>
   guardana-control runs close <dir> <run-id>
@@ -196,7 +201,8 @@ Under approvals.authority: signed a plane takes only an answer an operator signs
 Write access to the approvals directory is the approval authority:
 --approver-id is a claim recorded as given, never an identity.
 An id that could read as authn:, mixes scripts or holds a hidden or restyled character is refused.
-Write access to the pause file is the authority to pause a call and to lift a pause.
+Write access to the pause file is the authority to pause a call and to lift a pause;
+under approvals.authority signed, only a pause file signed with an operator's --key counts.
 Write access to the runs directory is the authority to open and to close a run;
 a token acts as its run until it expires or is closed, and runs open prints it once.
 Write access to a floor directory is the authority to lower its floors;

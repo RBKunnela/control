@@ -284,11 +284,11 @@ queued behind it, past that bound; each closes <code>TIMEOUT</code> or unknown, 
 as not sent.</p>
 <h2 id="pause-file-unreadable">Pause file unreadable</h2>
 <p>At start, a pause file that is missing, garbled, too large, a link, a
-directory, or writable by the group or others refuses the start, naming
-<code>pause.file</code> and the cause (<code>TestAStartIsRefusedOnEveryUnknownCause</code>). While
-the plane runs, a read every <code>pause.poll_interval</code> that meets one of those
-causes, or cannot read the file, blocks every call until a read finds a whole
-file, and so does a read older than three intervals. <code>/healthz</code> answers <code>503</code>
+directory, writable by the group or others, or under <code>signed</code> not a
+permitted operator's, below the floor or the plane's own, refuses the start,
+naming <code>pause.file</code> and the cause (<code>TestAStartIsRefusedOnEveryUnknownCause</code>).
+While the plane runs, a read meeting one blocks every call until a read
+finds a whole file, as does one older than three intervals. <code>/healthz</code> answers <code>503</code>
 with <code>pause.state: unknown</code> and the cause
 (<code>TestHealthAnswers503OnEveryUnknownState</code>), and the trail of each call ends
 <code>ACTION_BLOCKED</code> with the code.</p>

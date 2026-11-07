@@ -72,5 +72,14 @@
 //	authority.meta               the marker: schema_version, kind "authority", roster_ids
 //	<sha256 hex>.authority.json  roster_id, serial and digest, both null until a raise
 //
+// # Pause floors
+//
+// A pause floor directory keeps one floor: the highest serial of a signed
+// pause document one plane took for its tenant and project, and the
+// document's digest at it, by the route floor's rules under names of its own:
+//
+//	pause.meta        the marker: schema_version, kind "pause", tenant, project
+//	pause.floor.json  tenant, project, serial and digest, both null until a raise
+//
 // Nothing here reads a clock: every time is the caller's.
 package policystate

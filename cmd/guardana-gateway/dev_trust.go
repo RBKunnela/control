@@ -41,9 +41,10 @@ func (s devState) operatorKeyFile() string {
 // layOutTrust makes the dev plane's signed authority under its state: a
 // trust root drawn here, whose public half is written and whose private half
 // is cleared once it signed; a roster naming one operator, who may approve
-// in tenant and project; the operator's key pair and the roster's floor,
-// each through the approver's binary, which holds the code that writes them;
-// and an empty inbox. The operator's key is
+// in tenant and project; the operator's key pair, the roster's floor, the
+// pause floor and a pause file the operator signed, pausing nothing, each
+// through the approver's binary, which holds the code that writes them; and
+// an empty inbox. The operator's key is
 // kept in the state directory, readable by this account alone, so the dev
 // plane's own account can approve: a dev plane is no separation of duties.
 func (d *devPlane) layOutTrust(ctx context.Context, control sibling, tenant, project string) error {
@@ -65,6 +66,15 @@ func (d *devPlane) layOutTrust(ctx context.Context, control sibling, tenant, pro
 	}
 	if _, err := control.run(ctx, "operators", "floor", "init", "--roster-id", devRosterID, st.path(stateTrustFlr)); err != nil {
 		return fmt.Errorf("creating the roster's floor: %w", err)
+	}
+	if err := os.Mkdir(filepath.Dir(st.path(statePause)), 0o700); err != nil {
+		return err
+	}
+	if _, err := control.run(ctx, "pause", "floor", "init", "--tenant", tenant, "--project", project, st.path(statePauseFlr)); err != nil {
+		return fmt.Errorf("creating the pause floor: %w", err)
+	}
+	if _, err := control.run(ctx, "pause", "init", "--key", st.operatorKeyFile(), "--tenant", tenant, "--project", project, st.path(statePause)); err != nil {
+		return fmt.Errorf("creating the pause file: %w", err)
 	}
 	return nil
 }
@@ -113,6 +123,8 @@ func devSignedStart(st devState) func(*gatewayconfig.Config) error {
 			{"trust.roster", cfg.Resolve(cfg.Trust.Roster), st.path(stateRoster)},
 			{"trust.floor_dir", cfg.Resolve(cfg.Trust.FloorDir), st.path(stateTrustFlr)},
 			{"approvals.inbox_dir", cfg.Resolve(cfg.Approvals.InboxDir), st.path(stateInbox)},
+			{"pause.file", cfg.Resolve(cfg.Pause.File), st.path(statePause)},
+			{"pause.floor_dir", cfg.Resolve(cfg.Pause.FloorDir), st.path(statePauseFlr)},
 		} {
 			if k.got != k.want {
 				return fmt.Errorf("%s is %s, and a dev plane takes only the one dev laid out at %s", k.key, k.got, k.want)

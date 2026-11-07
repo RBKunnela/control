@@ -33,8 +33,8 @@ func step(s string) {
 // open goes through the root, which is proven to be that same directory, so
 // a directory swapped in under the path after the check is never read or
 // written. Whoever may replace the file in a directory the group or others
-// may write, or another account owns, may lift every pause.
-func openDir(dir string) (*os.Root, error) {
+// may write, or another account than o allows owns, may lift every pause.
+func openDir(dir string, o owner) (*os.Root, error) {
 	d, err := files.OpenDir(dir)
 	if err != nil {
 		if info, lerr := os.Lstat(dir); lerr == nil && info.Mode()&fs.ModeSymlink != 0 {
@@ -52,8 +52,8 @@ func openDir(dir string) (*os.Root, error) {
 	if judged.Mode().Perm()&forbidden != 0 {
 		return nil, fmt.Errorf("%w: mode %04o", ErrDirMode, judged.Mode().Perm())
 	}
-	if err := files.CheckOwnedBy(judged, effectiveUID()); err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrDirOwner, err)
+	if err := o.judge(judged, ErrDirOwner); err != nil {
+		return nil, fmt.Errorf("the directory: %w", err)
 	}
 	step(stepOpened)
 	// A root is opened by path only. The trailing "." fails on anything but a

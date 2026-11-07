@@ -34,8 +34,10 @@ type planeTarget struct {
 	approvals, pauseFile        string
 	// operatorKey and inbox sign an answer where the plane holds under the
 	// signed authority and the runner was handed an operator's key; dev
-	// alone hands one over.
+	// alone hands one over. roster and rootKey are the plane's own, which a
+	// signed pause write judges the file it starts from by.
 	operatorKey, inbox string
+	roster, rootKey    string
 	callTimeout        time.Duration
 }
 
@@ -56,6 +58,9 @@ func targetOf(cfg *gatewayconfig.Config) (planeTarget, error) {
 	}
 	if cfg.Approvals.Authority == gatewayconfig.AuthorityDirectory || cfg.Approvals.Authority == gatewayconfig.AuthoritySigned {
 		t.approvals = cfg.Resolve(cfg.Approvals.Dir)
+	}
+	if cfg.Approvals.Authority == gatewayconfig.AuthoritySigned {
+		t.roster, t.rootKey = cfg.Resolve(cfg.Trust.Roster), cfg.Resolve(cfg.Trust.RootPublicKey)
 	}
 	return t, nil
 }

@@ -27,6 +27,11 @@ all, some or none of the plane's calls, and name each that covers none. A
 tenant is still no scope. The file is version `2`; version `1`, which names
 none of the three, is still read.
 
+Amended by [ADR-0075](0075-a-signed-plane-takes-a-pause-only-from-an-operators-signature.md):
+under `approvals.authority: signed` the plane takes a pause only from a
+version `3` file an operator signed, above its pause floor, and refuses
+versions `1` and `2`.
+
 ## Context
 
 The registry holds `PAUSED`, number 24, `DENY`, and nothing emits it. An

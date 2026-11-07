@@ -101,7 +101,7 @@ func TestOnlyTheRostersKeyUnderItsOwnIDSignsAnAnswer(t *testing.T) {
 	twice := answer(t, "alice")
 	twice.Signatures = append(twice.Signatures, twice.Signatures[0])
 	wantAuth(t, "two signatures", a.Authenticate(t.Context(), operators.ActApprove, twice), operators.AuthRefused, operators.CauseSignatures)
-	wantAuth(t, "an act this build lacks", a.Authenticate(t.Context(), "pause", answer(t, "alice")), operators.AuthRefused, operators.CauseAct)
+	wantAuth(t, "an act this build lacks", a.Authenticate(t.Context(), "unknown", answer(t, "alice")), operators.AuthRefused, operators.CauseAct)
 }
 
 // swappingRoster answers every lookup with the key it names instead, as a

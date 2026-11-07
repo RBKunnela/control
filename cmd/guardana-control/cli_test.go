@@ -137,6 +137,9 @@ var ownRefusal = map[string]func(missing string) []string{
 	"pause add":         func(m string) []string { return []string{"--global", m} },
 	"pause remove":      func(m string) []string { return []string{m, "P1"} },
 	"pause list":        func(m string) []string { return []string{m} },
+	"pause floor init": func(m string) []string {
+		return []string{"--tenant", "t1", "--project", "A", filepath.Join(m, "floor")}
+	},
 	"runs open": func(m string) []string {
 		return append(openFlags(who, "1h"), m)
 	},
@@ -281,7 +284,8 @@ func TestHelpNamesEveryCommand(t *testing.T) {
 	}
 	for _, authority := range []string{
 		"Write access to the approvals directory is the approval authority",
-		"Write access to the pause file is the authority to pause a call and to lift a pause.",
+		"Write access to the pause file is the authority to pause a call and to lift a pause;\n" +
+			"under approvals.authority signed, only a pause file signed with an operator's --key counts.",
 		"Write access to the runs directory is the authority to open and to close a run",
 		"Write access to a floor directory is the authority to lower its floors;\npolicy state reset is the one way that records why.",
 		"Only the lift key lifts a stop while a plane runs; write access to the stops directory\n" +

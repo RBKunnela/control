@@ -22,6 +22,12 @@ type Options struct {
 	Clock func() time.Time
 	// Logger takes each change of the snapshot; nil logs nothing.
 	Logger *slog.Logger
+	// Judge, when set, is what every read is judged by under the signed
+	// authority, with ReadSigned; nil reads with Read.
+	Judge Judge
+	// PlaneOwned lets a signed read take a file the plane's own account
+	// owns. Only a dev plane sets it: its one account is the operator's too.
+	PlaneOwned bool
 	// UnlistedOnly names the entries of a read that pause only calls
 	// carrying no provider, which are calls to names no upstream lists. A
 	// change that leaves any is logged at warn, naming them; nil names none.
@@ -52,9 +58,9 @@ type Poller struct {
 
 // Open checks o, reads the file once and returns a poller serving that read,
 // or refuses: with ErrOptions for an empty path, a nil clock or an interval
-// that is not positive, and with ErrNotServable naming the cause for a first
-// read that is Unknown, so a plane never starts on a pause file it cannot
-// read.
+// that is not positive, and with
+// ErrNotServable naming the cause for a first read that is Unknown, so a
+// plane never starts on a pause file it cannot read.
 func Open(o Options) (*Poller, error) {
 	if o.Path == "" || o.Clock == nil || o.Interval <= 0 {
 		return nil, ErrOptions
@@ -78,9 +84,22 @@ func (p *Poller) Current() Snapshot {
 	return Snapshot{}
 }
 
-// Poll reads the file now, publishes the read and returns it.
+// Poll reads the file now, publishes the read and returns it. A signed read
+// is held to one interval: a roster or a floor that does not answer in it
+// leaves the read Unknown rather than the poll stalled.
 func (p *Poller) Poll() Snapshot {
-	s := Read(p.opts.Path, p.opts.Clock(), p.opts.Interval)
+	var s Snapshot
+	if p.opts.Judge == nil {
+		s = Read(p.opts.Path, p.opts.Clock(), p.opts.Interval)
+	} else {
+		ctx, cancel := context.WithTimeout(context.Background(), p.opts.Interval)
+		o := ownedByAnother
+		if p.opts.PlaneOwned {
+			o = anyOwner
+		}
+		s = readSignedAs(ctx, p.opts.Path, p.opts.Clock(), p.opts.Interval, p.opts.Judge, o)
+		cancel()
+	}
 	prev := p.current.Swap(&s)
 	p.count(prev, s)
 	return s

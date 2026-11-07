@@ -12,9 +12,15 @@ type Act string
 // ActApprove answers a held call: an approval or a rejection.
 const ActApprove Act = "approve"
 
+// ActPause signs a plane's whole pause document, which pauses and lifts.
+const ActPause Act = "pause"
+
 // AnswerPayloadType is the DSSE payload type an approval answer is signed
 // under.
 const AnswerPayloadType = "application/vnd.agent-approval-answer+json"
+
+// PausePayloadType is the DSSE payload type a pause document is signed under.
+const PausePayloadType = "application/vnd.agent-pause+json"
 
 // actRule is the payload type an act is signed under and the level a grant
 // needs to permit it.
@@ -25,6 +31,7 @@ type actRule struct {
 
 var acts = map[Act]actRule{
 	ActApprove: {payloadType: AnswerPayloadType, level: trust.LevelOperate},
+	ActPause:   {payloadType: PausePayloadType, level: trust.LevelOperate},
 }
 
 // Cause says why an answer is not a positive one. It is a closed set,

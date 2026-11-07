@@ -36,7 +36,7 @@ Before it creates or binds anything, dev refuses, with status 1:
   `health.address`, `policy.bundle_file`, `policy.key_id`,
   `policy.public_key`, `policy.statement_file`, `policy.state_dir`,
   `policy.freshness_key_id`, `policy.freshness_public_key`, `pause.file`,
-  `evidence.dir`, `export.endpoint`,
+  `pause.floor_dir`, `evidence.dir`, `export.endpoint`,
   `export.allow_plaintext`, every `approvals`, `trust` and `operators` key and every `runs` key, since
   dev serves local runs only, and with `--decision-point=silent` every `pdp`
   key;
@@ -59,17 +59,19 @@ the demo's tenant and project and to a credential drawn for this plane and
 held in memory only,
 `policy.bundle`, `policy.statement`, the bundle's freshness statement,
 `floors/`, the plane's floor directory, made by `guardana-control policy
-state init --kind plane`, `pause.json`, made by `guardana-control pause
-init`, `settings.txt`, every scalar key the plane resolved, and what the
+state init --kind plane`, `pause/pause.json`, which `guardana-control pause
+init --key` signs with the dev operator's key, `pausefloor/`, the pause
+floor, made by `guardana-control pause floor init`, `settings.txt`, every scalar key the plane resolved, and what the
 `signed` approval authority a dev plane runs under reads: `inbox/`;
 `operator/`, a key pair made by `guardana-control policy keygen`; and
 `trust/`, a roster `dev` naming that key as operator `dev-operator` for the
 demo's tenant and project, `root.pub`, the public half of a trust root made
 in dev's memory and cleared once it signed, and `floors/`, made by
 `guardana-control operators floor init`. The operator's key is in the state
-directory, so the plane's own account can approve: a dev plane separates no
-duties, and its start skips the placement checks `run` makes under `signed`,
-taking only the trust dev laid out. The directory is left behind when dev
+directory, so the plane's own account can approve and pause: a dev plane
+separates no duties, its start skips the placement checks `run` makes under
+`signed`, taking only the trust and the pause file dev laid out, and it reads
+a pause file its own account owns. The directory is left behind when dev
 stops.
 
 The bundle is signed under an Ed25519 key made in dev's memory for that one
