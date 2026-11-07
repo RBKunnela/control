@@ -14,6 +14,13 @@ serial floor, and on
 Amended by [ADR-0073](0073-an-approval-counts-only-as-the-plane-judges-it.md): a signed start
 refuses the configuration file, the trust root key file and any key the
 environment set, and not the approvals directory, which the plane owns.
+Amended by [ADR-0075](0075-a-signed-plane-takes-a-pause-only-from-an-operators-signature.md),
+[ADR-0076](0076-a-signed-plane-takes-a-run-only-from-an-operators-signature.md)
+and [ADR-0077](0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatures.md), which add the pause file, the runs directory's `records/`, the
+route file and the stops directory. A signed start refuses those four, the
+configuration file and the trust root key file wherever the plane's account
+owns or may write one or any directory on its path, and any key the
+environment set.
 
 ## Context
 

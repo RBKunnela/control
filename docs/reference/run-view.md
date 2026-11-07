@@ -52,9 +52,10 @@ reader. The legend at the foot of the page summarises this table.
 | blocked | cross, long dashes | The call's coherent trail ends blocked: the policy's `DENY`, a pause, a stop, an approval refused or expired, or a verdict such as `INDETERMINATE`. |
 | not seen | hexagon, sparse dashes | A step with no call, or a source never heard, silent or not read. |
 
-A source's report is marked observed. A plane's call is marked decided when
-its trail is in doubt; else blocked when it was denied or blocked; else
-exception or approval; else decided when its protocol is `enforce`; else
+A source's report is marked observed. A plane's call is marked blocked when
+it was denied or blocked; else decided when its trail is in doubt; else
+exception or approval; else decided when its protocol's strength in
+`internal/channel` is not inline (`enforce`, none or an unknown one); else
 enforced when its recorded mode acts on its decision; else decided. No mark says "inferred": the page draws a
 call only from a plane's or a source's record, never from a guess.
 

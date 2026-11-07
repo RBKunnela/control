@@ -186,9 +186,10 @@ reader. The legend at the foot of the page summarises this table.</p>
 </tr>
 </tbody>
 </table>
-<p>A source's report is marked observed. A plane's call is marked decided when
-its trail is in doubt; else blocked when it was denied or blocked; else
-exception or approval; else decided when its protocol is <code>enforce</code>; else
+<p>A source's report is marked observed. A plane's call is marked blocked when
+it was denied or blocked; else decided when its trail is in doubt; else
+exception or approval; else decided when its protocol's strength in
+<code>internal/channel</code> is not inline (<code>enforce</code>, none or an unknown one); else
 enforced when its recorded mode acts on its decision; else decided. No mark says &quot;inferred&quot;: the page draws a
 call only from a plane's or a source's record, never from a guess.</p>
 <p>Colours come in a light and a dark scheme, chosen by the reader's system

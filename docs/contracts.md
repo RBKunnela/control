@@ -704,6 +704,14 @@ one from the caller:
 | `destination` | `trustZone`, `host` |
 | `authorizedArguments` | the arguments document, as a value |
 
+The gateway's adapters spell the action's `kind` as `tool`, `prompt` or
+`resource` and its `protocol` as `mcp` or `enforce` (`internal/channel`). The
+gateway refuses, as `INVALID_FIELD_VALUE`, a kind outside that vocabulary and a
+protocol other than the adapter's own name; a call the adapter already refused
+keeps its own refusal.
+`Validate` checks neither, so a v1 producer elsewhere may digest another
+([ADR-0067](adr/0067-the-pipeline-refuses-what-an-adapter-could-not-translate.md)).
+
 Keys are the protobuf JSON names. **Every member is present at its proto zero
 value**: an absent string is `""`, an absent map is `{}`, an absent repeated
 field is `[]`, an absent enum is its zero name. Nothing is omitted and `null`
@@ -880,6 +888,14 @@ exception is the flow tags below, which the comparison leaves out: the retry's
 fresh decision already weighs what the run has taken in since, and has to equal
 the held decision in verdict, rules, obligations and digest, so a flow that
 matters stops the resume there (ADR-0021).
+
+An approver id `authn:<issuer>:<subject>` is spelled only by
+`internal/core/approval`, from what the plane's authenticator established
+about a signed answer; only the gateway's pipeline calls it. A claimed approver
+id that begins with `authn:`, or could read as it, is refused wherever one is
+read. The id changes no wire field, digest or binding
+([ADR-0066](adr/0066-each-decision-about-authority-is-a-port.md),
+[ADR-0073](adr/0073-an-approval-counts-only-as-the-plane-judges-it.md)).
 
 ### The flow tags
 

@@ -120,6 +120,11 @@ Date: 2026-11-05</p>
 signed start refuses, and <a href="/docs/adr/0016-approval-providers-and-the-lost-hold">ADR-0016</a>
 on the provider key. Builds on ADR-0071's roster, authenticator and
 authorizer.</p>
+<p>Amended by <a href="/docs/adr/0075-a-signed-plane-takes-a-pause-only-from-an-operators-signature">ADR-0075</a>,
+<a href="/docs/adr/0076-a-signed-plane-takes-a-run-only-from-an-operators-signature">ADR-0076</a>
+and <a href="/docs/adr/0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatures">ADR-0077</a>: under signed the plane also refuses to start when its own
+account may write the pause file, the run records, the route file or the stops
+directory, each record holding its part.</p>
 <h2 id="context">Context</h2>
 <p>A held call ran on whatever the approvals store answered: one place both
 held the call and said who approved it, and the approver id was a claim

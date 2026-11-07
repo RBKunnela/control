@@ -124,7 +124,14 @@ serial floor, and on
 <a href="/docs/adr/0017-an-external-decision-point-can-veto">ADR-0017</a> for the veto.</p>
 <p>Amended by <a href="/docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it">ADR-0073</a>: a signed start
 refuses the configuration file, the trust root key file and any key the
-environment set, and not the approvals directory, which the plane owns.</p>
+environment set, and not the approvals directory, which the plane owns.
+Amended by <a href="/docs/adr/0075-a-signed-plane-takes-a-pause-only-from-an-operators-signature">ADR-0075</a>,
+<a href="/docs/adr/0076-a-signed-plane-takes-a-run-only-from-an-operators-signature">ADR-0076</a>
+and <a href="/docs/adr/0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatures">ADR-0077</a>, which add the pause file, the runs directory's <code>records/</code>, the
+route file and the stops directory. A signed start refuses those four, the
+configuration file and the trust root key file wherever the plane's account
+owns or may write one or any directory on its path, and any key the
+environment set.</p>
 <h2 id="context">Context</h2>
 <p>Today an approver is whoever can write the approvals directory, and the
 approver id is a claim. ADR-0066 says operators are authenticated against a

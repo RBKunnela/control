@@ -9,7 +9,9 @@ on whose run a token names, and
 on what holds a source when no event of the run was read.
 
 Amended when `/healthz` stopped naming runs: it counts the unheld stops, and
-only `health.socket` lists their runs ([docs/status.md](../status.md)).
+only `health.socket` lists their runs ([docs/status.md](../status.md)). The
+answer carries `"schema": "2"`, so a reader tells it from the earlier shape,
+which had no schema member ([versions](../reference/versions.md)).
 
 ## Context
 

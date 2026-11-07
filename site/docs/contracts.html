@@ -933,6 +933,13 @@ one from the caller:</p>
 </tr>
 </tbody>
 </table>
+<p>The gateway's adapters spell the action's <code>kind</code> as <code>tool</code>, <code>prompt</code> or
+<code>resource</code> and its <code>protocol</code> as <code>mcp</code> or <code>enforce</code> (<code>internal/channel</code>). The
+gateway refuses, as <code>INVALID_FIELD_VALUE</code>, a kind outside that vocabulary and a
+protocol other than the adapter's own name; a call the adapter already refused
+keeps its own refusal.
+<code>Validate</code> checks neither, so a v1 producer elsewhere may digest another
+(<a href="/docs/adr/0067-the-pipeline-refuses-what-an-adapter-could-not-translate">ADR-0067</a>).</p>
 <p>Keys are the protobuf JSON names. <strong>Every member is present at its proto zero
 value</strong>: an absent string is <code>&quot;&quot;</code>, an absent map is <code>{}</code>, an absent repeated
 field is <code>[]</code>, an absent enum is its zero name. Nothing is omitted and <code>null</code>
@@ -1093,6 +1100,13 @@ exception is the flow tags below, which the comparison leaves out: the retry's
 fresh decision already weighs what the run has taken in since, and has to equal
 the held decision in verdict, rules, obligations and digest, so a flow that
 matters stops the resume there (ADR-0021).</p>
+<p>An approver id <code>authn:&lt;issuer&gt;:&lt;subject&gt;</code> is spelled only by
+<code>internal/core/approval</code>, from what the plane's authenticator established
+about a signed answer; only the gateway's pipeline calls it. A claimed approver
+id that begins with <code>authn:</code>, or could read as it, is refused wherever one is
+read. The id changes no wire field, digest or binding
+(<a href="/docs/adr/0066-each-decision-about-authority-is-a-port">ADR-0066</a>,
+<a href="/docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it">ADR-0073</a>).</p>
 <h3 id="the-flow-tags">The flow tags</h3>
 <p>The gateway records the flow state each decision used as run-context tags on
 the envelope that <code>ACTION_PROPOSED</code> carries, under the prefix <code>flow.v1.</code>:</p>
