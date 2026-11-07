@@ -11,6 +11,40 @@ verify one.
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-07
+
+Upgrading from 0.15 changes four things an operator must act on.
+`approvals.authority` (`memory`, `directory` or `signed`) replaces
+`approvals.provider` and has no default; `provider: file` becomes
+`authority: directory`, and `approvals.hold_journal_dir` is required beside
+every approvals directory. The approvals directory is format `2.0` and a
+`1.0` one is refused: let its holds expire, within `approvals.ttl`, then
+empty it. `/healthz` answers schema `2` without run ids; a reader that needs
+them queries `health.socket`. An identifier the contract's rule refuses, such
+as a `project_id` with white space at either end, is refused when the
+configuration loads. The TCP export still works with a `doctor` warning and
+is removed in 0.17: set `export.endpoint: unix:///path` and
+`export.collector_uid` instead.
+
+New: under `approvals.authority: signed` a plane takes authority only from
+operators a signed roster names. A held call runs only on an answer an
+operator signs. The pause file (`3`), the run records (`3.0`), the stop list
+(`2.0`) and its route and lifts (`v1alpha2`) are signed and held to floors
+the plane raises, and the plane refuses to start where its own account could
+write any of them
+([ADR-0073](docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it.md),
+[ADR-0075](docs/adr/0075-a-signed-plane-takes-a-pause-only-from-an-operators-signature.md),
+[ADR-0076](docs/adr/0076-a-signed-plane-takes-a-run-only-from-an-operators-signature.md),
+[ADR-0077](docs/adr/0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatures.md)).
+To move a plane to `signed`, open its runs again in a new, empty directory
+and start a new stop list. `state backup` and `state restore` copy a stopped
+plane's floors, runs, pause file and stop list, and a restore only raises a
+floor ([ADR-0078](docs/adr/0078-a-restore-only-raises.md)). A pause can name
+one run, agent or principal. Under `signed` the plane's own account still
+raises the roster's floor, so it can withhold a newer roster within the held
+one's lifetime. The hook profile's qualification was not run again for this
+release.
+
 ### Added
 
 - Under `approvals.authority: signed` roster operators sign the reaction
@@ -2319,7 +2353,8 @@ yet.
   independence of this project from Guardana
   ([ADR-0024](docs/adr/0024-control-and-guardana-are-independent.md)).
 
-[Unreleased]: https://github.com/guardana/control/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/guardana/control/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/guardana/control/releases/tag/v0.16.0
 [0.15.0]: https://github.com/guardana/control/releases/tag/v0.15.0
 [0.14.0]: https://github.com/guardana/control/releases/tag/v0.14.0
 [0.13.0]: https://github.com/guardana/control/releases/tag/v0.13.0

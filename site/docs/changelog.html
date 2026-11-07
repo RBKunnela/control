@@ -121,7 +121,38 @@
 <a href="/docs/adr/0008-branching-and-release-policy">ADR-0008</a>. Each release is built,
 signed and attested from its tag; <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a> shows how to
 verify one.</p>
-<h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.15.0...HEAD">Unreleased</a></h2>
+<h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.16.0...HEAD">Unreleased</a></h2>
+<h2 id="0160---2026-11-07"><a href="https://github.com/guardana/control/releases/tag/v0.16.0">0.16.0</a> - 2026-11-07</h2>
+<p>Upgrading from 0.15 changes four things an operator must act on.
+<code>approvals.authority</code> (<code>memory</code>, <code>directory</code> or <code>signed</code>) replaces
+<code>approvals.provider</code> and has no default; <code>provider: file</code> becomes
+<code>authority: directory</code>, and <code>approvals.hold_journal_dir</code> is required beside
+every approvals directory. The approvals directory is format <code>2.0</code> and a
+<code>1.0</code> one is refused: let its holds expire, within <code>approvals.ttl</code>, then
+empty it. <code>/healthz</code> answers schema <code>2</code> without run ids; a reader that needs
+them queries <code>health.socket</code>. An identifier the contract's rule refuses, such
+as a <code>project_id</code> with white space at either end, is refused when the
+configuration loads. The TCP export still works with a <code>doctor</code> warning and
+is removed in 0.17: set <code>export.endpoint: unix:///path</code> and
+<code>export.collector_uid</code> instead.</p>
+<p>New: under <code>approvals.authority: signed</code> a plane takes authority only from
+operators a signed roster names. A held call runs only on an answer an
+operator signs. The pause file (<code>3</code>), the run records (<code>3.0</code>), the stop list
+(<code>2.0</code>) and its route and lifts (<code>v1alpha2</code>) are signed and held to floors
+the plane raises, and the plane refuses to start where its own account could
+write any of them
+(<a href="/docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it">ADR-0073</a>,
+<a href="/docs/adr/0075-a-signed-plane-takes-a-pause-only-from-an-operators-signature">ADR-0075</a>,
+<a href="/docs/adr/0076-a-signed-plane-takes-a-run-only-from-an-operators-signature">ADR-0076</a>,
+<a href="/docs/adr/0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatures">ADR-0077</a>).
+To move a plane to <code>signed</code>, open its runs again in a new, empty directory
+and start a new stop list. <code>state backup</code> and <code>state restore</code> copy a stopped
+plane's floors, runs, pause file and stop list, and a restore only raises a
+floor (<a href="/docs/adr/0078-a-restore-only-raises">ADR-0078</a>). A pause can name
+one run, agent or principal. Under <code>signed</code> the plane's own account still
+raises the roster's floor, so it can withhold a newer roster within the held
+one's lifetime. The hook profile's qualification was not run again for this
+release.</p>
 <h3 id="added">Added</h3>
 <ul>
 <li>Under <code>approvals.authority: signed</code> roster operators sign the reaction
