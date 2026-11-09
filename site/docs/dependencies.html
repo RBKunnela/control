@@ -175,7 +175,7 @@ below was read in the module cache of the version <code>go.mod</code> pins:
 v1.1.3 (MIT), its JSON encoder and that encoder's assembly kernels;
 <code>github.com/yosida95/uritemplate/v3</code> v3.0.2 (BSD-3-Clause, the text in its
 <code>LICENSE</code> file), which expands resource templates; <code>golang.org/x/oauth2</code>
-v0.35.0, <code>golang.org/x/sync</code> v0.23.0, <code>golang.org/x/sys</code> v0.48.0, also a
+v0.35.0, <code>golang.org/x/sync</code> v0.23.0, <code>golang.org/x/sys</code> v0.49.0, also a
 direct dependency below, and <code>golang.org/x/time</code> v0.15.0 (all
 BSD-3-Clause), for the bearer-token middleware, the transports'
 concurrency helpers, system calls and its rate limiter. They sit in the request path with the module that brings them, and a
@@ -216,7 +216,7 @@ by hand rather than followed.</li>
 <li>Request path: yes. It is the filesystem the gateway runs on, so a digest
 bump is read, as a dependency bump is, rather than merged on a green gate.</li>
 </ul>
-<h3 id="golangorgxsys-v0480"><code>golang.org/x/sys</code> v0.48.0</h3>
+<h3 id="golangorgxsys-v0490"><code>golang.org/x/sys</code> v0.49.0</h3>
 <ul>
 <li>Problem it solves: naming the account on the other end of a Unix socket,
 <code>SO_PEERCRED</code> on Linux and <code>LOCAL_PEERCRED</code> on macOS, which the plane reads
@@ -230,7 +230,7 @@ does, generated from the system headers.</li>
 <li>Licence: BSD-3-Clause, read from the module's <code>LICENSE</code> file, with a
 separate patent grant in <code>PATENTS</code>.</li>
 <li>Maintenance signal: published from <code>go.googlesource.com/sys</code> by the Go
-project; v0.48.0 is tagged at commit <code>613e2570718e</code>, dated 2026-08-31 in the
+project; v0.49.0 is tagged at commit <code>b6b8557e8e29</code>, dated 2026-10-06 in the
 module proxy's record. It was linked into the gateway before, through the
 MCP module.</li>
 <li>Request path: yes. A read it gets wrong lets the credential or the whole
@@ -386,7 +386,7 @@ project, with frequent releases.</li>
 <p><code>site/</code> holds the website's static files (<a href="/docs/adr/0030-a-static-website-drawn-from-the-repository">ADR-0030</a>),
 and one Go module renders its documentation pages. No binary or image of the
 product contains what this section lists.</p>
-<h3 id="githubcomyuingoldmark-v186"><code>github.com/yuin/goldmark</code> v1.8.6</h3>
+<h3 id="githubcomyuingoldmark-v187"><code>github.com/yuin/goldmark</code> v1.8.7</h3>
 <ul>
 <li>Problem it solves: rendering the documentation's Markdown into the site's
 pages under <code>site/docs/</code>, with the tables, strikethrough and bare links the
@@ -399,7 +399,7 @@ CommonMark's block and inline rules are too many to keep by hand beside the
 pages they would have to agree with.</li>
 <li>Licence: MIT, copyright Yusuke Inuzuka, read from the module's <code>LICENSE</code>.
 The module has no dependency of its own.</li>
-<li>Maintenance signal: v1.8.6 was published on 2026-09-03, read from the module
+<li>Maintenance signal: v1.8.7 was published on 2026-10-30, read from the module
 proxy in the session that added this entry. Nothing else about the project's
 activity was checked.</li>
 <li>Request path: no. Only <code>internal/docscheck</code> imports it, and <code>go list -deps</code>
