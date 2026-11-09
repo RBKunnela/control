@@ -153,7 +153,7 @@ jobs:
 
       - name: Keep the client's snapshot
         # A run attempted again builds its own files under its own version.
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: python
           path: ${{ runner.temp }}/python/
@@ -207,7 +207,7 @@ jobs:
           scripts/scan-binaries.sh image "${image}" "${platform}"
 
       - name: Keep the snapshot
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: snapshot
           path: dist/
@@ -370,7 +370,7 @@ jobs:
       - name: Keep the client's release files
         # For the upload job, which runs only once the release is published
         # and can be run again alone.
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: python
           path: ${{ runner.temp }}/python/

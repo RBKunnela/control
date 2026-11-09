@@ -78,7 +78,7 @@ jobs:
           install-only: true
 
       - name: Install buf
-        uses: bufbuild/buf-action@85aebf73123b5c15fd5528aaecbf9129cddf7fa7 # v1.6.0
+        uses: bufbuild/buf-action@37ac33d8960807670a6e9719080e885197b09cc6 # v1.7.0
         with:
           version: ${{ env.BUF_SEMVER }}
           # The action's own digest check on the binary it downloads.
@@ -161,7 +161,7 @@ jobs:
             scripts/tool-versions.env | grep . >>"$GITHUB_ENV"
 
       - name: Install buf
-        uses: bufbuild/buf-action@85aebf73123b5c15fd5528aaecbf9129cddf7fa7 # v1.6.0
+        uses: bufbuild/buf-action@37ac33d8960807670a6e9719080e885197b09cc6 # v1.7.0
         with:
           version: ${{ env.BUF_SEMVER }}
           checksum: ${{ env.BUF_SHA256 }}
