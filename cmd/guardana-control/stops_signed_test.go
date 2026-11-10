@@ -110,7 +110,7 @@ func (tr signedTree) run(t *testing.T, words string, args ...string) (int, strin
 // to write a stop as react would.
 func (tr signedTree) takenRoute(t *testing.T) reaction.Route {
 	t.Helper()
-	r, err := rosterRoute("--route", tr.route, tr.judge[1], tr.judge[3], tr.stops, reaction.VerifySignedRoute)
+	r, err := rosterRoute("--route", tr.route, tr.judge[1], tr.judge[3], tr.stops, nil, reaction.VerifySignedRoute)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -239,7 +239,7 @@ func writeForgedHeader(t *testing.T, dir string, r reaction.Route) {
 func TestASignedCommandRefusesAHeaderNoOperatorSigned(t *testing.T) {
 	tr := newSignedTree(t)
 	forged := ownerDir(t, filepath.Join(tr.dir, "forged"))
-	r, err := rosterRoute("--route", tr.route, tr.judge[1], tr.judge[3], forged, reaction.VerifySignedRoute)
+	r, err := rosterRoute("--route", tr.route, tr.judge[1], tr.judge[3], forged, nil, reaction.VerifySignedRoute)
 	if err != nil {
 		t.Fatal(err)
 	}

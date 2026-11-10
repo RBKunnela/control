@@ -89,11 +89,11 @@ var (
 )
 
 // checkSignedStart refuses a start under the signed kind that the plane's own
-// account could turn: a configuration file, a trust root key file, a pause
-// file, a route file, a stops directory or the runs directory's records/ it
-// may write, or a directory on their path it may write, and any key the
-// environment set, since that account sets its own environment when it
-// restarts (ADR-0073).
+// account could turn: a configuration file, a trust root key file, a roster
+// file, a pause file, a route file, a stops directory or the runs directory's
+// records/ it may write, or a directory on their path it may write, and any
+// key the environment set, since that account sets its own environment when
+// it restarts (ADR-0073).
 func checkSignedStart(cfg *gatewayconfig.Config) error {
 	if keys := environmentOverrides(cfg); len(keys) > 0 {
 		return fmt.Errorf("approvals.authority: signed, and the environment sets %s; the plane's own account sets its environment, so under signed every key is read from the configuration file alone (ADR-0073)",
@@ -102,6 +102,7 @@ func checkSignedStart(cfg *gatewayconfig.Config) error {
 	checked := []struct{ key, path string }{
 		{"the configuration file", cfg.File()},
 		{"trust.root_public_key", cfg.Resolve(cfg.Trust.RootPublicKey)},
+		{"trust.roster", cfg.Resolve(cfg.Trust.Roster)},
 	}
 	if cfg.Pause.File != "" {
 		checked = append(checked, struct{ key, path string }{"pause.file", cfg.Resolve(cfg.Pause.File)})

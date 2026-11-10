@@ -52,10 +52,11 @@ func (f runSignFlags) given() (bool, string) {
 // authority reads the roster, verified under the root key and usable now,
 // into the judge every record signed or signed over is held to: an operator
 // key of it granted operate over tenant and project signed it, for the
-// directory the write is in. It reads the operator key into a signer, which
-// is kept for the command's life and cleared by release.
-func (f runSignFlags) authority(tenant, project string) (runs.Signer, runs.Judge, func(), error) {
-	doc, err := readRoster(*f.roster, *f.rootKey)
+// directory the write is in, and tells note which roster it took. It reads
+// the operator key into a signer, which is kept for the command's life and
+// cleared by release.
+func (f runSignFlags) authority(tenant, project string, note *rosterNote) (runs.Signer, runs.Judge, func(), error) {
+	doc, err := readRoster(*f.roster, *f.rootKey, note)
 	if err != nil {
 		return runs.Signer{}, nil, nil, err
 	}

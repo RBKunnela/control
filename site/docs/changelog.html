@@ -124,6 +124,18 @@ verify one.</p>
 <h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.16.0...HEAD">Unreleased</a></h2>
 <h3 id="changed">Changed</h3>
 <ul>
+<li><strong>Breaking:</strong> under <code>approvals.authority: signed</code> a plane whose own account
+may write the <code>trust.roster</code> file, or a directory on its path, refuses to
+start, and <code>doctor</code> fails its <code>trust</code> check: that account could put an
+older roster back. Place the roster where only its signer's account
+writes, as <code>/etc/guardana</code> is.</li>
+<li>Every operator command that judges with <code>--roster</code> and <code>--root-key</code>
+(<code>pause</code>, <code>stops</code>, <code>runs open</code> and <code>runs close</code>, <code>supervise</code>, <code>react</code>)
+says on standard error, before it signs or lists, <code>judged with roster &lt;id&gt; serial &lt;n&gt;, expires &lt;time&gt;</code>. Its judgement has no roster floor; the
+plane's is the one that counts.</li>
+<li><code>runs open --key</code> reads the roster and the key before it makes an empty
+directory a signed layout, so a roster that does not read leaves the
+directory as it was.</li>
 <li><strong>Breaking:</strong> under <code>approvals.authority: signed</code> a plane refuses, as
 <code>closed</code>, a child run it never admitted once it carried the close of its
 parent or of an ancestor above it, up to a run it admitted; it writes an

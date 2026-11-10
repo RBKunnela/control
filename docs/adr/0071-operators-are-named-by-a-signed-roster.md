@@ -20,7 +20,7 @@ and [ADR-0077](0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatu
 route file and the stops directory. A signed start refuses those four, the
 configuration file and the trust root key file wherever the plane's account
 owns or may write one or any directory on its path, and any key the
-environment set.
+environment set. Amended in 0.17 by ADR-0073: the roster file too.
 
 ## Context
 
@@ -122,6 +122,10 @@ plane's own account can write, and not the authority floor: the plane raises
 that floor itself, so its account writes it. That account can therefore roll
 the roster back only to an older or equal serial of the same roster id,
 within that roster's lifetime of at most 7 days, and that is the whole limit.
+Amended in 0.17: the start refuses a roster file that account can write
+too, so it can no longer put an older roster in place; raising the floor it
+writes still keeps the held roster against a newer one until the held one
+expires.
 
 ## Alternatives considered
 

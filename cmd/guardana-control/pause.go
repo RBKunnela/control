@@ -80,13 +80,13 @@ func (f pauseSignFlags) problem() string {
 // pauseSigner reads the operator key at path into the signer a signed write
 // signs with, judging the file a write starts from against the roster at
 // roster, verified under the trust root at rootKey and usable now, rather
-// than signing again entries no roster key signed. The key is kept for the
-// command's life and cleared by release.
-func pauseSigner(path, roster, rootKey string) (pause.Signer, func(), error) {
+// than signing again entries no roster key signed; note names that roster.
+// The key is kept for the command's life and cleared by release.
+func pauseSigner(path, roster, rootKey string, note *rosterNote) (pause.Signer, func(), error) {
 	var doc trust.Document
 	if roster != "" {
 		var err error
-		if doc, err = readRoster(roster, rootKey); err != nil {
+		if doc, err = readRoster(roster, rootKey, note); err != nil {
 			return pause.Signer{}, nil, err
 		}
 	}
@@ -106,9 +106,32 @@ func pauseSigner(path, roster, rootKey string) (pause.Signer, func(), error) {
 	return s, func() { clear(key) }, nil
 }
 
+// rosterNote says on standard error which roster a command judged with. The
+// judgement is a pre-check without the plane's floor: the plane judges every
+// signed file again with its own roster (ADR-0076).
+type rosterNote struct {
+	w       io.Writer
+	command string
+	said    string
+}
+
+// judged writes the line for doc, once for each roster the command reads.
+// The expiry is the document's own, never the clock's.
+func (n *rosterNote) judged(doc trust.Document) {
+	if n == nil {
+		return
+	}
+	line := fmt.Sprintf("%s: %s: judged with roster %s serial %d, expires %s", brand.CLI, n.command,
+		oneLine(doc.ID()), doc.Serial(), doc.ExpiresAt().UTC().Format(time.RFC3339))
+	if line != n.said {
+		n.said = line
+		writeLine(n.w, line)
+	}
+}
+
 // readRoster reads the roster file at path and verifies it under the root
-// key at rootKey, usable now.
-func readRoster(path, rootKey string) (trust.Document, error) {
+// key at rootKey, usable now, and tells note which roster it took.
+func readRoster(path, rootKey string, note *rosterNote) (trust.Document, error) {
 	root, err := readPublicKey("--root-key", rootKey)
 	if err != nil {
 		return trust.Document{}, err
@@ -128,6 +151,7 @@ func readRoster(path, rootKey string) (trust.Document, error) {
 	if err != nil {
 		return trust.Document{}, fmt.Errorf("--roster: %w", err)
 	}
+	note.judged(doc)
 	return doc, nil
 }
 
@@ -306,7 +330,7 @@ func pauseInitCommand(args []string, stdout, stderr io.Writer) int {
 	if !given["tenant"] || !given["project"] {
 		return usageError(stderr, pauseInitName, "a signed pause file names the plane's --tenant and --project")
 	}
-	signer, release, err := pauseSigner(*v.key, "", "")
+	signer, release, err := pauseSigner(*v.key, "", "", nil)
 	if err != nil {
 		return fail(stderr, pauseInitName, err)
 	}
@@ -383,7 +407,7 @@ func pauseRemoveCommand(args []string, stdout, stderr io.Writer) int {
 func writePause(command string, sign pauseSignFlags, stderr io.Writer, write func(context.Context, *pause.Signer) (pause.SignedDocument, error)) error {
 	var signer *pause.Signer
 	if *sign.key != "" {
-		s, release, err := pauseSigner(*sign.key, *sign.roster, *sign.rootKey)
+		s, release, err := pauseSigner(*sign.key, *sign.roster, *sign.rootKey, &rosterNote{w: stderr, command: command})
 		if err != nil {
 			return err
 		}

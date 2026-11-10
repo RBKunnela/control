@@ -25,8 +25,9 @@ import (
 // rosterRoute reads the v1alpha2 route at path, which routeFlag named, and
 // verifies it with verify against the roster at roster, verified under the
 // trust root at rootKey and usable now, for the plane of the route's tenant
-// and project whose route file is path and whose stop list is in dir.
-func rosterRoute(routeFlag, path, roster, rootKey, dir string, verify func(reaction.Envelope, reaction.Voucher) (reaction.Route, error)) (reaction.Route, error) {
+// and project whose route file is path and whose stop list is in dir; note
+// names the roster.
+func rosterRoute(routeFlag, path, roster, rootKey, dir string, note *rosterNote, verify func(reaction.Envelope, reaction.Voucher) (reaction.Route, error)) (reaction.Route, error) {
 	raw, err := ondisk.ReadRegular(path, reaction.MaxRouteFileBytes, 0)
 	if err != nil {
 		return reaction.Route{}, fmt.Errorf("%s %s: %w", routeFlag, path, err)
@@ -42,7 +43,7 @@ func rosterRoute(routeFlag, path, roster, rootKey, dir string, verify func(react
 	if err != nil {
 		return reaction.Route{}, fmt.Errorf("%s %s: %w", routeFlag, path, err)
 	}
-	doc, err := readRoster(roster, rootKey)
+	doc, err := readRoster(roster, rootKey, note)
 	if err != nil {
 		return reaction.Route{}, err
 	}
@@ -96,13 +97,14 @@ func headerSignedLine(command string, h reaction.Header) string {
 // header and every lift through the roster, before its stops are signed
 // again under the new header. Each says on standard error what it signed.
 func stopsInitSigned(a stopsInitArgs, dir string, now time.Time, stdout, stderr io.Writer) int {
-	route, err := a.verified(dir)
+	note := &rosterNote{w: stderr, command: stopsInitName}
+	route, err := a.verified(dir, note)
 	if err != nil {
 		return fail(stderr, stopsInitName, err)
 	}
 	var from reaction.Route
 	if a.carry != "" {
-		if from, err = rosterRoute("--carry-route", a.carryRoute, a.roster, a.rootKey, a.carry, reaction.VerifySignedCarrySource); err != nil {
+		if from, err = rosterRoute("--carry-route", a.carryRoute, a.roster, a.rootKey, a.carry, note, reaction.VerifySignedCarrySource); err != nil {
 			return fail(stderr, stopsInitName, err)
 		}
 	}
@@ -161,7 +163,7 @@ func carryHold(floorDir string, from reaction.Route, stderr io.Writer) (func(rea
 // list's head, so it never verifies against another list. It says on
 // standard error what it signed.
 func stopsLiftSigned(a stopsLiftArgs, dir string, now time.Time, stdout, stderr io.Writer) int {
-	route, err := a.verified(dir)
+	route, err := a.verified(dir, &rosterNote{w: stderr, command: stopsLiftName})
 	if err != nil {
 		return fail(stderr, stopsLiftName, err)
 	}

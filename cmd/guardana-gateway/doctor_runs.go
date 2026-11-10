@@ -16,8 +16,9 @@ import (
 // doctorRunsBound is the most records doctor reads of a signed layout.
 const doctorRunsBound = 1 << 16
 
-// doctorPlaneOwned lets the check read a records/ the plane's own account
-// owns. Only a test sets it, where one account owns every directory.
+// doctorPlaneOwned lets the checks read a records/, a signed route and a stop
+// list the plane's own account owns. Only a test sets it, where one account
+// owns every directory.
 var doctorPlaneOwned = false
 
 // openRunsCheck opens the runs directory for a check, which writes nothing

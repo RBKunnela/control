@@ -60,12 +60,12 @@ func (r routeFlags) set() bool {
 func (r routeFlags) signed() bool { return r.publicKey == "" }
 
 // verified is the route the flags name, verified, a v1alpha2 one bound to
-// the stop list in dir.
-func (r routeFlags) verified(dir string) (reaction.Route, error) {
+// the stop list in dir under the roster note names.
+func (r routeFlags) verified(dir string, note *rosterNote) (reaction.Route, error) {
 	if !r.signed() {
 		return verifiedRoute("--route", r.route, r.publicKey)
 	}
-	return rosterRoute("--route", r.route, r.roster, r.rootKey, dir, reaction.VerifySignedRoute)
+	return rosterRoute("--route", r.route, r.roster, r.rootKey, dir, note, reaction.VerifySignedRoute)
 }
 
 type stopsInitArgs struct {
@@ -124,7 +124,7 @@ func stopsInitCommand(args []string, stdout, stderr io.Writer) int {
 // list in --carry, judged against --carry-route under the same route key,
 // into it.
 func stopsInit(a stopsInitArgs, dir string, now time.Time, stdout, stderr io.Writer) int {
-	route, err := a.verified(dir)
+	route, err := a.verified(dir, &rosterNote{w: stderr, command: stopsInitName})
 	if err != nil {
 		return fail(stderr, stopsInitName, err)
 	}
@@ -197,7 +197,7 @@ func stopsLiftCommand(args []string, stdout, stderr io.Writer) int {
 // route, the key, which must be the route's lift key, the list, a lift that
 // would end no stop, then the lift as the plane's judge reads it.
 func stopsLift(a stopsLiftArgs, dir string, now time.Time, stdout, stderr io.Writer) int {
-	route, err := a.verified(dir)
+	route, err := a.verified(dir, &rosterNote{w: stderr, command: stopsLiftName})
 	if err != nil {
 		return fail(stderr, stopsLiftName, err)
 	}
@@ -262,7 +262,7 @@ func stopsListCommand(args []string, stdout, stderr io.Writer) int {
 // judge it: the header, each stop no lift ended and whether it is active,
 // the covered lines and lifts counted, and the use of the bounds.
 func stopsList(r routeFlags, dir string, now time.Time, stdout, stderr io.Writer) int {
-	route, err := r.verified(dir)
+	route, err := r.verified(dir, &rosterNote{w: stderr, command: stopsListName})
 	if err != nil {
 		return fail(stderr, stopsListName, err)
 	}

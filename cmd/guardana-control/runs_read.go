@@ -21,6 +21,8 @@ type runsReadFlags struct {
 	// routeRoster and routeRootKey are a command's --roster and --root-key
 	// when it declares them for a route too, the same plane's files.
 	routeRoster, routeRootKey string
+	// note names on standard error the roster a signed layout is judged by.
+	note *rosterNote
 }
 
 func (f *runsReadFlags) declare(flags *flag.FlagSet) {
@@ -54,7 +56,7 @@ func (f runsReadFlags) judge() (runs.Judge, error) {
 			return nil, fmt.Errorf("%w: a signed runs directory is read with %s, each once", runs.ErrUnjudged, runsReadHint)
 		}
 	}
-	doc, err := readRoster(f.roster[0], f.rootKey[0])
+	doc, err := readRoster(f.roster[0], f.rootKey[0], f.note)
 	if err != nil {
 		return nil, err
 	}

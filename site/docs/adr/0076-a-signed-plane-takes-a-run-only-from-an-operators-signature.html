@@ -193,6 +193,10 @@ not take protects only the plane that read it: another plane sharing
 after a crash before the write. <code>supervise</code> and <code>react</code>
 read <code>records/</code> without <code>state/</code>, so they do not see a carried close. Records are
 group-readable, so the plane's account belongs to the records' group.</p>
+<p>Amended in 0.17: a command that judges with <code>--roster</code> and <code>--root-key</code> has
+no roster floor, so its judgement is a pre-check, and the plane's, with its
+floored roster, is the one that counts. Each says on standard error, before
+it signs or lists, the roster id, serial and expiry it judged with.</p>
 <h2 id="alternatives-considered">Alternatives considered</h2>
 <ul>
 <li>A serial floor over the directory: records are written one run at a time,

@@ -132,7 +132,7 @@ and <a href="/docs/adr/0077-a-signed-plane-takes-a-stop-list-only-from-operators
 route file and the stops directory. A signed start refuses those four, the
 configuration file and the trust root key file wherever the plane's account
 owns or may write one or any directory on its path, and any key the
-environment set.</p>
+environment set. Amended in 0.17 by ADR-0073: the roster file too.</p>
 <h2 id="context">Context</h2>
 <p>Today an approver is whoever can write the approvals directory, and the
 approver id is a claim. ADR-0066 says operators are authenticated against a
@@ -220,7 +220,11 @@ start refuses a configuration, a trust root or an approvals directory the
 plane's own account can write, and not the authority floor: the plane raises
 that floor itself, so its account writes it. That account can therefore roll
 the roster back only to an older or equal serial of the same roster id,
-within that roster's lifetime of at most 7 days, and that is the whole limit.</p>
+within that roster's lifetime of at most 7 days, and that is the whole limit.
+Amended in 0.17: the start refuses a roster file that account can write
+too, so it can no longer put an older roster in place; raising the floor it
+writes still keeps the held roster against a newer one until the held one
+expires.</p>
 <h2 id="alternatives-considered">Alternatives considered</h2>
 <ul>
 <li>One pinned key per operator in the configuration: no expiry, no grants,

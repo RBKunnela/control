@@ -353,10 +353,10 @@ What bounds it:
   (ADR-0016); only the plane's ledger marks an approval spent.
 - Under `signed`, approvals, pauses, runs and stop lists count only signed by
   roster operators, and the plane refuses to start when its account may write
-  the pause file, the run records or the stop list (ADR-0075, ADR-0076,
-  ADR-0077). The plane's account still owns the roster, pause, route and stop list
-  floors: it can lower one, or withhold a newer roster until its current one
-  expires.
+  the roster, the pause file, the run records or the stop list (ADR-0073,
+  ADR-0075, ADR-0076, ADR-0077). That account still owns every floor: it can
+  lower one, or withhold a newer roster until the held one expires, but no
+  longer put an older roster in place.
 - The gateway binary holds none of the approver's code, no private-key
   parser and no code that makes or lowers a floor, so the process that serves
   agents cannot answer an approval, read a signing key or reset its own floor

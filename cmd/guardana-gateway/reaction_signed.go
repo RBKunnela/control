@@ -137,8 +137,7 @@ func notPlaneOwned(path string) error {
 
 // signedRoute is what doctor reads under the signed authority: the route
 // judged against the roster file verified under the trust root, and the
-// list read as the plane reads it, held to the stop list floor, which is
-// read and never raised.
+// list read as signedListRead says.
 func (d *examination) signedRoute() (reaction.Route, stopListRead, error) {
 	root, err := readRouteKey(d.cfg.Resolve(d.cfg.Trust.RootPublicKey))
 	if err != nil {
@@ -156,16 +155,27 @@ func (d *examination) signedRoute() (reaction.Route, stopListRead, error) {
 	if err != nil {
 		return reaction.Route{}, stopListRead{}, fmt.Errorf("reaction: %w", err)
 	}
-	route, err := readSignedRoute(d.cfg, v, false)
+	route, err := readSignedRoute(d.cfg, v, doctorPlaneOwned)
 	if err != nil {
 		return reaction.Route{}, stopListRead{}, err
 	}
+	return route, d.signedListRead(), nil
+}
+
+// signedListRead reads the stop list as a signed plane does, refusing one
+// its own account owns, held to the stop list floor, which is read and never
+// raised.
+func (d *examination) signedListRead() stopListRead {
+	owner := stoplist.OwnedByAnother
+	if doctorPlaneOwned {
+		owner = stoplist.AnyOwner
+	}
 	dir := d.cfg.Resolve(d.cfg.Reaction.StopsFloorDir)
-	return route, stopListRead{owner: stoplist.OwnedByAnother, take: func(l reaction.List, content []byte) error {
+	return stopListRead{owner: owner, take: func(l reaction.List, content []byte) error {
 		stored, err := policystate.ReadStops(dir, d.cfg.ListenerTenant(), d.cfg.ProjectID)
 		if err != nil {
 			return fmt.Errorf("reaction.stops_floor_dir: %w: %w", stoplist.ErrFloor, err)
 		}
 		return signedstops.Hold(stored, l, content)
-	}}, nil
+	}}
 }

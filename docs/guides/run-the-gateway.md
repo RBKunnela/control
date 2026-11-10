@@ -201,8 +201,8 @@ approvals:
   hold_journal_dir: /var/lib/guardana/holds
   inbox_dir: /var/lib/guardana/inbox   # the plane's, the operators' group, mode 1770
 trust:
-  root_public_key: /etc/guardana/root.pub
-  roster: /etc/guardana/roster.json
+  root_public_key: /etc/guardana/root.pub   # under signed the plane's account may write
+  roster: /etc/guardana/roster.json         # neither these, the configuration nor their directories
   roster_id: acme-operators
   floor_dir: /var/lib/guardana/roster-floor
 operators:

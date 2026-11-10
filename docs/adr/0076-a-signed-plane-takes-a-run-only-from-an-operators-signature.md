@@ -87,6 +87,11 @@ after a crash before the write. `supervise` and `react`
 read `records/` without `state/`, so they do not see a carried close. Records are
 group-readable, so the plane's account belongs to the records' group.
 
+Amended in 0.17: a command that judges with `--roster` and `--root-key` has
+no roster floor, so its judgement is a pre-check, and the plane's, with its
+floored roster, is the one that counts. Each says on standard error, before
+it signs or lists, the roster id, serial and expiry it judged with.
+
 ## Alternatives considered
 
 - A serial floor over the directory: records are written one run at a time,

@@ -97,7 +97,7 @@ func TestRunsOpenWithAKeySignsARecordThePlaneTakes(t *testing.T) {
 		t.Fatal(err)
 	}
 	key := keyLabel(seeded(0x61).Public().(ed25519.PublicKey))
-	line := oneStderrLine(t, stderr)
+	line := afterJudged(t, stderr, "runs open: judged with roster roster-a serial 3, expires ")
 	for _, want := range []string{"runs open: signed run " + id + " open, expires_at ", ", root " + id + ", tenant t1 project p1, for " + filepath.Join(binding, runs.RecordsDir) + ", with key " + key} {
 		if !strings.Contains(line, want) {
 			t.Errorf("runs open --key said %q, which lacks %q", line, want)

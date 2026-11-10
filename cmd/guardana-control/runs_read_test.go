@@ -90,7 +90,8 @@ func TestReactLooksUpOnlyTheRunsTheRosterVouchesFor(t *testing.T) {
 		code := react(t.Context(), a, clockAt(time.Now()), &out, &errOut)
 		return code, out.String(), errOut.String()
 	}
-	if code, stdout, stderr := pass(l.read, l.taken); code != exitOK || stderr != "" ||
+	if code, stdout, stderr := pass(l.read, l.taken); code != exitOK ||
+		!strings.Contains(oneStderrLine(t, stderr), ": react: judged with roster roster-a serial 3, expires ") ||
 		!strings.Contains(stdout, "not stopping 1, not written 0") {
 		t.Fatalf("react over alice's run answered %d: %q %q", code, stdout, stderr)
 	}

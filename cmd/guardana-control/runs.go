@@ -117,7 +117,8 @@ func runsCloseFlagSet(command string, out io.Writer) *flag.FlagSet {
 
 // runsOpenCommand opens one run and prints its token, which is the only copy:
 // the directory keeps its hash. With --key the record is signed, and an
-// empty directory becomes a signed layout.
+// empty directory becomes a signed layout once the roster and the key are
+// read.
 func runsOpenCommand(args []string, stdout, stderr io.Writer) int {
 	flags, v := runsOpenFlags(runsOpenName, stderr)
 	if err := flags.Parse(args); err != nil {
@@ -138,46 +139,53 @@ func runsOpenCommand(args []string, stdout, stderr io.Writer) int {
 		return usageError(stderr, runsOpenName, problem)
 	}
 	init := runs.InitAdmin
+	var sw *signedWrite
 	if signed {
-		init = runs.InitSignedAdmin
+		signer, judge, release, err := v.sign.authority(v.who.TenantID, v.who.ProjectID, &rosterNote{w: stderr, command: runsOpenName})
+		if err != nil {
+			return fail(stderr, runsOpenName, err)
+		}
+		defer release()
+		init, sw = runs.InitSignedAdmin, &signedWrite{signer: signer, judge: judge}
 	}
 	admin, err := openRuns(init, flags.Arg(0))
 	if err != nil {
 		return fail(stderr, runsOpenName, err)
 	}
-	status := openAndPrint(admin, *v, signed, stdout, stderr)
+	status := openAndPrint(admin, *v, sw, stdout, stderr)
 	if err := admin.Close(); err != nil && status == exitOK {
 		return fail(stderr, runsOpenName, err)
 	}
 	return status
 }
 
-func openAndPrint(admin *runs.Admin, v openFlagValues, signed bool, stdout, stderr io.Writer) int {
+// signedWrite is what a signed write signs with and holds the records it
+// signs over to.
+type signedWrite struct {
+	signer runs.Signer
+	judge  runs.Judge
+}
+
+// openAndPrint opens the run, signed with sw where it is not nil.
+func openAndPrint(admin *runs.Admin, v openFlagValues, sw *signedWrite, stdout, stderr io.Writer) int {
 	ctx, cancel := context.WithTimeout(context.Background(), runsLockWait)
 	defer cancel()
 	req := runs.OpenRequest{Who: v.who, Parent: v.parent, TTL: v.ttl, Now: time.Now()}
 	var (
-		rec    runs.Record
-		token  string
-		err    error
-		signer runs.Signer
+		rec   runs.Record
+		token string
+		err   error
 	)
-	if signed {
-		var judge runs.Judge
-		var release func()
-		if signer, judge, release, err = v.sign.authority(v.who.TenantID, v.who.ProjectID); err != nil {
-			return fail(stderr, runsOpenName, err)
-		}
-		defer release()
-		rec, token, err = admin.OpenSigned(ctx, req, signer, judge)
+	if sw != nil {
+		rec, token, err = admin.OpenSigned(ctx, req, sw.signer, sw.judge)
 	} else {
 		rec, token, err = admin.Open(ctx, req)
 	}
 	if err != nil {
 		return fail(stderr, runsOpenName, runsHint(withheldRunID(err, "--parent")))
 	}
-	if signed {
-		writeSigned(stderr, runsOpenName, rec, admin.Binding(), signer.KeyID)
+	if sw != nil {
+		writeSigned(stderr, runsOpenName, rec, admin.Binding(), sw.signer.KeyID)
 	}
 	out := fmt.Sprintf("run_id: %s\nroot: %s\nexpires_at: %s\ntoken: %s\n", rec.ID, rec.Root, stampOf(rec.ExpiresAt), token)
 	if _, err := io.WriteString(stdout, out); err != nil {
@@ -232,7 +240,7 @@ func closeAndPrint(admin *runs.Admin, id string, stdout, stderr io.Writer) int {
 func closeSignedAndPrint(admin *runs.Admin, id string, v closeFlagValues, stdout, stderr io.Writer) int {
 	ctx, cancel := context.WithTimeout(context.Background(), runsLockWait)
 	defer cancel()
-	signer, judge, release, err := v.sign.authority(v.tenant, v.project)
+	signer, judge, release, err := v.sign.authority(v.tenant, v.project, &rosterNote{w: stderr, command: runsCloseName})
 	if err != nil {
 		return fail(stderr, runsCloseName, err)
 	}

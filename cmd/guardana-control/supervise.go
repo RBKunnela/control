@@ -82,6 +82,7 @@ func superviseCommand(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return refuseSupervise(stderr, err.Error())
 	}
+	a.read.note = &rosterNote{w: stderr, command: superviseName}
 	in, err := readSuperviseInput(a)
 	if err != nil {
 		return refuseSupervise(stderr, err.Error())

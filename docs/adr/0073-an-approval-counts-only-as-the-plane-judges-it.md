@@ -96,6 +96,12 @@ roster's first read to a timeout. This corrects ADR-0071, which listed the
 approvals directory: the plane owns that directory by design, so the list is
 the configuration file, the trust root key file and the environment.
 
+Amended in 0.17: the list also holds `trust.roster`, judged the same way. An
+account that could write the roster file could put an older unexpired roster
+back, and a revoked operator with it. A test holds every file key of the
+configuration either to this list or to a named reason the plane may write
+it or does not read it under signed.
+
 ## Security / compatibility impact
 
 Every configuration breaks once. A directory or memory plane keeps the
@@ -105,7 +111,10 @@ namespaces; an access control list on a path is refused rather than read;
 NFS and SMB answer for access as their server does; `SSL_CERT_FILE` and
 `SSL_CERT_DIR` still feed the decision point's roots, which can only veto.
 The plane's account still raises the roster's floor, so it can withhold a
-newer roster within the roster's lifetime, as ADR-0071 says.
+newer roster within the roster's lifetime, as ADR-0071 says. Amended in
+0.17: the roster file is out of that account's reach, so it can no longer put
+an older roster in place; raising the floor it writes still withholds a newer
+one until the held roster expires.
 
 ## Alternatives considered
 
