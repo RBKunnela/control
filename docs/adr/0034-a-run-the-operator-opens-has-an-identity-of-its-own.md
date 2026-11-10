@@ -27,6 +27,11 @@ under `approvals.authority: signed` the runs directory holds `records/` and
 `state/`, and a plane takes a run only from a `3.0` record an operator signed
 for its own `records/`.
 
+Amended by [ADR-0079](0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close.md):
+under `signed`, closing a parent closes none of the children the plane
+admitted before it carried the close, nor their descendants; a run it first
+sees after, below no run it admitted, is refused.
+
 ## Context
 
 ADR-0021 keys a run by the listener and the principal and agent it resolves.

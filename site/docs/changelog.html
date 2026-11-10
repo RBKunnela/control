@@ -122,6 +122,18 @@
 signed and attested from its tag; <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a> shows how to
 verify one.</p>
 <h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.16.0...HEAD">Unreleased</a></h2>
+<h3 id="changed">Changed</h3>
+<ul>
+<li><strong>Breaking:</strong> under <code>approvals.authority: signed</code> a plane refuses, as
+<code>closed</code>, a child run it never admitted once it carried the close of its
+parent or of an ancestor above it, up to a run it admitted; it writes an
+empty <code>state/&lt;id&gt;.seen</code> at a child's first admitted call, and <code>/healthz</code>
+counts the refusal under <code>runs.signed</code> as <code>refused_parent_closed</code>. A run
+an operator signs, at any depth, under a closed parent's record put back
+no longer runs. A child a 0.16 plane admitted has no <code>.seen</code>, so once its
+parent's close is carried it is refused: open it again
+(<a href="/docs/adr/0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close">ADR-0079</a>).</li>
+</ul>
 <h2 id="0160---2026-11-07"><a href="https://github.com/guardana/control/releases/tag/v0.16.0">0.16.0</a> - 2026-11-07</h2>
 <p>Upgrading from 0.15 changes four things an operator must act on.
 <code>approvals.authority</code> (<code>memory</code>, <code>directory</code> or <code>signed</code>) replaces
@@ -281,7 +293,7 @@ path but a stale socket of the plane's account is refused, and the plane
 removes its socket when it stops.</li>
 <li><code>doctor</code> warns of every TCP <code>export.endpoint</code>, naming the unix form.</li>
 </ul>
-<h3 id="changed">Changed</h3>
+<h3 id="changed-1">Changed</h3>
 <ul>
 <li><strong>Breaking:</strong> under <code>approvals.authority: signed</code> a <code>v1alpha1</code> route, a
 <code>1.0</code> stop list, a lift of the route's lift key and <code>reaction.public_key</code>
@@ -528,7 +540,7 @@ effect class's presence and what a class requires, for an envelope nothing
 classified. <code>Validate</code> does not change (<a href="/docs/adr/0067-the-pipeline-refuses-what-an-adapter-could-not-translate">ADR-0067</a>).</p>
 </li>
 </ul>
-<h3 id="changed-1">Changed</h3>
+<h3 id="changed-2">Changed</h3>
 <ul>
 <li>
 <p><strong>Breaking:</strong> <code>trail &lt;file&gt;</code> refuses a file in a log's directory, named
@@ -1065,7 +1077,7 @@ pass all 20 cases.</li>
 point's published metadata gives its identifier or evaluation endpoint as
 JSON <code>null</code>, as it does for any other value that is not a string.</li>
 </ul>
-<h3 id="changed-2">Changed</h3>
+<h3 id="changed-3">Changed</h3>
 <ul>
 <li>The <a href="/docs/reference/claude-code-hooks">built-in hook profile</a> is
 qualified on a newer release of its runtime too: all 20 cases passed on the
@@ -1175,7 +1187,7 @@ connections, so a second plane could remove its socket and take its clients
 Built for Solaris, illumos or AIX, which have no <code>flock</code>, the receiver now
 refuses to listen, and <code>doctor</code> checks the lock file as <code>run</code> would.</li>
 </ul>
-<h3 id="changed-3">Changed</h3>
+<h3 id="changed-4">Changed</h3>
 <ul>
 <li>A call is handed out only while the policy bundle it was decided under is
 still installed and fresh. A bundle replaced, or past its staleness budget,
@@ -1230,7 +1242,7 @@ to PyPI by trusted publishing, with no stored token, and reads the index
 back. The dry run uploads a development release to TestPyPI the same way,
 from <code>main</code>.</li>
 </ul>
-<h3 id="changed-4">Changed</h3>
+<h3 id="changed-5">Changed</h3>
 <ul>
 <li>A change reaches <code>main</code> as one squash-merged pull request whose gate is
 CI's <code>make quality</code>, a maintainer's own included; only a release commit is
@@ -1340,7 +1352,7 @@ qualifying coding-agent hooks, reviewing tool-definition changes,
 simulating candidate policies and reviewing findings with an incident
 export. None is built.</li>
 </ul>
-<h3 id="changed-5">Changed</h3>
+<h3 id="changed-6">Changed</h3>
 <ul>
 <li>On an <code>enforce_api</code> plane <code>/metrics</code> writes the enforcement API adapter's
 counts (<code>enforce_*</code>) and the flag <code>listener_enforce_api</code>, and leaves out the
@@ -1486,7 +1498,7 @@ a user writes or reads with the version this release writes, the versions it
 reads and its stability, held to the code's constants by a test. The wire
 contract's <code>1.0</code> is the one stable format; the product is still 0.x.</li>
 </ul>
-<h3 id="changed-6">Changed</h3>
+<h3 id="changed-7">Changed</h3>
 <ul>
 <li>The website names the published release, which <code>docs/docs.json</code> sets once a
 release is out, rather than the newest dated section of this file, and each
@@ -1596,7 +1608,7 @@ line as well as colour. It shows each finding's calls and their neighbours,
 or with <code>--view-all</code> every call up to a bound
 (<a href="/docs/reference/run-view">run view</a>).</li>
 </ul>
-<h3 id="changed-7">Changed</h3>
+<h3 id="changed-8">Changed</h3>
 <ul>
 <li>Every reader of a route (<code>route sign</code>, <code>react</code>, a plane at start, <code>doctor</code> and
 the <code>stops</code> commands) refuses one that names a rule or a rule version outside
@@ -1685,7 +1697,7 @@ stopped run's children are not stopped. <code>doctor</code>, <code>/healthz</cod
 report the route and the list; <code>examples/refund-supervision/</code> stops one of
 two runs on a live plane and lifts the stop.</li>
 </ul>
-<h3 id="changed-8">Changed</h3>
+<h3 id="changed-9">Changed</h3>
 <ul>
 <li>The policy key and the freshness key, in the configuration and in
 <code>guardana-control policy renew</code>, are compared as points up to their sign:
@@ -1837,7 +1849,7 @@ suspected at most, and a skipped step is never confirmed. No plane reads a
 finding, and no finding stops a run. <code>examples/refund-supervision/</code> runs it
 on a live plane.</li>
 </ul>
-<h3 id="changed-9">Changed</h3>
+<h3 id="changed-10">Changed</h3>
 <ul>
 <li>An upstream's answer, wire error, listed item or tool definition that quotes
 a credential the plane sends reaches the agent as a fixed answer, never with
@@ -1906,7 +1918,7 @@ envelope's <code>trace_id</code> and <code>span_id</code>, so a trail can be joi
 runtime's traces. A missing or malformed value leaves both empty and changes
 nothing else.</li>
 </ul>
-<h3 id="changed-10">Changed</h3>
+<h3 id="changed-11">Changed</h3>
 <ul>
 <li>The plan follows <a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a>:
 MCP is one channel of several. The next milestone is one task under
@@ -2054,7 +2066,7 @@ refuses the key. <code>/metrics</code> carries
 <li><code>guardana-control policy explain</code> prints a <code>clock</code> line: <code>usable</code>, or why
 the clock stopped the decision.</li>
 </ul>
-<h3 id="changed-11">Changed</h3>
+<h3 id="changed-12">Changed</h3>
 <ul>
 <li>
 <p><strong>Breaking:</strong> a plane's configuration needs five more keys:
@@ -2294,7 +2306,7 @@ restart, and a held call resumes only from its own run. A refused token is
 answered with HTTP 401 or the JSON-RPC error <code>-31102</code>, and the refusals are
 counted by cause. A plane without <code>runs.dir</code> is unchanged.</li>
 </ul>
-<h3 id="changed-12">Changed</h3>
+<h3 id="changed-13">Changed</h3>
 <ul>
 <li>The release job waits for a maintainer to approve it in the <code>release</code>
 environment before it builds; <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a> has the step.</li>
@@ -2316,7 +2328,7 @@ are a demo archive that runs without Go, an evidence export another program
 resumes by cursor, and the documentation on the website.
 <a href="/docs/status">docs/status.md</a> says what is <code>implemented</code> and what is
 <code>experimental</code>. Nothing here is a security boundary yet.</p>
-<h3 id="changed-13">Changed</h3>
+<h3 id="changed-14">Changed</h3>
 <ul>
 <li><code>mode</code> has no default: a configuration that names no enforcement mode is
 refused at load instead of starting a plane in <code>OBSERVE</code>, which stops nothing
@@ -2414,7 +2426,7 @@ and where it stops; what a record holds, where it goes and how long it
 stays (<a href="/docs/concepts/threat-model">docs/concepts/threat-model.md</a>,
 <a href="/docs/concepts/privacy">docs/concepts/privacy.md</a>).</li>
 </ul>
-<h3 id="changed-14">Changed</h3>
+<h3 id="changed-15">Changed</h3>
 <ul>
 <li>A stdio upstream no longer inherits the plane's environment. It gets
 <code>PATH</code>, <code>HOME</code>, <code>LANG</code>, <code>LC_ALL</code>, <code>TMPDIR</code> and <code>USER</code>, each where the

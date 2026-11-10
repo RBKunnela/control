@@ -124,6 +124,9 @@ roster of <a href="/docs/adr/0071-operators-are-named-by-a-signed-roster">ADR-00
 does for the pause.</p>
 <p>Amended by <a href="/docs/adr/0078-a-restore-only-raises">ADR-0078</a>: a restore carries the
 close of every run the backup or <code>records/</code> names into <code>state/</code>.</p>
+<p>Amended by <a href="/docs/adr/0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close">ADR-0079</a>: <code>state/</code> also
+holds an empty <code>&lt;id&gt;.seen</code> for each child the plane admitted, and a child
+without one is refused once its parent's close is carried.</p>
 <h2 id="context">Context</h2>
 <p>Under ADR-0034 write access to the runs directory is the authority to open
 and to close a run, and the plane's own account owns that directory. Under

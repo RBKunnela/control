@@ -19,8 +19,9 @@ import (
 //
 // On a signed layout every record counts only once its judge took it, and
 // the plane writes in state/ alone: a root's state and lock when a call first
-// raises it, and the close of every closed record it took, after which the
-// run's open record put back is refused.
+// raises it, the close of every closed record it took, after which the run's
+// open record put back is refused, and a child's first admission, without
+// which the child is refused once its parent's close is carried.
 //
 // The zero value is not a directory. Every method on it fails closed.
 type Plane struct {
@@ -121,11 +122,12 @@ type Run struct {
 // signed, is CauseUnreadable after the secret is shown right; a closed record
 // taken is carried into state/ before CauseClosed is answered, and an open
 // record of a run whose close was carried is CauseClosed with ErrReplayed.
-// Every close the handle holds unwritten is written first, and while it
-// holds maxUncarried of them every token is CauseUnreadable with
-// ErrUncarried. A
-// run admitted there has its root's state and lock in state/ before Resolve
-// answers, which it makes at the root's first admission.
+// A child the plane never admitted whose parent's close it carried or holds
+// is CauseClosed with ErrParentClosed. Every close the handle holds unwritten
+// is written first, and while it holds maxUncarried of them every token is
+// CauseUnreadable with ErrUncarried. A run admitted there has its root's
+// state and lock, and a child its <id>.seen, in state/ before Resolve
+// answers, made at the first admission of each.
 func (p *Plane) Resolve(ctx context.Context, token string, who Identity, now time.Time) (Run, error) {
 	if token == "" {
 		return Run{}, refuse(CauseMissing, nil)
@@ -181,11 +183,16 @@ func (p *Plane) beginResolve(ctx context.Context) (func(), error) {
 	return func() { done(); end() }, nil
 }
 
-// admit makes, on a signed layout, the state of the root of a run Resolve
-// admits, where the root has none yet.
+// admit makes, on a signed layout, a child's first admission and the state
+// of the root of a run Resolve admits, where neither is there yet.
 func (p *Plane) admit(rec Record) error {
 	if !p.signed {
 		return nil
+	}
+	if rec.Parent != "" {
+		if err := p.st.createEmpty(rec.ID + seenSuffix); err != nil {
+			return fmt.Errorf("the first admission of %s: %w", rec.ID, err)
+		}
 	}
 	if err := p.startRoot(rec.Root); err != nil {
 		return fmt.Errorf("the state of %s: %w", rec.Root, err)
@@ -194,8 +201,9 @@ func (p *Plane) admit(rec Record) error {
 }
 
 // standing judges a record whose secret was shown right: taken by the judge
-// on a signed layout, for who, not closed, and not put back after a close
-// the plane carried. A closed record taken is carried first.
+// on a signed layout, for who, not closed, not put back after a close the
+// plane carried, and not a child first called after its parent's close was
+// carried. A closed record taken is carried first.
 func (p *Plane) standing(ctx context.Context, stored SignedRecord, who Identity) *Refusal {
 	rec := stored.Record
 	if p.signed {
@@ -216,8 +224,12 @@ func (p *Plane) standing(ctx context.Context, stored SignedRecord, who Identity)
 		}
 		return refuse(CauseClosed, err)
 	}
-	switch err := p.notReplayed(rec); {
-	case errors.Is(err, ErrReplayed):
+	err := p.notReplayed(rec)
+	if err == nil {
+		err = p.parentStands(ctx, rec)
+	}
+	switch {
+	case errors.Is(err, ErrReplayed), errors.Is(err, ErrParentClosed):
 		return refuse(CauseClosed, err)
 	case err != nil:
 		return refuse(CauseUnreadable, err)

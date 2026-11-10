@@ -13,6 +13,10 @@ does for the pause.
 Amended by [ADR-0078](0078-a-restore-only-raises.md): a restore carries the
 close of every run the backup or `records/` names into `state/`.
 
+Amended by [ADR-0079](0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close.md): `state/` also
+holds an empty `<id>.seen` for each child the plane admitted, and a child
+without one is refused once its parent's close is carried.
+
 ## Context
 
 Under ADR-0034 write access to the runs directory is the authority to open

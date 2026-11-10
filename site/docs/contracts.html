@@ -1654,8 +1654,9 @@ the signature's <code>keyid</code>) and <code>records</code> (the absolute, clea
 <code>records/</code> it was signed for, with the links on its way resolved, at most
 512 bytes). Any other minor of major
 <code>3</code> is read, and nothing else is read there. <code>state/</code> holds the states, the
-roots' lock files, and an empty <code>&lt;id&gt;.closed</code> for each run whose closed
-record the plane took.</p>
+roots' lock files, an empty <code>&lt;id&gt;.closed</code> for each run whose closed
+record the plane took, and an empty <code>&lt;id&gt;.seen</code> for each child it admitted
+(<a href="/docs/adr/0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close">ADR-0079</a>).</p>
 <h2 id="the-reaction-route-and-the-stop-list">The reaction route and the stop list</h2>
 <p>What a route and a stop list hold, for an operator who writes a route and a
 program that reads a list. <code>experimental</code>, in <code>internal/reaction/</code>

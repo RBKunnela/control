@@ -124,7 +124,8 @@ const (
 	ErrIdentity Error = "runs: the identity has an empty, too long or refused field"
 	// ErrParentUnknown is a parent no record names.
 	ErrParentUnknown Error = "runs: the parent run does not exist"
-	// ErrParentClosed is a parent the operator closed.
+	// ErrParentClosed is a parent the operator closed: at an opening, or, on
+	// a signed plane, before the plane first admitted the child.
 	ErrParentClosed Error = "runs: the parent run is closed"
 	// ErrParentExpired is a parent expired at the clock reading given.
 	ErrParentExpired Error = "runs: the parent run has expired"

@@ -41,10 +41,12 @@
 // nothing else. records/ is the operators' account's and holds the marker,
 // the records and their temporary names; a plane reads it as the account
 // that owns it, which may not be the plane's own, and never writes it.
-// state/ is the plane's and holds the
-// states, the lock files and, for each run whose closed record the plane
-// took, an empty <id>.closed; no operator command writes it. A plane makes a
-// root's state and then its lock at the root's first admitted call or raise;
+// state/ is the plane's and holds the states, the lock files, for each run
+// whose closed record the plane took an empty <id>.closed, and for each child
+// it admitted an empty <id>.seen; no operator command writes it. A child with
+// no <id>.seen whose parent's close the plane carried is refused. A plane
+// makes a root's state and then its lock at the root's first admitted call or
+// raise;
 // a missing state reads as the start only while its lock is missing too, and
 // is refused after. A record there is the signed format of signed.go, and
 // counts only once a Judge takes it. It names the records/ it was signed for,

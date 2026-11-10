@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"sync"
 	"time"
 )
@@ -43,15 +42,11 @@ func (p *Plane) notReplayed(rec Record) error {
 		p.counts.refused(ErrReplayed)
 		return fmt.Errorf("%w: %s, whose close was not carried", ErrReplayed, rec.ID)
 	}
-	f, err := p.st.openRegular(rec.ID+closedSuffix, os.O_RDONLY)
-	switch {
-	case errors.Is(err, fs.ErrNotExist):
-		return nil
+	switch closed, err := p.marked(rec.ID + closedSuffix); {
 	case err != nil:
 		return fmt.Errorf("the close of %s: %w", rec.ID, err)
-	}
-	if err := f.Close(); err != nil {
-		return err
+	case !closed:
+		return nil
 	}
 	p.counts.refused(ErrReplayed)
 	return fmt.Errorf("%w: %s", ErrReplayed, rec.ID)
@@ -321,7 +316,7 @@ func (p *Plane) carryCounted(id string, out *Survey) error {
 // in the order a counter lists them. None names a run.
 func RecordCauses() []string {
 	return []string{"unsigned", "malformed", "other_directory", "unauthenticated", "other_scope", "unauthorized",
-		"authority", "unjudged", "replayed", "plane_owned", "unreadable"}
+		"authority", "unjudged", "replayed", "parent_closed", "plane_owned", "unreadable"}
 }
 
 // recordCause is the label of a refusal of a record.
@@ -332,7 +327,7 @@ func recordCause(err error) string {
 	}{
 		{ErrUnsigned, "unsigned"}, {ErrOtherDirectory, "other_directory"}, {ErrUnauthenticated, "unauthenticated"},
 		{ErrOtherScope, "other_scope"}, {ErrUnauthorized, "unauthorized"}, {ErrAuthority, "authority"},
-		{ErrUnjudged, "unjudged"}, {ErrReplayed, "replayed"}, {ErrPlaneOwned, "plane_owned"},
+		{ErrUnjudged, "unjudged"}, {ErrReplayed, "replayed"}, {ErrParentClosed, "parent_closed"}, {ErrPlaneOwned, "plane_owned"},
 		{ErrMalformed, "malformed"}, {ErrSchemaVersion, "malformed"}, {ErrUnknownField, "malformed"},
 		{ErrMissingField, "malformed"}, {ErrDuplicateField, "malformed"}, {ErrEncoding, "malformed"},
 		{ErrNameMismatch, "malformed"},

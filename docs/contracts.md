@@ -1352,8 +1352,9 @@ the signature's `keyid`) and `records` (the absolute, cleaned path of the
 `records/` it was signed for, with the links on its way resolved, at most
 512 bytes). Any other minor of major
 `3` is read, and nothing else is read there. `state/` holds the states, the
-roots' lock files, and an empty `<id>.closed` for each run whose closed
-record the plane took.
+roots' lock files, an empty `<id>.closed` for each run whose closed
+record the plane took, and an empty `<id>.seen` for each child it admitted
+([ADR-0079](adr/0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close.md)).
 
 ## The reaction route and the stop list
 

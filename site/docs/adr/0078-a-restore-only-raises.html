@@ -123,6 +123,9 @@ with the closes a restore carries into <code>state/</code>. Builds on
 <a href="/docs/adr/0034-a-run-the-operator-opens-has-an-identity-of-its-own">ADR-0034</a>,
 <a href="/docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it">ADR-0073</a> and
 <a href="/docs/adr/0075-a-signed-plane-takes-a-pause-only-from-an-operators-signature">ADR-0075</a>.</p>
+<p>Amended by <a href="/docs/adr/0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close">ADR-0079</a>: a restore
+accepts a child's <code>.seen</code> in <code>state/</code> and writes none, since it closes every
+run.</p>
 <h2 id="context">Context</h2>
 <p>A plane's authority state lives on disk: floors that keep an older policy,
 roster or pause from being taken again, runs and what each took in, and a

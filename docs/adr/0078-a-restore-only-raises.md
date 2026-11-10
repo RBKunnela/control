@@ -11,6 +11,10 @@ with the closes a restore carries into `state/`. Builds on
 [ADR-0073](0073-an-approval-counts-only-as-the-plane-judges-it.md) and
 [ADR-0075](0075-a-signed-plane-takes-a-pause-only-from-an-operators-signature.md).
 
+Amended by [ADR-0079](0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close.md): a restore
+accepts a child's `.seen` in `state/` and writes none, since it closes every
+run.
+
 ## Context
 
 A plane's authority state lives on disk: floors that keep an older policy,

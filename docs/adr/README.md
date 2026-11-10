@@ -87,3 +87,4 @@ request with `Status: proposed`, and set it to `accepted` when it merges.
 | [0076](0076-a-signed-plane-takes-a-run-only-from-an-operators-signature.md) | A signed plane takes a run only from an operator's signature |
 | [0077](0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatures.md) | A signed plane takes a stop list only from operators' signatures |
 | [0078](0078-a-restore-only-raises.md) | A restore only raises |
+| [0079](0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close.md) | A signed plane admits a child only if it saw it before its parent's close |

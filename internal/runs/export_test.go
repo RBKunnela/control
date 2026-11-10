@@ -27,3 +27,6 @@ func (p *Plane) RecordsOwnedByAnother() { p.d.owner = ownedByAnother }
 // ChmodMade sets the mode of the directory name under top as a signed
 // layout's two directories are set once made.
 func ChmodMade(top *os.Root, name string, mode fs.FileMode) error { return chmodMade(top, name, mode) }
+
+// MaxAncestry is how many ancestors a child's first admission reads.
+const MaxAncestry = maxAncestry

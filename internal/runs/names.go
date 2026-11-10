@@ -20,6 +20,7 @@ const (
 	stateTemp    = ".state.tmp"
 	lockSuffix   = ".lock"
 	closedSuffix = ".closed"
+	seenSuffix   = ".seen"
 
 	idPrefix  = "run-"
 	idHexLen  = 32
@@ -38,8 +39,9 @@ const (
 	// roleRecords is a signed layout's records/: the operators' signed
 	// records, which a plane only reads.
 	roleRecords
-	// roleState is a signed layout's state/: the plane's states, locks and
-	// the closes it carried, which no operator command writes.
+	// roleState is a signed layout's state/: the plane's states, locks, the
+	// closes it carried and the children it admitted, which no operator
+	// command writes.
 	roleState
 )
 
@@ -48,7 +50,7 @@ const (
 var suffixes = map[role][]string{
 	roleFlat:    {recordSuffix, recordTemp, stateSuffix, stateTemp, lockSuffix},
 	roleRecords: {recordSuffix, recordTemp},
-	roleState:   {stateSuffix, stateTemp, lockSuffix, closedSuffix},
+	roleState:   {stateSuffix, stateTemp, lockSuffix, closedSuffix, seenSuffix},
 }
 
 type kind uint8

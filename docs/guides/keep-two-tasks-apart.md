@@ -57,7 +57,8 @@ listener's: `listener.principal.tenant_id`, or `tenant_id` when it is unset,
 `root`, `expires_at` and `token`; the token is printed this once. A task that
 spawns another opens the child with `--parent <run id>`, so the two share what
 they take in; the child expires no later than its parent, and closing the
-parent leaves it open ([reference/runs.md](../reference/runs.md)).
+parent leaves it open. Under `signed` a child whose first call comes after
+its parent's close is refused ([reference/runs.md](../reference/runs.md)).
 
 ### 3. Point the plane at it
 
