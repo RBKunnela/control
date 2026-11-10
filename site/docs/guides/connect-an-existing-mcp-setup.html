@@ -172,19 +172,22 @@ runs the plane once you sign for real.</p>
 with the two lines the first <code>keygen</code> printed,
 <code>FRESHNESS_KEY_ID_FROM_KEYGEN</code> and <code>FRESHNESS_PUBLIC_KEY_FROM_KEYGEN</code> with
 the second's, <code>COLLECTOR_CREDENTIAL_FROM_FILE</code> with the content of the
-collector's credential, and the server's one argument with the absolute path
-of the directory it may touch. Nothing else needs to change for this server.
+collector's credential, <code>/absolute/path/to/collect.sock</code> with the absolute
+path of <code>collect.sock</code> in this directory, <code>COLLECTOR_UID_FROM_ID</code> with what
+<code>id -u</code> prints, and the server's one argument with the absolute path of the
+directory it may touch. Nothing else needs to change for this server.
 The credential is any 32 to 512 printable bytes with no space:</p>
 <pre><code>(umask 077 &amp;&amp; od -An -N32 -tx1 /dev/urandom | tr -d &#39; \n&#39; &gt; collector.credential)
 </code></pre>
 <h3 id="4-start-a-collector">4. Start a collector</h3>
-<pre><code>guardana-gateway collect --listen 127.0.0.1:4318 --dir trail --tenant local --project files \
+<pre><code>guardana-gateway collect --listen &#34;unix://$PWD/collect.sock&#34; --dir trail --tenant local --project files \
     --credential-file collector.credential
 </code></pre>
 <p>The plane writes its evidence to the spool and ships it here, with the
-credential; the trail directory is what step 9 reads. <code>doctor</code> warns of this
-TCP endpoint, since TCP export is removed in 0.17; a unix socket is
-<a href="/docs/guides/watch-a-plane-without-a-collector">watch a plane without a collector</a>.</p>
+credential, only once the socket's peer is the account you named; the trail
+directory is what step 9 reads.
+<a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a> is
+the collector's page.</p>
 <h3 id="5-check-the-classification">5. Check the classification</h3>
 <pre><code>guardana-gateway doctor --config plane.yaml
 </code></pre>

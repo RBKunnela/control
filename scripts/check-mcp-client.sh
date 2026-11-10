@@ -83,7 +83,6 @@ free_port() {
 }
 listen="127.0.0.1:$(free_port)"
 health="127.0.0.1:$(free_port)"
-collector="127.0.0.1:$(free_port)"
 
 say "step 1: the profile, the policy and the server"
 cp -R "${example}" "${work}/plane"
@@ -119,17 +118,18 @@ sed -f credential.sed \
   -e "s|FRESHNESS_PUBLIC_KEY_FROM_KEYGEN|$(line_of public_key "${freshness_key}")|" \
   -e "s|/absolute/path/to/the/directory/to/share|${share}|" \
   -e "s|address: 127.0.0.1:8080|address: ${listen}|" \
-  -e "s|http://127.0.0.1:4318/v1/logs|http://${collector}/v1/logs|" \
+  -e "s|unix:///absolute/path/to/collect.sock|unix://${work}/plane/collect.sock|" \
+  -e "s|COLLECTOR_UID_FROM_ID|$(id -u)|" \
   plane.yaml >plane.yaml.filled
 printf '\nhealth:\n  address: %s\n' "${health}" >>plane.yaml.filled
 mv plane.yaml.filled plane.yaml
 rm credential.sed
-if grep -q 'FROM_KEYGEN\|FROM_FILE\|/absolute/path' plane.yaml; then
+if grep -q 'FROM_KEYGEN\|FROM_FILE\|FROM_ID\|/absolute/path' plane.yaml; then
   die "a placeholder is left in plane.yaml"
 fi
 
 say "step 4: a collector"
-"${gateway}" collect --listen "${collector}" --dir trail --tenant local --project files \
+"${gateway}" collect --listen "unix://${work}/plane/collect.sock" --dir trail --tenant local --project files \
   --credential-file collector.credential &
 collect_pid=$!
 pids+=("${collect_pid}")

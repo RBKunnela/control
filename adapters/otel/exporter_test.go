@@ -41,7 +41,7 @@ func TestZeroValueAndBadOptionsRefuse(t *testing.T) {
 	r := reader(t, openSpool(t, 1<<20))
 	bad := map[string]otel.Options{
 		"no endpoint":     {InFlight: 1, Timeout: time.Second},
-		"no host":         {Endpoint: "http:///v1/logs", InFlight: 1, Timeout: time.Second},
+		"no host":         {Endpoint: "https:///v1/logs", InFlight: 1, Timeout: time.Second},
 		"not http":        {Endpoint: "ftp://collector/v1/logs", InFlight: 1, Timeout: time.Second},
 		"zero InFlight":   {Endpoint: good.Endpoint, Timeout: time.Second},
 		"zero Timeout":    {Endpoint: good.Endpoint, InFlight: 1},
@@ -324,7 +324,7 @@ func newCollector(t *testing.T, status func(n int) int) *collector {
 func newCollectorFunc(t *testing.T, handle http.HandlerFunc) *collector {
 	t.Helper()
 	c := &collector{}
-	c.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	c.srv = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			t.Errorf("reading the request: %v", err)
@@ -426,9 +426,9 @@ func reader(t *testing.T, s *spool.Spool) *spool.Reader {
 func newExporter(t *testing.T, s *spool.Spool, c *collector, opts otel.Options) *otel.Exporter {
 	t.Helper()
 	opts.Endpoint = c.srv.URL + "/v1/logs"
-	// httptest serves plaintext on the loopback, which is what the risk
-	// setting is for.
-	opts.AllowPlaintext = true
+	if opts.Client == nil {
+		opts.Client = c.srv.Client()
+	}
 	if opts.Timeout == 0 {
 		opts.Timeout = 2 * time.Second
 	}

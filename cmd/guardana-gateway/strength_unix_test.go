@@ -23,7 +23,7 @@ import (
 func strengthPlane(t *testing.T, kind string) string {
 	t.Helper()
 	if kind == gatewayconfig.ListenerEnforceAPI {
-		return newEnforceTree(t, "30s", "http://127.0.0.1:1/v1/logs").config
+		return newEnforceTree(t, "30s", "unix://"+exportSocket(t)).config
 	}
 	tr := newTree(t)
 	const http = "  kind: stateless_http\n  address: 127.0.0.1:8080\n  origins:\n    - http://localhost:5173\n"

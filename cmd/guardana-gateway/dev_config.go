@@ -7,6 +7,7 @@ import (
 	"maps"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/guardana/control/internal/brand"
@@ -44,7 +45,7 @@ var devSet = []string{
 	"pause.floor_dir",
 	"evidence.dir",
 	"export.endpoint",
-	"export.allow_plaintext",
+	"export.collector_uid",
 	devAuthorizationKey,
 }
 
@@ -89,9 +90,10 @@ type devKeys struct {
 }
 
 // newLayer is dev's values for a plane whose state is under st, which pins
-// keys, listens at listen and health, exports to collector with the
-// credential token and, when silent is not empty, asks the decision point
-// there, each a host:port.
+// keys, listens at listen and health, exports to the collector socket at
+// collector with the credential token and, when silent is not empty, asks
+// the decision point there, each a host:port. The collector runs in dev's
+// own process, so its account is dev's.
 func newLayer(st devState, keys devKeys, listen, health, collector, token, silent string) devLayer {
 	l := devLayer{
 		"listener.address":             listen,
@@ -116,8 +118,8 @@ func newLayer(st devState, keys devKeys, listen, health, collector, token, silen
 		"pause.file":                   st.path(statePause),
 		"pause.floor_dir":              st.path(statePauseFlr),
 		"evidence.dir":                 st.path(stateSpool),
-		"export.endpoint":              "http://" + collector + logsPath,
-		"export.allow_plaintext":       "true",
+		"export.endpoint":              "unix://" + collector,
+		"export.collector_uid":         strconv.Itoa(os.Geteuid()),
 		devAuthorizationKey:            "Bearer " + token,
 	}
 	if silent != "" {
@@ -158,6 +160,9 @@ func resolveDemo(path string, l devLayer) (*gatewayconfig.Config, error) {
 	}
 	cfg, err := gatewayconfig.Load(path, l.environ())
 	if err != nil {
+		if strings.HasPrefix(err.Error(), "export.endpoint: ") {
+			return nil, fmt.Errorf("%w; dev puts that socket under the system's temporary directory, so set TMPDIR to a shorter path", err)
+		}
 		return nil, err
 	}
 	owned := slices.Collect(maps.Keys(cfg.Sources()))
@@ -209,7 +214,8 @@ func fileSets(path string, l devLayer, key string) bool {
 		}
 	}
 	if defaultOf(key) == "" && (strings.HasPrefix(first.Error(), key+": no value") ||
-		strings.HasPrefix(first.Error(), key+": the "+gatewayconfig.AuthoritySigned+" authority needs it")) {
+		strings.HasPrefix(first.Error(), key+": the "+gatewayconfig.AuthoritySigned+" authority needs it") ||
+		strings.HasPrefix(first.Error(), key+": a unix endpoint needs")) {
 		// A key with no default that the file left out refuses the load
 		// without the layer's value by its own name.
 		return false
@@ -228,10 +234,10 @@ func defaultOf(key string) string {
 	return ""
 }
 
-// devAddresses refuses a listener, a health address, a collector, an
-// upstream's endpoint or a decision point's URL that is not a loopback IP
-// literal. An upstream run as a command, and a decision point key left
-// empty, name no address.
+// devAddresses refuses a listener, a health address, an upstream's endpoint
+// or a decision point's URL that is not a loopback IP literal. An upstream
+// run as a command, and a decision point key left empty, name no address;
+// the collector is dev's own socket.
 func devAddresses(cfg *gatewayconfig.Config) error {
 	for _, a := range [][2]string{
 		{"listener.address", cfg.Listener.Address},
@@ -240,9 +246,6 @@ func devAddresses(cfg *gatewayconfig.Config) error {
 		if err := loopback.Check(a[1]); err != nil {
 			return fmt.Errorf("%s: %w", a[0], err)
 		}
-	}
-	if err := loopback.CheckURL(cfg.Export.Endpoint); err != nil {
-		return fmt.Errorf("export.endpoint: %w", err)
 	}
 	optional := [][2]string{
 		{"pdp.identifier", cfg.PDP.Identifier},

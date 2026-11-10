@@ -49,8 +49,7 @@ policy:
 evidence:
   dir: spool
 export:
-  endpoint: http://127.0.0.1:4318/v1/logs
-  allow_plaintext: true
+  endpoint: https://127.0.0.1:4318/v1/logs
 runs:
   dir: runs
 upstreams:

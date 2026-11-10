@@ -180,8 +180,8 @@ var ownedKeys = [][2]string{
 	{"approvals.reconcile_max", "3"},
 	{"pause.file", "elsewhere/pause.json"},
 	{"evidence.dir", "spool"},
-	{"export.endpoint", "http://127.0.0.1:4318/v1/logs"},
-	{"export.allow_plaintext", "true"},
+	{"export.endpoint", "unix:///run/collector/logs.sock"},
+	{"export.collector_uid", "4242"},
 }
 
 // TestDevRefusesADemoThatSetsWhatDevOwns: each key dev owns, set in the
@@ -214,7 +214,7 @@ func TestDevRefusesADemoThatSetsWhatDevOwns(t *testing.T) {
 // which is never created, so a link planted in the temporary directory under
 // the name dev would otherwise use does not refuse it.
 func TestDevChecksADemoWithoutAStateAgainstNoKnownPath(t *testing.T) {
-	tmp := t.TempDir()
+	tmp := shortTempDir(t)
 	d := writeDemo(t, "http://127.0.0.1:9/mcp", "5ms", "")
 	planted := filepath.Join(tmp, brand.Gateway+"-dev")
 	if err := os.Mkdir(planted, 0o700); err != nil {
@@ -253,6 +253,28 @@ func TestDevRefusesAStdioListener(t *testing.T) {
 	untouched(t, state)
 }
 
+// TestDevRefusesATemporaryDirectoryTooLongForItsSocket: dev puts its
+// collector's socket under the system's temporary directory, so one under
+// which that socket's path would pass the bound is refused naming TMPDIR,
+// before anything is made.
+func TestDevRefusesATemporaryDirectoryTooLongForItsSocket(t *testing.T) {
+	long := filepath.Join(t.TempDir(), strings.Repeat("t", 100))
+	if err := os.Mkdir(long, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	d := writeDemo(t, "http://127.0.0.1:9/mcp", "5ms", "")
+	state := filepath.Join(shortTempDir(t), "state")
+	t.Setenv("TMPDIR", long)
+	err := checkDemo(devInputs{config: d.config}, state)
+	if err == nil || !strings.HasPrefix(err.Error(), "export.endpoint: the socket path is ") || !strings.Contains(err.Error(), "set TMPDIR to a shorter path") {
+		t.Errorf("checkDemo under a long TMPDIR = %v", err)
+	}
+	untouched(t, state)
+	if entries, err := os.ReadDir(long); err != nil || len(entries) != 0 {
+		t.Errorf("the temporary directory holds %v, %v", entries, err)
+	}
+}
+
 // TestDevAddressesAreLoopbackLiterals: an address dev resolved or a demo's
 // upstream or decision point names that is not a loopback IP literal is
 // refused by the key it came from, a name included; an upstream run as a
@@ -261,7 +283,7 @@ func TestDevAddressesAreLoopbackLiterals(t *testing.T) {
 	t.Parallel()
 	good := func() *gatewayconfig.Config {
 		c := &gatewayconfig.Config{}
-		c.Listener.Address, c.Health.Address, c.Export.Endpoint = "127.0.0.1:1", "127.0.0.1:2", "http://127.0.0.1:3/v1/logs"
+		c.Listener.Address, c.Health.Address, c.Export.Endpoint = "127.0.0.1:1", "127.0.0.1:2", "unix:///run/dev/collect.sock"
 		c.Upstreams = []gatewayconfig.UpstreamConfig{{Command: "orders-server"}, {Endpoint: "http://127.0.0.1/mcp"}}
 		c.PDP.Identifier, c.PDP.EvaluationEndpoint = "https://[::1]:8443/pdp", "https://[::1]:8443/pdp/access/v1/evaluation"
 		c.PDP.Proxy = "http://user:sesame@127.0.0.1:3128"
@@ -281,7 +303,6 @@ func TestDevAddressesAreLoopbackLiterals(t *testing.T) {
 	}{
 		{"listener.address", func(c *gatewayconfig.Config) { c.Listener.Address = "0.0.0.0:1" }},
 		{"health.address", func(c *gatewayconfig.Config) { c.Health.Address = "localhost:2" }},
-		{"export.endpoint", func(c *gatewayconfig.Config) { c.Export.Endpoint = "http://192.0.2.1:3/v1/logs" }},
 		{"upstreams.1.endpoint", func(c *gatewayconfig.Config) { c.Upstreams[1].Endpoint = "http://192.0.2.1/mcp" }},
 		{"upstreams.1.endpoint", func(c *gatewayconfig.Config) { c.Upstreams[1].Endpoint = "http://orders.example/mcp" }},
 		{"pdp.identifier", func(c *gatewayconfig.Config) { c.PDP.Identifier = "https://192.0.2.1:8443/pdp" }},

@@ -6,6 +6,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
+	"io/fs"
 	"net"
 	"os"
 	"os/exec"
@@ -121,6 +123,33 @@ func TestDevStopsWhenThePageDies(t *testing.T) {
 		if !refused(addr) {
 			t.Errorf("%s at %s still answers after dev exited", name, addr)
 		}
+	}
+	exportedOverASocket(t, state)
+}
+
+// exportedOverASocket checks that the plane under state was configured to
+// send its evidence to a unix socket under the system's temporary directory,
+// to a collector of this account, and that dev removed the socket's
+// directory once it stopped.
+func exportedOverASocket(t *testing.T, state string) {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(state, "settings.txt")) //nolint:gosec // G304: the state dev wrote for this test
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings := map[string]string{}
+	for _, line := range strings.Split(string(raw), "\n") {
+		if key, value, ok := strings.Cut(line, ": "); ok {
+			settings[key] = value
+		}
+	}
+	socket, ok := strings.CutPrefix(settings["export.endpoint"], "unix://")
+	if !ok || filepath.Dir(filepath.Dir(socket)) != filepath.Clean(os.TempDir()) || settings["export.collector_uid"] != ownUID() ||
+		settings["export.allow_plaintext"] != "false" {
+		t.Errorf("dev exported to %q as uid %q, plaintext %q", settings["export.endpoint"], settings["export.collector_uid"], settings["export.allow_plaintext"])
+	}
+	if _, err := os.Lstat(filepath.Dir(socket)); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("the collector's socket directory outlived dev: %v", err)
 	}
 }
 

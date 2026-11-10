@@ -81,7 +81,7 @@ flowchart TD
     Other -.->|"refused 401 without its credential"| Collect
     Plane -->|"exactly the authorized bytes"| Http["HTTP upstream"]
     Plane -->|"identity, action, resource; never arguments"| PDP["Decision point"]
-    Plane -->|"OTLP: https, or plaintext on the loopback if allowed"| Collector["A collector"]
+    Plane -->|"OTLP: https, or a unix socket of the collector's account"| Collector["A collector"]
 ```
 
 Sources: `adapters/mcp/listener.go`, `cmd/guardana-gateway/adapter.go`,
@@ -318,9 +318,9 @@ What it does not do:
   counters; both default to `127.0.0.1`.
 - **`collect` trusts whoever holds its credential**, answering others 401
   (`TestARequestWithoutTheCredentialIsRefusedBeforeItIsRead`): who reads its
-  file or the plane's configuration, or binds its TCP port while down, gets
-  it ([ADR-0072](../adr/0072-the-collector-keeps-bounded-segments-of-one-project-behind-a-credential.md));
-  `doctor` warns of every TCP `export.endpoint`.
+  file or the plane's configuration, or runs as `export.collector_uid`, gets
+  it ([ADR-0072](../adr/0072-the-collector-keeps-bounded-segments-of-one-project-behind-a-credential.md),
+  [ADR-0080](../adr/0080-evidence-leaves-a-plane-over-a-unix-socket-or-tls.md)).
 - The spool writes its files `0600` and refuses a directory another account
   owns or that others can write.
 - A peer `health.socket` or a unix collector admits can pass its connection
@@ -369,17 +369,18 @@ When the agent, its tools, the plane and the approver run as one account, as
 
 What the plane does today:
 
-- The export endpoint has to be `https`, or a loopback IP literal under
-  `export.allow_plaintext`, and no redirect is followed
-  (`adapters/otel/options.go`; `TestAPlaintextCollectorNeedsTheRiskSetting`,
-  `TestAPlaintextCollectorIsOnTheLoopback`, `TestARedirectIsNeverFollowed`).
+- The export endpoint has to be `https` or a unix socket, an `http` one is
+  refused at load and by the exporter, and no redirect is followed
+  (`internal/gatewayconfig/check.go`, `adapters/otel/options.go`;
+  `TestPlaintextExportIsRefusedNamingTheRelease`,
+  `TestAPlaintextCollectorIsRefused`, `TestARedirectIsNeverFollowed`).
 - A browser origin the operator did not list is refused, a loopback origin
   included, and a loopback origin is admitted only while the listener is on the
   loopback (`adapters/mcp/listener.go`, `internal/gatewayconfig/check.go`;
   `TestOriginIsValidated`).
-- `collect` listens on the loopback or a socket only (`internal/loopback/`;
-  `TestCollectListensOnTheLoopbackOnly`), and `dev` binds and reaches loopback
-  IP literals only (`TestDevAddressesAreLoopbackLiterals`).
+- `collect` listens on a unix socket only (`TestCollectListensOnAUnixSocketOnly`),
+  and `dev` binds and reaches loopback IP literals and its collector's socket
+  only (`TestDevAddressesAreLoopbackLiterals`).
 
 What it does not do:
 
@@ -388,10 +389,9 @@ What it does not do:
   configured principal, under `runs.dir` with a run token they hold. There is no TLS setting on it.
 - The health listener is the same: plain HTTP, no credential, wherever
   `health.address` puts it.
-- A plaintext export stays on the host, unprotected there: an account
-  capturing loopback traffic reads the headers and the events, and one holding
-  the collector's port first receives them and can answer with the acceptance
-  that releases them; a unix endpoint checks the collector's account
+- An `https` export trusts the system's certificate roots: whoever holds a
+  certificate they accept for the collector's name receives the headers and
+  the events. A unix endpoint checks the collector's account instead
   (`TestACollectorOfAnotherAccountIsSentNothing`).
 
 ## A tampered release

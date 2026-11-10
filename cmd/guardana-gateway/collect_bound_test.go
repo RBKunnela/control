@@ -65,7 +65,7 @@ func TestCollectRefusesACredentialFileItCannotTrust(t *testing.T) {
 			t.Fatal(err)
 		}
 		out := filepath.Join(t.TempDir(), "trail")
-		args := []string{"collect", "--listen", "127.0.0.1:0", "--dir", out, "--tenant", "tenant-1", "--project", "proj-1",
+		args := []string{"collect", "--listen", "unix://" + exportSocket(t), "--dir", out, "--tenant", "tenant-1", "--project", "proj-1",
 			"--credential-file", path}
 		// A collect that took the file would serve until this deadline and
 		// end 0, which fails here rather than hanging the suite.
@@ -80,7 +80,7 @@ func TestCollectRefusesACredentialFileItCannotTrust(t *testing.T) {
 			t.Errorf("%s: a refused collect made its trail directory", name)
 		}
 	}
-	missing := []string{"collect", "--listen", "127.0.0.1:0", "--dir", filepath.Join(t.TempDir(), "trail"), "--tenant", "tenant-1",
+	missing := []string{"collect", "--listen", "unix://" + exportSocket(t), "--dir", filepath.Join(t.TempDir(), "trail"), "--tenant", "tenant-1",
 		"--project", "proj-1", "--credential-file", filepath.Join(t.TempDir(), "absent")}
 	var stdout, stderr bytes.Buffer
 	if status := run(context.Background(), missing, &stdout, &stderr); status != exitFail {
@@ -98,7 +98,7 @@ func TestCollectRefusesAnotherProjectsEvents(t *testing.T) {
 		out := filepath.Join(t.TempDir(), "trail")
 		ctx, cancel := context.WithCancel(context.Background())
 		c := &collecting{stdout: &syncBuffer{}, stderr: &syncBuffer{}, cancel: cancel, done: make(chan int, 1)}
-		args := []string{"collect", "--listen", "127.0.0.1:0", "--dir", out, "--tenant", bind[0], "--project", bind[1],
+		args := []string{"collect", "--listen", "unix://" + exportSocket(t), "--dir", out, "--tenant", bind[0], "--project", bind[1],
 			"--credential-file", credentialFile(t, collectToken)}
 		go func() { c.done <- run(ctx, args, c.stdout, c.stderr) }()
 		_, url, _ := strings.Cut(waitFor(t, c.stdout, "listening on "), "listening on ")
@@ -120,7 +120,7 @@ func TestCollectRefusesBoundsThatCouldWedgeTheLog(t *testing.T) {
 	least := int64(otel.MaxRequestBytes)
 	for _, b := range [][2]int64{{least - 1, 4 * least}, {least, 2*least - 1}, {0, 0}} {
 		out := filepath.Join(t.TempDir(), "trail")
-		args := append(collectArgs(t, "127.0.0.1:0", out), "--segment-bytes", strconv.FormatInt(b[0], 10),
+		args := append(collectArgs(t, "unix://"+exportSocket(t), out), "--segment-bytes", strconv.FormatInt(b[0], 10),
 			"--max-bytes", strconv.FormatInt(b[1], 10))
 		// A collect that took the bounds would serve until this deadline and
 		// end 0, which fails here rather than hanging the suite.

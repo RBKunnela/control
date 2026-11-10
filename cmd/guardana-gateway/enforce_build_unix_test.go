@@ -36,7 +36,7 @@ func loadEnforce(t *testing.T, tr enforceTree) *gatewayconfig.Config {
 // or a check inspects it.
 func TestAnEnforcementAPIPlaneBuildsNoMCPSide(t *testing.T) {
 	for _, r := range []role{roleServe, roleInspect} {
-		tr := newEnforceTree(t, "30s", "http://127.0.0.1:1/v1/logs")
+		tr := newEnforceTree(t, "30s", "unix://"+exportSocket(t))
 		p, err := build(loadEnforce(t, tr), slog.New(slog.DiscardHandler), time.Now(), r, "")
 		if err != nil {
 			t.Fatalf("role %d: build refused the plane: %v", r, err)
@@ -54,7 +54,7 @@ func TestAnEnforcementAPIPlaneBuildsNoMCPSide(t *testing.T) {
 // has no adapter for is refused by name before any store is opened, so the
 // refusal is the kind's and nothing was taken.
 func TestAListenerKindThisBuildDoesNotServeIsRefusedFirst(t *testing.T) {
-	tr := newEnforceTree(t, "30s", "http://127.0.0.1:1/v1/logs")
+	tr := newEnforceTree(t, "30s", "unix://"+exportSocket(t))
 	cfg := loadEnforce(t, tr)
 	cfg.Listener.Kind = "carrier_pigeon"
 	if err := os.Remove(filepath.Join(tr.dir, "policy.bundle")); err != nil {
@@ -74,7 +74,7 @@ func TestAListenerKindThisBuildDoesNotServeIsRefusedFirst(t *testing.T) {
 // names the cooperative adapter, the tool table is printed, and no upstream
 // is reached.
 func TestDoctorChecksAnEnforcementAPIPlane(t *testing.T) {
-	tr := newEnforceTree(t, "30s", "http://127.0.0.1:1/v1/logs")
+	tr := newEnforceTree(t, "30s", "unix://"+exportSocket(t))
 	var stdout, stderr bytes.Buffer
 	if status := doctor(context.Background(), tr.config, &stdout, &stderr); status != exitOK {
 		t.Fatalf("doctor exited %d:\n%s\n%s", status, stdout.String(), stderr.String())
@@ -97,7 +97,7 @@ func TestDoctorChecksAnEnforcementAPIPlane(t *testing.T) {
 // TestDoctorRefusesASocketDirectoryRunWouldRefuse: a directory others may
 // enter fails doctor where run's Listen would refuse it, and binds nothing.
 func TestDoctorRefusesASocketDirectoryRunWouldRefuse(t *testing.T) {
-	tr := newEnforceTree(t, "30s", "http://127.0.0.1:1/v1/logs")
+	tr := newEnforceTree(t, "30s", "unix://"+exportSocket(t))
 	if err := os.Chmod(filepath.Dir(tr.socket), 0o755); err != nil { //nolint:gosec // the mode under test is the one doctor has to refuse
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestDoctorRefusesASocketDirectoryRunWouldRefuse(t *testing.T) {
 // TestMetricsOfAnEnforcementAPIPlane: the plane writes its adapter's counts,
 // live, and none of the MCP adapter's, which it has not built.
 func TestMetricsOfAnEnforcementAPIPlane(t *testing.T) {
-	tr := newEnforceTree(t, "30s", "http://127.0.0.1:1/v1/logs")
+	tr := newEnforceTree(t, "30s", "unix://"+exportSocket(t))
 	p, err := build(loadEnforce(t, tr), slog.New(slog.DiscardHandler), time.Now(), roleServe, "")
 	if err != nil {
 		t.Fatal(err)
@@ -157,7 +157,7 @@ func TestMetricsOfAnEnforcementAPIPlane(t *testing.T) {
 // entry naming a provider or a tool the table classifies pauses calls the
 // plane runs, and only one naming a provider or a tool it lacks pauses none.
 func TestAPauseEntryOfTheToolTableIsNotStray(t *testing.T) {
-	tr := newEnforceTree(t, "30s", "http://127.0.0.1:1/v1/logs")
+	tr := newEnforceTree(t, "30s", "unix://"+exportSocket(t))
 	dir := filepath.Join(tr.dir, "pause")
 	if err := os.Mkdir(dir, 0o700); err != nil {
 		t.Fatal(err)

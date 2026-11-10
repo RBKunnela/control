@@ -16,6 +16,10 @@ listens on a socket as well as on the loopback, and a plane sends to it only
 once the socket's peer is `export.collector_uid`
 ([docs/status.md](../status.md)).
 
+Amended by [ADR-0080](0080-evidence-leaves-a-plane-over-a-unix-socket-or-tls.md):
+`collect` listens on a unix socket only, and the loopback address below is
+refused.
+
 ## Context
 
 A plane exports its evidence to an OpenTelemetry collector over OTLP/HTTP, and

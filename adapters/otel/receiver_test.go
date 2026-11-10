@@ -246,7 +246,7 @@ func serveOne(t *testing.T, method, contentType, encoding, body string, failSink
 func TestASinkThatFailsReleasesNothing(t *testing.T) {
 	sink := &memorySink{}
 	sink.failing.Store(true)
-	srv := httptest.NewServer(newReceiver(t, sink))
+	srv := httptest.NewTLSServer(newReceiver(t, sink))
 	t.Cleanup(srv.Close)
 
 	s := openSpool(t, 1<<20)
@@ -254,7 +254,7 @@ func TestASinkThatFailsReleasesNothing(t *testing.T) {
 	for _, ev := range events {
 		mustAppend(t, s, ev)
 	}
-	e := exporterTo(t, s, srv.URL+"/v1/logs", otel.Options{InFlight: 1, MaxBatch: 16, Linger: 10 * time.Millisecond,
+	e := exporterTo(t, s, srv, otel.Options{InFlight: 1, MaxBatch: 16, Linger: 10 * time.Millisecond,
 		Backoff: 10 * time.Millisecond, MaxBackoff: 20 * time.Millisecond})
 	ctx, cancel := context.WithTimeout(context.Background(), runDeadline)
 	defer cancel()
@@ -318,7 +318,7 @@ func TestABatchOverTheBoundIsHalvedAndDelivered(t *testing.T) {
 		t.Fatal(err)
 	}
 	answers := &statusCounter{seen: map[int]int{}}
-	srv := httptest.NewServer(answers.wrap(carrying(h)))
+	srv := httptest.NewTLSServer(answers.wrap(carrying(h)))
 	t.Cleanup(srv.Close)
 	s := openSpool(t, 1<<20)
 	run := strings.Repeat("x", 1<<10)
@@ -327,7 +327,7 @@ func TestABatchOverTheBoundIsHalvedAndDelivered(t *testing.T) {
 		ev.RunId = run
 		mustAppend(t, s, ev)
 	}
-	e := exporterTo(t, s, srv.URL+"/v1/logs", otel.Options{InFlight: 1, MaxBatch: records, Linger: 200 * time.Millisecond,
+	e := exporterTo(t, s, srv, otel.Options{InFlight: 1, MaxBatch: records, Linger: 200 * time.Millisecond,
 		Backoff: 10 * time.Millisecond, MaxBackoff: 20 * time.Millisecond})
 	runUntil(t, e, func() bool { return e.Stats().Acknowledged == records })
 	st := e.Stats()
@@ -340,10 +340,10 @@ func TestABatchOverTheBoundIsHalvedAndDelivered(t *testing.T) {
 	}
 }
 
-func exporterTo(t *testing.T, s *spool.Spool, endpoint string, opts otel.Options) *otel.Exporter {
+func exporterTo(t *testing.T, s *spool.Spool, srv *httptest.Server, opts otel.Options) *otel.Exporter {
 	t.Helper()
-	opts.Endpoint = endpoint
-	opts.AllowPlaintext = true
+	opts.Endpoint = srv.URL + "/v1/logs"
+	opts.Client = srv.Client()
 	opts.Timeout = 5 * time.Second
 	opts.Logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 	e, err := otel.New(opts, reader(t, s))

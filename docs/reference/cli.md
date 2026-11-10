@@ -259,7 +259,7 @@ tombstones first, while no `collect` holds them. `spool drain`:
 
 <!-- generated: go test ./cmd/guardana-gateway -run TestCLIPage -->
 ```
-usage: guardana-gateway [run --config <file> [--run-token-file <file>] | doctor --config <file> | collect --listen <addr>|unix:///<path> --dir <dir> --tenant <id> --project <id> --credential-file <file> [--segment-bytes <n>] [--max-bytes <n>] | trail [segments] [export [--after <cursor>] [--limit <n>] [--max-bytes <n>] [--request <id>]... [--run <id>]... [--tenant <id>]... [--project <id>]... [--kind <kind>]...] <file or dir> | prune --through <segment> <dir> | spool drain <dir> <out> | scenario run --config <file> --trail <file> [--control <file>] [--timeout <d>] <path>... | dev --config <file> --policy <file> [--decision-point=silent] [--state <dir>] [--scenario <file>]...]
+usage: guardana-gateway [run --config <file> [--run-token-file <file>] | doctor --config <file> | collect --listen unix:///<path> --dir <dir> --tenant <id> --project <id> --credential-file <file> [--segment-bytes <n>] [--max-bytes <n>] | trail [segments] [export [--after <cursor>] [--limit <n>] [--max-bytes <n>] [--request <id>]... [--run <id>]... [--tenant <id>]... [--project <id>]... [--kind <kind>]...] <file or dir> | prune --through <segment> <dir> | spool drain <dir> <out> | scenario run --config <file> --trail <file> [--control <file>] [--timeout <d>] <path>... | dev --config <file> --policy <file> [--decision-point=silent] [--state <dir>] [--scenario <file>]...]
 
 run
   -config string
@@ -277,7 +277,7 @@ collect
   -dir string
     	the directory of trail segments to append what arrives to, created when absent
   -listen string
-    	the loopback address to listen on, host:port, where port 0 takes a free one; or unix:///<path>, a socket created there that a plane reaches with export.collector_uid set to this account
+    	unix:///<path>, a socket created there that a plane reaches with export.collector_uid set to this account
   -max-bytes int
     	the bytes the segments not pruned may hold; past them every request is answered 503 until an operator prunes, and nothing is pruned automatically (default 1073741824)
   -project string

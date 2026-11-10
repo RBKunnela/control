@@ -255,7 +255,7 @@ directory: proposed, decided, started and completed. All four are appended
 before the answer reaches the agent, which the guard test checks.</p>
 <p>The exporter runs throughout, with the gateway's defaults: it reads each
 record back from the spool, sends up to 128 in one request or waits up to 100 ms
-for more, encodes them as OTLP/JSON, posts them over loopback HTTP to a collector
+for more, encodes them as OTLP/JSON, posts them over a unix socket to a collector
 in the same process that reads the body and accepts it, and acknowledges each
 accepted batch to the spool. Under <code>fsync=interval_100ms</code> the spool's timer
 runs as well. Their work shares the cores with the call, and <code>B/op</code> and
@@ -272,8 +272,8 @@ the exporter's share of the machine together, not the pipeline alone.</p>
 </thead>
 <tbody>
 <tr>
-<td>A network beyond loopback, and TLS</td>
-<td>The agent and upstream legs are in-process pipes. The collector runs in this process and is reached over plaintext loopback TCP, so that path and the collector's HTTP server are inside the number</td>
+<td>A network, and TLS</td>
+<td>The agent and upstream legs are in-process pipes. The collector runs in this process on a unix socket, so that path and its HTTP server are inside the number</td>
 </tr>
 <tr>
 <td>A real upstream</td>
@@ -351,7 +351,8 @@ can take the records written since the last tick.</p>
 <p>One run of <code>scripts/bench.sh --publish</code> with <code>COUNT=5 BENCHTIME=1s</code>, at commit
 <code>d326e70</code>, whose results file
 <a href="https://github.com/guardana/control/blob/main/bench/results/20261007T050316Z-darwin-arm64.txt">bench/results/20261007T050316Z-darwin-arm64.txt</a>
-holds the other measurements on this page.</p>
+holds the other measurements on this page; it reached its collector over
+loopback TCP.</p>
 <table>
 <thead>
 <tr>

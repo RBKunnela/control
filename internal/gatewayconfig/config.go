@@ -198,9 +198,9 @@ type EvidenceConfig struct {
 // ExportConfig is the collector the spool drains to.
 type ExportConfig struct {
 	Endpoint string
-	// AllowPlaintext lets the endpoint be http on a loopback IP literal only:
-	// over plaintext anyone on the path can forge the collector's acceptance
-	// and read the headers.
+	// AllowPlaintext is refused when set: the key stays so that a
+	// configuration still setting it is told plaintext export was removed,
+	// rather than that the key is unknown.
 	AllowPlaintext bool
 	Headers        map[string]string
 	// CollectorUID is the account a unix endpoint's collector has to run

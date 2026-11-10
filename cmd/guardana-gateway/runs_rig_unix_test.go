@@ -177,7 +177,7 @@ evidence:
   dir: spool
 export:
   endpoint: %s
-  allow_plaintext: true
+  collector_uid: %s
   in_flight: 1
   linger: 5ms
 upstreams:
@@ -187,7 +187,7 @@ upstreams:
     environment: dev
 overrides:
 `, rp.project, runsTenant, kind, address, runsPrincipal, runsAgent, health, fixtureKeyID, fixturePublicKey(),
-		freshnessKeys(rp.t, rp.dir, "runs-fixture"), strconv.Quote(rp.runs), rp.collector.url, rp.up.url, runsTenant)
+		freshnessKeys(rp.t, rp.dir, "runs-fixture"), strconv.Quote(rp.runs), rp.collector.url, ownUID(), rp.up.url, runsTenant)
 	classes := map[string]string{
 		toolReadTicket: "    effect: READ\n    resource_type: ticket\n    resource_from: /id\n    trust_zone: TRUSTED_INTERNAL\n" +
 			"    returns:\n      trust: UNTRUSTED_EXTERNAL\n      sensitivity: CONFIDENTIAL\n",

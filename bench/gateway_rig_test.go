@@ -9,7 +9,7 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -206,19 +206,31 @@ func (r *rig) exporterFailure() error {
 }
 
 // collector accepts every OTLP request after reading its body, which an
-// empty 200 says, and does nothing else.
+// empty 200 says, and does nothing else. It serves a unix socket as this
+// account, as a plane's collector on its own host does, and returns the
+// endpoint.
 func (r *rig) collector(tb testing.TB) string {
 	tb.Helper()
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	dir, err := os.MkdirTemp("", "bx")
+	if err != nil {
+		tb.Fatal(err)
+	}
+	tb.Cleanup(func() { _ = os.RemoveAll(dir) })
+	ln, err := net.Listen("unix", filepath.Join(dir, "c.sock"))
+	if err != nil {
+		tb.Fatal(err)
+	}
+	srv := &http.Server{ReadHeaderTimeout: 10 * time.Second, Handler: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if _, err := io.Copy(io.Discard, req.Body); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		r.requests.Add(1)
 		w.WriteHeader(http.StatusOK)
-	}))
-	tb.Cleanup(ts.Close)
-	return ts.URL + "/v1/logs"
+	})}
+	go func() { _ = srv.Serve(ln) }()
+	tb.Cleanup(func() { _ = srv.Close() })
+	return "unix://" + filepath.Join(dir, "c.sock")
 }
 
 // newRig builds the plane under mode, starts the exporter with the
@@ -315,11 +327,12 @@ func newRig(tb testing.TB, mode fsyncMode, record bool) *rig {
 	}
 	// MaxBatch and Linger are left zero, which is the exporter's defaults;
 	// InFlight and Timeout are the gateway configuration's.
+	uid := uint32(os.Geteuid()) //nolint:gosec // G115: a uid fits 32 bits
 	exporter, err := otel.New(otel.Options{
-		Endpoint:       r.collector(tb),
-		AllowPlaintext: true,
-		InFlight:       4,
-		Timeout:        10 * time.Second,
+		Endpoint:     r.collector(tb),
+		CollectorUID: &uid,
+		InFlight:     4,
+		Timeout:      10 * time.Second,
 	}, reader)
 	if err != nil {
 		tb.Fatalf("otel.New: %v", err)

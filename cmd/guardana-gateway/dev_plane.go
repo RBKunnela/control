@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/guardana/control/adapters/otel"
@@ -35,6 +36,14 @@ const (
 	statePause     = "pause/pause.json"
 	statePauseFlr  = "pausefloor"
 	stateSettings  = "settings.txt"
+)
+
+// A dev plane's collector socket is in a directory of its own under the
+// system's temporary directory, apart from the state, whose path grows with
+// --state and a scenario's name while a socket's path is bounded.
+const (
+	collectDirPrefix = "gd"
+	collectSocket    = "c.sock"
 )
 
 // devState is a directory dev created for one plane, holding everything
@@ -101,6 +110,8 @@ type devPlane struct {
 	// silent is the decision point's listener, which nothing ever accepts on,
 	// or nil.
 	silent net.Listener
+	// collectDir holds the collector's socket, and goes when the plane does.
+	collectDir string
 }
 
 // devInputs is what every plane of one dev run is made from.
@@ -120,7 +131,9 @@ func newKey() (ed25519.PrivateKey, error) {
 // checkDemo refuses the demo's configuration before anything is created or
 // bound, holding it to the layer a plane under dir would get. With no dir it
 // stands in a path nothing creates, named at random so that no other account
-// can plant a link there ahead of dev.
+// can plant a link there ahead of dev. The collector socket stands in a path
+// as long as the longest os.MkdirTemp draws for it, so its bound is held as
+// dev's own socket will be.
 func checkDemo(in devInputs, dir string) error {
 	bundleKey, err := newKey()
 	if err != nil {
@@ -141,9 +154,14 @@ func checkDemo(in devInputs, dir string) error {
 		silent = unbound
 	}
 	keys := devKeys{bundle: publicHalf(bundleKey), freshness: publicHalf(freshnessKey)}
-	_, err = resolveDemo(in.config, newLayer(devState{dir: dir}, keys, unbound, unbound, unbound, newToken(), silent))
+	socket := filepath.Join(os.TempDir(), collectDirPrefix+strings.Repeat("0", maxTempSuffix), collectSocket)
+	_, err = resolveDemo(in.config, newLayer(devState{dir: dir}, keys, unbound, unbound, socket, newToken(), silent))
 	return err
 }
+
+// maxTempSuffix is the longest name os.MkdirTemp puts after its pattern, a
+// 32-bit number in decimal.
+const maxTempSuffix = 10
 
 // newToken is a credential drawn for one dev plane and its collector, held
 // in this process only.
@@ -168,13 +186,14 @@ func checkSignable(document []byte) error {
 }
 
 // startDevPlane lays out a new state under dir, signs the document into it
-// under a key that lives only here, binds the loopback for the collector, the
-// agents, the health answers and a silent decision point when asked, and
-// starts the collector and then the plane the way run starts one. The silent
-// listener is never accepted on: the kernel completes a connection into its
-// backlog, the question is written and no answer ever comes, so the plane's
-// ask ends on its own deadline. Whatever it made is released when it refuses; the
-// directory stays, as the record of what was tried.
+// under a key that lives only here, binds the collector's socket and, on the
+// loopback, the agents, the health answers and a silent decision
+// point when asked, and starts the collector and then the plane the way run
+// starts one. The silent listener is never accepted on: the kernel completes
+// a connection into its backlog, the question is written and no answer ever
+// comes, so the plane's ask ends on its own deadline. Whatever it made is
+// released when it refuses; the directory stays, as the record of what was
+// tried.
 func startDevPlane(ctx context.Context, in devInputs, dir string, log io.Writer) (_ *devPlane, err error) {
 	st, err := makeState(dir)
 	if err != nil {
@@ -188,13 +207,14 @@ func startDevPlane(ctx context.Context, in devInputs, dir string, log io.Writer)
 	defer func() {
 		if err != nil {
 			d.signer.halt()
+			err = errors.Join(err, os.RemoveAll(d.collectDir))
 		}
 	}()
 	if err := d.layOut(ctx, in.control); err != nil {
 		return nil, err
 	}
-	listeners, err := bindLoopback(ctx, devListeners(in.silent))
-	if err != nil {
+	var listeners []net.Listener
+	if d.collectDir, listeners, err = bindDevListeners(ctx, in.silent); err != nil {
 		return nil, err
 	}
 	addr := func(i int) string { return listeners[i].Addr().String() }
@@ -239,6 +259,24 @@ func startDevPlane(ctx context.Context, in devInputs, dir string, log io.Writer)
 	return d, nil
 }
 
+// bindDevListeners makes the collector's socket directory and binds, first,
+// the collector's socket in it, then the loopback listeners the plane takes.
+// On a refusal it leaves nothing bound and no directory behind.
+func bindDevListeners(ctx context.Context, silent bool) (dir string, _ []net.Listener, err error) {
+	if dir, err = os.MkdirTemp("", collectDirPrefix); err != nil {
+		return "", nil, fmt.Errorf("making the collector's socket directory: %w", err)
+	}
+	socket, err := listenCollectSocket(filepath.Join(dir, collectSocket))
+	if err != nil {
+		return "", nil, errors.Join(fmt.Errorf("binding the collector's socket: %w", err), os.RemoveAll(dir))
+	}
+	listeners, err := bindLoopback(ctx, devListeners(silent)-1)
+	if err != nil {
+		return "", nil, errors.Join(err, socket.Close(), os.RemoveAll(dir))
+	}
+	return dir, append([]net.Listener{socket}, listeners...), nil
+}
+
 // configure resolves the demo's configuration under the layer, lays out the
 // signed authority for its tenant and project, sets how often the statement
 // is renewed for it, and writes the settings it resolved.
@@ -257,8 +295,9 @@ func (d *devPlane) configure(ctx context.Context, in devInputs, l devLayer) erro
 	return writeSettings(d.state.path(stateSettings), cfg)
 }
 
-// devListeners is how many listeners a dev plane takes: the collector's, the
-// agents', the health answers' and, when asked, a silent decision point's.
+// devListeners is how many listeners a dev plane takes: the collector's
+// socket, the agents', the health answers' and, when asked, a silent decision
+// point's.
 func devListeners(silent bool) int {
 	if silent {
 		return 4
@@ -355,7 +394,7 @@ func (d *devPlane) halt() (left int64, failed error) {
 	}
 	collector := d.coll.stop()
 	closed := d.plane.close()
-	return left, errors.Join(failed, err, collector, closed, d.plane.lostClosings(), silent)
+	return left, errors.Join(failed, err, collector, os.RemoveAll(d.collectDir), closed, d.plane.lostClosings(), silent)
 }
 
 // silentAdvice says what to change when the plane refuses the decision point

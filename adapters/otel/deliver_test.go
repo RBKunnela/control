@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -104,14 +105,15 @@ func TestATimeoutIsRetried(t *testing.T) {
 }
 
 // TestARedirectIsNeverFollowed: a collector that points elsewhere has not
-// accepted anything, and the place it points to sees nothing, with the
-// exporter's own client and with a caller's, which is left as it was.
+// accepted anything, and the place it points to sees nothing, with either of
+// two callers' clients, the second of which is checked to be left as it was.
+// The exporter's own client is a unix endpoint's, tested there.
 func TestARedirectIsNeverFollowed(t *testing.T) {
 	for _, status := range []int{http.StatusFound, http.StatusTemporaryRedirect} {
 		for _, own := range []bool{true, false} {
 			t.Run(http.StatusText(status), func(t *testing.T) {
 				var elsewhere atomic.Int32
-				b := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				b := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 					elsewhere.Add(1)
 					w.WriteHeader(http.StatusOK)
 				}))
@@ -125,7 +127,7 @@ func TestARedirectIsNeverFollowed(t *testing.T) {
 				opts := fast(otel.Options{InFlight: 1})
 				var callers *http.Client
 				if !own {
-					callers = &http.Client{}
+					callers = &http.Client{Transport: a.srv.Client().Transport}
 					opts.Client = callers
 				}
 				e := newExporter(t, s, a, opts)
@@ -415,9 +417,8 @@ func TestLogsNeverCarryTheEndpointsSecrets(t *testing.T) {
 	s := openSpool(t, 1<<20)
 	mustAppend(t, s, event(1))
 	e, err := otel.New(fast(otel.Options{
-		Endpoint:       "http://collector-user:secret-password@" + addr + "/v1/logs/secret-path?token=secret-query",
-		AllowPlaintext: true,
-		InFlight:       1, Timeout: time.Second,
+		Endpoint: "https://collector-user:secret-password@" + addr + "/v1/logs/secret-path?token=secret-query",
+		InFlight: 1, Timeout: time.Second,
 		Logger: slog.New(slog.NewTextHandler(&logged, nil)),
 	}), reader(t, s))
 	if err != nil {
@@ -435,15 +436,21 @@ func TestLogsNeverCarryTheEndpointsSecrets(t *testing.T) {
 	}
 }
 
-// echoingCollector answers every request with a status line that is not one,
-// spelled from the request line and every header it was sent, and
-// returns its host:port.
-func echoingCollector(t *testing.T) string {
+// echoingCollector answers every request over TLS with a status line that is
+// not one, spelled from the request line and every header it was sent, and
+// returns its host:port and a client that trusts it.
+func echoingCollector(t *testing.T) (string, *http.Client) {
 	t.Helper()
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	certified := httptest.NewUnstartedServer(nil)
+	certified.StartTLS()
+	client := certified.Client()
+	tlsConfig := certified.TLS.Clone()
+	certified.Close()
+	inner, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
+	ln := tls.NewListener(inner, tlsConfig)
 	t.Cleanup(func() { _ = ln.Close() })
 	go func() {
 		for {
@@ -464,7 +471,7 @@ func echoingCollector(t *testing.T) string {
 			}()
 		}
 	}()
-	return ln.Addr().String()
+	return ln.Addr().String(), client
 }
 
 // TestLogsNeverCarryWhatTheCollectorEchoes: a collector that answers with a
@@ -474,15 +481,15 @@ func echoingCollector(t *testing.T) string {
 // neither the query, the configured header nor the userinfo as the client
 // encodes it.
 func TestLogsNeverCarryWhatTheCollectorEchoes(t *testing.T) {
-	addr := echoingCollector(t)
+	addr, client := echoingCollector(t)
 	var logged bytes.Buffer
 	s := openSpool(t, 1<<20)
 	mustAppend(t, s, event(1))
 	e, err := otel.New(fast(otel.Options{
-		Endpoint:       "http://collector-user:userinfo-marker@" + addr + "/v1/logs?token=query-marker",
-		Headers:        map[string]string{"X-Collector-Key": "header-marker"},
-		AllowPlaintext: true,
-		InFlight:       1, Timeout: time.Second,
+		Endpoint: "https://collector-user:userinfo-marker@" + addr + "/v1/logs?token=query-marker",
+		Headers:  map[string]string{"X-Collector-Key": "header-marker"},
+		Client:   client,
+		InFlight: 1, Timeout: time.Second,
 		Logger: slog.New(slog.NewTextHandler(&logged, nil)),
 	}), reader(t, s))
 	if err != nil {
@@ -490,7 +497,7 @@ func TestLogsNeverCarryWhatTheCollectorEchoes(t *testing.T) {
 	}
 	runUntil(t, e, func() bool { return e.Stats().RetriedTransport >= 2 })
 	out := logged.String()
-	if want := "Post http://" + addr + ": " + otel.CauseWithheld; !strings.Contains(out, want) {
+	if want := "Post https://" + addr + ": " + otel.CauseWithheld; !strings.Contains(out, want) {
 		t.Errorf("the log does not name the operation, the endpoint and the fixed cause %q: %q", want, out)
 	}
 	basic := base64.StdEncoding.EncodeToString([]byte("collector-user:userinfo-marker"))
@@ -635,53 +642,35 @@ func TestAnAnswerIsTheProtocolsOrItIsNotAnAnswer(t *testing.T) {
 	}
 }
 
-// TestAPlaintextCollectorNeedsTheRiskSetting: over plaintext anyone on the
-// path can forge the empty 200 that releases the evidence, so an http endpoint
-// is refused unless the operator named the risk.
-func TestAPlaintextCollectorNeedsTheRiskSetting(t *testing.T) {
+// TestAPlaintextCollectorIsRefused: over plaintext anyone on the path can
+// read the headers and forge the empty 200 that releases the evidence, so an
+// http endpoint is refused whatever its host, and the refusal names the
+// release and quotes nothing of the URL; https is taken.
+func TestAPlaintextCollectorIsRefused(t *testing.T) {
 	r := reader(t, openSpool(t, 1<<20))
-	plain := otel.Options{Endpoint: "http://127.0.0.1:4318/v1/logs", InFlight: 1, Timeout: time.Second,
-		Headers: map[string]string{"Authorization": "Bearer s3cret"}}
-	if e, err := otel.New(plain, r); e != nil || !errors.Is(err, otel.ErrInvalidOptions) {
-		t.Errorf("New over plaintext = %v, %v; want nil, ErrInvalidOptions", e, err)
-	}
-	plain.AllowPlaintext = true
-	if _, err := otel.New(plain, r); err != nil {
-		t.Errorf("New over plaintext with the risk setting = %v", err)
+	for _, endpoint := range []string{
+		"http://127.0.0.1:4318/v1/logs",
+		"http://[::1]:4318/v1/logs",
+		"http://localhost:4318/v1/logs",
+		"http://collector.example/v1/logs",
+		"HTTP://127.0.0.1:4318/v1/logs",
+		"http://secret-x@10.0.0.5:4318/v1/logs?token=secret-y",
+	} {
+		o := otel.Options{Endpoint: endpoint, InFlight: 1, Timeout: time.Second,
+			Headers: map[string]string{"Authorization": "Bearer s3cret"}}
+		e, err := otel.New(o, r)
+		if e != nil || !errors.Is(err, otel.ErrInvalidOptions) {
+			t.Errorf("New with %s = %v, %v; want nil, ErrInvalidOptions", endpoint, e, err)
+			continue
+		}
+		if msg := err.Error(); !strings.Contains(msg, "plaintext http, which was removed in 0.17") ||
+			strings.Contains(msg, "secret-") || strings.Contains(msg, "10.0.0.5") {
+			t.Errorf("the refusal of %s is %q", endpoint, msg)
+		}
 	}
 	secure := otel.Options{Endpoint: "https://collector.example:4318/v1/logs", InFlight: 1, Timeout: time.Second}
 	if _, err := otel.New(secure, r); err != nil {
 		t.Errorf("New over https = %v", err)
-	}
-}
-
-// TestAPlaintextCollectorIsOnTheLoopback: the risk setting admits plaintext
-// to a loopback IP literal and nowhere else, a name that resolves there
-// included.
-func TestAPlaintextCollectorIsOnTheLoopback(t *testing.T) {
-	r := reader(t, openSpool(t, 1<<20))
-	cases := map[string]bool{
-		"http://127.0.0.1:4318/v1/logs":    true,
-		"http://127.0.0.2:4318/v1/logs":    true,
-		"http://[::1]:4318/v1/logs":        true,
-		"http://localhost:4318/v1/logs":    false,
-		"http://10.0.0.5:4318/v1/logs":     false,
-		"http://collector.example/v1/logs": false,
-		"http://[::ffff:10.0.0.5]:4318/":   false,
-	}
-	for endpoint, admitted := range cases {
-		o := otel.Options{Endpoint: endpoint, AllowPlaintext: true, InFlight: 1, Timeout: time.Second}
-		_, err := otel.New(o, r)
-		switch {
-		case admitted && err != nil:
-			t.Errorf("New with %s = %v; want admitted", endpoint, err)
-		case !admitted && !errors.Is(err, otel.ErrInvalidOptions):
-			t.Errorf("New with %s = %v; want ErrInvalidOptions", endpoint, err)
-		}
-	}
-	o := otel.Options{Endpoint: "http://secret-x@10.0.0.5:4318/v1/logs", AllowPlaintext: true, InFlight: 1, Timeout: time.Second}
-	if _, err := otel.New(o, r); err == nil || strings.Contains(err.Error(), "secret-x") || strings.Contains(err.Error(), "10.0.0.5") {
-		t.Errorf("the refusal of a plaintext endpoint off the loopback quotes it: %v", err)
 	}
 }
 

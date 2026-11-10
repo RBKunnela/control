@@ -127,8 +127,9 @@ Nothing here is a security boundary yet.</p>
 <li><code>guardana-gateway</code> from a release archive, or built: <code>go build ./cmd/guardana-gateway</code>.</li>
 <li><code>guardana-control</code> where the policy is signed and on the plane's host, and a
 policy document (<a href="/docs/guides/write-and-test-a-policy">write-and-test-a-policy.md</a>).</li>
-<li>An OpenTelemetry collector that takes OTLP/HTTP logs in JSON: evidence
-nobody drains fills the spool, and material calls then block.</li>
+<li>An OpenTelemetry collector taking OTLP/HTTP JSON logs on a unix socket or
+over <code>https</code>: undrained evidence fills the spool, and material calls then
+block.</li>
 <li>To hold calls for a person: two directories the gateway does not create,
 for the approval records and the hold journal, neither the spool's nor
 inside the other.</li>

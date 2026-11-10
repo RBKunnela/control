@@ -18,6 +18,10 @@ the plane sends only to a peer of `export.collector_uid`, so it authenticates
 that collector; over TCP it still does not, and `doctor` warns of every TCP
 endpoint ([docs/status.md](../status.md)).
 
+Amended by [ADR-0080](0080-evidence-leaves-a-plane-over-a-unix-socket-or-tls.md):
+plaintext TCP is refused, `collect` listens on a unix socket only, and a
+collector on another host is reached over TLS.
+
 ## Context
 
 `collect` appended everything it received to one file that never rotated, and

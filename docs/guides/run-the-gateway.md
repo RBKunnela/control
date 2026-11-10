@@ -23,8 +23,9 @@ Nothing here is a security boundary yet.
 - `guardana-gateway` from a release archive, or built: `go build ./cmd/guardana-gateway`.
 - `guardana-control` where the policy is signed and on the plane's host, and a
   policy document ([write-and-test-a-policy.md](write-and-test-a-policy.md)).
-- An OpenTelemetry collector that takes OTLP/HTTP logs in JSON: evidence
-  nobody drains fills the spool, and material calls then block.
+- An OpenTelemetry collector taking OTLP/HTTP JSON logs on a unix socket or
+  over `https`: undrained evidence fills the spool, and material calls then
+  block.
 - To hold calls for a person: two directories the gateway does not create,
   for the approval records and the hold journal, neither the spool's nor
   inside the other.

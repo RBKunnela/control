@@ -138,7 +138,7 @@ var answers = map[string]answer{
 		status:  exitFail,
 	},
 	"collect": {
-		bare: brand.Gateway + " collect: --listen names the loopback address or the unix socket to listen on\n",
+		bare: brand.Gateway + " collect: --listen names the unix socket to listen on\n",
 		refused: func(missing string) []string {
 			return []string{"--listen", "192.0.2.1:0", "--dir", missing, "--tenant", "t", "--project", "p", "--credential-file", missing}
 		},

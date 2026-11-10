@@ -254,7 +254,7 @@ to the plane, no field of the contract holds it, and no adapter reads it.</p>
 <tr>
 <td>the collector at <code>export.endpoint</code></td>
 <td>every event, as the body of one OTLP log record, with its ids, kind and mode as attributes</td>
-<td>whoever runs that collector and wherever it sends them; <code>https</code>, or plaintext to a loopback IP literal under <code>export.allow_plaintext</code></td>
+<td>whoever runs that collector and wherever it sends them; <code>https</code>, or a unix socket whose peer is <code>export.collector_uid</code>; never plaintext</td>
 </tr>
 <tr>
 <td>the trail segments <code>collect</code> writes</td>

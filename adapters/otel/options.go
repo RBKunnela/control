@@ -3,7 +3,6 @@ package otel
 import (
 	"fmt"
 	"log/slog"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -12,22 +11,17 @@ import (
 
 // Options configure an exporter once, at New.
 type Options struct {
-	// Endpoint is the collector's OTLP/HTTP logs URL. It has to be https,
-	// unless AllowPlaintext says otherwise, or unix:///path, a Unix socket
-	// the logs are posted to at UnixLogsPath. Its userinfo and query are sent
-	// and never logged.
+	// Endpoint is the collector's OTLP/HTTP logs URL: https, or
+	// unix:///path, a Unix socket the logs are posted to at UnixLogsPath. An
+	// http endpoint is refused, since anyone on its path could read the
+	// headers and forge the acceptance that releases the evidence. Its
+	// userinfo and query are sent and never logged.
 	Endpoint string
 	// CollectorUID is the account a unix endpoint's collector runs as, which
 	// such an endpoint requires and any other refuses. The exporter reads the
 	// peer's account on every connection it opens and sends nothing, the
 	// headers included, on one of another account.
 	CollectorUID *uint32
-	// AllowPlaintext lets the endpoint be http. It is the named risk of a
-	// collector reached over plaintext: anyone on the path can forge the
-	// acceptance that releases the evidence, and the headers travel in the
-	// clear. A configuration naming an http endpoint has to set it, and the
-	// endpoint's host has to be a loopback IP literal.
-	AllowPlaintext bool
 	// Headers go on every request, for the collector's authentication. A name
 	// has to be an HTTP token and a value free of CR, LF and NUL.
 	Headers map[string]string
@@ -112,9 +106,8 @@ func (o Options) check() (*url.URL, error) {
 	return u, checkHeaders(o.Headers)
 }
 
-// endpoint checks the collector's URL: http(s) with a host, and plaintext only
-// under the risk setting. Its refusals quote nothing of the URL, which may
-// carry a credential.
+// endpoint checks the collector's URL: https with a host, or a unix socket.
+// Its refusals quote nothing of the URL, which may carry a credential.
 func (o Options) endpoint() (*url.URL, error) {
 	u, err := url.Parse(o.Endpoint)
 	switch {
@@ -124,21 +117,12 @@ func (o Options) endpoint() (*url.URL, error) {
 		return u, o.checkUnix(u)
 	case o.CollectorUID != nil:
 		return nil, fmt.Errorf("%w: CollectorUID is set for an endpoint that is not a unix socket", ErrInvalidOptions)
-	case (u.Scheme != "http" && u.Scheme != "https") || u.Host == "":
-		return nil, fmt.Errorf("%w: the endpoint is not an http(s) URL with a host", ErrInvalidOptions)
-	case u.Scheme == "http" && !o.AllowPlaintext:
-		return nil, fmt.Errorf("%w: the endpoint is plaintext and AllowPlaintext is not set", ErrInvalidOptions)
-	case u.Scheme == "http" && !isLoopback(u.Hostname()):
-		return nil, fmt.Errorf("%w: a plaintext endpoint has to be a loopback IP literal", ErrInvalidOptions)
+	case u.Scheme == "http":
+		return nil, fmt.Errorf("%w: the endpoint is plaintext http, which was removed in 0.17; use https, or a unix socket with CollectorUID", ErrInvalidOptions)
+	case u.Scheme != "https" || u.Host == "":
+		return nil, fmt.Errorf("%w: the endpoint is not an https URL with a host", ErrInvalidOptions)
 	}
 	return u, nil
-}
-
-// isLoopback reports whether host is a loopback IP literal. A name is not,
-// whatever it resolves to.
-func isLoopback(host string) bool {
-	ip := net.ParseIP(host)
-	return ip != nil && ip.IsLoopback()
 }
 
 // checkHeaders refuses a name that is not an HTTP token and a value that

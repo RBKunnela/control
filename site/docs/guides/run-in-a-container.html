@@ -144,9 +144,10 @@ spool. A relative path resolves against the configuration's directory,
 which is mounted read-only.</li>
 <li>Upstream addresses the container can reach. A <code>command</code> upstream has
 nothing to run in this image.</li>
-<li>The collector at an <code>https</code> endpoint. A plaintext export is admitted only
-to a loopback IP literal, which here is the container itself, and
-<code>doctor</code> warns of any TCP endpoint, since TCP export is removed in 0.17.</li>
+<li>The collector at an <code>https</code> endpoint, which reaches it off the host. An
+<code>http</code> endpoint is refused, since plaintext export was removed in 0.17; a
+<code>unix:///path</code> one needs the collector's socket mounted into the
+container and its account named by <code>export.collector_uid</code>.</li>
 <li><code>policy.state_dir: /var/lib/guardana/floors</code>, a volume that outlives the
 container, beside the spool and the approvals directory. Make it on the
 host with <code>guardana-control policy state init --kind plane --bundle-id &lt;bundle id&gt; floors</code>, then <code>chown -R 65532 floors</code>: the plane refuses a floor directory another user

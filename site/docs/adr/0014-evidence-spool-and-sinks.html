@@ -119,6 +119,9 @@ Date: 2026-09-19</p>
 <p>Builds on <a href="/docs/adr/0004-evidence-and-privacy-defaults">ADR-0004</a>,
 <a href="/docs/adr/0007-repository-layout-and-dependency-rule">ADR-0007</a> and
 <a href="/docs/adr/0013-mcp-interception-approvals-and-modes">ADR-0013</a>.</p>
+<p>Amended by <a href="/docs/adr/0080-evidence-leaves-a-plane-over-a-unix-socket-or-tls">ADR-0080</a>:
+the exporter sends to a unix socket whose peer is <code>export.collector_uid</code>, or
+over TLS; a plaintext <code>http</code> endpoint is refused.</p>
 <h2 id="context">Context</h2>
 <p>ADR-0004 puts every record in a local spool first and exports from there, so
 that an exporter outage never reaches the request path and the loss an outage

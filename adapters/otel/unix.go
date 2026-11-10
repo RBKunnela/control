@@ -41,9 +41,8 @@ func (p *peerRefusal) Error() string {
 }
 
 // checkUnix refuses a unix endpoint that is anything but an absolute, clean
-// socket path, one without the collector's account, one under the plaintext
-// setting, and one beside a client of the caller's, whose transport would
-// dial without the peer check.
+// socket path, one without the collector's account, and one beside a client
+// of the caller's, whose transport would dial without the peer check.
 func (o Options) checkUnix(u *url.URL) error {
 	switch {
 	case u.Host != "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || u.Opaque != "" ||
@@ -51,8 +50,6 @@ func (o Options) checkUnix(u *url.URL) error {
 		return fmt.Errorf("%w: a unix endpoint is unix:// followed by an absolute, clean socket path", ErrInvalidOptions)
 	case o.CollectorUID == nil:
 		return fmt.Errorf("%w: a unix endpoint needs CollectorUID", ErrInvalidOptions)
-	case o.AllowPlaintext:
-		return fmt.Errorf("%w: AllowPlaintext is set for a unix endpoint, where it applies to nothing", ErrInvalidOptions)
 	case o.Client != nil:
 		return fmt.Errorf("%w: a unix endpoint is dialled by the exporter's own transport, and a Client is given", ErrInvalidOptions)
 	}

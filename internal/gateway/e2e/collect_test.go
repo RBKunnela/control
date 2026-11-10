@@ -3,14 +3,17 @@ package e2e_test
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"io"
 	"log/slog"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -30,8 +33,18 @@ const denyMail = `{"id":"deny-mail","effect":"DENY","when":{"action":{"effect":[
 // the exporters under test send.
 var collectorToken = strings.Repeat("e", otel.MinCredentialBytes)
 
+// collectorTLS is the certificate httptest serves with and a client that
+// trusts it: a plane exports over no plaintext, so the collectors here serve
+// TLS.
+var collectorTLS = sync.OnceValues(func() (*tls.Config, *http.Client) {
+	srv := httptest.NewUnstartedServer(nil)
+	srv.StartTLS()
+	defer srv.Close()
+	return srv.TLS.Clone(), srv.Client()
+})
+
 // fileCollector is the collector this repository ships, in-process: the OTLP
-// receiver over a trail file, on a loopback port.
+// receiver over a trail file, on a loopback port over TLS.
 type fileCollector struct {
 	addr string
 	srv  *http.Server
@@ -59,11 +72,13 @@ func serveCollector(t *testing.T, sink otel.Sink, w io.Closer, addr string) *fil
 	if err != nil {
 		t.Fatal(err)
 	}
-	ln, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", addr)
+	raw, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", addr)
 	if err != nil {
 		_ = w.Close()
 		t.Fatalf("listening on %s: %v", addr, err)
 	}
+	config, _ := collectorTLS()
+	ln := tls.NewListener(raw, config)
 	mux := http.NewServeMux()
 	mux.Handle("/v1/logs", receiver)
 	c := &fileCollector{addr: ln.Addr().String(), srv: &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second}, w: w}
@@ -72,7 +87,7 @@ func serveCollector(t *testing.T, sink otel.Sink, w io.Closer, addr string) *fil
 	return c
 }
 
-func (c *fileCollector) url() string { return "http://" + c.addr + "/v1/logs" }
+func (c *fileCollector) url() string { return "https://" + c.addr + "/v1/logs" }
 
 // stop closes the listener and every connection, then the file.
 func (c *fileCollector) stop() {
@@ -95,8 +110,9 @@ func exportWith(t *testing.T, p *plane, url, authorization string) *otel.Exporte
 	if err != nil {
 		t.Fatalf("spool.Reader: %v", err)
 	}
+	_, client := collectorTLS()
 	exporter, err := otel.New(otel.Options{
-		Endpoint: url, AllowPlaintext: true, InFlight: 2, Timeout: 2 * time.Second, MaxBatch: 8,
+		Endpoint: url, Client: client, InFlight: 2, Timeout: 2 * time.Second, MaxBatch: 8,
 		Linger: 10 * time.Millisecond, Backoff: 20 * time.Millisecond, MaxBackoff: 40 * time.Millisecond,
 		Logger: slog.New(slog.DiscardHandler), Headers: map[string]string{"Authorization": authorization},
 	}, reader)

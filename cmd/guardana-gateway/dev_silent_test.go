@@ -112,7 +112,7 @@ func resolveWith(t *testing.T, config, silent string) *gatewayconfig.Config {
 	t.Helper()
 	keys := devKeys{bundle: publicHalf(seededKey(31)), freshness: publicHalf(seededKey(32))}
 	st := devState{dir: filepath.Join(t.TempDir(), "state")}
-	cfg, err := resolveDemo(config, newLayer(st, keys, "127.0.0.1:1", "127.0.0.1:2", "127.0.0.1:3", newToken(), silent))
+	cfg, err := resolveDemo(config, newLayer(st, keys, "127.0.0.1:1", "127.0.0.1:2", "/run/dev/c.sock", newToken(), silent))
 	if err != nil {
 		t.Fatal(err)
 	}

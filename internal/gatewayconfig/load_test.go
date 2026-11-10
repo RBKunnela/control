@@ -48,8 +48,7 @@ evidence:
   dir: spool
 
 export:
-  endpoint: http://127.0.0.1:4318/v1/logs
-  allow_plaintext: true
+  endpoint: https://127.0.0.1:4318/v1/logs
 
 upstreams:
   - name: orders
@@ -126,7 +125,7 @@ func load(t *testing.T, path string) *Config {
 // says nothing about them runs with, as literals: a default read from the table
 // the loader uses would test nothing.
 func TestDefaultsStandWhereTheFileIsSilent(t *testing.T) {
-	cfg := load(t, writeDocument(t, without(t, "  allow_plaintext: true")))
+	cfg := load(t, writeDocument(t, document))
 	for _, want := range []struct {
 		path string
 		got  string
@@ -207,8 +206,8 @@ func TestSourcesNameWhatSetEachKey(t *testing.T) {
 	if _, ok := sources["health.address"]; ok {
 		t.Error("health.address stands at its default and has a source")
 	}
-	if len(sources) != 27 {
-		t.Errorf("%d keys have a source, want the document's 26 and the variable", len(sources))
+	if len(sources) != 26 {
+		t.Errorf("%d keys have a source, want the document's 25 and the variable", len(sources))
 	}
 	sources["mode"] = "elsewhere"
 	if cfg.Sources()["mode"] == "elsewhere" {

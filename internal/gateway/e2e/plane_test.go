@@ -330,14 +330,14 @@ func (p *plane) export(t *testing.T, o options) {
 		t.Fatalf("spool.Reader: %v", err)
 	}
 	exporter, err := otel.New(otel.Options{
-		Endpoint:       p.collector.url,
-		AllowPlaintext: true,
-		InFlight:       2,
-		Timeout:        2 * time.Second,
-		MaxBatch:       8,
-		Linger:         10 * time.Millisecond,
-		Backoff:        20 * time.Millisecond,
-		MaxBackoff:     40 * time.Millisecond,
+		Endpoint:   p.collector.url,
+		Client:     p.collector.client,
+		InFlight:   2,
+		Timeout:    2 * time.Second,
+		MaxBatch:   8,
+		Linger:     10 * time.Millisecond,
+		Backoff:    20 * time.Millisecond,
+		MaxBackoff: 40 * time.Millisecond,
 	}, reader)
 	if err != nil {
 		t.Fatalf("otel.New: %v", err)

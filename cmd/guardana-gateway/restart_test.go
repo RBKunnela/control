@@ -129,7 +129,7 @@ func (tr tree) approveConfiguration(t *testing.T, collector string) *counted {
 	setEnv(t, "upstreams.0.endpoint", up.url)
 	setEnv(t, "upstreams.0.tenant_id", "acme")
 	setEnv(t, "upstreams.0.environment", "dev")
-	setEnv(t, "export.endpoint", collector)
+	exportTo(t, collector)
 	setEnv(t, "export.in_flight", "1")
 	setEnv(t, "listener.address", "127.0.0.1:0")
 	setEnv(t, "health.address", "")
@@ -344,6 +344,7 @@ func answerFromAt(t *testing.T, dir, approvalID string, wantPlane bool, at time.
 // acknowledged and unlinked: nothing a trail needs can be read back off the
 // spool afterwards.
 type acceptingCollector struct {
+	// url is the unix:// endpoint it serves, as this account.
 	url string
 
 	mu    sync.Mutex
@@ -353,9 +354,7 @@ type acceptingCollector struct {
 func newAcceptingCollector(t *testing.T) *acceptingCollector {
 	t.Helper()
 	c := &acceptingCollector{}
-	ts := httptest.NewServer(http.HandlerFunc(c.serve))
-	t.Cleanup(ts.Close)
-	c.url = ts.URL + "/v1/logs"
+	c.url = serveUnix(t, http.HandlerFunc(c.serve))
 	return c
 }
 

@@ -128,9 +128,8 @@ does under its <code>0.2</code> procedure. Every command here is <code>experimen
 <li>A checkout of this repository on a Unix-like system, and the Go toolchain
 <code>go.mod</code> names, used once to build the binaries. Nothing after that needs Go.</li>
 <li><code>curl</code> and <code>jq</code>.</li>
-<li>Ports 8080 and 8081 (the plane) and 4318 (the collector) free on
-127.0.0.1. If one is taken, change it in <code>plane.yaml</code> and in the commands
-below.</li>
+<li>Ports 8080 and 8081 (the plane) free on 127.0.0.1. If one is taken,
+change it in <code>plane.yaml</code> and in the commands below.</li>
 </ul>
 <h2 id="steps">Steps</h2>
 <h3 id="1-lay-out-the-example">1. Lay out the example</h3>
@@ -173,8 +172,11 @@ guardana-control policy state init --kind plane --bundle-id refund-supervision s
 </code></pre>
 <p>In <code>plane.yaml</code>, replace the four <code>..._FROM_KEYGEN</code> values with the
 <code>key_id</code> and <code>public_key</code> lines keygen printed for <code>keys/bundle</code> and
-<code>keys/freshness</code>. Make the collector's credential, and replace
-<code>COLLECTOR_CREDENTIAL_FROM_FILE</code> with the content of <code>state/collector.credential</code>:</p>
+<code>keys/freshness</code>, <code>/absolute/path/to/collect.sock</code> with
+<code>$WORK/examples/refund-supervision/state/collect.sock</code> spelled out, and
+<code>COLLECTOR_UID_FROM_ID</code> with what <code>id -u</code> prints. Make the collector's
+credential, and replace <code>COLLECTOR_CREDENTIAL_FROM_FILE</code> with the content of
+<code>state/collector.credential</code>:</p>
 <pre><code>(umask 077 &amp;&amp; od -An -N32 -tx1 /dev/urandom | tr -d &#39; \n&#39; &gt; state/collector.credential)
 </code></pre>
 <h3 id="3-sign-the-route-and-start-the-stop-list">3. Sign the route and start the stop list</h3>
@@ -198,11 +200,11 @@ route_id: refunds
 <h3 id="4-start-the-collector-and-the-plane">4. Start the collector and the plane</h3>
 <p>Work in <code>$WORK/examples/refund-supervision</code> from here on. Start the collector
 in a terminal of its own:</p>
-<pre><code>guardana-gateway collect --listen 127.0.0.1:4318 --dir trail/plane --tenant acme --project refunds \
+<pre><code>guardana-gateway collect --listen &#34;unix://$PWD/state/collect.sock&#34; --dir trail/plane --tenant acme --project refunds \
   --credential-file state/collector.credential
 </code></pre>
-<p><code>doctor</code> warns of this TCP endpoint, since TCP export is removed in 0.17; a unix
-socket is <a href="/docs/guides/watch-a-plane-without-a-collector">watch a plane without a collector</a>.
+<p>The collector's page is
+<a href="/docs/guides/watch-a-plane-without-a-collector">watch a plane without a collector</a>.
 Open both runs as step 5 shows first. Then check the configuration; every
 check line should begin <code>ok</code>:</p>
 <pre><code>$ guardana-gateway doctor --config plane.yaml

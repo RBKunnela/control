@@ -64,8 +64,10 @@ every other authority refuses `reaction.stops_floor_dir`; a route needs `runs.di
 hold or sit inside the runs directory, the spool, the approvals directory, the hold
 journal, the policy, route, stop list or pause floor directory or the pause file's
 directory, compared through
-symbolic links too. A `unix:///path` `export.endpoint` needs `export.collector_uid`
-and refuses `export.allow_plaintext`, any other refuses `export.collector_uid`, and
+symbolic links too. `export.endpoint` is `unix:///path`, at most 103 bytes of path, or
+an `https` URL; an `http` one is refused, and so is `export.allow_plaintext: true`,
+since plaintext export was removed in 0.17. A unix endpoint needs
+`export.collector_uid`, any other refuses `export.collector_uid`, and
 `health.socket_uid` needs `health.socket`; a platform that cannot name a socket peer's
 account refuses both sockets. Every `pdp.` key is refused while `pdp.identifier` is empty,
 since it would apply to no decision point, and the identifier is written into every

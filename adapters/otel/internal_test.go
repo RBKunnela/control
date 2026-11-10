@@ -56,9 +56,15 @@ func spoolOf(t *testing.T, n int) (*spool.Spool, *spool.Reader, []spool.Cursor) 
 	return s, r, cursors
 }
 
-func exporterOver(t *testing.T, r *spool.Reader, endpoint string) *Exporter {
+// exporterOver is an exporter over r to srv, or to a TLS port nothing answers
+// on when srv is nil.
+func exporterOver(t *testing.T, r *spool.Reader, srv *httptest.Server) *Exporter {
 	t.Helper()
-	e, err := New(Options{Endpoint: endpoint, AllowPlaintext: true, InFlight: 1, Timeout: 2 * time.Second, Backoff: time.Millisecond,
+	endpoint, client := "https://127.0.0.1:1/v1/logs", (*http.Client)(nil)
+	if srv != nil {
+		endpoint, client = srv.URL, srv.Client()
+	}
+	e, err := New(Options{Endpoint: endpoint, Client: client, InFlight: 1, Timeout: 2 * time.Second, Backoff: time.Millisecond,
 		Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, r)
 	if err != nil {
 		t.Fatal(err)
@@ -71,7 +77,7 @@ func exporterOver(t *testing.T, r *spool.Reader, endpoint string) *Exporter {
 func TestARecordTheEncoderRefusesIsQuarantinedAtOnce(t *testing.T) {
 	var mu sync.Mutex
 	var bodies []string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		b := new(bytes.Buffer)
 		_, _ = b.ReadFrom(r.Body)
 		mu.Lock()
@@ -81,7 +87,7 @@ func TestARecordTheEncoderRefusesIsQuarantinedAtOnce(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 	s, r, _ := spoolOf(t, 3)
-	e := exporterOver(t, r, srv.URL)
+	e := exporterOver(t, r, srv)
 	e.encode = func(events []*controlv1.Event) ([]byte, error) {
 		for _, ev := range events {
 			if ev.GetEventId() == "evt-2" {
@@ -109,7 +115,7 @@ func TestARecordTheEncoderRefusesIsQuarantinedAtOnce(t *testing.T) {
 // acknowledged past a record that is neither exported nor kept.
 func TestAQuarantineThatFailsIsNotDelivered(t *testing.T) {
 	s, r, _ := spoolOf(t, 1)
-	e := exporterOver(t, r, "http://127.0.0.1:1/v1/logs")
+	e := exporterOver(t, r, nil)
 	e.encode = func([]*controlv1.Event) ([]byte, error) { return nil, errors.New("not encodable") }
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
@@ -131,7 +137,7 @@ func TestAcknowledgementStopsAtTheFirstBatchNotDelivered(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			s, r, cursors := spoolOf(t, 3)
-			e := exporterOver(t, r, "http://127.0.0.1:1/v1/logs")
+			e := exporterOver(t, r, nil)
 			queue := make(chan *pending, 3)
 			slots := make(chan struct{}, 3)
 			for i, err := range []error{nil, tc.cause, nil} {
@@ -167,13 +173,13 @@ func TestAcknowledgementStopsAtTheFirstBatchNotDelivered(t *testing.T) {
 // run, and the quarantine holds the record once.
 func TestAReplayAfterAQuarantineWritesNoSecondCopy(t *testing.T) {
 	var refusals atomic.Int32
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		refusals.Add(1)
 		w.WriteHeader(http.StatusBadRequest)
 	}))
 	t.Cleanup(srv.Close)
 	s, r, _ := spoolOf(t, 1)
-	e := exporterOver(t, r, srv.URL)
+	e := exporterOver(t, r, srv)
 	for range 2 {
 		if err := e.deliver(context.Background(), []*controlv1.Event{sample(1)}); err != nil {
 			t.Fatal(err)
@@ -199,7 +205,7 @@ func TestAReplayAfterAQuarantineWritesNoSecondCopy(t *testing.T) {
 // holds its lock and answers the count the release left.
 func TestStatsWaitsForAReleaseUnderWay(t *testing.T) {
 	_, r, cursors := spoolOf(t, 2)
-	e := exporterOver(t, r, "http://127.0.0.1:1/v1/logs")
+	e := exporterOver(t, r, nil)
 	e.ackMu.Lock()
 	got := make(chan uint64, 1)
 	go func() { got <- e.Stats().Acknowledged }()

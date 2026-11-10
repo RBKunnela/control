@@ -37,14 +37,16 @@ Before it creates or binds anything, dev refuses, with status 1:
   `policy.public_key`, `policy.statement_file`, `policy.state_dir`,
   `policy.freshness_key_id`, `policy.freshness_public_key`, `pause.file`,
   `pause.floor_dir`, `evidence.dir`, `export.endpoint`,
-  `export.allow_plaintext`, every `approvals`, `trust` and `operators` key and every `runs` key, since
+  `export.collector_uid`, every `approvals`, `trust` and `operators` key and every `runs` key, since
   dev serves local runs only, and with `--decision-point=silent` every `pdp`
   key;
 - a `stdio` listener, and any address that is not an IP literal on the
-  loopback, a host name included: its own listeners and collector, every
+  loopback, a host name included: its own listeners, every
   `upstreams[].endpoint`, and `pdp.identifier`, `pdp.evaluation_endpoint`
   and `pdp.proxy`;
-- a `guardana-control` beside it that is missing or of another version.
+- a `guardana-control` beside it that is missing or of another version;
+- a system temporary directory under which its collector's socket path would
+  pass 103 bytes, naming `TMPDIR`.
 
 Dev's own values reach the loader the way environment variables do, over
 the file, and nothing else parses the file. A key the file sets to the value
@@ -86,9 +88,11 @@ the budget or more is refused. The plane pins
 both public halves, and reads the bundle and the statement again every
 `policy.poll_interval`, which the configuration sets.
 
-Dev binds `127.0.0.1` at ports the system picks, for the collector, the
-agents and the health answers, and hands the bound sockets to the plane, so
-no port is chosen and then taken by someone else. With
+Dev binds its collector to a unix socket in a new directory of its own under
+the system's temporary directory, removed when dev stops, and the plane sends
+there only to a peer of dev's own account. It binds `127.0.0.1` at ports the
+system picks for the agents and the health answers, and hands the bound
+sockets to the plane, so no port is chosen and then taken by someone else. With
 `--decision-point=silent` it binds one more and never accepts on it: the
 plane's `pdp.identifier` names it, a question waits there unanswered until
 `pdp.timeout`, and a rule reading `external` is undetermined with

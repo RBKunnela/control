@@ -23,9 +23,8 @@ does under its `0.2` procedure. Every command here is `experimental`
 - A checkout of this repository on a Unix-like system, and the Go toolchain
   `go.mod` names, used once to build the binaries. Nothing after that needs Go.
 - `curl` and `jq`.
-- Ports 8080 and 8081 (the plane) and 4318 (the collector) free on
-  127.0.0.1. If one is taken, change it in `plane.yaml` and in the commands
-  below.
+- Ports 8080 and 8081 (the plane) free on 127.0.0.1. If one is taken,
+  change it in `plane.yaml` and in the commands below.
 
 ## Steps
 
@@ -81,8 +80,11 @@ guardana-control policy state init --kind plane --bundle-id refund-supervision s
 
 In `plane.yaml`, replace the four `..._FROM_KEYGEN` values with the
 `key_id` and `public_key` lines keygen printed for `keys/bundle` and
-`keys/freshness`. Make the collector's credential, and replace
-`COLLECTOR_CREDENTIAL_FROM_FILE` with the content of `state/collector.credential`:
+`keys/freshness`, `/absolute/path/to/collect.sock` with
+`$WORK/examples/refund-supervision/state/collect.sock` spelled out, and
+`COLLECTOR_UID_FROM_ID` with what `id -u` prints. Make the collector's
+credential, and replace `COLLECTOR_CREDENTIAL_FROM_FILE` with the content of
+`state/collector.credential`:
 
 ```
 (umask 077 && od -An -N32 -tx1 /dev/urandom | tr -d ' \n' > state/collector.credential)
@@ -116,12 +118,12 @@ Work in `$WORK/examples/refund-supervision` from here on. Start the collector
 in a terminal of its own:
 
 ```
-guardana-gateway collect --listen 127.0.0.1:4318 --dir trail/plane --tenant acme --project refunds \
+guardana-gateway collect --listen "unix://$PWD/state/collect.sock" --dir trail/plane --tenant acme --project refunds \
   --credential-file state/collector.credential
 ```
 
-`doctor` warns of this TCP endpoint, since TCP export is removed in 0.17; a unix
-socket is [watch a plane without a collector](watch-a-plane-without-a-collector.md).
+The collector's page is
+[watch a plane without a collector](watch-a-plane-without-a-collector.md).
 Open both runs as step 5 shows first. Then check the configuration; every
 check line should begin `ok`:
 

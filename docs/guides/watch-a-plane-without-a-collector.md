@@ -42,8 +42,8 @@ guardana-gateway collect --listen unix:///run/collector/logs.sock --dir trail/pl
   --tenant acme --project orders --credential-file collector.credential
 ```
 
-`--listen 127.0.0.1:4318` takes a loopback IP address instead, which `doctor`
-warns of: `0.0.0.0`, another host and `localhost` are refused.
+`--listen` takes a unix socket only: a TCP address was removed in 0.17
+([ADR-0080](../adr/0080-evidence-leaves-a-plane-over-a-unix-socket-or-tls.md)).
 It prints where it listens, the directory and the plane's keys. It runs until Ctrl-C or `SIGTERM`, and waits up to
 ten seconds for the requests in flight. One collect holds a directory at a
 time; a second one is refused.
@@ -88,9 +88,8 @@ export GUARDANA_CONTROL_EXPORT_HEADERS_AUTHORIZATION="Bearer $(cat collector.cre
 guardana-gateway run --config plane.yaml
 ```
 
-Over TCP, `endpoint: http://127.0.0.1:4318/v1/logs` needs
-`allow_plaintext: true`, the named risk of an unencrypted endpoint. The header's
-value is a credential and is never printed. A plane sending no credential or
+An `http://` endpoint is refused at load; a collector on another host is
+reached over `https`. The header's value is a credential and is never printed. A plane sending no credential or
 another one is answered 401, sends again, and blocks its material calls once
 its spool is full; collect logs the first refusal, then a count once a
 minute.
@@ -165,9 +164,8 @@ The live segment is never pruned.
   write evidence into the trail, including a chain made up to pass the check.
 - An event sent again after its segment was pruned is written again, and a
   trail whose first events were pruned fails the chain check.
-- Over TCP, the plane's next retry sends the token in plaintext to whoever
-  binds collect's loopback port first, before collect is up; TCP export is
-  removed in 0.17. A socket's peer must be `export.collector_uid`.
+- The plane sends the token only to a socket peer of `export.collector_uid`;
+  any process of that account can take it.
 - At 10,000 sealed segments a request that needs a seal is answered 503 until
   a prune; past that, each seal drops the oldest tombstone.
 - `trail` checks each chain's shape: its links, its order and its identifiers.

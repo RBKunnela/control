@@ -225,7 +225,7 @@ func TestARunningPlaneSweepsItsRecords(t *testing.T) {
 	tr := newTree(t)
 	collector := newAcceptingCollector(t)
 	setEnv(t, "upstreams.0.endpoint", upstream(t))
-	setEnv(t, "export.endpoint", collector.url)
+	exportTo(t, collector.url)
 	setEnv(t, "listener.address", "127.0.0.1:0")
 	setEnv(t, "health.address", "")
 	_, p := boundedPlaneIn(t, tr, provider, time.Second)

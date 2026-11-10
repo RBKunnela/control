@@ -73,7 +73,7 @@ before the answer reaches the agent, which the guard test checks.
 
 The exporter runs throughout, with the gateway's defaults: it reads each
 record back from the spool, sends up to 128 in one request or waits up to 100 ms
-for more, encodes them as OTLP/JSON, posts them over loopback HTTP to a collector
+for more, encodes them as OTLP/JSON, posts them over a unix socket to a collector
 in the same process that reads the body and accepts it, and acknowledges each
 accepted batch to the spool. Under `fsync=interval_100ms` the spool's timer
 runs as well. Their work shares the cores with the call, and `B/op` and
@@ -84,7 +84,7 @@ the exporter's share of the machine together, not the pipeline alone.
 
 | Outside the number | Because |
 | --- | --- |
-| A network beyond loopback, and TLS | The agent and upstream legs are in-process pipes. The collector runs in this process and is reached over plaintext loopback TCP, so that path and the collector's HTTP server are inside the number |
+| A network, and TLS | The agent and upstream legs are in-process pipes. The collector runs in this process on a unix socket, so that path and its HTTP server are inside the number |
 | A real upstream | The upstream answers at once from memory |
 | A real collector | The collector here accepts every request without decoding it |
 | Approvals, obligations and an external decision point | One rule allows the call |
@@ -111,7 +111,8 @@ can take the records written since the last tick.
 One run of `scripts/bench.sh --publish` with `COUNT=5 BENCHTIME=1s`, at commit
 `d326e70`, whose results file
 [bench/results/20261007T050316Z-darwin-arm64.txt](../../bench/results/20261007T050316Z-darwin-arm64.txt)
-holds the other measurements on this page.
+holds the other measurements on this page; it reached its collector over
+loopback TCP.
 
 | Item | Value |
 | --- | --- |

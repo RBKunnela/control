@@ -20,7 +20,7 @@ func (c *Config) check() error {
 	if err := checkRequired(c, configFields, ""); err != nil {
 		return err
 	}
-	for _, check := range []func() error{c.checkKindKeys, c.checkIdentifiers, c.checkListener, c.checkSessionIdle, c.checkMaxSessions, c.checkPolicy, c.checkPDP, c.checkApprovals, c.checkPause, c.checkRuns, c.checkReaction, c.checkFlow, c.checkEvidence, c.checkLocalSockets, c.checkExport, c.checkShaping, c.checkTimeouts, c.checkUpstreams, c.checkOverrides} {
+	for _, check := range []func() error{c.checkKindKeys, c.checkIdentifiers, c.checkListener, c.checkSessionIdle, c.checkMaxSessions, c.checkPolicy, c.checkPDP, c.checkApprovals, c.checkPause, c.checkRuns, c.checkReaction, c.checkFlow, c.checkEvidence, c.checkExport, c.checkLocalSockets, c.checkShaping, c.checkTimeouts, c.checkUpstreams, c.checkOverrides} {
 		if err := check(); err != nil {
 			return err
 		}
@@ -279,14 +279,29 @@ func (c *Config) checkEvidence() error {
 	return nil
 }
 
-// checkExport refuses an endpoint that is not a collector's URL;
-// checkLocalSockets has judged a unix one.
+// checkExport holds evidence to a collector reached over a unix socket or
+// TLS: over plaintext the collector's credential goes to whoever holds its
+// port. checkLocalSockets judges the rest of a unix endpoint.
 func (c *Config) checkExport() error {
-	if _, unix := UnixEndpoint(c.Export.Endpoint); !unix && !httpURL(c.Export.Endpoint) {
-		return notHTTP("export.endpoint", c.Export.Endpoint)
+	u, err := url.Parse(c.Export.Endpoint)
+	switch {
+	case c.Export.AllowPlaintext:
+		return fmt.Errorf("export.allow_plaintext: plaintext export was removed in 0.17; %s", exportWays)
+	case err == nil && u.Scheme == "http":
+		return fmt.Errorf("export.endpoint: an http endpoint is plaintext, and plaintext export was removed in 0.17; %s", exportWays)
+	case err == nil && u.Scheme == "unix":
+		return checkExportSocketPath(u.Path)
+	case err != nil || u.Scheme != "https" || u.Host == "":
+		if shown := ShowAddress(c.Export.Endpoint); shown != c.Export.Endpoint {
+			return fmt.Errorf("export.endpoint: %s, and it is not unix:///path or an https URL", shown)
+		}
+		return fmt.Errorf("export.endpoint: %s is not unix:///path or an https URL", quoteValue(c.Export.Endpoint))
 	}
 	return nil
 }
+
+// exportWays is what a refusal of plaintext export offers instead.
+const exportWays = "set export.endpoint to unix:///path with export.collector_uid for a collector on this host, or to an https:// URL"
 
 // httpURL reports whether value is an http or https URL with a host.
 func httpURL(value string) bool {

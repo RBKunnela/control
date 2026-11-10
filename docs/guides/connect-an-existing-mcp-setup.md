@@ -79,8 +79,10 @@ In `plane.yaml`, replace `BUNDLE_KEY_ID_FROM_KEYGEN` and `BUNDLE_PUBLIC_KEY_FROM
 with the two lines the first `keygen` printed,
 `FRESHNESS_KEY_ID_FROM_KEYGEN` and `FRESHNESS_PUBLIC_KEY_FROM_KEYGEN` with
 the second's, `COLLECTOR_CREDENTIAL_FROM_FILE` with the content of the
-collector's credential, and the server's one argument with the absolute path
-of the directory it may touch. Nothing else needs to change for this server.
+collector's credential, `/absolute/path/to/collect.sock` with the absolute
+path of `collect.sock` in this directory, `COLLECTOR_UID_FROM_ID` with what
+`id -u` prints, and the server's one argument with the absolute path of the
+directory it may touch. Nothing else needs to change for this server.
 The credential is any 32 to 512 printable bytes with no space:
 
 ```
@@ -90,14 +92,15 @@ The credential is any 32 to 512 printable bytes with no space:
 ### 4. Start a collector
 
 ```
-guardana-gateway collect --listen 127.0.0.1:4318 --dir trail --tenant local --project files \
+guardana-gateway collect --listen "unix://$PWD/collect.sock" --dir trail --tenant local --project files \
     --credential-file collector.credential
 ```
 
 The plane writes its evidence to the spool and ships it here, with the
-credential; the trail directory is what step 9 reads. `doctor` warns of this
-TCP endpoint, since TCP export is removed in 0.17; a unix socket is
-[watch a plane without a collector](watch-a-plane-without-a-collector.md).
+credential, only once the socket's peer is the account you named; the trail
+directory is what step 9 reads.
+[Watch a plane without a collector](watch-a-plane-without-a-collector.md) is
+the collector's page.
 
 ### 5. Check the classification
 

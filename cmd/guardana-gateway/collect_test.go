@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"io/fs"
 	"net"
 	"net/http"
@@ -26,31 +27,50 @@ func otlpFixture(t *testing.T, name string) []byte {
 	return raw
 }
 
-// TestCollectListensOnTheLoopbackOnly: every address that is not a loopback
-// IP literal is refused before the file is opened, and the loopback one beside
-// them is taken.
-func TestCollectListensOnTheLoopbackOnly(t *testing.T) {
-	for _, addr := range []string{"0.0.0.0:0", "[::]:0", ":0", "192.0.2.1:0", "localhost:0", "127.0.0.1", "[::1]", "127.0.0.1:x"} {
+// TestCollectListensOnAUnixSocketOnly: a TCP address, the loopback's
+// included, is refused before the trail directory is made, naming the
+// release that removed it; a unix socket beside them is taken.
+func TestCollectListensOnAUnixSocketOnly(t *testing.T) {
+	for _, addr := range []string{"127.0.0.1:0", "[::1]:0", "localhost:0", "0.0.0.0:0", ":0", "192.0.2.1:0", "tcp://127.0.0.1:0"} {
 		out := filepath.Join(t.TempDir(), "trail")
 		var stdout, stderr bytes.Buffer
 		status := run(context.Background(), collectArgs(t, addr, out), &stdout, &stderr)
-		if status != exitFail || !strings.Contains(stderr.String(), "loopback") {
-			t.Errorf("--listen %s answered %d with %q, want %d naming the loopback", addr, status, stderr.String(), exitFail)
+		if status != exitFail || !strings.Contains(stderr.String(), "--listen takes unix:///<path>; a TCP address was removed in 0.17") {
+			t.Errorf("--listen %s answered %d with %q, want %d naming the release", addr, status, stderr.String(), exitFail)
 		}
 		if _, err := os.Stat(out); !errors.Is(err, fs.ErrNotExist) {
 			t.Errorf("--listen %s left a trail directory behind: %v", addr, err)
 		}
 	}
 	c := startCollect(t, filepath.Join(t.TempDir(), "trail"))
-	c.stop(t)
-	// A host may have no IPv6 loopback to bind, so the address alone is judged.
-	for _, addr := range []string{"[::1]:4318", "127.0.0.2:4318", "127.0.0.1:65535"} {
-		if err := loopbackOnly(addr); err != nil {
-			t.Errorf("loopbackOnly(%s) = %v", addr, err)
-		}
+	if !strings.HasPrefix(c.url, "unix:///") {
+		t.Errorf("collect listens on %q", c.url)
 	}
-	if err := loopbackOnly("127.0.0.1:65536"); err == nil {
-		t.Error("a port past 16 bits was taken")
+	c.stop(t)
+}
+
+// TestACollectorRefusesATCPListenerHandedToIt: startCollector, which dev
+// also calls, refuses a TCP listener before it opens the trail, and closes
+// it.
+func TestACollectorRefusesATCPListenerHandedToIt(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(t.TempDir(), "trail")
+	c, err := startCollector(ln, collectorConfig{dir: dir, tenant: "acme", project: "refunds"}, io.Discard)
+	if err == nil {
+		_ = c.srv.Close()
+		t.Fatal("a TCP listener was served")
+	}
+	if !strings.Contains(err.Error(), "a collector serves a unix socket only") {
+		t.Errorf("refused with %v", err)
+	}
+	if _, err := ln.Accept(); err == nil {
+		t.Error("the listener is still open")
+	}
+	if _, err := os.Stat(dir); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("the trail directory was opened: %v", err)
 	}
 }
 
@@ -58,7 +78,7 @@ func TestCollectListensOnTheLoopbackOnly(t *testing.T) {
 // argument after them and a flag collect does not take are refused before
 // anything is opened.
 func TestCollectNeedsEveryFlagAndNothingElse(t *testing.T) {
-	full := collectArgs(t, "127.0.0.1:0", filepath.Join(t.TempDir(), "trail"))
+	full := collectArgs(t, "unix://"+exportSocket(t), filepath.Join(t.TempDir(), "trail"))
 	for i := 1; i < len(full); i += 2 {
 		args := slices.Concat(full[:i], full[i+2:])
 		var stdout, stderr bytes.Buffer
@@ -85,7 +105,7 @@ func TestCollectRefusesADirectoryItCannotHold(t *testing.T) {
 		t.Fatal(err)
 	}
 	var stdout, stderr bytes.Buffer
-	status := run(context.Background(), collectArgs(t, "127.0.0.1:0", dir), &stdout, &stderr)
+	status := run(context.Background(), collectArgs(t, "unix://"+exportSocket(t), dir), &stdout, &stderr)
 	if status != exitFail || !strings.Contains(stderr.String(), "only this account writes") {
 		t.Errorf("a group-writable directory answered %d with %q", status, stderr.String())
 	}
@@ -94,7 +114,7 @@ func TestCollectRefusesADirectoryItCannotHold(t *testing.T) {
 	c := startCollect(t, out)
 	stdout.Reset()
 	stderr.Reset()
-	status = run(context.Background(), collectArgs(t, "127.0.0.1:0", out), &stdout, &stderr)
+	status = run(context.Background(), collectArgs(t, "unix://"+exportSocket(t), out), &stdout, &stderr)
 	if status != exitFail || !strings.Contains(stderr.String(), "held by another writer") {
 		t.Errorf("a second collect on one directory answered %d with %q", status, stderr.String())
 	}
@@ -107,10 +127,10 @@ func TestCollectRefusesADirectoryItCannotHold(t *testing.T) {
 func TestCollectWritesWhatArrivesUntilTheSignal(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "trail")
 	c := startCollect(t, out)
-	if !strings.Contains(c.stdout.String(), out) || !strings.Contains(c.stdout.String(), "allow_plaintext") ||
+	if !strings.Contains(c.stdout.String(), out) || !strings.Contains(c.stdout.String(), "export.collector_uid: "+ownUID()) ||
 		!strings.Contains(c.stdout.String(), "export.headers.Authorization: Bearer <the credential>") ||
-		strings.Contains(c.stdout.String(), collectToken) {
-		t.Errorf("collect printed %q, which does not name the directory, the plaintext setting and the header, or prints the credential", c.stdout.String())
+		strings.Contains(c.stdout.String(), collectToken) || strings.Contains(c.stdout.String(), "allow_plaintext") {
+		t.Errorf("collect printed %q, which does not name the directory, the collector's account and the header, or prints the credential or the plaintext setting", c.stdout.String())
 	}
 	if status := c.post(t, otlpFixture(t, "export_logs_request.json")); status != http.StatusOK {
 		t.Fatalf("the golden request answered %d", status)
@@ -119,7 +139,7 @@ func TestCollectWritesWhatArrivesUntilTheSignal(t *testing.T) {
 		t.Errorf("the trail holds\n%s\nwant\n%s", got, want)
 	}
 	c.stop(t)
-	if _, err := http.Post(c.url, "application/json", strings.NewReader("{}")); err == nil {
+	if _, err := unixClient(socketOf(c.url)).Post("http://collector"+logsPath, "application/json", strings.NewReader("{}")); err == nil {
 		t.Error("the collector still answers after its context ended")
 	}
 }
@@ -155,7 +175,7 @@ func TestCollectLeavesADirectoryThatIsNotATrail(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		stdout, stderr := &syncBuffer{}, &syncBuffer{}
 		done := make(chan int, 1)
-		go func() { done <- run(ctx, collectArgs(t, "127.0.0.1:0", out), stdout, stderr) }()
+		go func() { done <- run(ctx, collectArgs(t, "unix://"+exportSocket(t), out), stdout, stderr) }()
 		var status int
 		select {
 		case status = <-done:
@@ -181,8 +201,8 @@ func TestCollectLeavesADirectoryThatIsNotATrail(t *testing.T) {
 func TestCollectAnswersARequestInFlightAtTheSignal(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "trail")
 	c := startCollect(t, out)
-	addr := strings.TrimSuffix(strings.TrimPrefix(c.url, "http://"), logsPath)
-	conn, err := (&net.Dialer{Timeout: 5 * time.Second}).Dial("tcp", addr)
+	socket := socketOf(c.url)
+	conn, err := (&net.Dialer{Timeout: 5 * time.Second}).Dial("unix", socket)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,7 +211,7 @@ func TestCollectAnswersARequestInFlightAtTheSignal(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := otlpFixture(t, "export_logs_request.json")
-	head := "POST " + logsPath + " HTTP/1.1\r\nHost: " + addr + "\r\nAuthorization: Bearer " + collectToken +
+	head := "POST " + logsPath + " HTTP/1.1\r\nHost: collector\r\nAuthorization: Bearer " + collectToken +
 		"\r\nContent-Type: application/json\r\nExpect: 100-continue\r\nContent-Length: " +
 		strconv.Itoa(len(body)) + "\r\n\r\n"
 	if _, err := conn.Write([]byte(head)); err != nil {
@@ -209,7 +229,7 @@ func TestCollectAnswersARequestInFlightAtTheSignal(t *testing.T) {
 		t.Fatal(err)
 	}
 	c.cancel()
-	waitClosed(t, addr)
+	waitClosedOn(t, "unix", socket)
 	if _, err := conn.Write(body[len(body)/2:]); err != nil {
 		t.Fatalf("the rest of the body could not be sent: %v", err)
 	}
@@ -230,9 +250,16 @@ func TestCollectAnswersARequestInFlightAtTheSignal(t *testing.T) {
 // waitClosed waits until addr refuses a connection, for five seconds at most.
 func waitClosed(t *testing.T, addr string) {
 	t.Helper()
+	waitClosedOn(t, "tcp", addr)
+}
+
+// waitClosedOn waits until addr on the network refuses a connection, for
+// five seconds at most.
+func waitClosedOn(t *testing.T, network, addr string) {
+	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
 	for {
-		probe, err := net.DialTimeout("tcp", addr, time.Second)
+		probe, err := net.DialTimeout(network, addr, time.Second)
 		if err != nil {
 			return
 		}
@@ -246,6 +273,7 @@ func waitClosed(t *testing.T, addr string) {
 
 // collecting is a collect command a test started.
 type collecting struct {
+	// url is the unix:// endpoint it listens on.
 	url    string
 	stdout *syncBuffer
 	stderr *syncBuffer
@@ -293,7 +321,7 @@ func startCollect(t *testing.T, out string, extra ...string) *collecting {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	c := &collecting{stdout: &syncBuffer{}, stderr: &syncBuffer{}, cancel: cancel, done: make(chan int, 1)}
-	args := append(collectArgs(t, "127.0.0.1:0", out), extra...)
+	args := append(collectArgs(t, "unix://"+exportSocket(t), out), extra...)
 	go func() {
 		c.done <- run(ctx, args, c.stdout, c.stderr)
 	}()
@@ -315,7 +343,7 @@ func (c *collecting) post(t *testing.T, body []byte) int {
 // when it is empty.
 func (c *collecting) postAs(t *testing.T, body []byte, authorization string) int {
 	t.Helper()
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, c.url, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "http://collector"+logsPath, bytes.NewReader(body))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -323,7 +351,7 @@ func (c *collecting) postAs(t *testing.T, body []byte, authorization string) int
 	if authorization != "" {
 		req.Header.Set("Authorization", authorization)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := unixClient(socketOf(c.url)).Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}

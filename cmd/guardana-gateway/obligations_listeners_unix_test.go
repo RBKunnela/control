@@ -95,10 +95,10 @@ evidence:
   dir: spool
 export:
   endpoint: %s
-  allow_plaintext: true
+  collector_uid: %s
   in_flight: 1
   linger: 5ms
-`, runsProject, runsTenant, checkedBundleID, fixtureKeyID, fixturePublicKey(), freshnessKeys(t, dir, checkedBundleID), collector)
+`, runsProject, runsTenant, checkedBundleID, fixtureKeyID, fixturePublicKey(), freshnessKeys(t, dir, checkedBundleID), collector, ownUID())
 }
 
 // serveChecked runs serve over config in this process until the test ends,

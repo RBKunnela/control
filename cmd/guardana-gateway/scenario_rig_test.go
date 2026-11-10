@@ -210,7 +210,7 @@ func newRigPolling(t *testing.T, interval string) *rig {
 		t.Fatalf("pause init: %v\n%s", err, out)
 	}
 	r.trail = filepath.Join(r.dir, "trail")
-	collector := r.startProcess("collect", "--listen", "127.0.0.1:0", "--dir", r.trail, "--tenant", "acme", "--project", "orders",
+	collector := r.startProcess("collect", "--listen", "unix://"+exportSocket(t), "--dir", r.trail, "--tenant", "acme", "--project", "orders",
 		"--credential-file", credentialFile(t, collectToken))
 	endpoint := strings.TrimPrefix(collector.waitFor(t, "collect: listening on "), "collect: listening on ")
 	r.config = filepath.Join(r.dir, "plane.yaml")
@@ -262,7 +262,7 @@ evidence:
   dir: spool
 export:
   endpoint: %s
-  allow_plaintext: true
+  collector_uid: %s
   linger: 5ms
   headers:
     Authorization: Bearer %s
@@ -272,7 +272,7 @@ upstreams:
     tenant_id: acme
     environment: dev
 overrides:
-`, fixtureKeyID, fixturePublicKey(), freshnessKeys(r.t, r.dir, "scenario-fixture"), r.pausePoll, endpoint, collectToken, r.up.url)
+`, fixtureKeyID, fixturePublicKey(), freshnessKeys(r.t, r.dir, "scenario-fixture"), r.pausePoll, endpoint, ownUID(), collectToken, r.up.url)
 	for _, lt := range liveTools {
 		fp, err := adaptermcp.Fingerprint(lt.tool())
 		if err != nil {

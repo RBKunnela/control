@@ -1,23 +1,37 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/guardana/control/internal/gatewayconfig"
 )
 
 // TestTheFilesystemProfileIsAConfigurationThisBuildReads: the profile the
-// connect guide ships loads, serves stateful HTTP, names the approval-for-writes
+// connect guide ships loads once its collector's account is filled in, serves
+// stateful HTTP, names the approval-for-writes
 // pack's bundle, and classifies the fourteen tools of the server version it
 // names, each once, on its one upstream, with the resource each one reads. Whether the fingerprints still match
 // that server takes the server itself, which this test does not start.
 func TestTheFilesystemProfileIsAConfigurationThisBuildReads(t *testing.T) {
 	root := filepath.Join("..", "..")
-	cfg, err := gatewayconfig.Load(filepath.Join(root, "examples", "connect-a-filesystem-server", "plane.yaml"), nil)
+	raw, err := os.ReadFile("../../examples/connect-a-filesystem-server/plane.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(string(raw), "collector_uid: COLLECTOR_UID_FROM_ID\n") != 1 {
+		t.Fatal("the profile names no collector account to fill in")
+	}
+	profile := filepath.Join(t.TempDir(), "plane.yaml")
+	if err := os.WriteFile(profile, bytes.Replace(raw, []byte("COLLECTOR_UID_FROM_ID"), []byte("1001"), 1), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := gatewayconfig.Load(profile, nil)
 	if err != nil {
 		t.Fatalf("the profile does not load: %v", err)
 	}

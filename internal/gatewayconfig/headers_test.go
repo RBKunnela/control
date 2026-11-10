@@ -18,7 +18,7 @@ var headerBlocks = []struct {
 	get   func(*Config) map[string]string
 }{
 	{"export.headers", func(name, value string) string {
-		return strings.Replace(document, "  allow_plaintext: true\n", "  allow_plaintext: true\n  headers:\n    "+name+": "+value+"\n", 1)
+		return strings.Replace(document, exportLine, exportLine+"  headers:\n    "+name+": "+value+"\n", 1)
 	}, func(c *Config) map[string]string { return c.Export.Headers }},
 	{"pdp.headers", func(name, value string) string {
 		return document + identifierBlock + "  headers:\n    " + name + ": " + value + "\n"

@@ -102,6 +102,14 @@ func expectNothingReleased(t *testing.T, e *otel.Exporter, sp *spool.Spool, path
 // exporters under test send.
 var testToken = strings.Repeat("c", otel.MinCredentialBytes)
 
+// receiverClient trusts the certificate every httptest server serves with:
+// a plane exports over no plaintext, so the receivers here serve TLS.
+var receiverClient = sync.OnceValue(func() *http.Client {
+	srv := httptest.NewTLSServer(http.NotFoundHandler())
+	defer srv.Close()
+	return srv.Client()
+})
+
 // serveReceiver serves the OTLP receiver over w and returns its logs URL.
 func serveReceiver(t *testing.T, w otel.Sink) (*statuses, string) {
 	t.Helper()
@@ -114,7 +122,7 @@ func serveReceiver(t *testing.T, w otel.Sink) (*statuses, string) {
 		t.Fatal(err)
 	}
 	st := &statuses{seen: map[int]int{}}
-	srv := httptest.NewServer(st.wrap(receiver))
+	srv := httptest.NewTLSServer(st.wrap(receiver))
 	t.Cleanup(srv.Close)
 	return st, srv.URL + "/v1/logs"
 }
@@ -142,7 +150,7 @@ func runExporter(t *testing.T, sp *spool.Spool, url string) (*otel.Exporter, fun
 	if err != nil {
 		t.Fatal(err)
 	}
-	e, err := otel.New(otel.Options{Endpoint: url, AllowPlaintext: true, InFlight: 1,
+	e, err := otel.New(otel.Options{Endpoint: url, Client: receiverClient(), InFlight: 1,
 		Headers: map[string]string{"Authorization": "Bearer " + testToken},
 		Timeout: 5 * time.Second, MaxBatch: 16, Linger: 10 * time.Millisecond, Backoff: 10 * time.Millisecond,
 		MaxBackoff: 20 * time.Millisecond, Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, r)

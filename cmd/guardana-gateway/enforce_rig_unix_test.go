@@ -96,7 +96,7 @@ evidence:
   dir: spool
 export:
   endpoint: %s
-  allow_plaintext: true
+  collector_uid: %s
   in_flight: 1
   linger: 5ms
 tools:
@@ -119,7 +119,7 @@ tools:
     resource_type: order
     resource_from: /id
 `, runsTenant, tr.socket, lifetime, runsPrincipal, runsAgent, fixtureKeyID, fixturePublicKey(),
-		freshnessKeys(t, dir, "enforce-fixture"), collector)
+		freshnessKeys(t, dir, "enforce-fixture"), collector, ownUID())
 	if err := os.WriteFile(tr.config, []byte(doc), 0o600); err != nil {
 		t.Fatal(err)
 	}

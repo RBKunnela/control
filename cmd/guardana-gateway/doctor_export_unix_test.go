@@ -16,40 +16,26 @@ import (
 	"github.com/guardana/control/internal/gateway"
 )
 
-const (
-	tcpWarning       = "warning: TCP export goes in 0.17; export.endpoint: unix:///path with export.collector_uid sends the credential only to the collector's account" //nolint:gosec // G101: a warning's text, which holds no credential
-	plaintextWarning = ", and a plaintext TCP collector hands it to whoever holds "
-)
-
-// TestDoctorWarnsOfATCPCollector: a plaintext loopback endpoint and an
-// https one are warned of, naming the unix form, the plaintext one with its
-// port; a unix endpoint is not, and its line names the socket and the
-// account the credential goes to.
-func TestDoctorWarnsOfATCPCollector(t *testing.T) {
+// TestDoctorNamesTheCollectorItExportsTo: an https endpoint's line names it
+// and TLS, a unix endpoint's names the socket and the account the credential
+// goes to, neither carries a warning, and an http endpoint is refused before
+// doctor reads anything else, naming the release that removed it.
+func TestDoctorNamesTheCollectorItExportsTo(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	doctor(context.Background(), newTree(t).config, &stdout, &stderr)
-	if out := stdout.String(); !strings.Contains(out, tcpWarning+plaintextWarning+"127.0.0.1:4318 while it is down") {
-		t.Errorf("doctor does not warn of the plaintext collector:\n%s", out)
-	}
-
-	secure := newTree(t)
-	setEnv(t, "export.endpoint", "https://collector.example/v1/logs")
-	setEnv(t, "export.allow_plaintext", "false")
-	stdout.Reset()
-	doctor(context.Background(), secure.config, &stdout, &stderr)
-	if out := stdout.String(); !strings.Contains(out, tcpWarning+"\n") || strings.Contains(out, plaintextWarning) ||
-		!strings.Contains(reportLine(out, "export"), "https://collector.example") {
+	out := stdout.String()
+	if line := reportLine(out, "export"); !strings.HasPrefix(line, "ok ") ||
+		!strings.Contains(line, "over TLS to https://127.0.0.1:4318/v1/logs") || strings.Contains(out, "warning: TCP") {
 		t.Errorf("doctor over an https collector:\n%s", out)
 	}
 
 	tr := newTree(t)
 	setEnv(t, "export.endpoint", "unix:///run/collector/logs.sock")
-	setEnv(t, "export.allow_plaintext", "false")
 	setEnv(t, "export.collector_uid", "4242")
 	stdout.Reset()
 	doctor(context.Background(), tr.config, &stdout, &stderr)
-	out := stdout.String()
-	if strings.Contains(out, "warning: TCP export") {
+	out = stdout.String()
+	if strings.Contains(out, "warning: TCP") {
 		t.Errorf("doctor warns of a unix collector:\n%s", out)
 	}
 	if line := reportLine(out, "export"); !strings.HasPrefix(line, "ok ") ||
@@ -58,6 +44,15 @@ func TestDoctorWarnsOfATCPCollector(t *testing.T) {
 	}
 	if line := reportLine(out, "seams"); !strings.HasPrefix(line, "ok ") {
 		t.Errorf("the seams line over a unix collector is %q", line)
+	}
+
+	plain := newTree(t)
+	setEnv(t, "export.endpoint", "http://127.0.0.1:4318/v1/logs")
+	stdout.Reset()
+	stderr.Reset()
+	status := doctor(context.Background(), plain.config, &stdout, &stderr)
+	if both := stdout.String() + stderr.String(); status == exitOK || !strings.Contains(both, "plaintext export was removed in 0.17") {
+		t.Errorf("doctor over an http collector answered %d:\n%s", status, both)
 	}
 }
 
@@ -71,7 +66,6 @@ func TestAPlaneExportsToACollectorOnASocket(t *testing.T) {
 	defer c.stop(t)
 	tr := newTree(t)
 	setEnv(t, "export.endpoint", "unix://"+socket)
-	setEnv(t, "export.allow_plaintext", "false")
 	setEnv(t, "export.collector_uid", strconv.Itoa(os.Geteuid()))
 	setEnv(t, "export.headers.Authorization", "Bearer "+collectToken)
 	p := tr.plane(t)

@@ -7,6 +7,10 @@ Builds on [ADR-0004](0004-evidence-and-privacy-defaults.md),
 [ADR-0007](0007-repository-layout-and-dependency-rule.md) and
 [ADR-0013](0013-mcp-interception-approvals-and-modes.md).
 
+Amended by [ADR-0080](0080-evidence-leaves-a-plane-over-a-unix-socket-or-tls.md):
+the exporter sends to a unix socket whose peer is `export.collector_uid`, or
+over TLS; a plaintext `http` endpoint is refused.
+
 ## Context
 
 ADR-0004 puts every record in a local spool first and exports from there, so

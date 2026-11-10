@@ -137,9 +137,8 @@ func checkSocketDir(dir string) error {
 }
 
 // listenCollectSocket binds collect's socket at path with mode 0666: every
-// account may connect, as every account can reach a loopback port, since
-// the credential decides who writes and the plane checks this account
-// answers before it sends the credential.
+// account may connect, since the credential decides who writes and the
+// plane checks this account answers before it sends the credential.
 func listenCollectSocket(path string) (net.Listener, error) {
 	if err := checkSocketDir(filepath.Dir(path)); err != nil {
 		return nil, err

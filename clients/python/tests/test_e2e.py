@@ -60,7 +60,7 @@ evidence:
   dir: spool
 export:
   endpoint: {collector}
-  allow_plaintext: true
+  collector_uid: {collector_uid}
   linger: 5ms
   headers:
     Authorization: Bearer {credential}
@@ -239,7 +239,7 @@ class Plane(unittest.TestCase):
             self.gateway,
             "collect",
             "--listen",
-            "127.0.0.1:0",
+            "unix://" + str(self.dir / "collect.sock"),
             "--dir",
             "trail",
             "--tenant",
@@ -259,6 +259,7 @@ class Plane(unittest.TestCase):
                 freshness_key_id=fresh["key_id"],
                 freshness_public_key=fresh["public_key"],
                 collector=self.printed_after(collecting, "collect: listening on "),
+                collector_uid=os.geteuid(),
                 credential=credential,
             ),
             encoding="utf-8",

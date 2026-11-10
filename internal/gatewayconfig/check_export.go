@@ -83,8 +83,15 @@ func (c *Config) checkUnixExport() error {
 		return fmt.Errorf("export.endpoint: this platform cannot name a socket peer's account, so a unix endpoint's collector cannot be checked")
 	case !c.Export.CollectorUID.Set:
 		return fmt.Errorf("export.collector_uid: a unix endpoint needs the numeric user id its collector runs as; the credential is sent to no other account")
-	case c.Export.AllowPlaintext:
-		return fmt.Errorf("export.allow_plaintext: a unix endpoint crosses no network; leave it unset")
+	}
+	return nil
+}
+
+// checkExportSocketPath refuses a unix export socket's path that no socket
+// address holds, which the exporter could never dial.
+func checkExportSocketPath(path string) error {
+	if len(path) > maxSocketPath {
+		return fmt.Errorf("export.endpoint: the socket path is %d bytes, and a socket path is at most %d", len(path), maxSocketPath)
 	}
 	return nil
 }

@@ -36,9 +36,10 @@ is published with each release, whose notes name its digest.
      which is mounted read-only.
    - Upstream addresses the container can reach. A `command` upstream has
      nothing to run in this image.
-   - The collector at an `https` endpoint. A plaintext export is admitted only
-     to a loopback IP literal, which here is the container itself, and
-     `doctor` warns of any TCP endpoint, since TCP export is removed in 0.17.
+   - The collector at an `https` endpoint, which reaches it off the host. An
+     `http` endpoint is refused, since plaintext export was removed in 0.17; a
+     `unix:///path` one needs the collector's socket mounted into the
+     container and its account named by `export.collector_uid`.
    - `policy.state_dir: /var/lib/guardana/floors`, a volume that outlives the
      container, beside the spool and the approvals directory. Make it on the
      host with `guardana-control policy state init --kind plane --bundle-id <bundle id>

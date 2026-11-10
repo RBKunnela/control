@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
+	"time"
 
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -155,14 +156,14 @@ func TestAWrongOrAbsentDecisionPointBlocksOnARunningPlane(t *testing.T) {
 }
 
 // TestACollectorThatIsGoneBlocksNoCallAndGetsEveryRecordBack runs the built
-// gateway exporting to an address nothing listens on. Calls run, the spool
+// gateway exporting to a socket nothing listens on. Calls run, the spool
 // keeps their records and the exporter counts its failed sends; once a
 // collector listens there, every record of every trail arrives.
 func TestACollectorThatIsGoneBlocksNoCallAndGetsEveryRecordBack(t *testing.T) {
-	addr := goneAddress(t)
+	socket := exportSocket(t)
 	orders := newHTTPUpstream(t, answerEvery, toolReadOrder)
 	plane := startChaosPlane(t, t.TempDir(), chaosSetup{
-		document: chaosDocument, collector: "http://" + addr + "/v1/logs",
+		document: chaosDocument, collector: "unix://" + socket,
 		upstreams: []chaosUpstream{{name: "orders", endpoint: orders.url}},
 		tools:     []classified{{"orders", toolReadOrder, "READ"}},
 	})
@@ -185,7 +186,7 @@ func TestACollectorThatIsGoneBlocksNoCallAndGetsEveryRecordBack(t *testing.T) {
 		t.Fatalf("the exporter reports %v acknowledged with no collector, want 0", member(body, "exporter", "acknowledged"))
 	}
 
-	collector := collectorBackAt(t, addr)
+	collector := collectorBackAt(t, socket)
 	collector.waitUntil(t, "every trail of the outage", allClosed(calls))
 	events := collector.events(t)
 	validChains(t, events)
@@ -198,21 +199,6 @@ func TestACollectorThatIsGoneBlocksNoCallAndGetsEveryRecordBack(t *testing.T) {
 		unack, ok := member(body, "spool", "unacknowledged").(float64)
 		return ok && unack == 0
 	})
-}
-
-// goneAddress is a loopback address nothing listens on: one the system handed
-// out and this test released.
-func goneAddress(t *testing.T) string {
-	t.Helper()
-	probe, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("finding a free address: %v", err)
-	}
-	addr := probe.Addr().String()
-	if err := probe.Close(); err != nil {
-		t.Fatalf("freeing the address: %v", err)
-	}
-	return addr
 }
 
 // fillSpool makes writes until the first is blocked for the spool being full,
@@ -277,22 +263,18 @@ func spoolBytes(t *testing.T, plane *chaosPlane) int64 {
 	return int64(bytes)
 }
 
-// collectorBackAt starts a collector that accepts everything at addr, the
-// address a plane was exporting to while nothing listened there.
-func collectorBackAt(t *testing.T, addr string) *acceptingCollector {
+// collectorBackAt starts a collector that accepts everything on the socket
+// a plane was exporting to while nothing listened there.
+func collectorBackAt(t *testing.T, socket string) *acceptingCollector {
 	t.Helper()
-	back, err := net.Listen("tcp", addr)
+	back, err := net.Listen("unix", socket)
 	if err != nil {
-		t.Fatalf("the collector's address was taken while it was gone: %v", err)
+		t.Fatalf("the collector's socket was taken while it was gone: %v", err)
 	}
-	collector := &acceptingCollector{url: "http://" + addr + "/v1/logs"}
-	ts := httptest.NewUnstartedServer(http.HandlerFunc(collector.serve))
-	if err := ts.Listener.Close(); err != nil {
-		t.Fatalf("releasing the unused listener: %v", err)
-	}
-	ts.Listener = back
-	ts.Start()
-	t.Cleanup(ts.Close)
+	collector := &acceptingCollector{url: "unix://" + socket}
+	srv := &http.Server{Handler: http.HandlerFunc(collector.serve), ReadHeaderTimeout: 10 * time.Second}
+	go func() { _ = srv.Serve(back) }()
+	t.Cleanup(func() { _ = srv.Close() })
 	return collector
 }
 
@@ -302,10 +284,10 @@ func collectorBackAt(t *testing.T, addr string) *acceptingCollector {
 // with EVIDENCE_UNAVAILABLE and never reach the upstream. Once a collector
 // listens and the spool drains, the next write runs.
 func TestAFullSpoolBlocksCallsUntilTheCollectorDrainsIt(t *testing.T) {
-	addr := goneAddress(t)
+	socket := exportSocket(t)
 	ledger := newHTTPUpstream(t, answerEvery, toolPostEntry, toolReadOrder)
 	plane := startChaosPlane(t, t.TempDir(), chaosSetup{
-		document: chaosDocument, collector: "http://" + addr + "/v1/logs",
+		document: chaosDocument, collector: "unix://" + socket,
 		upstreams: []chaosUpstream{{name: "ledger", endpoint: ledger.url}},
 		tools:     []classified{{"ledger", toolPostEntry, "WRITE"}, {"ledger", toolReadOrder, "READ"}},
 		evidence:  "  max_bytes: 32KiB\n  segment_bytes: 8KiB\n  closing_reserve: 4KiB\n",
@@ -324,7 +306,7 @@ func TestAFullSpoolBlocksCallsUntilTheCollectorDrainsIt(t *testing.T) {
 		t.Fatalf("the upstream ran %d call(s) in all, want the %d before the spool filled", got, runs)
 	}
 
-	collector := collectorBackAt(t, addr)
+	collector := collectorBackAt(t, socket)
 	plane.waitHealth(t, "the spool is drained", func(body map[string]any) bool {
 		unack, ok := member(body, "spool", "unacknowledged").(float64)
 		return ok && unack == 0

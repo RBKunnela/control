@@ -176,21 +176,25 @@ func TestRunServesAndStopsWithItsContext(t *testing.T) {
 	}
 }
 
-// TestAPlaintextCollectorNeedsTheKey: over plaintext anyone on the path can
-// forge the collector's acceptance, which releases the evidence, so a build
-// with an http endpoint and export.allow_plaintext false is refused, and the
-// refusal names the key the operator has to set.
-func TestAPlaintextCollectorNeedsTheKey(t *testing.T) {
-	tr := newTree(t)
-	setEnv(t, "export.allow_plaintext", "false")
-	var stdout, stderr bytes.Buffer
-	if status := serve(context.Background(), tr.config, "", &stdout, &stderr); status != exitFail {
-		t.Fatalf("a plaintext collector was accepted with no key (status %d)", status)
+// TestAPlaintextCollectorIsRefused: over plaintext anyone on the path reads
+// the collector's credential and can forge the acceptance that releases the
+// evidence, so serve refuses an http endpoint, and the old key that allowed
+// one, naming the release; the fixture's https endpoint builds.
+func TestAPlaintextCollectorIsRefused(t *testing.T) {
+	for key, value := range map[string]string{
+		"export.endpoint":        "http://127.0.0.1:4318/v1/logs",
+		"export.allow_plaintext": "true",
+	} {
+		tr := newTree(t)
+		setEnv(t, key, value)
+		var stdout, stderr bytes.Buffer
+		if status := serve(context.Background(), tr.config, "", &stdout, &stderr); status != exitFail {
+			t.Fatalf("%s %s was accepted (status %d)", key, value, status)
+		}
+		if !strings.Contains(stderr.String(), key+": ") || !strings.Contains(stderr.String(), "removed in 0.17") {
+			t.Errorf("the refusal of %s does not name it and the release: %q", key, stderr.String())
+		}
+		os.Unsetenv(brand.Env(gatewayconfig.EnvName(key))) //nolint:errcheck // the value is restored by t.Setenv either way
+		tr.plane(t)
 	}
-	if !strings.Contains(stderr.String(), "plaintext") {
-		t.Errorf("the refusal does not name what is wrong: %q", stderr.String())
-	}
-	// The fixture sets the key, so the same build goes through.
-	os.Unsetenv(brand.Env(gatewayconfig.EnvName("export.allow_plaintext"))) //nolint:errcheck // the value is restored by t.Setenv either way
-	tr.plane(t)
 }

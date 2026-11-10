@@ -50,7 +50,7 @@ EOF
 ) || die "the policy could not be signed"
 line_of() { sed -n "s/^$1: //p" "$2"; }
 health="127.0.0.1:$(harness free-port)"
-collector="127.0.0.1:$(harness free-port)"
+collector="${sockdir}/c.sock"
 (umask 077 && od -An -N32 -tx1 /dev/urandom | tr -d ' \n' >"${plane}/collector.credential")
 cat >"${plane}/plane.yaml" <<EOF
 mode: ENFORCE
@@ -89,8 +89,8 @@ evidence:
   fsync: every_record
   on_unwritable: block
 export:
-  endpoint: http://${collector}/v1/logs
-  allow_plaintext: true
+  endpoint: unix://${collector}
+  collector_uid: $(id -u)
   linger: 5ms
   headers:
     Authorization: Bearer $(cat "${plane}/collector.credential")
@@ -130,7 +130,7 @@ EOF
   --agent coder --ttl 1m "${plane}/runs" >/dev/null || die "the runs directory could not be made"
 
 say "the collector and the plane"
-"${bin}/${gateway}" collect --listen "${collector}" --dir "${plane}/trail" --tenant local --project hooks \
+"${bin}/${gateway}" collect --listen "unix://${collector}" --dir "${plane}/trail" --tenant local --project hooks \
   --credential-file "${plane}/collector.credential" >"${plane}/collect.log" 2>&1 &
 pids+=("$!")
 (cd "${plane}" && exec "${bin}/${gateway}" run --config plane.yaml) >"${plane}/plane.log" 2>&1 &

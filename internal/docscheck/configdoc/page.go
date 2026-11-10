@@ -215,8 +215,10 @@ func lead(listDefault, classificationRule string) string {
 		"hold or sit inside the runs directory, the spool, the approvals directory, the hold\n" +
 		"journal, the policy, route, stop list or pause floor directory or the pause file's\n" +
 		"directory, compared through\n" +
-		"symbolic links too. A `unix:///path` `export.endpoint` needs `export.collector_uid`\n" +
-		"and refuses `export.allow_plaintext`, any other refuses `export.collector_uid`, and\n" +
+		"symbolic links too. `export.endpoint` is `unix:///path`, at most 103 bytes of path, or\n" +
+		"an `https` URL; an `http` one is refused, and so is `export.allow_plaintext: true`,\n" +
+		"since plaintext export was removed in 0.17. A unix endpoint needs\n" +
+		"`export.collector_uid`, any other refuses `export.collector_uid`, and\n" +
 		"`health.socket_uid` needs `health.socket`; a platform that cannot name a socket peer's\n" +
 		"account refuses both sockets. Every `pdp.` key is refused while `pdp.identifier` is empty,\n" +
 		"since it would apply to no decision point, and the identifier is written into every\n" +

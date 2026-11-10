@@ -139,14 +139,16 @@ believes it applies;</li>
 <code>policy.public_key</code>, <code>policy.statement_file</code>, <code>policy.state_dir</code>,
 <code>policy.freshness_key_id</code>, <code>policy.freshness_public_key</code>, <code>pause.file</code>,
 <code>pause.floor_dir</code>, <code>evidence.dir</code>, <code>export.endpoint</code>,
-<code>export.allow_plaintext</code>, every <code>approvals</code>, <code>trust</code> and <code>operators</code> key and every <code>runs</code> key, since
+<code>export.collector_uid</code>, every <code>approvals</code>, <code>trust</code> and <code>operators</code> key and every <code>runs</code> key, since
 dev serves local runs only, and with <code>--decision-point=silent</code> every <code>pdp</code>
 key;</li>
 <li>a <code>stdio</code> listener, and any address that is not an IP literal on the
-loopback, a host name included: its own listeners and collector, every
+loopback, a host name included: its own listeners, every
 <code>upstreams[].endpoint</code>, and <code>pdp.identifier</code>, <code>pdp.evaluation_endpoint</code>
 and <code>pdp.proxy</code>;</li>
-<li>a <code>guardana-control</code> beside it that is missing or of another version.</li>
+<li>a <code>guardana-control</code> beside it that is missing or of another version;</li>
+<li>a system temporary directory under which its collector's socket path would
+pass 103 bytes, naming <code>TMPDIR</code>.</li>
 </ul>
 <p>Dev's own values reach the loader the way environment variables do, over
 the file, and nothing else parses the file. A key the file sets to the value
@@ -182,9 +184,11 @@ less twice <code>policy.poll_interval</code> when that is sooner; a poll interva
 the budget or more is refused. The plane pins
 both public halves, and reads the bundle and the statement again every
 <code>policy.poll_interval</code>, which the configuration sets.</p>
-<p>Dev binds <code>127.0.0.1</code> at ports the system picks, for the collector, the
-agents and the health answers, and hands the bound sockets to the plane, so
-no port is chosen and then taken by someone else. With
+<p>Dev binds its collector to a unix socket in a new directory of its own under
+the system's temporary directory, removed when dev stops, and the plane sends
+there only to a peer of dev's own account. It binds <code>127.0.0.1</code> at ports the
+system picks for the agents and the health answers, and hands the bound
+sockets to the plane, so no port is chosen and then taken by someone else. With
 <code>--decision-point=silent</code> it binds one more and never accepts on it: the
 plane's <code>pdp.identifier</code> names it, a question waits there unanswered until
 <code>pdp.timeout</code>, and a rule reading <code>external</code> is undetermined with

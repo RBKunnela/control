@@ -271,17 +271,16 @@ func (p *plane) wire() error {
 		}
 	}
 	exporter, err := otel.New(otel.Options{
-		Endpoint:       p.cfg.Export.Endpoint,
-		AllowPlaintext: p.cfg.Export.AllowPlaintext,
-		CollectorUID:   collectorUID(p.cfg),
-		Headers:        p.cfg.Export.Headers,
-		InFlight:       p.cfg.Export.InFlight,
-		Timeout:        p.cfg.Export.Timeout,
-		MaxBatch:       p.cfg.Export.MaxBatch,
-		Linger:         p.cfg.Export.Linger,
-		Backoff:        p.cfg.Export.Backoff,
-		MaxBackoff:     p.cfg.Export.MaxBackoff,
-		Logger:         p.logger,
+		Endpoint:     p.cfg.Export.Endpoint,
+		CollectorUID: collectorUID(p.cfg),
+		Headers:      p.cfg.Export.Headers,
+		InFlight:     p.cfg.Export.InFlight,
+		Timeout:      p.cfg.Export.Timeout,
+		MaxBatch:     p.cfg.Export.MaxBatch,
+		Linger:       p.cfg.Export.Linger,
+		Backoff:      p.cfg.Export.Backoff,
+		MaxBackoff:   p.cfg.Export.MaxBackoff,
+		Logger:       p.logger,
 	}, reader)
 	if err != nil {
 		return err

@@ -296,13 +296,13 @@ evidence:
   dir: spool
 %sexport:
   endpoint: %s
-  allow_plaintext: true
+  collector_uid: %s
   in_flight: 1
   linger: 5ms
   backoff: 20ms
   max_backoff: 200ms
 upstreams:
-`, chaosBundleID, fixtureKeyID, fixturePublicKey(), freshnessKeys(t, dir, chaosBundleID), s.evidence, s.collector)
+`, chaosBundleID, fixtureKeyID, fixturePublicKey(), freshnessKeys(t, dir, chaosBundleID), s.evidence, s.collector, ownUID())
 	for _, up := range s.upstreams {
 		fmt.Fprintf(&b, "  - name: %s\n    tenant_id: acme\n    environment: dev\n", up.name)
 		if up.endpoint != "" {

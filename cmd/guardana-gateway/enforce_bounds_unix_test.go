@@ -84,7 +84,7 @@ func TestSweepEveryIsAQuarterOfTheLifetimeAndAtMostASecond(t *testing.T) {
 // listener.max_body_bytes, at values that are not the adapter's defaults,
 // are the bounds the plane's adapter holds a request to.
 func TestTheListenerBoundsReachTheAdapter(t *testing.T) {
-	tr := newEnforceTree(t, "30s", "http://127.0.0.1:1/v1/logs")
+	tr := newEnforceTree(t, "30s", "unix://"+exportSocket(t))
 	setEnv(t, "listener.max_open_per_run", "1")
 	setEnv(t, "listener.max_body_bytes", "1024")
 	p := servedEnforcer(t, tr)
@@ -121,7 +121,7 @@ func (s *failingSink) Append(ctx context.Context, e *controlv1.Event) error {
 // completion and a client's abort each leave a trail open, and each is an
 // error of lostClosings, which makes run exit 1.
 func TestALostCompletionAndALostAbortAreBothLost(t *testing.T) {
-	tr := newEnforceTree(t, "30s", "http://127.0.0.1:1/v1/logs")
+	tr := newEnforceTree(t, "30s", "unix://"+exportSocket(t))
 	p, err := build(loadEnforce(t, tr), slog.New(slog.DiscardHandler), time.Now(), roleServe, "")
 	if err != nil {
 		t.Fatal(err)

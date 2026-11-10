@@ -31,8 +31,8 @@ func TestAUnixEndpointNamesItsCollectorsAccount(t *testing.T) {
 	if cfg.Export.CollectorUID != (AccountID{ID: 4242, Set: true}) {
 		t.Errorf("export.collector_uid = %+v, want 4242", cfg.Export.CollectorUID)
 	}
-	if _, ok := UnixEndpoint("http://127.0.0.1:4318/v1/logs"); ok {
-		t.Error("an http endpoint is read as a unix one")
+	if _, ok := UnixEndpoint("https://127.0.0.1:4318/v1/logs"); ok {
+		t.Error("an https endpoint is read as a unix one")
 	}
 }
 
@@ -43,18 +43,17 @@ func TestAUnixEndpointIsRefusedWithoutWhatChecksIt(t *testing.T) {
 	for name, tc := range map[string]struct {
 		endpoint, uid, plaintext, want string
 	}{
-		"no collector account":           {"unix:///run/c.sock", "", "false", "export.collector_uid: a unix endpoint needs"},
-		"plaintext set":                  {"unix:///run/c.sock", "7", "true", "export.allow_plaintext: a unix endpoint"},
-		"a relative path":                {"unix://run/c.sock", "7", "false", "export.endpoint: a unix endpoint is"},
-		"one slash":                      {"unix:/run/c.sock", "7", "false", "export.endpoint: a unix endpoint is"},
-		"a path that is not clean":       {"unix:///run/../c.sock", "7", "false", "export.endpoint: a unix endpoint is"},
-		"a query":                        {"unix:///run/c.sock?x=1", "7", "false", "export.endpoint: a unix endpoint is"},
-		"a fragment":                     {"unix:///run/c.sock#x", "7", "false", "export.endpoint: a unix endpoint is"},
-		"no path":                        {"unix://", "7", "false", "export.endpoint: a unix endpoint is"},
-		"an account on an http endpoint": {"http://127.0.0.1:4318/v1/logs", "7", "true", "export.collector_uid: only a unix:// endpoint"},
-		"an id past the bound":           {"unix:///run/c.sock", "4294967295", "false", "not an account's numeric user id"},
-		"a negative id":                  {"unix:///run/c.sock", "-1", "false", "not an account's numeric user id"},
-		"a name for an id":               {"unix:///run/c.sock", "collector", "false", "not an account's numeric user id"},
+		"no collector account":            {"unix:///run/c.sock", "", "false", "export.collector_uid: a unix endpoint needs"},
+		"a relative path":                 {"unix://run/c.sock", "7", "false", "export.endpoint: a unix endpoint is"},
+		"one slash":                       {"unix:/run/c.sock", "7", "false", "export.endpoint: a unix endpoint is"},
+		"a path that is not clean":        {"unix:///run/../c.sock", "7", "false", "export.endpoint: a unix endpoint is"},
+		"a query":                         {"unix:///run/c.sock?x=1", "7", "false", "export.endpoint: a unix endpoint is"},
+		"a fragment":                      {"unix:///run/c.sock#x", "7", "false", "export.endpoint: a unix endpoint is"},
+		"no path":                         {"unix://", "7", "false", "export.endpoint: a unix endpoint is"},
+		"an account on an https endpoint": {"https://127.0.0.1:4318/v1/logs", "7", "false", "export.collector_uid: only a unix:// endpoint"},
+		"an id past the bound":            {"unix:///run/c.sock", "4294967295", "false", "not an account's numeric user id"},
+		"a negative id":                   {"unix:///run/c.sock", "-1", "false", "not an account's numeric user id"},
+		"a name for an id":                {"unix:///run/c.sock", "collector", "false", "not an account's numeric user id"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			path := write(t, "")
@@ -68,6 +67,27 @@ func TestAUnixEndpointIsRefusedWithoutWhatChecksIt(t *testing.T) {
 				t.Errorf("Load = %v, want a refusal holding %q", err, tc.want)
 			}
 		})
+	}
+}
+
+// TestAUnixEndpointsPathFitsASocketAddress: a socket path of 103 bytes, the
+// most a socket address holds, loads, and one of 104 is refused at load with
+// both lengths named.
+func TestAUnixEndpointsPathFitsASocketAddress(t *testing.T) {
+	socket := func(n int) string {
+		base := "/run/collector/"
+		return base + strings.Repeat("s", n-len(base))
+	}
+	path := write(t, "")
+	unixExport(t, "unix://"+socket(103), "7")
+	if got, _ := UnixEndpoint(load(t, path).Export.Endpoint); len(got) != 103 {
+		t.Fatalf("the socket path loaded is %d bytes, want 103", len(got))
+	}
+	path = write(t, "")
+	unixExport(t, "unix://"+socket(104), "7")
+	_, err := Load(path, os.Environ())
+	if err == nil || !strings.Contains(err.Error(), "export.endpoint: the socket path is 104 bytes, and a socket path is at most 103") {
+		t.Errorf("Load = %v, want the 104-byte path refused", err)
 	}
 }
 

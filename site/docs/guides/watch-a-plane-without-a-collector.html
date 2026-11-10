@@ -140,8 +140,8 @@ this account may read.</li>
 <pre><code class="language-sh">guardana-gateway collect --listen unix:///run/collector/logs.sock --dir trail/plane \
   --tenant acme --project orders --credential-file collector.credential
 </code></pre>
-<p><code>--listen 127.0.0.1:4318</code> takes a loopback IP address instead, which <code>doctor</code>
-warns of: <code>0.0.0.0</code>, another host and <code>localhost</code> are refused.
+<p><code>--listen</code> takes a unix socket only: a TCP address was removed in 0.17
+(<a href="/docs/adr/0080-evidence-leaves-a-plane-over-a-unix-socket-or-tls">ADR-0080</a>).
 It prints where it listens, the directory and the plane's keys. It runs until Ctrl-C or <code>SIGTERM</code>, and waits up to
 ten seconds for the requests in flight. One collect holds a directory at a
 time; a second one is refused.</p>
@@ -175,9 +175,8 @@ again, and the plane keeps the records in its spool.</p>
 <pre><code class="language-sh">export GUARDANA_CONTROL_EXPORT_HEADERS_AUTHORIZATION=&#34;Bearer $(cat collector.credential)&#34;
 guardana-gateway run --config plane.yaml
 </code></pre>
-<p>Over TCP, <code>endpoint: http://127.0.0.1:4318/v1/logs</code> needs
-<code>allow_plaintext: true</code>, the named risk of an unencrypted endpoint. The header's
-value is a credential and is never printed. A plane sending no credential or
+<p>An <code>http://</code> endpoint is refused at load; a collector on another host is
+reached over <code>https</code>. The header's value is a credential and is never printed. A plane sending no credential or
 another one is answered 401, sends again, and blocks its material calls once
 its spool is full; collect logs the first refusal, then a count once a
 minute.</p>
@@ -240,9 +239,8 @@ until its spool is full and material calls are blocked.</li>
 write evidence into the trail, including a chain made up to pass the check.</li>
 <li>An event sent again after its segment was pruned is written again, and a
 trail whose first events were pruned fails the chain check.</li>
-<li>Over TCP, the plane's next retry sends the token in plaintext to whoever
-binds collect's loopback port first, before collect is up; TCP export is
-removed in 0.17. A socket's peer must be <code>export.collector_uid</code>.</li>
+<li>The plane sends the token only to a socket peer of <code>export.collector_uid</code>;
+any process of that account can take it.</li>
 <li>At 10,000 sealed segments a request that needs a seal is answered 503 until
 a prune; past that, each seal drops the oldest tombstone.</li>
 <li><code>trail</code> checks each chain's shape: its links, its order and its identifiers.

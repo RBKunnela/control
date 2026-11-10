@@ -223,6 +223,8 @@ func (g *upstreamGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // is what it replies; by default it accepts, which an empty 200 says.
 type collector struct {
 	url string
+	// client trusts the collector's certificate.
+	client *http.Client
 
 	mu     sync.Mutex
 	answer func(w http.ResponseWriter)
@@ -232,9 +234,9 @@ type collector struct {
 func newCollector(t *testing.T) *collector {
 	t.Helper()
 	c := &collector{}
-	ts := httptest.NewServer(http.HandlerFunc(c.serve))
+	ts := httptest.NewTLSServer(http.HandlerFunc(c.serve))
 	t.Cleanup(ts.Close)
-	c.url = ts.URL + "/v1/logs"
+	c.url, c.client = ts.URL+"/v1/logs", ts.Client()
 	return c
 }
 

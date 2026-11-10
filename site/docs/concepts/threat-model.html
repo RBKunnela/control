@@ -209,7 +209,7 @@ read steers it. Each of the others has a section below.</p>
     Other -.-&gt;|&#34;refused 401 without its credential&#34;| Collect
     Plane --&gt;|&#34;exactly the authorized bytes&#34;| Http[&#34;HTTP upstream&#34;]
     Plane --&gt;|&#34;identity, action, resource; never arguments&#34;| PDP[&#34;Decision point&#34;]
-    Plane --&gt;|&#34;OTLP: https, or plaintext on the loopback if allowed&#34;| Collector[&#34;A collector&#34;]
+    Plane --&gt;|&#34;OTLP: https, or a unix socket of the collector&#39;s account&#34;| Collector[&#34;A collector&#34;]
 </code></pre></details></figure>
 <p>Sources: <code>adapters/mcp/listener.go</code>, <code>cmd/guardana-gateway/adapter.go</code>,
 <code>internal/approvals/dirid.go</code>, <code>internal/pause/snapshot.go</code>,
@@ -438,9 +438,9 @@ listener's principal, under any run whose token it holds, and reads the
 counters; both default to <code>127.0.0.1</code>.</li>
 <li><strong><code>collect</code> trusts whoever holds its credential</strong>, answering others 401
 (<code>TestARequestWithoutTheCredentialIsRefusedBeforeItIsRead</code>): who reads its
-file or the plane's configuration, or binds its TCP port while down, gets
-it (<a href="/docs/adr/0072-the-collector-keeps-bounded-segments-of-one-project-behind-a-credential">ADR-0072</a>);
-<code>doctor</code> warns of every TCP <code>export.endpoint</code>.</li>
+file or the plane's configuration, or runs as <code>export.collector_uid</code>, gets
+it (<a href="/docs/adr/0072-the-collector-keeps-bounded-segments-of-one-project-behind-a-credential">ADR-0072</a>,
+<a href="/docs/adr/0080-evidence-leaves-a-plane-over-a-unix-socket-or-tls">ADR-0080</a>).</li>
 <li>The spool writes its files <code>0600</code> and refuses a directory another account
 owns or that others can write.</li>
 <li>A peer <code>health.socket</code> or a unix collector admits can pass its connection
@@ -485,17 +485,18 @@ agents cannot answer an approval, read a signing key or reset its own floor
 <h2 id="someone-on-the-network">Someone on the network</h2>
 <p>What the plane does today:</p>
 <ul>
-<li>The export endpoint has to be <code>https</code>, or a loopback IP literal under
-<code>export.allow_plaintext</code>, and no redirect is followed
-(<code>adapters/otel/options.go</code>; <code>TestAPlaintextCollectorNeedsTheRiskSetting</code>,
-<code>TestAPlaintextCollectorIsOnTheLoopback</code>, <code>TestARedirectIsNeverFollowed</code>).</li>
+<li>The export endpoint has to be <code>https</code> or a unix socket, an <code>http</code> one is
+refused at load and by the exporter, and no redirect is followed
+(<code>internal/gatewayconfig/check.go</code>, <code>adapters/otel/options.go</code>;
+<code>TestPlaintextExportIsRefusedNamingTheRelease</code>,
+<code>TestAPlaintextCollectorIsRefused</code>, <code>TestARedirectIsNeverFollowed</code>).</li>
 <li>A browser origin the operator did not list is refused, a loopback origin
 included, and a loopback origin is admitted only while the listener is on the
 loopback (<code>adapters/mcp/listener.go</code>, <code>internal/gatewayconfig/check.go</code>;
 <code>TestOriginIsValidated</code>).</li>
-<li><code>collect</code> listens on the loopback or a socket only (<code>internal/loopback/</code>;
-<code>TestCollectListensOnTheLoopbackOnly</code>), and <code>dev</code> binds and reaches loopback
-IP literals only (<code>TestDevAddressesAreLoopbackLiterals</code>).</li>
+<li><code>collect</code> listens on a unix socket only (<code>TestCollectListensOnAUnixSocketOnly</code>),
+and <code>dev</code> binds and reaches loopback IP literals and its collector's socket
+only (<code>TestDevAddressesAreLoopbackLiterals</code>).</li>
 </ul>
 <p>What it does not do:</p>
 <ul>
@@ -504,10 +505,9 @@ anything but the loopback, it lets anyone who reaches it call tools as the
 configured principal, under <code>runs.dir</code> with a run token they hold. There is no TLS setting on it.</li>
 <li>The health listener is the same: plain HTTP, no credential, wherever
 <code>health.address</code> puts it.</li>
-<li>A plaintext export stays on the host, unprotected there: an account
-capturing loopback traffic reads the headers and the events, and one holding
-the collector's port first receives them and can answer with the acceptance
-that releases them; a unix endpoint checks the collector's account
+<li>An <code>https</code> export trusts the system's certificate roots: whoever holds a
+certificate they accept for the collector's name receives the headers and
+the events. A unix endpoint checks the collector's account instead
 (<code>TestACollectorOfAnotherAccountIsSentNothing</code>).</li>
 </ul>
 <h2 id="a-tampered-release">A tampered release</h2>

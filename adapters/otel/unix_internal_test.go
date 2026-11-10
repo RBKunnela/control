@@ -110,6 +110,48 @@ func TestAUnixCollectorOfThisAccountReceivesTheRecords(t *testing.T) {
 	}
 }
 
+// TestAUnixCollectorsRedirectIsNotFollowed: the exporter's own client, the
+// one a unix endpoint is dialled with, follows no redirect, so the server it
+// points to sees nothing and the record stays in the spool.
+func TestAUnixCollectorsRedirectIsNotFollowed(t *testing.T) {
+	var elsewhere atomic.Int32
+	target := filepath.Join(collectorSocket(t), "..", "elsewhere.sock")
+	tln, err := net.Listen("unix", target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tsrv := &http.Server{ReadHeaderTimeout: time.Second, Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		elsewhere.Add(1)
+		w.WriteHeader(http.StatusOK)
+	})}
+	go func() { _ = tsrv.Serve(tln) }()
+	t.Cleanup(func() { _ = tsrv.Close() })
+	path := collectorSocket(t)
+	ln, err := net.Listen("unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := &http.Server{ReadHeaderTimeout: time.Second, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == UnixLogsPath {
+			http.Redirect(w, r, "/elsewhere", http.StatusTemporaryRedirect)
+			return
+		}
+		elsewhere.Add(1)
+	})}
+	go func() { _ = srv.Serve(ln) }()
+	t.Cleanup(func() { _ = srv.Close() })
+
+	s, r := unixSpool(t, 1)
+	e := unixExporter(t, r, path, uint32(os.Geteuid()), io.Discard) //nolint:gosec // G115: a uid fits 32 bits
+	runExporterUntil(t, e, func() bool { return e.Stats().RetriedRedirect >= 3 })
+	if n := elsewhere.Load(); n != 0 {
+		t.Errorf("the redirect was followed %d times", n)
+	}
+	if st, err := s.Stats(); err != nil || st.Unacknowledged == 0 || e.Stats().Acknowledged != 0 {
+		t.Errorf("spool %+v, %v, exporter %+v: want the record kept", st, err, e.Stats())
+	}
+}
+
 // rawCollector accepts connections on a socket and counts them and every
 // byte any of them carried, answering nothing.
 type rawCollector struct {
@@ -194,7 +236,6 @@ func TestAUnixEndpointNeedsItsCollectorsAccount(t *testing.T) {
 	}
 	for name, edit := range map[string]func(*Options){
 		"no account":             func(o *Options) { o.CollectorUID = nil },
-		"plaintext set":          func(o *Options) { o.AllowPlaintext = true },
 		"a client of the caller": func(o *Options) { o.Client = &http.Client{} },
 		"a host":                 func(o *Options) { o.Endpoint = "unix://host/run/c.sock" },
 		"a relative path":        func(o *Options) { o.Endpoint = "unix:run/c.sock" },
