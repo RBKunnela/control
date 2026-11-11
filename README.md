@@ -167,7 +167,7 @@ Linux and macOS on amd64 and arm64. Download one from
 the signed `checksums.txt` ([RELEASING.md](RELEASING.md)) and put the
 binaries on your `PATH`.
 
-With Go 1.27.3 or later, build from source (version `dev`):
+With Go 1.27.4 or later, build from source (version `dev`):
 
 ```bash
 go install github.com/guardana/control/cmd/guardana-gateway@latest

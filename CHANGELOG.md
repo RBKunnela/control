@@ -55,6 +55,12 @@ verify one.
 - **Breaking:** `otel.Options.AllowPlaintext` is gone, and the exporter
   refuses an `http` endpoint even when built directly.
 
+### Security
+
+- Built with Go 1.27.4, which fixes GO-2026-6859 in `net/http`: a race on
+  `MaxBytesReader`'s header could crash an HTTP/1 server. `govulncheck`
+  found it reachable from the plane's HTTP servers under 1.27.3.
+
 ## [0.16.0] - 2026-11-07
 
 Upgrading from 0.15 changes four things an operator must act on.
