@@ -26,6 +26,10 @@ verify one.
 - `runs open --key` reads the roster and the key before it makes an empty
   directory a signed layout, so a roster that does not read leaves the
   directory as it was.
+- `doctor`'s `trust` line names every file the signed start checked, the
+  roster among them, and counts the roster's `read` grants, which grant
+  nothing yet: a plane is read through `health.socket` by peer uid and
+  through files by their modes.
 - `dev` runs its collector on a unix socket in a directory of its own under
   the system's temporary directory, and refuses, naming `TMPDIR`, where that
   path would not fit a socket address.

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/guardana/control/internal/approvals/inbox"
@@ -63,9 +64,39 @@ func (d *examination) trust(context.Context) (string, string, string) {
 	if floor.Serial > doc.Serial() {
 		return verdictFail, doctorTrust, fmt.Sprintf("trust.roster: serial %d is below the floor's %d (%s)", doc.Serial(), floor.Serial, trust.CauseBelowFloor)
 	}
-	return verdictOK, doctorTrust, fmt.Sprintf(
-		"roster %s serial %d names %d key(s) and verifies under the pinned root; the floor holds serial %d; %d other pinned key(s) no roster may name; the configuration file and the root key file are not the plane's to change, and the environment sets no key",
-		doc.ID(), doc.Serial(), len(doc.Keys()), floor.Serial, len(others))
+	found := fmt.Sprintf(
+		"roster %s serial %d names %d key(s) and verifies under the pinned root; the floor holds serial %d; %d other pinned key(s) no roster may name; %s are not the plane's to change, and the environment sets no key",
+		doc.ID(), doc.Serial(), len(doc.Keys()), floor.Serial, len(others), checkedKeys(d.cfg))
+	if n := readGrants(doc); n > 0 {
+		found += fmt.Sprintf("; %d read grant(s) grant nothing yet: reading is by the health socket's peer uid and by file modes (ADR-0071)", n)
+	}
+	return verdictOK, doctorTrust, found
+}
+
+// checkedKeys names the keys of every path the signed start checked, as one
+// list.
+func checkedKeys(cfg *gatewayconfig.Config) string {
+	files := signedStartFiles(cfg)
+	keys := make([]string, 0, len(files))
+	for _, f := range files {
+		keys = append(keys, f.key)
+	}
+	last := len(keys) - 1
+	return strings.Join(keys[:last], ", ") + " and " + keys[last]
+}
+
+// readGrants counts the roster's grants of level read, which no receiver
+// reads by: a read grant is reserved (ADR-0071).
+func readGrants(doc trust.Document) int {
+	n := 0
+	for _, k := range doc.Keys() {
+		for _, g := range k.Grants() {
+			if g.Level == trust.LevelRead {
+				n++
+			}
+		}
+	}
+	return n
 }
 
 // roster reads the roster file and verifies it under root, of the configured

@@ -132,7 +132,11 @@ and <a href="/docs/adr/0077-a-signed-plane-takes-a-stop-list-only-from-operators
 route file and the stops directory. A signed start refuses those four, the
 configuration file and the trust root key file wherever the plane's account
 owns or may write one or any directory on its path, and any key the
-environment set. Amended in 0.17 by ADR-0073: the roster file too.</p>
+environment set. Amended in 0.17 by ADR-0073: the roster file too.
+Amended in 0.17: the <code>read</code> level parses and is reserved. It grants nothing
+until a receiver reads by it; a plane is read through the health socket by
+peer uid and through files by their modes, and <code>doctor</code> counts the roster's
+read grants as granting nothing yet.</p>
 <h2 id="context">Context</h2>
 <p>Today an approver is whoever can write the approvals directory, and the
 approver id is a claim. ADR-0066 says operators are authenticated against a

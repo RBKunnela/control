@@ -2,7 +2,7 @@
 title: Wire contracts
 summary: What the v1 messages are versioned by, what a receiver refuses them for, and how the evidence events chain.
 type: spec
-covers: [api/proto/guardana/control/v1/**, api/gen/go/guardana/control/v1/**, api/proto/guardana/control/enforce/**, api/gen/go/guardana/control/enforce/**, pkg/contract/**, internal/canon/**, internal/evidence/chain.go, internal/evidence/version.go, internal/trailfile/export.go, internal/trailfile/export_records.go, internal/trailfile/cursor.go, internal/lineexport/**, internal/runs/record.go, internal/runs/state.go, internal/reaction/route.go, internal/reaction/line.go, internal/reaction/lift.go, internal/reaction/envelope.go, internal/reaction/judge.go, internal/reaction/signed.go, internal/reaction/route2.go, internal/reaction/header2.go, internal/reaction/lift2.go, testdata/contracts/**, testdata/digest/**, testdata/enforce/**, testdata/export/**]
+covers: [api/proto/guardana/control/v1/**, api/gen/go/guardana/control/v1/**, api/proto/guardana/control/enforce/**, api/gen/go/guardana/control/enforce/**, pkg/contract/**, internal/canon/**, internal/evidence/chain.go, internal/evidence/version.go, internal/trailfile/export.go, internal/trailfile/export_records.go, internal/trailfile/cursor.go, internal/lineexport/**, internal/runs/record.go, internal/runs/state.go, internal/reaction/*.go, testdata/contracts/**, testdata/digest/**, testdata/enforce/**, testdata/export/**, internal/trust/file.go, internal/operators/authorize.go, internal/gateway/authority.go, internal/pause/signedpause/**, internal/runs/signedruns/**, internal/policy/holder.go, internal/gatewayconfig/reaction.go, cmd/guardana-gateway/runs.go, cmd/guardana-gateway/reaction_signed.go, cmd/guardana-gateway/build_pipeline.go]
 stability: stable
 ---
 
@@ -1473,6 +1473,35 @@ Both are the plane's own causes, named in every mode and for every effect
 class before an external decision point is asked, in the order
 [ADR-0046](adr/0046-a-finding-stops-one-run-through-a-signed-route.md) gives.
 A decision names no stop's entry id.
+
+## Signed files and their project checks
+
+The table lists each file or answer a plane accepts on a signature, the check
+that holds it to a tenant of the plane's, named per row, and to its
+`project_id`, and the test that refuses another project's. The listener's
+tenant is `listener.principal.tenant_id` where it is set, and `tenant_id`
+otherwise. A row with no project check says so. The floors are unsigned
+state the plane writes itself, so none is a row. Outside
+`approvals.authority: signed`, answers, pauses and runs are claims of whoever
+may write where they are read ([status.md](status.md)). A test in
+`internal/docscheck` fails when a function or test cited here is gone.
+
+| Receiver | What it takes | Tenant and project check | Where | Pinned by |
+| --- | --- | --- | --- | --- |
+| Trust roster | `trust.roster`, signed by the root key | none: one roster serves every project and each grant names one; its id has to be `trust.roster_id` | `internal/trust/file.go` `fileRoster.candidate` | `internal/trust` `TestARestartNeverTakesARosterOfAnotherID` |
+| Approval answer | an operator's answer in `approvals.inbox_dir` | the authorizer is asked about the held call's tenant, `tenant_id`, and its project, and a grant matches both exactly | `internal/gateway/authority.go` `Pipeline.judgeEnvelope` `internal/operators/authorize.go` `rosterAuthorizer.Authorize` | `internal/gateway` `TestBobsAnswerResumesNothingAndAlicesOnce` `internal/operators` `TestTwoOperatorsEachActOnlyWhereTheirGrantsReach` |
+| Pause file | `pause.file` of version `3` | its tenant is `tenant_id` and its project the plane's | `internal/pause/signedpause/judge.go` `Authority.Judge` | `internal/pause/signedpause` `TestNoOneButAPermittedOperatorPausesOrLifts` |
+| Run record | a `3.0` record in `records/` of `runs.dir` | its tenant is the listener's and its project the plane's | `internal/runs/signedruns/judge.go` `Authority.Judge` | `internal/runs/signedruns` `TestBothJudgesTakeOnlyAnOperatorOfThePlanesProject` |
+| Route | `reaction.route` of `v1alpha2` | its tenant is the listener's, and its project and file the plane's | `internal/gatewayconfig/reaction.go` `Config.CheckRoute` `internal/reaction/signed.go` `vouchedWithin` | `internal/gatewayconfig` `TestARouteIsOfTheListenersTenant` `TestARouteIsOfTheAuthoritysFormatAndThePlanesProject` `internal/reaction` `TestASignedRouteIsRefusedWithItsCause` |
+| Stop list header | the `2.0` header of `reaction.stops` | its tenant and project are the route's | `internal/reaction/header2.go` `judgeSignedHeader` | `internal/reaction` `TestASignedListIsRefusedAndNeverReadAsNoStops` |
+| Stop and covered lines | each line of that list | a stop's project, and a covered line's tenant and project, are the route's | `internal/reaction/permits.go` `Route.Permits` `internal/reaction/judge.go` `judging.coveredLine` | `internal/reaction` `TestASignedRoutePermitsOnlyAStopOfItsProjectAndScope` `TestASignedListIsRefusedAndNeverReadAsNoStops` |
+| Lift | a `v1alpha2` lift line | its tenant and project are the route's | `internal/reaction/lift2.go` `verifySignedLiftLine` | `internal/reaction` `TestASignedListIsRefusedAndNeverReadAsNoStops` |
+| Policy bundle and statement | `policy.bundle_file` and `policy.statement_file`, signed by the pinned policy and freshness keys | none: a bundle names no tenant or project; its id has to be `policy.bundle_id` | `internal/policy/holder.go` `Holder.loadPinned` | `internal/policy` `TestInstallUnconfirmedHoldsToTheFloor` |
+| Route under a route key | outside `signed`, a `v1alpha1` route signed by `reaction.public_key`, and its lifts | tenant only: the route's tenant is the listener's, and a stop's the route's; such a route names no project | `internal/gatewayconfig/reaction.go` `Config.CheckRoute` `internal/reaction/permits.go` `Route.Permits` | `internal/gatewayconfig` `TestARouteIsOfTheListenersTenant` `internal/reaction` `TestJudgeHoldsEveryStopToTheRoute` |
+
+Where `listener.principal.tenant_id` differs from `tenant_id`, an operator
+needs a grant over each: answers and pauses are judged under `tenant_id`, runs
+and stops under the listener's tenant.
 
 ## The enforcement API
 

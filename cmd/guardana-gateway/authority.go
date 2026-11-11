@@ -99,28 +99,37 @@ func checkSignedStart(cfg *gatewayconfig.Config) error {
 		return fmt.Errorf("approvals.authority: signed, and the environment sets %s; the plane's own account sets its environment, so under signed every key is read from the configuration file alone (ADR-0073)",
 			strings.Join(keys, ", "))
 	}
-	checked := []struct{ key, path string }{
-		{"the configuration file", cfg.File()},
-		{"trust.root_public_key", cfg.Resolve(cfg.Trust.RootPublicKey)},
-		{"trust.roster", cfg.Resolve(cfg.Trust.Roster)},
-	}
-	if cfg.Pause.File != "" {
-		checked = append(checked, struct{ key, path string }{"pause.file", cfg.Resolve(cfg.Pause.File)})
-	}
-	if cfg.Reaction.Configured() {
-		checked = append(checked,
-			struct{ key, path string }{"reaction.route", cfg.Resolve(cfg.Reaction.Route)},
-			struct{ key, path string }{"reaction.stops", cfg.Resolve(cfg.Reaction.Stops)})
-	}
-	if cfg.Runs.Dir != "" {
-		checked = append(checked, struct{ key, path string }{"runs.dir", filepath.Join(cfg.Resolve(cfg.Runs.Dir), runs.RecordsDir)})
-	}
-	for _, f := range checked {
+	for _, f := range signedStartFiles(cfg) {
 		if err := notPlaneWritable(f.path); err != nil {
 			return fmt.Errorf("%s: under the signed authority the plane's own account may not be able to change it: %w (ADR-0073)", f.key, err)
 		}
 	}
 	return nil
+}
+
+// signedFile is one path a signed start checks, under the key that names it.
+type signedFile struct{ key, path string }
+
+// signedStartFiles is every path checkSignedStart holds out of the plane's
+// account; a key the configuration leaves unset names none.
+func signedStartFiles(cfg *gatewayconfig.Config) []signedFile {
+	checked := []signedFile{
+		{"the configuration file", cfg.File()},
+		{"trust.root_public_key", cfg.Resolve(cfg.Trust.RootPublicKey)},
+		{"trust.roster", cfg.Resolve(cfg.Trust.Roster)},
+	}
+	if cfg.Pause.File != "" {
+		checked = append(checked, signedFile{"pause.file", cfg.Resolve(cfg.Pause.File)})
+	}
+	if cfg.Reaction.Configured() {
+		checked = append(checked,
+			signedFile{"reaction.route", cfg.Resolve(cfg.Reaction.Route)},
+			signedFile{"reaction.stops", cfg.Resolve(cfg.Reaction.Stops)})
+	}
+	if cfg.Runs.Dir != "" {
+		checked = append(checked, signedFile{"runs.dir", filepath.Join(cfg.Resolve(cfg.Runs.Dir), runs.RecordsDir)})
+	}
+	return checked
 }
 
 // pinnedKey is one key the plane pins for an authority other than the trust

@@ -1874,6 +1874,102 @@ one version, and a <code>2.0</code> line is refused under a <code>v1alpha1</code
 class before an external decision point is asked, in the order
 <a href="/docs/adr/0046-a-finding-stops-one-run-through-a-signed-route">ADR-0046</a> gives.
 A decision names no stop's entry id.</p>
+<h2 id="signed-files-and-their-project-checks">Signed files and their project checks</h2>
+<p>The table lists each file or answer a plane accepts on a signature, the check
+that holds it to a tenant of the plane's, named per row, and to its
+<code>project_id</code>, and the test that refuses another project's. The listener's
+tenant is <code>listener.principal.tenant_id</code> where it is set, and <code>tenant_id</code>
+otherwise. A row with no project check says so. The floors are unsigned
+state the plane writes itself, so none is a row. Outside
+<code>approvals.authority: signed</code>, answers, pauses and runs are claims of whoever
+may write where they are read (<a href="/docs/status">status.md</a>). A test in
+<code>internal/docscheck</code> fails when a function or test cited here is gone.</p>
+<table>
+<thead>
+<tr>
+<th>Receiver</th>
+<th>What it takes</th>
+<th>Tenant and project check</th>
+<th>Where</th>
+<th>Pinned by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Trust roster</td>
+<td><code>trust.roster</code>, signed by the root key</td>
+<td>none: one roster serves every project and each grant names one; its id has to be <code>trust.roster_id</code></td>
+<td><code>internal/trust/file.go</code> <code>fileRoster.candidate</code></td>
+<td><code>internal/trust</code> <code>TestARestartNeverTakesARosterOfAnotherID</code></td>
+</tr>
+<tr>
+<td>Approval answer</td>
+<td>an operator's answer in <code>approvals.inbox_dir</code></td>
+<td>the authorizer is asked about the held call's tenant, <code>tenant_id</code>, and its project, and a grant matches both exactly</td>
+<td><code>internal/gateway/authority.go</code> <code>Pipeline.judgeEnvelope</code> <code>internal/operators/authorize.go</code> <code>rosterAuthorizer.Authorize</code></td>
+<td><code>internal/gateway</code> <code>TestBobsAnswerResumesNothingAndAlicesOnce</code> <code>internal/operators</code> <code>TestTwoOperatorsEachActOnlyWhereTheirGrantsReach</code></td>
+</tr>
+<tr>
+<td>Pause file</td>
+<td><code>pause.file</code> of version <code>3</code></td>
+<td>its tenant is <code>tenant_id</code> and its project the plane's</td>
+<td><code>internal/pause/signedpause/judge.go</code> <code>Authority.Judge</code></td>
+<td><code>internal/pause/signedpause</code> <code>TestNoOneButAPermittedOperatorPausesOrLifts</code></td>
+</tr>
+<tr>
+<td>Run record</td>
+<td>a <code>3.0</code> record in <code>records/</code> of <code>runs.dir</code></td>
+<td>its tenant is the listener's and its project the plane's</td>
+<td><code>internal/runs/signedruns/judge.go</code> <code>Authority.Judge</code></td>
+<td><code>internal/runs/signedruns</code> <code>TestBothJudgesTakeOnlyAnOperatorOfThePlanesProject</code></td>
+</tr>
+<tr>
+<td>Route</td>
+<td><code>reaction.route</code> of <code>v1alpha2</code></td>
+<td>its tenant is the listener's, and its project and file the plane's</td>
+<td><code>internal/gatewayconfig/reaction.go</code> <code>Config.CheckRoute</code> <code>internal/reaction/signed.go</code> <code>vouchedWithin</code></td>
+<td><code>internal/gatewayconfig</code> <code>TestARouteIsOfTheListenersTenant</code> <code>TestARouteIsOfTheAuthoritysFormatAndThePlanesProject</code> <code>internal/reaction</code> <code>TestASignedRouteIsRefusedWithItsCause</code></td>
+</tr>
+<tr>
+<td>Stop list header</td>
+<td>the <code>2.0</code> header of <code>reaction.stops</code></td>
+<td>its tenant and project are the route's</td>
+<td><code>internal/reaction/header2.go</code> <code>judgeSignedHeader</code></td>
+<td><code>internal/reaction</code> <code>TestASignedListIsRefusedAndNeverReadAsNoStops</code></td>
+</tr>
+<tr>
+<td>Stop and covered lines</td>
+<td>each line of that list</td>
+<td>a stop's project, and a covered line's tenant and project, are the route's</td>
+<td><code>internal/reaction/permits.go</code> <code>Route.Permits</code> <code>internal/reaction/judge.go</code> <code>judging.coveredLine</code></td>
+<td><code>internal/reaction</code> <code>TestASignedRoutePermitsOnlyAStopOfItsProjectAndScope</code> <code>TestASignedListIsRefusedAndNeverReadAsNoStops</code></td>
+</tr>
+<tr>
+<td>Lift</td>
+<td>a <code>v1alpha2</code> lift line</td>
+<td>its tenant and project are the route's</td>
+<td><code>internal/reaction/lift2.go</code> <code>verifySignedLiftLine</code></td>
+<td><code>internal/reaction</code> <code>TestASignedListIsRefusedAndNeverReadAsNoStops</code></td>
+</tr>
+<tr>
+<td>Policy bundle and statement</td>
+<td><code>policy.bundle_file</code> and <code>policy.statement_file</code>, signed by the pinned policy and freshness keys</td>
+<td>none: a bundle names no tenant or project; its id has to be <code>policy.bundle_id</code></td>
+<td><code>internal/policy/holder.go</code> <code>Holder.loadPinned</code></td>
+<td><code>internal/policy</code> <code>TestInstallUnconfirmedHoldsToTheFloor</code></td>
+</tr>
+<tr>
+<td>Route under a route key</td>
+<td>outside <code>signed</code>, a <code>v1alpha1</code> route signed by <code>reaction.public_key</code>, and its lifts</td>
+<td>tenant only: the route's tenant is the listener's, and a stop's the route's; such a route names no project</td>
+<td><code>internal/gatewayconfig/reaction.go</code> <code>Config.CheckRoute</code> <code>internal/reaction/permits.go</code> <code>Route.Permits</code></td>
+<td><code>internal/gatewayconfig</code> <code>TestARouteIsOfTheListenersTenant</code> <code>internal/reaction</code> <code>TestJudgeHoldsEveryStopToTheRoute</code></td>
+</tr>
+</tbody>
+</table>
+<p>Where <code>listener.principal.tenant_id</code> differs from <code>tenant_id</code>, an operator
+needs a grant over each: answers and pauses are judged under <code>tenant_id</code>, runs
+and stops under the listener's tenant.</p>
 <h2 id="the-enforcement-api">The enforcement API</h2>
 <p>How a tool outside MCP asks before it acts and reports what it did: the
 package <code>guardana.control.enforce.v1alpha1</code>, in

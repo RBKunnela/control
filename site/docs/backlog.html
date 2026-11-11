@@ -253,7 +253,7 @@ mappings.</p>
 <td>B13</td>
 <td>Authenticate operators and scope authority</td>
 <td>none</td>
-<td>Reader/operator/admin capabilities are receiver-enforced. Cross-project reads and operations are refused; a stop names its actual agent or principal scope. Two users and overlapping runs pass adversarial tests. MCP upstream credentials remain separate from inbound credentials. The collector takes evidence only on its unix socket, and the TCP export is removed</td>
+<td>Under <code>approvals.authority: signed</code>, operate and admin are enforced by each receiver from the signed roster (<a href="/docs/adr/0071-operators-are-named-by-a-signed-roster">ADR-0071</a>, <a href="/docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it">ADR-0073</a>); reading is by peer uid against <code>health.socket_uid</code> on the health socket and by file modes, and the roster's <code>read</code> grant is reserved. Open: reads and operations of another project are refused at every receiver, not only at the signed ones <a href="/docs/contracts#signed-files-and-their-project-checks">contracts.md</a> lists; a stop names its actual agent or principal scope; two users and overlapping runs pass adversarial tests. MCP upstream credentials remain separate from inbound credentials</td>
 </tr>
 <tr>
 <td>B14</td>

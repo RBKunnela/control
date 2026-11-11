@@ -21,6 +21,10 @@ route file and the stops directory. A signed start refuses those four, the
 configuration file and the trust root key file wherever the plane's account
 owns or may write one or any directory on its path, and any key the
 environment set. Amended in 0.17 by ADR-0073: the roster file too.
+Amended in 0.17: the `read` level parses and is reserved. It grants nothing
+until a receiver reads by it; a plane is read through the health socket by
+peer uid and through files by their modes, and `doctor` counts the roster's
+read grants as granting nothing yet.
 
 ## Context
 
