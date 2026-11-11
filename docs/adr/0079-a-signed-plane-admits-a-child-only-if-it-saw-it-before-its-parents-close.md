@@ -24,7 +24,7 @@ has to tell a child opened before the close from one opened after it.
 
 - Under `signed`, at every resolve of a run with a parent, after its own
   record is taken and is not refused as replayed, the plane reads
-  `state/<id>.seen`. Where it stands, no ancestor is looked at.
+  `state/<id>.seen`. Where that marker exists, no ancestor is read.
 - Where it does not, the plane walks up from the parent. At each ancestor
   whose close is carried (`state/<ancestor>.closed` stands, or the plane
   holds the close because `state/` did not take it) the call is refused as

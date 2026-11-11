@@ -133,7 +133,7 @@ has to tell a child opened before the close from one opened after it.</p>
 <ul>
 <li>Under <code>signed</code>, at every resolve of a run with a parent, after its own
 record is taken and is not refused as replayed, the plane reads
-<code>state/&lt;id&gt;.seen</code>. Where it stands, no ancestor is looked at.</li>
+<code>state/&lt;id&gt;.seen</code>. Where that marker exists, no ancestor is read.</li>
 <li>Where it does not, the plane walks up from the parent. At each ancestor
 whose close is carried (<code>state/&lt;ancestor&gt;.closed</code> stands, or the plane
 holds the close because <code>state/</code> did not take it) the call is refused as

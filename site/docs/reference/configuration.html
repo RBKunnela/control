@@ -173,9 +173,9 @@ directory, compared through
 symbolic links too. <code>export.endpoint</code> is <code>unix:///path</code>, at most 103 bytes of path, or
 an <code>https</code> URL; an <code>http</code> one is refused, and so is <code>export.allow_plaintext: true</code>,
 since plaintext export was removed in 0.17. A unix endpoint needs
-<code>export.collector_uid</code>, any other refuses <code>export.collector_uid</code>, and
-<code>health.socket_uid</code> needs <code>health.socket</code>, and a start refuses it naming the plane's own
-account; a platform that cannot name a socket peer's account refuses both sockets.
+<code>export.collector_uid</code>, and any other endpoint refuses it. <code>health.socket_uid</code> needs
+<code>health.socket</code>, and a start refuses one that names the plane's own account; a
+platform that cannot name a socket peer's account refuses both sockets.
 Every <code>pdp.</code> key is refused while <code>pdp.identifier</code> is empty,
 since it would apply to no decision point, and the identifier is written into every
 decision that consulted the decision point, so a credential goes in <code>pdp.headers</code>,
@@ -1127,9 +1127,9 @@ one. In the variable of a header each <code>_</code> stands for a <code>-</code>
 Header names are compared without case, so a variable wins over the file however
 either spells the name. A name the file or the environment spells twice is refused,
 and so is a <code>_</code> in a header's name in the file, since no variable could replace it.
-A relative path resolves against the directory of the file, and every path, the
-file's own too, is read with each <code>..</code> the path spells taken before any symbolic
-link is followed.</p>
+A relative path resolves against the directory of the file. Every path, the file's
+own included, is read taking each <code>..</code> the path spells before following any
+symbolic link.</p>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/reference/configuration.md">docs/reference/configuration.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.16.0, and <a href="https://github.com/guardana/control/tree/v0.16.0/docs">its documentation</a> is in its tag.</p>
 </main>
 <nav class="side" aria-label="Documentation">

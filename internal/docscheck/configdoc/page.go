@@ -218,9 +218,9 @@ func lead(listDefault, classificationRule string) string {
 		"symbolic links too. `export.endpoint` is `unix:///path`, at most 103 bytes of path, or\n" +
 		"an `https` URL; an `http` one is refused, and so is `export.allow_plaintext: true`,\n" +
 		"since plaintext export was removed in 0.17. A unix endpoint needs\n" +
-		"`export.collector_uid`, any other refuses `export.collector_uid`, and\n" +
-		"`health.socket_uid` needs `health.socket`, and a start refuses it naming the plane's own\n" +
-		"account; a platform that cannot name a socket peer's account refuses both sockets.\n" +
+		"`export.collector_uid`, and any other endpoint refuses it. `health.socket_uid` needs\n" +
+		"`health.socket`, and a start refuses one that names the plane's own account; a\n" +
+		"platform that cannot name a socket peer's account refuses both sockets.\n" +
 		"Every `pdp.` key is refused while `pdp.identifier` is empty,\n" +
 		"since it would apply to no decision point, and the identifier is written into every\n" +
 		"decision that consulted the decision point, so a credential goes in `pdp.headers`,\n" +
@@ -244,9 +244,9 @@ func tail() string {
 		"Header names are compared without case, so a variable wins over the file however\n" +
 		"either spells the name. A name the file or the environment spells twice is refused,\n" +
 		"and so is a `_` in a header's name in the file, since no variable could replace it.\n" +
-		"A relative path resolves against the directory of the file, and every path, the\n" +
-		"file's own too, is read with each `..` the path spells taken before any symbolic\n" +
-		"link is followed.\n"
+		"A relative path resolves against the directory of the file. Every path, the file's\n" +
+		"own included, is read taking each `..` the path spells before following any\n" +
+		"symbolic link.\n"
 }
 
 func collectionRow(c gatewayconfig.Collection) (string, error) {

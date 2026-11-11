@@ -67,9 +67,9 @@ directory, compared through
 symbolic links too. `export.endpoint` is `unix:///path`, at most 103 bytes of path, or
 an `https` URL; an `http` one is refused, and so is `export.allow_plaintext: true`,
 since plaintext export was removed in 0.17. A unix endpoint needs
-`export.collector_uid`, any other refuses `export.collector_uid`, and
-`health.socket_uid` needs `health.socket`, and a start refuses it naming the plane's own
-account; a platform that cannot name a socket peer's account refuses both sockets.
+`export.collector_uid`, and any other endpoint refuses it. `health.socket_uid` needs
+`health.socket`, and a start refuses one that names the plane's own account; a
+platform that cannot name a socket peer's account refuses both sockets.
 Every `pdp.` key is refused while `pdp.identifier` is empty,
 since it would apply to no decision point, and the identifier is written into every
 decision that consulted the decision point, so a credential goes in `pdp.headers`,
@@ -211,6 +211,6 @@ one. In the variable of a header each `_` stands for a `-` in the header's name.
 Header names are compared without case, so a variable wins over the file however
 either spells the name. A name the file or the environment spells twice is refused,
 and so is a `_` in a header's name in the file, since no variable could replace it.
-A relative path resolves against the directory of the file, and every path, the
-file's own too, is read with each `..` the path spells taken before any symbolic
-link is followed.
+A relative path resolves against the directory of the file. Every path, the file's
+own included, is read taking each `..` the path spells before following any
+symbolic link.

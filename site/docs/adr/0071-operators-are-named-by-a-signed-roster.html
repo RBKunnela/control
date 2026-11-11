@@ -225,10 +225,11 @@ plane's own account can write, and not the authority floor: the plane raises
 that floor itself, so its account writes it. That account can therefore roll
 the roster back only to an older or equal serial of the same roster id,
 within that roster's lifetime of at most 7 days, and that is the whole limit.
-Amended in 0.17: the start refuses a roster file that account can write
-too, so it can no longer put an older roster in place; raising the floor it
-writes still keeps the held roster against a newer one until the held one
-expires.</p>
+Amended in 0.17: a signed start also refuses a roster file the plane's own
+account can write, so that account can no longer put an older roster in its
+place.
+By raising the floor it writes, the account can still keep the plane on the
+roster it holds, not a newer one, until the held roster expires.</p>
 <h2 id="alternatives-considered">Alternatives considered</h2>
 <ul>
 <li>One pinned key per operator in the configuration: no expiry, no grants,
