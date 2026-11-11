@@ -219,8 +219,9 @@ func lead(listDefault, classificationRule string) string {
 		"an `https` URL; an `http` one is refused, and so is `export.allow_plaintext: true`,\n" +
 		"since plaintext export was removed in 0.17. A unix endpoint needs\n" +
 		"`export.collector_uid`, any other refuses `export.collector_uid`, and\n" +
-		"`health.socket_uid` needs `health.socket`; a platform that cannot name a socket peer's\n" +
-		"account refuses both sockets. Every `pdp.` key is refused while `pdp.identifier` is empty,\n" +
+		"`health.socket_uid` needs `health.socket`, and a start refuses it naming the plane's own\n" +
+		"account; a platform that cannot name a socket peer's account refuses both sockets.\n" +
+		"Every `pdp.` key is refused while `pdp.identifier` is empty,\n" +
 		"since it would apply to no decision point, and the identifier is written into every\n" +
 		"decision that consulted the decision point, so a credential goes in `pdp.headers`,\n" +
 		"never in it. Other directories are compared as paths and not as what they\n" +

@@ -227,3 +227,37 @@ jobs:
 
       - name: Run the guide with an external MCP client
         run: env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS make check-mcp-client GO=go
+
+  two-accounts:
+    name: Two accounts
+    # The tests that need root and two more accounts: the socket peers, the
+    # placement a signed start judges and the operator's runs directory, each
+    # under real ownership (ADR-0081). The step fails unless every test
+    # scripts/expected-runs.txt names ran and passed. No condition and no
+    # path filter: a required check must report on every pull request.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          # This job runs code as root; it must not write the module and
+          # build cache the quality job restores.
+          cache: false
+
+      - name: Run the tests under two more accounts
+        # The accounts have no home and no login shell; the tests reach them
+        # only through child processes that root starts as each one.
+        run: |
+          sudo useradd --system --user-group --no-create-home --shell /usr/sbin/nologin twoacct-other
+          sudo useradd --system --user-group --no-create-home --shell /usr/sbin/nologin twoacct-third
+          GUARDANA_TEST_OTHER_UID="$(id -u twoacct-other)"
+          GUARDANA_TEST_THIRD_UID="$(id -u twoacct-third)"
+          export GUARDANA_TEST_OTHER_UID GUARDANA_TEST_THIRD_UID
+          scripts/two-accounts.sh

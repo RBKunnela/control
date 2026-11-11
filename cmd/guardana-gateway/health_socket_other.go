@@ -12,3 +12,11 @@ import (
 func listenHealthSocket(string, bool) (net.Listener, error) {
 	return nil, errors.New("health.socket: this platform cannot name a socket peer's account")
 }
+
+func healthDir(string, bool) error {
+	return errors.New("health.socket: this platform cannot name a socket peer's account")
+}
+
+func unsearchable(string, uint32) (string, error) {
+	return "", errors.New("this platform cannot name a socket peer's account")
+}

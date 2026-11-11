@@ -1,0 +1,21 @@
+# The tests the "Two accounts" job must run and pass, read by
+# scripts/check-runs.go: a test named here that skipped, failed, did not build
+# or never ran fails the job, and so does a list that names none (ADR-0081).
+# One entry per line, "<import path> <test name>", one space between the two,
+# a top-level test only. scripts/two-accounts.sh runs each one alone, as root,
+# beside the accounts GUARDANA_TEST_OTHER_UID and GUARDANA_TEST_THIRD_UID name;
+# the root tests of scripts/expected-skips.txt are here too. internal/docscheck
+# refuses a list that leaves out a top-level test of a twoaccounts file or a
+# test skipped as needing root, or names any other.
+github.com/guardana/control/cmd/guardana-control TestAnOperatorsSignedRunIsTakenByAPlaneInItsGroup
+github.com/guardana/control/cmd/guardana-control TestReactUnderASignedRouteRunsAsTheOperatorBesideThePlane
+github.com/guardana/control/cmd/guardana-gateway TestTheHealthSocketAnswersTheNamedAccountAndClosesAThird
+github.com/guardana/control/cmd/guardana-gateway TestTheHealthSocketOfThePlaneAloneTakesNoOtherConnection
+github.com/guardana/control/cmd/guardana-gateway TestADirectoryTheNamedAccountCannotSearchKeepsItOutAndDoctorSaysSo
+github.com/guardana/control/cmd/guardana-gateway TestASignedStartAsThePlanesAccountJudgesRealOwnership
+github.com/guardana/control/cmd/guardana-gateway TestTheExportSocketSendsOnlyToTheCollectorsAccount
+github.com/guardana/control/internal/files TestReadOwnedRefusesAFileOfAnotherAccount
+github.com/guardana/control/internal/gatewayconfig TestAConfigurationGivenAwayIsRefused
+github.com/guardana/control/internal/holdjournal TestAnEntryAnotherAccountOwnsIsNotRead
+github.com/guardana/control/internal/policykey TestReadPrivateRefusesAKeyOfAnotherAccount
+github.com/guardana/control/internal/trailfile TestOpenRefusesAFileAnotherAccountOwns

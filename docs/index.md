@@ -178,3 +178,4 @@ with `make docs-gen`; an edit made here does not survive the next run.
 - [ADR-0078: A restore only raises](adr/0078-a-restore-only-raises.md): accepted
 - [ADR-0079: A signed plane admits a child only if it saw it before its parent's close](adr/0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close.md): accepted
 - [ADR-0080: Evidence leaves a plane over a unix socket or TLS](adr/0080-evidence-leaves-a-plane-over-a-unix-socket-or-tls.md): accepted
+- [ADR-0081: Tests that need a second account run in a required job](adr/0081-tests-that-need-a-second-account-run-in-a-required-job.md): accepted

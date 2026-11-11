@@ -54,6 +54,7 @@ REQUIRED_CHECKS=(
   "Quality gate"
   "Wire contract compatibility"
   "External MCP client"
+  "Two accounts"
   "CodeQL"
   "Known Go vulnerabilities"
   "Dependency advisories"

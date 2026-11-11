@@ -174,8 +174,9 @@ symbolic links too. <code>export.endpoint</code> is <code>unix:///path</code>, a
 an <code>https</code> URL; an <code>http</code> one is refused, and so is <code>export.allow_plaintext: true</code>,
 since plaintext export was removed in 0.17. A unix endpoint needs
 <code>export.collector_uid</code>, any other refuses <code>export.collector_uid</code>, and
-<code>health.socket_uid</code> needs <code>health.socket</code>; a platform that cannot name a socket peer's
-account refuses both sockets. Every <code>pdp.</code> key is refused while <code>pdp.identifier</code> is empty,
+<code>health.socket_uid</code> needs <code>health.socket</code>, and a start refuses it naming the plane's own
+account; a platform that cannot name a socket peer's account refuses both sockets.
+Every <code>pdp.</code> key is refused while <code>pdp.identifier</code> is empty,
 since it would apply to no decision point, and the identifier is written into every
 decision that consulted the decision point, so a credential goes in <code>pdp.headers</code>,
 never in it. Other directories are compared as paths and not as what they

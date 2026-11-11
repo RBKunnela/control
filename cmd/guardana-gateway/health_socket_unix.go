@@ -90,3 +90,49 @@ func clearStaleHealthSocket(path string) error {
 	}
 	return nil
 }
+
+// unsearchable says why uid cannot reach a socket in dir: the first
+// directory from the root to dir, links resolved, it may not search, since a
+// connect takes search permission on every directory above the socket; ""
+// where none stops it. Group membership is not read, so a directory only its
+// group may search is named with that group.
+func unsearchable(dir string, uid uint32) (string, error) {
+	if uid == 0 {
+		return "", nil
+	}
+	resolved, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		return "", err
+	}
+	for _, p := range fromTheRoot(resolved) {
+		info, err := os.Stat(p)
+		if err != nil {
+			return "", err
+		}
+		st, ok := info.Sys().(*syscall.Stat_t)
+		if !ok {
+			return "", fmt.Errorf("%s: its owner cannot be named", p)
+		}
+		perm := info.Mode().Perm()
+		switch {
+		case st.Uid == uid && perm&0o100 != 0, st.Uid != uid && perm&0o001 != 0:
+			continue
+		case st.Uid != uid && perm&0o010 != 0:
+			return fmt.Sprintf("health.socket_uid %d connects only as a member of gid %d, the one group that may search %s (mode %04o)", uid, st.Gid, p, perm), nil
+		}
+		return fmt.Sprintf("health.socket_uid %d is never answered: it may not search %s (mode %04o, owner uid %d)", uid, p, perm, st.Uid), nil
+	}
+	return "", nil
+}
+
+// fromTheRoot is every directory from the root down to the clean path dir,
+// dir included.
+func fromTheRoot(dir string) []string {
+	var chain []string
+	for p := dir; ; p = filepath.Dir(p) {
+		chain = append([]string{p}, chain...)
+		if filepath.Dir(p) == p {
+			return chain
+		}
+	}
+}

@@ -3,6 +3,10 @@
 Status: accepted
 Date: 2026-10-27
 
+Amended by [ADR-0081](0081-tests-that-need-a-second-account-run-in-a-required-job.md):
+the root-only tests listed here also run, and have to pass, in the required
+job "Two accounts".
+
 Builds on [ADR-0062](0062-the-gate-is-guarded-at-its-entry-points-and-fuzzed-at-night.md),
 which narrowed the gate to what its entry points start.
 
