@@ -77,53 +77,54 @@ var errTooManyLinks = errors.New("too many links")
 // closed to writes by others, owned by the plane's account or root, and
 // without another name, and its directory is judged as every other. The file
 // and its directory are judged again on the descriptors the read goes
-// through, so nothing swapped in after a check is read. A refusal names what
-// was judged and why, never what the file holds.
-func readJudged(path string) ([]byte, error) {
+// through, so nothing swapped in after a check is read, and the file read is
+// returned as that descriptor states it. A refusal names what was judged and
+// why, never what the file holds.
+func readJudged(path string) ([]byte, fs.FileInfo, error) {
 	if !files.PermissionBits {
-		return nil, files.ErrNoPermissionBits
+		return nil, nil, files.ErrNoPermissionBits
 	}
 	resolved, err := resolveJudged(path)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	configStep(stepWalked)
 	dir, name := filepath.Dir(resolved), filepath.Base(resolved)
 	root, err := openJudgedDir(dir)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer func() { _ = root.Close() }()
 	named, err := root.Lstat(name)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	configStep(stepFileNamed)
 	// A root follows a link at the name whatever the flags say, so the file
 	// opened is held to be the entry named above, which a link never is.
 	f, err := root.OpenFile(name, os.O_RDONLY|openFlags, 0)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer func() { _ = f.Close() }()
 	info, err := f.Stat()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if !os.SameFile(named, info) {
-		return nil, fmt.Errorf("%s %w", resolved, errChanged)
+		return nil, nil, fmt.Errorf("%s %w", resolved, errChanged)
 	}
 	if err := judgeFile(info); err != nil {
-		return nil, fmt.Errorf("%s: %w", resolved, err)
+		return nil, nil, fmt.Errorf("%s: %w", resolved, err)
 	}
 	raw, err := io.ReadAll(io.LimitReader(f, maxConfigBytes+1))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if len(raw) > maxConfigBytes {
-		return nil, fmt.Errorf("%w: limit %d", files.ErrTooLarge, maxConfigBytes)
+		return nil, nil, fmt.Errorf("%w: limit %d", files.ErrTooLarge, maxConfigBytes)
 	}
-	return raw, nil
+	return raw, info, nil
 }
 
 // openJudgedDir opens dir, judges it on the opened descriptor, and returns a

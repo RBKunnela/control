@@ -2,7 +2,9 @@ package gatewayconfig
 
 import (
 	"fmt"
+	"io/fs"
 	"maps"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -46,6 +48,8 @@ type Config struct {
 	// dir is the directory of the file the configuration was read from, which
 	// every relative path in it resolves against, and path that file.
 	dir, path string
+	// read is that file as the descriptor Load read it through stated it.
+	read fs.FileInfo
 	// source names, per key, the file position or the environment variable
 	// that set it. A key that is absent stands at its default.
 	source map[string]string
@@ -272,15 +276,26 @@ func (c *Config) Mode() (controlv1.EnforcementMode, error) {
 	return controlv1.EnforcementMode(number), nil
 }
 
-// File is the configuration file Load read, as an absolute path.
+// File is the configuration file Load read, as an absolute, clean path.
 func (c *Config) File() string { return c.path }
+
+// IsFileRead reports whether info is the very file Load read the
+// configuration from, which the file now at File may no longer be. A
+// configuration Load did not make has read no file, so no info is it.
+func (c *Config) IsFileRead(info fs.FileInfo) bool {
+	return c.read != nil && info != nil && os.SameFile(c.read, info)
+}
 
 // Resolve reads a path from the configuration against the directory of the
 // file it was read from, so a relative path means the same thing wherever the
-// program is started.
+// program is started. Either form comes back clean, so a check that walks the
+// path and a reader that cleans it name one file.
 func (c *Config) Resolve(path string) string {
-	if path == "" || filepath.IsAbs(path) {
+	switch {
+	case path == "":
 		return path
+	case filepath.IsAbs(path):
+		return filepath.Clean(path)
 	}
 	return filepath.Join(c.dir, path)
 }

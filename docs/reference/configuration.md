@@ -211,4 +211,6 @@ one. In the variable of a header each `_` stands for a `-` in the header's name.
 Header names are compared without case, so a variable wins over the file however
 either spells the name. A name the file or the environment spells twice is refused,
 and so is a `_` in a header's name in the file, since no variable could replace it.
-A relative path resolves against the directory of the file.
+A relative path resolves against the directory of the file, and every path, the
+file's own too, is read with each `..` the path spells taken before any symbolic
+link is followed.

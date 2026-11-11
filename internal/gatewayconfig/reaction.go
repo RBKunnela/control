@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
-	"slices"
 	"strings"
 	"time"
 
@@ -150,9 +149,7 @@ func sharesDir(a, b string) (bool, error) {
 }
 
 // asResolved is dir as the system resolves it where it exists, every link
-// followed before the ".." after it, as the plane's opens take it; a path
-// cleaned first would drop the link and name another directory. A dir that
-// does not exist yet and names ".." cannot be compared, so it is refused.
+// followed, so a link that puts one directory inside another is caught.
 func asResolved(dir string) (string, error) {
 	resolved, err := filepath.EvalSymlinks(dir)
 	switch {
@@ -160,8 +157,6 @@ func asResolved(dir string) (string, error) {
 		return filepath.Abs(resolved)
 	case !errors.Is(err, fs.ErrNotExist):
 		return "", fmt.Errorf("%q cannot be compared: %w", dir, err)
-	case slices.Contains(strings.Split(filepath.ToSlash(dir), "/"), ".."):
-		return "", fmt.Errorf("%q does not exist and names \"..\", so it cannot be compared", dir)
 	}
 	return dir, nil
 }

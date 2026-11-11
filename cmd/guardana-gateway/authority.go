@@ -84,7 +84,7 @@ type signedPorts struct {
 // The start checks of the signed kind, each a variable so a test reaches the
 // plane that passes them on a machine whose files its own account owns.
 var (
-	notPlaneWritable     = gatewayconfig.CheckNotPlaneWritable
+	notPlaneWritable     = gatewayconfig.JudgeNotPlaneWritable
 	environmentOverrides = gatewayconfig.EnvironmentOverrides
 )
 
@@ -100,34 +100,44 @@ func checkSignedStart(cfg *gatewayconfig.Config) error {
 			strings.Join(keys, ", "))
 	}
 	for _, f := range signedStartFiles(cfg) {
-		if err := notPlaneWritable(f.path); err != nil {
+		end, err := notPlaneWritable(f.path)
+		if err != nil {
 			return fmt.Errorf("%s: under the signed authority the plane's own account may not be able to change it: %w (ADR-0073)", f.key, err)
+		}
+		if f.read && !cfg.IsFileRead(end) {
+			return fmt.Errorf("%s: %s is not the file the plane read, so judging it says nothing of the configuration the plane runs (ADR-0073)", f.key, f.path)
 		}
 	}
 	return nil
 }
 
 // signedFile is one path a signed start checks, under the key that names it.
-type signedFile struct{ key, path string }
+// read marks the configuration file, which has to be judged as the very file
+// Load read: one renamed over its path since says nothing of what the plane
+// runs.
+type signedFile struct {
+	key, path string
+	read      bool
+}
 
 // signedStartFiles is every path checkSignedStart holds out of the plane's
 // account; a key the configuration leaves unset names none.
 func signedStartFiles(cfg *gatewayconfig.Config) []signedFile {
 	checked := []signedFile{
-		{"the configuration file", cfg.File()},
-		{"trust.root_public_key", cfg.Resolve(cfg.Trust.RootPublicKey)},
-		{"trust.roster", cfg.Resolve(cfg.Trust.Roster)},
+		{key: "the configuration file", path: cfg.File(), read: true},
+		{key: "trust.root_public_key", path: cfg.Resolve(cfg.Trust.RootPublicKey)},
+		{key: "trust.roster", path: cfg.Resolve(cfg.Trust.Roster)},
 	}
 	if cfg.Pause.File != "" {
-		checked = append(checked, signedFile{"pause.file", cfg.Resolve(cfg.Pause.File)})
+		checked = append(checked, signedFile{key: "pause.file", path: cfg.Resolve(cfg.Pause.File)})
 	}
 	if cfg.Reaction.Configured() {
 		checked = append(checked,
-			signedFile{"reaction.route", cfg.Resolve(cfg.Reaction.Route)},
-			signedFile{"reaction.stops", cfg.Resolve(cfg.Reaction.Stops)})
+			signedFile{key: "reaction.route", path: cfg.Resolve(cfg.Reaction.Route)},
+			signedFile{key: "reaction.stops", path: cfg.Resolve(cfg.Reaction.Stops)})
 	}
 	if cfg.Runs.Dir != "" {
-		checked = append(checked, signedFile{"runs.dir", filepath.Join(cfg.Resolve(cfg.Runs.Dir), runs.RecordsDir)})
+		checked = append(checked, signedFile{key: "runs.dir", path: filepath.Join(cfg.Resolve(cfg.Runs.Dir), runs.RecordsDir)})
 	}
 	return checked
 }

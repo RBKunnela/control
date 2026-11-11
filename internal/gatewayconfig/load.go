@@ -3,6 +3,7 @@ package gatewayconfig
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -26,7 +27,14 @@ const (
 // the configuration, or the first refusal. environ is the process's, as
 // os.Environ writes it.
 func Load(path string, environ []string) (*Config, error) {
-	text, err := readConfigFile(path)
+	// The file is read at the clean path File returns, which is the one a
+	// start check judges: the kernel would follow a link before a ".." in
+	// path and reach another file.
+	file, err := filepath.Abs(path)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	text, read, err := readConfigFile(file, path)
 	if err != nil {
 		return nil, err
 	}
@@ -34,11 +42,7 @@ func Load(path string, environ []string) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
-	dir, err := filepath.Abs(filepath.Dir(path))
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
-	}
-	b := &binder{cfg: &Config{dir: dir, path: filepath.Join(dir, filepath.Base(path)), source: map[string]string{}}, headers: map[string]string{}}
+	b := &binder{cfg: &Config{dir: filepath.Dir(file), path: file, read: read, source: map[string]string{}}, headers: map[string]string{}}
 	for _, m := range mapFields {
 		*m.get(b.cfg) = map[string]string{}
 	}
@@ -68,18 +72,19 @@ func Load(path string, environ []string) (*Config, error) {
 	return b.cfg, nil
 }
 
-// readConfigFile reads the file once it and its directory are judged, without
-// waiting on it: a named pipe at path is refused rather than opened for a
-// writer that may never come.
-func readConfigFile(path string) (string, error) {
-	raw, err := readJudged(path)
+// readConfigFile reads the file at file once it and its directory are judged,
+// without waiting on it: a named pipe there is refused rather than opened for
+// a writer that may never come. A refusal names the path as the operator gave
+// it.
+func readConfigFile(file, path string) (string, fs.FileInfo, error) {
+	raw, read, err := readJudged(file)
 	switch {
 	case errors.Is(err, files.ErrTooLarge):
-		return "", fmt.Errorf("%s: over %d bytes", path, maxConfigBytes)
+		return "", nil, fmt.Errorf("%s: over %d bytes", path, maxConfigBytes)
 	case err != nil:
-		return "", fmt.Errorf("reading the configuration %s: %w", path, err)
+		return "", nil, fmt.Errorf("reading the configuration %s: %w", path, err)
 	}
-	return string(raw), nil
+	return string(raw), read, nil
 }
 
 // binder sets keys on one configuration. The file's keys are bound first and

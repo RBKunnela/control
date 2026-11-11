@@ -1127,7 +1127,9 @@ one. In the variable of a header each <code>_</code> stands for a <code>-</code>
 Header names are compared without case, so a variable wins over the file however
 either spells the name. A name the file or the environment spells twice is refused,
 and so is a <code>_</code> in a header's name in the file, since no variable could replace it.
-A relative path resolves against the directory of the file.</p>
+A relative path resolves against the directory of the file, and every path, the
+file's own too, is read with each <code>..</code> the path spells taken before any symbolic
+link is followed.</p>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/reference/configuration.md">docs/reference/configuration.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.16.0, and <a href="https://github.com/guardana/control/tree/v0.16.0/docs">its documentation</a> is in its tag.</p>
 </main>
 <nav class="side" aria-label="Documentation">

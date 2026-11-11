@@ -7,6 +7,7 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"errors"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -119,15 +120,25 @@ func writeSignedRoster(t *testing.T, path, id string, operatorKeys []ed25519.Pub
 func placedApart(t *testing.T, writable ...string) {
 	t.Helper()
 	saved := notPlaneWritable
-	notPlaneWritable = func(path string) error {
+	notPlaneWritable = func(path string) (fs.FileInfo, error) {
 		for _, w := range writable {
 			if strings.HasSuffix(path, w) {
-				return errors.New("the plane's account may write it")
+				return nil, errors.New("the plane's account may write it")
 			}
 		}
-		return nil
+		return judgedEntry(path), nil
 	}
 	t.Cleanup(func() { notPlaneWritable = saved })
+}
+
+// judgedEntry is the entry a stand-in for the start check's walk ends at:
+// the file the kernel reaches through path, or none.
+func judgedEntry(path string) fs.FileInfo {
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil
+	}
+	return info
 }
 
 func buildSigned(t *testing.T, tr tree) (*plane, error) {

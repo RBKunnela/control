@@ -135,6 +135,17 @@ func TestRootsTreeIsNotThePlanes(t *testing.T) {
 			t.Errorf("CheckNotPlaneWritable(%s), root's: %v", path, err)
 		}
 	}
+	end, err := JudgeNotPlaneWritable(link)
+	if err != nil {
+		t.Fatalf("JudgeNotPlaneWritable(%s), root's: %v", link, err)
+	}
+	target, err := os.Stat(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(end, target) {
+		t.Errorf("JudgeNotPlaneWritable(%s) returned an entry other than the file the walk judged, %s", link, file)
+	}
 }
 
 // TestAnEntryThePlaneOwnsIsRefused: an owner may change an entry's mode

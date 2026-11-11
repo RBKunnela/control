@@ -5,6 +5,7 @@ package main
 import (
 	"crypto/ed25519"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -74,11 +75,11 @@ func inEntry(path, entry string) bool {
 func judgedWith(t *testing.T, entry string, judge func(string) error) {
 	t.Helper()
 	saved := notPlaneWritable
-	notPlaneWritable = func(path string) error {
+	notPlaneWritable = func(path string) (fs.FileInfo, error) {
 		if inEntry(path, entry) {
-			return judge(path)
+			return judgedEntry(path), judge(path)
 		}
-		return nil
+		return judgedEntry(path), nil
 	}
 	t.Cleanup(func() { notPlaneWritable = saved })
 }

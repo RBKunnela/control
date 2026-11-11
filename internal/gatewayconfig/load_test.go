@@ -235,7 +235,8 @@ func TestSettingsFollowTheTable(t *testing.T) {
 }
 
 // TestResolveIsAgainstTheFilesDirectory: a relative path means the same thing
-// wherever the program is started, and an absolute one is left alone.
+// wherever the program is started, and an absolute one comes back clean, so a
+// reader and a check that walks the path name one file.
 func TestResolveIsAgainstTheFilesDirectory(t *testing.T) {
 	path := write(t, "")
 	cfg := load(t, path)
@@ -245,6 +246,11 @@ func TestResolveIsAgainstTheFilesDirectory(t *testing.T) {
 	abs := filepath.Join(string(filepath.Separator), "var", "spool")
 	if got := cfg.Resolve(abs); got != abs {
 		t.Errorf("Resolve(%q) = %q, want it unchanged", abs, got)
+	}
+	sep := string(filepath.Separator)
+	unclean := filepath.Dir(path) + sep + "l" + sep + ".." + sep + "." + sep + "roster.json"
+	if got, want := cfg.Resolve(unclean), filepath.Join(filepath.Dir(path), "roster.json"); got != want {
+		t.Errorf("Resolve(%q) = %q, want %q", unclean, got, want)
 	}
 	if got := cfg.Resolve(""); got != "" {
 		t.Errorf("Resolve(\"\") = %q, want the empty path back", got)

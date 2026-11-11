@@ -244,7 +244,9 @@ func tail() string {
 		"Header names are compared without case, so a variable wins over the file however\n" +
 		"either spells the name. A name the file or the environment spells twice is refused,\n" +
 		"and so is a `_` in a header's name in the file, since no variable could replace it.\n" +
-		"A relative path resolves against the directory of the file.\n"
+		"A relative path resolves against the directory of the file, and every path, the\n" +
+		"file's own too, is read with each `..` the path spells taken before any symbolic\n" +
+		"link is followed.\n"
 }
 
 func collectionRow(c gatewayconfig.Collection) (string, error) {

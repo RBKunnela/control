@@ -68,52 +68,61 @@ var planeJudge = walkJudge{
 // and SSL_CERT_DIR, still feeds the decision point's TLS roots, which can
 // only veto (ADR-0017).
 func CheckNotPlaneWritable(path string) error {
+	_, err := JudgeNotPlaneWritable(path)
+	return err
+}
+
+// JudgeNotPlaneWritable judges path as CheckNotPlaneWritable does and returns
+// the entry the walk ended at as it was judged, so a caller can hold it to a
+// file it read before.
+func JudgeNotPlaneWritable(path string) (fs.FileInfo, error) {
 	if path == "" {
-		return errEmptyPath
+		return nil, errEmptyPath
 	}
 	if !files.PermissionBits {
-		return fmt.Errorf("%s: %w", path, files.ErrNoPermissionBits)
+		return nil, fmt.Errorf("%s: %w", path, files.ErrNoPermissionBits)
 	}
 	top, err := os.Lstat(separator)
 	if err != nil {
-		return fmt.Errorf("%s: %w", path, err)
+		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	if ownerWanted(top) == 0 {
-		return fmt.Errorf("%s: %w", path, errPlaneIsRoot)
+		return nil, fmt.Errorf("%s: %w", path, errPlaneIsRoot)
 	}
+	var end fs.FileInfo
 	resolved, err := walkJudged(path, planeJudge)
 	if err == nil {
 		configStep(stepWalked)
-		err = judgePlaneEnd(resolved)
+		end, err = judgePlaneEnd(resolved)
 	}
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
-		return fmt.Errorf("%s: %w; an entry the plane's account could create is one it may write", path, err)
+		return nil, fmt.Errorf("%s: %w; an entry the plane's account could create is one it may write", path, err)
 	case err != nil:
-		return fmt.Errorf("%s: %w", path, err)
+		return nil, fmt.Errorf("%s: %w", path, err)
 	}
-	return nil
+	return end, nil
 }
 
 // judgePlaneEnd judges the entry the walk reached, which holds no link, as
 // strictly as any: a sticky directory the plane may write still takes a new
-// entry from it.
-func judgePlaneEnd(resolved string) error {
+// entry from it. It returns the entry as the Lstat it was judged by read it.
+func judgePlaneEnd(resolved string) (fs.FileInfo, error) {
 	info, err := os.Lstat(resolved)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if info.Mode()&fs.ModeSymlink != 0 {
-		return fmt.Errorf("%s %w", resolved, errChanged)
+		return nil, fmt.Errorf("%s %w", resolved, errChanged)
 	}
 	what := resolved
 	if info.IsDir() {
 		what = "the directory " + resolved
 	}
 	if err := judgePlaneEntry(resolved, info, false); err != nil {
-		return fmt.Errorf("%s: %w", what, err)
+		return nil, fmt.Errorf("%s: %w", what, err)
 	}
-	return nil
+	return info, nil
 }
 
 // judgePlaneOwner refuses an entry the plane's account owns, or one whose

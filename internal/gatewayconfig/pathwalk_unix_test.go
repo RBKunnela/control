@@ -266,7 +266,7 @@ func TestAFileWithASecondNameIsRefused(t *testing.T) {
 		if err := os.Link(source, path); err != nil {
 			t.Skipf("this system refuses a second name for root's file: %v", err)
 		}
-		_, err := readConfigFile(path)
+		_, _, err := readConfigFile(path, path)
 		refusedFor(t, err, errSecondName, path)
 	})
 }
@@ -582,28 +582,36 @@ func TestTheFilesDirectorySwappedAfterTheWalkIsRefused(t *testing.T) {
 // judge, as a read-only mount presents one, where the system has one to read.
 func TestARootOwnedFileIsRead(t *testing.T) {
 	p := rootFile(t)
-	if _, err := readConfigFile(p); err != nil && !errors.Is(err, files.ErrTooLarge) {
+	if _, _, err := readConfigFile(p, p); err != nil && !errors.Is(err, files.ErrTooLarge) {
 		t.Errorf("readConfigFile(%s), root's: %v", p, err)
 	}
 }
 
-// TestThePathIsWalkedAsGiven: ".." after a link names the parent of what the
-// link reached, as the kernel takes it, not the link's own directory, and a
-// "." or an empty name below a file is refused as the kernel refuses it. The
-// kernel's own answer is read beside the loader's.
-func TestThePathIsWalkedAsGiven(t *testing.T) {
+// TestThePathIsCleanedThenWalked: ".." after a link names the link's own
+// directory, as File and the start check that judges it do, not the parent
+// of what the link reached, where the kernel would go; a "." or an empty name
+// below a file a link names is refused as the kernel refuses it. The kernel's
+// own answer is read beside the loader's.
+func TestThePathIsCleanedThenWalked(t *testing.T) {
 	base := t.TempDir()
 	target := mkdirMode(t, filepath.Join(base, "real"), 0o755)
 	mkdirMode(t, filepath.Join(target, "sub"), 0o755)
 	good := fileAt(t, filepath.Join(target, "gateway.yaml"), 0o644)
 	d := mkdirMode(t, filepath.Join(base, "d"), 0o755)
-	fileAt(t, filepath.Join(d, "gateway.yaml"), 0o666)
+	named := fileAt(t, filepath.Join(d, "gateway.yaml"), 0o666)
 	symlink(t, filepath.Join("..", "real", "sub"), filepath.Join(d, "lnk"))
 	through := filepath.Join(d, "lnk") + string(filepath.Separator) + ".." + string(filepath.Separator) + "gateway.yaml"
 	if kernel, err := os.Stat(through); err != nil || !sameAs(t, kernel, good) {
 		t.Fatalf("the kernel reads %s as %v, %v; want %s", through, kernel, err, good)
 	}
-	loads(t, through)
+	_, err := Load(through, nil)
+	refusedFor(t, err, files.ErrMode, through)
+	if err := os.Chmod(named, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if cfg, err := Load(through, nil); err != nil || cfg.File() != named {
+		t.Errorf("Load(%s) = %v; want %s read", through, err, named)
+	}
 	for _, target := range []string{good + string(filepath.Separator) + ".", good + string(filepath.Separator)} {
 		link := symlink(t, target, filepath.Join(t.TempDir(), "gateway.yaml"))
 		if _, err := os.Stat(link); err == nil {
