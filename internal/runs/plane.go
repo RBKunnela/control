@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/guardana/control/internal/files"
@@ -36,6 +37,9 @@ type Plane struct {
 	// uncarried holds the closes a carry failed to write, which notReplayed
 	// counts as carried until writeHeld writes them.
 	uncarried closeSet
+	// admitting holds a signed child's call from the read of its .seen to the
+	// end of its admission. It is taken before uncarried's locks, never after.
+	admitting sync.Mutex
 }
 
 // OpenPlane opens dir for a plane. It refuses a group- or world-writable
@@ -158,11 +162,8 @@ func (p *Plane) Resolve(ctx context.Context, token string, who Identity, now tim
 	if r := p.standing(ctx, stored, who); r != nil {
 		return Run{}, r
 	}
-	if now.IsZero() || !now.Before(rec.ExpiresAt) {
-		return Run{}, refuse(CauseExpired, nil)
-	}
-	if err := p.admit(rec); err != nil {
-		return Run{}, refuse(CauseUnreadable, err)
+	if r := p.admitAt(ctx, rec, now); r != nil {
+		return Run{}, r
 	}
 	return Run{ID: rec.ID, Root: rec.Root, Who: rec.Who, Expires: rec.ExpiresAt}, nil
 }
@@ -183,27 +184,50 @@ func (p *Plane) beginResolve(ctx context.Context) (func(), error) {
 	return func() { done(); end() }, nil
 }
 
-// admit makes, on a signed layout, a child's first admission and the state
-// of the root of a run Resolve admits, where neither is there yet.
+// admitAt refuses a child the plane never admitted below a carried close,
+// then a run expired at now, and admits the rest. On a signed layout a
+// child's call holds admitting throughout, so no call of it relies on, or
+// removes, a .seen another call has not finished.
+func (p *Plane) admitAt(ctx context.Context, rec Record, now time.Time) *Refusal {
+	if p.signed && rec.Parent != "" {
+		p.admitting.Lock()
+		defer p.admitting.Unlock()
+	}
+	if err := p.parentStands(ctx, rec); err != nil {
+		return closedOrUnreadable(err)
+	}
+	if now.IsZero() || !now.Before(rec.ExpiresAt) {
+		return refuse(CauseExpired, nil)
+	}
+	if err := p.admit(rec); err != nil {
+		return refuse(CauseUnreadable, err)
+	}
+	return nil
+}
+
+// admit makes, on a signed layout, the state of the root of a run Resolve
+// admits and then a child's first admission, where neither is there yet. The
+// .seen comes last and goes again if it cannot be forced to disk: one left by
+// a refused call would let the child run after its parent's close is carried.
 func (p *Plane) admit(rec Record) error {
 	if !p.signed {
 		return nil
 	}
-	if rec.Parent != "" {
-		if err := p.st.createEmpty(rec.ID + seenSuffix); err != nil {
-			return fmt.Errorf("the first admission of %s: %w", rec.ID, err)
-		}
-	}
 	if err := p.startRoot(rec.Root); err != nil {
 		return fmt.Errorf("the state of %s: %w", rec.Root, err)
+	}
+	if rec.Parent == "" {
+		return nil
+	}
+	if err := p.st.createEmptyOrNone(rec.ID + seenSuffix); err != nil {
+		return fmt.Errorf("the first admission of %s: %w", rec.ID, err)
 	}
 	return nil
 }
 
 // standing judges a record whose secret was shown right: taken by the judge
-// on a signed layout, for who, not closed, not put back after a close the
-// plane carried, and not a child first called after its parent's close was
-// carried. A closed record taken is carried first.
+// on a signed layout, for who, not closed, and not put back after a close the
+// plane carried. A closed record taken is carried first.
 func (p *Plane) standing(ctx context.Context, stored SignedRecord, who Identity) *Refusal {
 	rec := stored.Record
 	if p.signed {
@@ -224,17 +248,19 @@ func (p *Plane) standing(ctx context.Context, stored SignedRecord, who Identity)
 		}
 		return refuse(CauseClosed, err)
 	}
-	err := p.notReplayed(rec)
-	if err == nil {
-		err = p.parentStands(ctx, rec)
-	}
-	switch {
-	case errors.Is(err, ErrReplayed), errors.Is(err, ErrParentClosed):
-		return refuse(CauseClosed, err)
-	case err != nil:
-		return refuse(CauseUnreadable, err)
+	if err := p.notReplayed(rec); err != nil {
+		return closedOrUnreadable(err)
 	}
 	return nil
+}
+
+// closedOrUnreadable refuses a replay or a parent's close as closed and any
+// other error as unreadable.
+func closedOrUnreadable(err error) *Refusal {
+	if errors.Is(err, ErrReplayed) || errors.Is(err, ErrParentClosed) {
+		return refuse(CauseClosed, err)
+	}
+	return refuse(CauseUnreadable, err)
 }
 
 // Lookup reads the record of run id, with its secret's hash left out, for a

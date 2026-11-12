@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"sync"
 	"time"
 )
@@ -184,18 +185,49 @@ func (c *closeSet) has(id string) bool {
 // createEmpty creates the empty file name and forces it and the directory to
 // disk, and leaves a file already at name alone.
 func (d *dir) createEmpty(name string) error {
+	_, err := d.makeEmpty(name)
+	return err
+}
+
+// createEmptyOrNone is createEmpty that removes the file it made when forcing
+// it to disk fails, and forces the removal to disk, so that name stands only
+// for a write that finished. A file found at name is left, and a removal
+// that fails is in the error.
+func (d *dir) createEmptyOrNone(name string) error {
+	made, err := d.makeEmpty(name)
+	if err == nil || !made {
+		return err
+	}
+	removed := d.root.Remove(name)
+	if removed == nil {
+		removed = syncMade(d, name)
+	}
+	return errors.Join(err, removed)
+}
+
+// makeEmpty is createEmpty reporting whether it made the file.
+func (d *dir) makeEmpty(name string) (bool, error) {
 	f, err := d.createNew(name)
 	switch {
 	case errors.Is(err, fs.ErrExist):
-		return nil
+		return false, nil
 	case err != nil:
-		return err
+		return false, err
 	}
-	if err := errors.Join(f.Sync(), f.Close()); err != nil {
-		return err
+	err = errors.Join(syncFile(f, name), f.Close())
+	if err == nil {
+		err = syncMade(d, name)
 	}
-	return d.syncDir()
+	return true, err
 }
+
+// syncFile forces the file made at name to disk, and syncMade then the
+// directory d. They are variables so that a test can fail either step for
+// one name.
+var (
+	syncFile = func(f *os.File, _ string) error { return f.Sync() }
+	syncMade = func(d *dir, _ string) error { return d.syncDir() }
+)
 
 // Survey is what a plane read of every record of a signed layout found.
 type Survey struct {

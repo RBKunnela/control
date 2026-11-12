@@ -145,9 +145,12 @@ as any record, so a child refused under a put-back parent cannot vouch
 for a grandchild. A record that does not count, or more than 32
 ancestors with no <code>.seen</code>, refuses the call as <code>unreadable</code>.</li>
 <li>Otherwise the plane creates an empty <code>state/&lt;id&gt;.seen</code>, forced to disk,
-before the call is admitted. A write that fails refuses the call; a marker
-that is not a regular file of the plane's alone refuses it as
-<code>unreadable</code>.</li>
+as the last step before the call is admitted, after the root's state. A
+write that fails refuses the call and removes the marker it created,
+forcing the removal to disk; a marker that is not a regular file of the
+plane's alone refuses it as <code>unreadable</code>. Within one plane the calls of a
+child take these steps one at a time, from the read of its <code>.seen</code> on, so
+none relies on a marker another has not finished.</li>
 <li><code>.closed</code> keeps its empty format. Nothing changes off <code>signed</code>.</li>
 <li>A restore closes every run (ADR-0078), so it neither copies nor needs a
 <code>.seen</code>: it accepts one in <code>state/</code>, the live one or the backup's, and
@@ -180,7 +183,12 @@ which ADR-0076 keeps from them.</li>
 </ul>
 <h2 id="consequences">Consequences</h2>
 <p><code>state/</code> holds one empty file per child the plane admitted, which a
-backup copies. An operator reopens a child refused after an upgrade.</p>
+backup copies. An operator reopens a child refused after an upgrade. A crash
+between the marker's creation and the end of the admission or of its
+removal, or a removal that fails, leaves a <code>.seen</code> for a refused call, and
+that child then runs after its parent's close is carried. Planes that share
+one runs directory do not wait for each other, so one may rely on a marker
+another plane has not finished.</p>
 <h2 id="validation">Validation</h2>
 <p><code>internal/runs</code> tests the put-back parent with a child signed by the
 operator's path, carried at a call and at the start, refused at every
@@ -188,8 +196,12 @@ resolve, and a grandchild signed under that child; a grandchild under a
 child's carried close and under an admitted child of a closed root; an
 ancestor's close or record the plane cannot trust; the walk's bound; a child
 admitted before the carry across a restart; a child signed before the close
-but first called after it; a held close; a <code>.seen</code> write that fails and a
-marker that is no regular file of the plane's; an unsigned layout; and a
+but first called after it; a held close; a first admission whose root's
+state, <code>.seen</code> or its directory fails to reach the disk, leaving no marker,
+a removal forced to disk, a marker found kept by a failing call, a removal
+that fails named in the error, a second call held while a first forces its
+marker, before and after the carry, and a marker that is no regular file of
+the plane's; an unsigned layout; and a
 restore over <code>.seen</code>. <code>internal/recovery</code> restores a backup holding one.</p>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/adr/0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close.md">docs/adr/0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.16.0, and <a href="https://github.com/guardana/control/tree/v0.16.0/docs">its documentation</a> is in its tag.</p>
 </main>

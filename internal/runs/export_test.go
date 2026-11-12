@@ -30,3 +30,35 @@ func ChmodMade(top *os.Root, name string, mode fs.FileMode) error { return chmod
 
 // MaxAncestry is how many ancestors a child's first admission reads.
 const MaxAncestry = maxAncestry
+
+// FailSyncAfterMaking runs fail before each directory sync once a plane made
+// or removed name, answering its error in place of the sync, until the
+// returned function restores the real sync.
+func FailSyncAfterMaking(name string, fail func() error) (restore func()) {
+	saved := syncMade
+	syncMade = func(d *dir, made string) error {
+		if made == name {
+			if err := fail(); err != nil {
+				return err
+			}
+		}
+		return saved(d, made)
+	}
+	return func() { syncMade = saved }
+}
+
+// FailFileSyncOf runs fail before each sync of a file a plane made at name,
+// answering its error in place of the sync, until the returned function
+// restores the real sync.
+func FailFileSyncOf(name string, fail func() error) (restore func()) {
+	saved := syncFile
+	syncFile = func(f *os.File, made string) error {
+		if made == name {
+			if err := fail(); err != nil {
+				return err
+			}
+		}
+		return saved(f, made)
+	}
+	return func() { syncFile = saved }
+}
