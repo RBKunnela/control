@@ -121,7 +121,27 @@
 <a href="/docs/adr/0008-branching-and-release-policy">ADR-0008</a>. Each release is built,
 signed and attested from its tag; <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a> shows how to
 verify one.</p>
-<h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.16.0...HEAD">Unreleased</a></h2>
+<h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.17.0...HEAD">Unreleased</a></h2>
+<h2 id="0170---2026-11-12"><a href="https://github.com/guardana/control/releases/tag/v0.17.0">0.17.0</a> - 2026-11-12</h2>
+<p>Upgrading from 0.16 changes five things an operator may have to act on.
+Plaintext evidence export is gone: an <code>http://</code> <code>export.endpoint</code>,
+<code>export.allow_plaintext: true</code> and <code>collect --listen host:port</code> are refused.
+Set <code>export.endpoint: unix:///path</code> with <code>export.collector_uid</code>, or reach the
+collector over <code>https</code>. The plane refuses to start if <code>health.socket_uid</code>
+names its own account; unset it. Under <code>approvals.authority: signed</code> a plane
+refuses to start where its own account could write <code>trust.roster</code>. Under
+<code>signed</code>, once a plane has carried a parent's close, it refuses any child of
+that parent it never admitted. A child admitted by a 0.16 plane has no
+<code>state/&lt;id&gt;.seen</code>, so open it again. On every plane, a <code>--config</code> path, or an
+absolute path in a key, that holds a symbolic link followed by <code>..</code> is now
+cleaned before it is read, and may name a different file than before.</p>
+<p>New: the operator commands print the roster they judged with to standard
+error, <code>doctor</code> checks <code>health.socket</code>, and the tests that need root and two
+more accounts run in their own CI job
+(<a href="/docs/adr/0081-tests-that-need-a-second-account-run-in-a-required-job">ADR-0081</a>).
+Under <code>signed</code> the plane's own account still raises the roster's floor, so it
+can keep the plane on the roster it holds until that roster expires. The hook
+profile's qualification was not run again for this release.</p>
 <h3 id="added">Added</h3>
 <ul>
 <li>When <code>health.socket</code> is set, <code>doctor</code> checks whom the socket answers and

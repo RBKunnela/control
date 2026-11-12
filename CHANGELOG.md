@@ -11,6 +11,29 @@ verify one.
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-11-12
+
+Upgrading from 0.16 changes five things an operator may have to act on.
+Plaintext evidence export is gone: an `http://` `export.endpoint`,
+`export.allow_plaintext: true` and `collect --listen host:port` are refused.
+Set `export.endpoint: unix:///path` with `export.collector_uid`, or reach the
+collector over `https`. The plane refuses to start if `health.socket_uid`
+names its own account; unset it. Under `approvals.authority: signed` a plane
+refuses to start where its own account could write `trust.roster`. Under
+`signed`, once a plane has carried a parent's close, it refuses any child of
+that parent it never admitted. A child admitted by a 0.16 plane has no
+`state/<id>.seen`, so open it again. On every plane, a `--config` path, or an
+absolute path in a key, that holds a symbolic link followed by `..` is now
+cleaned before it is read, and may name a different file than before.
+
+New: the operator commands print the roster they judged with to standard
+error, `doctor` checks `health.socket`, and the tests that need root and two
+more accounts run in their own CI job
+([ADR-0081](docs/adr/0081-tests-that-need-a-second-account-run-in-a-required-job.md)).
+Under `signed` the plane's own account still raises the roster's floor, so it
+can keep the plane on the roster it holds until that roster expires. The hook
+profile's qualification was not run again for this release.
+
 ### Added
 
 - When `health.socket` is set, `doctor` checks whom the socket answers and
@@ -2439,7 +2462,8 @@ yet.
   independence of this project from Guardana
   ([ADR-0024](docs/adr/0024-control-and-guardana-are-independent.md)).
 
-[Unreleased]: https://github.com/guardana/control/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/guardana/control/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/guardana/control/releases/tag/v0.17.0
 [0.16.0]: https://github.com/guardana/control/releases/tag/v0.16.0
 [0.15.0]: https://github.com/guardana/control/releases/tag/v0.15.0
 [0.14.0]: https://github.com/guardana/control/releases/tag/v0.14.0
