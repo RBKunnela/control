@@ -11,6 +11,15 @@ verify one.
 
 ## [Unreleased]
 
+### Security
+
+- The filesystem server the MCP client check installs locks `hono` 4.13.18,
+  which fixes GHSA-3gg2-335m-rxc6, GHSA-46wx-v44x-9hh2, GHSA-4h7h-rv7c-7m2v,
+  GHSA-4m76-xfj5-7975 and GHSA-h7mg-cq63-vhpq, and `@hono/node-server` 2.1.8,
+  which fixes GHSA-jpvv-r467-5p4w and GHSA-qv5m-9pm6-hqp3. Both are packages
+  below the server, at the version its fingerprints were taken from; nothing
+  this project ships uses them.
+
 ## [0.17.0] - 2026-11-12
 
 Upgrading from 0.16 changes five things an operator may have to act on.

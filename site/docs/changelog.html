@@ -122,6 +122,15 @@
 signed and attested from its tag; <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a> shows how to
 verify one.</p>
 <h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.17.0...HEAD">Unreleased</a></h2>
+<h3 id="security">Security</h3>
+<ul>
+<li>The filesystem server the MCP client check installs locks <code>hono</code> 4.13.18,
+which fixes GHSA-3gg2-335m-rxc6, GHSA-46wx-v44x-9hh2, GHSA-4h7h-rv7c-7m2v,
+GHSA-4m76-xfj5-7975 and GHSA-h7mg-cq63-vhpq, and <code>@hono/node-server</code> 2.1.8,
+which fixes GHSA-jpvv-r467-5p4w and GHSA-qv5m-9pm6-hqp3. Both are packages
+below the server, at the version its fingerprints were taken from; nothing
+this project ships uses them.</li>
+</ul>
 <h2 id="0170---2026-11-12"><a href="https://github.com/guardana/control/releases/tag/v0.17.0">0.17.0</a> - 2026-11-12</h2>
 <p>Upgrading from 0.16 changes five things an operator may have to act on.
 Plaintext evidence export is gone: an <code>http://</code> <code>export.endpoint</code>,
@@ -221,7 +230,7 @@ symbolic link followed by <code>..</code> is judged where it is read. It no long
 passes a protected file while the plane runs one its own account may
 write.</li>
 </ul>
-<h3 id="security">Security</h3>
+<h3 id="security-1">Security</h3>
 <ul>
 <li>Built with Go 1.27.4, which fixes GO-2026-6859 in <code>net/http</code>: a race on
 <code>MaxBytesReader</code>'s header could crash an HTTP/1 server. <code>govulncheck</code>
@@ -475,7 +484,7 @@ than <code>approvals.ttl</code> every quarter of <code>approvals.ttl</code> whil
 only at start. A sweep that fails is logged and counted under
 <code>approvals.sweep</code> in <code>/healthz</code>.</li>
 </ul>
-<h3 id="security-1">Security</h3>
+<h3 id="security-2">Security</h3>
 <ul>
 <li>Under <code>approvals.authority: signed</code> any valid rejection wins, a rejection
 counts only from an operator who may approve, whatever time it names. An
@@ -517,7 +526,7 @@ counts an egress path as observed by the connections of the sources it names
 Operators can sign a roster of operator keys, though no plane reads it yet
 (<a href="/docs/adr/0071-operators-are-named-by-a-signed-roster">ADR-0071</a>). The
 hook profile's qualification was not run again for this release.</p>
-<h3 id="security-2">Security</h3>
+<h3 id="security-3">Security</h3>
 <ul>
 <li>The filesystem server the guide's MCP client check installs takes <code>glob</code>
 14.0.2, which fixes GHSA-3g3m-2fjr-6pw4, and <code>minimatch</code> 11.0.1, which
@@ -1004,7 +1013,7 @@ a <code>--source</code> of another tenant or project is refused, and <code>cap_a
 is held to the integer range the canonical form writes.
 The project is still alpha, and the <code>0.x</code> series makes no compatibility promise
 between minor versions.</p>
-<h3 id="security-3">Security</h3>
+<h3 id="security-4">Security</h3>
 <ul>
 <li><code>mcp.New</code> refuses an override whose <code>ReturnsTrust</code> or <code>ReturnsSensitivity</code>
 is a number the contract does not declare. Such an override loaded through
@@ -1654,7 +1663,7 @@ run's own calls, so no run can get another one stopped, and a child run can
 now be stopped on its own. <code>procedure lint</code> and <code>procedure test</code> check a
 procedure with cases, and <code>findings export</code> reads the findings log with a
 cursor. The fixes come from an audit of this release's own changes.</p>
-<h3 id="security-4">Security</h3>
+<h3 id="security-5">Security</h3>
 <ul>
 <li>Built with Go 1.27.2, which fixes GO-2026-6599, GO-2026-6600, GO-2026-6603,
 GO-2026-6604, GO-2026-6605, GO-2026-6607, GO-2026-6608 and GO-2026-6610 in
