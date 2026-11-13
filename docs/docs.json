@@ -60,5 +60,5 @@
     "internal/hookbridge/profiles/**",
     "examples/**"
   ],
-  "released": "0.16.0"
+  "released": "0.17.0"
 }
