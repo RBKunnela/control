@@ -122,6 +122,11 @@ when a task is picked up; no task is assigned by this document. A delivered
 task leaves this page, and status.md records what it built.</p>
 <p>This backlog covers roadmap work, not every session note. Keep stable task identifiers when work moves to an
 issue. Completion requires code, documentation and the applicable checks.</p>
+<p>A task that publishes a measured result publishes its scope beside it: what
+was declared and how much of it was exercised (tools, paths, planes, sources),
+the channels nobody observed, the time window, and the inputs that were missing
+or cut short. An unobserved channel earns no claim, and a result with a missing
+input is incomplete, never complete.</p>
 <h2 id="entry-gate-and-trust-work">Entry gate and trust work</h2>
 <table>
 <thead>
@@ -205,7 +210,13 @@ issue. Completion requires code, documentation and the applicable checks.</p>
 <td>B27</td>
 <td>Compare and simulate a candidate policy</td>
 <td>none</td>
-<td>A report names both policy digests, input provenance and per-case before/after verdicts, obligations and missing facts. Reuse the kernel's evaluation; publish denominators and unknowns. Cases cover broadened effects/resources, rule conflict, absent arguments or flow context, missing historic policy, gaps and changed definitions. Simulation sends no tool call, consumes no approval and cannot activate a policy</td>
+<td>A report names both policy digests, input provenance and per-case before/after verdicts, obligations and missing facts. Reuse the kernel's evaluation; publish denominators and unknowns. Cases cover broadened effects/resources, rule conflict, absent arguments or flow context, missing historic policy, gaps and changed definitions. Simulation sends no tool call, consumes no approval and cannot activate a policy. Cases labelled attack or legitimate by someone other than the policy's author are counted by label and by verdict change, and every result is marked simulated</td>
+</tr>
+<tr>
+<td>B37</td>
+<td>Measure controlled attempts and the cost to legitimate work</td>
+<td>none</td>
+<td>A manifest fixed before the run names the attempts and how they were chosen, the repetitions, the corpus digest, the model and its settings or &quot;no model&quot;, the permissions, the tool definitions, the policy and procedure digests, and what counts as each named effect. The report counts the attempts selected, started and not run. For each named effect it counts the attempts in which the effect was observed, verified absent or unknown; effects are checked at the victim, not read from the plane's verdicts, with positive and negative controls. A labelled set of legitimate operations is reported as completed, held, blocked and unknown over its own count. The first set is scripted against the demo's victim; nothing in it enters the authorization path</td>
 </tr>
 <tr>
 <td>B36</td>
@@ -225,8 +236,8 @@ issue. Completion requires code, documentation and the applicable checks.</p>
 the sensor contract B12 publishes needs a second kind of sensor, and B28
 needs both. The process sensor is B35. The egress sensor itself is built
 (<a href="/docs/status">status</a>); B21 adds attribution, so each connection stays
-unknown until then. B35 comes later. B25, B27 and B36 block nothing and
-go beside them.
+unknown until then. B35 comes later. B25, B27, B36 and B37 block
+nothing and go beside them.
 LangGraph and the OpenAI Agents SDK are framework candidates for what remains
 of B11. A second coding runtime waits until adopters name one. Transport
 retries may not replay a material tool execution.
@@ -266,6 +277,12 @@ mappings.</p>
 <td>Review findings and export an incident package</td>
 <td>B13, B14</td>
 <td>A separate review log records scoped author, time, reason and revision for open/in-review/closed and disposition changes without changing the finding's verdict. Grouped occurrences retain source finding ids, rule versions, tenant/project and run references. Reopening, cross-project access, concurrent edits, export gaps and hostile text have cases. A metadata-only package joins the findings, decisions, approvals, policy/procedure digests, coverage and actual reaction results, marks missing inputs, and is read by an external consumer. Closing a case neither lifts a stop nor grants an approval</td>
+</tr>
+<tr>
+<td>B38</td>
+<td>Show an approver the exact action they approve</td>
+<td>B13</td>
+<td>The review of a held call shows its principal, agent, delegation, resource, destination, consequential arguments and bounds, policy reasons and expiry from the held request, bound to its action digest, and names what was redacted or is unavailable. A redacted argument preview is shown only under an explicit setting, off by default. A changed, swapped or stale review, another project's call and hostile text are refused or marked in tests. At least three approvers new to the project explain each case's effect, target and bounds before deciding, over appropriate, inappropriate and under-informed cases; a fixed rubric scores the explanations, and the scores are published with the number of participants and cases. A click or the time spent on the page is not evidence of an informed decision</td>
 </tr>
 <tr>
 <td>B28</td>
@@ -316,7 +333,7 @@ The coding runtime's hooks (qualified) and B11 are the two integrations.</p>
 <td>B33</td>
 <td>Publish sustained performance</td>
 <td>none</td>
-<td>A reproducible workload with stated concurrency, duration and conditions runs on a quiet dedicated machine; its tail latency to p99.9, errors and export lag are published with the hardware named, and earlier results are kept beside it</td>
+<td>A reproducible workload with stated concurrency, duration and conditions runs on a quiet dedicated machine; its tail latency to p99.9, errors and export lag are published with the hardware named, and earlier results are kept beside it. A direct run with the same permissions and upstream work is measured with it; completed calls' latency is reported apart from approval waits, blocked answers, errors and timeouts, and no percentile is published without the samples it needs</td>
 </tr>
 <tr>
 <td>B34</td>

@@ -22,7 +22,7 @@ the complete product model and today's limits.
 | --- | --- | --- |
 | Observe | Join tool and API evidence with runtime, proxy and process observations; show coverage, sampling and silence. | B21, B35, B12 |
 | Supervise | Check procedures, permissions, resources, exceptions and child runs; report deviations and uncertain outcomes. | Existing supervision, B12, B26, B28 |
-| React | Inform, alert, request review, approve one exact action, pause calls or stop later actions within authenticated run, agent or principal scopes. | Existing controls, B12–B14, B26, B28 |
+| React | Inform, alert, request review, approve one exact action, pause calls or stop later actions within authenticated run, agent or principal scopes. | Existing controls, B12–B14, B26, B28, B38 |
 | Integrate | MCP and custom tools share policy, approvals and evidence; publish each integration's enforcement and bypasses. | Existing hook bridge, B11, B12 |
 
 B28 adds continuous supervision beside agents. Today's commands run when
@@ -46,15 +46,15 @@ Attributing egress connections to runs (B21) and a process sensor
 independent of the agent (B35) come first. Then publish port contracts with
 language-neutral conformance suites once two consumers use each, with a
 TypeScript client (B12); continuous supervision (B28) builds on both. A
-framework integration (B11) follows when an adopter picks one. B25, B27 and
-B36 go alongside. A public Go seam needs its own record.
+framework integration (B11) follows when an adopter picks one. B25, B27, B36
+and B37 go alongside. A public Go seam needs its own record.
 
 ## 3. A small team
 
 Authenticated operators hold scoped read, approve, pause and stop rights.
 Retention, export and recovery work without a managed service. Continuous
 supervision and authorized reaction follow bounded exports (B28). Finding
-review and incident packages (B26) change no verdict and lift no stop.
+review and incident packages (B26) do not change verdicts or lift stops.
 
 ## 4. A fleet and wider protocols, when adopters need them
 
@@ -75,5 +75,5 @@ tests, tested offline use and recovery, and reproducible sustained
 tail-latency benchmarks. Observation contracts need their own v1 record or an
 explicit exclusion. 1.0 claims evidence integrity, with hash links and signed
 checkpoints. Content capture stays off by default; hidden reasoning is never
-stored. Feature counts do not meet this bar. The backlog's B11 and B29 to B34
-are its open items.
+stored. Feature counts do not meet this bar. B11 and B29 to B34 are its open
+items.
