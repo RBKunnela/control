@@ -122,26 +122,33 @@ func documentProblem(b *controlv1.PolicyBundle, snap *policy.Snapshot, now time.
 	return ""
 }
 
-// FuzzSign signs any bytes. Sign must refuse exactly what Parse refuses, and
-// what it signs must say what the document says and load, unless Compile
-// refuses the document, which Load then reports as the document check.
+// FuzzSign signs any bytes. Sign must refuse exactly what Parse refuses, as a
+// document, and what CheckObligations refuses in a parsed document, as its
+// parameters; what it signs must say what the document says and load, unless
+// Compile refuses the document, which Load then reports as the document check.
 func FuzzSign(f *testing.F) {
 	f.Add(sampleDocument(f, "example.json"))
 	f.Add(sampleDocument(f, "every-field.json"))
+	f.Add(bytes.Replace(sampleDocument(f, "every-field.json"), []byte(`"params": {"max": "10000", "field": "amount"}`), []byte(`"params": {"field": "amount"}`), 1))
 	f.Add([]byte(exampleCanonical))
 	f.Add([]byte(`{}`))
 	f.Add([]byte(nil))
 	f.Fuzz(func(t *testing.T, raw []byte) {
 		b, err := policy.Sign(raw, key(1), "k1")
 		doc, canonical, parseErr := rules.Parse(raw)
-		if (err == nil) != (parseErr == nil) {
-			t.Fatalf("Sign says %v where Parse says %v", err, parseErr)
+		want := policy.ErrDocument
+		refused := parseErr
+		if parseErr == nil {
+			want, refused = policy.ErrObligationParams, rules.CheckObligations(doc)
+		}
+		if (err == nil) != (refused == nil) {
+			t.Fatalf("Sign says %v where the document's checks say %v", err, refused)
 		}
 		if err != nil {
 			if b != nil {
 				t.Fatal("a bundle beside a refusal")
 			}
-			expectOnly(t, err, policy.ErrDocument)
+			expectOnly(t, err, want)
 			return
 		}
 		if problem := signedProblem(b, doc, canonical); problem != "" {
