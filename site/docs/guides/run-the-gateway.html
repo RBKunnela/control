@@ -286,7 +286,8 @@ complete. Then change the mode and restart.</p>
 </tbody>
 </table>
 <h3 id="8-let-a-person-answer-a-held-call">8. Let a person answer a held call</h3>
-<pre><code class="language-yaml">approvals:
+<pre><code class="language-yaml">plane_id: orders-eu-1           # under signed: this plane&#39;s own id, one per plane
+approvals:
   authority: signed             # or directory, with the next two keys alone
   dir: /var/lib/guardana/approvals    # the plane&#39;s, the operators&#39; group, mode 0750, setgid where needed
   hold_journal_dir: /var/lib/guardana/holds

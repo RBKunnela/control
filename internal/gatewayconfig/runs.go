@@ -42,7 +42,7 @@ func (c *Config) checkRuns() error {
 		{"approvals.hold_journal_dir", c.Approvals.HoldJournalDir},
 	}
 	if c.Pause.File != "" {
-		others = append(others, struct{ key, dir string }{"pause.file", filepath.Dir(c.Pause.File)})
+		others = append(others, struct{ key, dir string }{"pause.file", filepath.Dir(c.Resolve(c.Pause.File))})
 	}
 	for _, other := range others {
 		if other.dir == "" {

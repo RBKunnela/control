@@ -1879,7 +1879,9 @@ A decision names no stop's entry id.</p>
 that holds it to a tenant of the plane's, named per row, and to its
 <code>project_id</code>, and the test that refuses another project's. The listener's
 tenant is <code>listener.principal.tenant_id</code> where it is set, and <code>tenant_id</code>
-otherwise. A row with no project check says so. The floors are unsigned
+otherwise; under <code>signed</code> a plane serves one tenant, so the two are one
+(<a href="/docs/adr/0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant">ADR-0082</a>).
+A row with no project check says so. The floors are unsigned
 state the plane writes itself, so none is a row. Outside
 <code>approvals.authority: signed</code>, answers, pauses and runs are claims of whoever
 may write where they are read (<a href="/docs/status">status.md</a>). A test in
@@ -1967,9 +1969,10 @@ may write where they are read (<a href="/docs/status">status.md</a>). A test in
 </tr>
 </tbody>
 </table>
-<p>Where <code>listener.principal.tenant_id</code> differs from <code>tenant_id</code>, an operator
-needs a grant over each: answers and pauses are judged under <code>tenant_id</code>, runs
-and stops under the listener's tenant.</p>
+<p>Under <code>signed</code> a <code>listener.principal.tenant_id</code> that differs from
+<code>tenant_id</code> is refused at load, so an operator's grants for answers, pauses,
+runs and stops all name the plane's one tenant and its project; the level
+each asks for is unchanged.</p>
 <h2 id="the-enforcement-api">The enforcement API</h2>
 <p>How a tool outside MCP asks before it acts and reports what it did: the
 package <code>guardana.control.enforce.v1alpha1</code>, in

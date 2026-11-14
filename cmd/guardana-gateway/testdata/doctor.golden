@@ -3,6 +3,7 @@ ok      configuration <tree>/doctor.yaml parses, 24 key(s) set, the rest at thei
        project_id                   orders                   (<tree>/doctor.yaml:4)
        tenant_id                    acme                     (<tree>/doctor.yaml:5)
        environment                  dev                      (<tree>/doctor.yaml:6)
+       plane_id                                              (default)
        log.level                    info                     (default)
        listener.kind                stateless_http           (<tree>/doctor.yaml:9)
        listener.address             127.0.0.1:8080           (<tree>/doctor.yaml:10)

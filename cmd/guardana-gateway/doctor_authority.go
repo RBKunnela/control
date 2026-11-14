@@ -32,9 +32,9 @@ func (d *examination) notSigned(key string) (string, string, string) {
 	return verdictOK, key, fmt.Sprintf("not read: approvals.authority is %s, which authenticates no operator", d.cfg.Approvals.Authority)
 }
 
-// trust reports the start checks the signed kind makes and the roster as the
-// file and the floor hold it, without raising the floor: a check that wrote it
-// would be a start.
+// trust reports the plane's id and tenant, the start checks the signed kind
+// makes and the roster as the file and the floor hold it, without raising the
+// floor: a check that wrote it would be a start.
 func (d *examination) trust(context.Context) (string, string, string) {
 	if d.cfg.Approvals.Authority != gatewayconfig.AuthoritySigned {
 		return d.notSigned(doctorTrust)
@@ -65,8 +65,8 @@ func (d *examination) trust(context.Context) (string, string, string) {
 		return verdictFail, doctorTrust, fmt.Sprintf("trust.roster: serial %d is below the floor's %d (%s)", doc.Serial(), floor.Serial, trust.CauseBelowFloor)
 	}
 	found := fmt.Sprintf(
-		"roster %s serial %d names %d key(s) and verifies under the pinned root; the floor holds serial %d; %d other pinned key(s) no roster may name; %s are not the plane's to change, and the environment sets no key",
-		doc.ID(), doc.Serial(), len(doc.Keys()), floor.Serial, len(others), checkedKeys(d.cfg))
+		"plane %s, one tenant %s: roster %s serial %d names %d key(s) and verifies under the pinned root; the floor holds serial %d; %d other pinned key(s) no roster may name; %s are not the plane's to change, and the environment sets no key",
+		d.cfg.PlaneID, d.cfg.TenantID, doc.ID(), doc.Serial(), len(doc.Keys()), floor.Serial, len(others), checkedKeys(d.cfg))
 	if n := readGrants(doc); n > 0 {
 		found += fmt.Sprintf("; %d read grant(s) grant nothing yet: reading is by the health socket's peer uid and by file modes (ADR-0071)", n)
 	}

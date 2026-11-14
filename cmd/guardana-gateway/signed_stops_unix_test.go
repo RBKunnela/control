@@ -275,27 +275,44 @@ func TestASignedStartRefusesAListCutBackBelowWhatItsFloorHolds(t *testing.T) {
 	}
 }
 
-// TestTheStopListFloorIsKeptForTheListenersTenant: with
-// listener.principal.tenant_id naming the route's tenant and tenant_id
-// another, the plane binds its documents and keeps its stop list floor for
-// the listener's tenant, so a floor made for that tenant is taken.
-func TestTheStopListFloorIsKeptForTheListenersTenant(t *testing.T) {
-	tr := signedStopsTree(t)
-	raw, err := os.ReadFile(tr.config)
-	if err != nil {
-		t.Fatal(err)
+// TestASignedPlaneWithTwoTenantsIsRefused: with listener.principal.tenant_id
+// naming the route's tenant and tenant_id another, the configuration is
+// refused at load, naming both keys; the listener's tenant set to tenant_id
+// starts and keeps the stop list floor for that one tenant.
+func TestASignedPlaneWithTwoTenantsIsRefused(t *testing.T) {
+	principal := func(tr tree, tenant, listener string) {
+		t.Helper()
+		raw, err := os.ReadFile(tr.config)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cfg := strings.Replace(string(raw), "tenant_id: acme\n", "tenant_id: "+tenant+"\n", 1)
+		cfg = strings.Replace(cfg, "  principal:\n    id: agent-runner\n", "  principal:\n    id: agent-runner\n    tenant_id: "+listener+"\n", 1)
+		if !strings.Contains(cfg, "\ntenant_id: "+tenant+"\n") || !strings.Contains(cfg, "    tenant_id: "+listener+"\n") {
+			t.Fatal("the fixture configuration names no tenant_id or principal to replace")
+		}
+		writeTestFile(t, tr.config, []byte(cfg))
 	}
-	cfg := strings.Replace(string(raw), "tenant_id: acme\n", "tenant_id: elsewhere\n", 1)
-	cfg = strings.Replace(cfg, "  principal:\n    id: agent-runner\n", "  principal:\n    id: agent-runner\n    tenant_id: acme\n", 1)
-	if !strings.Contains(cfg, "tenant_id: elsewhere") || !strings.Contains(cfg, "    tenant_id: acme") {
-		t.Fatal("the fixture configuration names no tenant_id or principal to replace")
+
+	two := signedStopsTree(t)
+	principal(two, "elsewhere", "acme")
+	_, err := gatewayconfig.Load(two.config, os.Environ())
+	if err == nil {
+		t.Fatal("a signed plane with the listener's tenant apart from tenant_id loaded")
 	}
-	writeTestFile(t, tr.config, []byte(cfg))
-	if _, err := buildOneAccount(t, tr); err != nil {
-		t.Fatalf("build with the listener's tenant apart from tenant_id = %v", err)
+	for _, want := range []string{"listener.principal.tenant_id", `"acme"`, `tenant_id "elsewhere"`} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the refusal %q does not say %q", err, want)
+		}
 	}
-	floor, err := policystate.ReadStops(filepath.Join(tr.dir, "stopsfloor"), "acme", "orders")
+
+	one := signedStopsTree(t)
+	principal(one, "acme", "acme")
+	if _, err := buildOneAccount(t, one); err != nil {
+		t.Fatalf("build with the listener's tenant set to tenant_id = %v", err)
+	}
+	floor, err := policystate.ReadStops(filepath.Join(one.dir, "stopsfloor"), "acme", "orders")
 	if err != nil || floor.Serial != 1 {
-		t.Fatalf("the listener tenant's floor after the start = %+v, %v", floor, err)
+		t.Fatalf("the tenant's floor after the start = %+v, %v", floor, err)
 	}
 }

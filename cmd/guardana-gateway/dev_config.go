@@ -31,6 +31,7 @@ var devSet = []string{
 	"policy.state_dir",
 	"policy.freshness_key_id",
 	"policy.freshness_public_key",
+	"plane_id",
 	"approvals.authority",
 	"approvals.dir",
 	"approvals.hold_journal_dir",
@@ -105,6 +106,7 @@ func newLayer(st devState, keys devKeys, listen, health, collector, token, silen
 		"policy.state_dir":             st.path(stateFloors),
 		"policy.freshness_key_id":      policykey.KeyID(keys.freshness),
 		"policy.freshness_public_key":  policykey.FormatPublic(keys.freshness),
+		"plane_id":                     devPlaneID,
 		"approvals.authority":          gatewayconfig.AuthoritySigned,
 		"approvals.dir":                st.path(stateApprovals),
 		"approvals.hold_journal_dir":   st.path(stateHolds),
@@ -198,7 +200,7 @@ func fileSets(path string, l devLayer, key string) bool {
 	group, _, _ := strings.Cut(key, ".")
 	var sameGroup []string
 	for _, k := range l.keys() {
-		if strings.HasPrefix(k, group+".") {
+		if k == key || strings.HasPrefix(k, group+".") {
 			sameGroup = append(sameGroup, k)
 		}
 	}

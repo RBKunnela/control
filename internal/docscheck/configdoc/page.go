@@ -150,7 +150,7 @@ func classificationRule() (string, error) {
 		joinAnd(needsZone) + " needs `trust_zone`; " + joinAnd(needsEnv) + " need `environment` set, and in\n" +
 		"an override its upstream's `environment` too, and in an override " + joinAnd(needsTenant) + "\n" +
 		"need the upstream's `tenant_id`; a tool's `name` and `provider`, an upstream's `name`,\n" +
-		"which is every call's `action.provider`, `project_id`, the `listener.principal.*` and\n" +
+		"which is every call's `action.provider`, `project_id`, `plane_id`, the `listener.principal.*` and\n" +
 		"`listener.agent.*` keys, and the plane's and each upstream's\n" +
 		"`tenant_id` and `environment` are identifiers of at most " + strconv.Itoa(contract.MaxStringBytes) + " bytes too. An identifier is held to the contract's rule\n" +
 		"([contracts](../contracts.md#decoding-and-validation)): invalid UTF-8 is refused, and so\n" +
@@ -185,8 +185,10 @@ func lead(listDefault, classificationRule string) string {
 		"`directory` and `signed` need `approvals.dir` and `approvals.hold_journal_dir`, and that\n" +
 		"journal directory may be neither the spool's nor the approvals directory, nor inside\n" +
 		"either; `signed` needs, and every other authority refuses, `approvals.inbox_dir`, apart\n" +
-		"from those three, every `trust.*` and `operators.*` key, and with `pause.file`\n" +
-		"`pause.floor_dir`, which may not be, hold or sit in the pause file's directory; and `APPROVE` needs\n" +
+		"from those three, every `trust.*` and `operators.*` key, `plane_id`, the plane's own\n" +
+		"identifier, and with `pause.file`\n" +
+		"`pause.floor_dir`, which may not be, hold or sit in the pause file's directory; `signed` refuses\n" +
+		"a `listener.principal.tenant_id` other than `tenant_id`, since such a plane serves one tenant; and `APPROVE` needs\n" +
 		"`directory` or `signed`, since nothing outside the process answers a request held in\n" +
 		"memory. " + classificationRule + " An `enforce_api` listener serves the enforcement API on the Unix\n" +
 		"socket `listener.socket` names, at most 103 bytes as it resolves; the plane checks that\n" +

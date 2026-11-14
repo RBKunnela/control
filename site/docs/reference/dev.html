@@ -137,7 +137,8 @@ believes it applies;</li>
 <li>a configuration that sets a key dev owns: <code>listener.address</code>,
 <code>health.address</code>, <code>policy.bundle_file</code>, <code>policy.key_id</code>,
 <code>policy.public_key</code>, <code>policy.statement_file</code>, <code>policy.state_dir</code>,
-<code>policy.freshness_key_id</code>, <code>policy.freshness_public_key</code>, <code>pause.file</code>,
+<code>policy.freshness_key_id</code>, <code>policy.freshness_public_key</code>, <code>plane_id</code>,
+which dev sets to <code>dev</code>, <code>pause.file</code>,
 <code>pause.floor_dir</code>, <code>evidence.dir</code>, <code>export.endpoint</code>,
 <code>export.collector_uid</code>, every <code>approvals</code>, <code>trust</code> and <code>operators</code> key and every <code>runs</code> key, since
 dev serves local runs only, and with <code>--decision-point=silent</code> every <code>pdp</code>
@@ -170,7 +171,8 @@ in dev's memory and cleared once it signed, and <code>floors/</code>, made by
 <code>guardana-control operators floor init</code>. The operator's key is in the state
 directory, so the plane's own account can approve and pause: a dev plane
 separates no duties, its start skips the placement checks <code>run</code> makes under
-<code>signed</code>, taking only the trust and the pause file dev laid out, and it reads
+<code>signed</code>, taking only the trust and the pause file dev laid out and the
+plane id <code>dev</code>, and it reads
 a pause file its own account owns. The directory is left behind when dev
 stops.</p>
 <p>The bundle is signed under an Ed25519 key made in dev's memory for that one

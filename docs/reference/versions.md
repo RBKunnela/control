@@ -66,14 +66,20 @@ policy bundle, a freshness statement, a route and a lift carry no version of
 their own, only the payload type each is signed under, and the evidence
 spool frames its segments with no version at all, so a spool another release
 wrote is not promised readable. `notify`'s `--state` list of delivered alerts,
-one quoted key per line, carries none either. A plane under
-`approvals.authority: signed` reads pause file `3` alone, and any other `1`
-and `2` alone. It reads a `reaction-route/v1alpha2` route alone, with stop
-list `2.0`, whose signed header is `reaction-list-header/2.0`, and lift
-`reaction-lift/v1alpha2`; any other plane reads a `v1alpha1` route alone,
-with stop list `1.0` and lift `reaction-lift/v1alpha1`. A `1.0` list is not
-carried into `2.0`: start a new list, and `react` stops again the findings
-that still may stop a run.
+one quoted key per line, carries none either.
+
+Which version a plane reads depends on its authority:
+
+- Pause file: `3` under `signed`; `1` and `2` elsewhere.
+- Route: `reaction-route/v1alpha2` under `signed`; `v1alpha1` elsewhere.
+- Stop list: `2.0` under `signed`; `1.0` elsewhere.
+- Stop list header: `reaction-list-header/2.0`, the signed header of a `2.0`
+  list.
+- Lift: `reaction-lift/v1alpha2` under `signed`; `reaction-lift/v1alpha1`
+  elsewhere.
+
+A `1.0` list is not carried into `2.0`: start a new list, and `react` stops
+again the findings that still may stop a run.
 
 ## Reading files an older release wrote
 

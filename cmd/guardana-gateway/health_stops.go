@@ -185,7 +185,8 @@ type countedStops struct {
 }
 
 // counted is a as GET /healthz answers it, the operators who signed the
-// pause, the stop list and the route left out as well.
+// pause, the stop list and the route left out as well, and the plane's id,
+// a name the operator chose, which a port that takes no credential keeps.
 func (a healthAnswer) counted() countedHealth {
 	if a.Pause.Signed != nil {
 		signed := *a.Pause.Signed
@@ -195,6 +196,15 @@ func (a healthAnswer) counted() countedHealth {
 	if a.Stops.Signed != nil {
 		signed := stopsSigned{Serial: a.Stops.Signed.Serial}
 		a.Stops.Signed = &signed
+	}
+	if _, named := a.Trust["plane_id"]; named {
+		trust := make(map[string]any, len(a.Trust))
+		for key, value := range a.Trust {
+			if key != "plane_id" {
+				trust[key] = value
+			}
+		}
+		a.Trust = trust
 	}
 	return countedHealth{healthAnswer: a, Stops: countedStops{stopsAnswer: a.Stops}}
 }

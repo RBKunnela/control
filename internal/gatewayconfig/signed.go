@@ -4,7 +4,7 @@ import "fmt"
 
 // signedKeys is every key only the signed authority reads.
 var signedKeys = []string{
-	"approvals.inbox_dir", "trust.root_public_key", "trust.roster", "trust.roster_id", "trust.floor_dir",
+	"plane_id", "approvals.inbox_dir", "trust.root_public_key", "trust.roster", "trust.roster_id", "trust.floor_dir",
 	"operators.authenticator.kind", "operators.authorizer.kind",
 }
 
@@ -27,6 +27,9 @@ func (c *Config) checkSignedKeys() error {
 	if c.Approvals.Authority != AuthoritySigned {
 		return nil
 	}
+	if err := c.checkSignedTenant(); err != nil {
+		return err
+	}
 	inbox := c.Resolve(c.Approvals.InboxDir)
 	for _, other := range []struct{ key, dir string }{
 		{"evidence.dir", c.Resolve(c.Evidence.Dir)},
@@ -41,6 +44,18 @@ func (c *Config) checkSignedKeys() error {
 			return fmt.Errorf("approvals.inbox_dir: %q shares a path with %s %q; operators write the inbox, and the plane alone writes the other (ADR-0073)",
 				c.Approvals.InboxDir, other.key, other.dir)
 		}
+	}
+	return nil
+}
+
+// checkSignedTenant refuses, under the signed authority, a listener tenant
+// apart from the plane's: answers and pauses are judged under tenant_id, runs
+// and stops under the listener's tenant, and one plane serves one tenant
+// (ADR-0082).
+func (c *Config) checkSignedTenant() error {
+	if t := c.Listener.PrincipalTenant; t != "" && t != c.TenantID {
+		return fmt.Errorf("listener.principal.tenant_id: %q is not tenant_id %q; under the %s authority a plane serves one tenant, so leave it unset or set it to tenant_id (ADR-0082)",
+			t, c.TenantID, AuthoritySigned)
 	}
 	return nil
 }

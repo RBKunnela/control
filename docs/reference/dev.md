@@ -35,7 +35,8 @@ Before it creates or binds anything, dev refuses, with status 1:
 - a configuration that sets a key dev owns: `listener.address`,
   `health.address`, `policy.bundle_file`, `policy.key_id`,
   `policy.public_key`, `policy.statement_file`, `policy.state_dir`,
-  `policy.freshness_key_id`, `policy.freshness_public_key`, `pause.file`,
+  `policy.freshness_key_id`, `policy.freshness_public_key`, `plane_id`,
+  which dev sets to `dev`, `pause.file`,
   `pause.floor_dir`, `evidence.dir`, `export.endpoint`,
   `export.collector_uid`, every `approvals`, `trust` and `operators` key and every `runs` key, since
   dev serves local runs only, and with `--decision-point=silent` every `pdp`
@@ -72,7 +73,8 @@ in dev's memory and cleared once it signed, and `floors/`, made by
 `guardana-control operators floor init`. The operator's key is in the state
 directory, so the plane's own account can approve and pause: a dev plane
 separates no duties, its start skips the placement checks `run` makes under
-`signed`, taking only the trust and the pause file dev laid out, and it reads
+`signed`, taking only the trust and the pause file dev laid out and the
+plane id `dev`, and it reads
 a pause file its own account owns. The directory is left behind when dev
 stops.
 

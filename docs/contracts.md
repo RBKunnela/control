@@ -1480,7 +1480,9 @@ The table lists each file or answer a plane accepts on a signature, the check
 that holds it to a tenant of the plane's, named per row, and to its
 `project_id`, and the test that refuses another project's. The listener's
 tenant is `listener.principal.tenant_id` where it is set, and `tenant_id`
-otherwise. A row with no project check says so. The floors are unsigned
+otherwise; under `signed` a plane serves one tenant, so the two are one
+([ADR-0082](adr/0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant.md)).
+A row with no project check says so. The floors are unsigned
 state the plane writes itself, so none is a row. Outside
 `approvals.authority: signed`, answers, pauses and runs are claims of whoever
 may write where they are read ([status.md](status.md)). A test in
@@ -1499,9 +1501,10 @@ may write where they are read ([status.md](status.md)). A test in
 | Policy bundle and statement | `policy.bundle_file` and `policy.statement_file`, signed by the pinned policy and freshness keys | none: a bundle names no tenant or project; its id has to be `policy.bundle_id` | `internal/policy/holder.go` `Holder.loadPinned` | `internal/policy` `TestInstallUnconfirmedHoldsToTheFloor` |
 | Route under a route key | outside `signed`, a `v1alpha1` route signed by `reaction.public_key`, and its lifts | tenant only: the route's tenant is the listener's, and a stop's the route's; such a route names no project | `internal/gatewayconfig/reaction.go` `Config.CheckRoute` `internal/reaction/permits.go` `Route.Permits` | `internal/gatewayconfig` `TestARouteIsOfTheListenersTenant` `internal/reaction` `TestJudgeHoldsEveryStopToTheRoute` |
 
-Where `listener.principal.tenant_id` differs from `tenant_id`, an operator
-needs a grant over each: answers and pauses are judged under `tenant_id`, runs
-and stops under the listener's tenant.
+Under `signed` a `listener.principal.tenant_id` that differs from
+`tenant_id` is refused at load, so an operator's grants for answers, pauses,
+runs and stops all name the plane's one tenant and its project; the level
+each asks for is unchanged.
 
 ## The enforcement API
 

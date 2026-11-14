@@ -65,7 +65,8 @@ pause:
   file: pause/pause.json
 `
 
-const signedBlock = `approvals:
+const signedBlock = `plane_id: plane-a
+approvals:
   authority: signed
   dir: approvals
   hold_journal_dir: holds

@@ -70,6 +70,7 @@ var configFields = []field[Config]{
 	stringField("project_id", "", true, func(c *Config) *string { return &c.ProjectID }),
 	stringField("tenant_id", "", true, func(c *Config) *string { return &c.TenantID }),
 	stringField("environment", "", false, func(c *Config) *string { return &c.Environment }),
+	stringField("plane_id", "", false, func(c *Config) *string { return &c.PlaneID }),
 	enumField("log.level", "info", logLevels, false, func(c *Config) *string { return &c.LogLevel }),
 
 	enumField("listener.kind", ListenerStatelessHTTP, listenerKinds, true, func(c *Config) *string { return &c.Listener.Kind }),

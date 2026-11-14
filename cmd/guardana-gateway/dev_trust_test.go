@@ -10,8 +10,8 @@ import (
 
 // TestADevPlaneTakesOnlyTheTrustDevLaidOut: the dev start check takes a
 // configuration naming the trust root, roster, floor, inbox, pause file and
-// pause floor dev wrote under its state and the dev roster id, and refuses
-// each one named elsewhere.
+// pause floor dev wrote under its state, the dev roster id and the dev
+// plane's id, and refuses each one named elsewhere.
 func TestADevPlaneTakesOnlyTheTrustDevLaidOut(t *testing.T) {
 	st := devState{dir: t.TempDir()}
 	laidOut := func() *gatewayconfig.Config {
@@ -20,6 +20,7 @@ func TestADevPlaneTakesOnlyTheTrustDevLaidOut(t *testing.T) {
 		cfg.Trust.Roster = filepath.Join(st.dir, "trust", "roster.json")
 		cfg.Trust.FloorDir = filepath.Join(st.dir, "trust", "floors")
 		cfg.Trust.RosterID = "dev"
+		cfg.PlaneID = "dev"
 		cfg.Approvals.InboxDir = filepath.Join(st.dir, "inbox")
 		cfg.Pause.File = filepath.Join(st.dir, "pause", "pause.json")
 		cfg.Pause.FloorDir = filepath.Join(st.dir, "pausefloor")
@@ -36,6 +37,7 @@ func TestADevPlaneTakesOnlyTheTrustDevLaidOut(t *testing.T) {
 		"trust.floor_dir":       func(c *gatewayconfig.Config) { c.Trust.FloorDir = elsewhere },
 		"approvals.inbox_dir":   func(c *gatewayconfig.Config) { c.Approvals.InboxDir = elsewhere },
 		"trust.roster_id":       func(c *gatewayconfig.Config) { c.Trust.RosterID = "other" },
+		"plane_id":              func(c *gatewayconfig.Config) { c.PlaneID = "other" },
 		"pause.file":            func(c *gatewayconfig.Config) { c.Pause.File = elsewhere },
 		"pause.floor_dir":       func(c *gatewayconfig.Config) { c.Pause.FloorDir = elsewhere },
 	} {

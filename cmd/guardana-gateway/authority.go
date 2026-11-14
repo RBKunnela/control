@@ -311,8 +311,9 @@ func (p *plane) pruneInbox(ctx context.Context, now time.Time) (inbox.Pruned, er
 	})
 }
 
-// trustHealth and operatorsHealth are the trust roster and the operator ports
-// on the health page, each "not_configured" outside the signed kind.
+// trustHealth and operatorsHealth are the trust roster, beside the plane's
+// id, and the operator ports on the health page, each "not_configured"
+// outside the signed kind.
 func (p *plane) trustHealth(ctx context.Context) map[string]any {
 	if p.signed == nil {
 		return map[string]any{"state": "not_configured"}
@@ -327,7 +328,7 @@ func (p *plane) trustHealth(ctx context.Context) map[string]any {
 		counts[string(c)] = n
 	}
 	return map[string]any{
-		"kind": string(s.Kind), "state": state, "roster_id": s.RosterID, "serial": s.Serial,
+		"kind": string(s.Kind), "state": state, "plane_id": p.cfg.PlaneID, "roster_id": s.RosterID, "serial": s.Serial,
 		"last": string(s.Last), "counts": counts,
 	}
 }

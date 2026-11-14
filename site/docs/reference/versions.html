@@ -383,14 +383,19 @@ policy bundle, a freshness statement, a route and a lift carry no version of
 their own, only the payload type each is signed under, and the evidence
 spool frames its segments with no version at all, so a spool another release
 wrote is not promised readable. <code>notify</code>'s <code>--state</code> list of delivered alerts,
-one quoted key per line, carries none either. A plane under
-<code>approvals.authority: signed</code> reads pause file <code>3</code> alone, and any other <code>1</code>
-and <code>2</code> alone. It reads a <code>reaction-route/v1alpha2</code> route alone, with stop
-list <code>2.0</code>, whose signed header is <code>reaction-list-header/2.0</code>, and lift
-<code>reaction-lift/v1alpha2</code>; any other plane reads a <code>v1alpha1</code> route alone,
-with stop list <code>1.0</code> and lift <code>reaction-lift/v1alpha1</code>. A <code>1.0</code> list is not
-carried into <code>2.0</code>: start a new list, and <code>react</code> stops again the findings
-that still may stop a run.</p>
+one quoted key per line, carries none either.</p>
+<p>Which version a plane reads depends on its authority:</p>
+<ul>
+<li>Pause file: <code>3</code> under <code>signed</code>; <code>1</code> and <code>2</code> elsewhere.</li>
+<li>Route: <code>reaction-route/v1alpha2</code> under <code>signed</code>; <code>v1alpha1</code> elsewhere.</li>
+<li>Stop list: <code>2.0</code> under <code>signed</code>; <code>1.0</code> elsewhere.</li>
+<li>Stop list header: <code>reaction-list-header/2.0</code>, the signed header of a <code>2.0</code>
+list.</li>
+<li>Lift: <code>reaction-lift/v1alpha2</code> under <code>signed</code>; <code>reaction-lift/v1alpha1</code>
+elsewhere.</li>
+</ul>
+<p>A <code>1.0</code> list is not carried into <code>2.0</code>: start a new list, and <code>react</code> stops
+again the findings that still may stop a run.</p>
 <h2 id="reading-files-an-older-release-wrote">Reading files an older release wrote</h2>
 <ul>
 <li><strong>Wire messages, the evidence export, the runs directory's marker and

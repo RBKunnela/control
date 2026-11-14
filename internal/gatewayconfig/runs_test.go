@@ -49,6 +49,19 @@ func TestTheRunsDirectoryStandsApart(t *testing.T) {
 	}
 }
 
+// TestThePauseFilesDirectoryIsTakenAsTheFileResolves: the pause file's
+// directory is the one its resolved path sits in, so a path that climbs out
+// of its last element is held to the directory it reaches.
+func TestThePauseFilesDirectoryIsTakenAsTheFileResolves(t *testing.T) {
+	_, err := Load(write(t, "\nruns:\n  dir: ../runs\npause:\n  file: control/..\n"), os.Environ())
+	if err == nil || !strings.Contains(err.Error(), "runs.dir") || !strings.Contains(err.Error(), "pause.file") {
+		t.Errorf("a runs directory inside the directory the pause file resolves into: %v", err)
+	}
+	if _, err := Load(write(t, "\nruns:\n  dir: ../runs\npause:\n  file: control/pause.json\n"), os.Environ()); err != nil {
+		t.Errorf("the same runs directory beside a pause file one level down was refused: %v", err)
+	}
+}
+
 // TestTheBoundOnLocalRunsIsRefusedBesideARunsDirectory: flow.max_runs bounds
 // the runs a plane keeps in memory, and a plane with a runs directory keeps
 // none, so the setting would apply to nothing.

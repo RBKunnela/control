@@ -22,8 +22,10 @@ under the `interval` policy and refused under `every_record`; `approvals.authori
 `directory` and `signed` need `approvals.dir` and `approvals.hold_journal_dir`, and that
 journal directory may be neither the spool's nor the approvals directory, nor inside
 either; `signed` needs, and every other authority refuses, `approvals.inbox_dir`, apart
-from those three, every `trust.*` and `operators.*` key, and with `pause.file`
-`pause.floor_dir`, which may not be, hold or sit in the pause file's directory; and `APPROVE` needs
+from those three, every `trust.*` and `operators.*` key, `plane_id`, the plane's own
+identifier, and with `pause.file`
+`pause.floor_dir`, which may not be, hold or sit in the pause file's directory; `signed` refuses
+a `listener.principal.tenant_id` other than `tenant_id`, since such a plane serves one tenant; and `APPROVE` needs
 `directory` or `signed`, since nothing outside the process answers a request held in
 memory. An entry of `overrides` or `tools` is refused when no call to its tool could carry
 an envelope the contract takes: `resource_type` is an identifier of at most 1024 bytes,
@@ -32,7 +34,7 @@ envelope needs a resource id (`WRITE`, `DELETE`, `TRANSACT`, `IDENTITY_OR_ACCESS
 `COMMUNICATE` needs `trust_zone`; `WRITE`, `DELETE` and `CONFIGURE` need `environment` set, and in
 an override its upstream's `environment` too, and in an override `TRANSACT` and `IDENTITY_OR_ACCESS`
 need the upstream's `tenant_id`; a tool's `name` and `provider`, an upstream's `name`,
-which is every call's `action.provider`, `project_id`, the `listener.principal.*` and
+which is every call's `action.provider`, `project_id`, `plane_id`, the `listener.principal.*` and
 `listener.agent.*` keys, and the plane's and each upstream's
 `tenant_id` and `environment` are identifiers of at most 1024 bytes too. An identifier is held to the contract's rule
 ([contracts](../contracts.md#decoding-and-validation)): invalid UTF-8 is refused, and so
@@ -87,6 +89,7 @@ Rendered from the field table in `internal/gatewayconfig`. Rebuild it with
 | `project_id` | `GUARDANA_CONTROL_PROJECT_ID` | string |  | yes |  |
 | `tenant_id` | `GUARDANA_CONTROL_TENANT_ID` | string |  | yes |  |
 | `environment` | `GUARDANA_CONTROL_ENVIRONMENT` | string |  | no |  |
+| `plane_id` | `GUARDANA_CONTROL_PLANE_ID` | string |  | no |  |
 | `log.level` | `GUARDANA_CONTROL_LOG_LEVEL` | one of | `info` | no | `debug`, `info`, `warn`, `error` |
 | `listener.kind` | `GUARDANA_CONTROL_LISTENER_KIND` | one of | `stateless_http` | yes | `stateless_http`, `stateful_http`, `stdio`, `enforce_api` |
 | `listener.address` | `GUARDANA_CONTROL_LISTENER_ADDRESS` | string | `127.0.0.1:8080` | no |  |

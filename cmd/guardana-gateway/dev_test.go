@@ -167,6 +167,7 @@ var ownedKeys = [][2]string{
 	{"policy.state_dir", "floors"},
 	{"policy.freshness_key_id", "f1"},
 	{"policy.freshness_public_key", "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB="},
+	{"plane_id", "mine"},
 	{"approvals.authority", "directory"},
 	{"approvals.dir", "records"},
 	{"approvals.hold_journal_dir", "holds"},
@@ -193,8 +194,11 @@ func TestDevRefusesADemoThatSetsWhatDevOwns(t *testing.T) {
 	for _, kv := range append(ownedKeys, [2]string{"export.endpoint", "not a collector"}) {
 		t.Run(kv[0]+"="+kv[1], func(t *testing.T) {
 			t.Parallel()
-			group, leaf, _ := strings.Cut(kv[0], ".")
-			d := writeDemo(t, "http://127.0.0.1:9/mcp", "5ms", fmt.Sprintf("%s:\n  %s: %q\n", group, leaf, kv[1]))
+			line := fmt.Sprintf("%s: %q\n", kv[0], kv[1])
+			if group, leaf, nested := strings.Cut(kv[0], "."); nested {
+				line = fmt.Sprintf("%s:\n  %s: %q\n", group, leaf, kv[1])
+			}
+			d := writeDemo(t, "http://127.0.0.1:9/mcp", "5ms", line)
 			err := checkDemo(devInputs{config: d.config}, filepath.Join(t.TempDir(), "state"))
 			if err == nil || !strings.HasPrefix(err.Error(), kv[0]+": "+d.config+" sets it, and dev owns it") {
 				t.Fatalf("checkDemo = %v, want the refusal naming %s", err, kv[0])

@@ -196,6 +196,7 @@ complete. Then change the mode and restart.
 ### 8. Let a person answer a held call
 
 ```yaml
+plane_id: orders-eu-1           # under signed: this plane's own id, one per plane
 approvals:
   authority: signed             # or directory, with the next two keys alone
   dir: /var/lib/guardana/approvals    # the plane's, the operators' group, mode 0750, setgid where needed

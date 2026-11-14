@@ -20,7 +20,7 @@ import (
 const healthSchema = "2"
 
 // healthAnswer is what the plane says about itself. It carries no
-// configuration and no credential: the mode, the bundle it serves, what each
+// credential: the mode, the bundle it serves, the plane's id, what each
 // seam counted, and whether the plane still takes material calls. GET
 // /healthz answers it counted; health.socket answers it whole.
 type healthAnswer struct {

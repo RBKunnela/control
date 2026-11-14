@@ -128,8 +128,10 @@ under the <code>interval</code> policy and refused under <code>every_record</cod
 <code>directory</code> and <code>signed</code> need <code>approvals.dir</code> and <code>approvals.hold_journal_dir</code>, and that
 journal directory may be neither the spool's nor the approvals directory, nor inside
 either; <code>signed</code> needs, and every other authority refuses, <code>approvals.inbox_dir</code>, apart
-from those three, every <code>trust.*</code> and <code>operators.*</code> key, and with <code>pause.file</code>
-<code>pause.floor_dir</code>, which may not be, hold or sit in the pause file's directory; and <code>APPROVE</code> needs
+from those three, every <code>trust.*</code> and <code>operators.*</code> key, <code>plane_id</code>, the plane's own
+identifier, and with <code>pause.file</code>
+<code>pause.floor_dir</code>, which may not be, hold or sit in the pause file's directory; <code>signed</code> refuses
+a <code>listener.principal.tenant_id</code> other than <code>tenant_id</code>, since such a plane serves one tenant; and <code>APPROVE</code> needs
 <code>directory</code> or <code>signed</code>, since nothing outside the process answers a request held in
 memory. An entry of <code>overrides</code> or <code>tools</code> is refused when no call to its tool could carry
 an envelope the contract takes: <code>resource_type</code> is an identifier of at most 1024 bytes,
@@ -138,7 +140,7 @@ envelope needs a resource id (<code>WRITE</code>, <code>DELETE</code>, <code>TRA
 <code>COMMUNICATE</code> needs <code>trust_zone</code>; <code>WRITE</code>, <code>DELETE</code> and <code>CONFIGURE</code> need <code>environment</code> set, and in
 an override its upstream's <code>environment</code> too, and in an override <code>TRANSACT</code> and <code>IDENTITY_OR_ACCESS</code>
 need the upstream's <code>tenant_id</code>; a tool's <code>name</code> and <code>provider</code>, an upstream's <code>name</code>,
-which is every call's <code>action.provider</code>, <code>project_id</code>, the <code>listener.principal.*</code> and
+which is every call's <code>action.provider</code>, <code>project_id</code>, <code>plane_id</code>, the <code>listener.principal.*</code> and
 <code>listener.agent.*</code> keys, and the plane's and each upstream's
 <code>tenant_id</code> and <code>environment</code> are identifiers of at most 1024 bytes too. An identifier is held to the contract's rule
 (<a href="/docs/contracts#decoding-and-validation">contracts</a>): invalid UTF-8 is refused, and so
@@ -224,6 +226,14 @@ allowed.</p>
 <tr>
 <td><code>environment</code></td>
 <td><code>GUARDANA_CONTROL_ENVIRONMENT</code></td>
+<td>string</td>
+<td></td>
+<td>no</td>
+<td></td>
+</tr>
+<tr>
+<td><code>plane_id</code></td>
+<td><code>GUARDANA_CONTROL_PLANE_ID</code></td>
 <td>string</td>
 <td></td>
 <td>no</td>

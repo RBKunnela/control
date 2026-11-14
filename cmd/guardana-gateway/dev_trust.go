@@ -27,10 +27,12 @@ const (
 	stateOperator = "operator"
 )
 
-// The roster dev signs: one id, one operator.
+// The roster dev signs, one id and one operator, and the id of the plane it
+// serves.
 const (
 	devRosterID = "dev"
 	devOperator = "dev-operator"
+	devPlaneID  = "dev"
 )
 
 // operatorKeyFile is the dev operator's private key file under st.
@@ -115,7 +117,7 @@ func signDevRoster(st devState, operator ed25519.PublicKey, tenant, project stri
 // account wrote the trust root, the roster and the operator's key, so the
 // placement a served plane is held to guards nothing here; what it holds the
 // configuration to instead is that every key of the signed authority names
-// what dev laid out under st.
+// what dev laid out under st, and the plane's id is dev's.
 func devSignedStart(st devState) func(*gatewayconfig.Config) error {
 	return func(cfg *gatewayconfig.Config) error {
 		for _, k := range []struct{ key, got, want string }{
@@ -132,6 +134,9 @@ func devSignedStart(st devState) func(*gatewayconfig.Config) error {
 		}
 		if cfg.Trust.RosterID != devRosterID {
 			return errors.New("trust.roster_id is not the dev roster's")
+		}
+		if cfg.PlaneID != devPlaneID {
+			return errors.New("plane_id is not the dev plane's")
 		}
 		return nil
 	}

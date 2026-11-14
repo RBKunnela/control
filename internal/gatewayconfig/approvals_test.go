@@ -19,6 +19,7 @@ approvals:
 
 // signedBlock is the signed authority with every key it reads.
 const signedBlock = `
+plane_id: plane-a
 approvals:
   authority: signed
   dir: approvals
@@ -157,6 +158,7 @@ func TestADurableAuthorityNeedsBothDirectories(t *testing.T) {
 // applies to nothing is a setting the operator believes is in force.
 func TestTheSignedAuthorityNeedsEveryKeyItReads(t *testing.T) {
 	for key, line := range map[string]string{
+		"plane_id":                     "plane_id: plane-a\n",
 		"approvals.inbox_dir":          "  inbox_dir: inbox\n",
 		"trust.root_public_key":        "  root_public_key: trust/root.pub\n",
 		"trust.roster":                 "  roster: trust/roster.json\n",

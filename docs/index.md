@@ -179,3 +179,4 @@ with `make docs-gen`; an edit made here does not survive the next run.
 - [ADR-0079: A signed plane admits a child only if it saw it before its parent's close](adr/0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close.md): accepted
 - [ADR-0080: Evidence leaves a plane over a unix socket or TLS](adr/0080-evidence-leaves-a-plane-over-a-unix-socket-or-tls.md): accepted
 - [ADR-0081: Tests that need a second account run in a required job](adr/0081-tests-that-need-a-second-account-run-in-a-required-job.md): accepted
+- [ADR-0082: A signed document names its plane, and a signed plane serves one tenant](adr/0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant.md): accepted

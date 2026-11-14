@@ -28,10 +28,14 @@ func trustFound(t *testing.T, tr tree) string {
 }
 
 // TestDoctorNamesEveryFileTheSignedStartChecked: the trust line names the
-// roster beside the configuration file and the root key, and the route, the
-// stop list and the run records only where the configuration sets them.
+// plane's id and tenant, the roster beside the configuration file and the
+// root key, and the route, the stop list and the run records only where the
+// configuration sets them.
 func TestDoctorNamesEveryFileTheSignedStartChecked(t *testing.T) {
 	bare := trustFound(t, signedPlaneTree(t, "roster-a", []ed25519.PublicKey{signedTestPublic("alice")}, "roster-a"))
+	if want := "plane plane-a, one tenant acme: roster roster-a serial "; !strings.HasPrefix(bare, want) {
+		t.Errorf("the trust line = %q; want it to begin %q", bare, want)
+	}
 	if want := "; the configuration file, trust.root_public_key and trust.roster are not the plane's to change, and the environment sets no key"; !strings.HasSuffix(bare, want) {
 		t.Errorf("the trust line over a tree with no pause, route or runs = %q; want it to end %q", bare, want)
 	}

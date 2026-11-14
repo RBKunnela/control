@@ -7,8 +7,9 @@ import (
 )
 
 // checkIdentifiers refuses a key an envelope carries that contract.CheckID
-// refuses, naming the key: the plane's project, tenant and environment, the
-// listener's principal and agent, and an upstream's tenant and environment.
+// refuses, naming the key: the plane's project, tenant, environment and id,
+// the listener's principal and agent, and an upstream's tenant and
+// environment.
 // Validate holds each of these fields to the identifier rule and its bound,
 // so the contract would refuse every call instead. An empty optional key is
 // unset; checkRequired has refused an empty required one.
@@ -16,7 +17,7 @@ func (c *Config) checkIdentifiers() error {
 	type key struct{ path, value string }
 	l := c.Listener
 	keys := []key{
-		{"project_id", c.ProjectID}, {"tenant_id", c.TenantID}, {"environment", c.Environment},
+		{"project_id", c.ProjectID}, {"tenant_id", c.TenantID}, {"environment", c.Environment}, {"plane_id", c.PlaneID},
 		{"listener.principal.id", l.PrincipalID}, {"listener.principal.type", l.PrincipalType},
 		{"listener.principal.tenant_id", l.PrincipalTenant},
 		{"listener.agent.id", l.AgentID}, {"listener.agent.framework", l.AgentFramework}, {"listener.agent.version", l.AgentVersion},

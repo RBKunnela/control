@@ -84,6 +84,7 @@
   <url><loc>https://control.guardana.dev/docs/adr/0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close</loc></url>
   <url><loc>https://control.guardana.dev/docs/adr/0080-evidence-leaves-a-plane-over-a-unix-socket-or-tls</loc></url>
   <url><loc>https://control.guardana.dev/docs/adr/0081-tests-that-need-a-second-account-run-in-a-required-job</loc></url>
+  <url><loc>https://control.guardana.dev/docs/adr/0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant</loc></url>
   <url><loc>https://control.guardana.dev/docs/backlog</loc></url>
   <url><loc>https://control.guardana.dev/docs/changelog</loc></url>
   <url><loc>https://control.guardana.dev/docs/concepts/approvals-and-the-held-call</loc></url>
