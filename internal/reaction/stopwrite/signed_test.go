@@ -3,6 +3,7 @@ package stopwrite_test
 import (
 	"crypto/ed25519"
 	"errors"
+	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -41,12 +42,17 @@ func (v voucher) Vouch(kind reaction.SignedKind, env reaction.Envelope) (reactio
 	return reaction.Signer{Subject: "alice", KeyID: id}, nil
 }
 
-// signedRouteIn is a v1alpha2 route of tenant acme and project shop at
-// serial, taken for the plane whose stop list is in dir.
+// planeVoucher is the voucher of plane-a whose stop list is in dir.
+func planeVoucher(dir string) voucher {
+	return voucher{plane: reaction.Plane{ID: "plane-a", Tenant: "acme", Project: "shop", RouteFile: "/plane/route.json", ListFile: listPath(dir)}}
+}
+
+// signedRouteIn is a v1alpha3 route of plane-a, tenant acme and project shop
+// at serial, taken for the plane whose stop list is in dir.
 func signedRouteIn(t testing.TB, dir string, serial int) reaction.Route {
 	t.Helper()
 	key, id := operatorKey(), operatorID()
-	doc := `{"kind":"reaction-route/v1alpha2","route_id":"refunds","serial":` + strconv.Itoa(serial) +
+	doc := `{"kind":"reaction-route/v1alpha3","plane_id":"plane-a","route_id":"refunds","serial":` + strconv.Itoa(serial) +
 		`,"tenant_id":"acme","project_id":"shop","rules":[{"procedure_id":"refund","version":"1","digest":"` + refundDigest(t) +
 		`","rule_id":"STEP_OUTSIDE_PROCEDURE","rule_version":"1","scope":"run","expires_seconds":3600}]}`
 	body, err := reaction.SignedRouteBody([]byte(doc), id, "/plane/route.json")
@@ -59,8 +65,7 @@ func signedRouteIn(t testing.TB, dir string, serial int) reaction.Route {
 	}
 	env := reaction.Envelope{PayloadType: reaction.SignedRoutePayloadType, Payload: body,
 		Signatures: []reaction.Signature{{KeyID: id, Signature: sig}}}
-	v := voucher{plane: reaction.Plane{Tenant: "acme", Project: "shop", RouteFile: "/plane/route.json", ListFile: listPath(dir)}}
-	r, err := reaction.VerifySignedRoute(env, v)
+	r, err := reaction.VerifySignedRoute(env, planeVoucher(dir))
 	if err != nil {
 		t.Fatalf("VerifySignedRoute: %v", err)
 	}
@@ -77,7 +82,7 @@ func signer() stopwrite.Signer {
 func signedStop(t testing.TB, finding, run, project string, created time.Time) reaction.Stop {
 	t.Helper()
 	s := stopOf(t, finding, run, created)
-	s.ProjectID, s.Scope = project, reaction.ScopeRun
+	s.ProjectID, s.Scope, s.Subject = project, reaction.ScopeRun, run
 	return s
 }
 
@@ -88,8 +93,10 @@ func TestInitSignedWritesAHeaderThePlaneTakes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("InitSigned: %v", err)
 	}
-	if h.Signed.Serial != 4 || h.Signed.Previous != "" || h.Signed.File != listPath(dir) || h.Signed.ProjectID != "shop" || h.Signed.Digest == "" {
-		t.Fatalf("the header: %+v", h.Signed)
+	want := reaction.HeaderSigned{KeyID: operatorID(), PlaneID: "plane-a", TenantID: "acme", ProjectID: "shop", File: listPath(dir),
+		Serial: 4, Digest: h.Signed.Digest}
+	if h.Signed.Digest == "" || h.Signed != want {
+		t.Fatalf("the header: %+v, want %+v", h.Signed, want)
 	}
 	l, err := reaction.Judge(r, reaction.Prefix{}, content(t, dir), clock0, poll)
 	if err != nil || l.Header().Signed.Digest != h.Signed.Digest || l.Signer().Subject != "alice" {
@@ -163,15 +170,15 @@ func TestCarrySignedChainsTheNewHeaderToTheOld(t *testing.T) {
 }
 
 // TestACarryBetweenTheFormatsOrPastTheLastSerialIsRefused: a 1.0 list is not
-// carried into a 2.0 one, CarrySigned takes only v1alpha2 routes, and a list
-// at the last serial has no next.
+// carried into a 3.0 one, nor a 3.0 one into 1.0, CarrySigned carries only
+// into a v1alpha3 route's list, and a list at the last serial has no next.
 func TestACarryBetweenTheFormatsOrPastTheLastSerialIsRefused(t *testing.T) {
 	for _, c := range []struct {
 		name         string
 		fromR, intoR func(dir string) reaction.Route
 		carry        func(from string, fromR reaction.Route, into string, intoR reaction.Route) error
 	}{
-		{"a 1.0 list into a v1alpha2 route", func(string) reaction.Route { return testRoute(t) }, func(d string) reaction.Route { return signedRouteIn(t, d, 4) },
+		{"a 1.0 list into a v1alpha3 route", func(string) reaction.Route { return testRoute(t) }, func(d string) reaction.Route { return signedRouteIn(t, d, 4) },
 			func(f string, fr reaction.Route, i string, ir reaction.Route) error {
 				_, err := stopwrite.Carry(bg, f, fr, i, ir, clock0)
 				return err
@@ -201,5 +208,29 @@ func TestACarryBetweenTheFormatsOrPastTheLastSerialIsRefused(t *testing.T) {
 	next := emptyDir(t)
 	if _, err := stopwrite.CarrySigned(bg, top, topRoute, next, signedRouteIn(t, next, 4), clock0, signer(), nil); !errors.Is(err, stopwrite.ErrRefused) {
 		t.Errorf("a carry from the last serial: %v", err)
+	}
+}
+
+// TestACarryByRouteKeyTakesNoSignedList: Carry neither reads a signed list
+// nor writes one, so a 3.0 list is not carried down into a 1.0 one, nor
+// into another 3.0 list without a signer.
+func TestACarryByRouteKeyTakesNoSignedList(t *testing.T) {
+	from := emptyDir(t)
+	fromRoute := signedRouteIn(t, from, 3)
+	_, err := stopwrite.InitSigned(bg, from, fromRoute, clock0, signer(), 7)
+	noErr(t, err)
+	_, _, err = appendFinding(bg, from, fromRoute, signedStop(t, "f-1", "run-1", "shop", clock0), clock0)
+	noErr(t, err)
+	for name, into := range map[string]func(string) reaction.Route{
+		"a v1alpha1 route": func(string) reaction.Route { return routeOf(t, 4, false) },
+		"a v1alpha3 route": func(d string) reaction.Route { return signedRouteIn(t, d, 4) },
+	} {
+		dir := emptyDir(t)
+		if _, err := stopwrite.Carry(bg, from, fromRoute, dir, into(dir), clock0); !errors.Is(err, stopwrite.ErrRefused) {
+			t.Errorf("a 3.0 list carried by route key into %s: %v, want ErrRefused", name, err)
+		}
+		if entries, err := os.ReadDir(dir); err != nil || len(entries) != 0 {
+			t.Errorf("a refused carry into %s left %d files, %v", name, len(entries), err)
+		}
 	}
 }

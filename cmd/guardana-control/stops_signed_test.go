@@ -19,9 +19,9 @@ import (
 	"github.com/guardana/control/internal/trust"
 )
 
-// signedRouteDoc is stopRouteDoc as a v1alpha2 route of project orders, the
-// project who's runs are opened in.
-const signedRouteDoc = `{"kind":"reaction-route/v1alpha2","route_id":"refund-stops","serial":1,` +
+// signedRouteDoc is stopRouteDoc as a v1alpha3 route of plane-a and project
+// orders, the project who's runs are opened in.
+const signedRouteDoc = `{"kind":"reaction-route/v1alpha3","plane_id":"plane-a","route_id":"refund-stops","serial":1,` +
 	`"tenant_id":"acme","project_id":"orders","rules":[` +
 	`{"procedure_id":"refund","version":"1","digest":"` + stopProcDigest + `",` +
 	`"rule_id":"REPEATED_DENIAL","rule_version":"2","scope":"run","expires_seconds":600},` +
@@ -110,7 +110,7 @@ func (tr signedTree) run(t *testing.T, words string, args ...string) (int, strin
 // to write a stop as react would.
 func (tr signedTree) takenRoute(t *testing.T) reaction.Route {
 	t.Helper()
-	r, err := rosterRoute("--route", tr.route, tr.judge[1], tr.judge[3], tr.stops, nil, reaction.VerifySignedRoute)
+	r, err := rosterRoute("--route", tr.route, tr.judge[1], tr.judge[3], tr.stops, "", nil, reaction.VerifySignedRoute)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +131,7 @@ func (tr signedTree) appendRunStop(t *testing.T) {
 	t.Helper()
 	r := tr.takenRoute(t)
 	stop := reaction.Stop{EntryID: reaction.EntryID("f-1"), TenantID: "acme", ProjectID: "orders", Scope: reaction.ScopeRun,
-		RunID: "run-1", FindingID: "f-1", ProcedureID: "refund", ProcedureVersion: "1", ProcedureDigest: stopProcDigest,
+		Subject: "run-1", RunID: "run-1", FindingID: "f-1", ProcedureID: "refund", ProcedureVersion: "1", ProcedureDigest: stopProcDigest,
 		RuleID: "STEP_OUTSIDE_PROCEDURE", RuleVersion: "1", CreatedAt: time.Now().UTC().Truncate(time.Second)}
 	stop.ExpiresAt = stop.CreatedAt.Add(time.Hour)
 	if _, _, _, err := stopwrite.AppendFinding(context.Background(), tr.stops, r, time.Now,
@@ -215,7 +215,7 @@ func writeForgedHeader(t *testing.T, dir string, r reaction.Route) {
 	mallory := signedKey("mallory")
 	malloryID := policykey.KeyID(mallory.Public().(ed25519.PublicKey))
 	body, err := reaction.HeaderBody(reaction.Header{ListID: "lst-forged", RouteID: r.ID(), RouteSerial: r.Serial(), RouteDigest: r.Digest(),
-		Signed: reaction.HeaderSigned{KeyID: malloryID, TenantID: "acme", ProjectID: "orders", File: r.Plane().ListFile, Serial: 1}})
+		Signed: reaction.HeaderSigned{KeyID: malloryID, PlaneID: r.PlaneID(), TenantID: "acme", ProjectID: "orders", File: r.Plane().ListFile, Serial: 1}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,12 +234,12 @@ func writeForgedHeader(t *testing.T, dir string, r reaction.Route) {
 }
 
 // TestASignedCommandRefusesAHeaderNoOperatorSigned: a list whose header no
-// operator of the roster signed is neither listed nor lifted, and a v1alpha2
+// operator of the roster signed is neither listed nor lifted, and a v1alpha3
 // route is not verified with a bare public key.
 func TestASignedCommandRefusesAHeaderNoOperatorSigned(t *testing.T) {
 	tr := newSignedTree(t)
 	forged := ownerDir(t, filepath.Join(tr.dir, "forged"))
-	r, err := rosterRoute("--route", tr.route, tr.judge[1], tr.judge[3], forged, nil, reaction.VerifySignedRoute)
+	r, err := rosterRoute("--route", tr.route, tr.judge[1], tr.judge[3], forged, "", nil, reaction.VerifySignedRoute)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -253,12 +253,12 @@ func TestASignedCommandRefusesAHeaderNoOperatorSigned(t *testing.T) {
 		t.Fatalf("stops lift on a header mallory signed: %d", code)
 	}
 	if code, _, _ := invoke(t, "stops", "list", "--route", tr.route, "--public-key", tr.judge[3], tr.stops); code == exitOK {
-		t.Fatal("a v1alpha2 route verified with --public-key")
+		t.Fatal("a v1alpha3 route verified with --public-key")
 	}
 }
 
 // TestReactUnderASignedRouteRefusesThePlanesAccount: react needs the plane's
-// approvals directory under a v1alpha2 route, and refuses to run as the
+// approvals directory under a v1alpha3 route, and refuses to run as the
 // account that owns it, before it reads a finding.
 func TestReactUnderASignedRouteRefusesThePlanesAccount(t *testing.T) {
 	tr := newSignedTree(t)

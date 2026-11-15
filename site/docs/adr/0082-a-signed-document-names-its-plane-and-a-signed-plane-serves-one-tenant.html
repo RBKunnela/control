@@ -43,6 +43,7 @@
 <li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -145,8 +146,9 @@ that sets the key.</li>
 <li>The plane's id joins <code>file</code> in each signed body a plane takes from an
 operator, the pause file, the route, the stop list header and the lift,
 and in the state backup manifest. The pause file carries it from version
-<code>4</code> and the manifest from <code>0.2</code>; the route, the stop list header and the
-lift carry it in later changes of the same release. Each body grows by the
+<code>4</code> and the manifest from <code>0.2</code>; the route from <code>reaction-route/v1alpha3</code>,
+the stop list header from <code>reaction-list-header/3.0</code> and the lift from
+<code>reaction-lift/v1alpha3</code>, in the same release. Each body grows by the
 id, so an operator's signed statement may be 20 KiB, up from 16 KiB: a body
 of the earlier version at its bound still fits once it names the plane.</li>
 <li>Run records keep their <code>records/</code> path binding and take no plane id: a
@@ -218,6 +220,7 @@ refuses a backup of another plane.</p>
 <li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>

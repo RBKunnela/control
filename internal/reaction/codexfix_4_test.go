@@ -33,7 +33,7 @@ func newRosterVoucher() *rosterVoucher {
 }
 
 func (v *rosterVoucher) Plane() reaction.Plane {
-	return reaction.Plane{Tenant: sTenant, Project: sProject, RouteFile: sRouteFile, ListFile: sListFile}
+	return reaction.Plane{ID: sPlane, Tenant: sTenant, Project: sProject, RouteFile: sRouteFile, ListFile: sListFile}
 }
 
 func (v *rosterVoucher) Vouch(kind reaction.SignedKind, env reaction.Envelope) (reaction.Signer, error) {
@@ -129,17 +129,8 @@ func TestPortsThatStopAnsweringAfterAcceptanceTakeTheClearAway(t *testing.T) {
 // liftOf is a lift of run-1 through line through naming head, signed by key.
 func liftOf(t *testing.T, head string, key ed25519.PrivateKey, through int64) []byte {
 	t.Helper()
-	body, err := reaction.SignedLift{KeyID: keyIDOf(key), ListHead: head, RunID: "run-1", ThroughLine: through,
-		TenantID: sTenant, Project: sProject, File: sListFile}.Payload()
-	if err != nil {
-		t.Fatal(err)
-	}
-	line, err := reaction.LiftLine{RunID: "run-1", ThroughLine: through,
-		Envelope: envelopeOf(t, reaction.SignedLiftPayloadType, body, key, keyIDOf(key))}.Marshal()
-	if err != nil {
-		t.Fatal(err)
-	}
-	return line
+	return signedLiftLineOf(t, reaction.SignedLiftV3{KeyID: keyIDOf(key), PlaneID: sPlane, ListHead: head, Scope: reaction.ScopeRun,
+		Subject: "run-1", ThroughLine: through, TenantID: sTenant, Project: sProject, File: sListFile}, key, "run-1", through)
 }
 
 // TestAPollAsksAgainAboutEachSignerOnce: a list whose lifts alice signed

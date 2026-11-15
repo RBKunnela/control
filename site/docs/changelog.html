@@ -43,6 +43,7 @@
 <li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -127,8 +128,9 @@ verify one.</p>
 <ul>
 <li><strong>Breaking:</strong> under <code>approvals.authority: signed</code> a plane needs <code>plane_id</code>, an
 identifier the operator chooses for it, set in the configuration file; any
-other authority refuses the key. Nothing is bound to it yet; later changes
-in this release put it into the signed files a plane takes. Add one to every
+other authority refuses the key. The signed pause file, route, stop list
+header and lift name it, and a plane takes one only when the id is its own.
+Add one to every
 signed configuration, a different one for each plane. <code>doctor</code>'s trust line
 and the <code>trust</code> member <code>health.socket</code> answers name it; <code>GET /healthz</code>,
 which takes no credential, does not.</li>
@@ -154,6 +156,25 @@ backup after the upgrade and keep the old one for 0.17.</li>
 <li><strong>Breaking:</strong> under <code>signed</code>, <code>state backup</code> and <code>state restore</code> refuse any
 configuration key the environment sets, as a signed start does. Unset the
 <code>GUARDANA_CONTROL_*</code> variables that name keys before running them.</li>
+<li><strong>Breaking:</strong> under <code>signed</code> the route is <code>reaction-route/v1alpha3</code>, the stop
+list <code>3.0</code> with a <code>reaction-list-header/3.0</code> header, and a lift
+<code>reaction-lift/v1alpha3</code>; each names the plane's <code>plane_id</code>, and a plane
+takes one only when the id is its own. A stop, covered or lift line names a
+<code>scope</code> and a <code>subject</code>; this release serves scope <code>run</code>, whose subject is
+the run. A plane refuses the <code>v1alpha2</code> route and the <code>2.0</code> list 0.17 signed
+at start, naming the way forward, and raises no floor. With the plane
+stopped, as an admin of the roster, edit the route document to
+<code>reaction-route/v1alpha3</code>, add <code>plane_id</code> and raise its serial, then sign it
+at a new path with <code>guardana-control route sign</code>, since a signed route names
+its own file and the carry reads the old one at its path; as an operator,
+carry the old list with <code>guardana-control stops init --key &lt;k&gt; --route &lt;new route&gt; --roster &lt;f&gt; --root-key &lt;f&gt; --carry &lt;old stops dir&gt; --carry-route &lt;old route&gt; --stops-floor &lt;floor dir&gt; &lt;new stops dir&gt;</code>, which signs a <code>3.0</code> header
+at the next serial naming the old head; then set <code>reaction.route</code> to the new
+route's path and <code>reaction.stops</code> to the new directory, and run <code>react</code> with
+this release against them. <code>route sign</code> refuses a <code>v1alpha2</code> document, and
+<code>react</code>, <code>stops lift</code> and <code>stops list</code> a <code>v1alpha2</code> route
+(<a href="/docs/guides/upgrade-a-signed-plane-from-0-17">upgrade a signed plane from 0.17</a>).</li>
+<li><code>doctor</code> names a <code>v1alpha2</code> route or a <code>2.0</code> stop list as the plane refuses
+it.</li>
 <li><code>doctor</code> judges a signed pause file with the plane's own check of its plane,
 tenant, project and file, so it names a version <code>3</code> file or another plane's
 as the plane refuses it.</li>
@@ -2705,6 +2726,7 @@ independence of this project from Guardana
 <li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>

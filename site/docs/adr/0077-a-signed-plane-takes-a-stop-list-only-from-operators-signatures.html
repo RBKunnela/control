@@ -43,6 +43,7 @@
 <li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -123,6 +124,14 @@ under the signed authority of
 roster of <a href="/docs/adr/0071-operators-are-named-by-a-signed-roster">ADR-0071</a>, as
 <a href="/docs/adr/0075-a-signed-plane-takes-a-pause-only-from-an-operators-signature">ADR-0075</a>
 does for the pause file.</p>
+<p>Amended by <a href="/docs/adr/0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant">ADR-0082</a>:
+under <code>signed</code> the route is <code>reaction-route/v1alpha3</code>, the stop list <code>3.0</code>
+with a <code>reaction-list-header/3.0</code> header, and a lift <code>reaction-lift/v1alpha3</code>;
+each body also names the plane's <code>plane_id</code>, which the plane compares with its
+own beside the file, and a stop or lift names a scope and subject in place of
+a run alone. The <code>v1alpha2</code> route, the <code>2.0</code> list and the <code>v1alpha2</code> lift are
+refused, naming <code>route sign</code> or <code>stops init --carry</code>, which alone reads them,
+as the list it carries into <code>3.0</code> at the next serial.</p>
 <h2 id="context">Context</h2>
 <p>Under ADR-0046 a route key signs the route and a lift key each lift, and
 write access to the stops directory adds any stop the route allows and,
@@ -229,6 +238,7 @@ commands through a roster.</p>
 <li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>

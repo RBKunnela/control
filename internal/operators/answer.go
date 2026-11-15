@@ -15,8 +15,8 @@ const ActApprove Act = "approve"
 // ActPause signs a plane's whole pause document, which pauses and lifts.
 const ActPause Act = "pause"
 
-// ActRoute signs a v1alpha2 reaction route: which findings may stop a run
-// of one project. It is the admin level's.
+// ActRoute signs a reaction route of the signed authority: which findings
+// may stop a run of one project. It is the admin level's.
 const ActRoute Act = "route"
 
 // ActStops signs a stop list's header, which starts or carries a list.

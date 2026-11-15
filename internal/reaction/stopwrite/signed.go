@@ -9,7 +9,7 @@ import (
 	"github.com/guardana/control/internal/reaction"
 )
 
-// Signer is an operator key a writer signs a 2.0 header with: its id and a
+// Signer is an operator key a writer signs a 3.0 header with: its id and a
 // function that signs a body under a payload type.
 type Signer struct {
 	KeyID string
@@ -19,10 +19,10 @@ type Signer struct {
 // ErrSigner is a write handed no signer, or one whose signature fails.
 const ErrSigner Error = "stopwrite: the operator key cannot sign the header"
 
-// InitSigned is Init for a v1alpha2 route, which a voucher took: the header
-// is signed by s at serial for the route's tenant and project and the
-// route's plane's stop list, and names no previous list, so a plane whose
-// floor holds a list takes it only through a carry.
+// InitSigned is Init for a v1alpha3 route, which a voucher took: the header
+// is signed by s at serial for the route's plane, tenant and project and the
+// plane's stop list, and names no previous list, so a plane whose floor
+// holds a list takes it only through a carry.
 func InitSigned(ctx context.Context, dir string, route reaction.Route, now time.Time, s Signer, serial int64) (reaction.Header, error) {
 	h, line, err := signedHeader(route, s, serial, "")
 	if err != nil {
@@ -34,11 +34,18 @@ func InitSigned(ctx context.Context, dir string, route reaction.Route, now time.
 	return h, nil
 }
 
-// signedHeader is the 2.0 header of a new list under route, signed by s,
+// signedUnder reports whether route is a v1alpha3 route a voucher of its own
+// plane took, naming the plane's list file.
+func signedUnder(route reaction.Route) bool {
+	p := route.Plane()
+	return route.Format() == reaction.FormatV1Alpha3 && p.ListFile != "" && p.ID == route.PlaneID()
+}
+
+// signedHeader is the 3.0 header of a new list under route, signed by s,
 // and its line.
 func signedHeader(route reaction.Route, s Signer, serial int64, previous string) (reaction.Header, []byte, error) {
-	if !route.Signed() || route.Plane().ListFile == "" {
-		return reaction.Header{}, nil, fmt.Errorf("%w: a signed header is written under a v1alpha2 route a voucher took", ErrRefused)
+	if !signedUnder(route) {
+		return reaction.Header{}, nil, fmt.Errorf("%w: a signed header is written under a v1alpha3 route a voucher took", ErrRefused)
 	}
 	if s.Sign == nil || s.KeyID == "" {
 		return reaction.Header{}, nil, ErrSigner
@@ -51,8 +58,8 @@ func signedHeader(route reaction.Route, s Signer, serial int64, previous string)
 		return reaction.Header{}, nil, err
 	}
 	h.Signed = reaction.HeaderSigned{
-		KeyID: s.KeyID, TenantID: route.TenantID(), ProjectID: route.ProjectID(), File: route.Plane().ListFile,
-		Serial: serial, Previous: previous,
+		KeyID: s.KeyID, PlaneID: route.PlaneID(), TenantID: route.TenantID(), ProjectID: route.ProjectID(),
+		File: route.Plane().ListFile, Serial: serial, Previous: previous,
 	}
 	body, err := reaction.HeaderBody(h)
 	if err != nil {

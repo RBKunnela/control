@@ -10,6 +10,15 @@ roster of [ADR-0071](0071-operators-are-named-by-a-signed-roster.md), as
 [ADR-0075](0075-a-signed-plane-takes-a-pause-only-from-an-operators-signature.md)
 does for the pause file.
 
+Amended by [ADR-0082](0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant.md):
+under `signed` the route is `reaction-route/v1alpha3`, the stop list `3.0`
+with a `reaction-list-header/3.0` header, and a lift `reaction-lift/v1alpha3`;
+each body also names the plane's `plane_id`, which the plane compares with its
+own beside the file, and a stop or lift names a scope and subject in place of
+a run alone. The `v1alpha2` route, the `2.0` list and the `v1alpha2` lift are
+refused, naming `route sign` or `stops init --carry`, which alone reads them,
+as the list it carries into `3.0` at the next serial.
+
 ## Context
 
 Under ADR-0046 a route key signs the route and a lift key each lift, and

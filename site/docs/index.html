@@ -43,6 +43,7 @@
 <li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -133,6 +134,7 @@ with <code>make docs-gen</code>; an edit made here does not survive the next run
 <li><a href="/docs/guides/run-the-gateway">Run the gateway</a>: Set up a plane's policy files, start the MCP gateway in OBSERVE, keep its policy confirmed, read its health, classify the tools it sees, and move it to ENFORCE.</li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a>: Run the refund example by hand on a live plane, supervise the run against its procedure, read its page, and stop it on a confirmed finding.</li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a>: Lint a procedure document, then prove what supervise finds with cases that state a run, its evidence and every expected finding.</li>
+<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a>: Sign a 0.17 plane's pause file, route and stop list again for its plane_id, carry its stops and lifts into a new list, and point the plane at it.</li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a>: Run the collector the gateway binary ships, point a plane at it with its credential, read each request's trail in the segments it writes, and prune them.</li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a>: Have Envoy or Squid write their access log as JSON lines, import it as observations, and see in the coverage map the destinations the proxy logged.</li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a>: Write an agent-policy/v1alpha1 document, lint it, prove what it decides with cases, sign it into the bundle a plane loads, and vouch that the bundle is current.</li>
@@ -308,6 +310,7 @@ with <code>make docs-gen</code>; an edit made here does not survive the next run
 <li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>

@@ -28,11 +28,11 @@ const (
 	ErrRouteTooLarge     Error = "reaction: the route is over its bound"
 	ErrRouteJSON         Error = "reaction: the route is not one strict JSON object"
 	ErrRouteRepeated     Error = "reaction: the route names a member twice"
-	ErrRouteKind         Error = "reaction: the route's kind is not " + RouteKind + " or " + SignedRouteKind
+	ErrRouteKind         Error = "reaction: the route's kind is not " + RouteKind + ", " + SignedRouteKind + " or " + SignedRouteKindV3
 	ErrRouteMember       Error = "reaction: the route holds a member its format does not have, or lacks one it requires"
 	ErrRouteValue        Error = "reaction: a route member holds a value of the wrong type, form or length"
 	ErrRouteSerial       Error = "reaction: the route's serial is not an integer from 1 to 2^53-1"
-	ErrRouteScope        Error = "reaction: the route's or a rule's scope is not " + ScopeRun
+	ErrRouteScope        Error = "reaction: a scope is not one its format names, or not one this build serves"
 	ErrRouteRules        Error = "reaction: the route holds no rule, or more than its bound"
 	ErrRouteRuleRepeated Error = "reaction: the route names one rule twice"
 	ErrRouteLifetime     Error = "reaction: a rule's expires_seconds is not an integer from 60 to the longest run lifetime"

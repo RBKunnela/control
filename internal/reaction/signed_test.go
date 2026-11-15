@@ -38,8 +38,9 @@ func TestASignedListAnOperatorWroteIsTakenAndItsLiftEndsTheStop(t *testing.T) {
 // route file, signed by alice.
 func expectBound(t *testing.T, r reaction.Route) {
 	t.Helper()
-	if !r.Signed() || r.ProjectID() != sProject || r.File() != sRouteFile || r.Signer().Subject != "alice" {
-		t.Fatalf("route: signed %v project %q file %q signer %+v", r.Signed(), r.ProjectID(), r.File(), r.Signer())
+	if r.Format() != reaction.FormatV1Alpha3 || r.PlaneID() != sPlane || r.ProjectID() != sProject || r.File() != sRouteFile ||
+		r.Signer().Subject != "alice" {
+		t.Fatalf("route: format %d plane %q project %q file %q signer %+v", r.Format(), r.PlaneID(), r.ProjectID(), r.File(), r.Signer())
 	}
 }
 
@@ -74,23 +75,23 @@ func TestASignedRouteIsRefusedWithItsCause(t *testing.T) {
 	}
 }
 
-func TestAV1alpha2RouteIsNeverReadUnderARouteKey(t *testing.T) {
+func TestAV1alpha3RouteIsNeverReadUnderARouteKey(t *testing.T) {
 	env := routeEnvelope(t, sProject, sRouteFile, operatorKey())
 	env.PayloadType = reaction.RoutePayloadType
 	env = envelopeOf(t, reaction.RoutePayloadType, env.Payload, routeKey(), keyIDOf(routeKey()))
 	if _, err := reaction.VerifyRoute(env, pubOf(routeKey())); !errors.Is(err, reaction.ErrRouteKind) {
-		t.Fatalf("VerifyRoute of a v1alpha2 body: %v, want %v", err, reaction.ErrRouteKind)
+		t.Fatalf("VerifyRoute of a v1alpha3 body: %v, want %v", err, reaction.ErrRouteKind)
 	}
 	r, err := reaction.ParseRoute(env.Payload)
 	if err != nil {
 		t.Fatalf("ParseRoute: %v", err)
 	}
 	if _, err := reaction.SignRoute(r, routeKey()); !errors.Is(err, reaction.ErrRouteKind) {
-		t.Fatalf("SignRoute of a v1alpha2 route: %v, want %v", err, reaction.ErrRouteKind)
+		t.Fatalf("SignRoute of a v1alpha3 route: %v, want %v", err, reaction.ErrRouteKind)
 	}
 }
 
-func TestAV1alpha2RouteNoVoucherTookJudgesNoListAsClear(t *testing.T) {
+func TestAV1alpha3RouteNoVoucherTookJudgesNoListAsClear(t *testing.T) {
 	r, err := reaction.ParseRoute(routeEnvelope(t, sProject, sRouteFile, operatorKey()).Payload)
 	if err != nil {
 		t.Fatalf("ParseRoute: %v", err)
@@ -123,7 +124,8 @@ func TestASignedListIsRefusedAndNeverReadAsNoStops(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
 	}
-	otherCovered, err := reaction.Covered{FindingID: "f-2", TenantID: sTenant, RunID: "run-1", ProjectID: "other", CreatedAt: sCreated}.Marshal()
+	otherCovered, err := reaction.Covered{FindingID: "f-2", TenantID: sTenant, RunID: "run-1", ProjectID: "other",
+		Scope: reaction.ScopeRun, Subject: "run-1", CreatedAt: sCreated}.Marshal()
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
 	}
@@ -185,7 +187,8 @@ func TestALiftForOneListHeadIsRefusedOnAnother(t *testing.T) {
 	headerA, headA := signedHeaderLine(t, r, headerOpts{})
 	// B is the list carried from A: the same plane, a new list id and serial.
 	h := reaction.Header{ListID: "lst-2", RouteID: r.ID(), RouteSerial: r.Serial(), RouteDigest: r.Digest(),
-		Signed: reaction.HeaderSigned{KeyID: keyIDOf(operatorKey()), TenantID: sTenant, ProjectID: sProject, File: sListFile, Serial: 2, Previous: headA}}
+		Signed: reaction.HeaderSigned{KeyID: keyIDOf(operatorKey()), PlaneID: sPlane, TenantID: sTenant, ProjectID: sProject, File: sListFile,
+			Serial: 2, Previous: headA}}
 	body, err := reaction.HeaderBody(h)
 	if err != nil {
 		t.Fatalf("HeaderBody: %v", err)
@@ -217,7 +220,7 @@ func TestAVersionOneLiftIsRefusedInASignedList(t *testing.T) {
 		t.Fatalf("Marshal: %v", err)
 	}
 	if _, err := reaction.Judge(r, reaction.Prefix{}, joinLines(header, signedStop(t, sProject), line), sNow, 0); !errors.Is(err, reaction.ErrListVersion) {
-		t.Fatalf("a 1.0 lift line in a 2.0 list: %v, want %v", err, reaction.ErrListVersion)
+		t.Fatalf("a 1.0 lift line in a 3.0 list: %v, want %v", err, reaction.ErrListVersion)
 	}
 }
 
@@ -229,7 +232,7 @@ func TestASignedLineIsRefusedUnderAV1alpha1Route(t *testing.T) {
 		t.Fatalf("Marshal: %v", err)
 	}
 	if _, err := reaction.Judge(r, reaction.Prefix{}, joinLines(h, line), sNow, 0); !errors.Is(err, reaction.ErrListVersion) {
-		t.Fatalf("a 2.0 stop in a 1.0 list: %v, want %v", err, reaction.ErrListVersion)
+		t.Fatalf("a 3.0 stop in a 1.0 list: %v, want %v", err, reaction.ErrListVersion)
 	}
 }
 

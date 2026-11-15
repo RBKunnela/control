@@ -256,20 +256,8 @@ pause:
 ```
 
 `refund` is blocked with `PAUSED` until `pause remove`
-([more](../concepts/enforcement-modes.md#pausing-calls)).
-
-## Upgrading a signed plane from 0.17
-
-```
-# 0.18 refuses the pause file 0.17 signed, naming the command that carries it.
-# With the plane stopped and plane_id set, as the operator: the pause file's entries
-# signed for this plane at the next serial (a new pause init would lift them all).
-# A version 3 file names no plane: sign only the file this plane read.
-guardana-control pause sign --key op.key --roster /etc/guardana/roster.json \
-  --root-key /etc/guardana/root.pub --plane-id orders-eu-1 /srv/pause/pause.json
-# as the plane: a new backup, whose manifest 0.2 names the plane; 0.17 refuses it
-guardana-control state backup gateway.yaml /backups/plane-2
-```
+([more](../concepts/enforcement-modes.md#pausing-calls)). A signed plane from
+0.17: [upgrade it](upgrade-a-signed-plane-from-0-17.md).
 
 ## Verify
 

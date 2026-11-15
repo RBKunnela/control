@@ -3,6 +3,7 @@ package reaction_test
 import (
 	"bytes"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -26,6 +27,8 @@ func FuzzJudge(f *testing.F) {
 	f.Add(newList(f, r).bytes())
 	f.Add([]byte(headerGolden + "\n" + stopGolden + "\n" + coveredGolden + "\n"))
 	f.Add([]byte{})
+	f.Add(joinLines(signedStop(f, sProject)))
+	f.Add(joinLines([]byte(strings.Replace(string(signedStop(f, sProject)), `"scope":"run"`, `"scope":"agent"`, 1))))
 	f.Fuzz(func(t *testing.T, content []byte) {
 		held := bytes.Clone(content)
 		l, err := reaction.Judge(r, reaction.Prefix{}, content, clock0, poll)

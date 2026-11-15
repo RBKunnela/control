@@ -43,6 +43,7 @@
 <li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -131,34 +132,39 @@ each <a href="/docs/reference/reaction">reaction</a> document, and no route or l
 <tbody>
 <tr>
 <td>Route</td>
-<td><code>reaction-route/v1alpha2</code></td>
+<td><code>reaction-route/v1alpha3</code></td>
 <td><code>route</code></td>
 <td><code>admin</code></td>
 </tr>
 <tr>
 <td>Stop list header</td>
-<td>stop list <code>2.0</code>, header <code>reaction-list-header/2.0</code></td>
+<td>stop list <code>3.0</code>, header <code>reaction-list-header/3.0</code></td>
 <td><code>stops</code></td>
 <td><code>operate</code></td>
 </tr>
 <tr>
 <td>Lift</td>
-<td><code>reaction-lift/v1alpha2</code></td>
+<td><code>reaction-lift/v1alpha3</code></td>
 <td><code>lift</code></td>
 <td><code>operate</code></td>
 </tr>
 </tbody>
 </table>
-<p>Each body is canonical JSON naming its <code>alg</code>, its <code>keyId</code>, the tenant, the
-project and <code>file</code>: the absolute, cleaned path of the route file or of the
-stop list, every link on the way to its directory resolved. A copy of a
+<p>Each body is canonical JSON naming its <code>alg</code>, its <code>keyId</code>, <code>plane_id</code>, the
+tenant, the project and <code>file</code>: the absolute, cleaned path of the route file
+or of the stop list, every link on the way to its directory resolved. A
+plane refuses a body that names another <code>plane_id</code> or none, so a copy of a
 signed document to another plane of the same tenant and project is refused
-there for its <code>file</code>. The route names a <code>project_id</code> and a <code>scope</code> of <code>run</code>
-on each rule, and every stop and covered line of a <code>2.0</code> list names the
-project. The header names a <code>serial</code> and, after a carry, the <code>previous</code>
+there for its <code>plane_id</code> even where the paths are alike, and for its <code>file</code>
+where they differ. The route names a <code>project_id</code> and a <code>scope</code> on each
+rule, and every stop and covered line of a <code>3.0</code> list names the project, the
+<code>scope</code> and the <code>subject</code>. This release serves scope <code>run</code> alone: its
+subject is the line's <code>run_id</code>, and a rule, a line or a lift of scope
+<code>agent</code> or <code>principal</code> is refused. The header names a <code>serial</code> and, after a carry, the <code>previous</code>
 header's digest; a lift names the digest of the header it lifts from,
-<code>list_head</code>, so a lift made against one list never verifies against a list
-carried or restored after it.</p>
+<code>list_head</code>, and the <code>scope</code> and <code>subject</code> whose stops it ends, so a lift
+made against one list never verifies against a list carried or restored
+after it.</p>
 <p>A plane reads the route, the header and each lift through its operator ports
 and refuses a document no operator with the act's grant over its tenant and
 project signed; ports that cannot answer read as <code>operator ports unavailable</code>, never as a refusal or a pass. At every read of the list it
@@ -179,15 +185,24 @@ other bytes. It refuses <code>reaction.route</code>, <code>reaction.stops</code>
 directory of either when its own account may write them, and a route file,
 stop list or their directory its own account owns; only <code>dev</code>, on one
 account, reads them. A <code>v1alpha1</code> route, <code>reaction.public_key</code> and a <code>1.0</code>
-list are refused.</p>
+list are refused. A <code>reaction-route/v1alpha2</code> route, a <code>2.0</code> list and a
+<code>reaction-lift/v1alpha2</code> lift, which 0.17 signed without <code>plane_id</code>, are
+refused at start and at every read, naming <code>route sign</code> or <code>stops init --carry</code>, and raise no floor.</p>
 <p><code>route sign --key</code>, <code>stops init --key</code> and <code>stops lift --key</code> take the
-operator's key, and <code>stops init</code>, <code>stops lift</code> and <code>stops list</code> take
+operator's key; <code>route sign</code> refuses a <code>v1alpha2</code> document, naming
+<code>reaction-route/v1alpha3</code> and <code>plane_id</code>, and <code>stops init</code>, <code>stops lift</code> and <code>stops list</code> take
 <code>--roster</code> and <code>--root-key</code> in place of <code>--public-key</code>: each judges the route,
 the list and its lifts on disk through the roster before it signs, and says
 on standard error what it signed. A carry judges every line of the old list
 as a plane does; with <code>--stops-floor</code>, the plane's floor directory, it also
 refuses an old list cut back below the part the plane accepted, and without
-it says that the floor was not read. <code>react</code> takes <code>--approvals</code>, the plane's
+it says that the floor was not read. <code>--carry-route</code> may name a
+<code>v1alpha2</code> route and <code>--carry</code> its <code>2.0</code> list: a carry is the one reader of
+both, judges them by tenant, project and file, as 0.17 did, and writes a
+<code>3.0</code> list for the plane the new route names, at the next serial, naming the
+old head as <code>previous</code>; each carried stop takes scope <code>run</code> and its run as
+subject. The operator vouches that the old list is this plane's. Each
+command judges a route against the plane the route names. <code>react</code> takes <code>--approvals</code>, the plane's
 approvals directory, and will not run as the account that owns it; the
 directory is the caller's to name, so this guards against a mistake and does
 not keep the plane's account out. The console writes no stop and no lift at
@@ -200,7 +215,7 @@ what may still stop. A new floor takes any list, so this is the step that
 lowers it.</p>
 <p><code>doctor</code> judges the route and the header through the roster file, holds the
 header to the stop list floor without raising it, and names who signed each.
-<code>/healthz</code> gives a <code>2.0</code> list's header serial under <code>stops.signed</code>; only
+<code>/healthz</code> gives a <code>3.0</code> list's header serial under <code>stops.signed</code>; only
 <code>health.socket</code> names the operators who signed the header and the route.</p>
 <h2 id="limits">Limits</h2>
 <ul>
@@ -230,6 +245,7 @@ accepted, and no floor holds it.</li>
 <li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>

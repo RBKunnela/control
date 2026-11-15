@@ -19,8 +19,8 @@ import (
 const (
 	// RouteKind is the one kind a route may name.
 	RouteKind = "reaction-route/v1alpha1"
-	// ScopeRun is the one scope a route may name: a stop holds one opened
-	// run's later calls.
+	// ScopeRun is the scope of a stop that holds one opened run's later
+	// calls, the one scope a v1alpha1 or v1alpha2 route may name.
 	ScopeRun = "run"
 	// MaxRouteBytes bounds a route document, signed or not.
 	MaxRouteBytes = 65536
@@ -59,8 +59,9 @@ func routeRefusals() docRefusals {
 type Rule struct {
 	ProcedureID, ProcedureVersion, ProcedureDigest string
 	RuleID, RuleVersion                            string
-	// Scope is what a stop under the rule holds: ScopeRun, the one scope.
-	// A v1alpha1 route names it once for every rule, and v1alpha2 per rule.
+	// Scope is what a stop under the rule holds: ScopeRun, the one scope
+	// served. A v1alpha1 route names it once for every rule, and v1alpha2
+	// and v1alpha3 per rule.
 	Scope string
 	// Lifetime is the longest a stop under the rule may last. Zero sets no
 	// bound of its own: the stop lasts as long as its run, and never longer
@@ -83,11 +84,13 @@ type Route struct {
 	rules     []Rule
 	canonical []byte
 	digest    string
-	// The members of a v1alpha2 route, zero in a v1alpha1 one: the project,
-	// the bound route file, the signing key, and, once VerifySignedRoute took
-	// it, the voucher its list's signatures are judged by, its signer and
-	// the envelope that voucher is asked about again.
-	signed    bool
+	format    RouteFormat
+	// The members of a route an operator signed, zero in a v1alpha1 one: the
+	// plane, which a v1alpha2 route does not name, the project, the bound
+	// route file, the signing key, and, once a voucher took it, the voucher
+	// its list's signatures are judged by, its signer and the envelope that
+	// voucher is asked about again.
+	planeID   string
 	projectID string
 	file      string
 	keyID     string
@@ -96,25 +99,28 @@ type Route struct {
 	env       Envelope
 }
 
-// Signed reports whether the route is a v1alpha2 route, which an operator
-// signs and whose list and lifts operators sign.
-func (r Route) Signed() bool { return r.signed }
+// Format is the format the route was read in; FormatNone for the zero Route.
+func (r Route) Format() RouteFormat { return r.format }
 
-// ProjectID is a v1alpha2 route's project, and empty in a v1alpha1 one.
+// PlaneID is the plane a v1alpha3 route names, and empty in any other.
+func (r Route) PlaneID() string { return r.planeID }
+
+// ProjectID is the project a route an operator signed names, and empty in a
+// v1alpha1 one.
 func (r Route) ProjectID() string { return r.projectID }
 
-// File is the route file a v1alpha2 route is bound to.
+// File is the route file a route an operator signed is bound to.
 func (r Route) File() string { return r.file }
 
-// KeyID is the key id a v1alpha2 route's body names.
+// KeyID is the key id the body of a route an operator signed names.
 func (r Route) KeyID() string { return r.keyID }
 
-// Signer is who signed a route VerifySignedRoute took, and the zero Signer
+// Signer is who signed a route a voucher took, and the zero Signer
 // otherwise.
 func (r Route) Signer() Signer { return r.signer }
 
-// Plane is the plane a route VerifySignedRoute took is judged for, and the
-// zero Plane otherwise.
+// Plane is the plane a route a voucher took is judged for, and the zero
+// Plane otherwise.
 func (r Route) Plane() Plane {
 	if r.voucher == nil {
 		return Plane{}
@@ -145,8 +151,8 @@ func (r Route) Canonical() []byte { return bytes.Clone(r.canonical) }
 // Digest is "sha256:" and the hex SHA-256 of the canonical bytes.
 func (r Route) Digest() string { return r.digest }
 
-// ParseRoute reads a route document, a v1alpha2 one as parseSignedRoute
-// says, and a v1alpha1 one as follows: one strict JSON object of at most
+// ParseRoute reads a route document, a v1alpha2 or v1alpha3 one as
+// parseSignedRoute says, and a v1alpha1 one as follows: one strict JSON object of at most
 // MaxRouteBytes holding kind RouteKind, route_id, serial, tenant_id, scope
 // ScopeRun, lift_public_key in the one spelling policy.public_key takes and
 // not of small order, and from one to MaxRules rules, no two alike. It reads
@@ -156,8 +162,11 @@ func ParseRoute(raw []byte) (Route, error) {
 		return Route{}, fmt.Errorf("%w: %d bytes, limit %d", ErrRouteTooLarge, n, MaxRouteBytes)
 	}
 	if o, err := readObject(raw, routeRefusals()); err == nil {
-		if kind, _ := strictjson.String(o[memberKind]); kind == SignedRouteKind {
-			return parseSignedRoute(raw)
+		switch kind, _ := strictjson.String(o[memberKind]); kind {
+		case SignedRouteKind:
+			return parseSignedRoute(raw, FormatV1Alpha2Carry)
+		case SignedRouteKindV3:
+			return parseSignedRoute(raw, FormatV1Alpha3)
 		}
 	}
 	names := []string{memberKind, memberRouteID, memberSerial, memberTenantID, memberScope, memberLiftKey, memberRules}
@@ -169,7 +178,7 @@ func ParseRoute(raw []byte) (Route, error) {
 	if err != nil {
 		return Route{}, err
 	}
-	if r.rules, err = readRules(o[memberRules], false); err != nil {
+	if r.rules, err = readRules(o[memberRules], FormatV1Alpha1); err != nil {
 		return Route{}, err
 	}
 	if r.canonical, err = canonicalOf(raw, ErrRouteJSON); err != nil {
@@ -180,7 +189,7 @@ func ParseRoute(raw []byte) (Route, error) {
 }
 
 func routeValues(o strictjson.Object) (Route, error) {
-	var r Route
+	r := Route{format: FormatV1Alpha1}
 	var ok bool
 	if r.id, ok = strictjson.String(o[memberRouteID]); !ok || !policy.ValidID(r.id) {
 		return Route{}, fmt.Errorf("%w: %s", ErrRouteValue, memberRouteID)
@@ -208,8 +217,9 @@ func routeValues(o strictjson.Object) (Route, error) {
 	return r, nil
 }
 
-// readRules reads a route's rules, each naming its scope where perRule.
-func readRules(raw json.RawMessage, perRule bool) ([]Rule, error) {
+// readRules reads the rules of a route of format f, each naming its scope
+// unless f is FormatV1Alpha1.
+func readRules(raw json.RawMessage, f RouteFormat) ([]Rule, error) {
 	var items []json.RawMessage
 	if len(raw) == 0 || raw[0] != '[' || json.Unmarshal(raw, &items) != nil {
 		return nil, fmt.Errorf("%w: %s is not an array", ErrRouteValue, memberRules)
@@ -220,7 +230,7 @@ func readRules(raw json.RawMessage, perRule bool) ([]Rule, error) {
 	out := make([]Rule, 0, len(items))
 	seen := make(map[[5]string]bool, len(items))
 	for i, item := range items {
-		rule, err := readRule(item, perRule)
+		rule, err := readRule(item, f)
 		if err != nil {
 			return nil, fmt.Errorf("rules[%d]: %w", i, err)
 		}
@@ -251,8 +261,9 @@ func readRuleIDs(o strictjson.Object, r *Rule) error {
 	return nil
 }
 
-func readRule(raw json.RawMessage, perRule bool) (Rule, error) {
+func readRule(raw json.RawMessage, f RouteFormat) (Rule, error) {
 	required := []string{memberProcedure, memberVersion, memberDigest, memberRuleID, memberRuleVer}
+	perRule := f != FormatV1Alpha1
 	if perRule {
 		required = append(required, memberScope)
 	}
@@ -265,10 +276,9 @@ func readRule(raw json.RawMessage, perRule bool) (Rule, error) {
 	}
 	var r Rule
 	if perRule {
-		if scope, ok := strictjson.String(o[memberScope]); !ok || scope != ScopeRun {
-			return Rule{}, ErrRouteScope
+		if r.Scope, err = ruleScope(o[memberScope], f); err != nil {
+			return Rule{}, err
 		}
-		r.Scope = ScopeRun
 	}
 	if err := readRuleIDs(o, &r); err != nil {
 		return Rule{}, err
@@ -293,4 +303,23 @@ func readRule(raw json.RawMessage, perRule bool) (Rule, error) {
 // digest of a route or a bundle.
 func procedureDigest(s string) bool {
 	return len(s) == 64 && strings.Trim(s, "0123456789abcdef") == ""
+}
+
+// ruleScope reads the scope of a rule of a route of format f: run alone in
+// v1alpha2, and in v1alpha3 any scope the grammar names, each refused that
+// this build does not serve.
+func ruleScope(raw json.RawMessage, f RouteFormat) (string, error) {
+	scope, ok := readScope(raw)
+	switch {
+	case !ok:
+		return "", ErrRouteScope
+	case f == FormatV1Alpha3:
+		if err := scopeServed(scope); err != nil {
+			return "", err
+		}
+		return scope, nil
+	case f == FormatV1Alpha2Carry && scope == ScopeRun:
+		return scope, nil
+	}
+	return "", ErrRouteScope
 }

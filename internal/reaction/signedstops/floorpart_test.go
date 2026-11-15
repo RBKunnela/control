@@ -22,7 +22,7 @@ func (c chainFixture) grow(t *testing.T) listAt {
 	stops := filepath.Join(c.base, "stops")
 	r := c.routeFor(t, c.plane.RouteFile, stops, reaction.VerifySignedRoute)
 	_, _, _, err := stopwrite.AppendFinding(t.Context(), stops, r, func() time.Time { return now }, func(at time.Time) (reaction.Stop, error) {
-		return reaction.Stop{EntryID: reaction.EntryID("f1"), TenantID: "t1", ProjectID: "A", Scope: reaction.ScopeRun, RunID: "run-1",
+		return reaction.Stop{EntryID: reaction.EntryID("f1"), TenantID: "t1", ProjectID: "A", Scope: reaction.ScopeRun, Subject: "run-1", RunID: "run-1",
 			FindingID: "f1", ProcedureID: "refund", ProcedureVersion: "3",
 			ProcedureDigest: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 			RuleID:          "STEP_OUTSIDE_PROCEDURE", RuleVersion: "1", CreatedAt: at, ExpiresAt: at.Add(time.Hour)}, nil

@@ -20,8 +20,13 @@ const (
 	ListVersion = "1.0"
 	// SignedListVersion is the version of every line of a stop list judged
 	// against a v1alpha2 route: its header signed by an operator, its stops
-	// and covered lines naming the project, and its lifts v1alpha2.
+	// and covered lines naming the project, and its lifts v1alpha2. Only a
+	// carry reads one.
 	SignedListVersion = "2.0"
+	// SignedListVersionV3 is the version of every line of a stop list judged
+	// against a v1alpha3 route: its header names the plane, its stops and
+	// covered lines a scope and subject, and its lifts are v1alpha3.
+	SignedListVersionV3 = "3.0"
 	// MaxLineBytes bounds one line of a stop list, its newline left out.
 	MaxLineBytes = 64 << 10
 	// MaxFindingIDBytes bounds the finding id a line names.
@@ -88,8 +93,8 @@ type Header struct {
 	RouteID     string
 	RouteSerial int64
 	RouteDigest string
-	// Signed is what an operator signed of a 2.0 header, and the zero value
-	// in a 1.0 one.
+	// Signed is what an operator signed of a 2.0 or 3.0 header, and the zero
+	// value in a 1.0 one.
 	Signed HeaderSigned
 }
 
@@ -102,8 +107,9 @@ func HeaderFor(r Route, listID string) Header {
 // CreatedAt until ExpiresAt, unless a lift ends it first.
 type Stop struct {
 	EntryID, TenantID, RunID, FindingID string
-	// ProjectID and Scope are set in a 2.0 line and empty in a 1.0 one.
-	ProjectID, Scope                               string
+	// ProjectID and Scope are set in a 2.0 and a 3.0 line and empty in a 1.0
+	// one; Subject is set in a 3.0 line alone, and under ScopeRun is RunID.
+	ProjectID, Scope, Subject                      string
 	ProcedureID, ProcedureVersion, ProcedureDigest string
 	RuleID, RuleVersion                            string
 	CreatedAt, ExpiresAt                           time.Time
@@ -122,17 +128,20 @@ func (s Stop) Claim() StopClaim {
 // written so the finding is named and never becomes a stop of its own.
 type Covered struct {
 	FindingID, TenantID, RunID string
-	// ProjectID is set in a 2.0 line and empty in a 1.0 one.
-	ProjectID string
-	CreatedAt time.Time
+	// ProjectID is set in a 2.0 and a 3.0 line and empty in a 1.0 one; Scope
+	// and Subject are set in a 3.0 line alone.
+	ProjectID, Scope, Subject string
+	CreatedAt                 time.Time
 }
 
-// LiftLine is a lift line: the run and line its clear fields name, and the
-// signed lift that must name the same.
+// LiftLine is a lift line: the run, or in a 3.0 line the scope and subject,
+// and the line its clear fields name, and the signed lift that must name the
+// same.
 type LiftLine struct {
-	RunID       string
-	ThroughLine int64
-	Envelope    Envelope
+	RunID          string
+	Scope, Subject string
+	ThroughLine    int64
+	Envelope       Envelope
 }
 
 // Line is one line of a stop list as ParseLine read it; only the member
@@ -140,7 +149,7 @@ type LiftLine struct {
 type Line struct {
 	Kind    LineKind
 	Version string
-	// HeaderEnvelope is a 2.0 header line's signed envelope.
+	// HeaderEnvelope is a 2.0 or 3.0 header line's signed envelope.
 	HeaderEnvelope Envelope
 	Header         Header
 	Stop           Stop
@@ -161,7 +170,8 @@ func lineRefusals() docRefusals {
 
 // ParseLine reads one stop list line, its newline left out: one strict JSON
 // object of at most MaxLineBytes, of one of the four kinds, with version
-// ListVersion and exactly the members its kind has. It judges the line alone;
+// ListVersion, SignedListVersion or SignedListVersionV3 and exactly the
+// members its kind has at that version. It judges the line alone;
 // Judge judges its place in the list.
 func ParseLine(raw []byte) (Line, error) {
 	if n := len(raw); n > MaxLineBytes {
@@ -173,7 +183,7 @@ func ParseLine(raw []byte) (Line, error) {
 	}
 	kind, _ := strictjson.String(o[memberKind])
 	v, ok := strictjson.String(o[memberVersion])
-	if ok && v != ListVersion && v != SignedListVersion {
+	if ok && v != ListVersion && v != SignedListVersion && v != SignedListVersionV3 {
 		return Line{}, ErrLineVersion
 	}
 	l, err := readKind(o, kind, v)
@@ -196,22 +206,21 @@ func ParseLine(raw []byte) (Line, error) {
 // readKind reads the members of a line of kind at version v.
 func readKind(o strictjson.Object, kind, v string) (Line, error) {
 	l := Line{Version: v}
-	signed := v == SignedListVersion
 	var err error
 	switch kind {
 	case kindHeader:
 		l.Kind = KindHeader
-		if signed {
-			l.Header, l.HeaderEnvelope, err = readSignedHeaderLine(o)
+		if v == SignedListVersion || v == SignedListVersionV3 {
+			l.Header, l.HeaderEnvelope, err = readSignedHeaderLine(o, v)
 		} else {
 			err = readHeader(o, &l.Header)
 		}
 	case kindStop:
-		l.Kind, err = KindStop, readStop(o, signed, &l.Stop)
+		l.Kind, err = KindStop, readStop(o, v, &l.Stop)
 	case kindCovered:
-		l.Kind, err = KindCovered, readCovered(o, signed, &l.Covered)
+		l.Kind, err = KindCovered, readCovered(o, v, &l.Covered)
 	case kindLift:
-		l.Kind, err = KindLift, readLiftLine(o, &l.Lift)
+		l.Kind, err = KindLift, readLiftLine(o, v, &l.Lift)
 	default:
 		return Line{}, ErrLineKind
 	}
@@ -246,20 +255,21 @@ func readHeader(o strictjson.Object, h *Header) error {
 	return digestOf(o, memberRouteDigest, &h.RouteDigest)
 }
 
-func readStop(o strictjson.Object, signed bool, s *Stop) error {
-	names := []string{memberEntryID, memberTenantID, memberRunID, memberFindingID, memberProcedure,
-		memberProcVersion, memberProcDigest, memberRuleID, memberRuleVer, memberCreatedAt, memberExpiresAt}
-	if signed {
-		names = append(names, memberProjectID, memberScope)
-	}
+func readStop(o strictjson.Object, v string, s *Stop) error {
+	names := append([]string{memberEntryID, memberTenantID, memberRunID, memberFindingID, memberProcedure,
+		memberProcVersion, memberProcDigest, memberRuleID, memberRuleVer, memberCreatedAt, memberExpiresAt}, scopeMembers(v)...)
 	if err := lineMembers(o, names...); err != nil {
 		return err
 	}
 	if err := readRunFields(o, &s.FindingID, &s.TenantID, &s.RunID); err != nil {
 		return err
 	}
-	if signed {
-		if err := readStopScope(o, s); err != nil {
+	if v != ListVersion {
+		if err := identifierOf(o, memberProjectID, MaxProjectIDBytes, &s.ProjectID); err != nil {
+			return err
+		}
+		var err error
+		if s.Scope, s.Subject, err = lineScope(o, v, s.RunID); err != nil {
 			return err
 		}
 	}
@@ -301,22 +311,48 @@ func readStopRule(o strictjson.Object, s *Stop) error {
 	return nil
 }
 
-// readStopScope reads the project and the scope a 2.0 stop names.
-func readStopScope(o strictjson.Object, s *Stop) error {
-	if err := identifierOf(o, memberProjectID, MaxProjectIDBytes, &s.ProjectID); err != nil {
-		return err
+// scopeMembers is the members a stop line of version v has besides a 1.0
+// stop's: a 2.0 stop's project and scope, a 3.0 stop's subject too.
+func scopeMembers(v string) []string {
+	switch v {
+	case SignedListVersion:
+		return []string{memberProjectID, memberScope}
+	case SignedListVersionV3:
+		return []string{memberProjectID, memberScope, memberSubject}
 	}
-	if scope, ok := strictjson.String(o[memberScope]); !ok || scope != ScopeRun {
-		return fmt.Errorf("%w: %s", ErrLineValue, memberScope)
-	}
-	s.Scope = ScopeRun
 	return nil
 }
 
-func readCovered(o strictjson.Object, signed bool, c *Covered) error {
+// lineScope reads the scope, and in 3.0 the subject, a stop or covered line
+// of version v and run runID names: in 2.0 scope run alone and no subject;
+// in 3.0 a scope this build serves, whose subject under run is runID.
+func lineScope(o strictjson.Object, v, runID string) (scope, subject string, err error) {
+	scope, ok := readScope(o[memberScope])
+	if !ok || (v == SignedListVersion && scope != ScopeRun) {
+		return "", "", fmt.Errorf("%w: %s", ErrLineValue, memberScope)
+	}
+	if v != SignedListVersionV3 {
+		return scope, "", nil
+	}
+	if err := scopeServed(scope); err != nil {
+		return "", "", fmt.Errorf("%w: %w", ErrLineValue, err)
+	}
+	if err := identifierOf(o, memberSubject, MaxRunIDBytes, &subject); err != nil {
+		return "", "", err
+	}
+	if scope == ScopeRun && subject != runID {
+		return "", "", fmt.Errorf("%w: %s is not the line's run_id", ErrLineValue, memberSubject)
+	}
+	return scope, subject, nil
+}
+
+func readCovered(o strictjson.Object, v string, c *Covered) error {
 	names := []string{memberFindingID, memberTenantID, memberRunID, memberCreatedAt}
-	if signed {
+	switch v {
+	case SignedListVersion:
 		names = append(names, memberProjectID)
+	case SignedListVersionV3:
+		names = append(names, memberProjectID, memberScope, memberSubject)
 	}
 	if err := lineMembers(o, names...); err != nil {
 		return err
@@ -324,20 +360,47 @@ func readCovered(o strictjson.Object, signed bool, c *Covered) error {
 	if err := readRunFields(o, &c.FindingID, &c.TenantID, &c.RunID); err != nil {
 		return err
 	}
-	if signed {
+	if v != ListVersion {
 		if err := identifierOf(o, memberProjectID, MaxProjectIDBytes, &c.ProjectID); err != nil {
+			return err
+		}
+	}
+	if v == SignedListVersionV3 {
+		var err error
+		if c.Scope, c.Subject, err = lineScope(o, v, c.RunID); err != nil {
 			return err
 		}
 	}
 	return timeOf(o, memberCreatedAt, &c.CreatedAt)
 }
 
-func readLiftLine(o strictjson.Object, l *LiftLine) error {
-	if err := lineMembers(o, memberRunID, memberThrough, memberEnvelope); err != nil {
-		return err
-	}
-	if err := identifierOf(o, memberRunID, MaxRunIDBytes, &l.RunID); err != nil {
-		return err
+// readLiftLine reads a lift line of version v: the run it names, or in 3.0
+// the scope and subject, with no run, and a signed envelope within the bound
+// its version's body needs.
+func readLiftLine(o strictjson.Object, v string, l *LiftLine) error {
+	bound := MaxLiftEnvelopeBytes
+	if v == SignedListVersionV3 {
+		bound = MaxHeaderEnvelopeBytes
+		if err := lineMembers(o, memberScope, memberSubject, memberThrough, memberEnvelope); err != nil {
+			return err
+		}
+		var ok bool
+		if l.Scope, ok = readScope(o[memberScope]); !ok {
+			return fmt.Errorf("%w: %s", ErrLineValue, memberScope)
+		}
+		if err := scopeServed(l.Scope); err != nil {
+			return fmt.Errorf("%w: %w", ErrLineValue, err)
+		}
+		if err := identifierOf(o, memberSubject, MaxRunIDBytes, &l.Subject); err != nil {
+			return err
+		}
+	} else {
+		if err := lineMembers(o, memberRunID, memberThrough, memberEnvelope); err != nil {
+			return err
+		}
+		if err := identifierOf(o, memberRunID, MaxRunIDBytes, &l.RunID); err != nil {
+			return err
+		}
 	}
 	var ok bool
 	if l.ThroughLine, ok = integer(o[memberThrough], 1, policy.MaxSerial); !ok {
@@ -347,7 +410,7 @@ func readLiftLine(o strictjson.Object, l *LiftLine) error {
 	if len(raw) == 0 || raw[0] != '{' {
 		return fmt.Errorf("%w: %s", ErrLineValue, memberEnvelope)
 	}
-	env, err := policykey.ParseEnvelope(raw, MaxLiftEnvelopeBytes)
+	env, err := policykey.ParseEnvelope(raw, bound)
 	if err != nil {
 		return fmt.Errorf("%w: %s: %w", ErrLineValue, memberEnvelope, err)
 	}

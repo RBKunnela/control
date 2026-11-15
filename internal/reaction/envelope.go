@@ -51,8 +51,8 @@ func SignRoute(r Route, key ed25519.PrivateKey) (Envelope, error) {
 	if err != nil {
 		return Envelope{}, err
 	}
-	if checked.signed {
-		return Envelope{}, fmt.Errorf("%w: a v1alpha2 route is signed with an operator's key", ErrRouteKind)
+	if checked.format != FormatV1Alpha1 {
+		return Envelope{}, fmt.Errorf("%w: a route of this kind is signed with an operator's key", ErrRouteKind)
 	}
 	env, pub, err := sign(RoutePayloadType, checked.canonical, key)
 	if err != nil {
@@ -110,8 +110,8 @@ func openRoute(env Envelope, pub ed25519.PublicKey) (Route, error) {
 	if err != nil {
 		return Route{}, err
 	}
-	if r.signed {
-		return Route{}, fmt.Errorf("%w: a v1alpha2 route is verified through the roster", ErrRouteKind)
+	if r.format != FormatV1Alpha1 {
+		return Route{}, fmt.Errorf("%w: a route an operator signed is verified through the roster", ErrRouteKind)
 	}
 	if !bytes.Equal(body, r.canonical) {
 		return Route{}, ErrRouteNotCanonical

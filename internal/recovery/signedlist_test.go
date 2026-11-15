@@ -42,7 +42,7 @@ func (v operatorVoucher) Vouch(kind reaction.SignedKind, env reaction.Envelope) 
 	return reaction.Signer{Subject: "alice", KeyID: operatorID()}, nil
 }
 
-// signedLists is a signed plane's v1alpha2 route, taken for its list file,
+// signedLists is a signed plane's v1alpha3 route, taken for its list file,
 // the route a carry judges the old list against, and the plane's stop list
 // floor.
 type signedLists struct {
@@ -54,7 +54,7 @@ type signedLists struct {
 
 func newSignedLists(t *testing.T, p *plane) signedLists {
 	t.Helper()
-	doc := `{"kind":"reaction-route/v1alpha2","route_id":"refunds","serial":1,"tenant_id":"acme","project_id":"orders",` +
+	doc := `{"kind":"reaction-route/v1alpha3","plane_id":"plane-a","route_id":"refunds","serial":1,"tenant_id":"acme","project_id":"orders",` +
 		`"rules":[{"procedure_id":"refund","version":"1","digest":"` + route(t).Rules()[0].ProcedureDigest +
 		`","rule_id":"STEP_OUTSIDE_PROCEDURE","rule_version":"1","scope":"run","expires_seconds":3600}]}`
 	body, err := reaction.SignedRouteBody([]byte(doc), operatorID(), p.path("route/route.json"))
@@ -67,7 +67,7 @@ func newSignedLists(t *testing.T, p *plane) signedLists {
 	}
 	env := reaction.Envelope{PayloadType: reaction.SignedRoutePayloadType, Payload: body,
 		Signatures: []reaction.Signature{{KeyID: operatorID(), Signature: sig}}}
-	v := operatorVoucher{plane: reaction.Plane{Tenant: "acme", Project: "orders", RouteFile: p.path("route/route.json"),
+	v := operatorVoucher{plane: reaction.Plane{ID: "plane-a", Tenant: "acme", Project: "orders", RouteFile: p.path("route/route.json"),
 		ListFile: p.path("stops/" + stoplist.FileName)}}
 	s := signedLists{p: p}
 	if s.route, err = reaction.VerifySignedRoute(env, v); err != nil {
@@ -115,7 +115,7 @@ func (s signedLists) addStop(t *testing.T, finding, run string) {
 	rule := s.route.Rules()[0]
 	stopAt := func(now time.Time) (reaction.Stop, error) {
 		return reaction.Stop{EntryID: reaction.EntryID(finding), TenantID: "acme", ProjectID: "orders", Scope: reaction.ScopeRun,
-			RunID: run, FindingID: finding, ProcedureID: rule.ProcedureID, ProcedureVersion: rule.ProcedureVersion,
+			Subject: run, RunID: run, FindingID: finding, ProcedureID: rule.ProcedureID, ProcedureVersion: rule.ProcedureVersion,
 			ProcedureDigest: rule.ProcedureDigest, RuleID: rule.RuleID, RuleVersion: rule.RuleVersion,
 			CreatedAt: now, ExpiresAt: now.Add(time.Hour)}, nil
 	}
@@ -128,8 +128,8 @@ func (s signedLists) addStop(t *testing.T, finding, run string) {
 // head is head.
 func (s signedLists) lift(t *testing.T, head, run string, through int64) reaction.LiftLine {
 	t.Helper()
-	body, err := reaction.SignedLift{KeyID: operatorID(), ListHead: head, RunID: run, ThroughLine: through, TenantID: "acme",
-		Project: "orders", File: s.p.path("stops/" + stoplist.FileName)}.Payload()
+	body, err := reaction.SignedLiftV3{KeyID: operatorID(), PlaneID: "plane-a", ListHead: head, Scope: reaction.ScopeRun, Subject: run,
+		ThroughLine: through, TenantID: "acme", Project: "orders", File: s.p.path("stops/" + stoplist.FileName)}.Payload()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +137,7 @@ func (s signedLists) lift(t *testing.T, head, run string, through int64) reactio
 	if err != nil {
 		t.Fatal(err)
 	}
-	return reaction.LiftLine{RunID: run, ThroughLine: through, Envelope: reaction.Envelope{PayloadType: reaction.SignedLiftPayloadType,
+	return reaction.LiftLine{Scope: reaction.ScopeRun, Subject: run, ThroughLine: through, Envelope: reaction.Envelope{PayloadType: reaction.SignedLiftPayloadType,
 		Payload: body, Signatures: []reaction.Signature{{KeyID: operatorID(), Signature: sig}}}}
 }
 
@@ -180,7 +180,7 @@ func signedListPlane(t *testing.T) (s signedLists, dir string, old reaction.Lift
 	})
 	first, list1 := s.judged(t, "stops")
 	old = s.lift(t, first.Header().Signed.Digest, "run-b", 3)
-	if _, _, err := reaction.VerifySignedLiftLine(old, first.Header(), s.route); err != nil {
+	if _, err := reaction.VerifySignedLiftLine(old, first.Header(), s.route); err != nil {
 		t.Fatalf("the old lift in its own list: %v", err)
 	}
 	s.carry(t, "stops-1")
@@ -229,7 +229,7 @@ func TestSignedRestoreWithSignedListsAndLifts(t *testing.T) {
 		t.Fatalf("the newest list after the restore: %v", err)
 	}
 	third, _ := s.judged(t, "stops")
-	if _, _, err := reaction.VerifySignedLiftLine(old, third.Header(), s.route); !errors.Is(err, reaction.ErrSignedLiftMismatch) {
+	if _, err := reaction.VerifySignedLiftLine(old, third.Header(), s.route); !errors.Is(err, reaction.ErrSignedLiftMismatch) {
 		t.Fatalf("the old lift against the newest list: %v, want ErrSignedLiftMismatch", err)
 	}
 	if _, err := stopwrite.AppendLift(t.Context(), s.p.path("stops"), s.route, old, restoreAt); !errors.Is(err, stopwrite.ErrRefused) {
@@ -285,7 +285,7 @@ func TestSignedRestoreOfALostStopListFloor(t *testing.T) {
 	}
 	s.requireStopsFloor(t, "along the chain", 3, "stops")
 	third, _ := s.judged(t, "stops")
-	if _, _, err := reaction.VerifySignedLiftLine(old, third.Header(), s.route); !errors.Is(err, reaction.ErrSignedLiftMismatch) {
+	if _, err := reaction.VerifySignedLiftLine(old, third.Header(), s.route); !errors.Is(err, reaction.ErrSignedLiftMismatch) {
 		t.Fatalf("the old lift against the newest list: %v, want ErrSignedLiftMismatch", err)
 	}
 }

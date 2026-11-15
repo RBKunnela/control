@@ -26,7 +26,7 @@ func NewFloor(dir, tenant, project string) (Floor, error) {
 	return Floor{dir: dir, tenant: tenant, project: project}, nil
 }
 
-// Take holds l, a 2.0 list a judge accepted from content, to the floor as
+// Take holds l, a signed list a judge accepted from content, to the floor as
 // stored under the floor's lock and raises the floor to l's header and
 // accepted part under that same lock, waiting for it until ctx ends, so a
 // raise by another reader between this one's read and its raise is what l
@@ -63,7 +63,7 @@ func (f Floor) Take(ctx context.Context, l reaction.List, content []byte) (polic
 	return raised, nil
 }
 
-// Hold holds l, a 2.0 list a judge accepted from content, to a floor as
+// Hold holds l, a signed list a judge accepted from content, to a floor as
 // stored, writing nothing: its header as Check does, and at the floor's
 // serial its accepted part, which must begin with the floor's. A part
 // shorter than the floor's, or one whose first bytes of the floor's length

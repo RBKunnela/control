@@ -43,6 +43,9 @@ var carrying func()
 // one of its lines is carried up to that line (acceptedPart). The old list
 // stays locked until the new one is written, whole or not at all, so no write
 // to it falls between the two; a dir that already holds a list is ErrExists.
+// Both routes are v1alpha1: a list an operator signed is carried by
+// CarrySigned, and the unsigned list Carry would write under another route is
+// refused by the judge every write passes.
 func Carry(ctx context.Context, from string, fromRoute reaction.Route, dir string, route reaction.Route, now time.Time) (Carried, error) {
 	return carry(ctx, from, fromRoute, dir, route, now, func(part) (reaction.Header, []byte, error) {
 		h, err := newHeader(route)
@@ -57,18 +60,26 @@ func Carry(ctx context.Context, from string, fromRoute reaction.Route, dir strin
 	})
 }
 
-// CarrySigned is Carry between two lists of v1alpha2 routes, each of which a
-// voucher took: the old list is judged line by line as a plane judges it, its
-// header and lifts through the old route's voucher, before anything of it is
-// signed again, and the new header, signed by s, takes the next serial and
-// names the old list's head as its previous, so the plane's floor follows the
-// carry. hold, when set, is what the part of the old list carried is held to
-// before anything is signed, with that part's bytes: the plane's stop list
-// floor, so a list cut back below what the plane accepted is not carried.
+// CarrySigned is Carry into the 3.0 list of a v1alpha3 route from the 2.0
+// list of a v1alpha2 route or the 3.0 list of a v1alpha3 one, each route
+// taken by a voucher: the old list is judged line by line as a plane judges
+// it, its header and lifts through the old route's voucher, before anything
+// of it is signed again, and the new header, signed by s, takes the next
+// serial and names the old list's head as its previous, so the plane's floor
+// follows the carry. A stop or covered line carried from 2.0 names scope run
+// and its run as its subject. hold, when set, is what the part of the old
+// list carried is held to before anything is signed, with that part's bytes:
+// the plane's stop list floor, so a list cut back below what the plane
+// accepted is not carried.
 func CarrySigned(ctx context.Context, from string, fromRoute reaction.Route, dir string, route reaction.Route, now time.Time, s Signer,
 	hold func(reaction.List, []byte) error) (Carried, error) {
-	if !fromRoute.Signed() || !route.Signed() {
-		return Carried{}, fmt.Errorf("%w: a signed carry is from and into lists of v1alpha2 routes", ErrRefused)
+	switch fromRoute.Format() {
+	case reaction.FormatV1Alpha2Carry, reaction.FormatV1Alpha3:
+	default:
+		return Carried{}, fmt.Errorf("%w: a signed carry is from the list of a v1alpha2 or v1alpha3 route", ErrRefused)
+	}
+	if route.Format() != reaction.FormatV1Alpha3 {
+		return Carried{}, fmt.Errorf("%w: a signed carry is into the list of a v1alpha3 route", ErrRefused)
 	}
 	return carry(ctx, from, fromRoute, dir, route, now, func(old part) (reaction.Header, []byte, error) {
 		if hold != nil {
@@ -89,9 +100,6 @@ func CarrySigned(ctx context.Context, from string, fromRoute reaction.Route, dir
 type headerFor func(old part) (reaction.Header, []byte, error)
 
 func carry(ctx context.Context, from string, fromRoute reaction.Route, dir string, route reaction.Route, now time.Time, next headerFor) (Carried, error) {
-	if fromRoute.Signed() != route.Signed() {
-		return Carried{}, fmt.Errorf("%w: a carry keeps its list's format, 1.0 or 2.0", ErrRefused)
-	}
 	var out Carried
 	err := locked(ctx, from, func(root *os.Root) error {
 		same, err := sameDir(root, dir)
@@ -114,7 +122,7 @@ func carry(ctx context.Context, from string, fromRoute reaction.Route, dir strin
 			return err
 		}
 		out = Carried{Header: h, LeftOut: part.leftOut, Refused: part.refused}
-		stops, covered, err := carriedLines(part)
+		stops, covered, err := carriedLines(part, route.Format())
 		if err != nil {
 			return err
 		}
@@ -141,7 +149,7 @@ func CarriedLines(route reaction.Route, old []byte, now time.Time) ([]byte, erro
 	if err != nil {
 		return nil, err
 	}
-	stops, covered, err := carriedLines(part)
+	stops, covered, err := carriedLines(part, route.Format())
 	if err != nil {
 		return nil, err
 	}
@@ -152,10 +160,14 @@ func CarriedLines(route reaction.Route, old []byte, now time.Time) ([]byte, erro
 	return out, nil
 }
 
-// carriedLines is the stop lines and the covered lines a carry of p writes.
-func carriedLines(p part) (stops, covered [][]byte, err error) {
+// carriedLines is the stop lines and the covered lines a carry of p writes
+// into a list judged against a route of format into.
+func carriedLines(p part, into reaction.RouteFormat) (stops, covered [][]byte, err error) {
 	kept := map[string]bool{}
 	for _, e := range p.list.Entries() {
+		if into == reaction.FormatV1Alpha3 && e.Subject == "" {
+			e.Scope, e.Subject = reaction.ScopeRun, e.RunID
+		}
 		line, err := e.Marshal()
 		if err != nil {
 			return nil, nil, fmt.Errorf("%w: %w", ErrRefused, err)
@@ -163,7 +175,7 @@ func carriedLines(p part) (stops, covered [][]byte, err error) {
 		stops = append(stops, line)
 		kept[e.FindingID] = true
 	}
-	covered, err = coveredLines(p.accepted, kept)
+	covered, err = coveredLines(p.accepted, kept, into)
 	return stops, covered, err
 }
 
@@ -225,8 +237,9 @@ func sameDir(root *os.Root, dir string) (bool, error) {
 }
 
 // coveredLines is a covered line for each finding a stop or covered line of
-// old names that kept does not.
-func coveredLines(old []byte, kept map[string]bool) ([][]byte, error) {
+// old names that kept does not, for a list judged against a route of format
+// into.
+func coveredLines(old []byte, kept map[string]bool, into reaction.RouteFormat) ([][]byte, error) {
 	var covered [][]byte
 	complete := old[:bytes.LastIndexByte(old, '\n')+1]
 	for raw := range bytes.Lines(complete) {
@@ -246,6 +259,9 @@ func coveredLines(old []byte, kept map[string]bool) ([][]byte, error) {
 		}
 		if kept[c.FindingID] {
 			continue
+		}
+		if into == reaction.FormatV1Alpha3 && c.Subject == "" {
+			c.Scope, c.Subject = reaction.ScopeRun, c.RunID
 		}
 		line, err := c.Marshal()
 		if err != nil {

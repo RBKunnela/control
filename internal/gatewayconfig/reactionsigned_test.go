@@ -1,10 +1,12 @@
 package gatewayconfig
 
 import (
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
 
+	"github.com/guardana/control/internal/canon"
 	"github.com/guardana/control/internal/reaction"
 )
 
@@ -44,14 +46,23 @@ func TestASignedRouteNeedsAStopListFloorAndNoRouteKey(t *testing.T) {
 	}
 }
 
-// routeDocFor is a v1alpha2 route of tenant and project, as a plane reads it
-// once an operator signed it.
-func routeDocFor(t *testing.T, tenant, project string) reaction.Route {
+// routeDocFor is a route of kind for plane, tenant acme and project, as a
+// plane reads it once an operator signed it: a v1alpha2 one names no plane.
+func routeDocFor(t *testing.T, kind, plane, project string) reaction.Route {
 	t.Helper()
-	doc := `{"kind":"reaction-route/v1alpha2","route_id":"refunds","serial":1,"tenant_id":"` + tenant + `","project_id":"` + project + `",` +
-		`"rules":[{"procedure_id":"refund","version":"3","digest":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",` +
-		`"rule_id":"STEP_OUTSIDE_PROCEDURE","rule_version":"1","scope":"run"}]}`
-	body, err := reaction.SignedRouteBody([]byte(doc), "ed25519-0000000000000000", "/plane/route.json")
+	doc := map[string]any{"kind": kind, "alg": "ed25519", "keyId": "ed25519-0000000000000000", "route_id": "refunds", "serial": 1,
+		"tenant_id": "acme", "project_id": project, "file": "/plane/route.json", "plane_id": plane,
+		"rules": []any{map[string]any{"procedure_id": "refund", "version": "3",
+			"digest":  "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+			"rule_id": "STEP_OUTSIDE_PROCEDURE", "rule_version": "1", "scope": "run"}}}
+	if plane == "" {
+		delete(doc, "plane_id")
+	}
+	raw, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := canon.CanonicalizeJSON(raw)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,24 +74,40 @@ func routeDocFor(t *testing.T, tenant, project string) reaction.Route {
 }
 
 // TestARouteIsOfTheAuthoritysFormatAndThePlanesProject: under signed a
-// v1alpha2 route of the plane's project is taken and one of another project,
-// or a v1alpha1 route, refused; elsewhere a v1alpha2 route is refused.
+// v1alpha3 route of the plane's id and project is taken and one of another
+// id or project, a v1alpha1 route or the zero route refused; a v1alpha2
+// route is refused under any authority, naming the command that upgrades
+// it; elsewhere a v1alpha3 route is refused.
 func TestARouteIsOfTheAuthoritysFormatAndThePlanesProject(t *testing.T) {
 	signed, err := Load(write(t, signedBlock+signedReaction), os.Environ())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := signed.CheckRoute(routeDocFor(t, "acme", "orders"), nil); err != nil {
-		t.Errorf("a v1alpha2 route of the plane's project: %v", err)
-	}
-	if err := signed.CheckRoute(routeDocFor(t, "acme", "billing"), nil); err == nil || !strings.Contains(err.Error(), "project_id") {
-		t.Errorf("a v1alpha2 route of another project: %v", err)
-	}
-	if err := signed.CheckRoute(routeFor(t, "acme", seeded(4)), seeded(3)); err == nil || !strings.Contains(err.Error(), "v1alpha1 route under the signed authority") {
-		t.Errorf("a v1alpha1 route under signed: %v", err)
+	v3, v2 := reaction.SignedRouteKindV3, reaction.SignedRouteKind
+	if err := signed.CheckRoute(routeDocFor(t, v3, "plane-a", "orders"), nil); err != nil {
+		t.Errorf("a v1alpha3 route of the plane's id and project: %v", err)
 	}
 	other := routeConfig(t, seeded(1), seeded(2))
-	if err := other.CheckRoute(routeDocFor(t, "acme", "orders"), seeded(3)); err == nil || !strings.Contains(err.Error(), "v1alpha2 route under the memory authority") {
-		t.Errorf("a v1alpha2 route under memory: %v", err)
+	// The zero route's tenant is empty, so only a configuration of no tenant
+	// lets it past the tenant check to the format check.
+	untenanted := *signed
+	untenanted.TenantID, untenanted.Listener.PrincipalTenant = "", ""
+	for _, c := range []struct {
+		name  string
+		cfg   *Config
+		route reaction.Route
+		says  string
+	}{
+		{"another project", signed, routeDocFor(t, v3, "plane-a", "billing"), "project_id"},
+		{"another plane_id", signed, routeDocFor(t, v3, "plane-b", "orders"), "plane_id"},
+		{"a v1alpha1 route under signed", signed, routeFor(t, "acme", seeded(4)), "v1alpha1 route under the signed authority"},
+		{"a v1alpha2 route under signed", signed, routeDocFor(t, v2, "", "orders"), "route sign"},
+		{"the zero route under signed", &untenanted, reaction.Route{}, "no route was read"},
+		{"a v1alpha3 route under memory", other, routeDocFor(t, v3, "plane-a", "orders"), "v1alpha3 route under the memory authority"},
+		{"a v1alpha2 route under memory", other, routeDocFor(t, v2, "", "orders"), "route sign"},
+	} {
+		if err := c.cfg.CheckRoute(c.route, seeded(3)); err == nil || !strings.Contains(err.Error(), c.says) {
+			t.Errorf("%s: %v, want a refusal saying %q", c.name, err, c.says)
+		}
 	}
 }

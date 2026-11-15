@@ -161,13 +161,6 @@ func asResolved(dir string) (string, error) {
 	return dir, nil
 }
 
-func routeFormat(r reaction.Route) string {
-	if r.Signed() {
-		return reaction.SignedRouteKind
-	}
-	return reaction.RouteKind
-}
-
 // ListenerTenant is the tenant of the listener's principal: its own, or the
 // plane's.
 func (c *Config) ListenerTenant() string {
@@ -178,8 +171,9 @@ func (c *Config) ListenerTenant() string {
 }
 
 // CheckRoute holds a route to this configuration: its tenant is the
-// listener's, and its format the authority's. A v1alpha2 route names the
-// plane's project. For a v1alpha1 route, verified under routeKey, the route
+// listener's, and its format the authority's. A v1alpha3 route names the
+// plane's id and project; a v1alpha2 route is refused, naming the command
+// that upgrades it. For a v1alpha1 route, verified under routeKey, the route
 // key, the route's lift key, the policy key and the freshness key are four
 // keys, no two of them one as reaction.DistinctKeys compares them, since one
 // private key signs for a point and its negation and would then speak for
@@ -189,17 +183,42 @@ func (c *Config) CheckRoute(route reaction.Route, routeKey ed25519.PublicKey) er
 		return fmt.Errorf("reaction.route: its tenant_id is %s and the listener's tenant is %s; a plane stops runs of its own tenant only (ADR-0046)",
 			quoteValue(route.TenantID()), quoteValue(tenant))
 	}
-	if route.Signed() != (c.Approvals.Authority == AuthoritySigned) {
-		return fmt.Errorf("reaction.route: a %s route under the %s authority; under signed only a v1alpha2 route an operator signed is read, and elsewhere only a v1alpha1 route (ADR-0077)",
-			routeFormat(route), c.Approvals.Authority)
-	}
-	if route.Signed() {
-		if route.ProjectID() != c.ProjectID {
-			return fmt.Errorf("reaction.route: its project_id is %s and the plane's project is %s (ADR-0077)",
-				quoteValue(route.ProjectID()), quoteValue(c.ProjectID))
+	signed := c.Approvals.Authority == AuthoritySigned
+	switch route.Format() {
+	case reaction.FormatV1Alpha1:
+		if signed {
+			return fmt.Errorf("reaction.route: a %s route under the signed authority, which reads only a %s route an operator signed (ADR-0077)",
+				reaction.RouteKind, reaction.SignedRouteKindV3)
 		}
-		return nil
+		return c.checkRouteKeys(route, routeKey)
+	case reaction.FormatV1Alpha3:
+		if !signed {
+			return fmt.Errorf("reaction.route: a %s route under the %s authority, which reads only a %s route (ADR-0077)",
+				reaction.SignedRouteKindV3, c.Approvals.Authority, reaction.RouteKind)
+		}
+		return c.checkSignedRoute(route)
+	case reaction.FormatV1Alpha2Carry:
+		return fmt.Errorf("reaction.route: %w", reaction.ErrRouteUpgrade)
 	}
+	return errors.New("reaction.route: no route was read")
+}
+
+// checkSignedRoute holds a v1alpha3 route to the plane's id and project
+// (ADR-0082).
+func (c *Config) checkSignedRoute(route reaction.Route) error {
+	if route.PlaneID() == "" || route.PlaneID() != c.PlaneID {
+		return fmt.Errorf("reaction.route: its plane_id is %s and the plane's plane_id is %s (ADR-0082)",
+			quoteValue(route.PlaneID()), quoteValue(c.PlaneID))
+	}
+	if route.ProjectID() != c.ProjectID {
+		return fmt.Errorf("reaction.route: its project_id is %s and the plane's project is %s (ADR-0077)",
+			quoteValue(route.ProjectID()), quoteValue(c.ProjectID))
+	}
+	return nil
+}
+
+// checkRouteKeys holds a v1alpha1 route's four keys apart.
+func (c *Config) checkRouteKeys(route reaction.Route, routeKey ed25519.PublicKey) error {
 	policyKey, err := policykey.ParsePublic(c.Policy.PublicKey)
 	if err != nil {
 		return fmt.Errorf("policy.public_key: %w", err)

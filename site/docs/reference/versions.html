@@ -43,6 +43,7 @@
 <li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -350,21 +351,21 @@ version. <a href="/docs/status">status.md</a> is the inventory.</p>
 <tr>
 <td>Reaction route (<code>kind</code>)</td>
 <td>—</td>
-<td><code>reaction-route/v1alpha1</code>, <code>reaction-route/v1alpha2</code></td>
+<td><code>reaction-route/v1alpha1</code>, <code>reaction-route/v1alpha2</code>, <code>reaction-route/v1alpha3</code></td>
 <td><code>experimental</code></td>
 <td><a href="/docs/contracts#the-route">contracts.md</a></td>
 </tr>
 <tr>
 <td>Stop list (<code>version</code>)</td>
-<td><code>1.0</code>, <code>2.0</code></td>
-<td><code>1.0</code>, <code>2.0</code></td>
+<td><code>1.0</code>, <code>3.0</code></td>
+<td><code>1.0</code>, <code>2.0</code>, <code>3.0</code></td>
 <td><code>experimental</code></td>
 <td><a href="/docs/contracts#the-stop-list">contracts.md</a></td>
 </tr>
 <tr>
 <td>Lift (<code>kind</code>, <code>version</code>)</td>
-<td><code>reaction-lift/v1alpha1</code>, <code>1.0</code>, <code>reaction-lift/v1alpha2</code></td>
-<td><code>reaction-lift/v1alpha1</code>, <code>1.0</code>, <code>reaction-lift/v1alpha2</code></td>
+<td><code>reaction-lift/v1alpha1</code>, <code>1.0</code>, <code>reaction-lift/v1alpha3</code></td>
+<td><code>reaction-lift/v1alpha1</code>, <code>1.0</code>, <code>reaction-lift/v1alpha2</code>, <code>reaction-lift/v1alpha3</code></td>
 <td><code>experimental</code></td>
 <td><a href="/docs/contracts#the-lift">contracts.md</a></td>
 </tr>
@@ -391,14 +392,19 @@ one quoted key per line, carries none either.</p>
 <code>pause sign</code> alone, which signs its entries again as <code>4</code>.</li>
 <li>State backup manifest: <code>0.2</code>, naming <code>plane_id</code> under <code>signed</code>; a <code>0.1</code>
 manifest names no plane, and a signed restore of one says <code>plane not checked</code>. 0.17 reads <code>0.2</code> only where it names no plane.</li>
-<li>Route: <code>reaction-route/v1alpha2</code> under <code>signed</code>; <code>v1alpha1</code> elsewhere.</li>
-<li>Stop list: <code>2.0</code> under <code>signed</code>; <code>1.0</code> elsewhere.</li>
-<li>Stop list header: <code>reaction-list-header/2.0</code>, the signed header of a <code>2.0</code>
-list.</li>
-<li>Lift: <code>reaction-lift/v1alpha2</code> under <code>signed</code>; <code>reaction-lift/v1alpha1</code>
-elsewhere.</li>
+<li>Route: <code>reaction-route/v1alpha3</code>, naming <code>plane_id</code>, under <code>signed</code>;
+<code>v1alpha1</code> elsewhere. A <code>v1alpha2</code> route names no plane and is refused,
+naming <code>route sign</code>; <code>stops init --carry</code> reads one only as the route the
+list it carries was judged under.</li>
+<li>Stop list: <code>3.0</code> under <code>signed</code>; <code>1.0</code> elsewhere. A <code>2.0</code> list is refused,
+naming <code>stops init --carry</code>, which carries it into <code>3.0</code>.</li>
+<li>Stop list header: <code>reaction-list-header/3.0</code>, the signed header of a <code>3.0</code>
+list, naming <code>plane_id</code>.</li>
+<li>Lift: <code>reaction-lift/v1alpha3</code>, naming <code>plane_id</code>, scope and subject, under
+<code>signed</code>; <code>reaction-lift/v1alpha1</code> elsewhere. A <code>v1alpha2</code> lift is read only
+by a carry.</li>
 </ul>
-<p>A <code>1.0</code> list is not carried into <code>2.0</code>: start a new list, and <code>react</code> stops
+<p>A <code>1.0</code> list is not carried into <code>3.0</code>: start a new list, and <code>react</code> stops
 again the findings that still may stop a run.</p>
 <h2 id="reading-files-an-older-release-wrote">Reading files an older release wrote</h2>
 <ul>
@@ -467,6 +473,7 @@ accepts a version the page does not name.</p>
 <li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>

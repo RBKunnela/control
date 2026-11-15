@@ -43,6 +43,7 @@
 <li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -1805,47 +1806,58 @@ of at most 4 KiB.</p>
 (<a href="/docs/adr/0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatures">ADR-0077</a>)
 each of the three is one DSSE signature by a roster operator over a body of
 at most 20 KiB in its canonical form, which names <code>alg</code> <code>ed25519</code>, the
-signature's <code>keyId</code>, <code>tenant_id</code>, <code>project_id</code> and <code>file</code>: the absolute,
-cleaned path of the route file or of <code>stops.jsonl</code> it was signed for, at most
-1024 bytes, with every link on the way to its directory resolved. A plane
-refuses a body whose tenant, project or file is not its own.</p>
+signature's <code>keyId</code>, <code>plane_id</code>, <code>tenant_id</code>, <code>project_id</code> and <code>file</code>: the
+absolute, cleaned path of the route file or of <code>stops.jsonl</code> it was signed
+for, at most 1024 bytes, with every link on the way to its directory
+resolved. A plane refuses a body whose plane, tenant, project or file is not
+its own, and one that names no <code>plane_id</code>
+(<a href="/docs/adr/0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant">ADR-0082</a>).</p>
 <table>
 <thead>
 <tr>
 <th>Document</th>
 <th>Payload type</th>
 <th><code>kind</code></th>
-<th>Members besides the five above</th>
+<th>Members besides the six above</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Route</td>
 <td><code>application/vnd.agent-reaction-route.v1alpha2+json</code></td>
-<td><code>reaction-route/v1alpha2</code></td>
-<td><code>route_id</code>, <code>serial</code>, <code>rules</code>, each rule as above with <code>scope</code> <code>run</code> and no route-wide <code>scope</code> or <code>lift_public_key</code></td>
+<td><code>reaction-route/v1alpha3</code></td>
+<td><code>route_id</code>, <code>serial</code>, <code>rules</code>, each rule as above with <code>scope</code> <code>run</code>, <code>agent</code> or <code>principal</code> and no route-wide <code>scope</code> or <code>lift_public_key</code></td>
 </tr>
 <tr>
 <td>Stop list header</td>
 <td><code>application/vnd.agent-stop-list-header+json</code></td>
-<td><code>reaction-list-header/2.0</code></td>
+<td><code>reaction-list-header/3.0</code></td>
 <td><code>list_id</code>, <code>serial</code>, <code>route_id</code>, <code>route_serial</code>, <code>route_digest</code>, and <code>previous</code>, the digest of the header carried from, only in a carried list</td>
 </tr>
 <tr>
 <td>Lift</td>
 <td><code>application/vnd.agent-reaction-lift.v1alpha2+json</code></td>
-<td><code>reaction-lift/v1alpha2</code></td>
-<td><code>list_head</code>, the digest of the header of the list it lifts in, <code>run_id</code>, <code>through_line</code></td>
+<td><code>reaction-lift/v1alpha3</code></td>
+<td><code>list_head</code>, the digest of the header of the list it lifts in, <code>scope</code>, <code>subject</code>, <code>through_line</code></td>
 </tr>
 </tbody>
 </table>
-<p>A list under a <code>v1alpha2</code> route is version <code>2.0</code>: its header line is
-<code>{&quot;envelope&quot;:…,&quot;kind&quot;:&quot;header&quot;,&quot;version&quot;:&quot;2.0&quot;}</code>, a <code>stop</code> line adds
-<code>project_id</code> and <code>scope</code> <code>run</code>, a <code>covered</code> line adds <code>project_id</code>, and a
-<code>lift</code> line's envelope is a <code>v1alpha2</code> lift. A header's digest is <code>sha256:</code>
-and the lowercase hex SHA-256 of its signed body. Every line of a list is of
-one version, and a <code>2.0</code> line is refused under a <code>v1alpha1</code> route, as a
-<code>1.0</code> one is under a <code>v1alpha2</code> route.</p>
+<p>The payload types are unchanged from 0.17, which signed the same three
+without <code>plane_id</code>: a <code>reaction-route/v1alpha2</code> route, a
+<code>reaction-list-header/2.0</code> header and a <code>reaction-lift/v1alpha2</code> lift. A
+plane refuses each, naming <code>route sign</code> or <code>stops init --carry</code>, and only
+<code>stops init --carry</code> reads them, as the list it carries from; see
+<a href="/docs/guides/upgrade-a-signed-plane-from-0-17">upgrade a signed plane from 0.17</a>.</p>
+<p>A list under a <code>v1alpha3</code> route is version <code>3.0</code>: its header line is
+<code>{&quot;envelope&quot;:…,&quot;kind&quot;:&quot;header&quot;,&quot;version&quot;:&quot;3.0&quot;}</code>, a <code>stop</code> and a <code>covered</code>
+line add <code>project_id</code>, <code>scope</code> and <code>subject</code>, and a <code>lift</code> line names <code>scope</code>
+and <code>subject</code> in place of <code>run_id</code> and holds a <code>v1alpha3</code> lift. This release
+serves scope <code>run</code> alone, whose subject is the line's <code>run_id</code>; a rule, a
+line or a lift of scope <code>agent</code> or <code>principal</code> is read and refused. A
+header's digest is <code>sha256:</code> and the lowercase hex SHA-256 of its signed
+body. Every line of a list is of one version, and a <code>3.0</code> line is refused
+under a <code>v1alpha1</code> route, as a <code>1.0</code> or a <code>2.0</code> one is under a <code>v1alpha3</code>
+route.</p>
 <h3 id="the-codes">The codes</h3>
 <table>
 <thead>
@@ -1928,17 +1940,17 @@ may write where they are read (<a href="/docs/status">status.md</a>). A test in
 </tr>
 <tr>
 <td>Route</td>
-<td><code>reaction.route</code> of <code>v1alpha2</code></td>
-<td>its tenant is the listener's, and its project and file the plane's</td>
+<td><code>reaction.route</code> of <code>v1alpha3</code>; <code>v1alpha2</code> is refused, naming <code>route sign</code></td>
+<td>its tenant is the listener's, and its project, <code>plane_id</code> and file the plane's</td>
 <td><code>internal/gatewayconfig/reaction.go</code> <code>Config.CheckRoute</code> <code>internal/reaction/signed.go</code> <code>vouchedWithin</code></td>
 <td><code>internal/gatewayconfig</code> <code>TestARouteIsOfTheListenersTenant</code> <code>TestARouteIsOfTheAuthoritysFormatAndThePlanesProject</code> <code>internal/reaction</code> <code>TestASignedRouteIsRefusedWithItsCause</code></td>
 </tr>
 <tr>
 <td>Stop list header</td>
-<td>the <code>2.0</code> header of <code>reaction.stops</code></td>
-<td>its tenant and project are the route's</td>
-<td><code>internal/reaction/header2.go</code> <code>judgeSignedHeader</code></td>
-<td><code>internal/reaction</code> <code>TestASignedListIsRefusedAndNeverReadAsNoStops</code></td>
+<td>the <code>3.0</code> header of <code>reaction.stops</code>; <code>2.0</code> is refused, naming <code>stops init --carry</code></td>
+<td>its tenant and project are the route's, and its <code>plane_id</code> and file the plane's</td>
+<td><code>internal/reaction/header2.go</code> <code>judgeSignedHeader</code> <code>internal/reaction/signed.go</code> <code>vouchedWithin</code></td>
+<td><code>internal/reaction</code> <code>TestASignedListIsRefusedAndNeverReadAsNoStops</code> <code>TestEachSignedKindIsBoundToItsPlane</code></td>
 </tr>
 <tr>
 <td>Stop and covered lines</td>
@@ -1949,10 +1961,10 @@ may write where they are read (<a href="/docs/status">status.md</a>). A test in
 </tr>
 <tr>
 <td>Lift</td>
-<td>a <code>v1alpha2</code> lift line</td>
-<td>its tenant and project are the route's</td>
-<td><code>internal/reaction/lift2.go</code> <code>verifySignedLiftLine</code></td>
-<td><code>internal/reaction</code> <code>TestASignedListIsRefusedAndNeverReadAsNoStops</code></td>
+<td>a <code>v1alpha3</code> lift line</td>
+<td>its tenant and project are the route's, and its <code>plane_id</code> and file the plane's</td>
+<td><code>internal/reaction/lift3.go</code> <code>verifySignedLiftLineV3</code></td>
+<td><code>internal/reaction</code> <code>TestASignedListIsRefusedAndNeverReadAsNoStops</code> <code>TestEachSignedKindIsBoundToItsPlane</code></td>
 </tr>
 <tr>
 <td>Policy bundle and statement</td>
@@ -2165,6 +2177,7 @@ closing records.</p>
 <li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>

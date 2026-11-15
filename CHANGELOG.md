@@ -15,8 +15,9 @@ verify one.
 
 - **Breaking:** under `approvals.authority: signed` a plane needs `plane_id`, an
   identifier the operator chooses for it, set in the configuration file; any
-  other authority refuses the key. Nothing is bound to it yet; later changes
-  in this release put it into the signed files a plane takes. Add one to every
+  other authority refuses the key. The signed pause file, route, stop list
+  header and lift name it, and a plane takes one only when the id is its own.
+  Add one to every
   signed configuration, a different one for each plane. `doctor`'s trust line
   and the `trust` member `health.socket` answers name it; `GET /healthz`,
   which takes no credential, does not.
@@ -43,6 +44,27 @@ verify one.
 - **Breaking:** under `signed`, `state backup` and `state restore` refuse any
   configuration key the environment sets, as a signed start does. Unset the
   `GUARDANA_CONTROL_*` variables that name keys before running them.
+- **Breaking:** under `signed` the route is `reaction-route/v1alpha3`, the stop
+  list `3.0` with a `reaction-list-header/3.0` header, and a lift
+  `reaction-lift/v1alpha3`; each names the plane's `plane_id`, and a plane
+  takes one only when the id is its own. A stop, covered or lift line names a
+  `scope` and a `subject`; this release serves scope `run`, whose subject is
+  the run. A plane refuses the `v1alpha2` route and the `2.0` list 0.17 signed
+  at start, naming the way forward, and raises no floor. With the plane
+  stopped, as an admin of the roster, edit the route document to
+  `reaction-route/v1alpha3`, add `plane_id` and raise its serial, then sign it
+  at a new path with `guardana-control route sign`, since a signed route names
+  its own file and the carry reads the old one at its path; as an operator,
+  carry the old list with `guardana-control stops init --key <k> --route <new
+  route> --roster <f> --root-key <f> --carry <old stops dir> --carry-route <old
+  route> --stops-floor <floor dir> <new stops dir>`, which signs a `3.0` header
+  at the next serial naming the old head; then set `reaction.route` to the new
+  route's path and `reaction.stops` to the new directory, and run `react` with
+  this release against them. `route sign` refuses a `v1alpha2` document, and
+  `react`, `stops lift` and `stops list` a `v1alpha2` route
+  ([upgrade a signed plane from 0.17](docs/guides/upgrade-a-signed-plane-from-0-17.md)).
+- `doctor` names a `v1alpha2` route or a `2.0` stop list as the plane refuses
+  it.
 - `doctor` judges a signed pause file with the plane's own check of its plane,
   tenant, project and file, so it names a version `3` file or another plane's
   as the plane refuses it.

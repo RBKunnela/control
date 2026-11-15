@@ -50,7 +50,7 @@ func reactFlags(command string, out io.Writer) (*flag.FlagSet, *reactArgs) {
 	flags.StringVar(&a.findings, "findings", "", "the findings log directory supervise writes")
 	flags.StringVar(&a.runs, "runs", "", "the runs directory, read and never written")
 	flags.StringVar(&a.stops, "stops", "", "the stops directory stops init started")
-	flags.StringVar(&a.approvals, "approvals", "", "the plane's approvals.dir, for a v1alpha2 route: a guard, react will not run as the account that owns it")
+	flags.StringVar(&a.approvals, "approvals", "", "the plane's approvals.dir, for a v1alpha3 route: a guard, react will not run as the account that owns it")
 	return flags, a
 }
 
@@ -291,7 +291,7 @@ func (r *reactor) write(fr *findingv1alpha1.FindingRecord, run reaction.RunFacts
 			return reaction.Stop{}, errNotStopping
 		}
 		return reaction.Stop{EntryID: reaction.EntryID(id), TenantID: c.TenantID, ProjectID: c.ProjectID, Scope: c.Scope,
-			RunID: runID, FindingID: id,
+			Subject: subjectOf(r.route, runID), RunID: runID, FindingID: id,
 			ProcedureID: c.ProcedureID, ProcedureVersion: c.ProcedureVersion, ProcedureDigest: c.ProcedureDigest,
 			RuleID: c.RuleID, RuleVersion: c.RuleVersion, CreatedAt: c.CreatedAt, ExpiresAt: c.ExpiresAt}, nil
 	}
@@ -335,13 +335,22 @@ func (r *reactor) write(fr *findingv1alpha1.FindingRecord, run reaction.RunFacts
 }
 
 // projectOf is the project a stop of fr names under route: the finding's
-// under a v1alpha2 route, and none under a v1alpha1 route, whose lines
-// name no project.
+// under a v1alpha3 route, and none under a v1alpha1 route, whose lines name
+// no project. Under any other route the writer refuses the stop.
 func projectOf(route reaction.Route, fr *findingv1alpha1.FindingRecord) string {
-	if !route.Signed() {
+	if route.Format() != reaction.FormatV1Alpha3 {
 		return ""
 	}
 	return fr.GetProjectId()
+}
+
+// subjectOf is the subject a stop of runID names under route: its run under
+// a v1alpha3 route, whose stops name a subject, and none under any other.
+func subjectOf(route reaction.Route, runID string) string {
+	if route.Format() != reaction.FormatV1Alpha3 {
+		return ""
+	}
+	return runID
 }
 
 // reactPlaneAccount is react's guard against running as the plane's account,

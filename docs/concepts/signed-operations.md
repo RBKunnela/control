@@ -20,15 +20,15 @@ Nothing in this repository is a security boundary yet.
 ```mermaid
 flowchart TD
     accTitle: Who signs what a plane takes
-    accDescr: A pinned root key signs the trust roster, which names the operator keys and their grants. Under the signed authority, operators sign pauses, routes and stop list headers, which the plane judges against its tenant, project and file; approval answers, each bound to one held call; and run records and lifts, judged against the tenant and project, a lift also against the list it was made for. Outside the signed authority a route key signs a v1alpha1 route and the route's lift key its lifts. The policy key signs the bundle and a separate freshness key the statement that keeps it current. The floors and the evidence trail are written by the plane and signed by no one. A release tag builds archives whose checksums are signed and whose provenance is attested.
+    accDescr: A pinned root key signs the trust roster, which names the operator keys and their grants. Under the signed authority, operators sign pauses, routes and stop list headers, which the plane judges against its plane id, tenant, project and file; approval answers, each bound to one held call; and run records and lifts, judged against the tenant and project, a lift also against the plane id and the list it was made for. Outside the signed authority a route key signs a v1alpha1 route and the route's lift key its lifts. The policy key signs the bundle and a separate freshness key the statement that keeps it current. The floors and the evidence trail are written by the plane and signed by no one. A release tag builds archives whose checksums are signed and whose provenance is attested.
     Root["Pinned root key"] -->|"signs"| Roster["Trust roster"]
     Roster -->|"names keys and grants"| Ops["Operator keys, under signed"]
     Ops -->|"sign"| Bound["Pauses, routes, stop list headers"]
     Ops -->|"sign"| Answers["Approval answers"]
     Ops -->|"sign"| RunsLifts["Run records and lifts"]
-    Bound -->|"judged against tenant, project and the plane's file"| Plane["Plane"]
+    Bound -->|"judged against plane id, tenant, project and file"| Plane["Plane"]
     Answers -->|"bound to one held call"| Plane
-    RunsLifts -->|"judged against tenant and project; a lift against its list"| Plane
+    RunsLifts -->|"judged against tenant and project; a lift against its plane and list"| Plane
     RK["Route key and lift key, outside signed"] -->|"sign a v1alpha1 route and its lifts"| Plane
     PK["Policy key"] -->|"signs the bundle"| Plane
     FK["Freshness key"] -->|"signs the statement that confirms it"| Plane
@@ -48,7 +48,7 @@ Sources: `internal/trust/file.go`, `internal/policy/bundle/bundle.go`,
 | The policy bundle | the holder of the policy key, with `policy sign` | an Ed25519 signature over the DSSE encoding of the bundle's canonical bytes, under the bundle's payload type, by a key the plane pins; a holder pinned to one bundle id refuses every other | `implemented` | `internal/policy/bundle/`, `internal/policy/holder.go` |
 | The freshness statement and the serial floor | the holder of a second key, the freshness key, with `policy renew` | a statement bound to the bundle's id, serial and digest, signed by the freshness key, which may not be the bundle's key; the floor keeps a bundle from going back | `experimental` | `internal/policy/statement.go`, `internal/policy/floor.go`, `internal/policystate/` |
 | The trust roster | the holder of the root key, with `operators roster sign` | a roster signed by the pinned root, of the configured id, unexpired, with a serial that only climbs; it names each operator's key and grants of tenant, project and level | `experimental` | `internal/trust/` |
-| Approval answers, pause files, run records, routes, stop list headers and lifts | roster operators, each with `--key` on its own command | under `approvals.authority: signed` only: the signer is a roster operator whose grant covers the act, the tenant and the project; a pause file, a route and a stop list header also name the file the plane reads, a pause file also the plane's `plane_id`, an answer the held call, and a lift the list it was made against | `experimental` | `internal/gateway/authority.go`, `internal/pause/signedpause/`, `internal/runs/signedruns/`, `internal/reaction/` |
+| Approval answers, pause files, run records, routes, stop list headers and lifts | roster operators, each with `--key` on its own command | under `approvals.authority: signed` only: the signer is a roster operator whose grant covers the act, the tenant and the project; a pause file, a route, a stop list header and a lift also name the plane's `plane_id` and the file the plane reads, an answer the held call, and a lift the list it was made against | `experimental` | `internal/gateway/authority.go`, `internal/pause/signedpause/`, `internal/runs/signedruns/`, `internal/reaction/` |
 | A `v1alpha1` route and its lifts | outside `signed`: the holder of the route key, with `route sign`, and the holder of the lift key the route names, with `stops lift` | the route verifies under `reaction.public_key` and names the listener's tenant, and no project; a lift verifies under the route's lift key; the route, lift, policy and freshness keys are four different keys | `experimental` | `internal/gatewayconfig/reaction.go`, `internal/reaction/route.go`, `internal/reaction/judge.go` |
 | Releases | the release workflow, from a tag on `main` | not a plane's check: `checksums.txt` is signed without a stored key, and each archive and the image carry a build provenance attestation, which a user verifies with the commands in [RELEASING.md](../../RELEASING.md) | `experimental` | `.goreleaser.yaml`, `.github/workflows/release.yml` |
 
@@ -65,10 +65,9 @@ operators with these grants until its expiry.
 Under `signed`, an operator's signature proves that a key the roster names
 signed this answer, pause, run, route, header or lift, and the plane counts
 it only within that operator's grant over the tenant and project it names,
-which have to be the ones the plane serves. A signed pause file, route or
-stop list header names the file it was signed for, and a plane refuses one
-that names another; a pause file also names the plane's `plane_id`, and a
-plane refuses another plane's. An answer counts for the one held call it names, by its
+which have to be the ones the plane serves. A signed pause file, route,
+stop list header or lift names the plane's `plane_id` and the file it was
+signed for, and a plane refuses one that names another plane or file. An answer counts for the one held call it names, by its
 tenant, project, request, approval, action digest and bundle digest, and only
 the plane marks it spent ([approvals](approvals-and-the-held-call.md)).
 Outside `signed`, a route's signature proves only that the route key's holder
@@ -91,7 +90,7 @@ archive was built from.
 - **The backup manifest.** Its hashes catch a corrupted backup, not a hostile
   writer of it ([back up and restore](../guides/back-up-and-restore-a-plane.md)).
 - **The lines `react` writes.** A stop line is signed by no operator. It
-  counts only where the route permits it: under a `v1alpha2` route a stop of
+  counts only where the route permits it: under a `v1alpha3` route a stop of
   its project and scope, under a `v1alpha1` route a stop of its tenant.
 - **Answers, pauses and run records outside `signed`.** Under `directory` or
   `memory`, write access to where the plane reads them is the authority, and

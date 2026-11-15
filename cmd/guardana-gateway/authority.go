@@ -170,8 +170,8 @@ var pinnedKeys = []pinnedKey{
 		return k, true, err
 	}},
 	{"the route's lift_public_key", func(c *gatewayconfig.Config) (ed25519.PublicKey, bool, error) {
-		// A v1alpha2 route, the one the signed authority reads, names no
-		// lift key: its lifts are operators'.
+		// A route the signed authority reads names no lift key: its lifts
+		// are operators'.
 		if c.Reaction.Route == "" || c.Approvals.Authority == gatewayconfig.AuthoritySigned {
 			return nil, false, nil
 		}

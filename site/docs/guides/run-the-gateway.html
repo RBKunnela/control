@@ -43,6 +43,7 @@
 <li><a href="/docs/guides/run-the-gateway" aria-current="page">Run the gateway</a></li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -357,17 +358,8 @@ guardana-control pause add --action tool --provider orders --name refund \
   floor_dir: /var/lib/guardana/pause-floor   # signed only
 </code></pre>
 <p><code>refund</code> is blocked with <code>PAUSED</code> until <code>pause remove</code>
-(<a href="/docs/concepts/enforcement-modes#pausing-calls">more</a>).</p>
-<h2 id="upgrading-a-signed-plane-from-017">Upgrading a signed plane from 0.17</h2>
-<pre><code># 0.18 refuses the pause file 0.17 signed, naming the command that carries it.
-# With the plane stopped and plane_id set, as the operator: the pause file&#39;s entries
-# signed for this plane at the next serial (a new pause init would lift them all).
-# A version 3 file names no plane: sign only the file this plane read.
-guardana-control pause sign --key op.key --roster /etc/guardana/roster.json \
-  --root-key /etc/guardana/root.pub --plane-id orders-eu-1 /srv/pause/pause.json
-# as the plane: a new backup, whose manifest 0.2 names the plane; 0.17 refuses it
-guardana-control state backup gateway.yaml /backups/plane-2
-</code></pre>
+(<a href="/docs/concepts/enforcement-modes#pausing-calls">more</a>). A signed plane from
+0.17: <a href="/docs/guides/upgrade-a-signed-plane-from-0-17">upgrade it</a>.</p>
 <h2 id="verify">Verify</h2>
 <ul>
 <li><code>doctor</code> prints <code>ok policy</code> and <code>ok upstreams ... 0 unclassified</code> in the
@@ -417,6 +409,7 @@ the next run from the collector's last acknowledgement.</p>
 <li><a href="/docs/guides/run-the-gateway" aria-current="page">Run the gateway</a></li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>

@@ -130,7 +130,7 @@ func TestSignedRunsWritesSayWhichRosterTheyJudgedWith(t *testing.T) {
 }
 
 // TestSignedStopsCommandsSayWhichRosterTheyJudgedWith: stops init, list and
-// lift under a v1alpha2 route each say the roster's line once, init and lift
+// lift under a v1alpha3 route each say the roster's line once, init and lift
 // before what they signed.
 func TestSignedStopsCommandsSayWhichRosterTheyJudgedWith(t *testing.T) {
 	tr := newSignedTree(t)
@@ -166,7 +166,7 @@ func TestSuperviseSaysWhichRosterItJudgedARunWith(t *testing.T) {
 
 // TestReactUnderASignedRouteSaysWhichRosterItJudgedWith: past its guard
 // against the plane's account, which every directory trips on one account,
-// react under a v1alpha2 route says the roster's line once, first.
+// react under a v1alpha3 route says the roster's line once, first.
 func TestReactUnderASignedRouteSaysWhichRosterItJudgedWith(t *testing.T) {
 	saved := reactPlaneAccount
 	reactPlaneAccount = func(string) error { return nil }

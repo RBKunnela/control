@@ -12,8 +12,8 @@ import (
 // the procedure and rule of the finding behind it, and its two times.
 type StopClaim struct {
 	TenantID string
-	// ProjectID and Scope are a stop's under a v1alpha2 route, and empty
-	// under a v1alpha1 one.
+	// ProjectID and Scope are a stop's under a route an operator signed,
+	// and empty under a v1alpha1 one.
 	ProjectID, Scope                               string
 	ProcedureID, ProcedureVersion, ProcedureDigest string
 	RuleID, RuleVersion                            string

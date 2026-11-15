@@ -35,8 +35,9 @@ authority for one tenant and the rest for another.
 - The plane's id joins `file` in each signed body a plane takes from an
   operator, the pause file, the route, the stop list header and the lift,
   and in the state backup manifest. The pause file carries it from version
-  `4` and the manifest from `0.2`; the route, the stop list header and the
-  lift carry it in later changes of the same release. Each body grows by the
+  `4` and the manifest from `0.2`; the route from `reaction-route/v1alpha3`,
+  the stop list header from `reaction-list-header/3.0` and the lift from
+  `reaction-lift/v1alpha3`, in the same release. Each body grows by the
   id, so an operator's signed statement may be 20 KiB, up from 16 KiB: a body
   of the earlier version at its bound still fits once it names the plane.
 - Run records keep their `records/` path binding and take no plane id: a

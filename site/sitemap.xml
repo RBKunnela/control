@@ -116,6 +116,7 @@
   <url><loc>https://control.guardana.dev/docs/guides/run-the-gateway</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/supervise-and-stop-a-run</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/test-a-procedure</loc></url>
+  <url><loc>https://control.guardana.dev/docs/guides/upgrade-a-signed-plane-from-0-17</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/watch-a-plane-without-a-collector</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/watch-an-egress-proxy</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/write-and-test-a-policy</loc></url>

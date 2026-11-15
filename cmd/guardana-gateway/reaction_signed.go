@@ -54,11 +54,11 @@ func signedStops(cfg *gatewayconfig.Config) bool {
 	return cfg.Reaction.Configured() && cfg.Approvals.Authority == gatewayconfig.AuthoritySigned
 }
 
-// stopsPlane is the plane cfg's signed documents are bound to: the tenant
-// the listener serves, which the route names, and the project. The stop list
-// floor is kept for the same tenant and project.
+// stopsPlane is the plane cfg's signed documents are bound to: its plane_id,
+// the tenant the listener serves, which the route names, and the project.
+// The stop list floor is kept for the same tenant and project.
 func stopsPlane(cfg *gatewayconfig.Config) (reaction.Plane, error) {
-	plane, err := signedstops.PlaneOf(cfg.ListenerTenant(), cfg.ProjectID, cfg.Resolve(cfg.Reaction.Route),
+	plane, err := signedstops.PlaneOf(cfg.PlaneID, cfg.ListenerTenant(), cfg.ProjectID, cfg.Resolve(cfg.Reaction.Route),
 		cfg.Resolve(cfg.Reaction.Stops), stoplist.FileName)
 	if err != nil {
 		return reaction.Plane{}, fmt.Errorf("reaction: %w", err)
@@ -84,7 +84,7 @@ func (p *plane) stopsAuthority() (*stopsAuthority, error) {
 	return &stopsAuthority{voucher: v, floor: floor, planeOwned: p.signedStart != nil}, nil
 }
 
-// readSignedRoute reads the route file as a v1alpha2 route an operator
+// readSignedRoute reads the route file as a v1alpha3 route an operator
 // signed, judged through v, and holds it to the configuration. The file and
 // its directory may not be owned by the plane's account unless planeOwned.
 func readSignedRoute(cfg *gatewayconfig.Config, v reaction.Voucher, planeOwned bool) (reaction.Route, error) {

@@ -1443,24 +1443,36 @@ Under `approvals.authority: signed`
 ([ADR-0077](adr/0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatures.md))
 each of the three is one DSSE signature by a roster operator over a body of
 at most 20 KiB in its canonical form, which names `alg` `ed25519`, the
-signature's `keyId`, `tenant_id`, `project_id` and `file`: the absolute,
-cleaned path of the route file or of `stops.jsonl` it was signed for, at most
-1024 bytes, with every link on the way to its directory resolved. A plane
-refuses a body whose tenant, project or file is not its own.
+signature's `keyId`, `plane_id`, `tenant_id`, `project_id` and `file`: the
+absolute, cleaned path of the route file or of `stops.jsonl` it was signed
+for, at most 1024 bytes, with every link on the way to its directory
+resolved. A plane refuses a body whose plane, tenant, project or file is not
+its own, and one that names no `plane_id`
+([ADR-0082](adr/0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant.md)).
 
-| Document | Payload type | `kind` | Members besides the five above |
+| Document | Payload type | `kind` | Members besides the six above |
 | --- | --- | --- | --- |
-| Route | `application/vnd.agent-reaction-route.v1alpha2+json` | `reaction-route/v1alpha2` | `route_id`, `serial`, `rules`, each rule as above with `scope` `run` and no route-wide `scope` or `lift_public_key` |
-| Stop list header | `application/vnd.agent-stop-list-header+json` | `reaction-list-header/2.0` | `list_id`, `serial`, `route_id`, `route_serial`, `route_digest`, and `previous`, the digest of the header carried from, only in a carried list |
-| Lift | `application/vnd.agent-reaction-lift.v1alpha2+json` | `reaction-lift/v1alpha2` | `list_head`, the digest of the header of the list it lifts in, `run_id`, `through_line` |
+| Route | `application/vnd.agent-reaction-route.v1alpha2+json` | `reaction-route/v1alpha3` | `route_id`, `serial`, `rules`, each rule as above with `scope` `run`, `agent` or `principal` and no route-wide `scope` or `lift_public_key` |
+| Stop list header | `application/vnd.agent-stop-list-header+json` | `reaction-list-header/3.0` | `list_id`, `serial`, `route_id`, `route_serial`, `route_digest`, and `previous`, the digest of the header carried from, only in a carried list |
+| Lift | `application/vnd.agent-reaction-lift.v1alpha2+json` | `reaction-lift/v1alpha3` | `list_head`, the digest of the header of the list it lifts in, `scope`, `subject`, `through_line` |
 
-A list under a `v1alpha2` route is version `2.0`: its header line is
-`{"envelope":…,"kind":"header","version":"2.0"}`, a `stop` line adds
-`project_id` and `scope` `run`, a `covered` line adds `project_id`, and a
-`lift` line's envelope is a `v1alpha2` lift. A header's digest is `sha256:`
-and the lowercase hex SHA-256 of its signed body. Every line of a list is of
-one version, and a `2.0` line is refused under a `v1alpha1` route, as a
-`1.0` one is under a `v1alpha2` route.
+The payload types are unchanged from 0.17, which signed the same three
+without `plane_id`: a `reaction-route/v1alpha2` route, a
+`reaction-list-header/2.0` header and a `reaction-lift/v1alpha2` lift. A
+plane refuses each, naming `route sign` or `stops init --carry`, and only
+`stops init --carry` reads them, as the list it carries from; see
+[upgrade a signed plane from 0.17](guides/upgrade-a-signed-plane-from-0-17.md).
+
+A list under a `v1alpha3` route is version `3.0`: its header line is
+`{"envelope":…,"kind":"header","version":"3.0"}`, a `stop` and a `covered`
+line add `project_id`, `scope` and `subject`, and a `lift` line names `scope`
+and `subject` in place of `run_id` and holds a `v1alpha3` lift. This release
+serves scope `run` alone, whose subject is the line's `run_id`; a rule, a
+line or a lift of scope `agent` or `principal` is read and refused. A
+header's digest is `sha256:` and the lowercase hex SHA-256 of its signed
+body. Every line of a list is of one version, and a `3.0` line is refused
+under a `v1alpha1` route, as a `1.0` or a `2.0` one is under a `v1alpha3`
+route.
 
 ### The codes
 
@@ -1494,10 +1506,10 @@ may write where they are read ([status.md](status.md)). A test in
 | Approval answer | an operator's answer in `approvals.inbox_dir` | the authorizer is asked about the held call's tenant, `tenant_id`, and its project, and a grant matches both exactly | `internal/gateway/authority.go` `Pipeline.judgeEnvelope` `internal/operators/authorize.go` `rosterAuthorizer.Authorize` | `internal/gateway` `TestBobsAnswerResumesNothingAndAlicesOnce` `internal/operators` `TestTwoOperatorsEachActOnlyWhereTheirGrantsReach` |
 | Pause file | `pause.file` of version `4`; `3` is refused, naming `pause sign` | its tenant is `tenant_id`, and its project, `plane_id` and file the plane's | `internal/pause/signedpause/judge.go` `Authority.Judge` `Binding.Check` | `internal/pause/signedpause` `TestNoOneButAPermittedOperatorPausesOrLifts` `TestTheJudgeRefusesADocumentOfAnotherBinding` `TestACopyBetweenTwoPlanesOfOneProjectIsRefused` |
 | Run record | a `3.0` record in `records/` of `runs.dir` | its tenant is the listener's and its project the plane's | `internal/runs/signedruns/judge.go` `Authority.Judge` | `internal/runs/signedruns` `TestBothJudgesTakeOnlyAnOperatorOfThePlanesProject` |
-| Route | `reaction.route` of `v1alpha2` | its tenant is the listener's, and its project and file the plane's | `internal/gatewayconfig/reaction.go` `Config.CheckRoute` `internal/reaction/signed.go` `vouchedWithin` | `internal/gatewayconfig` `TestARouteIsOfTheListenersTenant` `TestARouteIsOfTheAuthoritysFormatAndThePlanesProject` `internal/reaction` `TestASignedRouteIsRefusedWithItsCause` |
-| Stop list header | the `2.0` header of `reaction.stops` | its tenant and project are the route's | `internal/reaction/header2.go` `judgeSignedHeader` | `internal/reaction` `TestASignedListIsRefusedAndNeverReadAsNoStops` |
+| Route | `reaction.route` of `v1alpha3`; `v1alpha2` is refused, naming `route sign` | its tenant is the listener's, and its project, `plane_id` and file the plane's | `internal/gatewayconfig/reaction.go` `Config.CheckRoute` `internal/reaction/signed.go` `vouchedWithin` | `internal/gatewayconfig` `TestARouteIsOfTheListenersTenant` `TestARouteIsOfTheAuthoritysFormatAndThePlanesProject` `internal/reaction` `TestASignedRouteIsRefusedWithItsCause` |
+| Stop list header | the `3.0` header of `reaction.stops`; `2.0` is refused, naming `stops init --carry` | its tenant and project are the route's, and its `plane_id` and file the plane's | `internal/reaction/header2.go` `judgeSignedHeader` `internal/reaction/signed.go` `vouchedWithin` | `internal/reaction` `TestASignedListIsRefusedAndNeverReadAsNoStops` `TestEachSignedKindIsBoundToItsPlane` |
 | Stop and covered lines | each line of that list | a stop's project, and a covered line's tenant and project, are the route's | `internal/reaction/permits.go` `Route.Permits` `internal/reaction/judge.go` `judging.coveredLine` | `internal/reaction` `TestASignedRoutePermitsOnlyAStopOfItsProjectAndScope` `TestASignedListIsRefusedAndNeverReadAsNoStops` |
-| Lift | a `v1alpha2` lift line | its tenant and project are the route's | `internal/reaction/lift2.go` `verifySignedLiftLine` | `internal/reaction` `TestASignedListIsRefusedAndNeverReadAsNoStops` |
+| Lift | a `v1alpha3` lift line | its tenant and project are the route's, and its `plane_id` and file the plane's | `internal/reaction/lift3.go` `verifySignedLiftLineV3` | `internal/reaction` `TestASignedListIsRefusedAndNeverReadAsNoStops` `TestEachSignedKindIsBoundToItsPlane` |
 | Policy bundle and statement | `policy.bundle_file` and `policy.statement_file`, signed by the pinned policy and freshness keys | none: a bundle names no tenant or project; its id has to be `policy.bundle_id` | `internal/policy/holder.go` `Holder.loadPinned` | `internal/policy` `TestInstallUnconfirmedHoldsToTheFloor` |
 | Route under a route key | outside `signed`, a `v1alpha1` route signed by `reaction.public_key`, and its lifts | tenant only: the route's tenant is the listener's, and a stop's the route's; such a route names no project | `internal/gatewayconfig/reaction.go` `Config.CheckRoute` `internal/reaction/permits.go` `Route.Permits` | `internal/gatewayconfig` `TestARouteIsOfTheListenersTenant` `internal/reaction` `TestJudgeHoldsEveryStopToTheRoute` |
 

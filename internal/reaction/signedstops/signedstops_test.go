@@ -98,7 +98,7 @@ func newFixture(t *testing.T) *fixture {
 	if err := os.Mkdir(filepath.Join(base, "stops"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if f.plane, err = signedstops.PlaneOf("t1", "A", filepath.Join(base, "route.json"), filepath.Join(base, "stops"), stoplist.FileName); err != nil {
+	if f.plane, err = signedstops.PlaneOf("plane-a", "t1", "A", filepath.Join(base, "route.json"), filepath.Join(base, "stops"), stoplist.FileName); err != nil {
 		t.Fatal(err)
 	}
 	return f
@@ -236,5 +236,26 @@ func TestPortsThatGiveNoAnswerAreUnavailableNotARefusal(t *testing.T) {
 	}
 	if _, err := signedstops.NewRoster(f.roster, reaction.Plane{Tenant: "t1", Project: "A"}); !errors.Is(err, signedstops.ErrOptions) {
 		t.Fatalf("a plane with no files: %v", err)
+	}
+}
+
+// TestAPlaneWithNoIDIsRefused: neither voucher takes a plane that names no
+// id, and PlaneOf makes none; the fixture's plane is what PlaneOf makes of
+// its id and paths.
+func TestAPlaneWithNoIDIsRefused(t *testing.T) {
+	f := newFixture(t)
+	noID := f.plane
+	noID.ID = ""
+	if _, err := signedstops.NewRoster(f.roster, noID); !errors.Is(err, signedstops.ErrOptions) {
+		t.Fatalf("a roster voucher of a plane with no id: %v", err)
+	}
+	if _, err := signedstops.NewPorts(f.authn, f.authz, noID); !errors.Is(err, signedstops.ErrOptions) {
+		t.Fatalf("a ports voucher of a plane with no id: %v", err)
+	}
+	if _, err := signedstops.PlaneOf("", "t1", "A", f.plane.RouteFile, filepath.Dir(f.plane.ListFile), stoplist.FileName); !errors.Is(err, signedstops.ErrOptions) {
+		t.Fatalf("PlaneOf with no plane id: %v", err)
+	}
+	if p, err := signedstops.PlaneOf("plane-a", "t1", "A", f.plane.RouteFile, filepath.Dir(f.plane.ListFile), stoplist.FileName); err != nil || p != f.plane {
+		t.Fatalf("PlaneOf of the fixture's plane: %+v, %v", p, err)
 	}
 }

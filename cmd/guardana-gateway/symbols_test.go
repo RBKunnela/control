@@ -56,6 +56,7 @@ var (
 		brand.ModulePath + "/internal/reaction.CheckCarrySource",
 		brand.ModulePath + "/internal/reaction.VerifyCarrySource",
 		brand.ModulePath + "/internal/reaction.JudgeCarrySource",
+		brand.ModulePath + "/internal/reaction.VerifySignedCarrySource",
 	}
 	gatewayHolds = []string{
 		brand.ModulePath + "/internal/approvals.(*Plane)",

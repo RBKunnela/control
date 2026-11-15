@@ -48,11 +48,15 @@ const (
 	VouchLift
 )
 
-// Plane is the one plane signed documents are judged for: its tenant and
-// project, and the route file and stop list each document is bound to, as
-// absolute, clean paths with every link on the way to their directory
-// resolved.
+// SignedKinds is every signed format, in the order declared.
+func SignedKinds() []SignedKind { return []SignedKind{VouchRoute, VouchHeader, VouchLift} }
+
+// Plane is the one plane signed documents are judged for: its id, its
+// tenant and project, and the route file and stop list each document is
+// bound to, as absolute, clean paths with every link on the way to their
+// directory resolved.
 type Plane struct {
+	ID                  string
 	Tenant, Project     string
 	RouteFile, ListFile string
 }
@@ -86,7 +90,7 @@ type ContextVoucher interface {
 // The refusals of a signed document as a whole, whatever its format.
 const (
 	ErrNoVoucher  Error = "reaction: a signed format is judged with no voucher for its plane"
-	ErrOtherPlane Error = "reaction: the signed document names another tenant or project than the plane's"
+	ErrOtherPlane Error = "reaction: the signed document names another plane, tenant or project than the plane's"
 	ErrOtherFile  Error = "reaction: the signed document is bound to another file than the plane reads"
 	ErrUnvouched  Error = "reaction: no operator granted the act signed the document"
 	// ErrRouteUnvouched is a route a poll asked the voucher about again and
@@ -124,28 +128,28 @@ func signedBody(env Envelope, payloadType string) ([]byte, error) {
 	return body, nil
 }
 
-// vouched holds tenant, project and file to v's plane, the file to the
-// route's or the list's as want names, and asks v who signed env for kind.
-func vouched(v Voucher, kind SignedKind, env Envelope, tenant, project, file string) (Signer, error) {
-	return vouchedWithin(context.Background(), v, kind, env, tenant, project, file)
+// binding is what a signed body names of the plane it was signed for, and
+// the format of the route it is judged under: a v1alpha2 route, its header
+// and its lifts name no plane.
+type binding struct {
+	format                       RouteFormat
+	plane, tenant, project, file string
+}
+
+// vouched holds b to v's plane, the file to the route's or the list's as
+// kind names, and asks v who signed env for kind.
+func vouched(v Voucher, kind SignedKind, env Envelope, b binding) (Signer, error) {
+	return vouchedWithin(context.Background(), v, kind, env, b)
 }
 
 // vouchedWithin is vouched held to ctx: an ended ctx, or an answer that came
 // after it ended, is ErrUnanswered, and a ContextVoucher is asked under ctx.
-func vouchedWithin(ctx context.Context, v Voucher, kind SignedKind, env Envelope, tenant, project, file string) (Signer, error) {
+func vouchedWithin(ctx context.Context, v Voucher, kind SignedKind, env Envelope, b binding) (Signer, error) {
 	if v == nil {
 		return Signer{}, ErrNoVoucher
 	}
-	p := v.Plane()
-	if tenant != p.Tenant || project != p.Project {
-		return Signer{}, ErrOtherPlane
-	}
-	want := p.ListFile
-	if kind == VouchRoute {
-		want = p.RouteFile
-	}
-	if want == "" || file != want {
-		return Signer{}, fmt.Errorf("%w: it names %q, and the plane reads %q", ErrOtherFile, file, want)
+	if err := b.within(v.Plane(), kind); err != nil {
+		return Signer{}, err
 	}
 	if err := ctx.Err(); err != nil {
 		return Signer{}, fmt.Errorf("%w: %w: %w", ErrUnvouched, ErrUnanswered, err)
@@ -166,14 +170,53 @@ func vouchedWithin(ctx context.Context, v Voucher, kind SignedKind, env Envelope
 	return s, nil
 }
 
+// within refuses b unless it names p's tenant, project and plane, and the
+// file p reads for kind.
+func (b binding) within(p Plane, kind SignedKind) error {
+	if b.tenant != p.Tenant || b.project != p.Project {
+		return ErrOtherPlane
+	}
+	if err := samePlane(p, b); err != nil {
+		return err
+	}
+	want := p.ListFile
+	if kind == VouchRoute {
+		want = p.RouteFile
+	}
+	if want == "" || b.file != want {
+		return fmt.Errorf("%w: it names %q, and the plane reads %q", ErrOtherFile, b.file, want)
+	}
+	return nil
+}
+
+// samePlane refuses b unless p names a plane and b names that plane: a
+// v1alpha3 document its id, and a v1alpha2 one, which only a carry reads,
+// none.
+func samePlane(p Plane, b binding) error {
+	if p.ID == "" {
+		return fmt.Errorf("%w: the plane names no id", ErrOtherPlane)
+	}
+	switch b.format {
+	case FormatV1Alpha3:
+		if b.plane == p.ID {
+			return nil
+		}
+	case FormatV1Alpha2Carry:
+		if b.plane == "" {
+			return nil
+		}
+	}
+	return ErrOtherPlane
+}
+
 // vouchedDoc is a signed document of a list a voucher took: its line, kind
-// and envelope, the tenant, project and file its body names, and its signer.
+// and envelope, what its body names of its plane, and its signer.
 type vouchedDoc struct {
-	line                  int64
-	kind                  SignedKind
-	env                   Envelope
-	tenant, project, file string
-	signer                Signer
+	line   int64
+	kind   SignedKind
+	env    Envelope
+	bound  binding
+	signer Signer
 }
 
 // took records d unless s holds a document of its kind and signer already.
@@ -188,11 +231,15 @@ func (s *seen) took(d vouchedDoc) {
 // it no longer takes from the same signer, or cannot answer about, as the
 // route's or the line's refusal when it was first judged.
 func vouchAgain(ctx context.Context, route Route, s *seen) error {
-	if !route.signed {
+	switch route.format {
+	case FormatV1Alpha1:
 		return nil
+	case FormatV1Alpha2Carry, FormatV1Alpha3:
+	default:
+		return fmt.Errorf("%w: no route was read", ErrListRoute)
 	}
-	if err := sameSigner(ctx, route.voucher, vouchedDoc{kind: VouchRoute, env: route.env, tenant: route.tenantID,
-		project: route.projectID, file: route.file, signer: route.signer}); err != nil {
+	if err := sameSigner(ctx, route.voucher, vouchedDoc{kind: VouchRoute, env: route.env, bound: route.binding(),
+		signer: route.signer}); err != nil {
 		return fmt.Errorf("the route: %w: %w", ErrRouteUnvouched, err)
 	}
 	if s == nil {
@@ -214,7 +261,7 @@ func vouchAgain(ctx context.Context, route Route, s *seen) error {
 
 // sameSigner refuses d unless v, asked within ctx, takes it from its signer.
 func sameSigner(ctx context.Context, v Voucher, d vouchedDoc) error {
-	who, err := vouchedWithin(ctx, v, d.kind, d.env, d.tenant, d.project, d.file)
+	who, err := vouchedWithin(ctx, v, d.kind, d.env, d.bound)
 	if err == nil && who != d.signer {
 		err = fmt.Errorf("%w: the key now names %q, not %q", ErrUnvouched, who.Subject, d.signer.Subject)
 	}
@@ -235,4 +282,9 @@ func boundFile(raw []byte) (string, bool) {
 		}
 	}
 	return s, true
+}
+
+// binding is what r's body names of its plane.
+func (r Route) binding() binding {
+	return binding{format: r.format, plane: r.planeID, tenant: r.tenantID, project: r.projectID, file: r.file}
 }

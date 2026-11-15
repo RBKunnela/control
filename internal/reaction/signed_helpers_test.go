@@ -14,6 +14,7 @@ import (
 
 // The plane every signed test judges for.
 const (
+	sPlane     = "plane-a"
 	sTenant    = "acme"
 	sProject   = "shop"
 	sRouteFile = "/plane/route.json"
@@ -38,11 +39,14 @@ type fakeVoucher struct {
 	deny       map[reaction.SignedKind]bool
 	asked      map[reaction.SignedKind]int
 	unanswered bool
+	// blankAfter, when set, empties the plane's id once a document of that
+	// kind was vouched for.
+	blankAfter reaction.SignedKind
 }
 
 func newVoucher() *fakeVoucher {
 	return &fakeVoucher{
-		plane: reaction.Plane{Tenant: sTenant, Project: sProject, RouteFile: sRouteFile, ListFile: sListFile},
+		plane: reaction.Plane{ID: sPlane, Tenant: sTenant, Project: sProject, RouteFile: sRouteFile, ListFile: sListFile},
 		deny:  map[reaction.SignedKind]bool{}, asked: map[reaction.SignedKind]int{},
 	}
 }
@@ -70,12 +74,15 @@ func (f *fakeVoucher) Vouch(kind reaction.SignedKind, env reaction.Envelope) (re
 	if err := bundle.VerifyBytesAs(types[kind], env.Payload, sig.Signature, id, bundle.Keyring{id: pubOf(operatorKey())}); err != nil {
 		return reaction.Signer{}, err
 	}
+	if kind == f.blankAfter {
+		f.plane.ID = ""
+	}
 	return reaction.Signer{Subject: "alice", KeyID: id}, nil
 }
 
-// signedRouteDoc is a v1alpha2 route as an operator writes it, with PROJECT
-// in place of the project.
-const signedRouteDoc = `{"kind":"reaction-route/v1alpha2","route_id":"refunds","serial":7,"tenant_id":"acme",
+// signedRouteDoc is a v1alpha3 route as an operator writes it, with PLANE
+// and PROJECT in place of the plane id and the project.
+const signedRouteDoc = `{"kind":"reaction-route/v1alpha3","plane_id":"PLANE","route_id":"refunds","serial":7,"tenant_id":"acme",
  "project_id":"PROJECT","rules":[{"procedure_id":"refund","version":"3","digest":"` + procDigest + `",
  "rule_id":"STEP_OUTSIDE_PROCEDURE","rule_version":"1","scope":"run","expires_seconds":3600}]}`
 
@@ -90,10 +97,19 @@ func envelopeOf(t testing.TB, payloadType string, body []byte, key ed25519.Priva
 	return reaction.Envelope{PayloadType: payloadType, Payload: body, Signatures: []reaction.Signature{{KeyID: keyID, Signature: sig}}}
 }
 
-// routeEnvelope is the route of project bound to file, signed by key.
+// routeEnvelope is the route of the plane's id and project bound to file,
+// signed by key.
 func routeEnvelope(t testing.TB, project, file string, key ed25519.PrivateKey) reaction.Envelope {
 	t.Helper()
-	body, err := reaction.SignedRouteBody([]byte(strings.ReplaceAll(signedRouteDoc, "PROJECT", project)), keyIDOf(key), file)
+	return planeRouteEnvelope(t, sPlane, project, file, key)
+}
+
+// planeRouteEnvelope is the route of plane and project bound to file, signed
+// by key.
+func planeRouteEnvelope(t testing.TB, plane, project, file string, key ed25519.PrivateKey) reaction.Envelope {
+	t.Helper()
+	doc := strings.NewReplacer("PLANE", plane, "PROJECT", project).Replace(signedRouteDoc)
+	body, err := reaction.SignedRouteBody([]byte(doc), keyIDOf(key), file)
 	if err != nil {
 		t.Fatalf("SignedRouteBody: %v", err)
 	}
@@ -111,14 +127,20 @@ func vouchedRoute(t testing.TB, v reaction.Voucher) reaction.Route {
 
 // headerOpts varies a signed header from the one the plane takes.
 type headerOpts struct {
-	project, file string
-	key           ed25519.PrivateKey
+	plane, tenant, project, file string
+	key                          ed25519.PrivateKey
 }
 
-// signedHeaderLine is a 2.0 header line under r, and the head digest its
+// signedHeaderLine is a 3.0 header line under r, and the head digest its
 // body has.
 func signedHeaderLine(t testing.TB, r reaction.Route, o headerOpts) ([]byte, string) {
 	t.Helper()
+	if o.plane == "" {
+		o.plane = sPlane
+	}
+	if o.tenant == "" {
+		o.tenant = sTenant
+	}
 	if o.project == "" {
 		o.project = sProject
 	}
@@ -129,7 +151,7 @@ func signedHeaderLine(t testing.TB, r reaction.Route, o headerOpts) ([]byte, str
 		o.key = operatorKey()
 	}
 	h := reaction.Header{ListID: "lst-1", RouteID: r.ID(), RouteSerial: r.Serial(), RouteDigest: r.Digest(),
-		Signed: reaction.HeaderSigned{KeyID: keyIDOf(o.key), TenantID: sTenant, ProjectID: o.project, File: o.file, Serial: 1}}
+		Signed: reaction.HeaderSigned{KeyID: keyIDOf(o.key), PlaneID: o.plane, TenantID: o.tenant, ProjectID: o.project, File: o.file, Serial: 1}}
 	body, err := reaction.HeaderBody(h)
 	if err != nil {
 		t.Fatalf("HeaderBody: %v", err)
@@ -143,7 +165,7 @@ func signedHeaderLine(t testing.TB, r reaction.Route, o headerOpts) ([]byte, str
 
 var sCreated = time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 
-// signedStop is a 2.0 stop of run-1 for finding f-1, of project.
+// signedStop is a 3.0 stop of run-1 for finding f-1, of project.
 func signedStop(t testing.TB, project string) []byte {
 	t.Helper()
 	return signedStopOf(t, project, "f-1")
@@ -152,7 +174,7 @@ func signedStop(t testing.TB, project string) []byte {
 func signedStopOf(t testing.TB, project, finding string) []byte {
 	t.Helper()
 	line, err := reaction.Stop{
-		EntryID: reaction.EntryID(finding), TenantID: sTenant, ProjectID: project, Scope: reaction.ScopeRun,
+		EntryID: reaction.EntryID(finding), TenantID: sTenant, ProjectID: project, Scope: reaction.ScopeRun, Subject: "run-1",
 		RunID: "run-1", FindingID: finding, ProcedureID: "refund", ProcedureVersion: "3", ProcedureDigest: procDigest,
 		RuleID: "STEP_OUTSIDE_PROCEDURE", RuleVersion: "1", CreatedAt: sCreated, ExpiresAt: sCreated.Add(30 * time.Minute),
 	}.Marshal()
@@ -173,14 +195,21 @@ func signedLiftLine(t testing.TB, head, project string, key ed25519.PrivateKey) 
 // and whose line names run through line through.
 func liftLineAs(t testing.TB, head, project string, key ed25519.PrivateKey, run string, through int64) []byte {
 	t.Helper()
-	l := reaction.SignedLift{KeyID: keyIDOf(key), ListHead: head, RunID: "run-1", ThroughLine: 2,
-		TenantID: sTenant, Project: project, File: sListFile}
+	l := reaction.SignedLiftV3{KeyID: keyIDOf(key), PlaneID: sPlane, ListHead: head, Scope: reaction.ScopeRun, Subject: "run-1",
+		ThroughLine: 2, TenantID: sTenant, Project: project, File: sListFile}
+	return signedLiftLineOf(t, l, key, run, through)
+}
+
+// liftLineOf is the 3.0 lift line of run through line through holding l
+// signed by key.
+func signedLiftLineOf(t testing.TB, l reaction.SignedLiftV3, key ed25519.PrivateKey, run string, through int64) []byte {
+	t.Helper()
 	body, err := l.Payload()
 	if err != nil {
-		t.Fatalf("SignedLift.Payload: %v", err)
+		t.Fatalf("SignedLiftV3.Payload: %v", err)
 	}
 	env := envelopeOf(t, reaction.SignedLiftPayloadType, body, key, keyIDOf(key))
-	line, err := reaction.LiftLine{RunID: run, ThroughLine: through, Envelope: env}.Marshal()
+	line, err := reaction.LiftLine{Scope: reaction.ScopeRun, Subject: run, ThroughLine: through, Envelope: env}.Marshal()
 	if err != nil {
 		t.Fatalf("LiftLine.Marshal: %v", err)
 	}

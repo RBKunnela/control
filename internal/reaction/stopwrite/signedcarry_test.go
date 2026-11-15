@@ -50,7 +50,7 @@ func TestACarryJudgesTheOldListsHeaderAndLiftsAsThePlaneDoes(t *testing.T) {
 	forged := emptyDir(t)
 	r := signedRouteIn(t, forged, 3)
 	body, err := reaction.HeaderBody(reaction.Header{ListID: "lst-forged", RouteID: r.ID(), RouteSerial: r.Serial(), RouteDigest: r.Digest(),
-		Signed: reaction.HeaderSigned{KeyID: strangerID, TenantID: "acme", ProjectID: "shop", File: listPath(forged), Serial: 1}})
+		Signed: reaction.HeaderSigned{KeyID: strangerID, PlaneID: "plane-a", TenantID: "acme", ProjectID: "shop", File: listPath(forged), Serial: 1}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,13 +81,14 @@ func expectForgedLiftLeftOut(t *testing.T, strangerID string) {
 	if _, _, err := appendFinding(bg, from, fromRoute, signedStop(t, "f-1", "run-1", "shop", clock0), clock0); err != nil {
 		t.Fatal(err)
 	}
-	lift := reaction.SignedLift{KeyID: strangerID, ListHead: h.Signed.Digest, RunID: "run-1", ThroughLine: 2,
-		TenantID: "acme", Project: "shop", File: listPath(from)}
+	lift := reaction.SignedLiftV3{KeyID: strangerID, PlaneID: "plane-a", ListHead: h.Signed.Digest, Scope: reaction.ScopeRun,
+		Subject: "run-1", ThroughLine: 2, TenantID: "acme", Project: "shop", File: listPath(from)}
 	liftBody, err := lift.Payload()
 	if err != nil {
 		t.Fatal(err)
 	}
-	liftLine, err := reaction.LiftLine{RunID: "run-1", ThroughLine: 2, Envelope: envelopeBy(t, strangerKey(), reaction.SignedLiftPayloadType, liftBody)}.Marshal()
+	liftLine, err := reaction.LiftLine{Scope: reaction.ScopeRun, Subject: "run-1", ThroughLine: 2,
+		Envelope: envelopeBy(t, strangerKey(), reaction.SignedLiftPayloadType, liftBody)}.Marshal()
 	if err != nil {
 		t.Fatal(err)
 	}

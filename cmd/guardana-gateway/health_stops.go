@@ -40,7 +40,7 @@ type stopsAnswer struct {
 	UnheldRuns []string       `json:"unheld_runs"`
 	UnreadRuns []string       `json:"unread_runs"`
 	Polls      map[string]any `json:"polls,omitempty"`
-	// Signed is a 2.0 list's header serial, and on the whole answer alone
+	// Signed is a signed list's header serial, and on the whole answer alone
 	// who signed it and the route.
 	Signed *stopsSigned `json:"signed,omitempty"`
 }

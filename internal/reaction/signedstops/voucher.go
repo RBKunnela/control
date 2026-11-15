@@ -25,7 +25,7 @@ func (e Error) Error() string { return string(e) }
 
 // The refusals of this package.
 const (
-	ErrOptions         Error = "signedstops: a voucher needs its ports or roster, a tenant, a project and both files"
+	ErrOptions         Error = "signedstops: a voucher needs its ports or roster, a plane id, a tenant, a project and both files"
 	ErrUnauthenticated Error = "signedstops: no operator key of the roster signed the document for its act"
 	ErrUnauthorized    Error = "signedstops: the operator holds no grant over the plane's tenant and project at the act's level"
 	ErrAuthority       Error = "signedstops: the operator ports could not answer"
@@ -61,10 +61,11 @@ func BindingOf(path string) (string, error) {
 	return filepath.Join(dir, filepath.Base(abs)), nil
 }
 
-// PlaneOf is the plane of tenant and project whose route file and stop list
-// directory are routeFile and stopsDir, each bound as BindingOf says.
-func PlaneOf(tenant, project, routeFile, stopsDir, listName string) (reaction.Plane, error) {
-	if tenant == "" || project == "" || routeFile == "" || stopsDir == "" {
+// PlaneOf is the plane planeID of tenant and project whose route file and
+// stop list directory are routeFile and stopsDir, each bound as BindingOf
+// says.
+func PlaneOf(planeID, tenant, project, routeFile, stopsDir, listName string) (reaction.Plane, error) {
+	if planeID == "" || tenant == "" || project == "" || routeFile == "" || stopsDir == "" {
 		return reaction.Plane{}, ErrOptions
 	}
 	route, err := BindingOf(routeFile)
@@ -75,7 +76,7 @@ func PlaneOf(tenant, project, routeFile, stopsDir, listName string) (reaction.Pl
 	if err != nil {
 		return reaction.Plane{}, fmt.Errorf("the stop list: %w", err)
 	}
-	return reaction.Plane{Tenant: tenant, Project: project, RouteFile: route, ListFile: list}, nil
+	return reaction.Plane{ID: planeID, Tenant: tenant, Project: project, RouteFile: route, ListFile: list}, nil
 }
 
 // Ports vouches through a plane's operator ports: the authenticator for the
@@ -183,7 +184,7 @@ func (r Roster) Vouch(kind reaction.SignedKind, env reaction.Envelope) (reaction
 }
 
 func complete(p reaction.Plane) bool {
-	return p.Tenant != "" && p.Project != "" && p.RouteFile != "" && p.ListFile != ""
+	return p.ID != "" && p.Tenant != "" && p.Project != "" && p.RouteFile != "" && p.ListFile != ""
 }
 
 // IsUnavailable reports whether err is the ports' unavailability rather than

@@ -22,12 +22,15 @@ import (
 	"github.com/guardana/control/internal/reaction/stopwrite"
 )
 
-// rosterRoute reads the v1alpha2 route at path, which routeFlag named, and
-// verifies it with verify against the roster at roster, verified under the
-// trust root at rootKey and usable now, for the plane of the route's tenant
-// and project whose route file is path and whose stop list is in dir; note
-// names the roster.
-func rosterRoute(routeFlag, path, roster, rootKey, dir string, note *rosterNote, verify func(reaction.Envelope, reaction.Voucher) (reaction.Route, error)) (reaction.Route, error) {
+// rosterRoute reads the route an operator signed at path, which routeFlag
+// named, and verifies it with verify against the roster at roster, verified
+// under the trust root at rootKey and usable now, for the plane of the
+// route's tenant and project whose route file is path and whose stop list is
+// in dir; note names the roster. The plane's id is planeID, or with none the
+// one the route names: a v1alpha2 route names none and is refused, naming
+// the command that upgrades it, unless the caller vouches for its plane.
+func rosterRoute(routeFlag, path, roster, rootKey, dir, planeID string, note *rosterNote,
+	verify func(reaction.Envelope, reaction.Voucher) (reaction.Route, error)) (reaction.Route, error) {
 	raw, err := ondisk.ReadRegular(path, reaction.MaxRouteFileBytes, 0)
 	if err != nil {
 		return reaction.Route{}, fmt.Errorf("%s %s: %w", routeFlag, path, err)
@@ -37,17 +40,23 @@ func rosterRoute(routeFlag, path, roster, rootKey, dir string, note *rosterNote,
 		return reaction.Route{}, fmt.Errorf("%s %s: %w", routeFlag, path, err)
 	}
 	if env.PayloadType != reaction.SignedRoutePayloadType {
-		return reaction.Route{}, fmt.Errorf("%s %s: not a v1alpha2 route an operator signed; a v1alpha1 route is verified with --public-key", routeFlag, path)
+		return reaction.Route{}, fmt.Errorf("%s %s: not a route an operator signed; a v1alpha1 route is verified with --public-key", routeFlag, path)
 	}
 	claimed, err := reaction.ParseRoute(env.Payload)
 	if err != nil {
 		return reaction.Route{}, fmt.Errorf("%s %s: %w", routeFlag, path, err)
 	}
+	if planeID == "" {
+		if claimed.Format() != reaction.FormatV1Alpha3 {
+			return reaction.Route{}, fmt.Errorf("%s %s: %w", routeFlag, path, reaction.ErrRouteUpgrade)
+		}
+		planeID = claimed.PlaneID()
+	}
 	doc, err := readRoster(roster, rootKey, note)
 	if err != nil {
 		return reaction.Route{}, err
 	}
-	plane, err := signedstops.PlaneOf(claimed.TenantID(), claimed.ProjectID(), path, dir, stoplist.FileName)
+	plane, err := signedstops.PlaneOf(planeID, claimed.TenantID(), claimed.ProjectID(), path, dir, stoplist.FileName)
 	if err != nil {
 		return reaction.Route{}, fmt.Errorf("%s %s: %w", routeFlag, path, err)
 	}
@@ -72,7 +81,7 @@ func readOperatorKey(path string) (ed25519.PrivateKey, func(), error) {
 	return key, func() { clear(key) }, nil
 }
 
-// headerSigner is the signer of a 2.0 header over key.
+// headerSigner is the signer of a 3.0 header over key.
 func headerSigner(key ed25519.PrivateKey) stopwrite.Signer {
 	return stopwrite.Signer{KeyID: policykey.KeyID(publicHalf(key)), Sign: func(payloadType string, body []byte) ([]byte, error) {
 		return bundle.SignBytesAs(payloadType, body, key)
@@ -87,15 +96,17 @@ func headerSignedLine(command string, h reaction.Header) string {
 	if s.Previous != "" {
 		previous = s.Previous
 	}
-	return fmt.Sprintf("%s: %s: signed list header %s serial %d for tenant %s project %s of %s, route %s serial %d, previous head %s",
-		brand.CLI, command, oneLine(h.ListID), s.Serial, oneLine(s.TenantID), oneLine(s.ProjectID), oneLine(s.File),
+	return fmt.Sprintf("%s: %s: signed list header %s serial %d for plane %s tenant %s project %s of %s, route %s serial %d, previous head %s",
+		brand.CLI, command, oneLine(h.ListID), s.Serial, oneLine(s.PlaneID), oneLine(s.TenantID), oneLine(s.ProjectID), oneLine(s.File),
 		oneLine(h.RouteID), h.RouteSerial, previous)
 }
 
-// stopsInitSigned starts a 2.0 list in dir under a v1alpha2 route, or
-// carries the list in --carry into it. A carry judges the old list, its
-// header and every lift through the roster, before its stops are signed
-// again under the new header. Each says on standard error what it signed.
+// stopsInitSigned starts a 3.0 list in dir under a v1alpha3 route, or
+// carries the list in --carry, a 2.0 list of a v1alpha2 route or a 3.0 list,
+// into it. A carry judges the old list, its header and every lift through
+// the roster, for the new route's plane, which the operator vouches the old
+// list is, before its stops are signed again under the new header. Each says
+// on standard error what it signed.
 func stopsInitSigned(a stopsInitArgs, dir string, now time.Time, stdout, stderr io.Writer) int {
 	note := &rosterNote{w: stderr, command: stopsInitName}
 	route, err := a.verified(dir, note)
@@ -104,7 +115,8 @@ func stopsInitSigned(a stopsInitArgs, dir string, now time.Time, stdout, stderr 
 	}
 	var from reaction.Route
 	if a.carry != "" {
-		if from, err = rosterRoute("--carry-route", a.carryRoute, a.roster, a.rootKey, a.carry, note, reaction.VerifySignedCarrySource); err != nil {
+		if from, err = rosterRoute("--carry-route", a.carryRoute, a.roster, a.rootKey, a.carry, route.PlaneID(), note,
+			reaction.VerifySignedCarrySource); err != nil {
 			return fail(stderr, stopsInitName, err)
 		}
 	}
@@ -183,8 +195,9 @@ func stopsLiftSigned(a stopsLiftArgs, dir string, now time.Time, stdout, stderr 
 		return fail(stderr, stopsLiftName, err)
 	}
 	defer release()
-	lift := reaction.SignedLift{
-		KeyID: policykey.KeyID(publicHalf(key)), ListHead: list.Header().Signed.Digest, RunID: a.run, ThroughLine: through,
+	lift := reaction.SignedLiftV3{
+		KeyID: policykey.KeyID(publicHalf(key)), PlaneID: route.PlaneID(), ListHead: list.Header().Signed.Digest,
+		Scope: reaction.ScopeRun, Subject: a.run, ThroughLine: through,
 		TenantID: route.TenantID(), Project: route.ProjectID(), File: route.Plane().ListFile,
 	}
 	body, err := lift.Payload()
@@ -199,12 +212,14 @@ func stopsLiftSigned(a stopsLiftArgs, dir string, now time.Time, stdout, stderr 
 		Signatures: []reaction.Signature{{KeyID: lift.KeyID, Signature: sig}}}
 	ctx, cancel := context.WithTimeout(context.Background(), stopsLockWait)
 	defer cancel()
-	n, err := stopwrite.AppendLift(ctx, dir, route, reaction.LiftLine{RunID: a.run, ThroughLine: through, Envelope: env}, now)
+	n, err := stopwrite.AppendLift(ctx, dir, route,
+		reaction.LiftLine{Scope: reaction.ScopeRun, Subject: a.run, ThroughLine: through, Envelope: env}, now)
 	if err != nil {
 		return fail(stderr, stopsLiftName, err)
 	}
-	writeLine(stderr, fmt.Sprintf("%s: %s: signed lift of run %s through line %d of list head %s for tenant %s project %s of %s",
-		brand.CLI, stopsLiftName, oneLine(a.run), through, lift.ListHead, oneLine(lift.TenantID), oneLine(lift.Project), oneLine(lift.File)))
+	writeLine(stderr, fmt.Sprintf("%s: %s: signed lift of run %s through line %d of list head %s for plane %s tenant %s project %s of %s",
+		brand.CLI, stopsLiftName, oneLine(a.run), through, lift.ListHead, oneLine(lift.PlaneID), oneLine(lift.TenantID),
+		oneLine(lift.Project), oneLine(lift.File)))
 	return emit(stdout, stderr, stopsLiftName,
 		[]string{fmt.Sprintf("lift line %d run %s through line %d", n, oneLine(a.run), through)}, dir)
 }

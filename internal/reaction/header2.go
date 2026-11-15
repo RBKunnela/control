@@ -11,45 +11,51 @@ import (
 	"github.com/guardana/control/internal/policykey"
 )
 
-// SignedHeaderKind is the kind of the body a 2.0 header's envelope signs.
-const SignedHeaderKind = "reaction-list-header/2.0"
+// The kinds of the body a header's envelope signs: a 2.0 header's, which
+// names no plane, and a 3.0 header's.
+const (
+	SignedHeaderKind   = "reaction-list-header/2.0"
+	SignedHeaderKindV3 = "reaction-list-header/3.0"
+)
 
-// MaxHeaderEnvelopeBytes bounds the envelope a 2.0 header line carries. The
-// base64 of a body of MaxSignedBytes and one signature fit within it.
+// MaxHeaderEnvelopeBytes bounds the envelope a signed header line, or a 3.0
+// lift line, carries. The base64 of a body of MaxSignedBytes and one
+// signature fit within it.
 const MaxHeaderEnvelopeBytes = 32768
 
 const memberPrevious = "previous"
 
-// HeaderSigned is what an operator signs of a 2.0 header besides the list
-// and route it names: the signing key, the plane's tenant and project, the
-// stop list file it is bound to, its serial, which only rises from one list
-// to the next, and, for a list carried from another, the previous list's
-// head digest. Digest is this header's own head digest, over the body as
-// signed: the stop list floor keeps it, and a lift names it.
+// HeaderSigned is what an operator signs of a 2.0 or 3.0 header besides the
+// list and route it names: the signing key, the plane's id (in 3.0 alone),
+// tenant and project, the stop list file it is bound to, its serial, which
+// only rises from one list to the next, and, for a list carried from
+// another, the previous list's head digest. Digest is this header's own head
+// digest, over the body as signed: the stop list floor keeps it, and a lift
+// names it.
 type HeaderSigned struct {
-	KeyID, TenantID, ProjectID, File string
-	Serial                           int64
-	Previous                         string
-	Digest                           string
+	KeyID, PlaneID, TenantID, ProjectID, File string
+	Serial                                    int64
+	Previous                                  string
+	Digest                                    string
 }
 
-// The refusals of a 2.0 header in its place.
+// The refusals of a signed header in its place.
 const (
-	ErrHeaderOther    Error = "reaction: the signed header names another tenant, project or stop list file than the route's plane"
+	ErrHeaderOther    Error = "reaction: the signed header names another tenant or project than the route's"
 	ErrHeaderUnsigned Error = "reaction: no operator granted the stop list act signed the header"
 )
 
-// headerMembers is every member of a 2.0 header's body; previous alone is
-// optional.
+// headerMembers is every member of a 2.0 header's body, a 3.0 header's
+// adding plane_id; previous alone is optional.
 var headerMembers = []string{
 	memberKind, memberAlg, memberKeyID, memberListID, memberSerial, memberTenantID, memberProjectID, memberFile,
 	memberRouteID, memberRouteSerial, memberRouteDigest,
 }
 
-// readSignedHeaderLine reads a 2.0 header line, which holds the signed
-// envelope alone, and the header its body names. Nothing checks the
-// signature here: the judge asks the route's voucher.
-func readSignedHeaderLine(o strictjson.Object) (Header, Envelope, error) {
+// readSignedHeaderLine reads a header line of version v, 2.0 or 3.0, which
+// holds the signed envelope alone, and the header its body names. Nothing
+// checks the signature here: the judge asks the route's voucher.
+func readSignedHeaderLine(o strictjson.Object, v string) (Header, Envelope, error) {
 	if err := lineMembers(o, memberEnvelope); err != nil {
 		return Header{}, Envelope{}, err
 	}
@@ -65,17 +71,26 @@ func readSignedHeaderLine(o strictjson.Object) (Header, Envelope, error) {
 	if err != nil {
 		return Header{}, Envelope{}, fmt.Errorf("%w: the header's envelope: %w", ErrLineValue, err)
 	}
-	h, err := readHeaderBody(body)
+	h, err := readHeaderBody(body, v == SignedListVersionV3)
 	if err != nil {
 		return Header{}, Envelope{}, err
 	}
 	return h, env, nil
 }
 
-// readHeaderBody reads a 2.0 header's signed body.
-func readHeaderBody(body []byte) (Header, error) {
+// readHeaderBody reads a 3.0 header's signed body when v3, which
+// signedBody holds to MaxSignedBytes, and a 2.0 header's, held to the bound
+// it was signed under, when not.
+func readHeaderBody(body []byte, v3 bool) (Header, error) {
+	kind, required := SignedHeaderKindV3, append([]string{memberPlaneID}, headerMembers...)
+	if !v3 {
+		kind, required = SignedHeaderKind, headerMembers
+		if n := len(body); n > maxUpgradeBodyBytes {
+			return Header{}, fmt.Errorf("%w: the header's body is %d bytes, limit %d", ErrLineValue, n, maxUpgradeBodyBytes)
+		}
+	}
 	refusals := docRefusals{json: ErrLineJSON, repeated: ErrLineRepeat, kind: ErrLineKind, member: ErrLineMember}
-	o, err := readDoc(body, SignedHeaderKind, refusals, append([]string{memberPrevious}, headerMembers...), headerMembers)
+	o, err := readDoc(body, kind, refusals, append([]string{memberPrevious}, required...), required)
 	if err != nil {
 		return Header{}, err
 	}
@@ -86,11 +101,17 @@ func readHeaderBody(body []byte) (Header, error) {
 	if err := readHeaderSigned(o, &h.Signed); err != nil {
 		return Header{}, err
 	}
+	if v3 {
+		var ok bool
+		if h.Signed.PlaneID, ok = planeIdentifier(o[memberPlaneID]); !ok {
+			return Header{}, fmt.Errorf("%w: %s", ErrLineValue, memberPlaneID)
+		}
+	}
 	h.Signed.Digest = bundle.Digest(body)
 	return h, nil
 }
 
-// readHeaderRoute reads the list and the route a 2.0 header names.
+// readHeaderRoute reads the list and the route a signed header names.
 func readHeaderRoute(o strictjson.Object, h *Header) error {
 	var ok bool
 	if h.ListID, ok = identifier(o[memberListID], MaxListIDBytes); !ok {
@@ -105,8 +126,8 @@ func readHeaderRoute(o strictjson.Object, h *Header) error {
 	return digestOf(o, memberRouteDigest, &h.RouteDigest)
 }
 
-// readHeaderSigned reads what a 2.0 header binds: its serial, key, plane,
-// file and previous head.
+// readHeaderSigned reads what a signed header binds besides its plane id:
+// its serial, key, tenant, project, file and previous head.
 func readHeaderSigned(o strictjson.Object, s *HeaderSigned) error {
 	var ok bool
 	if s.Serial, ok = integer(o[memberSerial], 1, policy.MaxSerial); !ok {
@@ -135,8 +156,9 @@ func readHeaderSigned(o strictjson.Object, s *HeaderSigned) error {
 	return nil
 }
 
-// HeaderBody is the body an operator signs for h, a 2.0 header whose Digest
-// is left out since the body defines it: canonical, refused unless it reads
+// HeaderBody is the body an operator signs for h, a header whose Digest is
+// left out since the body defines it: a 3.0 header's when h names a plane,
+// and a 2.0 header's when it names none; canonical, refused unless it reads
 // back as h.
 func HeaderBody(h Header) ([]byte, error) {
 	s := h.Signed
@@ -145,6 +167,10 @@ func HeaderBody(h Header) ([]byte, error) {
 		memberSerial: s.Serial, memberTenantID: s.TenantID, memberProjectID: s.ProjectID, memberFile: s.File,
 		memberRouteID: h.RouteID, memberRouteSerial: h.RouteSerial, memberRouteDigest: h.RouteDigest,
 	}
+	v3 := s.PlaneID != ""
+	if v3 {
+		members[memberKind], members[memberPlaneID] = SignedHeaderKindV3, s.PlaneID
+	}
 	if s.Previous != "" {
 		members[memberPrevious] = s.Previous
 	}
@@ -152,7 +178,7 @@ func HeaderBody(h Header) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrLineMarshal, canon.ErrUnsupportedValue)
 	}
-	back, err := readHeaderBody(body)
+	back, err := readHeaderBody(body, v3)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrLineMarshal, err)
 	}
@@ -164,11 +190,18 @@ func HeaderBody(h Header) ([]byte, error) {
 	return body, nil
 }
 
-// SignedHeaderLine is the 2.0 header line holding env, its newline left out,
+// SignedHeaderLine is the header line holding env, its newline left out: a
+// 3.0 line when env signs a 3.0 header's body, and a 2.0 line otherwise;
 // refused unless ParseLine reads it back with env.
 func SignedHeaderLine(env Envelope) ([]byte, error) {
+	version := SignedListVersion
+	if o, err := strictjson.ReadObject(env.Payload); err == nil {
+		if kind, _ := strictjson.String(o[memberKind]); kind == SignedHeaderKindV3 {
+			version = SignedListVersionV3
+		}
+	}
 	raw, err := canon.Canonicalize(map[string]any{
-		memberKind: kindHeader, memberVersion: SignedListVersion, memberEnvelope: envelopeMembers(env),
+		memberKind: kindHeader, memberVersion: version, memberEnvelope: envelopeMembers(env),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrLineMarshal, canon.ErrUnsupportedValue)
@@ -183,17 +216,22 @@ func SignedHeaderLine(env Envelope) ([]byte, error) {
 	return raw, nil
 }
 
-// judgeSignedHeader holds a 2.0 header to its route: the same plane's
-// tenant, project and stop list file, and a signer the route's voucher
+// judgeSignedHeader holds a signed header to its route: the same tenant and
+// project, the plane's id and stop list file, and a signer the route's voucher
 // vouches for under the stop list act, asked within ctx.
 func judgeSignedHeader(ctx context.Context, r Route, h Header, env Envelope) (Signer, error) {
 	s := h.Signed
 	if s.TenantID != r.tenantID || s.ProjectID != r.projectID {
 		return Signer{}, ErrHeaderOther
 	}
-	signer, err := vouchedWithin(ctx, r.voucher, VouchHeader, env, s.TenantID, s.ProjectID, s.File)
+	signer, err := vouchedWithin(ctx, r.voucher, VouchHeader, env, s.binding(r.format))
 	if err != nil {
 		return Signer{}, fmt.Errorf("%w: %w", ErrHeaderUnsigned, err)
 	}
 	return signer, nil
+}
+
+// binding is what s names of its plane, judged under a route of format f.
+func (s HeaderSigned) binding(f RouteFormat) binding {
+	return binding{format: f, plane: s.PlaneID, tenant: s.TenantID, project: s.ProjectID, file: s.File}
 }

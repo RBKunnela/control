@@ -28,6 +28,10 @@ func FuzzParseRoute(f *testing.F) {
 	f.Add([]byte(strings.Replace(doc, `"scope": "run"`, `"scope": "agent"`, 1)))
 	f.Add([]byte(strings.Replace(doc, `3600`, `2592001`, 1)))
 	f.Add([]byte(strings.Replace(doc, `"refunds"`, `"ref\ud800unds"`, 1)))
+	signed := routeEnvelope(f, sProject, sRouteFile, operatorKey()).Payload
+	f.Add(signed)
+	f.Add(editedBody(f, signed, map[string]any{"kind": reaction.SignedRouteKind, "plane_id": nil}))
+	f.Add([]byte(strings.Replace(string(signed), `"scope":"run"`, `"scope":"agent"`, 1)))
 	f.Fuzz(func(t *testing.T, raw []byte) {
 		held := bytes.Clone(raw)
 		r, err := reaction.ParseRoute(raw)

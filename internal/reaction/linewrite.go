@@ -25,7 +25,7 @@ const ErrLineMarshal Error = "reaction: the line would not read back as itself"
 // ParseLine reads it back as h.
 func (h Header) Marshal() ([]byte, error) {
 	if h.Signed != (HeaderSigned{}) {
-		return nil, fmt.Errorf("%w: a 2.0 header is the line of its signed envelope (SignedHeaderLine)", ErrLineMarshal)
+		return nil, fmt.Errorf("%w: a signed header is the line of its signed envelope (SignedHeaderLine)", ErrLineMarshal)
 	}
 	return marshalLine(Line{Kind: KindHeader, Header: h}, map[string]any{
 		memberKind: kindHeader, memberVersion: ListVersion, memberListID: h.ListID, memberRouteID: h.RouteID,
@@ -44,9 +44,13 @@ func (s Stop) Marshal() ([]byte, error) {
 		memberRuleVer: s.RuleVersion, memberCreatedAt: policy.FormatIssuedAt(s.CreatedAt),
 		memberExpiresAt: policy.FormatIssuedAt(s.ExpiresAt),
 	}
-	// A 2.0 stop names its project and scope, and a 1.0 stop neither.
-	if s.ProjectID != "" || s.Scope != "" {
+	// A 3.0 stop names its project, scope and subject, a 2.0 stop the first
+	// two, and a 1.0 stop none.
+	if s.ProjectID != "" || s.Scope != "" || s.Subject != "" {
 		members[memberVersion], members[memberProjectID], members[memberScope] = SignedListVersion, s.ProjectID, s.Scope
+	}
+	if s.Subject != "" {
+		members[memberVersion], members[memberSubject] = SignedListVersionV3, s.Subject
 	}
 	return marshalLine(Line{Kind: KindStop, Stop: s}, members)
 }
@@ -58,8 +62,11 @@ func (c Covered) Marshal() ([]byte, error) {
 		memberKind: kindCovered, memberVersion: ListVersion, memberFindingID: c.FindingID,
 		memberTenantID: c.TenantID, memberRunID: c.RunID, memberCreatedAt: policy.FormatIssuedAt(c.CreatedAt),
 	}
-	if c.ProjectID != "" {
+	if c.ProjectID != "" || c.Scope != "" || c.Subject != "" {
 		members[memberVersion], members[memberProjectID] = SignedListVersion, c.ProjectID
+	}
+	if c.Subject != "" {
+		members[memberVersion], members[memberScope], members[memberSubject] = SignedListVersionV3, c.Scope, c.Subject
 	}
 	return marshalLine(Line{Kind: KindCovered, Covered: c}, members)
 }
@@ -67,15 +74,20 @@ func (c Covered) Marshal() ([]byte, error) {
 // Marshal is the lift line, its newline left out, refused unless ParseLine
 // reads it back as l. It checks no signature: Judge does.
 func (l LiftLine) Marshal() ([]byte, error) {
-	version := ListVersion
-	// A lift an operator signed goes in a 2.0 list, and a lift key's in 1.0.
-	if l.Envelope.PayloadType == SignedLiftPayloadType {
-		version = SignedListVersion
-	}
-	return marshalLine(Line{Kind: KindLift, Lift: l}, map[string]any{
-		memberKind: kindLift, memberVersion: version, memberRunID: l.RunID, memberThrough: l.ThroughLine,
+	members := map[string]any{
+		memberKind: kindLift, memberVersion: ListVersion, memberRunID: l.RunID, memberThrough: l.ThroughLine,
 		memberEnvelope: envelopeMembers(l.Envelope),
-	})
+	}
+	// A lift naming a scope goes in a 3.0 list, one an operator signed for
+	// a run in a 2.0 list, and a lift key's in 1.0.
+	switch {
+	case l.Scope != "" || l.Subject != "":
+		delete(members, memberRunID)
+		members[memberVersion], members[memberScope], members[memberSubject] = SignedListVersionV3, l.Scope, l.Subject
+	case l.Envelope.PayloadType == SignedLiftPayloadType:
+		members[memberVersion] = SignedListVersion
+	}
+	return marshalLine(Line{Kind: KindLift, Lift: l}, members)
 }
 
 // envelopeMembers is env as a line spells it.
@@ -119,10 +131,13 @@ func sameLine(a, b Line) bool {
 		return sameStop(a.Stop, b.Stop)
 	case KindCovered:
 		x, y := a.Covered, b.Covered
-		return x.FindingID == y.FindingID && x.TenantID == y.TenantID && x.RunID == y.RunID && x.ProjectID == y.ProjectID &&
-			x.CreatedAt.Equal(y.CreatedAt)
+		times := x.CreatedAt.Equal(y.CreatedAt)
+		x.CreatedAt, y.CreatedAt = time.Time{}, time.Time{}
+		return times && x == y
 	case KindLift:
-		return a.Lift.RunID == b.Lift.RunID && a.Lift.ThroughLine == b.Lift.ThroughLine && sameEnvelope(a.Lift.Envelope, b.Lift.Envelope)
+		x, y := a.Lift, b.Lift
+		return x.RunID == y.RunID && x.Scope == y.Scope && x.Subject == y.Subject && x.ThroughLine == y.ThroughLine &&
+			sameEnvelope(x.Envelope, y.Envelope)
 	}
 	return false
 }

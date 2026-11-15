@@ -38,14 +38,14 @@ const (
 const stopsLockWait = 10 * time.Second
 
 // routeFlags is the signed route every stops command and react judge by: a
-// v1alpha1 route under its route key, or a v1alpha2 route under the roster
+// v1alpha1 route under its route key, or a v1alpha3 route under the roster
 // verified under the trust root.
 type routeFlags struct{ route, publicKey, roster, rootKey string }
 
 func (r *routeFlags) declare(flags *flag.FlagSet) {
 	flags.StringVar(&r.route, "route", "", "the signed route file route sign wrote")
 	flags.StringVar(&r.publicKey, "public-key", "", "the public key file of the route key, for a v1alpha1 route")
-	flags.StringVar(&r.roster, "roster", "", "the plane's trust.roster, for a v1alpha2 route an operator signed")
+	flags.StringVar(&r.roster, "roster", "", "the plane's trust.roster, for a v1alpha3 route an operator signed")
 	flags.StringVar(&r.rootKey, "root-key", "", "the plane's trust.root_public_key, which the roster has to verify under")
 }
 
@@ -56,16 +56,16 @@ func (r routeFlags) set() bool {
 	return r.route != "" && keyed != rostered && (keyed || (r.roster != "" && r.rootKey != ""))
 }
 
-// signed reports whether the flags verify a v1alpha2 route.
+// signed reports whether the flags verify a route an operator signed.
 func (r routeFlags) signed() bool { return r.publicKey == "" }
 
-// verified is the route the flags name, verified, a v1alpha2 one bound to
+// verified is the route the flags name, verified, a v1alpha3 one bound to
 // the stop list in dir under the roster note names.
 func (r routeFlags) verified(dir string, note *rosterNote) (reaction.Route, error) {
 	if !r.signed() {
 		return verifiedRoute("--route", r.route, r.publicKey)
 	}
-	return rosterRoute("--route", r.route, r.roster, r.rootKey, dir, note, reaction.VerifySignedRoute)
+	return rosterRoute("--route", r.route, r.roster, r.rootKey, dir, "", note, reaction.VerifySignedRoute)
 }
 
 type stopsInitArgs struct {
@@ -81,9 +81,9 @@ func stopsInitFlags(command string, out io.Writer) (*flag.FlagSet, *stopsInitArg
 	a := &stopsInitArgs{}
 	a.declare(flags)
 	flags.StringVar(&a.carry, "carry", "", "the stops directory of the list to carry into the new one")
-	flags.StringVar(&a.carryRoute, "carry-route", "", "the signed route the list carried from is judged against")
-	flags.StringVar(&a.key, "key", "", "the operator's private key file, which signs a 2.0 list's header")
-	flags.Int64Var(&a.serial, "serial", 1, "a new 2.0 list's first serial, taken only by a plane whose stop list floor holds none; a carry takes the next")
+	flags.StringVar(&a.carryRoute, "carry-route", "", "the signed route the list carried from is judged against, a v1alpha2 route among them")
+	flags.StringVar(&a.key, "key", "", "the operator's private key file, which signs a 3.0 list's header")
+	flags.Int64Var(&a.serial, "serial", 1, "a new 3.0 list's first serial, taken only by a plane whose stop list floor holds none; a carry takes the next")
 	flags.StringVar(&a.stopsFloor, "stops-floor", "", "the plane's reaction.stops_floor_dir, which a signed carry holds the old list to")
 	return flags, a
 }
@@ -162,7 +162,7 @@ func stopsLiftFlags(command string, out io.Writer) (*flag.FlagSet, *stopsLiftArg
 	flags := commandFlags(command, out)
 	a := &stopsLiftArgs{}
 	a.declare(flags)
-	flags.StringVar(&a.key, "key", "", "the private key file of the route's lift key, or the operator's for a v1alpha2 route")
+	flags.StringVar(&a.key, "key", "", "the private key file of the route's lift key, or the operator's for a v1alpha3 route")
 	flags.StringVar(&a.run, "run", "", "the opened run whose stops the lift ends")
 	flags.Int64Var(&a.through, "through", 0, "the last line the lift ends; the list's last complete line when left out")
 	return flags, a

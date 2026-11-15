@@ -27,6 +27,7 @@ with `make docs-gen`; an edit made here does not survive the next run.
 - [Run the gateway](guides/run-the-gateway.md): Set up a plane's policy files, start the MCP gateway in OBSERVE, keep its policy confirmed, read its health, classify the tools it sees, and move it to ENFORCE.
 - [Supervise and stop a run](guides/supervise-and-stop-a-run.md): Run the refund example by hand on a live plane, supervise the run against its procedure, read its page, and stop it on a confirmed finding.
 - [Test a procedure](guides/test-a-procedure.md): Lint a procedure document, then prove what supervise finds with cases that state a run, its evidence and every expected finding.
+- [Upgrade a signed plane from 0.17](guides/upgrade-a-signed-plane-from-0-17.md): Sign a 0.17 plane's pause file, route and stop list again for its plane_id, carry its stops and lifts into a new list, and point the plane at it.
 - [Watch a plane without a collector](guides/watch-a-plane-without-a-collector.md): Run the collector the gateway binary ships, point a plane at it with its credential, read each request's trail in the segments it writes, and prune them.
 - [Watch an egress proxy](guides/watch-an-egress-proxy.md): Have Envoy or Squid write their access log as JSON lines, import it as observations, and see in the coverage map the destinations the proxy logged.
 - [Write and test a policy](guides/write-and-test-a-policy.md): Write an agent-policy/v1alpha1 document, lint it, prove what it decides with cases, sign it into the bundle a plane loads, and vouch that the bundle is current.

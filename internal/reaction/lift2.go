@@ -9,9 +9,10 @@ import (
 	"github.com/guardana/control/internal/policy/strictjson"
 )
 
-// SignedLiftKind is the kind of a lift an operator signs under the signed
-// authority. It names the head digest of the list it lifts in, so it never
-// verifies against another list, one carried or restored later included.
+// SignedLiftKind is the kind of a lift an operator signed under the signed
+// authority before lifts named their plane; only a carry reads one. It names
+// the head digest of the list it lifts in, so it never verifies against
+// another list, one carried or restored later included.
 const SignedLiftKind = "reaction-lift/v1alpha2"
 
 const memberListHead = "list_head"
@@ -98,36 +99,52 @@ func readSignedLift(body []byte) (SignedLift, error) {
 	return l, nil
 }
 
-// VerifySignedLiftLine reads l's envelope as a v1alpha2 lift and ties it to
-// its place: one signature of SignedLiftPayloadType over a canonical body
-// naming the signature's key; the signed run and line are l's; the list head
-// is h's; the tenant and project are r's; the file is the plane's stop list;
-// and r's voucher vouches for the signer under the lift act.
-func VerifySignedLiftLine(l LiftLine, h Header, r Route) (SignedLift, Signer, error) {
-	return verifySignedLiftLine(context.Background(), l, h, r)
+// VerifySignedLiftLine ties l's envelope to its place and returns who signed
+// it: under a v1alpha3 route a v1alpha3 lift as verifySignedLiftLineV3 says,
+// and under a v1alpha2 route, which only a carry reads, a v1alpha2 lift: one
+// signature of SignedLiftPayloadType over a canonical body naming the
+// signature's key; the signed run and line are l's; the list head is h's;
+// the tenant and project are r's; the file is the plane's stop list; and r's
+// voucher vouches for the signer under the lift act.
+func VerifySignedLiftLine(l LiftLine, h Header, r Route) (Signer, error) {
+	who, _, err := verifySignedLiftLine(context.Background(), l, h, r)
+	return who, err
 }
 
 // verifySignedLiftLine is VerifySignedLiftLine with the voucher asked
-// within ctx.
-func verifySignedLiftLine(ctx context.Context, l LiftLine, h Header, r Route) (SignedLift, Signer, error) {
-	if !r.signed || h.Signed.Digest == "" {
-		return SignedLift{}, Signer{}, fmt.Errorf("%w: a signed lift is judged in a 2.0 list under a v1alpha2 route", ErrSignedLiftMismatch)
+// within ctx, which also returns what the lift names of its plane.
+func verifySignedLiftLine(ctx context.Context, l LiftLine, h Header, r Route) (Signer, binding, error) {
+	if h.Signed.Digest == "" {
+		return Signer{}, binding{}, fmt.Errorf("%w: a signed lift is judged in a list whose header is signed", ErrSignedLiftMismatch)
 	}
+	switch r.format {
+	case FormatV1Alpha3:
+		return verifySignedLiftLineV3(ctx, l, h, r)
+	case FormatV1Alpha2Carry:
+		return verifySignedLiftLineV2(ctx, l, h, r)
+	}
+	return Signer{}, binding{}, fmt.Errorf("%w: a signed lift is judged under a route an operator signed", ErrSignedLiftMismatch)
+}
+
+// verifySignedLiftLineV2 is verifySignedLiftLine for a 2.0 lift line under a
+// v1alpha2 route.
+func verifySignedLiftLineV2(ctx context.Context, l LiftLine, h Header, r Route) (Signer, binding, error) {
 	body, err := signedBody(l.Envelope, SignedLiftPayloadType)
 	if err != nil {
-		return SignedLift{}, Signer{}, fmt.Errorf("%w: %w", ErrLiftUnsigned, err)
+		return Signer{}, binding{}, fmt.Errorf("%w: %w", ErrLiftUnsigned, err)
 	}
 	signed, err := readSignedLift(body)
 	if err != nil {
-		return SignedLift{}, Signer{}, fmt.Errorf("%w: %w", ErrLiftUnsigned, err)
+		return Signer{}, binding{}, fmt.Errorf("%w: %w", ErrLiftUnsigned, err)
 	}
 	if signed.RunID != l.RunID || signed.ThroughLine != l.ThroughLine || signed.ListHead != h.Signed.Digest ||
 		signed.TenantID != r.tenantID || signed.Project != r.projectID {
-		return SignedLift{}, Signer{}, ErrSignedLiftMismatch
+		return Signer{}, binding{}, ErrSignedLiftMismatch
 	}
-	who, err := vouchedWithin(ctx, r.voucher, VouchLift, l.Envelope, signed.TenantID, signed.Project, signed.File)
+	b := binding{format: r.format, tenant: signed.TenantID, project: signed.Project, file: signed.File}
+	who, err := vouchedWithin(ctx, r.voucher, VouchLift, l.Envelope, b)
 	if err != nil {
-		return SignedLift{}, Signer{}, fmt.Errorf("%w: %w", ErrSignedLiftUnvouched, err)
+		return Signer{}, binding{}, fmt.Errorf("%w: %w", ErrSignedLiftUnvouched, err)
 	}
-	return signed, who, nil
+	return who, b, nil
 }

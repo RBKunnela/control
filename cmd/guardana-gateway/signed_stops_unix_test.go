@@ -64,11 +64,11 @@ func writeLeveledRoster(t *testing.T, path string) trust.Document {
 	return doc
 }
 
-// signedRouteFile has who sign a v1alpha2 route of acme/orders bound to path
-// and writes it there.
+// signedRouteFile has who sign a v1alpha3 route of plane-a and acme/orders
+// bound to path and writes it there.
 func signedRouteFile(t *testing.T, path, who string) {
 	t.Helper()
-	doc := `{"kind":"reaction-route/v1alpha2","route_id":"` + fixtureRouteID + `","serial":1,"tenant_id":"acme","project_id":"orders",` +
+	doc := `{"kind":"reaction-route/v1alpha3","plane_id":"plane-a","route_id":"` + fixtureRouteID + `","serial":1,"tenant_id":"acme","project_id":"orders",` +
 		`"rules":[{"procedure_id":"refund","version":"3","digest":"` + fixtureProcedure + `","rule_id":"` + fixtureRule +
 		`","rule_version":"1","scope":"run","expires_seconds":3600}]}`
 	file, err := signedstops.BindingOf(path)
@@ -116,10 +116,10 @@ func initStopsState(t *testing.T, dir string) {
 }
 
 // rosterRouteOf verifies the route file at routePath through the roster doc
-// for the plane of acme/orders whose list lives in stops.
+// for plane-a of acme/orders whose list lives in stops.
 func rosterRouteOf(t *testing.T, doc trust.Document, routePath, stops string) reaction.Route {
 	t.Helper()
-	plane, err := signedstops.PlaneOf("acme", "orders", routePath, stops, stoplist.FileName)
+	plane, err := signedstops.PlaneOf("plane-a", "acme", "orders", routePath, stops, stoplist.FileName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ func rosterRouteOf(t *testing.T, doc trust.Document, routePath, stops string) re
 	return route
 }
 
-// signedStopsTree is signedPlaneTree with a route dave signed, a 2.0 stop
+// signedStopsTree is signedPlaneTree with a route dave signed, a 3.0 stop
 // list alice started at serial 1, their floors and a runs directory.
 func signedStopsTree(t *testing.T) tree {
 	t.Helper()
@@ -249,7 +249,7 @@ func TestASignedStartRefusesAListCutBackBelowWhatItsFloorHolds(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	covered, err := reaction.Covered{FindingID: "f-1", TenantID: "acme", RunID: "run-1", ProjectID: "orders",
+	covered, err := reaction.Covered{FindingID: "f-1", TenantID: "acme", RunID: "run-1", ProjectID: "orders", Scope: reaction.ScopeRun, Subject: "run-1",
 		CreatedAt: time.Now().UTC().Truncate(time.Second)}.Marshal()
 	if err != nil {
 		t.Fatal(err)

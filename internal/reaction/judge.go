@@ -69,7 +69,7 @@ type judging struct {
 // signed run, line, list id and route digest are not its line's and the
 // header's. A refusal returns no List: a list is accepted whole or not.
 func Judge(route Route, accepted Prefix, content []byte, now time.Time, tolerance time.Duration) (List, error) {
-	complete, lines, err := judgeable(route, CheckStopping, content, now, tolerance)
+	complete, lines, err := judgeable(route, CheckStopping, false, content, now, tolerance)
 	if err != nil {
 		return List{}, err
 	}
@@ -96,7 +96,7 @@ func JudgeFrom(route Route, from List, content []byte, now time.Time, tolerance 
 // are held to ctx: one ended before they are answered refuses the list as a
 // voucher that cannot answer.
 func JudgeFromContext(ctx context.Context, route Route, from List, content []byte, now time.Time, tolerance time.Duration) (List, error) {
-	complete, lines, err := judgeable(route, CheckStopping, content, now, tolerance)
+	complete, lines, err := judgeable(route, CheckStopping, false, content, now, tolerance)
 	if err != nil {
 		return List{}, err
 	}
@@ -127,10 +127,10 @@ func JudgeFromContext(ctx context.Context, route Route, from List, content []byt
 
 // JudgeCarrySource is Judge from the zero Prefix with no tolerance past now,
 // of the list a carry reads, against the route that list was written under,
-// which it holds to CheckCarrySource in place of CheckStopping. Nothing but a
-// carry calls it.
+// which it holds to CheckCarrySource in place of CheckStopping, and which may
+// be a v1alpha2 route, whose list is 2.0. Nothing but a carry calls it.
 func JudgeCarrySource(route Route, content []byte, now time.Time) (List, error) {
-	complete, lines, err := judgeable(route, CheckCarrySource, content, now, 0)
+	complete, lines, err := judgeable(route, CheckCarrySource, true, content, now, 0)
 	if err != nil {
 		return List{}, err
 	}
@@ -142,16 +142,20 @@ func JudgeCarrySource(route Route, content []byte, now time.Time) (List, error) 
 }
 
 // judgeable is content's complete lines and their count, refused when route,
-// clock or tolerance cannot judge it or it is over a bound.
-func judgeable(route Route, rules func(Route) error, content []byte, now time.Time, tolerance time.Duration) ([]byte, int64, error) {
+// its rules, clock or tolerance cannot judge it or it is over a bound. A
+// v1alpha2 route judges a list only as the source of a carry: anywhere else
+// it is ErrRouteUpgrade. The carry's rules are passed in, so a plane's binary
+// never links them.
+func judgeable(route Route, rules func(Route) error, carrySource bool, content []byte, now time.Time,
+	tolerance time.Duration) ([]byte, int64, error) {
 	if route.digest == "" {
 		return nil, 0, fmt.Errorf("%w: no route was read", ErrListRoute)
 	}
 	if err := rules(route); err != nil {
 		return nil, 0, err
 	}
-	if route.signed && route.voucher == nil {
-		return nil, 0, fmt.Errorf("%w: the route was not taken through VerifySignedRoute", ErrNoVoucher)
+	if err := formatJudges(route, carrySource); err != nil {
+		return nil, 0, err
 	}
 	if !policy.UsableTime(now) || tolerance < 0 {
 		return nil, 0, ErrJudgeClock
@@ -165,6 +169,30 @@ func judgeable(route Route, rules func(Route) error, content []byte, now time.Ti
 		return nil, 0, fmt.Errorf("%w: %d lines, limit %d", ErrListLines, lines, MaxListLines)
 	}
 	return complete, int64(lines), nil
+}
+
+// formatJudges refuses route unless its format judges a list here: a
+// v1alpha2 route only as a carry's source, and a signed route only as a
+// voucher took it.
+func formatJudges(route Route, carrySource bool) error {
+	switch route.format {
+	case FormatV1Alpha1:
+		return nil
+	case FormatV1Alpha2Carry:
+		if !carrySource {
+			return ErrRouteUpgrade
+		}
+		if route.voucher == nil {
+			return fmt.Errorf("%w: the route was not taken through VerifySignedCarrySource", ErrNoVoucher)
+		}
+		return nil
+	case FormatV1Alpha3:
+		if route.voucher == nil {
+			return fmt.Errorf("%w: the route was not taken through VerifySignedRoute", ErrNoVoucher)
+		}
+		return nil
+	}
+	return fmt.Errorf("%w: no route was read", ErrListRoute)
 }
 
 // extends refuses complete unless it begins with the accepted prefix, naming
@@ -241,6 +269,19 @@ func walk(ctx context.Context, route Route, from List, complete []byte, lines in
 	return l, nil
 }
 
+// versionRefusal is the refusal of line n of version v under a route whose
+// lists are want: a 2.0 header under a v1alpha3 route is a list to carry,
+// and any other line of another version is one its list does not hold.
+func versionRefusal(n int64, v, want string) error {
+	switch {
+	case n == 1 && v == SignedListVersion && want == SignedListVersionV3:
+		return ErrListUpgrade
+	case n == 1:
+		return fmt.Errorf("%w: %s, and the route's lists are %s", ErrListVersion, v, want)
+	}
+	return fmt.Errorf("%w: a line of version %s in a list whose header is %s", ErrListVersion, v, want)
+}
+
 func (j *judging) line(n int64, raw []byte) error {
 	l, err := ParseLine(raw)
 	if err != nil {
@@ -249,12 +290,12 @@ func (j *judging) line(n int64, raw []byte) error {
 	if (n == 1) != (l.Kind == KindHeader) {
 		return ErrHeaderPlace
 	}
-	want := ListVersion
-	if j.route.signed {
-		want = SignedListVersion
+	want, err := listVersion(j.route.format)
+	if err != nil {
+		return err
 	}
 	if l.Version != want {
-		return fmt.Errorf("%w: %s, and the route's lists are %s", ErrListVersion, l.Version, want)
+		return versionRefusal(n, l.Version, want)
 	}
 	switch l.Kind {
 	case KindHeader:
@@ -272,14 +313,17 @@ func (j *judging) headerLine(h Header, env Envelope) error {
 	if h.RouteID != j.route.id || h.RouteSerial != j.route.serial || h.RouteDigest != j.route.digest {
 		return ErrListRoute
 	}
-	if j.route.signed {
+	switch j.route.format {
+	case FormatV1Alpha1:
+	case FormatV1Alpha2Carry, FormatV1Alpha3:
 		signer, err := judgeSignedHeader(j.ctx, j.route, h, env)
 		if err != nil {
 			return err
 		}
 		j.signer = signer
-		j.seen.took(vouchedDoc{line: 1, kind: VouchHeader, env: env, tenant: h.Signed.TenantID, project: h.Signed.ProjectID,
-			file: h.Signed.File, signer: signer})
+		j.seen.took(vouchedDoc{line: 1, kind: VouchHeader, env: env, bound: h.Signed.binding(j.route.format), signer: signer})
+	default:
+		return fmt.Errorf("%w: no route was read", ErrListRoute)
 	}
 	j.header = h
 	return nil
@@ -329,24 +373,48 @@ func (j *judging) liftLine(n int64, l LiftLine) error {
 	if l.ThroughLine >= n {
 		return ErrLiftOrder
 	}
-	key := liftKey{l.RunID, l.ThroughLine}
+	run, err := liftedRun(l)
+	if err != nil {
+		return err
+	}
+	key := liftKey{run, l.ThroughLine}
 	if j.seen.lifts[key] {
 		return ErrLiftAgain
 	}
-	if j.route.signed {
-		signed, who, err := verifySignedLiftLine(j.ctx, l, j.header, j.route)
+	switch j.route.format {
+	case FormatV1Alpha1:
+		if _, err := VerifyLiftLine(l, j.header, j.route); err != nil {
+			return err
+		}
+	case FormatV1Alpha2Carry, FormatV1Alpha3:
+		who, bound, err := verifySignedLiftLine(j.ctx, l, j.header, j.route)
 		if err != nil {
 			return err
 		}
-		j.seen.took(vouchedDoc{line: n, kind: VouchLift, env: l.Envelope, tenant: signed.TenantID, project: signed.Project,
-			file: signed.File, signer: who})
-	} else if _, err := VerifyLiftLine(l, j.header, j.route); err != nil {
-		return err
+		j.seen.took(vouchedDoc{line: n, kind: VouchLift, env: l.Envelope, bound: bound, signer: who})
+	default:
+		return fmt.Errorf("%w: no route was read", ErrListRoute)
 	}
 	j.seen.lifts[key] = true
-	j.seen.through[l.RunID] = max(j.seen.through[l.RunID], l.ThroughLine)
+	j.seen.through[run] = max(j.seen.through[run], l.ThroughLine)
 	j.lifted = true
 	return nil
+}
+
+// liftedRun is the run whose stops l ends: the run a 1.0 or 2.0 lift line
+// names, and the subject of a 3.0 one under ScopeRun. Any other lift is
+// refused: a scope this build does not serve, or a run lift naming no run.
+func liftedRun(l LiftLine) (string, error) {
+	switch {
+	case l.Scope == "" && l.Subject == "" && l.RunID != "":
+		return l.RunID, nil
+	case l.Scope == ScopeRun && l.Subject != "" && l.RunID == "":
+		return l.Subject, nil
+	}
+	if err := scopeServed(l.Scope); err != nil {
+		return "", err
+	}
+	return "", fmt.Errorf("%w: a lift of scope %s names no run", ErrLineValue, l.Scope)
 }
 
 // VerifyLiftLine verifies l's envelope under r's lift key and ties the lift
@@ -357,8 +425,8 @@ func VerifyLiftLine(l LiftLine, h Header, r Route) (Lift, error) {
 	if r.digest == "" {
 		return Lift{}, fmt.Errorf("%w: no route was read", ErrListRoute)
 	}
-	if r.signed {
-		return Lift{}, fmt.Errorf("%w: a v1alpha2 route's lifts are signed by operators", ErrLiftUnsigned)
+	if r.format != FormatV1Alpha1 {
+		return Lift{}, fmt.Errorf("%w: the lifts of a route an operator signed are signed by operators", ErrLiftUnsigned)
 	}
 	signed, err := VerifyLift(l.Envelope, r.liftKey)
 	if err != nil {

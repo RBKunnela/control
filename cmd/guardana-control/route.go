@@ -40,7 +40,7 @@ type routeSignPaths struct{ key, out string }
 func routeSignFlags(command string, out io.Writer) (*flag.FlagSet, *routeSignPaths) {
 	flags := commandFlags(command, out)
 	var p routeSignPaths
-	flags.StringVar(&p.key, "key", "", "the private key file of the route key, or the operator's for a v1alpha2 route")
+	flags.StringVar(&p.key, "key", "", "the private key file of the route key, or the operator's for a v1alpha3 route")
 	flags.StringVar(&p.out, "out", "", "the signed route file to write, replacing only a signed route")
 	return flags, &p
 }
@@ -200,12 +200,16 @@ func readSignedRoute(routeFlag, path, publicKey string, verify func(reaction.Env
 	return r, nil
 }
 
-// routeEnvelope signs route, read from doc: a v1alpha2 route for the file at
+// routeEnvelope signs route, read from doc: a v1alpha3 route for the file at
 // out, saying on stderr what it signed, and a v1alpha1 route as it is.
 func routeEnvelope(doc []byte, route reaction.Route, out string, key ed25519.PrivateKey, stderr io.Writer) (reaction.Envelope, reaction.Route, error) {
-	if !route.Signed() {
+	switch route.Format() {
+	case reaction.FormatV1Alpha1:
 		env, err := reaction.SignRoute(route, key)
 		return env, route, err
+	case reaction.FormatV1Alpha3:
+	default:
+		return reaction.Envelope{}, reaction.Route{}, reaction.ErrRouteUpgrade
 	}
 	env, signed, err := signedRouteEnvelope(doc, out, key)
 	if err != nil {
@@ -215,7 +219,7 @@ func routeEnvelope(doc []byte, route reaction.Route, out string, key ed25519.Pri
 	return env, signed, nil
 }
 
-// signedRouteEnvelope signs the v1alpha2 route document doc with the
+// signedRouteEnvelope signs the v1alpha3 route document doc with the
 // operator's key for the route file out, bound as the plane binds it, and
 // returns the envelope and the route it signs.
 func signedRouteEnvelope(doc []byte, out string, key ed25519.PrivateKey) (reaction.Envelope, reaction.Route, error) {
@@ -240,10 +244,10 @@ func signedRouteEnvelope(doc []byte, out string, key ed25519.PrivateKey) (reacti
 		Signatures: []reaction.Signature{{KeyID: keyID, Signature: sig}}}, route, nil
 }
 
-// routeSignedLine is what a signed v1alpha2 route says it signed, on
+// routeSignedLine is what a signed v1alpha3 route says it signed, on
 // standard error.
 func routeSignedLine(r reaction.Route) string {
-	return fmt.Sprintf("%s: %s: signed route %s serial %d for tenant %s project %s of %s, %d rule(s), digest %s",
-		brand.CLI, routeSignName, oneLine(r.ID()), r.Serial(), oneLine(r.TenantID()), oneLine(r.ProjectID()),
+	return fmt.Sprintf("%s: %s: signed route %s serial %d for plane %s tenant %s project %s of %s, %d rule(s), digest %s",
+		brand.CLI, routeSignName, oneLine(r.ID()), r.Serial(), oneLine(r.PlaneID()), oneLine(r.TenantID()), oneLine(r.ProjectID()),
 		oneLine(r.File()), len(r.Rules()), r.Digest())
 }

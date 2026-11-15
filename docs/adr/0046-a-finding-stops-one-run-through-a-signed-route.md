@@ -32,6 +32,11 @@ under `approvals.authority: signed` roster operators sign the route, the
 stop list's header and each lift, bound to the plane's files, and a stop list
 floor holds the header's serial and digest; no route or lift key exists there.
 
+Amended by [ADR-0082](0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant.md):
+under `signed` the route, the stop list header and each lift also name the
+plane's `plane_id`, and a stop names its scope and subject, which under scope
+`run` is its run.
+
 Amended when `/healthz` stopped naming runs: it counts the active and unheld
 stops and leaves out their entries, which only `health.socket` lists
 ([versions](../reference/versions.md)).

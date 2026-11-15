@@ -54,9 +54,9 @@ version. [status.md](../status.md) is the inventory.
 | Finding records and log (`guardana.control.finding.v1alpha1`) | `0.1`, `0.2` | `0.1`, `0.2` | `experimental` | [supervision.md](supervision.md#the-finding-record-and-its-log) |
 | Findings export (`guardana.control.findings-export`) | `0.1` | — | `experimental` | [supervision.md](supervision.md#findings-export) |
 | Enforcement API (`guardana.control.enforce.v1alpha1`) | `v1alpha1` | `v1alpha1` | `experimental` | [contracts.md](../contracts.md#the-enforcement-api) |
-| Reaction route (`kind`) | — | `reaction-route/v1alpha1`, `reaction-route/v1alpha2` | `experimental` | [contracts.md](../contracts.md#the-route) |
-| Stop list (`version`) | `1.0`, `2.0` | `1.0`, `2.0` | `experimental` | [contracts.md](../contracts.md#the-stop-list) |
-| Lift (`kind`, `version`) | `reaction-lift/v1alpha1`, `1.0`, `reaction-lift/v1alpha2` | `reaction-lift/v1alpha1`, `1.0`, `reaction-lift/v1alpha2` | `experimental` | [contracts.md](../contracts.md#the-lift) |
+| Reaction route (`kind`) | — | `reaction-route/v1alpha1`, `reaction-route/v1alpha2`, `reaction-route/v1alpha3` | `experimental` | [contracts.md](../contracts.md#the-route) |
+| Stop list (`version`) | `1.0`, `3.0` | `1.0`, `2.0`, `3.0` | `experimental` | [contracts.md](../contracts.md#the-stop-list) |
+| Lift (`kind`, `version`) | `reaction-lift/v1alpha1`, `1.0`, `reaction-lift/v1alpha3` | `reaction-lift/v1alpha1`, `1.0`, `reaction-lift/v1alpha2`, `reaction-lift/v1alpha3` | `experimental` | [contracts.md](../contracts.md#the-lift) |
 | Health answer (`schema`) | `2` | — | `experimental` | [run the gateway](../guides/run-the-gateway.md#6-read-the-health) |
 
 The gateway's configuration file and a `policy test` case carry no version.
@@ -75,14 +75,19 @@ Which version a plane reads depends on its authority:
 - State backup manifest: `0.2`, naming `plane_id` under `signed`; a `0.1`
   manifest names no plane, and a signed restore of one says `plane not
   checked`. 0.17 reads `0.2` only where it names no plane.
-- Route: `reaction-route/v1alpha2` under `signed`; `v1alpha1` elsewhere.
-- Stop list: `2.0` under `signed`; `1.0` elsewhere.
-- Stop list header: `reaction-list-header/2.0`, the signed header of a `2.0`
-  list.
-- Lift: `reaction-lift/v1alpha2` under `signed`; `reaction-lift/v1alpha1`
-  elsewhere.
+- Route: `reaction-route/v1alpha3`, naming `plane_id`, under `signed`;
+  `v1alpha1` elsewhere. A `v1alpha2` route names no plane and is refused,
+  naming `route sign`; `stops init --carry` reads one only as the route the
+  list it carries was judged under.
+- Stop list: `3.0` under `signed`; `1.0` elsewhere. A `2.0` list is refused,
+  naming `stops init --carry`, which carries it into `3.0`.
+- Stop list header: `reaction-list-header/3.0`, the signed header of a `3.0`
+  list, naming `plane_id`.
+- Lift: `reaction-lift/v1alpha3`, naming `plane_id`, scope and subject, under
+  `signed`; `reaction-lift/v1alpha1` elsewhere. A `v1alpha2` lift is read only
+  by a carry.
 
-A `1.0` list is not carried into `2.0`: start a new list, and `react` stops
+A `1.0` list is not carried into `3.0`: start a new list, and `react` stops
 again the findings that still may stop a run.
 
 ## Reading files an older release wrote
