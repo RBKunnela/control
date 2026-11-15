@@ -22,7 +22,11 @@ var killPoint func(step string) error
 // Report is what a restore did, class by class, and the operator's files
 // the backup holds that a restore never writes.
 type Report struct {
-	Done []string
+	// PlaneNotChecked is a signed restore from a manifest of the version
+	// before the plane's id, which names no plane to hold to the
+	// configuration's.
+	PlaneNotChecked bool
+	Done            []string
 	// PutBack names, by key, a signed file the backup holds a copy of: an
 	// operator who wants it again copies it back, and a plane takes it only
 	// where the raised floor still does.
@@ -61,6 +65,7 @@ func Restore(ctx context.Context, cfg *gatewayconfig.Config, dir string, now tim
 	}
 	defer func() { err = errors.Join(err, release()) }()
 	r := restorer{ctx: ctx, cfg: cfg, dir: verified, now: now, held: held}
+	r.out.PlaneNotChecked = m.Authority == gatewayconfig.AuthoritySigned && m.PlaneID == ""
 	for _, c := range classes {
 		if err := r.check(c); err != nil {
 			return Report{}, fmt.Errorf("%s: %w", c.key, err)

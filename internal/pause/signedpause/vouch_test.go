@@ -101,13 +101,13 @@ func TestAWriterSignsNoEntriesSomeoneWithoutARosterKeyPutThere(t *testing.T) {
 		if err := os.Remove(p.file); err != nil && !errors.Is(err, os.ErrNotExist) {
 			t.Fatal(err)
 		}
-		if err := pause.InitSigned(t.Context(), p.file, pause.Header{KeyID: keyID("alice"), Tenant: "t1", Project: "A", Serial: 1}, p.operator()); err != nil {
+		if err := pause.InitSigned(t.Context(), p.file, pause.Header{KeyID: keyID("alice"), PlaneID: planeID, Tenant: "t1", Project: "A", Serial: 1}, p.operator()); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := pause.AddSigned(t.Context(), p.file, g, p.operator()); err != nil {
 			t.Fatal(err)
 		}
-		writeAs(t, p.file, "mallory", pause.Header{KeyID: keyID("mallory"), Tenant: "t1", Project: "A", File: p.bound, Serial: serial}, pause.Document{})
+		writeAs(t, p.file, "mallory", pause.Header{KeyID: keyID("mallory"), PlaneID: planeID, Tenant: "t1", Project: "A", File: p.bound, Serial: serial}, pause.Document{})
 		before, err := os.ReadFile(p.file)
 		if err != nil {
 			t.Fatal(err)
@@ -131,7 +131,7 @@ func TestAWriterSignsNoEntriesSomeoneWithoutARosterKeyPutThere(t *testing.T) {
 func TestAnOlderFileAWriterSignsAgainNeverPassesTheFloor(t *testing.T) {
 	p := newPlane(t)
 	j := p.judge(t)
-	if err := pause.InitSigned(t.Context(), p.file, pause.Header{KeyID: keyID("alice"), Tenant: "t1", Project: "A", Serial: 1}, p.operator()); err != nil {
+	if err := pause.InitSigned(t.Context(), p.file, pause.Header{KeyID: keyID("alice"), PlaneID: planeID, Tenant: "t1", Project: "A", Serial: 1}, p.operator()); err != nil {
 		t.Fatal(err)
 	}
 	older, err := os.ReadFile(p.file)

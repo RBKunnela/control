@@ -39,7 +39,7 @@ func Init(ctx context.Context, path string) error {
 
 // InitSigned writes a signed pause file that pauses nothing at path, of h
 // signed with s and bound to path whatever h.File says, and refuses what
-// Init refuses.
+// Init refuses and a header that names no plane.
 func InitSigned(ctx context.Context, path string, h Header, s Signer) error {
 	file, err := BindingOf(path)
 	if err != nil {
@@ -142,8 +142,8 @@ func List(path string) (Listing, error) {
 
 // update reads the pause file under the lock, with every check a plane's
 // read makes, and writes back what change makes of it: unsigned where s is
-// nil, and otherwise signed with s at the next serial, the tenant, the
-// project and the file kept, returning what it signed. A file the plane would
+// nil, and otherwise signed with s at the next serial, the plane, the
+// tenant, the project and the file kept, returning what it signed. A file the plane would
 // refuse is refused here too, rather than rewritten into one it reads, and so
 // is a signed write to an unsigned file and the reverse.
 func update(ctx context.Context, path string, s *Signer, change func(Document) (Document, error)) (SignedDocument, error) {
@@ -198,9 +198,64 @@ func judgeFrom(path string, from Signed, s Signer) error {
 	return nil
 }
 
+// Resign signs the entries of the signed pause file at path again with s, as
+// a version SignedVersion file of plane at the next serial, keeping its
+// tenant, project and file. It is how a version 3 file, which a plane
+// refuses, becomes one the plane reads with every pause it held: InitSigned
+// refuses a file that exists, and a new file would lift them all. It refuses
+// an unsigned file with ErrUnsigned, a version SignedVersion file of another
+// plane with ErrOtherPlane, and what AddSigned refuses of the file it starts
+// from, before it signs anything. A version SignedVersion file of plane is
+// signed again at the next serial. A version 3 file names no plane, so it is
+// signed for plane whichever plane it was read by: the caller vouches that it
+// is this plane's.
+func Resign(ctx context.Context, path, plane string, s Signer) (SignedDocument, error) {
+	var signed SignedDocument
+	err := locked(ctx, path, func(root *os.Root) error {
+		raw, err := readIn(root, path, ownedByThisUser)
+		if err != nil {
+			return err
+		}
+		from, err := decodeAny(raw)
+		switch {
+		case err != nil:
+			return err
+		case from.Body.PlaneID != "" && from.Body.PlaneID != plane:
+			return fmt.Errorf("%w: it names plane %s, and the signature asked for is of %s; a file of one plane is never signed for another",
+				ErrOtherPlane, bounded(from.Body.PlaneID), bounded(plane))
+		}
+		if err := judgeFrom(path, from, s); err != nil {
+			return err
+		}
+		from.Body.PlaneID = plane
+		signed, err = replaceSigned(root, path, raw, from, from.Body.Document, s)
+		return err
+	})
+	return signed, err
+}
+
+// decodeAny reads raw as a signed pause file of version SignedVersion or 3,
+// refusing an unsigned one with ErrUnsigned.
+func decodeAny(raw []byte) (Signed, error) {
+	f, err := decodeFile(raw)
+	switch {
+	case errors.Is(err, ErrVersion):
+		v3, err3 := ReadSignedV3(raw)
+		if errors.Is(err3, ErrVersion) {
+			return Signed{}, err
+		}
+		return v3, err3
+	case err != nil:
+		return Signed{}, err
+	case f.signed == nil:
+		return Signed{}, ErrUnsigned
+	}
+	return *f.signed, nil
+}
+
 // replaceSigned signs next with s at the serial after from's, which
-// judgeFrom took, keeping its tenant, project and file, and replaces the
-// file through root, refusing one that is no longer raw, the bytes the write
+// judgeFrom took, keeping its plane, tenant, project and file, and replaces
+// the file through root, refusing one that is no longer raw, the bytes the write
 // began from: a writer that skipped the lock would otherwise lose its entries
 // unseen. It returns the header and the entries it signed.
 func replaceSigned(root *os.Root, path string, raw []byte, from Signed, next Document, s Signer) (SignedDocument, error) {
@@ -216,7 +271,7 @@ func replaceSigned(root *os.Root, path string, raw []byte, from Signed, next Doc
 	if beforeReplace != nil {
 		beforeReplace()
 	}
-	_, now, err := loadIn(root, path, ownedByThisUser)
+	now, err := readIn(root, path, ownedByThisUser)
 	if err != nil || !bytes.Equal(now, raw) {
 		return SignedDocument{}, errors.Join(fmt.Errorf("%w: %s; nothing was written, so read it and write again", ErrChanged, path), err)
 	}

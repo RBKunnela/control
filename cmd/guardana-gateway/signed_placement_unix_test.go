@@ -54,7 +54,7 @@ func fullSignedTree(t *testing.T) tree {
 	}
 	s := aliceSigner()
 	if err := pause.InitSigned(t.Context(), filepath.Join(tr.dir, "pause", "pause.json"),
-		pause.Header{KeyID: s.KeyID, Tenant: "acme", Project: "orders", Serial: 1}, s); err != nil {
+		pause.Header{KeyID: s.KeyID, PlaneID: "plane-a", Tenant: "acme", Project: "orders", Serial: 1}, s); err != nil {
 		t.Fatal(err)
 	}
 	raw, err := os.ReadFile(tr.config)

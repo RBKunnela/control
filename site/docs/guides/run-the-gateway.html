@@ -146,7 +146,7 @@ guardana-control policy state init --kind signer --bundle-id orders-policy signe
 guardana-control policy renew --key freshness/signing.key --bundle orders.bundle \
     --bundle-public-key keys/signing.pub --floor signer-floors --out orders.statement
 </code></pre>
-<p>Copy <code>orders.bundle</code> and <code>orders.statement</code> to the plane's host, beside the
+<p>Copy <code>orders.bundle</code> and <code>orders.statement</code> beside the plane's
 configuration. There, as the plane's user, make the spool and the floor
 directory, which keeps the highest serial the plane accepted:</p>
 <pre><code>mkdir -m 700 spool
@@ -244,7 +244,7 @@ agent needs. Take the fingerprint from <code>doctor</code> and add an override:<
     resource_from: /id          # where in the arguments the resource id sits
 </code></pre>
 <p>The fingerprint covers the whole definition: a tool whose description or
-schema changes is unclassified again until you look at it.</p>
+schema changes is unclassified again until reviewed.</p>
 <h3 id="6-read-the-health">6. Read the health</h3>
 <pre><code>curl -s http://127.0.0.1:8081/healthz | jq     # schema 2: counts, no run ids
 curl -s --unix-socket /run/guardana/health.sock http://plane/healthz | jq   # with health.socket: the runs too, to this account alone
@@ -346,7 +346,8 @@ guardana-control pause init /srv/pause/pause.json
 guardana-control pause add --action tool --provider orders --name refund /srv/pause/pause.json
 
 # signed: as the operator, who owns /srv/pause (0750, the plane&#39;s group), and floor init as the plane
-guardana-control pause init --key op.key --tenant acme --project orders /srv/pause/pause.json
+guardana-control pause init --key op.key --plane-id orders-eu-1 --tenant acme --project orders \
+  /srv/pause/pause.json
 guardana-control pause floor init --tenant acme --project orders /var/lib/guardana/pause-floor
 guardana-control pause add --action tool --provider orders --name refund \
   --key op.key --roster /etc/guardana/roster.json --root-key /etc/guardana/root.pub /srv/pause/pause.json
@@ -357,6 +358,16 @@ guardana-control pause add --action tool --provider orders --name refund \
 </code></pre>
 <p><code>refund</code> is blocked with <code>PAUSED</code> until <code>pause remove</code>
 (<a href="/docs/concepts/enforcement-modes#pausing-calls">more</a>).</p>
+<h2 id="upgrading-a-signed-plane-from-017">Upgrading a signed plane from 0.17</h2>
+<pre><code># 0.18 refuses the pause file 0.17 signed, naming the command that carries it.
+# With the plane stopped and plane_id set, as the operator: the pause file&#39;s entries
+# signed for this plane at the next serial (a new pause init would lift them all).
+# A version 3 file names no plane: sign only the file this plane read.
+guardana-control pause sign --key op.key --roster /etc/guardana/roster.json \
+  --root-key /etc/guardana/root.pub --plane-id orders-eu-1 /srv/pause/pause.json
+# as the plane: a new backup, whose manifest 0.2 names the plane; 0.17 refuses it
+guardana-control state backup gateway.yaml /backups/plane-2
+</code></pre>
 <h2 id="verify">Verify</h2>
 <ul>
 <li><code>doctor</code> prints <code>ok policy</code> and <code>ok upstreams ... 0 unclassified</code> in the

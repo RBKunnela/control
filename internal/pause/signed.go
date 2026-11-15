@@ -14,14 +14,21 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/guardana/control/internal/brand"
 	"github.com/guardana/control/internal/canon"
 	"github.com/guardana/control/internal/policy"
+	"github.com/guardana/control/pkg/contract"
 )
 
 // SignedVersion is the version of a pause file an operator signs: a DSSE
 // envelope of PayloadType over a body that names the signing key, the
-// plane's tenant and project, a serial and the entries.
-const SignedVersion = "3"
+// plane's id, tenant and project, the pause file, a serial and the entries.
+const SignedVersion = "4"
+
+// upgradeVersion is the signed version before the plane's id. A plane
+// refuses it; ReadSignedV3 reads it for Resign alone, which signs its
+// entries again as SignedVersion.
+const upgradeVersion = "3"
 
 // PayloadType is the DSSE payload type a pause document is signed under,
 // operators.PausePayloadType; this package links no operator port, and a
@@ -30,21 +37,31 @@ const PayloadType = "application/vnd.agent-pause+json"
 
 // MaxSignedBodyBytes bounds a signed document's body at the operator
 // authenticator's bound on any statement, which a test holds it to.
-const MaxSignedBodyBytes = 16384
+const MaxSignedBodyBytes = 20480
+
+// maxUpgradeBodyBytes bounds a version upgradeVersion body: the bound it was
+// signed under, which leaves room for its plane_id below MaxSignedBodyBytes.
+const maxUpgradeBodyBytes = 16384
 
 // signedAlg is the one algorithm a signed body names: an operator key's.
 const signedAlg = "ed25519"
 
-// signedMembers is every member of a signed body, each required.
-var signedMembers = []string{"alg", "entries", "file", "keyId", "project", "schema_version", "serial", "tenant"}
+// signedMembers is every member of a signed body, each required, and
+// upgradeMembers every member of a version upgradeVersion body.
+var (
+	signedMembers  = []string{"alg", "entries", "file", "keyId", "plane_id", "project", "schema_version", "serial", "tenant"}
+	upgradeMembers = []string{"alg", "entries", "file", "keyId", "project", "schema_version", "serial", "tenant"}
+)
 
 // Header is what a signed pause document says besides its entries: the key
-// that signed it, the tenant and project it pauses in, the pause file it was
-// signed for, as an absolute and clean path, and its serial, which only ever
-// rises. File binds a document to one plane's file, so a copy into another
-// plane's of the same tenant and project is refused.
+// that signed it, the plane it was signed for, the tenant and project it
+// pauses in, the pause file it was signed for, as an absolute and clean path,
+// and its serial, which only ever rises. PlaneID and File together bind a
+// document to one plane's file: a copy into another plane's of the same
+// tenant and project is refused, whether the two share the path or not.
 type Header struct {
 	KeyID           string
+	PlaneID         string
 	Tenant, Project string
 	File            string
 	Serial          int64
@@ -117,48 +134,82 @@ func decodeFile(raw []byte) (file, error) {
 		doc, err := Parse(raw)
 		return file{doc: doc}, err
 	}
-	env, err := parseEnvelope(raw)
-	if err != nil {
-		return file{}, malformed("the envelope: %v", err)
-	}
-	switch {
-	case env.PayloadType != PayloadType:
-		return file{}, malformed("the envelope's payload type is not %s", PayloadType)
-	case len(env.Signatures) != 1:
-		return file{}, malformed("the envelope holds %d signatures, not one", len(env.Signatures))
-	}
-	body, err := ParseSigned(env.Payload)
+	f, err := decodeSigned(raw, SignedVersion)
 	if err != nil {
 		return file{}, err
 	}
-	if body.KeyID != env.Signatures[0].KeyID {
-		return file{}, malformed("the body names key %s and the signature key %s", body.KeyID, bounded(env.Signatures[0].KeyID))
+	return file{doc: f.Body.Document, signed: &f}, nil
+}
+
+// ReadSignedV3 reads raw as a signed pause file of version 3, which names no
+// plane, with every check decodeFile makes of a signed file but the version;
+// its PlaneID is empty. Nothing but Resign takes what it reads: a plane
+// refuses the version.
+func ReadSignedV3(raw []byte) (Signed, error) {
+	if len(raw) > MaxFileBytes {
+		return Signed{}, fmt.Errorf("%w: %d bytes, the bound is %d", ErrTooLarge, len(raw), MaxFileBytes)
 	}
-	return file{doc: body.Document, signed: &Signed{Envelope: env, Body: body}}, nil
+	top, err := members(raw, true)
+	if err != nil {
+		return Signed{}, malformed("%v", err)
+	}
+	if _, signed := top["payloadType"]; !signed {
+		return Signed{}, ErrUnsigned
+	}
+	return decodeSigned(raw, upgradeVersion)
+}
+
+// decodeSigned reads raw as one signed envelope of PayloadType under one
+// signature, whose body is of version and names the signature's key. The
+// signature is not checked here.
+func decodeSigned(raw []byte, version string) (Signed, error) {
+	env, err := parseEnvelope(raw)
+	if err != nil {
+		return Signed{}, malformed("the envelope: %v", err)
+	}
+	switch {
+	case env.PayloadType != PayloadType:
+		return Signed{}, malformed("the envelope's payload type is not %s", PayloadType)
+	case len(env.Signatures) != 1:
+		return Signed{}, malformed("the envelope holds %d signatures, not one", len(env.Signatures))
+	}
+	body, err := parseSigned(env.Payload, version)
+	if err != nil {
+		return Signed{}, err
+	}
+	if body.KeyID != env.Signatures[0].KeyID {
+		return Signed{}, malformed("the body names key %s and the signature key %s", body.KeyID, bounded(env.Signatures[0].KeyID))
+	}
+	return Signed{Envelope: env, Body: body}, nil
 }
 
 // ParseSigned reads a signed pause body strictly: at most MaxSignedBodyBytes,
 // its own canonical JSON, every member of the format and no other,
 // schema_version SignedVersion, alg ed25519, a key id, the tenant and the
-// project within the identifier rule, a serial from 1 to policy.MaxSerial,
-// and entries by the rules of a version 2 file.
+// project within the identifier rule, a plane id within the contract's, the
+// file, a serial from 1 to policy.MaxSerial, and entries by the rules of a
+// version 2 file. A version upgradeVersion body is ErrVersion naming the
+// command that signs it again.
 func ParseSigned(body []byte) (SignedDocument, error) {
-	if len(body) > MaxSignedBodyBytes {
-		return SignedDocument{}, fmt.Errorf("%w: a signed body of %d bytes, the bound is %d", ErrTooLarge, len(body), MaxSignedBodyBytes)
+	return parseSigned(body, SignedVersion)
+}
+
+// parseSigned is ParseSigned of a body of version, SignedVersion or
+// upgradeVersion; an upgradeVersion body names no plane.
+func parseSigned(body []byte, version string) (SignedDocument, error) {
+	bound := MaxSignedBodyBytes
+	if version == upgradeVersion {
+		bound = maxUpgradeBodyBytes
 	}
-	canonical, err := canon.CanonicalizeJSON(body)
-	if err != nil || !bytes.Equal(canonical, body) {
-		return SignedDocument{}, malformed("the signed body is not its own canonical form")
+	if len(body) > bound {
+		return SignedDocument{}, fmt.Errorf("%w: a signed body of %d bytes, the bound is %d", ErrTooLarge, len(body), bound)
 	}
-	top, err := members(body, true)
+	top, err := signedTop(body, version)
 	if err != nil {
-		return SignedDocument{}, malformed("%v", err)
-	}
-	if err := only(top, signedMembers...); err != nil {
-		return SignedDocument{}, malformed("%v", err)
+		return SignedDocument{}, err
 	}
 	s := SignedDocument{Digest: digestOf(body)}
-	if s.Header, err = readHeader(top); err != nil {
+	if s.Header, err = readHeader(top, version == SignedVersion); err != nil {
 		return SignedDocument{}, err
 	}
 	list, err := member(top, "entries", array)
@@ -177,19 +228,59 @@ func ParseSigned(body []byte) (SignedDocument, error) {
 	return s, nil
 }
 
-// readHeader reads every member of a signed body but its entries: the
-// version, which has to be SignedVersion, the algorithm, the key id, the
-// tenant, the project and the serial.
-func readHeader(top map[string]json.RawMessage) (Header, error) {
-	version, err := member(top, "schema_version", str)
+// signedTop is the members of a body of version in its canonical form, each
+// one a body of that version holds and no other.
+func signedTop(body []byte, version string) (map[string]json.RawMessage, error) {
+	canonical, err := canon.CanonicalizeJSON(body)
+	if err != nil || !bytes.Equal(canonical, body) {
+		return nil, malformed("the signed body is not its own canonical form")
+	}
+	top, err := members(body, true)
 	if err != nil {
-		return Header{}, malformed("%v", err)
+		return nil, malformed("%v", err)
 	}
-	if version != SignedVersion {
-		return Header{}, fmt.Errorf("%w: a signed body of %q, this build signs %q", ErrVersion, bounded(version), SignedVersion)
+	if err := checkVersion(top, version); err != nil {
+		return nil, err
 	}
+	names := signedMembers
+	if version == upgradeVersion {
+		names = upgradeMembers
+	}
+	if err := only(top, names...); err != nil {
+		return nil, malformed("%v", err)
+	}
+	return top, nil
+}
+
+// checkVersion refuses a signed body whose schema_version is not want. A
+// plane's read of a version upgradeVersion body names the command that
+// signs its entries again: an operator's file that stops pausing calls the
+// day a plane is upgraded would lift every pause it holds.
+func checkVersion(top map[string]json.RawMessage, want string) error {
+	version, err := member(top, "schema_version", str)
+	switch {
+	case err != nil:
+		return malformed("%v", err)
+	case version == want:
+		return nil
+	case version == upgradeVersion:
+		return fmt.Errorf("%w: a signed body of %q, which names no plane; this build reads %q: sign it again with %s pause sign --plane-id <id>, which keeps its entries",
+			ErrVersion, upgradeVersion, SignedVersion, brand.CLI)
+	}
+	return fmt.Errorf("%w: a signed body of %q, this build reads %q", ErrVersion, bounded(version), want)
+}
+
+// readHeader reads every member of a signed body but its version and its
+// entries: the algorithm, the key id, the plane's id where plane is set, the
+// tenant, the project, the file and the serial.
+func readHeader(top map[string]json.RawMessage, plane bool) (Header, error) {
 	var h Header
-	for name, to := range map[string]*string{"keyId": &h.KeyID, "tenant": &h.Tenant, "project": &h.Project, "file": &h.File} {
+	var err error
+	names := map[string]*string{"keyId": &h.KeyID, "tenant": &h.Tenant, "project": &h.Project, "file": &h.File}
+	if plane {
+		names["plane_id"] = &h.PlaneID
+	}
+	for name, to := range names {
 		if *to, err = member(top, name, str); err != nil {
 			return Header{}, malformed("%v", err)
 		}
@@ -201,7 +292,11 @@ func readHeader(top map[string]json.RawMessage) (Header, error) {
 	if h.Serial, err = member(top, "serial", serial); err != nil {
 		return Header{}, malformed("%v", err)
 	}
-	if err := h.check(); err != nil {
+	check := h.check
+	if !plane {
+		check = h.checkUnbound
+	}
+	if err := check(); err != nil {
 		return Header{}, err
 	}
 	if alg != signedAlg {
@@ -210,10 +305,19 @@ func readHeader(top map[string]json.RawMessage) (Header, error) {
 	return h, nil
 }
 
-// check refuses a header whose key id, tenant or project is empty, past its
-// bound or outside the identifier rule, and a serial outside 1 to
-// policy.MaxSerial.
+// check refuses a header checkUnbound refuses, and one whose plane id the
+// contract's identifier rule refuses, an empty one among them.
 func (h Header) check() error {
+	if err := contract.CheckID(h.PlaneID); err != nil {
+		return malformed("plane_id: %v", err)
+	}
+	return h.checkUnbound()
+}
+
+// checkUnbound refuses a header whose key id, tenant or project is empty,
+// past its bound or outside the identifier rule, a file checkFile refuses,
+// and a serial outside 1 to policy.MaxSerial.
+func (h Header) checkUnbound() error {
 	if err := checkName("keyId", h.KeyID, MaxIDBytes); err != nil {
 		return malformed("%v", err)
 	}
@@ -268,7 +372,7 @@ func MarshalSigned(h Header, d Document) ([]byte, error) {
 		})
 	}
 	body, err := canon.Canonicalize(map[string]any{
-		"schema_version": SignedVersion, "alg": signedAlg, "keyId": h.KeyID,
+		"schema_version": SignedVersion, "alg": signedAlg, "keyId": h.KeyID, "plane_id": h.PlaneID,
 		"tenant": h.Tenant, "project": h.Project, "file": h.File, "serial": h.Serial, "entries": entries,
 	})
 	if err != nil {

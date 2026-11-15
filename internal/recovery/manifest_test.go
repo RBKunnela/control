@@ -32,7 +32,7 @@ func TestParseManifestReadsWhatItWrites(t *testing.T) {
 		t.Fatalf("manifest = %+v", m)
 	}
 	raw, err := recovery.MarshalManifest(m)
-	if err != nil || !strings.Contains(string(raw), `"schema_version": "0.1"`) {
+	if err != nil || !strings.Contains(string(raw), `"schema_version": "0.2"`) {
 		t.Fatalf("MarshalManifest = %s, %v", raw, err)
 	}
 }

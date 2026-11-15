@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/guardana/control/internal/brand"
@@ -28,7 +29,10 @@ func stateFlagSet(command string, out io.Writer) *flag.FlagSet { return commandF
 
 // stateArgs loads the configuration args name, with this process's
 // environment, which is the plane's when the command runs as the plane's
-// account, and returns it with the backup's directory.
+// account, and returns it with the backup's directory. Under the signed
+// authority it refuses any key the environment sets, as a signed start
+// does: the plane's account sets its own environment, and a plane_id from
+// it would name what the backup is held to.
 func stateArgs(command string, args []string, stderr io.Writer) (*gatewayconfig.Config, string, int) {
 	flags := stateFlagSet(command, stderr)
 	if err := flags.Parse(args); err != nil {
@@ -41,7 +45,20 @@ func stateArgs(command string, args []string, stderr io.Writer) (*gatewayconfig.
 	if err != nil {
 		return nil, "", fail(stderr, command, err)
 	}
+	if keys := gatewayconfig.EnvironmentOverrides(cfg); cfg.Approvals.Authority == gatewayconfig.AuthoritySigned && len(keys) > 0 {
+		return nil, "", fail(stderr, command, fmt.Errorf("approvals.authority: signed, and the environment sets %s; under signed every key is read from the configuration file alone, so unset them",
+			strings.Join(keys, ", ")))
+	}
 	return cfg, flags.Arg(1), exitOK
+}
+
+// planeNotChecked is what a signed restore from a manifest that names no
+// plane says on standard error.
+func planeNotChecked(stderr io.Writer, report recovery.Report) {
+	if report.PlaneNotChecked {
+		writeLine(stderr, brand.CLI+": "+stateRestoreName+": plane not checked: the backup's manifest is of version 0.1, "+
+			"which names no plane, so it was restored without comparing the plane's id with plane_id")
+	}
 }
 
 func stateBackupCommand(args []string, stdout, stderr io.Writer) int {
@@ -69,6 +86,7 @@ func stateRestoreCommand(args []string, stdout, stderr io.Writer) int {
 		return code
 	}
 	report, err := recovery.Restore(context.Background(), cfg, dir, time.Now())
+	planeNotChecked(stderr, report)
 	if err != nil {
 		var written []string
 		for _, done := range report.Done {

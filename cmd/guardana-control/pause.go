@@ -28,9 +28,11 @@ const (
 	pauseInitName      = "pause init"
 	pauseAddName       = "pause add"
 	pauseRemoveName    = "pause remove"
+	pauseSignName      = "pause sign"
 	pauseListName      = "pause list"
 	pauseFloorInitName = "pause floor init"
-	pauseInitForm      = "[--key <k> --tenant <t> --project <p> [--serial <n>]] <file>"
+	pauseInitForm      = "[--key <k> --plane-id <id> --tenant <t> --project <p>\n      [--serial <n>]] <file>"
+	pauseSignForm      = "--key <k> --roster <f> --root-key <f> --plane-id <id> <file>"
 	pauseAddForm       = "(--global | --provider <p> [--action <k> [--name <n>]]\n      | --run <id> | --agent <id> | --principal <id>) [--reason <r>]\n      [--key <k> --roster <f> --root-key <f>] <f>"
 	pauseRemoveForm    = "[--key <k> --roster <f> --root-key <f>] <file> <id>"
 	pauseFloorInitForm = "--tenant <t> --project <p> <dir>"
@@ -40,7 +42,10 @@ const (
 // who may pause: the file's permissions, and under the signed authority an
 // operator's signature over the whole file.
 const pauseAuthority = "Write access to the pause file is the authority to pause a call and to lift a pause;\n" +
-	"under approvals.authority signed, only a pause file signed with an operator's --key counts."
+	"under approvals.authority signed, only a pause file signed with an operator's --key counts.\n" +
+	"pause sign signs a signed file's entries again for --plane-id at the next serial, a version 3\n" +
+	"file's included; run again, it signs them again one serial higher. A version 3 file names no\n" +
+	"plane, so it is signed for --plane-id whichever plane it came from: sign only this plane's file."
 
 // pauseLockWait bounds how long a writer waits for another writer's lock on
 // the pause file's directory. A running plane never takes it.
@@ -161,8 +166,8 @@ func signedLine(command string, d pause.SignedDocument) string {
 	for _, e := range d.Entries {
 		ids = append(ids, oneLine(e.ID))
 	}
-	return fmt.Sprintf("%s: %s: signed serial %d for tenant %s project %s of %s, %d entry(ies): %s", brand.CLI, command,
-		d.Serial, oneLine(d.Tenant), oneLine(d.Project), oneLine(d.File), len(ids), strings.Join(ids, " "))
+	return fmt.Sprintf("%s: %s: signed serial %d for plane %s tenant %s project %s of %s, %d entry(ies): %s", brand.CLI, command,
+		d.Serial, oneLine(d.PlaneID), oneLine(d.Tenant), oneLine(d.Project), oneLine(d.File), len(ids), strings.Join(ids, " "))
 }
 
 // pauseHint is what an operator does about a write the file's signing
@@ -215,28 +220,6 @@ func pauseRemoveFlags(command string, out io.Writer) (*flag.FlagSet, pauseSignFl
 
 func pauseRemoveFlagSet(command string, out io.Writer) *flag.FlagSet {
 	flags, _ := pauseRemoveFlags(command, out)
-	return flags
-}
-
-// initFlags is what pause init is told: nothing for an unsigned file, and
-// the key, the plane's tenant and project and the first serial for a signed
-// one.
-type initFlags struct {
-	key, tenant, project *string
-	serial               *int64
-}
-
-func pauseInitFlags(command string, out io.Writer) (*flag.FlagSet, initFlags) {
-	flags := commandFlags(command, out)
-	v := initFlags{key: keyFlag(flags)}
-	v.tenant = flags.String("tenant", "", "the plane's tenant_id, which a signed pause file is for")
-	v.project = flags.String("project", "", "the plane's project_id, which a signed pause file is for")
-	v.serial = flags.Int64("serial", 1, "the signed file's first serial, above the plane's pause floor")
-	return flags, v
-}
-
-func pauseInitFlagSet(command string, out io.Writer) *flag.FlagSet {
-	flags, _ := pauseInitFlags(command, out)
 	return flags
 }
 
@@ -301,46 +284,6 @@ func (s scopeFlags) identity() (pause.ScopeKind, string, int) {
 		}
 	}
 	return kind, id, named
-}
-
-// pauseInitCommand writes a pause file that pauses nothing: unsigned, or
-// with --key signed for the plane's tenant and project at --serial.
-func pauseInitCommand(args []string, stdout, stderr io.Writer) int {
-	flags, v := pauseInitFlags(pauseInitName, stderr)
-	if err := flags.Parse(args); err != nil {
-		return exitUsage
-	}
-	if flags.NArg() != 1 {
-		return usageError(stderr, pauseInitName, "takes the pause file, with every flag before it")
-	}
-	given := map[string]bool{}
-	flags.Visit(func(f *flag.Flag) { given[f.Name] = true })
-	ctx, cancel := context.WithTimeout(context.Background(), pauseLockWait)
-	defer cancel()
-	path := flags.Arg(0)
-	if !given["key"] {
-		if given["tenant"] || given["project"] || given["serial"] {
-			return usageError(stderr, pauseInitName, "--tenant, --project and --serial make a signed pause file, with --key")
-		}
-		if err := pause.Init(ctx, path); err != nil {
-			return fail(stderr, pauseInitName, err)
-		}
-		return report(stdout, stderr, pauseInitName, "created "+oneLine(path)+", which pauses nothing")
-	}
-	if !given["tenant"] || !given["project"] {
-		return usageError(stderr, pauseInitName, "a signed pause file names the plane's --tenant and --project")
-	}
-	signer, release, err := pauseSigner(*v.key, "", "", nil)
-	if err != nil {
-		return fail(stderr, pauseInitName, err)
-	}
-	defer release()
-	h := pause.Header{KeyID: signer.KeyID, Tenant: *v.tenant, Project: *v.project, Serial: *v.serial}
-	if err := pause.InitSigned(ctx, path, h, signer); err != nil {
-		return fail(stderr, pauseInitName, err)
-	}
-	return report(stdout, stderr, pauseInitName, fmt.Sprintf("created %s, which pauses nothing, signed by key %s at serial %d",
-		oneLine(path), signer.KeyID, h.Serial))
 }
 
 // pauseAddCommand adds one entry under an id it draws itself and prints that
@@ -456,8 +399,8 @@ func pauseListCommand(args []string, stdout, stderr io.Writer) int {
 	}
 	var b strings.Builder
 	if h := doc.Signed; h != nil {
-		fmt.Fprintf(&b, "signed by key %s for tenant %s project %s at serial %d; the plane checks the signature, this listing does not\n",
-			oneLine(h.KeyID), oneLine(h.Tenant), oneLine(h.Project), h.Serial)
+		fmt.Fprintf(&b, "signed by key %s for plane %s tenant %s project %s at serial %d; the plane checks the signature, this listing does not\n",
+			oneLine(h.KeyID), oneLine(h.PlaneID), oneLine(h.Tenant), oneLine(h.Project), h.Serial)
 	}
 	if len(doc.Entries) == 0 {
 		return report(stdout, stderr, pauseListName, b.String()+"no entries")

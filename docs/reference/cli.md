@@ -121,7 +121,7 @@ running plane takes none. A pause blocks every call not yet handed out
 when the plane reads it, within one `pause.poll_interval`; it cancels
 nothing already running.
 
-Signed pause files, `--key` and `pause floor init`:
+Signed pause files, `--key`, `pause sign` and `pause floor init`:
 [pausing calls](../concepts/enforcement-modes.md#pausing-calls).
 
 The `runs` commands open, close, list and prune the runs a plane with
@@ -158,11 +158,13 @@ usage:
       [--reason <text>] <dir> <approval-id>
   guardana-control approvals reject (--key <file> --inbox <dir> | --approver-id <id>)
       [--reason <text>] <dir> <approval-id>
-  guardana-control pause init [--key <k> --tenant <t> --project <p> [--serial <n>]] <file>
+  guardana-control pause init [--key <k> --plane-id <id> --tenant <t> --project <p>
+      [--serial <n>]] <file>
   guardana-control pause add (--global | --provider <p> [--action <k> [--name <n>]]
       | --run <id> | --agent <id> | --principal <id>) [--reason <r>]
       [--key <k> --roster <f> --root-key <f>] <f>
   guardana-control pause remove [--key <k> --roster <f> --root-key <f>] <file> <id>
+  guardana-control pause sign --key <k> --roster <f> --root-key <f> --plane-id <id> <file>
   guardana-control pause list <file>
   guardana-control pause floor init --tenant <t> --project <p> <dir>
   guardana-control runs open --project --tenant --principal-type --principal --agent
@@ -209,6 +211,9 @@ Write access to the approvals directory is the approval authority:
 An id that could read as authn:, mixes scripts or holds a hidden or restyled character is refused.
 Write access to the pause file is the authority to pause a call and to lift a pause;
 under approvals.authority signed, only a pause file signed with an operator's --key counts.
+pause sign signs a signed file's entries again for --plane-id at the next serial, a version 3
+file's included; run again, it signs them again one serial higher. A version 3 file names no
+plane, so it is signed for --plane-id whichever plane it came from: sign only this plane's file.
 Write access to the runs directory is the authority to open and to close a run;
 under approvals.authority signed, only a record an operator signed with --key counts.
 A token acts as its run until it expires or is closed, and runs open prints it once.

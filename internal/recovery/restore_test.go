@@ -174,7 +174,7 @@ func TestRestoreRefusesBeforeWriting(t *testing.T) {
 			}
 		}, recovery.ErrUnlisted},
 		{"a major the build does not read", func(t *testing.T, _ *plane, dir string) {
-			edit(t, filepath.Join(dir, recovery.ManifestName), `"schema_version": "0.1"`, `"schema_version": "1.0"`)
+			edit(t, filepath.Join(dir, recovery.ManifestName), `"schema_version": "0.2"`, `"schema_version": "1.0"`)
 		}, recovery.ErrVersion},
 		{"a missing manifest", func(t *testing.T, _ *plane, dir string) {
 			if err := os.Remove(filepath.Join(dir, recovery.ManifestName)); err != nil {

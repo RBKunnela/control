@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/guardana/control/internal/gatewayconfig"
 	"github.com/guardana/control/internal/pause"
 	"github.com/guardana/control/internal/pause/signedpause"
 	"github.com/guardana/control/internal/policystate"
@@ -11,10 +12,11 @@ import (
 )
 
 // signedPauseFile is pauseFile under the signed authority: the file read as
-// the plane reads it, its signature checked against the roster file, its
-// signer's grant and its serial against the pause floor, which is read and
-// never raised: a check that raised it would be a start. It returns the
-// entries in force, or the line that fails.
+// the plane reads it, held to the plane's binding as the plane's judge holds
+// it, its signature checked against the roster file, its signer's grant and
+// its serial against the pause floor, which is read and never raised: a
+// check that raised it would be a start. It returns the entries in force, or
+// the line that fails.
 func (d *examination) signedPauseFile() ([]pause.Entry, string, error) {
 	path := d.cfg.Resolve(d.cfg.Pause.File)
 	f, err := pause.Inspect(path)
@@ -30,7 +32,7 @@ func (d *examination) signedPauseFile() ([]pause.Entry, string, error) {
 	if err != nil {
 		return nil, "", fmt.Errorf("trust.roster: %w", err)
 	}
-	subject, err := pauseSigner(roster, f, d.cfg.TenantID, d.cfg.ProjectID, path)
+	subject, err := pauseSigner(d.cfg, roster, f)
 	if err != nil {
 		return nil, "", err
 	}
@@ -43,29 +45,19 @@ func (d *examination) signedPauseFile() ([]pause.Entry, string, error) {
 	case body.Serial == floor.Serial && body.Digest != floor.Digest:
 		return nil, "", fmt.Errorf("%w: serial %d", pause.ErrForked, body.Serial)
 	}
-	return body.Entries, fmt.Sprintf("signed by %s (key %s) for this pause file at serial %d, the floor at %d", subject, body.KeyID, body.Serial, floor.Serial), nil
+	return body.Entries, fmt.Sprintf("signed by %s (key %s) for this pause file at serial %d, the floor at %d",
+		oneLine(subject), body.KeyID, body.Serial, floor.Serial), nil
 }
 
 // pauseSigner is the subject of the operator key of roster that signed f,
-// for tenant, project and the pause file at file, refusing as the plane's
-// judge would short of its floor.
-func pauseSigner(roster trust.Document, f pause.Signed, tenant, project, file string) (string, error) {
-	h := f.Body.Header
-	if h.Tenant != tenant || h.Project != project {
-		return "", pause.ErrOtherScope
-	}
-	bound, err := pause.BindingOf(file)
+// refusing as the plane's judge would short of its floor: f held to the
+// binding of cfg's plane and pause file, then vouched for by roster.
+func pauseSigner(cfg *gatewayconfig.Config, roster trust.Document, f pause.Signed) (string, error) {
+	binding, err := signedpause.NewBinding(cfg.PlaneID, cfg.TenantID, cfg.ProjectID, cfg.Resolve(cfg.Pause.File))
 	if err != nil {
 		return "", err
 	}
-	if h.File != bound {
-		return "", fmt.Errorf("%w: it names %s, and this plane reads %s", pause.ErrOtherFile, oneLine(h.File), oneLine(bound))
-	}
-	subject, err := signedpause.Vouched(roster, f)
-	if err != nil {
-		return "", err
-	}
-	return oneLine(subject), nil
+	return binding.Vouched(roster, f)
 }
 
 // signedPauseVerdict is pauseFile's verdict over what signedPauseFile found.

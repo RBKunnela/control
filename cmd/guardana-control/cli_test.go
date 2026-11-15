@@ -138,7 +138,10 @@ var ownRefusal = map[string]func(missing string) []string{
 	"pause init":        func(m string) []string { return []string{filepath.Join(m, "pause.json")} },
 	"pause add":         func(m string) []string { return []string{"--global", m} },
 	"pause remove":      func(m string) []string { return []string{m, "P1"} },
-	"pause list":        func(m string) []string { return []string{m} },
+	"pause sign": func(m string) []string {
+		return []string{"--key", m, "--roster", m, "--root-key", m, "--plane-id", "plane-a", m}
+	},
+	"pause list": func(m string) []string { return []string{m} },
 	"pause floor init": func(m string) []string {
 		return []string{"--tenant", "t1", "--project", "A", filepath.Join(m, "floor")}
 	},

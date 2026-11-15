@@ -29,12 +29,20 @@ type Taken struct {
 // journal's locks while it runs, refusing while a plane holds either. It
 // refuses the memory authority with ErrMemory, a dir that exists with
 // ErrExists, an entry of the state that is neither a regular file nor a
-// directory with ErrNotRegular, and a backup past MaxEntries or a file past
-// MaxFileBytes with ErrManifest.
+// directory with ErrNotRegular, a backup past MaxEntries or a file past
+// MaxFileBytes with ErrManifest, and under signed a configuration that names
+// no plane_id with ErrOtherPlane. Under signed the manifest names the
+// plane's id.
 func Backup(ctx context.Context, cfg *gatewayconfig.Config, dir string, now time.Time) (_ Taken, err error) {
 	authority := cfg.Approvals.Authority
 	if authority != gatewayconfig.AuthorityDirectory && authority != gatewayconfig.AuthoritySigned {
 		return Taken{}, fmt.Errorf("%w: approvals.authority is %q", ErrMemory, authority)
+	}
+	var plane string
+	if authority == gatewayconfig.AuthoritySigned {
+		if plane = cfg.PlaneID; plane == "" {
+			return Taken{}, fmt.Errorf("%w: approvals.authority is signed and the configuration names no plane_id", ErrOtherPlane)
+		}
 	}
 	release, err := holdPlane(cfg)
 	if err != nil {
@@ -48,7 +56,7 @@ func Backup(ctx context.Context, cfg *gatewayconfig.Config, dir string, now time
 		return Taken{}, err
 	}
 	b := &backup{dir: dir}
-	out := Taken{Manifest: Manifest{Authority: authority, Tenant: cfg.TenantID, Project: cfg.ProjectID, TakenAt: now.UTC().Truncate(time.Second)}}
+	out := Taken{Manifest: Manifest{Authority: authority, Tenant: cfg.TenantID, Project: cfg.ProjectID, PlaneID: plane, TakenAt: now.UTC().Truncate(time.Second)}}
 	if out.Absent, err = b.copyClasses(ctx, cfg); err != nil {
 		return Taken{}, err
 	}

@@ -66,6 +66,10 @@ const (
 	// ErrOtherFile is a signed document for another pause file than the one
 	// it was read from: a copy of another plane's.
 	ErrOtherFile Error = "pause: the signed pause names another pause file than the one it was read from"
+	// ErrOtherPlane is a signed document for another plane than the one
+	// reading it, or naming none: a copy of another plane's that shares its
+	// path, tenant and project.
+	ErrOtherPlane Error = "pause: the signed pause names another plane than this one"
 	// ErrNotVouched is a signed file a writer starts from that the roster
 	// does not vouch for: a writer that signed it again would sign entries
 	// someone without a roster key put there.

@@ -137,7 +137,10 @@ environment set. Amended in 0.17 by ADR-0073: the roster file too.
 Amended in 0.17: the <code>read</code> level parses and is reserved. It grants nothing
 until a receiver reads by it; a plane is read through the health socket by
 peer uid and through files by their modes, and <code>doctor</code> counts the roster's
-read grants as granting nothing yet.</p>
+read grants as granting nothing yet.
+Amended by <a href="/docs/adr/0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant">ADR-0082</a>:
+a statement's canonical body may be 20 KiB, so a body that also names its
+plane still fits.</p>
 <h2 id="context">Context</h2>
 <p>Today an approver is whoever can write the approvals directory, and the
 approver id is a claim. ADR-0066 says operators are authenticated against a

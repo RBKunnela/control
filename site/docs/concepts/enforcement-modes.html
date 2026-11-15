@@ -397,18 +397,18 @@ same checks at start refuse the start, and the commands refuse a directory
 another account owns, so run them as the file's owner. Deleting the file
 therefore blocks everything; it never lifts a pause. A plane without
 <code>pause.file</code> is disabled and says so.</p>
-<p>Under <code>approvals.authority: signed</code> the file is version 3, which an operator
-signs from their own account: <code>pause init --key &lt;k&gt; --tenant &lt;t&gt; --project &lt;p&gt;</code>
+<p>Under <code>approvals.authority: signed</code> the file is version 4, which an operator
+signs from their own account: <code>pause init --key &lt;k&gt; --plane-id &lt;id&gt; --tenant &lt;t&gt; --project &lt;p&gt;</code>
 makes one, and <code>pause add</code> and <code>pause remove</code> with <code>--key</code>, <code>--roster</code> and
-<code>--root-key</code> check the file, then re-sign it at the next serial. Only the account owning it can write it. It is a DSSE envelope over the entries, the plane's
-<code>tenant_id</code> and <code>project_id</code>, its own path, the key and a serial, so a copy
-from another path is refused; one from another host at the same path is taken
-unless tenant or project differ. <code>pause floor init</code> makes the
+<code>--root-key</code> check the file, then re-sign it at the next serial. It is a DSSE envelope over the entries, the plane's
+<code>plane_id</code>, <code>tenant_id</code> and <code>project_id</code>, its own path, the key and a serial, so a copy
+from another path or plane is refused as <code>another pause file</code>. <code>pause sign</code> signs a version 3 file's entries
+again as version 4. <code>pause floor init</code> makes the
 floor. At every read the plane checks the signature against an operator key
 of its roster, the tenant and project, a grant of <code>operate</code> or <code>admin</code>
 there, and the serial against its floor in <code>pause.floor_dir</code>, raised
 to each serial it takes, so an older file replayed is refused across
-restarts. A file failing any of these, version 1 and 2 included,
+restarts. A file failing any of these, versions 1 to 3 included,
 is unknown and blocks every call; the causes are <code>unsigned</code>,
 <code>not authenticated</code>, <code>another tenant or project</code>, <code>another pause file</code>,
 <code>owned by the plane's account</code>, <code>not authorized</code>,

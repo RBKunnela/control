@@ -31,7 +31,7 @@ func newSignedPauseFile(t *testing.T) string {
 		t.Fatal(err)
 	}
 	file := filepath.Join(dir, "pause.json")
-	if err := pause.InitSigned(context.Background(), file, pause.Header{KeyID: s.KeyID, Tenant: "t1", Project: "A", Serial: 1}, s); err != nil {
+	if err := pause.InitSigned(context.Background(), file, pause.Header{KeyID: s.KeyID, PlaneID: "plane-a", Tenant: "t1", Project: "A", Serial: 1}, s); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pause.AddSigned(context.Background(), file, pause.Entry{ID: "g", Scope: pause.Scope{Kind: pause.ScopeGlobal}, CreatedAt: time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)}, s); err != nil {

@@ -13,8 +13,10 @@ import (
 // Envelope is a DSSE envelope's parts.
 type Envelope = trust.Envelope
 
-// MaxStatementBytes bounds a statement's body.
-const MaxStatementBytes = 16384
+// MaxStatementBytes bounds a statement's body: a body of an earlier format
+// at its 16 KiB bound still fits once it names its plane, an identifier of
+// at most 1024 bytes each of which its canonical form may escape.
+const MaxStatementBytes = 20480
 
 // issuerPrefix begins the issuer of an operator a roster vouches for, so a
 // roster id never reads as another kind's issuer.

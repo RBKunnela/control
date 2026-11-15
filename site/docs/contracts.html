@@ -1804,7 +1804,7 @@ of at most 4 KiB.</p>
 <p>Under <code>approvals.authority: signed</code>
 (<a href="/docs/adr/0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatures">ADR-0077</a>)
 each of the three is one DSSE signature by a roster operator over a body of
-at most 16 KiB in its canonical form, which names <code>alg</code> <code>ed25519</code>, the
+at most 20 KiB in its canonical form, which names <code>alg</code> <code>ed25519</code>, the
 signature's <code>keyId</code>, <code>tenant_id</code>, <code>project_id</code> and <code>file</code>: the absolute,
 cleaned path of the route file or of <code>stops.jsonl</code> it was signed for, at most
 1024 bytes, with every link on the way to its directory resolved. A plane
@@ -1914,10 +1914,10 @@ may write where they are read (<a href="/docs/status">status.md</a>). A test in
 </tr>
 <tr>
 <td>Pause file</td>
-<td><code>pause.file</code> of version <code>3</code></td>
-<td>its tenant is <code>tenant_id</code> and its project the plane's</td>
-<td><code>internal/pause/signedpause/judge.go</code> <code>Authority.Judge</code></td>
-<td><code>internal/pause/signedpause</code> <code>TestNoOneButAPermittedOperatorPausesOrLifts</code></td>
+<td><code>pause.file</code> of version <code>4</code>; <code>3</code> is refused, naming <code>pause sign</code></td>
+<td>its tenant is <code>tenant_id</code>, and its project, <code>plane_id</code> and file the plane's</td>
+<td><code>internal/pause/signedpause/judge.go</code> <code>Authority.Judge</code> <code>Binding.Check</code></td>
+<td><code>internal/pause/signedpause</code> <code>TestNoOneButAPermittedOperatorPausesOrLifts</code> <code>TestTheJudgeRefusesADocumentOfAnotherBinding</code> <code>TestACopyBetweenTwoPlanesOfOneProjectIsRefused</code></td>
 </tr>
 <tr>
 <td>Run record</td>

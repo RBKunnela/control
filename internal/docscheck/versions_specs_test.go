@@ -3,6 +3,7 @@ package docscheck
 import (
 	"bytes"
 	"crypto/ed25519"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -114,6 +115,7 @@ func versionSpecs() map[string]versionSpec {
 		"State backup manifest": {
 			cites: []versionCite{
 				{"internal/recovery/manifest.go#ManifestVersion", writes},
+				{"internal/recovery/manifest.go#unboundVersion", reads},
 				{"internal/recovery/manifest.go#manifestMajor", readsMajor},
 			},
 			refuses: func(v string) (bool, error) {
@@ -134,13 +136,19 @@ func versionSpecs() map[string]versionSpec {
 				{"internal/pause/document.go#SchemaVersion", writes | reads},
 				{"internal/pause/document.go#subsetVersion", reads},
 				{"internal/pause/signed.go#SignedVersion", writes | reads},
+				{"internal/pause/signed.go#upgradeVersion", reads},
 			},
 			refuses: func(v string) (bool, error) {
 				if _, err := pause.Parse([]byte(`{"schema_version":` + strconv.Quote(v) + `,"entries":[]}`)); !errors.Is(err, pause.ErrVersion) {
 					return false, nil
 				}
 				body := `{"alg":"ed25519","entries":[],"keyId":"k","project":"p","schema_version":` + strconv.Quote(v) + `,"serial":1,"tenant":"t"}`
-				_, err := pause.ParseSigned([]byte(body))
+				if _, err := pause.ParseSigned([]byte(body)); !errors.Is(err, pause.ErrVersion) {
+					return false, nil
+				}
+				file := `{"payloadType":` + strconv.Quote(pause.PayloadType) + `,"payload":"` + base64.StdEncoding.EncodeToString([]byte(body)) +
+					`","signatures":[{"keyid":"k","sig":"AAAA"}]}`
+				_, err := pause.ReadSignedV3([]byte(file))
 				return errors.Is(err, pause.ErrVersion), nil
 			},
 		},

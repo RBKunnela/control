@@ -100,10 +100,10 @@ func signedPause(cfg *gatewayconfig.Config) bool {
 }
 
 // pauseJudge is what a serving plane under the signed authority judges its
-// pause file by: its operator ports, its own tenant and project, and its
-// pause floor.
+// pause file by: its operator ports, its own id, tenant, project and pause
+// file, and its pause floor.
 func (p *plane) pauseJudge() (pause.Judge, error) {
-	j, err := signedpause.New(p.signed.authn, p.signed.authz, p.cfg.TenantID, p.cfg.ProjectID,
+	j, err := signedpause.New(p.signed.authn, p.signed.authz, p.cfg.PlaneID, p.cfg.TenantID, p.cfg.ProjectID,
 		p.cfg.Resolve(p.cfg.Pause.File), p.cfg.Resolve(p.cfg.Pause.FloorDir))
 	if err != nil {
 		return nil, fmt.Errorf("pause.floor_dir: %w", err)

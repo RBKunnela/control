@@ -34,8 +34,11 @@ authority for one tenant and the rest for another.
   that sets the key.
 - The plane's id joins `file` in each signed body a plane takes from an
   operator, the pause file, the route, the stop list header and the lift,
-  and in the state backup manifest. Those formats carry it in later changes
-  of the same release; this change adds the key and nothing binds to it yet.
+  and in the state backup manifest. The pause file carries it from version
+  `4` and the manifest from `0.2`; the route, the stop list header and the
+  lift carry it in later changes of the same release. Each body grows by the
+  id, so an operator's signed statement may be 20 KiB, up from 16 KiB: a body
+  of the earlier version at its bound still fits once it names the plane.
 - Run records keep their `records/` path binding and take no plane id: a
   run can span planes ([ADR-0044](0044-coverage-judges-each-plane-and-joins-only-a-whole-export.md),
   [ADR-0045](0045-one-run-is-supervised-against-its-procedure.md),
@@ -86,3 +89,9 @@ answer; `TestASignedPlaneWithTwoTenantsIsRefused` refuses a two-tenant
 configuration with a route and stop list in place;
 `TestADevPlaneTakesOnlyTheTrustDevLaidOut` and
 `TestDevRefusesADemoThatSetsWhatDevOwns` hold a dev plane to its own id.
+`internal/pause/signedpause`: `TestTheJudgeRefusesADocumentOfAnotherBinding`
+and `TestACopyBetweenTwoPlanesOfOneProjectIsRefused` refuse a pause file of
+another plane, or of none; `internal/pause`:
+`TestResignCarriesAFullVersion3File` carries a version `3` file at its bound;
+`internal/recovery`: `TestASignedBackupNamesItsPlaneAndRestoresOnlyIntoIt`
+refuses a backup of another plane.

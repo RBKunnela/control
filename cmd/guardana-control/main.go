@@ -134,6 +134,7 @@ var commands = []subcommand{
 	{"pause", "init", pauseInitForm, pauseInitFlagSet, pauseInitCommand, writes},
 	{"pause", "add", pauseAddForm, pauseAddFlagSet, pauseAddCommand, writes},
 	{"pause", "remove", pauseRemoveForm, pauseRemoveFlagSet, pauseRemoveCommand, writes},
+	{"pause", "sign", pauseSignForm, pauseSignFlagSet, pauseSignCommand, writes},
 	{"pause", "list", "<file>", nil, pauseListCommand, inspects},
 	{"pause", "floor init", pauseFloorInitForm, pauseFloorInitFlagSet, pauseFloorInitCommand, writes},
 	{"runs", "open", runsOpenForm, runsOpenFlagSet, runsOpenCommand, writes},

@@ -32,9 +32,9 @@ version. [status.md](../status.md) is the inventory.
 | Trust roster (`kind`) | `trust-roster/v1alpha1` | `trust-roster/v1alpha1` | `experimental` | [ADR-0071](../adr/0071-operators-are-named-by-a-signed-roster.md) |
 | Approval answer (`kind`) | `approval-answer/v1alpha1` | `approval-answer/v1alpha1` | `experimental` | [ADR-0073](../adr/0073-an-approval-counts-only-as-the-plane-judges-it.md) |
 | Floor directories (`schema_version`) | `1.0` | `1.x` | `experimental` | [cli.md](cli.md#guardana-control) |
-| State backup manifest (`schema_version`) | `0.1` | `0.x` | `experimental` | [back up and restore a plane](../guides/back-up-and-restore-a-plane.md#what-a-backup-holds) |
+| State backup manifest (`schema_version`) | `0.2` | `0.x` | `experimental` | [back up and restore a plane](../guides/back-up-and-restore-a-plane.md#what-a-backup-holds) |
 | Scenario (`kind`) | — | `agent-scenario/v1alpha1` | `experimental` | [scenario-format.md](scenario-format.md#the-document) |
-| Pause file (`schema_version`) | `2`, `3` | `1`, `2`, `3` | `experimental` | [pausing calls](../concepts/enforcement-modes.md#pausing-calls) |
+| Pause file (`schema_version`) | `2`, `4` | `1`, `2`, `3`, `4` | `experimental` | [pausing calls](../concepts/enforcement-modes.md#pausing-calls) |
 | Approvals directory (`schema_version`) | `2.1` | `2.x` | `experimental` | [approvals](../concepts/approvals-and-the-held-call.md#what-is-held-and-by-whom) |
 | Hold journal (`schema_version`) | `1.0` | `1.x` | `experimental` | [approvals](../concepts/approvals-and-the-held-call.md#a-hold-the-plane-loses) |
 | Spent ledger (`schema_version`) | `1.0` | `1.x` | `experimental` | [approvals](../concepts/approvals-and-the-held-call.md#an-approval-is-spent-once) |
@@ -70,7 +70,11 @@ one quoted key per line, carries none either.
 
 Which version a plane reads depends on its authority:
 
-- Pause file: `3` under `signed`; `1` and `2` elsewhere.
+- Pause file: `4` under `signed`; `1` and `2` elsewhere. `3` is read by
+  `pause sign` alone, which signs its entries again as `4`.
+- State backup manifest: `0.2`, naming `plane_id` under `signed`; a `0.1`
+  manifest names no plane, and a signed restore of one says `plane not
+  checked`. 0.17 reads `0.2` only where it names no plane.
 - Route: `reaction-route/v1alpha2` under `signed`; `v1alpha1` elsewhere.
 - Stop list: `2.0` under `signed`; `1.0` elsewhere.
 - Stop list header: `reaction-list-header/2.0`, the signed header of a `2.0`

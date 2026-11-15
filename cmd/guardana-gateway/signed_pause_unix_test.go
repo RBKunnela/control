@@ -37,7 +37,7 @@ func signedPauseTree(t *testing.T) tree {
 	}
 	s := aliceSigner()
 	if err := pause.InitSigned(t.Context(), filepath.Join(tr.dir, "pause", "pause.json"),
-		pause.Header{KeyID: s.KeyID, Tenant: "acme", Project: "orders", Serial: 1}, s); err != nil {
+		pause.Header{KeyID: s.KeyID, PlaneID: "plane-a", Tenant: "acme", Project: "orders", Serial: 1}, s); err != nil {
 		t.Fatal(err)
 	}
 	raw, err := os.ReadFile(tr.config)
@@ -141,9 +141,10 @@ func polled(t *testing.T, p *plane, what string, state pause.State, cause pause.
 	}
 }
 
-// TestDoctorJudgesASignedPauseAsThePlaneWould: the signer's key, its grant
-// and the scope, refused as the authenticator and the authorizer refuse.
-func TestDoctorJudgesASignedPauseAsThePlaneWould(t *testing.T) {
+// doctorRoster is the roster root signs naming alice, who operates acme's
+// orders, and bob, who only reads it.
+func doctorRoster(t *testing.T) trust.Document {
+	t.Helper()
 	now := time.Now().UTC().Truncate(time.Second)
 	entry := func(name, level string) map[string]any {
 		return map[string]any{
@@ -169,13 +170,21 @@ func TestDoctorJudgesASignedPauseAsThePlaneWould(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	return roster
+}
+
+// TestDoctorJudgesASignedPauseAsThePlaneWould: the signer's key, its grant,
+// the scope, the pause file and the plane, refused as the plane's judge
+// refuses them.
+func TestDoctorJudgesASignedPauseAsThePlaneWould(t *testing.T) {
+	roster := doctorRoster(t)
 	file := filepath.Join(t.TempDir(), "pause.json")
 	bound, err := pause.BindingOf(file)
 	if err != nil {
 		t.Fatal(err)
 	}
-	signedBy := func(signer, as, project, boundTo string) pause.Signed {
-		h := pause.Header{KeyID: policykey.KeyID(signedTestPublic(as)), Tenant: "acme", Project: project, File: boundTo, Serial: 1}
+	signedBy := func(signer, as, plane, project, boundTo string) pause.Signed {
+		h := pause.Header{KeyID: policykey.KeyID(signedTestPublic(as)), PlaneID: plane, Tenant: "acme", Project: project, File: boundTo, Serial: 1}
 		body, err := pause.MarshalSigned(h, pause.Document{})
 		if err != nil {
 			t.Fatal(err)
@@ -191,22 +200,29 @@ func TestDoctorJudgesASignedPauseAsThePlaneWould(t *testing.T) {
 		return pause.Signed{Body: parsed, Envelope: policy.StatementEnvelope{PayloadType: operators.PausePayloadType, Payload: body,
 			Signatures: []policy.StatementSignature{{KeyID: h.KeyID, Signature: sig}}}}
 	}
-	if subject, err := pauseSigner(roster, signedBy("alice", "alice", "orders", bound), "acme", "orders", file); err != nil || subject != "alice" {
+	cfg := &gatewayconfig.Config{PlaneID: "plane-a", TenantID: "acme", ProjectID: "orders", Pause: gatewayconfig.PauseConfig{File: file}}
+	if subject, err := pauseSigner(cfg, roster, signedBy("alice", "alice", "plane-a", "orders", bound)); err != nil || subject != "alice" {
 		t.Fatalf("alice's pause = %q, %v", subject, err)
 	}
 	for _, c := range []struct {
-		name, signer, as, project, file string
-		want                            pause.Error
+		name, signer, as, plane, project, file string
+		want                                   pause.Error
 	}{
-		{"a pause of another project", "alice", "alice", "other", bound, pause.ErrOtherScope},
-		{"a pause of another plane's file", "alice", "alice", "orders", "/srv/other/pause.json", pause.ErrOtherFile},
-		{"mallory under alice's key id", "mallory", "alice", "orders", bound, pause.ErrUnauthenticated},
-		{"a key the roster does not name", "mallory", "mallory", "orders", bound, pause.ErrUnauthenticated},
-		{"bob, who only reads orders", "bob", "bob", "orders", bound, pause.ErrUnauthorized},
+		{"a pause of another project", "alice", "alice", "plane-a", "other", bound, pause.ErrOtherScope},
+		{"a pause of another plane's file", "alice", "alice", "plane-a", "orders", "/srv/other/pause.json", pause.ErrOtherFile},
+		{"a pause of another plane at this path", "alice", "alice", "plane-b", "orders", bound, pause.ErrOtherPlane},
+		{"mallory under alice's key id", "mallory", "alice", "plane-a", "orders", bound, pause.ErrUnauthenticated},
+		{"a key the roster does not name", "mallory", "mallory", "plane-a", "orders", bound, pause.ErrUnauthenticated},
+		{"bob, who only reads orders", "bob", "bob", "plane-a", "orders", bound, pause.ErrUnauthorized},
 	} {
-		if _, err := pauseSigner(roster, signedBy(c.signer, c.as, c.project, c.file), "acme", "orders", file); !errors.Is(err, c.want) {
+		if _, err := pauseSigner(cfg, roster, signedBy(c.signer, c.as, c.plane, c.project, c.file)); !errors.Is(err, c.want) {
 			t.Errorf("%s = %v, want %v", c.name, err, c.want)
 		}
+	}
+	unnamed := *cfg
+	unnamed.PlaneID = ""
+	if _, err := pauseSigner(&unnamed, roster, signedBy("alice", "alice", "plane-a", "orders", bound)); !errors.Is(err, pause.ErrOptions) {
+		t.Errorf("a configuration that names no plane = %v, want a refusal", err)
 	}
 }
 

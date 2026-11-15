@@ -75,7 +75,7 @@ func (d *devPlane) layOutTrust(ctx context.Context, control sibling, tenant, pro
 	if _, err := control.run(ctx, "pause", "floor", "init", "--tenant", tenant, "--project", project, st.path(statePauseFlr)); err != nil {
 		return fmt.Errorf("creating the pause floor: %w", err)
 	}
-	if _, err := control.run(ctx, "pause", "init", "--key", st.operatorKeyFile(), "--tenant", tenant, "--project", project, st.path(statePause)); err != nil {
+	if _, err := control.run(ctx, "pause", "init", "--key", st.operatorKeyFile(), "--plane-id", devPlaneID, "--tenant", tenant, "--project", project, st.path(statePause)); err != nil {
 		return fmt.Errorf("creating the pause file: %w", err)
 	}
 	return nil

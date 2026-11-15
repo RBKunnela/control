@@ -46,7 +46,7 @@ guardana-control policy renew --key freshness/signing.key --bundle orders.bundle
     --bundle-public-key keys/signing.pub --floor signer-floors --out orders.statement
 ```
 
-Copy `orders.bundle` and `orders.statement` to the plane's host, beside the
+Copy `orders.bundle` and `orders.statement` beside the plane's
 configuration. There, as the plane's user, make the spool and the floor
 directory, which keeps the highest serial the plane accepted:
 
@@ -166,7 +166,7 @@ overrides:
 ```
 
 The fingerprint covers the whole definition: a tool whose description or
-schema changes is unclassified again until you look at it.
+schema changes is unclassified again until reviewed.
 
 ### 6. Read the health
 
@@ -242,7 +242,8 @@ guardana-control pause init /srv/pause/pause.json
 guardana-control pause add --action tool --provider orders --name refund /srv/pause/pause.json
 
 # signed: as the operator, who owns /srv/pause (0750, the plane's group), and floor init as the plane
-guardana-control pause init --key op.key --tenant acme --project orders /srv/pause/pause.json
+guardana-control pause init --key op.key --plane-id orders-eu-1 --tenant acme --project orders \
+  /srv/pause/pause.json
 guardana-control pause floor init --tenant acme --project orders /var/lib/guardana/pause-floor
 guardana-control pause add --action tool --provider orders --name refund \
   --key op.key --roster /etc/guardana/roster.json --root-key /etc/guardana/root.pub /srv/pause/pause.json
@@ -256,6 +257,19 @@ pause:
 
 `refund` is blocked with `PAUSED` until `pause remove`
 ([more](../concepts/enforcement-modes.md#pausing-calls)).
+
+## Upgrading a signed plane from 0.17
+
+```
+# 0.18 refuses the pause file 0.17 signed, naming the command that carries it.
+# With the plane stopped and plane_id set, as the operator: the pause file's entries
+# signed for this plane at the next serial (a new pause init would lift them all).
+# A version 3 file names no plane: sign only the file this plane read.
+guardana-control pause sign --key op.key --roster /etc/guardana/roster.json \
+  --root-key /etc/guardana/root.pub --plane-id orders-eu-1 /srv/pause/pause.json
+# as the plane: a new backup, whose manifest 0.2 names the plane; 0.17 refuses it
+guardana-control state backup gateway.yaml /backups/plane-2
+```
 
 ## Verify
 

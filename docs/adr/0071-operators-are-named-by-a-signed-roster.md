@@ -25,6 +25,9 @@ Amended in 0.17: the `read` level parses and is reserved. It grants nothing
 until a receiver reads by it; a plane is read through the health socket by
 peer uid and through files by their modes, and `doctor` counts the roster's
 read grants as granting nothing yet.
+Amended by [ADR-0082](0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant.md):
+a statement's canonical body may be 20 KiB, so a body that also names its
+plane still fits.
 
 ## Context
 

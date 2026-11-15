@@ -117,10 +117,13 @@ func newPlane(t *testing.T) *plane {
 	return p
 }
 
+// planeID is the id of the plane newPlane makes.
+const planeID = "plane-a"
+
 // judge is a judge of p, as a plane started now would hold it.
 func (p *plane) judge(t *testing.T) *signedpause.Authority {
 	t.Helper()
-	j, err := signedpause.New(p.authn, p.authz, "t1", "A", p.file, p.floor)
+	j, err := signedpause.New(p.authn, p.authz, planeID, "t1", "A", p.file, p.floor)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,10 +139,15 @@ func (p *plane) signed(t *testing.T, by, as, tenant, project string, serial int6
 	return signedFor(t, by, as, tenant, project, p.bound, serial, d)
 }
 
-// signedFor is signed for the pause file at file.
+// signedFor is signed for planeID's pause file at file.
 func signedFor(t *testing.T, by, as, tenant, project, file string, serial int64, d pause.Document) pause.Signed {
 	t.Helper()
-	h := pause.Header{KeyID: keyID(as), Tenant: tenant, Project: project, File: file, Serial: serial}
+	return signedHeader(t, by, pause.Header{KeyID: keyID(as), PlaneID: planeID, Tenant: tenant, Project: project, File: file, Serial: serial}, d)
+}
+
+// signedHeader is a document of h over d signed by the key called by.
+func signedHeader(t *testing.T, by string, h pause.Header, d pause.Document) pause.Signed {
+	t.Helper()
 	body, err := pause.MarshalSigned(h, d)
 	if err != nil {
 		t.Fatal(err)
@@ -154,7 +162,7 @@ func signedFor(t *testing.T, by, as, tenant, project, file string, serial int64,
 	}
 	return pause.Signed{
 		Envelope: policy.StatementEnvelope{PayloadType: operators.PausePayloadType, Payload: body,
-			Signatures: []policy.StatementSignature{{KeyID: keyID(as), Signature: sig}}},
+			Signatures: []policy.StatementSignature{{KeyID: h.KeyID, Signature: sig}}},
 		Body: parsed,
 	}
 }
@@ -272,25 +280,29 @@ func TestAPortOrAFloorThatGivesNoAnswerRefuses(t *testing.T) {
 		{"an authorizer with no answer", p.authn, unavailable{}, p.floor, pause.ErrAuthority},
 		{"a missing floor directory", p.authn, p.authz, filepath.Join(t.TempDir(), "missing"), pause.ErrFloor},
 	} {
-		j, err := signedpause.New(c.authn, c.authz, "t1", "A", p.file, c.floor)
+		j, err := signedpause.New(c.authn, c.authz, planeID, "t1", "A", p.file, c.floor)
 		if err != nil {
 			t.Fatal(err)
 		}
 		by, err := j.Judge(t.Context(), f)
 		wantRefused(t, c.name, by, err, c.want)
 	}
-	for name, args := range map[string][4]string{
-		"no tenant": {"", "A", p.file, p.floor}, "no project": {"t1", "", p.file, p.floor},
-		"no file": {"t1", "A", "", p.floor}, "no floor": {"t1", "A", p.file, ""},
+	for name, args := range map[string][5]string{
+		"no plane id": {"", "t1", "A", p.file, p.floor},
+		"no tenant":   {planeID, "", "A", p.file, p.floor}, "no project": {planeID, "t1", "", p.file, p.floor},
+		"no file": {planeID, "t1", "A", "", p.floor}, "no floor": {planeID, "t1", "A", p.file, ""},
 	} {
-		if _, err := signedpause.New(p.authn, p.authz, args[0], args[1], args[2], args[3]); !errors.Is(err, pause.ErrOptions) {
+		if _, err := signedpause.New(p.authn, p.authz, args[0], args[1], args[2], args[3], args[4]); !errors.Is(err, pause.ErrOptions) {
 			t.Errorf("New with %s = %v, want ErrOptions", name, err)
 		}
 	}
-	if _, err := signedpause.New(nil, p.authz, "t1", "A", p.file, p.floor); !errors.Is(err, pause.ErrOptions) {
+	if _, err := signedpause.New(p.authn, p.authz, planeID, "t1", "A", p.file, p.floor); err != nil {
+		t.Errorf("the control, New with every option = %v", err)
+	}
+	if _, err := signedpause.New(nil, p.authz, planeID, "t1", "A", p.file, p.floor); !errors.Is(err, pause.ErrOptions) {
 		t.Errorf("New with no authenticator = %v", err)
 	}
-	if _, err := signedpause.New(p.authn, nil, "t1", "A", p.file, p.floor); !errors.Is(err, pause.ErrOptions) {
+	if _, err := signedpause.New(p.authn, nil, planeID, "t1", "A", p.file, p.floor); !errors.Is(err, pause.ErrOptions) {
 		t.Errorf("New with no authorizer = %v", err)
 	}
 }

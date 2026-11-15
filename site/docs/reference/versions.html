@@ -195,7 +195,7 @@ version. <a href="/docs/status">status.md</a> is the inventory.</p>
 </tr>
 <tr>
 <td>State backup manifest (<code>schema_version</code>)</td>
-<td><code>0.1</code></td>
+<td><code>0.2</code></td>
 <td><code>0.x</code></td>
 <td><code>experimental</code></td>
 <td><a href="/docs/guides/back-up-and-restore-a-plane#what-a-backup-holds">back up and restore a plane</a></td>
@@ -209,8 +209,8 @@ version. <a href="/docs/status">status.md</a> is the inventory.</p>
 </tr>
 <tr>
 <td>Pause file (<code>schema_version</code>)</td>
-<td><code>2</code>, <code>3</code></td>
-<td><code>1</code>, <code>2</code>, <code>3</code></td>
+<td><code>2</code>, <code>4</code></td>
+<td><code>1</code>, <code>2</code>, <code>3</code>, <code>4</code></td>
 <td><code>experimental</code></td>
 <td><a href="/docs/concepts/enforcement-modes#pausing-calls">pausing calls</a></td>
 </tr>
@@ -387,7 +387,10 @@ wrote is not promised readable. <code>notify</code>'s <code>--state</code> list 
 one quoted key per line, carries none either.</p>
 <p>Which version a plane reads depends on its authority:</p>
 <ul>
-<li>Pause file: <code>3</code> under <code>signed</code>; <code>1</code> and <code>2</code> elsewhere.</li>
+<li>Pause file: <code>4</code> under <code>signed</code>; <code>1</code> and <code>2</code> elsewhere. <code>3</code> is read by
+<code>pause sign</code> alone, which signs its entries again as <code>4</code>.</li>
+<li>State backup manifest: <code>0.2</code>, naming <code>plane_id</code> under <code>signed</code>; a <code>0.1</code>
+manifest names no plane, and a signed restore of one says <code>plane not checked</code>. 0.17 reads <code>0.2</code> only where it names no plane.</li>
 <li>Route: <code>reaction-route/v1alpha2</code> under <code>signed</code>; <code>v1alpha1</code> elsewhere.</li>
 <li>Stop list: <code>2.0</code> under <code>signed</code>; <code>1.0</code> elsewhere.</li>
 <li>Stop list header: <code>reaction-list-header/2.0</code>, the signed header of a <code>2.0</code>

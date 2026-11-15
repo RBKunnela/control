@@ -277,44 +277,50 @@ func load(path string, o owner) (file, error) {
 
 // loadIn reads and decodes the pause file at path through root, the
 // directory openDir judged, with every check Read names of the file itself.
-// The root follows a link at the file's own name whatever the flags say, so
-// the file opened has to be the one judged no link.
 func loadIn(root *os.Root, path string, o owner) (file, []byte, error) {
-	name := filepath.Base(path)
-	named, err := root.Lstat(name)
-	if err != nil {
-		return file{}, nil, missing(err)
-	}
-	if named.Mode()&fs.ModeSymlink != 0 {
-		return file{}, nil, fmt.Errorf("%w: %s", ErrLink, path)
-	}
-	step(stepFileNamed)
-	f, err := root.OpenFile(name, os.O_RDONLY|openFlags, 0)
-	if err != nil {
-		return file{}, nil, missing(err)
-	}
-	defer func() { _ = f.Close() }()
-	info, err := f.Stat()
-	if err != nil {
-		return file{}, nil, err
-	}
-	switch {
-	case !os.SameFile(named, info):
-		return file{}, nil, fmt.Errorf("%w: %s", ErrFileChanged, path)
-	case !info.Mode().IsRegular():
-		return file{}, nil, fmt.Errorf("%w: %s", ErrNotRegular, info.Mode().Type())
-	case info.Mode().Perm()&forbidden != 0:
-		return file{}, nil, fmt.Errorf("%w: mode %04o", ErrFileMode, info.Mode().Perm())
-	}
-	if err := o.judge(info, ErrFileOwner); err != nil {
-		return file{}, nil, fmt.Errorf("the file: %w", err)
-	}
-	raw, err := io.ReadAll(io.LimitReader(f, MaxFileBytes+1))
+	raw, err := readIn(root, path, o)
 	if err != nil {
 		return file{}, nil, err
 	}
 	doc, err := decodeFile(raw)
 	return doc, raw, err
+}
+
+// readIn reads the pause file at path through root with every check Read
+// names of the file itself, and decodes nothing. The root follows a link at
+// the file's own name whatever the flags say, so the file opened has to be
+// the one judged no link.
+func readIn(root *os.Root, path string, o owner) ([]byte, error) {
+	name := filepath.Base(path)
+	named, err := root.Lstat(name)
+	if err != nil {
+		return nil, missing(err)
+	}
+	if named.Mode()&fs.ModeSymlink != 0 {
+		return nil, fmt.Errorf("%w: %s", ErrLink, path)
+	}
+	step(stepFileNamed)
+	f, err := root.OpenFile(name, os.O_RDONLY|openFlags, 0)
+	if err != nil {
+		return nil, missing(err)
+	}
+	defer func() { _ = f.Close() }()
+	info, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	switch {
+	case !os.SameFile(named, info):
+		return nil, fmt.Errorf("%w: %s", ErrFileChanged, path)
+	case !info.Mode().IsRegular():
+		return nil, fmt.Errorf("%w: %s", ErrNotRegular, info.Mode().Type())
+	case info.Mode().Perm()&forbidden != 0:
+		return nil, fmt.Errorf("%w: mode %04o", ErrFileMode, info.Mode().Perm())
+	}
+	if err := o.judge(info, ErrFileOwner); err != nil {
+		return nil, fmt.Errorf("the file: %w", err)
+	}
+	return io.ReadAll(io.LimitReader(f, MaxFileBytes+1))
 }
 
 func missing(err error) error {
@@ -345,6 +351,7 @@ func causeOf(err error) Cause {
 		{ErrUnauthenticated, CauseUnauthenticated},
 		{ErrOtherScope, CauseOtherScope},
 		{ErrOtherFile, CauseOtherFile},
+		{ErrOtherPlane, CauseOtherFile},
 		{ErrPlaneOwned, CausePlaneOwned},
 		{ErrUnauthorized, CauseUnauthorized},
 		{ErrAuthority, CauseAuthority},

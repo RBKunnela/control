@@ -120,6 +120,11 @@ Date: 2026-11-06</p>
 <p>Amends <a href="/docs/adr/0019-an-operator-can-pause-calls">ADR-0019</a> under the signed
 authority of <a href="/docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it">ADR-0073</a>,
 over the roster of <a href="/docs/adr/0071-operators-are-named-by-a-signed-roster">ADR-0071</a>.</p>
+<p>Amended by <a href="/docs/adr/0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant">ADR-0082</a>:
+under <code>signed</code> the pause file is version <code>4</code>, whose body also names the
+plane's <code>plane_id</code>, which the plane compares with its own beside the path.
+Version <code>3</code> is refused, naming <code>pause sign</code>, which signs its entries again as
+<code>4</code> at the next serial. A body is held to the authenticator's 20 KiB bound.</p>
 <h2 id="context">Context</h2>
 <p>Under ADR-0019 write access to the pause file is the authority to pause and
 to lift. Under <code>approvals.authority: signed</code> an approval counts only signed

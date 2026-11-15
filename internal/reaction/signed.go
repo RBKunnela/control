@@ -22,7 +22,7 @@ const (
 
 // MaxSignedBytes bounds the body of each signed format at the operator
 // authenticator's bound on any statement.
-const MaxSignedBytes = 16384
+const MaxSignedBytes = 20480
 
 // signedAlg is the one algorithm a signed body names: an operator key's.
 const signedAlg = "ed25519"

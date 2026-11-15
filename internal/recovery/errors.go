@@ -15,9 +15,9 @@ const (
 	// ErrMemory is a backup or a restore under the memory authority, which
 	// keeps nothing a restore could take back.
 	ErrMemory Error = "recovery: the memory authority keeps no state to back up or restore"
-	// ErrOtherPlane is a backup of another tenant, project or authority than
-	// the configuration's.
-	ErrOtherPlane Error = "recovery: the backup is another tenant's, project's or authority's"
+	// ErrOtherPlane is a backup of another tenant, project, authority or,
+	// under signed, plane than the configuration's.
+	ErrOtherPlane Error = "recovery: the backup is another tenant's, project's, authority's or plane's"
 	// ErrSource is an entry whose source or path is not where the
 	// configuration puts that file.
 	ErrSource Error = "recovery: a file of the backup does not come from where the configuration puts it"

@@ -11,7 +11,7 @@ import (
 // project, and its serial against the pause floor, which a taken document
 // raises. It answers who signed, or a refusal wrapping one of this package's
 // errors, which names the cause: ErrUnauthenticated, ErrOtherScope,
-// ErrOtherFile, ErrUnauthorized, ErrAuthority, ErrBelowFloor, ErrForked or
+// ErrOtherPlane, ErrOtherFile, ErrUnauthorized, ErrAuthority, ErrBelowFloor, ErrForked or
 // ErrFloor.
 type Judge interface {
 	Judge(ctx context.Context, f Signed) (SignedBy, error)

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -16,10 +17,12 @@ import (
 )
 
 // The manifest's name in a backup, the version this build writes, which a
-// reader takes at any minor of major 0, and its kind.
+// reader takes at any minor of major 0, the one version that names no plane,
+// and its kind.
 const (
 	ManifestName    = "backup.json"
-	ManifestVersion = "0.1"
+	ManifestVersion = "0.2"
+	unboundVersion  = "0.1"
 	manifestMajor   = "0"
 	ManifestKind    = "state-backup"
 )
@@ -33,9 +36,12 @@ const (
 )
 
 // Manifest is what backup.json says: whose state a backup holds, under which
-// authority, when it was taken, and each file it holds.
+// authority, when it was taken, and each file it holds. PlaneID is the
+// plane's id under the signed authority, and empty under directory and in a
+// manifest of unboundVersion, which names none.
 type Manifest struct {
 	Authority, Tenant, Project string
+	PlaneID                    string
 	TakenAt                    time.Time
 	Entries                    []Entry
 }
@@ -48,8 +54,11 @@ type Entry struct {
 	Bytes                            int64
 }
 
+// manifestMembers are required in every manifest, and planeMember in one of
+// the signed authority past unboundVersion, and in no other.
 var (
 	manifestMembers = []string{"schema_version", "kind", "authority", "tenant", "project", "taken_at", "entries"}
+	planeMember     = "plane_id"
 	entryMembers    = []string{"class", "key", "source", "path", "sha256", "bytes"}
 )
 
@@ -57,6 +66,7 @@ type wireManifest struct {
 	SchemaVersion string      `json:"schema_version"`
 	Kind          string      `json:"kind"`
 	Authority     string      `json:"authority"`
+	PlaneID       string      `json:"plane_id,omitempty"`
 	Tenant        string      `json:"tenant"`
 	Project       string      `json:"project"`
 	TakenAt       string      `json:"taken_at"`
@@ -75,7 +85,7 @@ type wireEntry struct {
 // MarshalManifest renders m as backup.json holds it, and refuses one
 // ParseManifest would not read back as m.
 func MarshalManifest(m Manifest) ([]byte, error) {
-	w := wireManifest{SchemaVersion: ManifestVersion, Kind: ManifestKind, Authority: m.Authority, Tenant: m.Tenant,
+	w := wireManifest{SchemaVersion: ManifestVersion, Kind: ManifestKind, Authority: m.Authority, PlaneID: m.PlaneID, Tenant: m.Tenant,
 		Project: m.Project, TakenAt: m.TakenAt.UTC().Format(time.RFC3339), Entries: make([]wireEntry, 0, len(m.Entries))}
 	for _, e := range m.Entries {
 		w.Entries = append(w.Entries, wireEntry(e))
@@ -96,8 +106,9 @@ func MarshalManifest(m Manifest) ([]byte, error) {
 // ParseManifest reads backup.json strictly: one JSON object of at most
 // MaxManifestBytes with every member and no other, schema_version of major
 // 0, kind "state-backup", authority directory or signed, a tenant and a
-// project each an identifier, taken_at in RFC 3339 UTC, and at most
-// MaxEntries entries. An entry names a class this build backs up and that
+// project each an identifier, under signed past unboundVersion a plane_id
+// that is one and under any other a plane_id refused, taken_at in RFC 3339
+// UTC, and at most MaxEntries entries. An entry names a class this build backs up and that
 // class's key, an absolute clean source, a path under the class that is
 // clean, relative and named once, a hex SHA-256 and a size of at most
 // MaxFileBytes. Any other input is ErrManifest, or ErrVersion for another
@@ -106,7 +117,7 @@ func ParseManifest(raw []byte) (Manifest, error) {
 	if len(raw) > MaxManifestBytes {
 		return Manifest{}, fmt.Errorf("%w: %d bytes, the bound is %d", ErrManifest, len(raw), MaxManifestBytes)
 	}
-	o, err := object(raw, manifestMembers)
+	o, err := object(raw, manifestMembers, planeMember)
 	if err != nil {
 		return Manifest{}, err
 	}
@@ -118,7 +129,11 @@ func ParseManifest(raw []byte) (Manifest, error) {
 	if err != nil {
 		return Manifest{}, err
 	}
-	m := Manifest{Authority: s["authority"], Tenant: s["tenant"], Project: s["project"], TakenAt: taken}
+	plane, err := planeOf(o, s)
+	if err != nil {
+		return Manifest{}, err
+	}
+	m := Manifest{Authority: s["authority"], Tenant: s["tenant"], Project: s["project"], PlaneID: plane, TakenAt: taken}
 	if m.Entries, err = entries(o["entries"]); err != nil {
 		return Manifest{}, err
 	}
@@ -143,6 +158,29 @@ func header(s map[string]string) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("%w: taken_at", ErrManifest)
 	}
 	return taken, nil
+}
+
+// planeOf is the plane_id of the manifest o whose string members are s:
+// required and an identifier under the signed authority past
+// unboundVersion, and refused under any other authority and in a manifest of
+// unboundVersion. A signed manifest that names no plane would restore into
+// any plane of its tenant and project.
+func planeOf(o strictjson.Object, s map[string]string) (string, error) {
+	raw, named := o[planeMember]
+	bound := s["authority"] == gatewayconfig.AuthoritySigned && s["schema_version"] != unboundVersion
+	switch {
+	case named && !bound:
+		return "", fmt.Errorf("%w: plane_id in a manifest of version %s under the %s authority", ErrManifest, clip(s["schema_version"]), s["authority"])
+	case !named && bound:
+		return "", fmt.Errorf("%w: a manifest of version %s under the signed authority names no plane_id", ErrManifest, clip(s["schema_version"]))
+	case !named:
+		return "", nil
+	}
+	plane, ok := strictjson.String(raw)
+	if !ok || contract.CheckID(plane) != nil {
+		return "", fmt.Errorf("%w: the plane_id", ErrManifest)
+	}
+	return plane, nil
 }
 
 func entries(raw json.RawMessage) ([]Entry, error) {
@@ -217,10 +255,12 @@ func underClass(p, class string) bool {
 		!strings.HasPrefix(rel, "../") && rel != ".." && !strings.ContainsRune(p, 0)
 }
 
-func object(raw []byte, members []string) (strictjson.Object, error) {
+// object reads raw as one strict object holding every one of members, and
+// of optional at most those named.
+func object(raw []byte, members []string, optional ...string) (strictjson.Object, error) {
 	o, err := strictjson.ReadObject(raw)
 	if err == nil {
-		err = o.Only(members...)
+		err = o.Only(append(slices.Clone(members), optional...)...)
 	}
 	if err == nil {
 		err = o.Require(members...)

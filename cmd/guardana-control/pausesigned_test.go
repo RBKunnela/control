@@ -3,12 +3,15 @@ package main
 import (
 	"bytes"
 	"crypto/ed25519"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/guardana/control/internal/brand"
 	"github.com/guardana/control/internal/canon"
 	"github.com/guardana/control/internal/pause"
 	"github.com/guardana/control/internal/policy/bundle"
@@ -61,13 +64,16 @@ func invokeSigned(t *testing.T, words []string, keyFile string, judge []string, 
 }
 
 // signedInitialized is a pause file signed with the operator key at keyFile
-// for t1/A at serial 7.
+// for plane-a's t1/A at serial 7, which init says before it signs.
 func signedInitialized(t *testing.T, keyFile string) string {
 	t.Helper()
 	path := pauseDir(t)
-	code, stdout, stderr := invoke(t, "pause", "init", "--key", keyFile, "--tenant", "t1", "--project", "A", "--serial", "7", path)
-	if code != exitOK || !strings.Contains(stdout, "at serial 7") {
+	code, stdout, stderr := invoke(t, "pause", "init", "--key", keyFile, "--plane-id", "plane-a", "--tenant", "t1", "--project", "A", "--serial", "7", path)
+	if code != exitOK || !strings.Contains(stdout, "for plane plane-a at serial 7") {
 		t.Fatalf("pause init --key answered %d: %q %q", code, stdout, stderr)
+	}
+	if want := brand.CLI + ": pause init: signing serial 7 for plane plane-a tenant t1 project A, 0 entry(ies)\n"; stderr != want {
+		t.Errorf("pause init --key said %q, want %q", stderr, want)
 	}
 	return path
 }
@@ -85,16 +91,16 @@ func TestSignedPauseCommandsSignEveryChangeAtTheNextSerial(t *testing.T) {
 	if code != exitOK || !drawnID.MatchString(id) {
 		t.Fatalf("pause add --key answered %d: %q %q", code, id, stderr)
 	}
-	if !strings.Contains(stderr, "signed serial 8 for tenant t1 project A of ") || !strings.Contains(stderr, "1 entry(ies): "+id) {
+	if !strings.Contains(stderr, "signed serial 8 for plane plane-a tenant t1 project A of ") || !strings.Contains(stderr, "1 entry(ies): "+id) {
 		t.Errorf("pause add --key said %q, not what it signed", stderr)
 	}
 	bound, err := pause.BindingOf(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := pause.Header{KeyID: policykey.KeyID(pub), Tenant: "t1", Project: "A", File: bound, Serial: 8}
+	want := pause.Header{KeyID: policykey.KeyID(pub), PlaneID: "plane-a", Tenant: "t1", Project: "A", File: bound, Serial: 8}
 	holdsSigned(t, path, want, id)
-	listsSigned(t, path, "signed by key "+want.KeyID+" for tenant t1 project A at serial 8;", id+" global")
+	listsSigned(t, path, "signed by key "+want.KeyID+" for plane plane-a tenant t1 project A at serial 8;", id+" global")
 	if code, _, stderr := invokeSigned(t, []string{"remove"}, keyFile, judge, path, id); code != exitOK {
 		t.Fatalf("pause remove --key answered %d: %q", code, stderr)
 	}
@@ -175,7 +181,7 @@ func TestASignedWriteSignsNoEntriesAKeylessWriterPutThere(t *testing.T) {
 	if err := os.Remove(path); err != nil {
 		t.Fatal(err)
 	}
-	if err := pause.InitSigned(t.Context(), path, pause.Header{KeyID: forged.KeyID, Tenant: "t1", Project: "A", File: bound, Serial: 9}, forged); err != nil {
+	if err := pause.InitSigned(t.Context(), path, pause.Header{KeyID: forged.KeyID, PlaneID: "plane-a", Tenant: "t1", Project: "A", File: bound, Serial: 9}, forged); err != nil {
 		t.Fatal(err)
 	}
 	before := fileBytes(t, path)
@@ -194,23 +200,40 @@ func TestASignedWriteSignsNoEntriesAKeylessWriterPutThere(t *testing.T) {
 	}
 }
 
-// TestPauseInitTakesTheSignedFlagsTogether: --tenant, --project and
-// --serial make a signed file only with --key, and --key needs the tenant
-// and the project.
+// TestPauseInitTakesTheSignedFlagsTogether: --plane-id, --tenant, --project
+// and --serial make a signed file only with --key, and --key needs the
+// plane's id, the tenant and the project.
 func TestPauseInitTakesTheSignedFlagsTogether(t *testing.T) {
 	keyFile, _, _ := operatorKey(t)
 	for _, args := range [][]string{
 		{"--tenant", "t1", "--project", "A"},
+		{"--plane-id", "plane-a"},
 		{"--serial", "2"},
-		{"--key", keyFile, "--tenant", "t1"},
-		{"--key", keyFile, "--project", "A"},
+		{"--key", keyFile, "--plane-id", "plane-a", "--tenant", "t1"},
+		{"--key", keyFile, "--plane-id", "plane-a", "--project", "A"},
+		{"--key", keyFile, "--tenant", "t1", "--project", "A"},
+		{"--key", keyFile, "--plane-id", "", "--tenant", "t1", "--project", "A"},
 	} {
 		code, stdout, stderr := invoke(t, append(append([]string{"pause", "init"}, args...), pauseDir(t))...)
 		if code != exitUsage || stdout != "" || stderr == "" {
 			t.Errorf("init %v answered %d with %q and %q; want the usage status", args, code, stdout, stderr)
 		}
 	}
-	expectRefusal(t, "pause init", "serial", "pause", "init", "--key", keyFile, "--tenant", "t1", "--project", "A", "--serial", "0", pauseDir(t))
+	for _, c := range []struct{ plane, serial, says string }{
+		{"plane-a ", "1", "plane_id"},
+		{"plane-a", "0", "serial"},
+	} {
+		path := pauseDir(t)
+		code, stdout, stderr := invoke(t, "pause", "init", "--key", keyFile, "--plane-id", c.plane, "--tenant", "t1", "--project", "A", "--serial", c.serial, path)
+		lines := strings.Split(strings.TrimSuffix(stderr, "\n"), "\n")
+		if code != exitFail || stdout != "" || len(lines) != 2 || !strings.HasPrefix(lines[1], brand.CLI+": pause init: ") || !strings.Contains(lines[1], c.says) {
+			t.Errorf("init with plane %q at serial %s answered %d with %q and %q; want the line it would sign, then a refusal naming %s",
+				c.plane, c.serial, code, stdout, stderr, c.says)
+		}
+		if _, err := os.Lstat(path); !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("a refused init left %s: %v", path, err)
+		}
+	}
 }
 
 func TestPauseFloorInitMakesThePlanesFloorOnce(t *testing.T) {

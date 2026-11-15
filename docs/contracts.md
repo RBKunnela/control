@@ -1442,7 +1442,7 @@ of at most 4 KiB.
 Under `approvals.authority: signed`
 ([ADR-0077](adr/0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatures.md))
 each of the three is one DSSE signature by a roster operator over a body of
-at most 16 KiB in its canonical form, which names `alg` `ed25519`, the
+at most 20 KiB in its canonical form, which names `alg` `ed25519`, the
 signature's `keyId`, `tenant_id`, `project_id` and `file`: the absolute,
 cleaned path of the route file or of `stops.jsonl` it was signed for, at most
 1024 bytes, with every link on the way to its directory resolved. A plane
@@ -1492,7 +1492,7 @@ may write where they are read ([status.md](status.md)). A test in
 | --- | --- | --- | --- | --- |
 | Trust roster | `trust.roster`, signed by the root key | none: one roster serves every project and each grant names one; its id has to be `trust.roster_id` | `internal/trust/file.go` `fileRoster.candidate` | `internal/trust` `TestARestartNeverTakesARosterOfAnotherID` |
 | Approval answer | an operator's answer in `approvals.inbox_dir` | the authorizer is asked about the held call's tenant, `tenant_id`, and its project, and a grant matches both exactly | `internal/gateway/authority.go` `Pipeline.judgeEnvelope` `internal/operators/authorize.go` `rosterAuthorizer.Authorize` | `internal/gateway` `TestBobsAnswerResumesNothingAndAlicesOnce` `internal/operators` `TestTwoOperatorsEachActOnlyWhereTheirGrantsReach` |
-| Pause file | `pause.file` of version `3` | its tenant is `tenant_id` and its project the plane's | `internal/pause/signedpause/judge.go` `Authority.Judge` | `internal/pause/signedpause` `TestNoOneButAPermittedOperatorPausesOrLifts` |
+| Pause file | `pause.file` of version `4`; `3` is refused, naming `pause sign` | its tenant is `tenant_id`, and its project, `plane_id` and file the plane's | `internal/pause/signedpause/judge.go` `Authority.Judge` `Binding.Check` | `internal/pause/signedpause` `TestNoOneButAPermittedOperatorPausesOrLifts` `TestTheJudgeRefusesADocumentOfAnotherBinding` `TestACopyBetweenTwoPlanesOfOneProjectIsRefused` |
 | Run record | a `3.0` record in `records/` of `runs.dir` | its tenant is the listener's and its project the plane's | `internal/runs/signedruns/judge.go` `Authority.Judge` | `internal/runs/signedruns` `TestBothJudgesTakeOnlyAnOperatorOfThePlanesProject` |
 | Route | `reaction.route` of `v1alpha2` | its tenant is the listener's, and its project and file the plane's | `internal/gatewayconfig/reaction.go` `Config.CheckRoute` `internal/reaction/signed.go` `vouchedWithin` | `internal/gatewayconfig` `TestARouteIsOfTheListenersTenant` `TestARouteIsOfTheAuthoritysFormatAndThePlanesProject` `internal/reaction` `TestASignedRouteIsRefusedWithItsCause` |
 | Stop list header | the `2.0` header of `reaction.stops` | its tenant and project are the route's | `internal/reaction/header2.go` `judgeSignedHeader` | `internal/reaction` `TestASignedListIsRefusedAndNeverReadAsNoStops` |

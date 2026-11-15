@@ -165,7 +165,7 @@ Nothing in this repository is a security boundary yet.</p>
 <tr>
 <td>Approval answers, pause files, run records, routes, stop list headers and lifts</td>
 <td>roster operators, each with <code>--key</code> on its own command</td>
-<td>under <code>approvals.authority: signed</code> only: the signer is a roster operator whose grant covers the act, the tenant and the project; a pause file, a route and a stop list header also name the file the plane reads, an answer the held call, and a lift the list it was made against</td>
+<td>under <code>approvals.authority: signed</code> only: the signer is a roster operator whose grant covers the act, the tenant and the project; a pause file, a route and a stop list header also name the file the plane reads, a pause file also the plane's <code>plane_id</code>, an answer the held call, and a lift the list it was made against</td>
 <td><code>experimental</code></td>
 <td><code>internal/gateway/authority.go</code>, <code>internal/pause/signedpause/</code>, <code>internal/runs/signedruns/</code>, <code>internal/reaction/</code></td>
 </tr>
@@ -198,7 +198,8 @@ signed this answer, pause, run, route, header or lift, and the plane counts
 it only within that operator's grant over the tenant and project it names,
 which have to be the ones the plane serves. A signed pause file, route or
 stop list header names the file it was signed for, and a plane refuses one
-that names another. An answer counts for the one held call it names, by its
+that names another; a pause file also names the plane's <code>plane_id</code>, and a
+plane refuses another plane's. An answer counts for the one held call it names, by its
 tenant, project, request, approval, action digest and bundle digest, and only
 the plane marks it spent (<a href="/docs/concepts/approvals-and-the-held-call">approvals</a>).
 Outside <code>signed</code>, a route's signature proves only that the route key's holder

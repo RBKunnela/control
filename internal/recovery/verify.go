@@ -14,7 +14,8 @@ import (
 )
 
 // readBackup reads dir's manifest and holds dir and the manifest to cfg: the
-// same authority, tenant and project, every entry from where cfg puts that
+// same authority, tenant and project, under signed the same plane where the
+// manifest names one, every entry from where cfg puts that
 // file today and of a class cfg's authority backs up, each file of the size
 // and SHA-256 the manifest names, and no file the manifest does not name. It
 // writes the bytes it verified into into, an empty owner-only directory, and
@@ -53,7 +54,10 @@ func readBackup(cfg *gatewayconfig.Config, dir, into string) (Manifest, error) {
 }
 
 // samePlane refuses a manifest of another authority, tenant or project than
-// cfg's, and a cfg of the memory authority.
+// cfg's, a cfg of the memory authority, and under signed a manifest of
+// another plane than cfg's or a cfg that names none. A signed manifest of
+// unboundVersion names no plane, which ParseManifest takes from no later
+// version.
 func samePlane(cfg *gatewayconfig.Config, m Manifest) error {
 	authority := cfg.Approvals.Authority
 	switch {
@@ -64,6 +68,10 @@ func samePlane(cfg *gatewayconfig.Config, m Manifest) error {
 	case m.Tenant != cfg.TenantID || m.Project != cfg.ProjectID:
 		return fmt.Errorf("%w: the backup is of %s/%s, the configuration names %s/%s",
 			ErrOtherPlane, m.Tenant, m.Project, clip(cfg.TenantID), clip(cfg.ProjectID))
+	case authority == gatewayconfig.AuthoritySigned && cfg.PlaneID == "":
+		return fmt.Errorf("%w: approvals.authority is signed and the configuration names no plane_id", ErrOtherPlane)
+	case m.PlaneID != "" && m.PlaneID != cfg.PlaneID:
+		return fmt.Errorf("%w: the backup is of plane %s, the configuration names %s", ErrOtherPlane, clip(m.PlaneID), clip(cfg.PlaneID))
 	}
 	return nil
 }

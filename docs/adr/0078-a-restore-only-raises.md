@@ -15,6 +15,11 @@ Amended by [ADR-0079](0079-a-signed-plane-admits-a-child-only-if-it-saw-it-befor
 accepts a child's `.seen` in `state/` and writes none, since it closes every
 run.
 
+Amended by [ADR-0082](0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant.md):
+`backup.json` is schema `0.2`, and under `signed` names the plane's
+`plane_id`, which a restore compares beside the tenant and project. A `0.1`
+manifest names none; a signed restore of one says `plane not checked`.
+
 ## Context
 
 A plane's authority state lives on disk: floors that keep an older policy,
