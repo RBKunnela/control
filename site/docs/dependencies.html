@@ -268,6 +268,7 @@ checked, so this line says less than the entries above it.</li>
 <p>Pinned as <code>tool</code> directives in <code>go.mod</code>, so they arrive with <code>go mod download</code>
 at the version the module records. None of them is linked into a shipped
 binary and none is in the request path.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -298,6 +299,7 @@ binary and none is in the request path.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>Every other module in <code>go.mod</code> but Goldmark (below) and <code>golang.org/x/sys</code> (above) is marked <code>// indirect</code> and arrives through
 those three or through the MCP module: <code>golang.org/x/mod</code>, <code>golang.org/x/sync</code>,
 <code>golang.org/x/telemetry</code>, <code>golang.org/x/tools</code> and
@@ -434,6 +436,7 @@ it is a dependency of the release and review path even though it never ships.
 Each is pinned to a commit SHA with the version in a trailing comment;
 <code>make check-actions</code> fails on a reference that is not, and <code>zizmor</code> and
 <code>actionlint</code> read the same files. None of them is in the request path.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -495,6 +498,7 @@ Each is pinned to a commit SHA with the version in a trailing comment;
 </tr>
 </tbody>
 </table>
+</div>
 <p>Licences were read from each action's repository metadata, not from a scanner.</p>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/dependencies.md">docs/dependencies.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.17.0, and <a href="https://github.com/guardana/control/tree/v0.17.0/docs">its documentation</a> is in its tag.</p>
 </main>

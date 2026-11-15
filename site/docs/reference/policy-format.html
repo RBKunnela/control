@@ -127,6 +127,7 @@ together, a float, an integer outside the JSON-safe range, invalid UTF-8 and
 nesting past 32 containers are refused before any member is read. Keys match
 exactly, case included. Every object below is closed: a key it does not list
 is refused, and the refusal names the object, never the key.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -153,7 +154,9 @@ is refused, and the refusal names the object, never the key.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <h3 id="bundle"><code>bundle</code></h3>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -185,8 +188,10 @@ is refused, and the refusal names the object, never the key.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>There is no creation time: none is signed, so a key for one is an unknown key.</p>
 <h3 id="a-rule">A rule</h3>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -223,6 +228,8 @@ is refused, and the refusal names the object, never the key.</p>
 </tr>
 </tbody>
 </table>
+</div>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -249,11 +256,13 @@ is refused, and the refusal names the object, never the key.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>A code the kernel emits about its own checks, such as <code>TENANT_MISMATCH</code> or
 <code>POLICY_STALE</code>, is on no list: a policy that could name one could dress its
 own denial as the kernel's. Every code is in
 <a href="/docs/reference/reason-codes">reason-codes.md</a>.</p>
 <h3 id="an-obligation">An obligation</h3>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -280,12 +289,14 @@ own denial as the kernel's. Every code is in
 </tr>
 </tbody>
 </table>
+</div>
 <h3 id="when"><code>when</code></h3>
 <p>Each group is optional and constrains nothing when absent; a present group
 holds at least one member. A list means any of its values, 1 to 64 of them,
 and a value matches by exact equality: no regular expressions, no prefixes,
 no scripts. A map constraint names entries the envelope's map must hold, each
 with the values it may hold there. Every constraint of a rule has to hold.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -362,6 +373,7 @@ with the values it may hold there. Every constraint of a rule has to hold.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>Enum values are spelled without the wire prefix: <code>TRANSACT</code>, not
 <code>EFFECT_CLASS_TRANSACT</code>. <code>UNSPECIFIED</code> is refused everywhere.</p>
 <h3 id="the-external-decision-point">The external decision point</h3>
@@ -379,6 +391,7 @@ reading <code>external</code> has no other constraint that is false and the deci
 without the answer is not <code>DENY</code>;
 <a href="/docs/guides/let-a-decision-point-veto">guides/let-a-decision-point-veto.md</a>
 sets one up. The answer sets the constraint:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -420,10 +433,12 @@ sets one up. The answer sets the constraint:</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>An unknown <code>external</code> leaves its rule undetermined, which blocks every
 effect class, a read under <code>fail_open_read</code> too. A decision that consulted an
 answer names the decision point in <code>pdp_instance</code>.</p>
 <h2 id="strings-and-bounds">Strings and bounds</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -470,6 +485,7 @@ answer names the decision point in <code>pdp_instance</code>.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>An identifier is a non-empty string the envelope could carry: valid UTF-8,
 no white space at either end, and no code point of the classes the
 identifier rule of <a href="/docs/adr/0011-contract-corrections-before-publication">ADR-0011</a>
@@ -484,6 +500,7 @@ above. A refusal names the rule, once its id has been read, and the refused
 member as a path such as <code>rules[2].when.action.name[0]</code>; an entry of a map is
 named by its position in sorted key order, never by its key. The refused
 value is never repeated, because a refusal is written to logs.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -566,10 +583,12 @@ value is never repeated, because a refusal is written to logs.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <h2 id="a-test-case">A test case</h2>
 <p>A case for <code>policy test</code> is one JSON object holding each member below once,
 all required but <code>external</code>. An unknown, missing or repeated member, and
 anything after the object, are refused.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -616,6 +635,7 @@ anything after the object, are refused.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/reference/policy-format.md">docs/reference/policy-format.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.17.0, and <a href="https://github.com/guardana/control/tree/v0.17.0/docs">its documentation</a> is in its tag.</p>
 </main>
 <nav class="side" aria-label="Documentation">

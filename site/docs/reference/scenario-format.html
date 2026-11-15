@@ -128,6 +128,7 @@ call the answer, the decision and the trail a live plane must show.
 anywhere, bytes that are not UTF-8, an escaped lone surrogate and anything
 after the document are refused. <code>kind</code> is checked before any other member,
 wherever it stands. Any change to the format is a new <code>kind</code>.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -164,10 +165,12 @@ wherever it stands. Any change to the format is a new <code>kind</code>.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>At least one call step must expect an event: a scenario whose trails may all
 be empty examines nothing. <code>n</code> in a step reference counts from zero and
 always names an earlier step.</p>
 <h3 id="call"><code>call</code></h3>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -198,6 +201,7 @@ always names an earlier step.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>Every list compares exactly and in order, and holds at most 64 items. A code
 must be in the reason registry, an obligation type in the catalogue, and a
 kind named, when the file loads.</p>
@@ -208,6 +212,7 @@ is cut. Substitution is one pass, left to right, and the text put in is
 never read again. A <code>${</code> that is not a well-formed reference is refused, so a
 literal <code>${</code> cannot be sent, and a reference in a member name is refused.</p>
 <h3 id="operator-steps">Operator steps</h3>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -230,6 +235,7 @@ literal <code>${</code> cannot be sent, and a reference in a member name is refu
 </tr>
 </tbody>
 </table>
+</div>
 <p>These values reach <code>guardana-control</code>'s command line, so key text in any of
 them is refused when the file loads.</p>
 <h2 id="running-scenarios">Running scenarios</h2>
@@ -298,6 +304,7 @@ removed either way, after an interrupt too.</p>
 <p>One line per step, <code>&lt;id&gt; step[&lt;i&gt;] &lt;kind&gt;: ok</code>, or one line per member that
 differs, <code>&lt;id&gt; step[&lt;i&gt;].&lt;member&gt;: want &lt;x&gt;, got &lt;y&gt;</code>; then <code>&lt;id&gt; passed</code>,
 <code>&lt;id&gt; failed</code> or <code>&lt;id&gt; could not run: &lt;why&gt;</code>.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -320,6 +327,7 @@ differs, <code>&lt;id&gt; step[&lt;i&gt;].&lt;member&gt;: want &lt;x&gt;, got &l
 </tr>
 </tbody>
 </table>
+</div>
 <h2 id="example">Example</h2>
 <pre><code class="language-json">{
   &#34;kind&#34;: &#34;agent-scenario/v1alpha1&#34;,

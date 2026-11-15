@@ -169,6 +169,7 @@ run-time loading that would give a version string something to guard.</p>
 <h2 id="what-the-adapter-asks-the-plane">What the adapter asks the plane</h2>
 <p>The pipeline is the whole of what an adapter needs, and it answers rather than
 failing:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -203,6 +204,7 @@ failing:</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>What an adapter hands in, the pipeline holds it to, in every mode:</p>
 <ul>
 <li>The action's kind is <code>tool</code>, <code>prompt</code> or <code>resource</code>, and its protocol is
@@ -230,6 +232,7 @@ open holds one of the plane's <code>MaxOpen</code> slots until the adapter aband
 the process ends; the enforcement API abandons each execution whose handle
 expired.</p>
 <h2 id="the-capabilities-and-what-the-plane-does-with-each">The capabilities, and what the plane does with each</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -276,6 +279,7 @@ expired.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>A capability is a promise to the plane, so the plane checks it at start and never
 per call: the mode table maps every declared enforcement mode to what it needs,
 <code>UNSPECIFIED</code> is refused as configuration, and a mode the adapter cannot serve
@@ -301,6 +305,7 @@ send, <code>Close</code> or <code>Abort</code>.</li>
 <h2 id="applying-an-obligation">Applying an obligation</h2>
 <p>The plane applies five types itself, for every adapter, before any approval
 is asked; three read only the envelope:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -327,6 +332,7 @@ is asked; three read only the envelope:</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>A call failing one, or carrying a parameter its type does not read, is the
 plane's <code>DENY</code> with <code>OBLIGATION_NOT_UNDERSTOOD</code>; an advisory one is skipped.
 The rewriting types (<code>redact_fields</code>, <code>cap_amount</code>) apply before the recorded
@@ -350,6 +356,7 @@ caller stop every run.</p>
 <p>A declared capability that no test exercises is a documented capability that does
 not exist, so each one is exercised against an in-process server of the
 protocol, in the adapter's own package:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -392,6 +399,7 @@ protocol, in the adapter's own package:</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>Beyond the capabilities, an adapter that is worth trusting also has an
 adversarial test per answer it makes itself: an upstream that tries to answer in
 the gateway's name, a result larger than its bound, a call that cannot be routed.</p>

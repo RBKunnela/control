@@ -206,6 +206,7 @@ this export, then totals, where <code>open</code> counts those it still follows.
 <p>Each new alert is one JSON line appended to <code>s/alerts.jsonl</code> and written to
 standard error after <code>evidence-report: alert</code>. The format is the example's
 own, <code>&quot;v&quot;:1</code> and <code>experimental</code>, not a contract:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -248,6 +249,7 @@ own, <code>&quot;v&quot;:1</code> and <code>experimental</code>, not a contract:
 </tr>
 </tbody>
 </table>
+</div>
 <p>A policy <code>DENY</code> is reported, not alerted. A line holds the members that
 apply: <code>tenant</code>, <code>project</code>, <code>request</code>, <code>run</code>, <code>event</code>, <code>offset</code>, where it was
 raised, <code>cursor</code> or <code>source</code>, <code>occurred_at</code>, <code>verdict</code>, <code>reasons</code>, <code>block</code>,

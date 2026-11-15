@@ -122,6 +122,7 @@ revision and transport. <a href="/docs/status">status.md</a> is the inventory;
 <a href="/docs/adr/0013-mcp-interception-approvals-and-modes">ADR-0013</a> records the
 decisions.</p>
 <h2 id="revisions-and-transports">Revisions and transports</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -152,6 +153,7 @@ decisions.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>No configuration key wires an end user's authenticator, so every call is made by the
 principal the operator configured. <code>_meta.clientInfo</code> is a run-context tag no
 digest covers. A request with a body gets 30 seconds for it, and 30 seconds
@@ -160,6 +162,7 @@ a slice every 29 seconds holds a handler throughout.</p>
 <p>An upstream is reached over Streamable HTTP (<code>upstreams[].endpoint</code>) or as a
 child process (<code>upstreams[].command</code>).</p>
 <h2 id="methods">Methods</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -201,7 +204,9 @@ child process (<code>upstreams[].command</code>).</p>
 </tr>
 </tbody>
 </table>
+</div>
 <h2 id="what-the-gateway-cannot-do">What the gateway cannot do</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -248,9 +253,11 @@ child process (<code>upstreams[].command</code>).</p>
 </tr>
 </tbody>
 </table>
+</div>
 <h2 id="list-shaping-under-each-mode">List shaping under each mode</h2>
 <p><code>list.shaping</code> only subtracts, and the configuration is refused at start
 when it is not <code>none</code> in a mode that does not enforce.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -277,6 +284,7 @@ when it is not <code>none</code> in a mode that does not enforce.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>A preview carries no arguments, so no resource id. A tool whose effect class
 needs the id is no verdict at preview and stays listed; one whose only <code>ALLOW</code>
 reads the id stays listed, marked <code>DECIDED_PER_CALL</code> under <code>annotate</code>, unless
@@ -287,6 +295,7 @@ a rule denies it without its arguments.</p>
 structured content, which a client checks against the tool's output schema. A <code>resources/read</code> and a
 <code>prompts/get</code> have no <code>isError</code>, so there the fields travel as a JSON-RPC
 error, outside the protocol's reserved range and the library's private code.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -318,6 +327,7 @@ error, outside the protocol's reserved range and the library's private code.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>An upstream's own wire error, and the client library's <code>-32005</code> <code>rejected by transport</code>, passes through with its code and message, unless it quotes a
 credential the plane sends; any
 other failure, a timeout or a broken session, answers <code>-32603</code> <code>the upstream did not answer</code>, never the transport's text, which can quote the endpoint. Only <code>&lt;ns&gt;/answer</code> (<code>blocked</code>,
@@ -327,6 +337,7 @@ from both places in everything an upstream sends, so an upstream cannot answer
 as the gateway.</p>
 <p>A <code>tools/call</code> answer the pipeline decided names its decision's trail with the
 strings <code>&lt;ns&gt;/request_id</code> and <code>&lt;ns&gt;/decision_id</code>:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -349,6 +360,7 @@ strings <code>&lt;ns&gt;/request_id</code> and <code>&lt;ns&gt;/decision_id</cod
 </tr>
 </tbody>
 </table>
+</div>
 <p>A retry told to wait again, or run, names the held request's trail; one refused
 on its own trail names that. The ids are added after the result is hashed,
 so the closing record's <code>result_hash</code> is the upstream's. Reads, prompts, lists
@@ -357,6 +369,7 @@ and undecided answers carry neither.</p>
 <p>A kernel decision comes back as written, with the kernel's codes such as <code>NO_MATCHING_RULE</code>;
 <a href="/docs/reference/reason-codes">reference/reason-codes</a> lists every code; an untranslatable call is the kernel's
 block in every mode. The codes below are the enforcement point's own.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -431,6 +444,7 @@ block in every mode. The codes below are the enforcement point's own.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/reference/mcp-coverage.md">docs/reference/mcp-coverage.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.17.0, and <a href="https://github.com/guardana/control/tree/v0.17.0/docs">its documentation</a> is in its tag.</p>
 </main>
 <nav class="side" aria-label="Documentation">

@@ -142,6 +142,7 @@ refused its first event. The MCP adapter and the pipeline fill them as below
 plane mints or, under <code>runs.dir</code>, the id of the run the operator opened. <code>execution_id</code> is on the events of a call handed to execution.
 <code>prev_event_digest</code> is left empty.</p>
 <p><code>ACTION_PROPOSED</code> carries the envelope:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -188,6 +189,7 @@ plane mints or, under <code>runs.dir</code>, the id of the run the operator open
 </tr>
 </tbody>
 </table>
+</div>
 <p>Left empty by this plane: <code>principal.authn_strength</code>
 and <code>attributes</code>, <code>agent.instance_id</code> and <code>model_ref</code>, <code>delegation</code>,
 <code>resource.labels</code>, <code>destination.host</code>, <code>data</code>, <code>arguments.redacted_preview</code>,
@@ -229,6 +231,7 @@ sends is not kept either (<code>adapters/otel/receiver.go</code>).</p>
 <p>Hidden model reasoning is never stored at any setting. MCP does not carry it
 to the plane, no field of the contract holds it, and no adapter reads it.</p>
 <h2 id="where-records-go-and-who-can-read-them">Where records go, and who can read them</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -350,9 +353,11 @@ to the plane, no field of the contract holds it, and no adapter reads it.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>The upstream server receives the authorized arguments, as it would without
 the plane. A plane in <code>OBSERVE</code> sends the proposed ones.</p>
 <h2 id="how-long-records-stay">How long records stay</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -429,6 +434,7 @@ the plane. A plane in <code>OBSERVE</code> sends the proposed ones.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>No command finds or deletes the records about one person. A plane without
 an authenticator records one configured principal for every call, so a
 person's identity enters a record through what the operator configured, what

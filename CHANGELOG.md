@@ -90,6 +90,10 @@ verify one.
   now open with. Each label on the landing page is checked against its row in
   the status page or its task in the backlog
   ([ADR-0084](docs/adr/0084-the-site-is-redrawn-in-one-system.md)).
+- The status page groups its components into six tables, each row with a
+  stable id, its label and one sentence that links to the row's details; the
+  landing page names a row by its id. A wide documentation table scrolls in
+  its own box on a phone.
 
 ### Added
 

@@ -16,6 +16,7 @@ import (
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
+	east "github.com/yuin/goldmark/extension/ast"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/renderer/html"
@@ -266,7 +267,7 @@ func (r *rewriter) link(target string) (string, error) {
 }
 
 // blocks renders fenced code: a Mermaid block as a figure, anything else as
-// preformatted text.
+// preformatted text; and each table inside a box of its own.
 type blocks struct {
 	page    *page
 	figures int
@@ -274,6 +275,35 @@ type blocks struct {
 
 func (b *blocks) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
 	reg.Register(ast.KindFencedCodeBlock, b.fenced)
+	extension.NewTableHTMLRenderer(extension.WithTableHTMLOptions(html.WithXHTML())).RegisterFuncs(boxedTables{reg})
+}
+
+// boxedTables passes the table renderer's functions on, and puts each table
+// in a `tbl` box: the box scrolls a wide table, so the page never does.
+type boxedTables struct {
+	reg renderer.NodeRendererFuncRegisterer
+}
+
+func (b boxedTables) Register(kind ast.NodeKind, f renderer.NodeRendererFunc) {
+	if kind != east.KindTable {
+		b.reg.Register(kind, f)
+		return
+	}
+	b.reg.Register(kind, func(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if entering {
+			if _, err := w.WriteString("<div class=\"tbl\">\n"); err != nil {
+				return ast.WalkStop, err
+			}
+		}
+		status, err := f(w, source, n, entering)
+		if err != nil || entering {
+			return status, err
+		}
+		if _, err := w.WriteString("</div>\n"); err != nil {
+			return ast.WalkStop, err
+		}
+		return status, nil
+	})
 }
 
 func (b *blocks) fenced(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {

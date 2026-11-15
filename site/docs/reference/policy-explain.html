@@ -155,6 +155,7 @@ run took in untrusted content, the destination is untrusted, and nothing says
 how sensitive the message is. An undetermined <code>DENY</code> outranks the approval, so
 the call is blocked before anyone is asked.</p>
 <h2 id="the-lines">The lines</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -229,9 +230,11 @@ the call is blocked before anyone is asked.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <h2 id="a-rules-line">A rule's line</h2>
 <p>The rules are listed in four groups, those that decided first, each group in
 document order:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -258,8 +261,10 @@ document order:</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p><code>&lt;field&gt;</code> is the document's spelling, <code>when.resource.environment</code>; <code>&lt;input&gt;</code> is
 what the call or the run lacked, in the envelope's wire spelling:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -290,6 +295,7 @@ what the call or the run lacked, in the envelope's wire spelling:</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>An enum this build does not declare, or a sensitivity off the scale, is
 refused before any rule is read, and no rule line says it was missing.</p>
 <h2 id="bounds">Bounds</h2>
@@ -298,6 +304,7 @@ constraints on one line, then <code>and &lt;n&gt; more</code>. Every line is one
 character makes it a quoted Go string, and key text is withheld
 (<a href="/docs/reference/cli">cli.md</a>).</p>
 <h2 id="exit-status">Exit status</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -320,6 +327,7 @@ character makes it a quoted Go string, and key text is withheld
 </tr>
 </tbody>
 </table>
+</div>
 <p>The output carries no version and may change between releases. A script reads
 <code>policy test</code>, whose line is stable.</p>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/reference/policy-explain.md">docs/reference/policy-explain.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.17.0, and <a href="https://github.com/guardana/control/tree/v0.17.0/docs">its documentation</a> is in its tag.</p>

@@ -20,7 +20,6 @@ import (
 const (
 	agentsLineLimit  = 200
 	minMarkdownFiles = 5
-	minComponentRows = 10 // fewer means the table was not parsed, not that it emptied
 )
 
 var (
@@ -29,8 +28,6 @@ var (
 	tableSeparator = regexp.MustCompile(`^\s*\|[\s:|-]*-[\s:|-]*\|\s*$`)
 	claimPhrase    = regexp.MustCompile(`(?i)supports\s|provides\s|integrates\s+with\s`)
 	statusLabel    = regexp.MustCompile("implemented|experimental|planned")
-	allowedStatus  = map[string]bool{"`implemented`": true, "`experimental`": true, "`planned`": true}
-	componentHead  = "Component | Status | Where"
 )
 
 // repoFS resolves the repository from this file's own compiled-in path rather
@@ -101,27 +98,6 @@ func tableCells(line string) []string {
 	return cells
 }
 
-// componentTable returns docs/status.md and the line indexes of the pipe rows
-// under "## Components". A section that went missing or lost its rows is fatal,
-// so neither test below can pass over nothing.
-func componentTable(t *testing.T) ([]string, []int) {
-	t.Helper()
-	lines := readLines(t, repoFS(t), "docs/status.md")
-	var table []int
-	in := false
-	for i, line := range lines {
-		if s := strings.TrimSpace(line); strings.HasPrefix(s, "## ") {
-			in = s == "## Components"
-		} else if in && strings.HasPrefix(s, "|") {
-			table = append(table, i)
-		}
-	}
-	if len(table) < minComponentRows+2 {
-		t.Fatalf(`docs/status.md: "## Components" holds %d table lines, want a header, a separator and at least %d rows`, len(table), minComponentRows)
-	}
-	return lines, table
-}
-
 // TestAgentsFileStaysShort keeps the project law file readable in one sitting.
 func TestAgentsFileStaysShort(t *testing.T) {
 	if n := len(readLines(t, repoFS(t), "AGENTS.md")); n > agentsLineLimit {
@@ -181,33 +157,6 @@ func TestGateExaminedSomething(t *testing.T) {
 	for _, rel := range []string{"README.md", "AGENTS.md", "ROADMAP.md", "docs/status.md"} {
 		if _, err := fs.Stat(fsys, rel); err != nil {
 			t.Errorf("required document %s is missing: %v", rel, err)
-		}
-	}
-}
-
-// TestStatusComponentTableShape fails on a renamed or reordered column and a
-// missing separator: each makes the label check read the wrong cell, or none.
-func TestStatusComponentTableShape(t *testing.T) {
-	lines, table := componentTable(t)
-	if got := strings.Join(tableCells(lines[table[0]]), " | "); got != componentHead {
-		t.Errorf("docs/status.md:%d: header is %q, want %q", table[0]+1, got, componentHead)
-	}
-	if !tableSeparator.MatchString(lines[table[1]]) {
-		t.Errorf("docs/status.md:%d: want the header separator row, got %q", table[1]+1, strings.TrimSpace(lines[table[1]]))
-	}
-}
-
-// TestStatusComponentTableLabels is the load-bearing check. The root documents
-// no longer keep their own inventories, they all point here, so this table is
-// the only place the project states what is implemented, experimental or
-// planned; a row that loses its label takes the honesty claim with it.
-func TestStatusComponentTableLabels(t *testing.T) {
-	lines, table := componentTable(t)
-	for _, i := range table[2:] {
-		if cells := tableCells(lines[i]); len(cells) != 3 {
-			t.Errorf("docs/status.md:%d: row has %d cells, want 3: %s", i+1, len(cells), strings.TrimSpace(lines[i]))
-		} else if !allowedStatus[cells[1]] {
-			t.Errorf("docs/status.md:%d: %q has status %q, want one of `implemented`, `experimental`, `planned`", i+1, cells[0], cells[1])
 		}
 	}
 }

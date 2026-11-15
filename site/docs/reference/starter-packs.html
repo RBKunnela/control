@@ -131,6 +131,7 @@ $ guardana-control policy explain examples/starter-packs/read-only/cases/unknown
 <code>serial</code>, then lint, test and sign it as
 <a href="/docs/guides/write-and-test-a-policy">write-and-test-a-policy.md</a> says.</p>
 <h2 id="read-only">read-only</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -147,8 +148,10 @@ $ guardana-control policy explain examples/starter-packs/read-only/cases/unknown
 </tr>
 </tbody>
 </table>
+</div>
 <p>Every other call matches no rule, and no rule matched is <code>DENY</code> with
 <code>NO_MATCHING_RULE</code>.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -179,6 +182,7 @@ $ guardana-control policy explain examples/starter-packs/read-only/cases/unknown
 </tr>
 </tbody>
 </table>
+</div>
 <p>Left unguarded: what a read carries out in its arguments. A read of an
 untrusted page whose address holds data the agent read earlier is still a
 read. The pack has no toxic-flow rule because a plane's calls carry no data
@@ -188,6 +192,7 @@ denied once something sensitive was read. Add
 one, as the approval-for-writes pack does for messages, if that is the
 trade you want.</p>
 <h2 id="approval-for-writes">approval-for-writes</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -219,8 +224,10 @@ trade you want.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>A test holds <code>writes-need-approval</code> to every effect class the contract
 declares but <code>READ</code>, so a class added later fails it until the pack names it.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -267,6 +274,7 @@ declares but <code>READ</code>, so a class added later fails it until the pack n
 </tr>
 </tbody>
 </table>
+</div>
 <p>Two consequences to know before relying on it:</p>
 <ul>
 <li>After the run took in untrusted content, a message to an untrusted

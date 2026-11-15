@@ -244,6 +244,7 @@ agent's <code>_meta</code>.</p>
 <p>The manifest is what the upstream lists plus the operator's classification of
 each definition. Nothing else classifies: a tool's own annotations are hints
 (invariant 2).</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -290,11 +291,13 @@ each definition. Nothing else classifies: a tool's own annotations are hints
 </tr>
 </tbody>
 </table>
+</div>
 <h2 id="what-the-modes-do">What the modes do</h2>
 <p>The kernel is <code>ENFORCE</code> only and decides every call the same way in every mode
 but <code>LOCKDOWN</code>, which builds it with fail-open reads off (ADR-0012). A mode changes what is done with the decision, and it never reaches
 an extension: the adapter translates, the sink writes, the policy holder serves a
 bundle, and none of them knows the mode.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -337,6 +340,7 @@ bundle, and none of them knows the mode.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>A mode the build does not enforce, and a mode needing a capability the adapter
 does not declare, are refused when the plane is built, not when a call arrives.</p>
 <h2 id="when-the-decision-point-is-asked">When the decision point is asked</h2>
@@ -347,6 +351,7 @@ decides first without an answer, and asks only when the kernel reports that
 its decision turns on the answer and that decision is not already <code>DENY</code>,
 which no answer changes. It asks once and records the second decision, so a
 call no veto rule covers is never sent anywhere.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -381,6 +386,7 @@ call no veto rule covers is never sent anywhere.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>The question carries the call's principal, action, resource and destination,
 as mapping version 1 lists them, and never its arguments (invariant 9). The
 answer is read strictly where it could allow. An ask past <code>pdp.timeout</code> is
@@ -397,6 +403,7 @@ while the ask waits still blocks the call.
 waiting on them; <code>decision_latency_us</code> stays the kernel's own time.</p>
 <h2 id="what-a-pending-approval-looks-like-on-the-wire">What a pending approval looks like on the wire</h2>
 <p><code>REQUIRE_APPROVAL</code> returns at once. The connection is not held; the request is.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -418,6 +425,7 @@ waiting on them; <code>decision_latency_us</code> stays the kernel's own time.</
 </tr>
 </tbody>
 </table>
+</div>
 <p>A retry that matches the binding, equals the held request on the data labels and
 on the run context without the plane's flow tags, comes from the opened run that
 holds it, and draws a fresh decision
@@ -431,6 +439,7 @@ The plane holds at most <code>approvals.max_held</code> requests,
 <code>approvals.max_held_per_run</code> of one opened run, 16 unless set, and keeps at most
 <code>approvals.max_open</code> executions open; past any bound a call blocks with <code>EVIDENCE_UNAVAILABLE</code>.</p>
 <h2 id="what-the-closing-record-carries">What the closing record carries</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -472,6 +481,7 @@ The plane holds at most <code>approvals.max_held</code> requests,
 </tr>
 </tbody>
 </table>
+</div>
 <h2 id="an-answer-that-quotes-a-credential">An answer that quotes a credential</h2>
 <p>An answer, a wire error, a listed item or a tool definition that quotes a
 credential the plane sends never reaches the agent
@@ -480,6 +490,7 @@ The plane looks for the credentials of its endpoints, headers and proxies,
 and, from 8 bytes, for query values and the variables a command upstream
 receives: as written, percent-encoded, JSON-escaped and in base64. It does so
 in every mode, before the closing record is written.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -510,6 +521,7 @@ in every mode, before the closing record is written.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>It catches an upstream that echoes what it was sent, not one that sets out to
 leak: hex, a changed case or a split value pass. <code>doctor</code> names each value too
 short to scan by its key.</p>
@@ -543,6 +555,7 @@ blocks only the calls a rule routes to it (ADR-0017). A call the plane
 blocks whatever the answer is never sent to it (ADR-0019).</li>
 </ul>
 <h2 id="where-the-code-lives">Where the code lives</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -581,6 +594,7 @@ blocks whatever the answer is never sent to it (ADR-0019).</li>
 </tr>
 </tbody>
 </table>
+</div>
 <p>Per revision and per transport, what is enforced and what is not, is
 <a href="/docs/reference/mcp-coverage">reference/mcp-coverage</a>. How to run one is
 <a href="/docs/guides/run-the-gateway">guides/run-the-gateway</a>.</p>

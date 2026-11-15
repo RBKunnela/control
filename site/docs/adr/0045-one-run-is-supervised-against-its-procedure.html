@@ -185,6 +185,7 @@ version it has seen under another digest is refused.</p>
 <p><strong>The rules.</strong> A step instance is one request of a tool call, never a prompt or
 a resource read; its outcome is its terminal event, and a held request is open,
 never failed.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -219,6 +220,7 @@ never failed.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>A retry of the same step is never a finding, an approval is part of the step
 it held, and a step out of order is not also a continuation.</p>
 <p><strong>The verdict</strong> is the weakest of what the finding rests on. Plane events in

@@ -81,44 +81,51 @@ func TestIDProblemsAndFigureIndexes(t *testing.T) {
 }
 
 func TestTagProblems(t *testing.T) {
-	status := map[string]string{"Kernel `x`": "implemented", "Spool": "experimental", "Web UI": "planned"}
+	status := map[string]componentRow{
+		"kernel-x": {id: "kernel-x", name: "Kernel `x`", label: "implemented"},
+		"spool":    {id: "spool", name: "Spool", label: "experimental"},
+		"web-ui":   {id: "web-ui", name: "Web UI", label: "planned"},
+	}
 	backlog := map[string]string{"B01": "Build the `first` thing", "B02": "Build the second thing"}
 	good := `<html><head><title>A page</title><style>.st{content:""}</style></head>` +
-		`<p>An <code class="st" data-status="Spool" title="Spool">experimental</code> spool.</p>` +
-		`<p class="state" data-status="Kernel ` + "`x`" + `" title="Kernel x"><span class="st">implemented</span> today</p>` +
-		`<li data-status="Spool" title="Spool"><b>Spool</b><small class="st">experimental</small></li>` +
+		`<p>An <code class="st" data-status="spool" title="Spool">experimental</code> spool.</p>` +
+		`<p class="state" data-status="kernel-x" title="Kernel x"><span class="st">implemented</span> today</p>` +
+		`<li data-status="spool" title="Spool"><b>Spool</b><small class="st">experimental</small></li>` +
 		`<section data-backlog="B01" title="Build the first thing"><p>Next · <code>planned</code> · <a class="id" href="/b">B01</a></p></section>` +
 		`<p data-backlog="B02" title="Build the second thing">Later, <code>planned</code> (<a class="id" href="/b">B02</a>).</p></html>`
 	wantNone(t, "labels and items that name their sources", tagProblems(mustParse(t, good), status, backlog, 3, 2))
 	for name, c := range map[string]struct{ from, to, want string }{
-		"a label not the row's":          {`<small class="st">experimental</small>`, `<small class="st">implemented</small>`, `shows ["implemented"], want the row's label "experimental"`},
-		"no label shown":                 {`<small class="st">experimental</small>`, ``, `data-status "Spool" shows []`},
-		"two labels shown":               {`<small class="st">experimental</small>`, `<small class="st">experimental</small><i class="st">experimental</i>`, `shows ["experimental" "experimental"]`},
-		"an unknown row":                 {`<li data-status="Spool"`, `<li data-status="Spool store"`, "names no row"},
-		"an empty data-status":           {`<li data-status="Spool"`, `<li data-status=""`, "an empty data-status"},
-		"a label with no data-status":    {`<li data-status="Spool" title="Spool">`, `<li>`, `a status label "experimental" outside a data-status item`},
-		"an inline label not the row's":  {`title="Spool">experimental</code>`, `title="Spool">implemented</code>`, `shows ["implemented"], want the row's label "experimental"`},
-		"an inline label with no row":    {`<code class="st" data-status="Spool" title="Spool">`, `<code class="st">`, `a status label "experimental" outside a data-status item`},
-		"a row's title missing":          {`<li data-status="Spool" title="Spool">`, `<li data-status="Spool">`, `data-status "Spool" carries the title "", want the row's name`},
-		"another row's title":            {`<li data-status="Spool" title="Spool">`, `<li data-status="Spool" title="Kernel x">`, `data-status "Spool" carries the title "Kernel x"`},
-		"a task's title missing":         {` title="Build the second thing"`, ``, `data-backlog "B02" carries the title "", want the task's Work cell "Build the second thing"`},
-		"a code span left in a title":    {`title="Build the first thing"`, "title=\"Build the `first` thing\"", "data-backlog \"B01\" carries the title \"Build the `first` thing\""},
-		"a bare label":                   {`</html>`, `<small>experimental</small></html>`, `the word "experimental" in "experimental" is tied to no row or task`},
-		"a bare label in capitals":       {`</html>`, `<p>Implemented</p></html>`, `the word "Implemented" in "Implemented"`},
-		"a label in a sentence":          {`</html>`, `<p>All six are experimental today.</p></html>`, `the word "experimental" in "All six are experimental today."`},
-		"a label with a full stop":       {`</html>`, `<small>implemented.</small></html>`, `the word "implemented" in "implemented."`},
-		"a label beside an empty icon":   {`</html>`, `<small><i></i>implemented</small></html>`, `the word "implemented" in "implemented"`},
-		"a label after a word":           {`</html>`, `<small>Status: implemented</small></html>`, `the word "implemented" in "Status: implemented"`},
-		"a claim in prose":               {`</html>`, `<p>The web UI is implemented.</p></html>`, `the word "implemented" in "The web UI is implemented."`},
-		"a label beside the row's label": {`<b>Spool</b>`, `<b>Spool is implemented</b>`, `the word "implemented" in "Spool is implemented"`},
-		"a label inside a task":          {`Later, <code>planned</code>`, `Later, <code>implemented</code>`, `the word "implemented" in "implemented"`},
-		"planned outside a backlog":      {`<p data-backlog="B02" title="Build the second thing">`, `<p>`, `the word "planned" in "planned"`},
-		"an unknown backlog id":          {`data-backlog="B02"`, `data-backlog="B99"`, `"B99" names no task`},
-		"an empty data-backlog":          {`data-backlog="B02"`, `data-backlog=""`, "an empty data-backlog"},
-		"a backlog id not shown":         {`(<a class="id" href="/b">B02</a>)`, ``, `data-backlog "B02" shows the ids []`},
-		"another backlog id shown":       {`<a class="id" href="/b">B02</a>`, `<a class="id" href="/b">B01</a>`, `data-backlog "B02" shows the ids ["B01"]`},
-		"too few status labels":          {`<p class="state" data-status="Kernel ` + "`x`" + `" title="Kernel x"><span class="st">implemented</span> today</p>`, ``, "2 status labels, want at least 3"},
-		"one task tied twice":            {`<p data-backlog="B02" title="Build the second thing">Later, <code>planned</code> (<a class="id" href="/b">B02</a>).</p>`, `<p data-backlog="B01" title="Build the first thing">Later, <code>planned</code> (<a class="id" href="/b">B01</a>).</p>`, "1 distinct backlog tasks, want at least 2"},
+		"a label not the row's":           {`<small class="st">experimental</small>`, `<small class="st">implemented</small>`, `shows ["implemented"], want the row's label "experimental"`},
+		"no label shown":                  {`<small class="st">experimental</small>`, ``, `data-status "spool" shows []`},
+		"two labels shown":                {`<small class="st">experimental</small>`, `<small class="st">experimental</small><i class="st">experimental</i>`, `shows ["experimental" "experimental"]`},
+		"an unknown row":                  {`<li data-status="spool"`, `<li data-status="spool-store"`, `data-status "spool-store" names no row`},
+		"a row's name for its id":         {`<li data-status="spool"`, `<li data-status="Spool"`, `data-status "Spool" is not a component id`},
+		"an empty data-status":            {`<li data-status="spool"`, `<li data-status=""`, "an empty data-status"},
+		"a label with no data-status":     {`<li data-status="spool" title="Spool">`, `<li>`, `a status label "experimental" outside a data-status item`},
+		"an inline label not the row's":   {`title="Spool">experimental</code>`, `title="Spool">implemented</code>`, `shows ["implemented"], want the row's label "experimental"`},
+		"an inline label with no row":     {`<code class="st" data-status="spool" title="Spool">`, `<code class="st">`, `a status label "experimental" outside a data-status item`},
+		"a row's title missing":           {`<li data-status="spool" title="Spool">`, `<li data-status="spool">`, `data-status "spool" carries the title "", want the row's name "Spool"`},
+		"another row's title":             {`<li data-status="spool" title="Spool">`, `<li data-status="spool" title="Kernel x">`, `data-status "spool" carries the title "Kernel x"`},
+		"the id for a title":              {`<li data-status="spool" title="Spool">`, `<li data-status="spool" title="spool">`, `data-status "spool" carries the title "spool"`},
+		"a code span left in a row title": {`data-status="kernel-x" title="Kernel x"`, "data-status=\"kernel-x\" title=\"Kernel `x`\"", "data-status \"kernel-x\" carries the title \"Kernel `x`\""},
+		"a task's title missing":          {` title="Build the second thing"`, ``, `data-backlog "B02" carries the title "", want the task's Work cell "Build the second thing"`},
+		"a code span left in a title":     {`title="Build the first thing"`, "title=\"Build the `first` thing\"", "data-backlog \"B01\" carries the title \"Build the `first` thing\""},
+		"a bare label":                    {`</html>`, `<small>experimental</small></html>`, `the word "experimental" in "experimental" is tied to no row or task`},
+		"a bare label in capitals":        {`</html>`, `<p>Implemented</p></html>`, `the word "Implemented" in "Implemented"`},
+		"a label in a sentence":           {`</html>`, `<p>All six are experimental today.</p></html>`, `the word "experimental" in "All six are experimental today."`},
+		"a label with a full stop":        {`</html>`, `<small>implemented.</small></html>`, `the word "implemented" in "implemented."`},
+		"a label beside an empty icon":    {`</html>`, `<small><i></i>implemented</small></html>`, `the word "implemented" in "implemented"`},
+		"a label after a word":            {`</html>`, `<small>Status: implemented</small></html>`, `the word "implemented" in "Status: implemented"`},
+		"a claim in prose":                {`</html>`, `<p>The web UI is implemented.</p></html>`, `the word "implemented" in "The web UI is implemented."`},
+		"a label beside the row's label":  {`<b>Spool</b>`, `<b>Spool is implemented</b>`, `the word "implemented" in "Spool is implemented"`},
+		"a label inside a task":           {`Later, <code>planned</code>`, `Later, <code>implemented</code>`, `the word "implemented" in "implemented"`},
+		"planned outside a backlog":       {`<p data-backlog="B02" title="Build the second thing">`, `<p>`, `the word "planned" in "planned"`},
+		"an unknown backlog id":           {`data-backlog="B02"`, `data-backlog="B99"`, `"B99" names no task`},
+		"an empty data-backlog":           {`data-backlog="B02"`, `data-backlog=""`, "an empty data-backlog"},
+		"a backlog id not shown":          {`(<a class="id" href="/b">B02</a>)`, ``, `data-backlog "B02" shows the ids []`},
+		"another backlog id shown":        {`<a class="id" href="/b">B02</a>`, `<a class="id" href="/b">B01</a>`, `data-backlog "B02" shows the ids ["B01"]`},
+		"too few status labels":           {`<p class="state" data-status="kernel-x" title="Kernel x"><span class="st">implemented</span> today</p>`, ``, "2 status labels, want at least 3"},
+		"one task tied twice":             {`<p data-backlog="B02" title="Build the second thing">Later, <code>planned</code> (<a class="id" href="/b">B02</a>).</p>`, `<p data-backlog="B01" title="Build the first thing">Later, <code>planned</code> (<a class="id" href="/b">B01</a>).</p>`, "1 distinct backlog tasks, want at least 2"},
 	} {
 		page := strings.Replace(good, c.from, c.to, 1)
 		if page == good {
@@ -252,11 +259,7 @@ func TestThemeTokenProblems(t *testing.T) {
 	}
 }
 
-func TestStatusRowsAndBacklogTitles(t *testing.T) {
-	status := statusRows(strings.Split("## Components\n\n| Component | Status | Where |\n| --- | --- | --- |\n| Kernel `x` | `implemented` | `a/` |\n\n## Other\n\n| Kernel `x` | `planned` | b |\n", "\n"))
-	if len(status) != 1 || status["Kernel `x`"] != "implemented" {
-		t.Errorf("statusRows = %v", status)
-	}
+func TestBacklogTitles(t *testing.T) {
 	titles := backlogTitles(strings.Split("| ID | Work |\n| --- | --- |\n| B05 | Package a demo |\n| B5 | b |\n| X01 | c |\n", "\n"))
 	if len(titles) != 1 || titles["B05"] != "Package a demo" {
 		t.Errorf("backlogTitles = %v", titles)
@@ -396,26 +399,43 @@ func TestReadmePromiseProblems(t *testing.T) {
 }
 
 func TestPlannedProblems(t *testing.T) {
-	status := map[string]string{"Evidence spool": "experimental", "Kernel `x`": "implemented", "Web UI": "planned"}
+	status := map[string]componentRow{
+		"evidence-spool": {id: "evidence-spool", name: "Evidence spool", label: "experimental"},
+		"kernel-x":       {id: "kernel-x", name: "Kernel `x`", label: "implemented"},
+		"web-ui":         {id: "web-ui", name: "Web UI", label: "planned"},
+		"run-stop":       {id: "run-stop", name: "Stopping a run through a signed route", label: "experimental"},
+		"mcp-gateway":    {id: "mcp-gateway", name: "Model Context Protocol (MCP) gateway", label: "experimental"},
+		"backup-restore": {id: "backup-restore", name: "Backup and restore of authority state", label: "experimental"},
+	}
 	for name, page := range map[string]string{
 		"planned work that is not built":      `<html><p>A <code>planned</code> Web UI.</p></html>`,
 		"a delivered row in another sentence": `<html><p>The Evidence spool is experimental. Other work is <code>planned</code>.</p></html>`,
 		"a delivered row in another block":    `<html><ul><li>Evidence spool</li><li><code>planned</code> work</li></ul></html>`,
 		"part of a row's name":                `<html><p>Evidence is <code>planned</code>.</p></html>`,
-		"a row's name in another case":        `<html><p>An evidence spool is <code>planned</code>.</p></html>`,
 		"a row's name inside a longer word":   `<html><p>Evidence spools are <code>planned</code>.</p></html>`,
 		"planned outside code":                `<html><p>The Evidence spool was planned.</p></html>`,
+		"a planned row's id":                  `<html><p>The web-ui is <code>planned</code>.</p></html>`,
+		"an id inside a longer id":            `<html><p>An evidence-spool-mirror is <code>planned</code>.</p></html>`,
+		"a name's one-word head":              `<html><p>A backup is <code>planned</code>.</p></html>`,
+		"a lone abbreviation":                 `<html><p>Another MCP proxy is <code>planned</code>.</p></html>`,
 	} {
 		problems, _ := plannedProblems("index.html", pageSegments(mustParse(t, page)), status)
 		wantNone(t, name, problems)
 	}
 	for name, c := range map[string]struct{ page, want string }{
 		"an experimental row called planned": {`<html><p>The Evidence spool is <code>planned</code>.</p></html>`,
-			`index.html: the sentence "The Evidence spool is planned." calls "Evidence spool" planned; docs/status.md labels it experimental`},
-		"a capital Planned": {`<html><p><code>Planned</code>: the Evidence spool. Then more.</p></html>`, `"Planned: the Evidence spool." calls "Evidence spool" planned`},
+			`index.html: the sentence "The Evidence spool is planned." calls "evidence spool" planned; docs/status.md labels it experimental`},
+		"a capital Planned": {`<html><p><code>Planned</code>: the Evidence spool. Then more.</p></html>`, `"Planned: the Evidence spool." calls "evidence spool" planned`},
 		"an implemented row with a code span": {`<html><p>The Kernel <code>x</code> is <code>planned</code>.</p></html>`,
-			`calls "Kernel x" planned; docs/status.md labels it implemented`},
-		"the last sentence of two": {`<html><p>A gateway. <code>planned</code>: Evidence spool</p></html>`, `"planned: Evidence spool" calls "Evidence spool"`},
+			`calls "kernel x" planned; docs/status.md labels it implemented`},
+		"the last sentence of two":        {`<html><p>A gateway. <code>planned</code>: Evidence spool</p></html>`, `"planned: Evidence spool" calls "evidence spool"`},
+		"a row's name in another case":    {`<html><p>An evidence spool is <code>planned</code>.</p></html>`, `calls "evidence spool" planned`},
+		"a name's head":                   {`<html><p>Stopping a run is <code>planned</code>.</p></html>`, `calls "stopping a run" planned; docs/status.md labels it experimental`},
+		"a name's abbreviation":           {`<html><p>An MCP gateway is <code>planned</code>.</p></html>`, `calls "mcp gateway" planned`},
+		"a name without its abbreviation": {`<html><p>A Model Context Protocol gateway is <code>planned</code>.</p></html>`, `calls "model context protocol gateway" planned`},
+		"a delivered row's id": {`<html><p>The <code>evidence-spool</code> row is <code>planned</code>.</p></html>`,
+			`the sentence "The evidence-spool row is planned." calls "evidence-spool" planned; docs/status.md labels it experimental`},
+		"an id before a full stop": {`<html><p><code>planned</code>: kernel-x.</p></html>`, `calls "kernel-x" planned; docs/status.md labels it implemented`},
 	} {
 		problems, read := plannedProblems("index.html", pageSegments(mustParse(t, c.page)), status)
 		wantProblem(t, name, problems, c.want)

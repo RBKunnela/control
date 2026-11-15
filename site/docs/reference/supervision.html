@@ -138,6 +138,7 @@ guardana-control notify --findings &lt;dir&gt; --state &lt;dir&gt; [--init] [--t
 cycle in the order and an unknown step are refused. Its digest is recorded with
 every finding; a procedure id and version the findings log has seen under
 another digest is refused.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -188,6 +189,7 @@ another digest is refused.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <h2 id="what-belongs-to-the-run">What belongs to the run</h2>
 <p>Only a run opened in a runs directory is supervised, not a plane's local
 run. Under <code>0.1</code> and <code>inherit</code> the run must be a root. <code>inherit</code> reads
@@ -207,6 +209,7 @@ findings kept. Everything else is counted and left out.</p>
 files of this account that only it can write: a <code>CONFIRMED</code> finding rests on
 the export being the plane's.</p>
 <h2 id="the-rules">The rules</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -261,6 +264,7 @@ the export being the plane's.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>An order is untold, its finding <code>INDETERMINATE</code>, when a proposal or a failure
 has no time, or between two of one instant. A retry continues nothing, though
 each denial of it counts toward <code>REPEATED_DENIAL</code>; an approved call, no
@@ -287,6 +291,7 @@ per run; a line per step, its requests apart from the observations no plane
 call joins; per finding, with its run under <code>0.2</code> and the references it left
 out; per rule; and <code>not checked: source &lt;path&gt; absent</code>, <code>&lt;id&gt; never heard</code>
 or <code>&lt;id&gt; silent</code> for each <code>--source</code> not judged against.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -309,6 +314,7 @@ or <code>&lt;id&gt; silent</code> for each <code>--source</code> not judged agai
 </tr>
 </tbody>
 </table>
+</div>
 <p>The log is opened, and <code>findings.jsonl</code> created, only once every input is
 accepted. A failure after the write commits exits 2 and keeps it.</p>
 <h2 id="the-finding-record-and-its-log">The finding record and its log</h2>
@@ -323,6 +329,7 @@ of the run, ending its write with a <code>SuperviseReport</code>; a write withou
 is never read.</p>
 <p>A record is schema <code>0.2</code> exactly when it carries a member <code>0.1</code> lacks
 (<a href="/docs/adr/0047-a-procedure-states-its-exceptions-resources-and-children">ADR-0047</a>):</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -357,6 +364,7 @@ is never read.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>The reader refuses an unknown schema or a member its schema lacks.</p>
 <h2 id="notify">notify</h2>
 <p><code>notify</code> hands each <code>alert</code> record, in log order, one line on its

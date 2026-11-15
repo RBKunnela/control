@@ -136,6 +136,7 @@ own, <code>egress_access_log</code>. It may not carry <code>convention</code>, <
               &#34;destination&#34;: &#34;authority&#34;, &#34;destination_form&#34;: &#34;DESTINATION_FORM_AUTHORITY&#34;,
               &#34;port&#34;: &#34;upstream_remote_port&#34;}}}
 </code></pre>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -177,6 +178,7 @@ own, <code>egress_access_log</code>. It may not carry <code>convention</code>, <
 </tr>
 </tbody>
 </table>
+</div>
 <p>A mapped name is a top-level member of the line, never a path into it. The
 names are distinct, at most 128 bytes (<code>MaxMemberNameBytes</code> in
 <code>internal/ingest/egresslog/descriptor.go</code>), and hold the text rules every
@@ -186,6 +188,7 @@ from the data.</p>
 and no other. A mapping that names a path or a header member as <code>caller</code>
 copies that member, within the caller's rules below.</p>
 <h2 id="what-a-line-becomes">What a line becomes</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -232,6 +235,7 @@ copies that member, within the caller's rules below.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>A port, status or count may be written as a JSON number or a decimal string,
 never with a sign, a fraction or an exponent. <code>null</code>, <code>&quot;&quot;</code> and <code>-</code> say nothing: an unset
 optional value is left empty and counts as nothing. An RFC 3339 time needs its
@@ -263,6 +267,7 @@ off.</p>
 <p>A refused line becomes no observation. It is counted in <code>refused</code>, and under
 its reason in the report's <code>refused_by</code>. <code>observe import</code> prints <code>lines_read</code>
 and the total refused, not each reason, and any refusal makes it exit 1.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -297,6 +302,7 @@ and the total refused, not each reason, and any refusal makes it exit 1.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>A malformed optional value, such as a method off the list, a status outside
 its range or a caller with a control character, is dropped and counted in
 <code>strings_dropped</code>, and the line is kept. Under <code>CALLER_BASIS_ADDRESS</code> a caller

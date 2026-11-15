@@ -152,6 +152,7 @@ listed in the decision, in order, once each.</p>
 <p><code>Decide</code> has no error return: whatever the kernel cannot do becomes an
 <code>INDETERMINATE</code> decision with a reason code, and a kernel nobody built answers
 <code>INDETERMINATE</code>, <code>POLICY_UNAVAILABLE</code> and blocks (<code>internal/core/kernel.go</code>).</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -218,7 +219,9 @@ listed in the decision, in order, once each.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <h2 id="what-each-verdict-enforces">What each verdict enforces</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -249,6 +252,7 @@ listed in the decision, in order, once each.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>The zero value of the action is <code>Block</code>, so an action nobody set blocks
 (<code>internal/core/kernel.go</code>). Obligations travel only on <code>REQUIRE_APPROVAL</code> and
 <code>ALLOW_WITH_OBLIGATIONS</code>, the two verdicts under which a call proceeds under
@@ -260,6 +264,7 @@ table below, rendered from the kernel's own rule over every effect class,
 every cause and every setting (<code>internal/core/failclosed.go</code>): a material
 call blocks under every cause; a read runs only when the operator has turned
 fail-open reads on and the only causes are in the policy's availability.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -338,7 +343,9 @@ fail-open reads on and the only causes are in the policy's availability.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>The two kinds of cause are what the table reads, never a reason code:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -365,6 +372,7 @@ fail-open reads on and the only causes are in the policy's availability.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>&quot;The determinate verdict&quot; is what the rules that could be decided concluded
 with the unknown ones left out (<code>match.Result.Determinate</code>): a read runs under
 fail-open only when an <code>ALLOW</code> matched and nothing more restrictive did, because
@@ -381,6 +389,7 @@ request, and the kernel reads it as the input of <code>external</code>, the cons
 only a <code>DENY</code> rule may carry. The decision point can take a grant away and
 never give one: with an allowing answer the bundle decides as if every rule
 reading <code>external</code> were deleted.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -427,6 +436,7 @@ reading <code>external</code> were deleted.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>Silence leaves the veto undetermined, which is a cause in the request:
 <code>INDETERMINATE</code>, blocking every effect class, and <code>fail_open_read</code>, which
 covers the bundle's availability only, never opens a read on it. The code is
@@ -462,6 +472,7 @@ and what it returns taints nothing.</p>
 <p>An MCP call carries no data label, so once a run has taken in anything
 untrusted, a <code>DENY</code> flow rule blocks every call of that run to an untrusted
 destination:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -484,6 +495,7 @@ destination:</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>The floor chooses between the last two and does not change what runs: an
 untrusted web page and then an innocent mail is blocked as undetermined, and a
 confidential file read after the page turns the same mail into the denied
@@ -495,6 +507,7 @@ recorded proposal names the state its decision used, in the tags that
 with no run's state, so a tool a flow rule governs is listed as decided per
 call.</p>
 <h2 id="what-the-decision-carries">What the decision carries</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -541,6 +554,7 @@ call.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <h2 id="why">Why</h2>
 <ul>
 <li>Deny-overrides with <code>INDETERMINATE</code> ahead of every allow, and no implicit

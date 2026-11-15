@@ -1,12 +1,18 @@
 package docsite
 
 import (
+	"bufio"
 	"errors"
 	"maps"
 	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
+
+	"github.com/yuin/goldmark/ast"
+	"github.com/yuin/goldmark/extension"
+	east "github.com/yuin/goldmark/extension/ast"
+	"github.com/yuin/goldmark/renderer"
 
 	"github.com/guardana/control/internal/brand"
 	"github.com/guardana/control/internal/docscheck/impact"
@@ -151,6 +157,46 @@ func TestCodeIsEscaped(t *testing.T) {
 	out := renderA(t, "# A\n\n```sh\necho '<script>' && x\n```\n")
 	if !strings.Contains(out, `<pre><code class="language-sh">echo &#39;&lt;script&gt;&#39; &amp;&amp; x`) {
 		t.Errorf("the code block is not escaped:\n%s", out)
+	}
+}
+
+// Each table sits in a box of its own, which scrolls it when it is wider
+// than the page, and keeps the table renderer's XHTML alignment.
+func TestATableSitsInABoxOfItsOwn(t *testing.T) {
+	out := renderA(t, "# A\n\n| Name | Size |\n| --- | ---: |\n| `a` | 1 B |\n\nAfter.\n\n| One |\n| --- |\n| x |\n")
+	if n := strings.Count(out, "<div class=\"tbl\">\n<table>"); n != 2 || strings.Count(out, "</table>\n</div>") != 2 {
+		t.Errorf("%d tables boxed, want 2:\n%s", n, out)
+	}
+	if !strings.Contains(out, `<td align="right">1 B</td>`) {
+		t.Errorf("the right-aligned cell lost its XHTML alignment:\n%s", out)
+	}
+}
+
+type caught map[ast.NodeKind]renderer.NodeRendererFunc
+
+func (c caught) Register(kind ast.NodeKind, f renderer.NodeRendererFunc) { c[kind] = f }
+
+type refusingWriter struct{}
+
+func (refusingWriter) Write([]byte) (int, error) { return 0, errors.New("refused") }
+
+// A box that cannot be written stops the render instead of leaving a table
+// without its box.
+func TestATableBoxThatCannotBeWrittenStops(t *testing.T) {
+	funcs := caught{}
+	extension.NewTableHTMLRenderer().RegisterFuncs(boxedTables{funcs})
+	table := funcs[east.KindTable]
+	if table == nil || funcs[east.KindTableCell] == nil {
+		t.Fatalf("the table functions were not passed on: %v", funcs)
+	}
+	for _, entering := range []bool{true, false} {
+		w := bufio.NewWriterSize(refusingWriter{}, 16)
+		if _, err := w.WriteString(strings.Repeat("x", 17)); err == nil {
+			t.Fatal("the writer did not refuse")
+		}
+		if status, err := table(w, nil, east.NewTable(), entering); err == nil || status != ast.WalkStop {
+			t.Errorf("entering=%v: status %v, err %v; want the render stopped", entering, status, err)
+		}
 	}
 }
 

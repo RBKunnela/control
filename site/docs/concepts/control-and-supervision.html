@@ -176,6 +176,7 @@ a policy can deny a proposed action, attach obligations or hold it for an
 expiring, single-use approval of one canonical action digest and policy
 bundle. After a finding, a configured route can record it, deliver an alert,
 request review or stop later actions where enforcement exists.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -210,6 +211,7 @@ request review or stop later actions where enforcement exists.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>These are the <code>planned</code> 1.0 response scopes, not a claim that all operate in
 the alpha. Today approvals, pause, a local notifier and a stop of one opened
 run are <code>experimental</code>. A stop is written when the operator runs <code>react</code> and
@@ -224,6 +226,7 @@ The default authorization path runs no model.
 <a href="/docs/concepts/signed-operations">Signed operations</a> says which of these authorities a
 plane takes only on a signature, and what that signature proves.</p>
 <h2 id="three-api-roles">Three API roles</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -250,6 +253,7 @@ plane takes only on a signature, and what that signature proves.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>An AuthZEN veto is an input to the local decision. It can remove permission
 and never add it. A timeout, unavailable PDP or unreadable answer leaves a
 governed call indeterminate, which blocks it in an enforcing mode. In

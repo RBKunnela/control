@@ -127,6 +127,7 @@ It is <code>experimental</code>.</p>
     [--source &lt;descriptor&gt; --log &lt;dir&gt;]...
 </code></pre>
 <h2 id="inputs">Inputs</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -157,6 +158,7 @@ It is <code>experimental</code>.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>A descriptor that is absent gives its source's paths no coverage. A
 log holding an egress source's records is refused unless its egress
 descriptor is given with the same directory, as one absent, of another kind
@@ -171,6 +173,7 @@ of paths is refused.</p>
    &#34;sources&#34;: [{&#34;source_id&#34;: &#34;agent-runtime&#34;, &#34;name&#34;: &#34;read_file&#34;, &#34;server_address&#34;: &#34;files.example&#34;}]}
 ]}
 </code></pre>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -193,6 +196,7 @@ of paths is refused.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>An egress path's <code>host</code> and its sources' names are hosts in the one spelling
 the importer writes (<a href="/docs/reference/egress-access-log#what-a-line-becomes">egress access log</a>).
 Another spelling is refused with the one to write: <code>Example.COM</code> as
@@ -207,6 +211,7 @@ an egress path, nor a connection any other
 (<a href="/docs/reference/egress-access-log">egress access log</a>).</p>
 <h2 id="states">States</h2>
 <p>Each path gets the first state that holds:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -237,6 +242,7 @@ an egress path, nor a connection any other
 </tr>
 </tbody>
 </table>
+</div>
 <p>Only an <code>mcp_tool</code> can be enforced, and only it and an <code>enforce_tool</code> decided.
 No plane decides egress: an <code>egress</code> path is at most observed, whatever a
 plane lists, and its line ends <code>no plane decides egress</code>.
@@ -316,6 +322,7 @@ path naming it stays unknown:</p>
 <p>The check that an independent input is not writable by others reads mode
 bits only, not an access control list or the file's owner
 (<a href="/docs/reference/egress-access-log#trust">egress access log</a>).</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -338,6 +345,7 @@ bits only, not an access control list or the file's owner
 </tr>
 </tbody>
 </table>
+</div>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/reference/coverage.md">docs/reference/coverage.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.17.0, and <a href="https://github.com/guardana/control/tree/v0.17.0/docs">its documentation</a> is in its tag.</p>
 </main>
 <nav class="side" aria-label="Documentation">

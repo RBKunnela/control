@@ -246,6 +246,7 @@ delivery cannot create a second occurrence. Unknown or truncated references
 remain visible, and an event count, occurrence count and case count are
 distinct measures.</p>
 <p>Keep four independent states:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -277,6 +278,7 @@ distinct measures.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>A review is an append-only record with author, time, reason, previous revision
 and subject id. Concurrent updates cannot silently overwrite each other.
 Closing or dismissing a case cannot alter the finding's verdict, authorize a

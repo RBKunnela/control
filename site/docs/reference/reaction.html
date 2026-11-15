@@ -221,6 +221,7 @@ listing and another run's calls, a stopped run's parent and children
 included, are not stopped. A stopped retry of a held request consumes nothing,
 and the hold resumes after the stop ends; a stop read after the approval was
 consumed closes the held trail and spends the approval.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -245,6 +246,7 @@ consumed closes the held trail and spends the approval.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>Both apply in every mode and to every effect class, before an external
 decision point is asked, in this order of the plane's causes: <code>PAUSED</code>,
 <code>RUN_STOPPED</code>, <code>EXECUTED_ARGS_MISMATCH</code>, <code>LOCKDOWN</code>,

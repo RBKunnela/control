@@ -28,7 +28,8 @@
 .prose code{font-size:.88em;background:var(--bg2);border:1px solid var(--line);border-radius:5px;padding:.08em .32em;overflow-wrap:anywhere}
 .prose pre{background:var(--code-bg);color:var(--code-ink);border-radius:12px;padding:16px 18px;overflow-x:auto;margin:0 0 20px;font:400 13.5px/1.7 var(--mono)}
 .prose pre code{background:none;border:0;padding:0;font-size:inherit;color:inherit;overflow-wrap:normal}
-.prose table{display:block;max-width:100%;overflow-x:auto;border-collapse:collapse;margin:0 0 22px;font-size:14.5px;line-height:1.55}
+.prose .tbl{max-width:100%;overflow-x:auto;margin:0 0 22px}
+.prose table{border-collapse:collapse;font-size:14.5px;line-height:1.55}
 .prose th,.prose td{border-bottom:1px solid var(--line);padding:9px 14px 9px 0;text-align:left;vertical-align:top}
 .prose th{font-weight:500;color:var(--muted);font-size:13.5px;white-space:nowrap;border-bottom-color:var(--line2)}
 .prose :is(th,td) code{overflow-wrap:normal}
@@ -64,6 +65,6 @@
   .mnav summary{padding:0 20px}
   .mnav .inner{padding:4px 20px 18px}
   .prose{font-size:16px}
-  .prose td{min-width:20em}
+  .prose table{width:max-content;max-width:72em}
   .prose pre{margin-left:-20px;margin-right:-20px;border-radius:0;padding:14px 20px}
 }

@@ -154,6 +154,7 @@ reason code is ever read to decide.</p>
 awaits an approval, <code>ALLOW_WITH_OBLIGATIONS</code> runs with its obligations, <code>ALLOW</code>
 runs, <code>INDETERMINATE</code> goes to the fail-closed table, see
 <a href="/docs/concepts/how-a-call-is-decided">how a call is decided</a>). The mode acts on that:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -202,6 +203,7 @@ runs, <code>INDETERMINATE</code> goes to the fail-closed table, see
 </tr>
 </tbody>
 </table>
+</div>
 <p>In every mode but <code>OBSERVE</code>, a call that fails <code>read_only</code>,
 <code>restrict_resources</code> or <code>deny_external_sink</code> is blocked before it would run
 or be held for an approval, a read included.</p>
@@ -221,6 +223,7 @@ policy let run when decided go on, and counts it as <code>stale_handed_out</code
 <h2 id="what-the-enforcement-point-blocks-in-every-mode">What the enforcement point blocks in every mode</h2>
 <p>These come before the mode, after it, or from the trail, and no mode relieves
 them:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -317,6 +320,7 @@ them:</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>When a call has more than one of the first eight causes, or one of them and
 <code>LOCKDOWN</code> on a material call, the decision on the block lists every one, in
 this order: <code>PAUSED</code>, <code>RUN_STOPPED</code>, <code>EXECUTED_ARGS_MISMATCH</code>, <code>LOCKDOWN</code>,
@@ -436,6 +440,7 @@ ignores pauses: a paused tool stays listed, and a call to it reads <code>PAUSED<
 enforcement point refuses to start when the configured mode needs one the
 adapter does not declare, or names a mode this build does not enforce. The
 table is rendered from the mode table in <code>internal/gateway/mode.go</code>.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -487,6 +492,7 @@ table is rendered from the mode table in <code>internal/gateway/mode.go</code>.<
 </tr>
 </tbody>
 </table>
+</div>
 <p><code>observe the request</code> and <code>observe the result</code> are the adapter seeing a call
 before the upstream does and seeing what the upstream answered; <code>block</code> is the
 adapter being able to stop a call from reaching the upstream. An adapter also
@@ -502,6 +508,7 @@ nothing. Shaping only ever
 subtracts, and is the adapter's configuration, <code>list.shaping</code>; the
 configuration refuses <code>annotate</code> and <code>hide</code> in a mode that does not enforce
 (<a href="/docs/reference/mcp-coverage">reference/mcp-coverage</a>).</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -528,6 +535,7 @@ configuration refuses <code>annotate</code> and <code>hide</code> in a mode that
 </tr>
 </tbody>
 </table>
+</div>
 <h2 id="why">Why</h2>
 <ul>
 <li>The mode lives in the enforcement point, after the decision, and the

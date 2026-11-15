@@ -124,6 +124,7 @@ which profiles exist and how far each is qualified is on
 <p>This page is maintained in this repository. It is not affiliated with or
 endorsed by the publisher of Claude Code.</p>
 <h2 id="what-the-profile-covers">What the profile covers</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -162,6 +163,7 @@ endorsed by the publisher of Claude Code.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>The fixtures are written from Claude Code's published hook documentation, and
 every CI run passes them through the bridge against a plane. The
 qualification ran Claude Code 2.1.303, and later 2.1.310, headless against a
@@ -287,6 +289,7 @@ so the plane refuses to start with a tool of that class. For example:</p>
 </li>
 </ul>
 <h2 id="per-event">Per event</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -321,6 +324,7 @@ so the plane refuses to start with a tool of that class. For example:</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>An event that is over 16 MiB, is not one JSON object of valid UTF-8, names a
 member twice, lacks the tool name, the call id or the session id, carries a
 <code>tool_input</code> that is not an object, or is a <code>PreToolUse</code> without one is

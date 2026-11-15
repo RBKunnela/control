@@ -211,6 +211,7 @@ drift apart without a test failing.</p>
 <p>Bounds on a message nothing has authorized yet. Each caps work a caller can
 make a receiver do before any policy runs, so each is a memory or CPU bound
 first and a modelling opinion second.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -257,6 +258,7 @@ first and a modelling opinion second.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>The values are the constants in
 <a href="https://github.com/guardana/control/blob/main/pkg/contract/limits.go">pkg/contract/limits.go</a>, and a test there fails when
 that file and this table disagree.</p>
@@ -355,6 +357,7 @@ message still names a request, so it still produces a decision and the evidence
 for it. That is what keeps <code>INDETERMINATE</code> out of an adapter's error branch,
 where invariant 4 would be lost. The mapping, with the codes from
 <a href="/docs/reference/reason-codes">reason-codes.md</a>:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -401,6 +404,7 @@ where invariant 4 would be lost. The mapping, with the codes from
 </tr>
 </tbody>
 </table>
+</div>
 <p>The first three share a code because they are one fact: the producer holds a
 schema or a taxonomy this receiver does not. An unknown field and an undeclared
 enum number say that as directly as a version does. <code>MALFORMED_INPUT</code> is
@@ -533,6 +537,7 @@ then. <code>action.effect</code> has to be declared. <code>action.provider</code
 every effect class except <code>EFFECT_CLASS_READ</code>: material by default, and only a
 read is exempt.</p>
 <p>Each effect class then requires what deciding on it needs:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -571,6 +576,7 @@ read is exempt.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>Two pairs in the table are there because absence would otherwise pass a
 comparison. The cross-tenant check compares <code>principal.tenant_id</code> with
 <code>resource.tenant_id</code>, and with both absent <code>&quot;&quot; == &quot;&quot;</code> holds, so the two classes
@@ -784,6 +790,7 @@ what is done about it. The <code>experimental</code> gateway runs <code>OBSERVE<
 <code>ENFORCE</code> and <code>LOCKDOWN</code> and refuses <code>SHADOW</code> and <code>WARN</code> at start. What it
 refuses on its own account, such as a record it cannot write, it refuses in
 every mode (<a href="/docs/concepts/enforcement-modes">enforcement modes</a>).</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -822,6 +829,7 @@ every mode (<a href="/docs/concepts/enforcement-modes">enforcement modes</a>).</
 </tr>
 </tbody>
 </table>
+</div>
 <h2 id="what-an-absent-value-means">What an absent value means</h2>
 <p>Absence is never more permissive than presence (ADR-0002). What a receiver
 reads where a producer left a value out, as ADR-0011 and the comments in
@@ -886,6 +894,7 @@ record. <a href="/docs/adr/0011-contract-corrections-before-publication">ADR-001
 the field set once under this tag, before any digest was published.</p>
 <p><code>action</code> is an object with exactly ten members, nine taken from the envelope and
 one from the caller:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -936,6 +945,7 @@ one from the caller:</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>The gateway's adapters spell the action's <code>kind</code> as <code>tool</code>, <code>prompt</code> or
 <code>resource</code> and its <code>protocol</code> as <code>mcp</code> or <code>enforce</code> (<code>internal/channel</code>). The
 gateway refuses, as <code>INVALID_FIELD_VALUE</code>, a kind outside that vocabulary and a
@@ -1113,6 +1123,7 @@ read. The id changes no wire field, digest or binding
 <h3 id="the-flow-tags">The flow tags</h3>
 <p>The gateway records the flow state each decision used as run-context tags on
 the envelope that <code>ACTION_PROPOSED</code> carries, under the prefix <code>flow.v1.</code>:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -1139,6 +1150,7 @@ the envelope that <code>ACTION_PROPOSED</code> carries, under the prefix <code>f
 </tr>
 </tbody>
 </table>
+</div>
 <p>A decision carries the first two, the first two and the root under an opened
 run, or the third alone. The prefix is the
 gateway's own, and so is every tag whose ASCII-lowercased form starts with
@@ -1360,6 +1372,7 @@ as all there was. <strong>An export whose trailer says <code>end_reached: false<
 before the end</strong>: more remains, and a reader MUST export again after
 <code>next_cursor</code> before it treats the file as read.</p>
 <p>An offset is a byte offset into the file. A line is its bytes and its newline.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -1390,7 +1403,9 @@ before the end</strong>: more remains, and a reader MUST export again after
 </tr>
 </tbody>
 </table>
+</div>
 <p>A gap's <code>reason</code> is one of:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -1425,6 +1440,7 @@ before the end</strong>: more remains, and a reader MUST export again after
 </tr>
 </tbody>
 </table>
+</div>
 <h3 id="what-is-read">What is read</h3>
 <p>The export reads the file up to its last newline, at the length the file had
 when it was opened, and holds no lock. The bytes after the last newline are a
@@ -1529,6 +1545,7 @@ exports delivery is at least once: a consumer drops an event it has seen by
 tenant, project and event id, and reads one id with two different lines as a
 gap.</p>
 <h3 id="exit-statuses">Exit statuses</h3>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -1551,6 +1568,7 @@ gap.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p><strong>Missing evidence never reads as success.</strong> A record the plane quarantined
 never reached the file. One missing from the middle or the end of a trail shows
 as a broken <code>prev_event_id</code> link or an unfinished trail, which a consumer
@@ -1572,6 +1590,7 @@ as is a string that is not valid UTF-8 or holds an unpaired surrogate escape.
 A record of major <code>1</code> names no project and is refused, never read as any
 project's. Times are RFC 3339 in UTC. A file is always replaced whole, never
 edited in place.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -1618,6 +1637,8 @@ edited in place.</p>
 </tr>
 </tbody>
 </table>
+</div>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -1644,6 +1665,7 @@ edited in place.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>A state only rises: <code>untrusted</code> never goes back to <code>false</code>, and <code>max_read</code>
 never falls, <code>UNKNOWN</code> included.</p>
 <p>Under <code>approvals.authority: signed</code> the directory holds <code>records/</code> and
@@ -1670,6 +1692,7 @@ writes neither.</p>
 <h3 id="the-route">The route</h3>
 <p>One strict JSON object of at most 64 KiB: a member this build cannot name, one
 given twice, a <code>null</code> and a value of another type are refused.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -1708,6 +1731,7 @@ given twice, a <code>null</code> and a value of another type are refused.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>The route's digest is <code>sha256:</code> and the lowercase hex SHA-256 of its RFC 8785
 canonical form. The signed route is a DSSE envelope as JSON, of at most
 128 KiB, the shape the freshness statement's file has: payload type
@@ -1721,6 +1745,7 @@ is one object in its RFC 8785 canonical spelling, with <code>kind</code> and <co
 <code>1.0</code>; every time is spelled <code>YYYY-MM-DDTHH:MM:SSZ</code>. Bytes after the last
 newline are a line being written, and no reader takes them. Lines are
 appended and never rewritten.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -1747,6 +1772,7 @@ appended and never rewritten.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p><code>entry_id</code> is <code>stp-</code> and the first 32 lowercase hex digits of the SHA-256 of
 <code>agent-reaction-stop-entry/v1</code>, a newline and the finding id. A stop ends at
 its <code>expires_at</code>, or at a lift of its run whose <code>through_line</code> is its line or
@@ -1767,6 +1793,7 @@ accepted before.</p>
 <p>The payload a lift line's envelope signs, payload type
 <code>application/vnd.agent-reaction-lift+json</code>: one object in its canonical form,
 of at most 4 KiB.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -1801,6 +1828,7 @@ of at most 4 KiB.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <h3 id="under-the-signed-authority">Under the signed authority</h3>
 <p>Under <code>approvals.authority: signed</code>
 (<a href="/docs/adr/0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatures">ADR-0077</a>)
@@ -1812,6 +1840,7 @@ for, at most 1024 bytes, with every link on the way to its directory
 resolved. A plane refuses a body whose plane, tenant, project or file is not
 its own, and one that names no <code>plane_id</code>
 (<a href="/docs/adr/0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant">ADR-0082</a>).</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -1842,6 +1871,7 @@ its own, and one that names no <code>plane_id</code>
 </tr>
 </tbody>
 </table>
+</div>
 <p>The payload types are unchanged from 0.17, which signed the same three
 without <code>plane_id</code>: a <code>reaction-route/v1alpha2</code> route, a
 <code>reaction-list-header/2.0</code> header and a <code>reaction-lift/v1alpha2</code> lift. A
@@ -1859,6 +1889,7 @@ body. Every line of a list is of one version, and a <code>3.0</code> line is ref
 under a <code>v1alpha1</code> route, as a <code>1.0</code> or a <code>2.0</code> one is under a <code>v1alpha3</code>
 route.</p>
 <h3 id="the-codes">The codes</h3>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -1883,6 +1914,7 @@ route.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>Both are the plane's own causes, named in every mode and for every effect
 class before an external decision point is asked, in the order
 <a href="/docs/adr/0046-a-finding-stops-one-run-through-a-signed-route">ADR-0046</a> gives.
@@ -1899,6 +1931,7 @@ state the plane writes itself, so none is a row. Outside
 <code>approvals.authority: signed</code>, answers, pauses and runs are claims of whoever
 may write where they are read (<a href="/docs/status">status.md</a>). A test in
 <code>internal/docscheck</code> fails when a function or test cited here is gone.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -1982,6 +2015,7 @@ may write where they are read (<a href="/docs/status">status.md</a>). A test in
 </tr>
 </tbody>
 </table>
+</div>
 <p>Under <code>signed</code> a <code>listener.principal.tenant_id</code> that differs from
 <code>tenant_id</code> is refused at load, so an operator's grants for answers, pauses,
 runs and stops all name the plane's one tenant and its project; the level
@@ -2007,6 +2041,7 @@ The socket's mode and its directory's owner limit who can present a token. The
 receiver checks mode bits, not darwin access control lists, and the socket's
 own directory, not the ones above it: an account that may write one of those
 can move the socket's directory aside.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -2033,6 +2068,7 @@ can move the socket's directory aside.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>A request with no token, an unknown one, or one for a closed or expired run is
 refused with 401 before its body is decoded, and writes no trail.</p>
 <h3 id="the-json">The JSON</h3>
@@ -2061,6 +2097,7 @@ abort's code last; the trail's <code>POLICY_DECIDED</code> holds it without that
 and <code>AbortCause</code> unspecified, or a number the receiver does not declare, is
 refused with <code>ERROR_CODE_MALFORMED</code>. In an answer, a client reads each as its
 most restrictive meaning:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -2083,6 +2120,7 @@ most restrictive meaning:</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>A name the contract does not declare is not such a value: the answer is
 malformed, and nothing is run on it.</p>
 <h3 id="admit-complete-and-abort">Admit, complete and abort</h3>
@@ -2121,6 +2159,7 @@ recorded abandoned and it is answered <code>ERROR_CODE_UNAVAILABLE</code>. The <
 holds its <code>code</code>, a <code>message</code> for a person, and <code>ending</code> set only with
 <code>ERROR_CODE_HANDLE_SPENT</code>. Reason codes stay on decisions and
 closing records.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -2159,6 +2198,7 @@ closing records.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/contracts.md">docs/contracts.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.17.0, and <a href="https://github.com/guardana/control/tree/v0.17.0/docs">its documentation</a> is in its tag.</p>
 </main>
 <nav class="side" aria-label="Documentation">

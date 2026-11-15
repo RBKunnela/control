@@ -127,6 +127,7 @@ file. Read is what this tree accepts: <code>1.x</code> is any minor of major 1, 
 means nothing here reads the format back. <code>stable</code> is the frozen v1 wire
 contract alone; an <code>experimental</code> or alpha format may change without a major
 version. <a href="/docs/status">status.md</a> is the inventory.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -378,6 +379,7 @@ version. <a href="/docs/status">status.md</a> is the inventory.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>The gateway's configuration file and a <code>policy test</code> case carry no version.
 Each refuses a key it does not know, so a file that names a key a later
 release added is refused, not read in part. The signed envelopes around a

@@ -200,6 +200,7 @@ cause. <code>adapters/authzen</code> implements it, imports <code>internal/core<
 and is the only tree that knows AuthZEN. <code>internal/gateway</code> imports no adapter,
 and a test already refuses that import. <code>pkg/</code> does not change (ADR-0009).</p>
 <p><strong>The question carries only what a policy can read.</strong> Mapping version 1:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -226,6 +227,7 @@ and a test already refuses that import. <code>pkg/</code> does not change (ADR-0
 </tr>
 </tbody>
 </table>
+</div>
 <p>It never sends the argument bytes, their hash or preview, the run context,
 trace identifiers, the delegation chain or the model reference. A call whose
 envelope names no resource id is not asked about, and nothing stands in for
@@ -266,6 +268,7 @@ and the enforcement point counts the ask's latency. When the answer was
 consulted, the decision carries exactly one of the first five codes below,
 or <code>OBLIGATION_NOT_UNDERSTOOD</code> in place of one when the decision point said
 <code>true</code> and attached an obligation:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -314,6 +317,7 @@ or <code>OBLIGATION_NOT_UNDERSTOOD</code> in place of one when the decision poin
 </tr>
 </tbody>
 </table>
+</div>
 <p>The numbers are fixed here, before any code takes one. The registry's summary
 of <code>OBLIGATION_NOT_UNDERSTOOD</code> widens to an obligation an external answer
 carries; the code still also marks a bundle obligation this plane cannot

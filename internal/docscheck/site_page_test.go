@@ -231,24 +231,6 @@ func figureIndexes(doc *xnode) ([]int, []string) {
 
 var backlogID = regexp.MustCompile(`^B[0-9]{2}$`)
 
-// statusRows maps each row of docs/status.md's component table to its label.
-func statusRows(lines []string) map[string]string {
-	rows := map[string]string{}
-	in := false
-	for _, line := range lines {
-		s := strings.TrimSpace(line)
-		switch {
-		case strings.HasPrefix(s, "## "):
-			in = s == "## Components"
-		case in && strings.HasPrefix(s, "|") && !tableSeparator.MatchString(s):
-			if cells := tableCells(s); len(cells) >= 2 && cells[0] != "Component" {
-				rows[cells[0]] = strings.Trim(cells[1], "`")
-			}
-		}
-	}
-	return rows
-}
-
 // backlogTitles maps each task identifier of docs/backlog.md's tables to
 // its Work cell.
 func backlogTitles(lines []string) map[string]string {
@@ -266,7 +248,7 @@ func backlogTitles(lines []string) map[string]string {
 var labelWord = regexp.MustCompile(`(?i)\b(?:implemented|experimental|planned)\b`)
 
 // tagProblems holds the page's labels and planned items to their sources.
-// Each data-status element names a component row exactly, carries the row's
+// Each data-status element holds a component row's id, carries the row's
 // name as its title and shows the row's own label in one `st` element,
 // itself or below it. Each data-backlog element names a task, carries the
 // task's Work cell as its title and shows its id in one `id` element. A
@@ -275,7 +257,7 @@ var labelWord = regexp.MustCompile(`(?i)\b(?:implemented|experimental|planned)\b
 // data-backlog element; a `st` element outside a data-status element is
 // refused too. The data-status elements number at least minStatus and the
 // distinct tasks at least minBacklog.
-func tagProblems(doc *xnode, status, backlog map[string]string, minStatus, minBacklog int) []string {
+func tagProblems(doc *xnode, status map[string]componentRow, backlog map[string]string, minStatus, minBacklog int) []string {
 	tally := &tagTally{status: status, backlog: backlog, tasks: map[string]bool{}}
 	tally.visit(doc, tagContext{})
 	problems := tally.problems
@@ -290,10 +272,11 @@ func tagProblems(doc *xnode, status, backlog map[string]string, minStatus, minBa
 
 // tagTally walks a page for tagProblems, counting items as it goes.
 type tagTally struct {
-	status, backlog map[string]string
-	statusItems     int
-	tasks           map[string]bool
-	problems        []string
+	status      map[string]componentRow
+	backlog     map[string]string
+	statusItems int
+	tasks       map[string]bool
+	problems    []string
 }
 
 // tagContext is what encloses a node: a data-status element, a data-backlog
@@ -307,11 +290,11 @@ func (c *tagTally) add(problem string) {
 }
 
 func (c *tagTally) visit(n *xnode, in tagContext) {
-	row, isStatus := n.attrs["data-status"]
+	statusID, isStatus := n.attrs["data-status"]
 	id, isBacklog := n.attrs["data-backlog"]
 	if isStatus {
 		c.statusItems++
-		c.add(statusItemProblem(n, row, c.status))
+		c.add(statusItemProblem(n, statusID, c.status))
 	}
 	if isBacklog {
 		c.tasks[id] = true
@@ -357,18 +340,20 @@ func (n *xnode) texts(class string) []string {
 	return found
 }
 
-func statusItemProblem(n *xnode, row string, status map[string]string) string {
-	label, known := status[row]
+func statusItemProblem(n *xnode, id string, status map[string]componentRow) string {
+	row, known := status[id]
 	switch {
-	case row == "":
+	case id == "":
 		return "an empty data-status"
+	case !componentID.MatchString(id):
+		return fmt.Sprintf("data-status %q is not a component id", id)
 	case !known:
-		return fmt.Sprintf("data-status %q names no row of the component table", row)
-	case n.attrs["title"] != unwrapCode(row):
-		return fmt.Sprintf("data-status %q carries the title %q, want the row's name", row, n.attrs["title"])
+		return fmt.Sprintf("data-status %q names no row of the component table", id)
+	case n.attrs["title"] != unwrapCode(row.name):
+		return fmt.Sprintf("data-status %q carries the title %q, want the row's name %q", id, n.attrs["title"], unwrapCode(row.name))
 	}
-	if shown := n.texts("st"); len(shown) != 1 || shown[0] != label {
-		return fmt.Sprintf("data-status %q shows %q, want the row's label %q", row, shown, label)
+	if shown := n.texts("st"); len(shown) != 1 || shown[0] != row.label {
+		return fmt.Sprintf("data-status %q shows %q, want the row's label %q", id, shown, row.label)
 	}
 	return ""
 }

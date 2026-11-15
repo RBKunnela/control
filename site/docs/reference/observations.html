@@ -128,6 +128,7 @@ owner checks. Every member is matched exactly; an unknown member, a member
 given twice or <code>null</code> is refused by name. The <code>kind</code>
 decides its further members, and another kind's member is refused
 (<a href="/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor">ADR-0069</a>):</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -152,6 +153,8 @@ decides its further members, and another kind's member is refused
 </tr>
 </tbody>
 </table>
+</div>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -218,6 +221,7 @@ decides its further members, and another kind's member is refused
 </tr>
 </tbody>
 </table>
+</div>
 <p>Text values may not hold a control or format character, nor be only
 whitespace, nor pass 256 bytes.</p>
 <h2 id="what-an-import-keeps">What an import keeps</h2>
@@ -234,6 +238,7 @@ operations the conventions name that this importer does not map,
 than 256 bytes, made only of whitespace, or holding a control, format, line or
 paragraph separator, private-use or noncharacter code point or U+FFFD, is dropped and
 counted. A span's name and its status message are never copied.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -268,6 +273,7 @@ counted. A span's name and its status message are never copied.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <h2 id="what-an-import-drops">What an import drops</h2>
 <p>No content is kept: there is no redaction to apply to it, and a
 capture setting is refused. Every content attribute (<code>gen_ai.input.messages</code>,

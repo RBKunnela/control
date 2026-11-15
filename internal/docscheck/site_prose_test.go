@@ -176,23 +176,53 @@ func promiseProblems(name string, segments []proseSegment) ([]string, int) {
 	return problems, read
 }
 
-// deliveredRows lists the component rows labelled implemented or
-// experimental, as the page shows them: Markdown code spans unwrapped.
-func deliveredRows(status map[string]string) map[string]string {
-	rows := map[string]string{}
-	for row, label := range status {
-		if label == "implemented" || label == "experimental" {
-			rows[strings.ReplaceAll(row, "`", "")] = label
+// deliveredNames maps each phrase that names a component row labelled
+// implemented or experimental, in lower case, to its label: the row's id,
+// its name as the page shows it, Markdown code spans unwrapped, and the
+// shorter names a reader uses for it.
+func deliveredNames(status map[string]componentRow) map[string]string {
+	names := map[string]string{}
+	for _, row := range status {
+		if row.label == "implemented" || row.label == "experimental" {
+			names[row.id] = row.label
+			for _, name := range shortNames(unwrapCode(row.name)) {
+				names[strings.ToLower(name)] = row.label
+			}
 		}
 	}
-	return rows
+	return names
+}
+
+var (
+	// abbreviated is a run of words its abbreviation follows in brackets,
+	// such as "Model Context Protocol (MCP)".
+	abbreviated = regexp.MustCompile(`(?:[\w-]+ )+\(([A-Z0-9]+)\)`)
+	// nameJoint is where a name's head ends and its qualifiers begin.
+	nameJoint = regexp.MustCompile(`,| (?:and|of|through|against|per|for|from|to|on|in|over|with) `)
+)
+
+// shortNames lists name and the shorter names a sentence may use for it:
+// with its abbreviation alone or without it, and its head before a comma
+// or a joining word. A name of one word is too common a word to match.
+func shortNames(name string) []string {
+	names := []string{name}
+	if abbreviated.MatchString(name) {
+		names = append(names, abbreviated.ReplaceAllString(name, "$1"), strings.ReplaceAll(abbreviated.ReplaceAllStringFunc(name, func(m string) string {
+			return m[:strings.LastIndex(m, " (")]
+		}), "  ", " "))
+	}
+	if i := nameJoint.FindStringIndex(name); i != nil {
+		names = append(names, name[:i[0]])
+	}
+	return slices.DeleteFunc(names, func(n string) bool { return len(strings.Fields(n)) < 2 && n != name })
 }
 
 // plannedProblems refuses each `planned` code element whose sentence names a
-// delivered component row exactly, and counts the elements it read.
-func plannedProblems(name string, segments []proseSegment, status map[string]string) ([]string, int) {
-	delivered := deliveredRows(status)
-	rows := sortedKeys(delivered)
+// delivered component row by its id, its name or a shorter name, in any
+// case, and counts the elements it read.
+func plannedProblems(name string, segments []proseSegment, status map[string]componentRow) ([]string, int) {
+	delivered := deliveredNames(status)
+	phrases := sortedKeys(delivered)
 	var problems []string
 	read := 0
 	for _, seg := range segments {
@@ -205,9 +235,9 @@ func plannedProblems(name string, segments []proseSegment, status map[string]str
 				continue
 			}
 			sentence := seg.text[spans[i][0]:spans[i][1]]
-			for _, row := range rows {
-				if namesRow(sentence, row) {
-					problems = append(problems, fmt.Sprintf("%s: the sentence %q calls %q planned; docs/status.md labels it %s", name, sentence, row, delivered[row]))
+			for _, phrase := range phrases {
+				if namesRow(strings.ToLower(sentence), phrase) {
+					problems = append(problems, fmt.Sprintf("%s: the sentence %q calls %q planned; docs/status.md labels it %s", name, sentence, phrase, delivered[phrase]))
 				}
 			}
 		}
@@ -215,18 +245,22 @@ func plannedProblems(name string, segments []proseSegment, status map[string]str
 	return problems, read
 }
 
-// namesRow reports whether sentence holds row as a whole phrase: the same
-// case, with no letter or digit against either end.
-func namesRow(sentence, row string) bool {
+// namesRow reports whether sentence holds phrase whole: the same case, with
+// no letter, digit or, for an id, hyphen against either end.
+func namesRow(sentence, phrase string) bool {
+	word := isWordRune
+	if componentID.MatchString(phrase) {
+		word = func(r rune) bool { return isWordRune(r) || r == '-' }
+	}
 	for from := 0; ; {
-		i := strings.Index(sentence[from:], row)
+		i := strings.Index(sentence[from:], phrase)
 		if i < 0 {
 			return false
 		}
-		start, end := from+i, from+i+len(row)
+		start, end := from+i, from+i+len(phrase)
 		before, _ := utf8.DecodeLastRuneInString(sentence[:start])
 		after, _ := utf8.DecodeRuneInString(sentence[end:])
-		if !isWordRune(before) && !isWordRune(after) {
+		if !word(before) && !word(after) {
 			return true
 		}
 		from = start + 1

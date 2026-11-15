@@ -12,27 +12,27 @@ import (
 )
 
 // siteItem pairs a tied element's heading with the row or the task it names:
-// "status: <row>" or "backlog: <id>".
+// "status: <component id>" or "backlog: <task id>".
 type siteItem struct{ heading, source string }
 
 // landingItems is the reviewed list of the landing page's tied elements. A
 // card that claims a row it does not describe, a row used once more, or a
 // card that is gone fails until this list is reviewed with it.
 var landingItems = []siteItem{
-	{"Rules in front of every call", "status: Model Context Protocol (MCP) gateway"},
-	{"A person signs off the risky ones", "status: Approval binding to one action digest and one bundle digest"},
-	{"Catch what went around the rules", "status: Supervision of one opened run against its procedure, and a notifier"},
-	{"Why was that call allowed?", "status: Evidence spool"},
-	{"What did we not see?", "status: Coverage map per declared path"},
-	{"Can we stop it?", "status: A confirmed finding stops one opened run, through a signed route"},
-	{"Can our auth service overrule it?", "status: External policy decision point (PDP) over AuthZEN, able to veto"},
-	{"What about tools that are not MCP?", "status: Enforcement API receiver"},
-	{"Does it fit what we already watch?", "status: Observations from sensors: an observation record, a source descriptor and importers of OpenTelemetry GenAI traces and of an egress proxy's access log"},
-	{"The rules", "status: Policy keys and signed bundle files"},
-	{"That the rules are current", "status: Policy refresh on a plane"},
-	{"Who may operate", "status: Trust roster, authentication and authorization ports"},
-	{"What operators do", "status: Approval authority and the lost hold"},
-	{"What you download", "status: Releases built, signed and attested from a tag"},
+	{"Rules in front of every call", "status: mcp-gateway"},
+	{"A person signs off the risky ones", "status: approval-binding"},
+	{"Catch what went around the rules", "status: run-supervision"},
+	{"Why was that call allowed?", "status: evidence-spool"},
+	{"What did we not see?", "status: coverage-map"},
+	{"Can we stop it?", "status: run-stop"},
+	{"Can our auth service overrule it?", "status: external-pdp"},
+	{"What about tools that are not MCP?", "status: enforce-receiver"},
+	{"Does it fit what we already watch?", "status: observations"},
+	{"The rules", "status: policy-keys"},
+	{"That the rules are current", "status: policy-refresh"},
+	{"Who may operate", "status: trust-roster"},
+	{"What operators do", "status: approval-authority"},
+	{"What you download", "status: releases"},
 	{"Watch a run as a graph. Change the rule beside it.", "backlog: B39"},
 	{"The record itself", "backlog: B29"},
 	{"The evidence trail is checked for order, not yet for tampering (planned, B29).", "backlog: B29"},
@@ -146,6 +146,19 @@ func llmsProblems(llms, lede string) []string {
 		if !strings.Contains(llms, fact) {
 			problems = append(problems, fmt.Sprintf("it does not say %q", fact))
 		}
+	}
+	return append(problems, readinessProblems(llms)...)
+}
+
+var readinessPhrase = regexp.MustCompile(`(?i)\bproduction[\s-]+ready\b`)
+
+// readinessProblems refuses each claim in text that the project is ready
+// for production: the status page says it is alpha, and no sentence that
+// says otherwise is true, however it is hedged.
+func readinessProblems(text string) []string {
+	var problems []string
+	for _, m := range readinessPhrase.FindAllString(text, -1) {
+		problems = append(problems, fmt.Sprintf("it says %q; the project is alpha", m))
 	}
 	return problems
 }

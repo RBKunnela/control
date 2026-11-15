@@ -196,6 +196,7 @@ agent is told pending, and every append that moves that trail further is
 preceded by a flip out of <code>held</code>. So an entry that reads <code>held</code> proves the
 trail stands at its request for approval and can still be closed. At its
 next start the plane reads the journal and closes each of those trails:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -227,6 +228,7 @@ next start the plane reads the journal and closes each of those trails:</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>The call is never run: it was answered pending long ago, and running the
 effect now serves nobody. The closing events carry the restarted plane's mode
 and state that the call was not run, not that this plane enforced anything.
@@ -234,6 +236,7 @@ An approver whose answer arrives after a restart answers again, and the close
 says why.</p>
 <p>Three things that pass are reported rather than guessed at, and each is
 counted on <code>/healthz</code>:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -260,6 +263,7 @@ counted on <code>/healthz</code>:</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>A plane that cannot write a held trail's closing record before
 hand-out, or move a journal entry that may stand out of <code>held</code>, leaves that
 trail open, reserves its request id until restart so no other call writes under
@@ -269,6 +273,7 @@ it, and counts it in <code>held_trails_left_open</code>; after hand-out it count
 loses.</strong> The other two authorities require <code>approvals.hold_journal_dir</code>, and
 <code>doctor</code> and <code>/healthz</code> both say it out loud.</p>
 <h2 id="what-is-held-and-by-whom">What is held, and by whom</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -305,10 +310,12 @@ loses.</strong> The other two authorities require <code>approvals.hold_journal_d
 </tr>
 </tbody>
 </table>
+</div>
 <p>The store answers which of its records are still there and whether one was
 approved; it never defines what was held. A record the pipeline does not hold
 resumes nothing.</p>
 <h2 id="the-binding">The binding</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -330,6 +337,7 @@ resumes nothing.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p><code>approval.Bind</code> refuses what <code>canon.DigestV1</code> refuses and a bundle digest that
 is not <code>sha256:</code> and 64 lowercase hex digits, and hands out neither value on a
 refusal, so a caller can never store an approval against a digest beside a
@@ -339,6 +347,7 @@ refused bundle.</p>
 attempts, and the arguments' hash and preview, since it covers the arguments
 themselves. The pipeline neither requires those to change nor compares them.
 What it compares:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -370,6 +379,7 @@ What it compares:</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>Two requests that differ only in the labels or the context share a binding,
 so the store holds every request under a binding and the pipeline picks the
 one the retry equals, oldest first.</p>
@@ -395,6 +405,7 @@ one the retry equals, oldest first.</p>
 <p>Sources: <code>internal/gateway/approve.go</code>, <code>internal/gateway/resume.go</code>,
 <code>internal/gateway/trails.go</code>, <code>internal/gateway/approvals.go</code>,
 <code>internal/gateway/reconcile.go</code>.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -461,12 +472,14 @@ one the retry equals, oldest first.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>A consumed approval stays consumed when the upstream call then fails, because
 the effect may have happened; that failure is a new request.</p>
 <h2 id="what-is-checked-before-the-held-request-runs">What is checked before the held request runs</h2>
 <p>The enforcement point never trusts the store's answer: it judges only the
 record of the approval it minted, by approval and request id, and records
 <code>reason</code> and <code>approver_id</code> as the store gave them.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -509,6 +522,7 @@ record of the approval it minted, by approval and request id, and records
 </tr>
 </tbody>
 </table>
+</div>
 <p><strong>Expiry is judged up to four times.</strong> The store's answer is checked before
 the spend; the expiry is checked again by the plane's clock with the pause
 state right before <code>ACTION_STARTED</code> is written, again once an opened run's
@@ -529,6 +543,7 @@ a create that never replaces a mark; no approvals directory file says an
 approval was spent. A lost ledger only turns <code>APPROVAL_ALREADY_USED</code> into a
 new hold.</p>
 <h2 id="bounds">Bounds</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -585,6 +600,7 @@ new hold.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>Each of these has to be positive, or the plane refuses to start.</p>
 <h2 id="why">Why</h2>
 <ul>

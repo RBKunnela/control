@@ -257,6 +257,7 @@ pause or stop state is unknown, <code>503</code>; a pause or <code>LOCKDOWN</cod
 <p>Run <code>doctor</code> again with <code>GUARDANA_CONTROL_MODE=ENFORCE</code>: outside <code>OBSERVE</code> an
 unclassified tool is not a pass, which shows whether the overrides are
 complete. Then change the mode and restart.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -287,6 +288,7 @@ complete. Then change the mode and restart.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <h3 id="8-let-a-person-answer-a-held-call">8. Let a person answer a held call</h3>
 <pre><code class="language-yaml">plane_id: orders-eu-1           # under signed: this plane&#39;s own id, one per plane
 approvals:
@@ -313,6 +315,7 @@ with <code>approvals approve --key</code> from their own account, reading the pl
 No test here runs a second account. A lost hold never runs; the next start closes its trail
 (<a href="/docs/concepts/approvals-and-the-held-call">concepts/approvals-and-the-held-call.md</a>).</p>
 <h3 id="9-set-the-evidence-rules-on-purpose">9. Set the evidence rules on purpose</h3>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -339,6 +342,7 @@ No test here runs a second account. A lost hold never runs; the next start close
 </tr>
 </tbody>
 </table>
+</div>
 <h3 id="10-pause-a-tool">10. Pause a tool</h3>
 <p>Before setting <code>pause.file</code> and restarting:</p>
 <pre><code># directory: as the plane&#39;s user

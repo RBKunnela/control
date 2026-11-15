@@ -157,6 +157,7 @@ to a run), <code>occurred_at</code>,
 <code>prev_event_id</code>, the link to the event before it on the same request. The
 payload is deep-copied into the event, and a nil payload leaves the arm
 unset, so a gap looks like a gap and never like an empty decision.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -223,10 +224,12 @@ unset, so a gap looks like a gap and never like an empty decision.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <h2 id="before-an-effect-and-after">Before an effect and after</h2>
 <p>A sink's <code>Append</code> returns only when the event is durable under its own
 policy, and an error means it is not. What the enforcement point does with
 that error depends on whether the effect has happened:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -253,6 +256,7 @@ that error depends on whether the effect has happened:</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>A request id whose trail is open in the enforcement point is refused before
 anything is written, because two trails under one id would interleave; a held
 request's trail is resumed from where it stood rather than started again.</p>
@@ -279,6 +283,7 @@ the exporter work in records from there.</p>
 <p>Sources: <code>internal/spool/append.go</code>, <code>internal/spool/segment.go</code>,
 <code>internal/spool/reader.go</code>, <code>internal/spool/quarantine.go</code>,
 <code>adapters/otel/exporter.go</code>, <code>adapters/otel/send.go</code>.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -345,6 +350,7 @@ the exporter work in records from there.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>Every open of a segment or of the quarantine, to append, to read or to cut a
 torn tail, refuses a symbolic link at its name and does not wait on a named
 pipe there. It refuses with <code>ErrForeignFile</code> a file that is not regular, has a

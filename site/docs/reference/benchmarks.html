@@ -122,6 +122,7 @@ gateway cost, measured on one machine. How to run and publish them is in
 <h2 id="what-is-measured">What is measured</h2>
 <p>Three functions, all <code>implemented</code>, and the <code>experimental</code> gateway around
 them (<a href="/docs/status">status.md</a> is the inventory):</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -158,7 +159,9 @@ them (<a href="/docs/status">status.md</a> is the inventory):</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p><code>BenchmarkDecide</code> runs four documents, in <code>bench/policy_test.go</code>:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -180,10 +183,12 @@ them (<a href="/docs/status">status.md</a> is the inventory):</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>The obligation union is bounded only by the document, which is why it has its
 own row. The inputs of the first two benchmarks are the four golden fixtures
 in <a href="https://github.com/guardana/control/blob/main/testdata/digest/README.md">testdata/digest</a>; both read the same
 envelopes, so the two numbers can be read against each other.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -215,6 +220,7 @@ envelopes, so the two numbers can be read against each other.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>The sizes are what <code>TestBenchmarkedPathSucceeds</code> logs; no results file holds
 them, and <code>TestBenchmarksPageSizes</code> pins them.</p>
 <p>Each input is checked before it is timed: all three functions return early
@@ -228,6 +234,7 @@ those checks and they run under <code>go test ./bench/</code>. <code>BenchmarkDe
 slow tail says nothing about the tail.</p>
 <h2 id="the-round-trip">The round trip</h2>
 <p><code>BenchmarkGatewayRoundTrip</code> has three rows, one call at a time:</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -250,6 +257,7 @@ slow tail says nothing about the tail.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>Through the plane the call enters the MCP adapter's stdio listener, is
 classified as a <code>READ</code>, decided in <code>ENFORCE</code> against a signed bundle of one
 rule, sent upstream, and leaves four records in a spool on a temporary
@@ -265,6 +273,7 @@ runs as well. Their work shares the cores with the call, and <code>B/op</code> a
 upstream included. A plane row minus <code>direct</code> is therefore what the plane
 adds in this arrangement, the pipeline, the spool, a second protocol hop and
 the exporter's share of the machine together, not the pipeline alone.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -295,8 +304,10 @@ the exporter's share of the machine together, not the pipeline alone.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>The columns are those of <a href="#decide">Decide</a>, in microseconds; <code>B/op</code> and
 <code>allocs/op</code> count the whole process and vary, so the table gives their range.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -343,6 +354,7 @@ the exporter's share of the machine together, not the pipeline alone.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>Forcing each record to disk is most of a call under the default: 16 ms at the
 median, against 0.57 ms when the timer forces them. The four records are
 forced one after another, and on macOS Go's <code>File.Sync</code> is
@@ -355,6 +367,7 @@ can take the records written since the last tick.</p>
 <a href="https://github.com/guardana/control/blob/main/bench/results/20261007T050316Z-darwin-arm64.txt">bench/results/20261007T050316Z-darwin-arm64.txt</a>
 holds the other measurements on this page; it reached its collector over
 loopback TCP.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -381,11 +394,13 @@ loopback TCP.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>The machine was not idle.</p>
 <h2 id="validate-and-digestv1">Validate and DigestV1</h2>
 <p>Nanoseconds per operation are the lowest, median and highest of the five
 repetitions, to show the spread. Allocation counts and bytes were identical in
 all five.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -464,6 +479,7 @@ all five.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>Read the spread before the numbers. <code>refund_prod</code> and <code>mutated_amount</code> carry
 the same envelope and differ only in one argument value, so both functions do
 the same work on both: identical allocations, and for the digest two more
@@ -481,6 +497,7 @@ five; <code>p50</code> and <code>p99</code> are the per-call percentiles, middle
 five, with the highest p99 in parentheses. Allocation counts were identical in
 all five; B/op varied by one byte at most, and the table gives the middle
 repetition's.</p>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -537,6 +554,7 @@ repetition's.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p>In the middle repetition the p99 is 6.2 to 7.4 times the p50 on the three
 rules rows and 4.4 times on the obligations row, and it includes the scheduler
 and the other work on the host as well as the code. Compare medians rather than
@@ -550,6 +568,7 @@ the only thing that grows. The obligations row is a different shape: two
 hundred obligations cloned onto the decision are eleven times the allocations
 and fourteen times the bytes of the hundred-rule document without them.</p>
 <h2 id="what-these-numbers-are-not">What these numbers are not</h2>
+<div class="tbl">
 <table>
 <thead>
 <tr>
@@ -572,6 +591,7 @@ and fourteen times the bytes of the hundred-rule document without them.</p>
 </tr>
 </tbody>
 </table>
+</div>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/reference/benchmarks.md">docs/reference/benchmarks.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.17.0, and <a href="https://github.com/guardana/control/tree/v0.17.0/docs">its documentation</a> is in its tag.</p>
 </main>
 <nav class="side" aria-label="Documentation">
