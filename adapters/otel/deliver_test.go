@@ -81,17 +81,22 @@ func TestNoAnswerButAcceptancePassesARecordOver(t *testing.T) {
 	}
 }
 
-// TestATimeoutIsRetried: a collector that hangs past Timeout gets the request
-// again, and the batch is acknowledged when it finally answers.
+// TestATimeoutIsRetried: a collector that does not answer within Timeout gets
+// the request again, and the batch is acknowledged when a later request is
+// answered.
 func TestATimeoutIsRetried(t *testing.T) {
 	var calls atomic.Int32
-	c := newCollectorFunc(t, func(w http.ResponseWriter, r *http.Request) {
+	held := make(chan struct{})
+	c := newCollectorFunc(t, func(w http.ResponseWriter, _ *http.Request) {
 		if calls.Add(1) == 1 {
-			<-r.Context().Done()
+			// Held until the test ends, not until the request's context ends:
+			// a server can end that context while the client still waits.
+			<-held
 			return
 		}
 		w.WriteHeader(http.StatusOK)
 	})
+	t.Cleanup(func() { close(held) })
 	s := openSpool(t, 1<<20)
 	mustAppend(t, s, event(1))
 	e := newExporter(t, s, c, fast(otel.Options{InFlight: 1, Timeout: 50 * time.Millisecond}))
