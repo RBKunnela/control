@@ -69,7 +69,7 @@ func TestAStopRefusesItsRunsNextCallAndNoOthers(t *testing.T) {
 func expectStopOf(t *testing.T, socket, run string) {
 	t.Helper()
 	whole := stopsOverSocket(t, socket)
-	if whole.Active != 1 || len(whole.Entries) != 1 || whole.Entries[0].RunID != run || len(whole.UnheldRuns) != 0 {
+	if whole.Active != 1 || len(whole.Entries) != 1 || whole.Entries[0].RunID != run || len(whole.UnheldEntries) != 0 {
 		t.Errorf("health.socket stops = %+v, want the stop of %s", whole, run)
 	}
 }

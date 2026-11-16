@@ -19,6 +19,11 @@ a run alone. The `v1alpha2` route, the `2.0` list and the `v1alpha2` lift are
 refused, naming `route sign` or `stops init --carry`, which alone reads them,
 as the list it carries into `3.0` at the next serial.
 
+Amended by [ADR-0083](0083-a-finding-may-stop-an-agent-or-a-principal.md):
+a `v1alpha3` route rule may carry scope `agent` or `principal` for three
+rules with a lifetime, and a signed lift of either scope ends only the stops
+of its subject.
+
 ## Context
 
 Under ADR-0046 a route key signs the route and a lift key each lift, and

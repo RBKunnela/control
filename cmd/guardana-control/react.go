@@ -242,16 +242,13 @@ func (r *reactor) run(id string) (reaction.RunFacts, error) {
 		return reaction.RunFacts{}, fmt.Errorf("--runs: run %s: %w", oneLine(id), err)
 	}
 	facts := reaction.RunFacts{RunID: rec.ID, TenantID: rec.Who.TenantID, ProjectID: rec.Who.ProjectID,
-		Open: rec.ID != "" && !rec.Closed(), ExpiresAt: rec.ExpiresAt}
+		AgentID: rec.Who.AgentID, PrincipalID: rec.Who.PrincipalID, Open: rec.ID != "" && !rec.Closed(), ExpiresAt: rec.ExpiresAt}
 	r.runFacts[id] = facts
 	return facts, nil
 }
 
-// claim is the stop the finding would be, created at now and expiring at
-// now plus its rule's lifetime, never after its run expires, or when its run
-// expires for a rule with none. A line spells whole seconds, so the run's
-// expiry is rounded up to one: rounded down, the run's last fraction of a
-// second would run unstopped. A finding no rule of the route names makes no
+// claim is the stop the finding would be, created at now and expiring as
+// its rule's ExpiresAt says. A finding no rule of the route names makes no
 // claim.
 func (r *reactor) claim(fr *findingv1alpha1.FindingRecord, run reaction.RunFacts, now time.Time) (reaction.StopClaim, bool) {
 	proc, f := fr.GetProcedure(), fr.GetFinding()
@@ -262,27 +259,19 @@ func (r *reactor) claim(fr *findingv1alpha1.FindingRecord, run reaction.RunFacts
 	for _, rule := range r.route.Rules() {
 		if rule.ProcedureID == c.ProcedureID && rule.ProcedureVersion == c.ProcedureVersion &&
 			rule.ProcedureDigest == c.ProcedureDigest && rule.RuleID == c.RuleID && rule.RuleVersion == c.RuleVersion {
-			c.Scope = rule.Scope
-			c.ExpiresAt = ceilSecond(run.ExpiresAt)
-			limit := rule.Lifetime
-			if limit == 0 {
-				limit = reaction.MaxLifetime
-			}
-			if end := now.Add(limit); end.Before(c.ExpiresAt) {
-				c.ExpiresAt = end
-			}
+			c.Scope, c.ExpiresAt = rule.Scope, rule.ExpiresAt(now, run.ExpiresAt)
 			return c, true
 		}
 	}
 	return reaction.StopClaim{}, false
 }
 
-// write appends a stop for a run with no active stop and a covered line for
-// one with, the writer choosing under its lock over the list as it stands,
-// so a react running beside this one cannot give the run a second stop. The
-// stop is the finding's claim at the clock read under the lock. A write the
-// list's bound or the judge refuses is named and the pass goes on; any other
-// refusal stops it.
+// write appends a stop for a subject with no active stop of its scope and a
+// covered line for one with, the writer choosing under its lock over the
+// list as it stands, so a react running beside this one cannot give the
+// subject a second stop. The stop is the finding's claim at the clock read
+// under the lock. A write the list's bound or the judge refuses is named and
+// the pass goes on; any other refusal stops it.
 func (r *reactor) write(fr *findingv1alpha1.FindingRecord, run reaction.RunFacts) error {
 	id, runID := fr.GetFinding().GetFindingId(), fr.GetFinding().GetRunId()
 	stopAt := func(now time.Time) (reaction.Stop, error) {
@@ -290,8 +279,12 @@ func (r *reactor) write(fr *findingv1alpha1.FindingRecord, run reaction.RunFacts
 		if !ok {
 			return reaction.Stop{}, errNotStopping
 		}
+		subject, err := subjectOf(r.route, c.Scope, run)
+		if err != nil {
+			return reaction.Stop{}, err
+		}
 		return reaction.Stop{EntryID: reaction.EntryID(id), TenantID: c.TenantID, ProjectID: c.ProjectID, Scope: c.Scope,
-			Subject: subjectOf(r.route, runID), RunID: runID, FindingID: id,
+			Subject: subject, RunID: runID, FindingID: id,
 			ProcedureID: c.ProcedureID, ProcedureVersion: c.ProcedureVersion, ProcedureDigest: c.ProcedureDigest,
 			RuleID: c.RuleID, RuleVersion: c.RuleVersion, CreatedAt: c.CreatedAt, ExpiresAt: c.ExpiresAt}, nil
 	}
@@ -323,14 +316,15 @@ func (r *reactor) write(fr *findingv1alpha1.FindingRecord, run reaction.RunFacts
 		return fmt.Errorf("finding %s run %s: %w", oneLine(id), oneLine(runID), err)
 	}
 	r.named[id] = true
+	whom := whomOf(s)
 	if covered {
 		r.covered++
-		r.written = append(r.written, fmt.Sprintf("covered line %d run %s finding %s", n, oneLine(runID), oneLine(id)))
+		r.written = append(r.written, fmt.Sprintf("covered line %d %srun %s finding %s", n, whom, oneLine(runID), oneLine(id)))
 		return nil
 	}
 	r.stops++
-	r.written = append(r.written, fmt.Sprintf("stop line %d run %s finding %s rule %s expires_at %s",
-		n, oneLine(runID), oneLine(id), oneLine(s.RuleID), policy.FormatIssuedAt(s.ExpiresAt)))
+	r.written = append(r.written, fmt.Sprintf("stop line %d %srun %s finding %s rule %s expires_at %s",
+		n, whom, oneLine(runID), oneLine(id), oneLine(s.RuleID), policy.FormatIssuedAt(s.ExpiresAt)))
 	return nil
 }
 
@@ -344,13 +338,15 @@ func projectOf(route reaction.Route, fr *findingv1alpha1.FindingRecord) string {
 	return fr.GetProjectId()
 }
 
-// subjectOf is the subject a stop of runID names under route: its run under
+// subjectOf is the subject a stop of scope names under route: the run's,
+// or its agent's or principal's, as the judged run record holds them, under
 // a v1alpha3 route, whose stops name a subject, and none under any other.
-func subjectOf(route reaction.Route, runID string) string {
+// The finding is never asked: it carries no identity of its own.
+func subjectOf(route reaction.Route, scope string, run reaction.RunFacts) (string, error) {
 	if route.Format() != reaction.FormatV1Alpha3 {
-		return ""
+		return "", nil
 	}
-	return runID
+	return reaction.SubjectOf(scope, run)
 }
 
 // reactPlaneAccount is react's guard against running as the plane's account,
@@ -372,12 +368,4 @@ func notPlaneAccount(dir string) error {
 		return errPlaneAccount
 	}
 	return nil
-}
-
-// ceilSecond is t rounded up to a whole second.
-func ceilSecond(t time.Time) time.Time {
-	if down := t.Truncate(time.Second); down.Before(t) {
-		return down.Add(time.Second)
-	}
-	return t
 }

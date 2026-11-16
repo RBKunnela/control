@@ -139,6 +139,12 @@ refusing those scopes, <code>/healthz</code> and <code>doctor</code> say per ent
 all, some or none of the plane's calls, and name each that covers none. A
 tenant is still no scope. The file is version <code>2</code>; version <code>1</code>, which names
 none of the three, is still read.</p>
+<p>Amended by <a href="/docs/adr/0083-a-finding-may-stop-an-agent-or-a-principal">ADR-0083</a>:
+<code>AGENT_OR_PRINCIPAL_STOPPED</code> follows <code>RUN_STOPPED</code> in the order of the
+plane's causes. A stop of an agent or a principal is matched against the
+listener's configured identity; a pause entry of that scope is matched
+against the envelope's, which the MCP adapter fills from the same
+configuration.</p>
 <p>Amended by <a href="/docs/adr/0075-a-signed-plane-takes-a-pause-only-from-an-operators-signature">ADR-0075</a>:
 under <code>approvals.authority: signed</code> the plane takes a pause only from a
 version <code>3</code> file an operator signed, above its pause floor, and refuses

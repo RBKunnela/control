@@ -52,6 +52,10 @@ const (
 	// plane that serves no opened run: a stop names an opened run, and every
 	// call there runs under a run no stop can name.
 	ErrStopsWithoutRuns Error = "gateway: a stop source is configured and no runs directory serves opened runs"
+	// ErrStopsWithoutIdentity is a stop source other than StopsDisabled on a
+	// plane whose Listener names no tenant, principal or agent: a stop of an
+	// agent or a principal would match nothing there.
+	ErrStopsWithoutIdentity Error = "gateway: a stop source is configured and Listener names no tenant, principal or agent"
 	// ErrNoSink is a nil evidence sink: a plane with nowhere to write refuses
 	// to start rather than decide unrecorded.
 	ErrNoSink Error = "gateway: no evidence sink"

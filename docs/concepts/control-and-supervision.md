@@ -130,7 +130,8 @@ and is never automatically retried.
 
 The alpha already joins an MCP enforcement path, a cooperative enforcement
 API for custom tools, imported runtime traces, coverage, procedure checks and
-run-scoped reaction, with the limits above.
+reactions that stop a run or, under `signed`, its agent or principal, with the
+limits above.
 It uses configured principals and operator-issued run capabilities rather
 than authenticated end users. Its append-only evidence trail is not
 tamper-evident. These limits stay visible until their controls are built and

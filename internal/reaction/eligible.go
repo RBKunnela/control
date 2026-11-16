@@ -23,6 +23,9 @@ type RunFacts struct {
 	RunID     string
 	TenantID  string
 	ProjectID string
+	// AgentID and PrincipalID are who the run is for, the subject of a stop
+	// of an agent or a principal; SubjectOf refuses an empty one.
+	AgentID, PrincipalID string
 	// Open is true while the record holds no close.
 	Open      bool
 	ExpiresAt time.Time

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -53,7 +54,7 @@ func expect(t *testing.T, what string, s reaction.Snapshot, state reaction.State
 		t.Errorf("%s: accepted %d bytes, want %d", what, got, length)
 	}
 	for i, run := range []string{"run-1", "run-2"} {
-		if got := s.Active(run, "acme", clock0, time.Time{}); got != runs[i] {
+		if got := stopsRun(s, "acme", run, clock0); got != runs[i] {
 			t.Errorf("%s: Active(%s) = %v, want %v", what, run, got, runs[i])
 		}
 	}
@@ -249,4 +250,13 @@ func TestRunPollsUntilItsContextEnds(t *testing.T) {
 	if n := p.Stats().Polls; n < 4 {
 		t.Errorf("Run polled %d times in 5s at a 5ms interval", n)
 	}
+}
+
+// stopsRun reports whether an active entry of s, read with no age rule,
+// stops run of tenant at now.
+func stopsRun(s reaction.Snapshot, tenant, run string, now time.Time) bool {
+	entries, _ := s.ActiveEntries(now, time.Time{})
+	return slices.ContainsFunc(entries, func(e reaction.Entry) bool {
+		return e.TenantID == tenant && e.Target() == reaction.Target{Scope: reaction.ScopeRun, Subject: run}
+	})
 }

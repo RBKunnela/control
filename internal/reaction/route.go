@@ -59,13 +59,13 @@ func routeRefusals() docRefusals {
 type Rule struct {
 	ProcedureID, ProcedureVersion, ProcedureDigest string
 	RuleID, RuleVersion                            string
-	// Scope is what a stop under the rule holds: ScopeRun, the one scope
-	// served. A v1alpha1 route names it once for every rule, and v1alpha2
-	// and v1alpha3 per rule.
+	// Scope is what a stop under the rule holds: one run, or under v1alpha3
+	// an agent or a principal. A v1alpha1 route names it once for every
+	// rule, and v1alpha2 and v1alpha3 per rule.
 	Scope string
 	// Lifetime is the longest a stop under the rule may last. Zero sets no
 	// bound of its own: the stop lasts as long as its run, and never longer
-	// than MaxLifetime.
+	// than MaxLifetime. A rule of an agent or a principal always names one.
 	Lifetime time.Duration
 }
 
@@ -295,6 +295,9 @@ func readRule(raw json.RawMessage, f RouteFormat) (Rule, error) {
 		}
 		r.Lifetime = time.Duration(seconds) * time.Second
 	}
+	if err := checkRuleScope(r); err != nil {
+		return Rule{}, err
+	}
 	return r, nil
 }
 
@@ -306,19 +309,14 @@ func procedureDigest(s string) bool {
 }
 
 // ruleScope reads the scope of a rule of a route of format f: run alone in
-// v1alpha2, and in v1alpha3 any scope the grammar names, each refused that
-// this build does not serve.
+// v1alpha2, and in v1alpha3 any scope the grammar names, which readRule
+// holds to checkRuleScope once it read the rule.
 func ruleScope(raw json.RawMessage, f RouteFormat) (string, error) {
 	scope, ok := readScope(raw)
 	switch {
 	case !ok:
 		return "", ErrRouteScope
-	case f == FormatV1Alpha3:
-		if err := scopeServed(scope); err != nil {
-			return "", err
-		}
-		return scope, nil
-	case f == FormatV1Alpha2Carry && scope == ScopeRun:
+	case f == FormatV1Alpha3, f == FormatV1Alpha2Carry && scope == ScopeRun:
 		return scope, nil
 	}
 	return "", ErrRouteScope

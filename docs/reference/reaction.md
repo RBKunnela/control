@@ -2,14 +2,16 @@
 title: Reaction
 summary: The signed route, the stop list and the commands that write them, and how a plane refuses a stopped run's calls and reports its stops.
 type: reference
-covers: [internal/reaction/**, internal/policystate/route.go, cmd/guardana-control/route.go, cmd/guardana-control/stops.go, cmd/guardana-control/react.go, cmd/guardana-gateway/reaction.go, cmd/guardana-gateway/health_stops.go, cmd/guardana-gateway/doctor_reaction.go, internal/gateway/pause.go]
+covers: [internal/reaction/**, internal/policystate/route.go, cmd/guardana-control/route.go, cmd/guardana-control/stops.go, cmd/guardana-control/stops_init.go, cmd/guardana-control/stops_list.go, cmd/guardana-control/stops_lift.go, cmd/guardana-control/react.go, cmd/guardana-gateway/reaction.go, cmd/guardana-gateway/health_stops.go, cmd/guardana-gateway/doctor_reaction.go, internal/gateway/pause.go]
 ---
 
 # Reaction
 
 `guardana-control react` turns a confirmed finding of `supervise` into a stop
 of the run it is about, under a route the operator signed. A plane with that
-route refuses the run's later calls `RUN_STOPPED`, and no other run's. It is
+route refuses the run's later calls `RUN_STOPPED`, and no other run's; under
+`signed` a stop of its agent or principal stops every call
+([signed reaction](reaction-signed.md#a-stop-of-an-agent-or-a-principal)). It is
 `experimental`: [status.md](../status.md) is the inventory,
 [ADR-0046](../adr/0046-a-finding-stops-one-run-through-a-signed-route.md) and
 [ADR-0047](../adr/0047-a-procedure-states-its-exceptions-resources-and-children.md)
@@ -47,15 +49,14 @@ Sources: `cmd/guardana-control/react.go`, `cmd/guardana-control/stops.go`, `inte
 The route says which findings may stop a run: its tenant, and rules, each a
 procedure by id, version and digest and a supervise rule, with an optional
 lifetime for the stops it allows. Without one a stop lasts as long as its run.
-`route sign` signs it with its own key, writes the file mode `0644`,
-replacing only an earlier signed route, and prints `route_id`, `serial`,
-`digest`, `key_id` and `out`. It refuses any rule but the six whose finding
+`route sign` signs it with its own key and writes it mode `0644`,
+replacing only an earlier signed route. It refuses any rule but the six whose finding
 may stop a run, each at its version: `REPEATED_DENIAL` at `2`, and
 `STEP_OUTSIDE_PROCEDURE`, `DEADLINE_EXCEEDED`, `RESOURCE_OUTSIDE_RUN`,
 `DENIED_ACTION_RETRIED_ARGUMENTS` and `DENIED_ACTION_RETRIED_RESOURCE` at `1`.
 Every reader of a signed route refuses one naming another, but
 `--carry-route`. The route also names the lift key, whose holder alone can
-lift a stop while a plane runs, and which need not be on the plane's machine.
+lift a stop; it need not be on the plane's machine.
 
 The route floor keeps, per route id, the highest serial a plane took and its
 digest, in a directory of its own that `policy state init --kind route` makes.
@@ -87,9 +88,8 @@ the writer's clock. Point `react` at the new list: no plane reads the old
 one. `stops lift` signs a lift of one run through a line, by default the
 last complete one, and refuses a key that is not the route's lift key and a
 lift that ends no stop. `stops list` prints the
-header, each stop no lift ended and whether it is active, the covered lines
-and lifts counted and the list's use of its bounds, as a plane with a trusted
-clock would judge it.
+header, each unlifted stop and whether it is active, the covered lines
+and lifts counted and the list's use of its bounds.
 
 ## What react writes
 
@@ -144,11 +144,12 @@ consumed closes the held trail and spends the approval.
 | Code | Number | Verdict | When |
 | --- | --- | --- | --- |
 | `RUN_STOPPED` | 45 | `DENY` | the call's run has an active stop |
+| `AGENT_OR_PRINCIPAL_STOPPED` | 48 | `DENY` | a stop names the plane's agent or principal |
 | `STOP_STATE_UNAVAILABLE` | 46 | `INDETERMINATE` | every call, while the stop state is unknown |
 
-Both apply in every mode and to every effect class, before an external
-decision point is asked, in this order of the plane's causes: `PAUSED`,
-`RUN_STOPPED`, `EXECUTED_ARGS_MISMATCH`, `LOCKDOWN`,
+Each applies in every mode and to every effect class, before an external
+decision point is asked, in the plane's cause order: `PAUSED`,
+`RUN_STOPPED`, `AGENT_OR_PRINCIPAL_STOPPED`, `EXECUTED_ARGS_MISMATCH`, `LOCKDOWN`,
 `PAUSE_STATE_UNAVAILABLE`, `STOP_STATE_UNAVAILABLE`, `EVIDENCE_UNAVAILABLE`,
 `ACTION_UNCLASSIFIED`. A decision names no stop.
 

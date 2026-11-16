@@ -177,6 +177,12 @@ header.</li>
 <li><code>/healthz</code> gives the new serial under <code>stops.signed</code>, and a run the old list
 stopped is still refused with <code>RUN_STOPPED</code>.</li>
 </ul>
+<p>The health answer is schema <code>3</code> in 0.18. A script that reads <code>/healthz</code> or
+<code>health.socket</code> and checks <code>&quot;schema&quot;</code> takes <code>&quot;3&quot;</code>. Under <code>stops</code>, the
+socket's <code>unheld_runs</code> and <code>unread_runs</code> are now <code>unheld_entries</code> and
+<code>unread_entries</code> and name entry ids, since a stop can name an agent or a
+principal; each entry in <code>entries</code> names its <code>scope</code> and <code>subject</code>. The
+counts <code>active</code>, <code>unheld</code> and <code>unread</code> are unchanged.</p>
 <h2 id="roll-back">Roll back</h2>
 <p>0.17 refuses a <code>reaction-route/v1alpha3</code> route, a <code>3.0</code> list and a backup
 whose manifest names a plane. To go back, stop the plane, point

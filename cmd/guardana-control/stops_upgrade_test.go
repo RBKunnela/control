@@ -82,7 +82,7 @@ func servedAt(t *testing.T, route reaction.Route, dir string) reaction.Snapshot 
 func expectStates(t *testing.T, s reaction.Snapshot, want map[string]reaction.State) {
 	t.Helper()
 	for run, state := range want {
-		if got, cause := s.ForCall(run, "acme", time.Now(), time.Time{}); got != state {
+		if got, cause, _ := s.ForSubject(reaction.Subject{Tenant: "acme", Run: run}, time.Now(), time.Time{}); got != state {
 			t.Errorf("run %s: %s %s, want %s", run, got, cause, state)
 		}
 	}

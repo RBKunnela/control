@@ -160,9 +160,9 @@ signed document to another plane of the same tenant and project is refused
 there for its <code>plane_id</code> even where the paths are alike, and for its <code>file</code>
 where they differ. The route names a <code>project_id</code> and a <code>scope</code> on each
 rule, and every stop and covered line of a <code>3.0</code> list names the project, the
-<code>scope</code> and the <code>subject</code>. This release serves scope <code>run</code> alone: its
-subject is the line's <code>run_id</code>, and a rule, a line or a lift of scope
-<code>agent</code> or <code>principal</code> is refused. The header names a <code>serial</code> and, after a carry, the <code>previous</code>
+<code>scope</code> and the <code>subject</code>. Under scope <code>run</code> the subject is the line's
+<code>run_id</code>; under <code>agent</code> or <code>principal</code>, below, it is the agent or principal
+and <code>run_id</code> is the run the finding was about. The header names a <code>serial</code> and, after a carry, the <code>previous</code>
 header's digest; a lift names the digest of the header it lifts from,
 <code>list_head</code>, and the <code>scope</code> and <code>subject</code> whose stops it ends, so a lift
 made against one list never verifies against a list carried or restored
@@ -215,6 +215,39 @@ cannot be carried, the plane's account makes a new floor with <code>stops floor 
 operator starts a new list with <code>stops init --key</code>, and <code>react</code> stops again
 what may still stop. A new floor takes any list, so this is the step that
 lowers it.</p>
+<h2 id="a-stop-of-an-agent-or-a-principal">A stop of an agent or a principal</h2>
+<p>A route rule may carry scope <code>agent</code> or <code>principal</code> for <code>REPEATED_DENIAL</code>
+version <code>2</code>, <code>DENIED_ACTION_RETRIED_ARGUMENTS</code> version <code>1</code> and
+<code>DENIED_ACTION_RETRIED_RESOURCE</code> version <code>1</code>, the rules about what the actor
+did, and only with <code>expires_seconds</code>. Every reader of a route refuses either
+scope on any other rule, and either scope without a lifetime
+(<a href="/docs/adr/0083-a-finding-may-stop-an-agent-or-a-principal">ADR-0083</a>).</p>
+<p><code>react</code> takes the subject from the judged run's record, its <code>agent_id</code> or
+<code>principal_id</code>, and writes nothing for a record that names none. Such a
+stop lasts the rule's lifetime from when <code>react</code> wrote it, whatever the run's
+expiry. A finding is covered only by an active stop of the same scope and
+subject that lasts as long, whichever run either was about.</p>
+<p>A plane matches such a stop against the agent and principal its listener's
+configuration names, within the listener's tenant, never against the
+envelope or a run record; a principal stop matches the principal's id
+alone, never its type. Every opened run of a plane carries the listener's
+identity, so <strong>on one plane a stop of its agent or principal stops the
+plane</strong>: every run, a run opened after the stop, and a call with no run, each
+<code>AGENT_OR_PRINCIPAL_STOPPED</code> (48, <code>DENY</code>). The tool listing is not stopped.
+A call under a stop of its run and of its agent lists both codes,
+<code>RUN_STOPPED</code> first. An active stop of either scope whose subject the call
+does not name reads as an unknown stop state, <code>STOP_STATE_UNAVAILABLE</code>, never
+as no stop; a plane with a stop list refuses to start unless its listener
+names a tenant, a principal and an agent.</p>
+<p><code>stops lift</code> takes exactly one of <code>--run</code>, <code>--agent</code> and <code>--principal</code>, and
+the last two only under <code>signed</code>. A lift ends the stops of its scope and
+subject through its line alone: a lift of a run leaves a stop of its agent
+standing, and a lift of the agent ends that one.</p>
+<p><code>doctor</code> names each rule that stops an agent or a principal, and each such
+stop whose agent, principal or tenant is not the listener's, which matches
+no call. <code>health.socket</code> lists each stop with its <code>scope</code> and <code>subject</code> and,
+under health schema <code>3</code>, names the stops that match no call by entry id in
+<code>unheld_entries</code> and <code>unread_entries</code>.</p>
 <p><code>doctor</code> judges the route and the header through the roster file, holds the
 header to the stop list floor without raising it, and names who signed each.
 <code>/healthz</code> gives a <code>3.0</code> list's header serial under <code>stops.signed</code>; only

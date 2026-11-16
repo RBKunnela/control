@@ -217,44 +217,6 @@ func answersFor(interval time.Duration) time.Duration {
 	return staleAfter * interval
 }
 
-// ForCall is what s says of a call of runID and tenantID at the call's clock
-// now, given floor, the latest instant the call relied on, with At's age rule
-// applied at now: Stopped when an entry of that run and tenant is active,
-// Clear when none is, and Unknown with its cause when the state is unknown or
-// past its age. A plane with no route is Disabled. The cause is empty unless
-// the state is Unknown.
-func (s Snapshot) ForCall(runID, tenantID string, now, floor time.Time) (State, Cause) {
-	at := s.At(now)
-	switch at.state {
-	case Disabled:
-		return Disabled, ""
-	case Clear, Stopped:
-		if at.Active(runID, tenantID, now, floor) {
-			return Stopped, ""
-		}
-		return Clear, ""
-	}
-	return Unknown, at.Cause()
-}
-
-// Active reports whether an entry of a list read whole stops a call of runID
-// and tenantID at the call's clock now, given floor, the latest instant the
-// call relied on. It reads the entries whatever the state says, Clear
-// included, since a clock the call cannot trust brings back an entry that
-// expired at the read. Whether an Unknown snapshot blocks is the caller's
-// rule, not a match: Active of one is false.
-func (s Snapshot) Active(runID, tenantID string, now, floor time.Time) bool {
-	if s.state != Clear && s.state != Stopped {
-		return false
-	}
-	for _, e := range s.list.entries {
-		if e.RunID == runID && e.TenantID == tenantID && active(e, now, floor) {
-			return true
-		}
-	}
-	return false
-}
-
 // ActiveEntries is at most MaxListedEntries of the entries active at now
 // given floor, in the order of their lines, and how many are active in all.
 func (s Snapshot) ActiveEntries(now, floor time.Time) ([]Entry, int) {

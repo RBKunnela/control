@@ -65,12 +65,20 @@ func writeLeveledRoster(t *testing.T, path string) trust.Document {
 }
 
 // signedRouteFile has who sign a v1alpha3 route of plane-a and acme/orders
-// bound to path and writes it there.
-func signedRouteFile(t *testing.T, path, who string) {
+// bound to path, whose fixture rule stops a run and each of wider stops the
+// scope it names for an hour, and writes it there.
+func signedRouteFile(t *testing.T, path, who string, wider ...widerRule) {
 	t.Helper()
+	rule := func(id, version, scope string) string {
+		return `{"procedure_id":"refund","version":"3","digest":"` + fixtureProcedure + `","rule_id":"` + id +
+			`","rule_version":"` + version + `","scope":"` + scope + `","expires_seconds":3600}`
+	}
+	rules := []string{rule(fixtureRule, "1", "run")}
+	for _, w := range wider {
+		rules = append(rules, rule(w.id, w.version, w.scope))
+	}
 	doc := `{"kind":"reaction-route/v1alpha3","plane_id":"plane-a","route_id":"` + fixtureRouteID + `","serial":1,"tenant_id":"acme","project_id":"orders",` +
-		`"rules":[{"procedure_id":"refund","version":"3","digest":"` + fixtureProcedure + `","rule_id":"` + fixtureRule +
-		`","rule_version":"1","scope":"run","expires_seconds":3600}]}`
+		`"rules":[` + strings.Join(rules, ",") + `]}`
 	file, err := signedstops.BindingOf(path)
 	if err != nil {
 		t.Fatal(err)
@@ -142,15 +150,26 @@ func rosterRouteOf(t *testing.T, doc trust.Document, routePath, stops string) re
 	return route
 }
 
+// widerRule is a route rule that stops an agent or a principal.
+type widerRule struct{ id, version, scope string }
+
 // signedStopsTree is signedPlaneTree with a route dave signed, a 3.0 stop
 // list alice started at serial 1, their floors and a runs directory.
 func signedStopsTree(t *testing.T) tree {
+	t.Helper()
+	tr, _ := signedStopsTreeWith(t)
+	return tr
+}
+
+// signedStopsTreeWith is signedStopsTree whose route also names wider, and
+// the route as the plane takes it.
+func signedStopsTreeWith(t *testing.T, wider ...widerRule) (tree, reaction.Route) {
 	t.Helper()
 	tr := signedPlaneTree(t, "roster-a", nil, "roster-a")
 	doc := writeLeveledRoster(t, filepath.Join(tr.dir, "trust", "roster.json"))
 	initStopsState(t, tr.dir)
 	routePath, stops := filepath.Join(tr.dir, "route.json"), filepath.Join(tr.dir, "stops")
-	signedRouteFile(t, routePath, "dave")
+	signedRouteFile(t, routePath, "dave", wider...)
 	route := rosterRouteOf(t, doc, routePath, stops)
 	alice := signedTestKey("alice")
 	s := stopwrite.Signer{KeyID: policykey.KeyID(signedTestPublic("alice")), Sign: func(payloadType string, body []byte) ([]byte, error) {
@@ -165,7 +184,7 @@ func signedStopsTree(t *testing.T) tree {
 	}
 	writeTestFile(t, tr.config, append(cfg, []byte("\nruns:\n  dir: runs\nreaction:\n  route: route.json\n  floor_dir: routefloor\n"+
 		"  stops: stops\n  stops_floor_dir: stopsfloor\n  poll_interval: 100ms\n")...))
-	return tr
+	return tr, route
 }
 
 // expectOneAccountStart builds tr on one account and expects alice's list

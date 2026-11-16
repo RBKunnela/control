@@ -116,6 +116,9 @@ var wantTriples = []triple{
 	// 47 is INDETERMINATE: an execution nobody completed or aborted may or may
 	// not have had its effect.
 	{"EXECUTION_ABANDONED", 47, controlv1.Verdict_VERDICT_INDETERMINATE},
+	// 48 is DENY and not RUN_STOPPED: a stop of an agent or a principal holds
+	// runs opened after it and calls under no run, which 45 never names.
+	{"AGENT_OR_PRINCIPAL_STOPPED", 48, controlv1.Verdict_VERDICT_DENY},
 }
 
 // wantTriples names verdicts by symbol, and a symbol is only worth pinning if
@@ -252,12 +255,14 @@ func TestThePauseCodesTellAnOperatorFromAFault(t *testing.T) {
 	}
 }
 
-// The two stop codes say who blocked the call: a stop of its run, or a stop
-// list nobody could read or trust. Neither may read as the other.
+// The three stop codes say who blocked the call: a stop of its run, a stop of
+// its agent or principal, or a stop list nobody could read or trust. None may
+// read as another.
 func TestTheStopCodesTellAStopFromAFault(t *testing.T) {
 	want := map[string]string{
-		"RUN_STOPPED":            "A stop the operator's route allows names the opened run this call belongs to, so the enforcement point blocked it whatever the policy decided.",
-		"STOP_STATE_UNAVAILABLE": "The enforcement point could not read or trust the stop list, so it blocked the call rather than assume that no run is stopped.",
+		"RUN_STOPPED":                "A stop the operator's route allows names the opened run this call belongs to, so the enforcement point blocked it whatever the policy decided.",
+		"AGENT_OR_PRINCIPAL_STOPPED": "A stop the operator's route allows names the agent or the principal this call acts for, so the enforcement point blocked it whatever the policy decided.",
+		"STOP_STATE_UNAVAILABLE":     "The enforcement point could not read or trust the stop list, so it blocked the call rather than assume that no run is stopped.",
 	}
 	found := 0
 	for _, code := range registry(t) {

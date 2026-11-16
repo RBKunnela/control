@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/guardana/control/internal/gatewayconfig"
 	"github.com/guardana/control/internal/reaction"
 	"github.com/guardana/control/internal/runs"
 )
@@ -13,10 +14,10 @@ import (
 // (ADR-0046): the route and its floor as the start left them, the list's id,
 // the state and why an unknown one is unknown, how old the read is, the
 // active stops, at most reaction.MaxListedEntries of them, the list's use of
-// its bounds, the active stops naming a run the runs directory does not hold
-// for the plane's project, and what the reader counted. A plane with no route
-// says only disabled. The entries and the runs they name are the whole
-// answer's; counted leaves them out.
+// its bounds, the active stops whose subject the plane does not hold, and
+// what the reader counted. A plane with no route says only disabled. The
+// entries and the stops they name are the whole answer's; counted leaves
+// them out.
 type stopsAnswer struct {
 	State  string       `json:"state"`
 	Cause  string       `json:"cause,omitempty"`
@@ -32,14 +33,16 @@ type stopsAnswer struct {
 	// Degraded says the list is past nine tenths of a bound, past which the
 	// emitter can write no more stops.
 	Degraded bool `json:"degraded"`
-	// UnheldRuns are the listed stops' runs the runs directory holds no
-	// record of for the plane's project, and UnreadRuns those whose record
-	// could not be read; Unheld and Unread count them.
-	Unheld     int            `json:"unheld"`
-	Unread     int            `json:"unread"`
-	UnheldRuns []string       `json:"unheld_runs"`
-	UnreadRuns []string       `json:"unread_runs"`
-	Polls      map[string]any `json:"polls,omitempty"`
+	// UnheldEntries are the entry ids of the listed stops that match no call
+	// of this plane: a run the runs directory holds no record of for the
+	// plane's project, or an agent or principal, or a tenant, other than the
+	// listener's. UnreadEntries are those whose run's record could not be
+	// read. Unheld and Unread count them.
+	Unheld        int            `json:"unheld"`
+	Unread        int            `json:"unread"`
+	UnheldEntries []string       `json:"unheld_entries"`
+	UnreadEntries []string       `json:"unread_entries"`
+	Polls         map[string]any `json:"polls,omitempty"`
 	// Signed is a signed list's header serial, and on the whole answer alone
 	// who signed it and the route.
 	Signed *stopsSigned `json:"signed,omitempty"`
@@ -59,8 +62,12 @@ type routeAnswer struct {
 	Digest string `json:"digest"`
 }
 
+// stopEntryAnswer is one active stop: its scope and subject, and the run
+// whose finding made it, which under scope run is the subject.
 type stopEntryAnswer struct {
 	EntryID   string `json:"entry_id"`
+	Scope     string `json:"scope"`
+	Subject   string `json:"subject"`
 	RunID     string `json:"run_id"`
 	FindingID string `json:"finding_id"`
 	RuleID    string `json:"rule_id"`
@@ -77,7 +84,7 @@ type usageAnswer struct {
 // stopsAnswer is snap as a call admitted at now would take it.
 func (p *plane) stopsAnswer(snap reaction.Snapshot, now time.Time) stopsAnswer {
 	at := snap.At(now)
-	out := stopsAnswer{State: at.State().String(), Entries: []stopEntryAnswer{}, UnheldRuns: []string{}, UnreadRuns: []string{}}
+	out := stopsAnswer{State: at.State().String(), Entries: []stopEntryAnswer{}, UnheldEntries: []string{}, UnreadEntries: []string{}}
 	if at.State() == reaction.Unknown {
 		out.Cause = string(at.Cause())
 	}
@@ -104,13 +111,20 @@ func (p *plane) stopsAnswer(snap reaction.Snapshot, now time.Time) stopsAnswer {
 	}
 	out.Active = total
 	for _, e := range entries {
+		t := e.Target()
 		out.Entries = append(out.Entries, stopEntryAnswer{
-			EntryID: e.EntryID, RunID: e.RunID, FindingID: e.FindingID, RuleID: e.RuleID,
+			EntryID: e.EntryID, Scope: t.Scope, Subject: t.Subject, RunID: e.RunID, FindingID: e.FindingID, RuleID: e.RuleID,
 			ExpiresAt: e.ExpiresAt.UTC().Format(time.RFC3339),
 		})
 	}
-	out.UnheldRuns, out.UnreadRuns = unheldRuns(p.runsDir, p.cfg.ProjectID, entries)
-	out.Unheld, out.Unread = len(out.UnheldRuns), len(out.UnreadRuns)
+	unheld, unread := unheldStops(p.runsDir, p.cfg, entries)
+	for _, e := range unheld {
+		out.UnheldEntries = append(out.UnheldEntries, e.EntryID)
+	}
+	for _, e := range unread {
+		out.UnreadEntries = append(out.UnreadEntries, e.EntryID)
+	}
+	out.Unheld, out.Unread = len(out.UnheldEntries), len(out.UnreadEntries)
 	if u := held.Usage(); u != (reaction.Usage{}) {
 		out.Usage = &usageAnswer{Bytes: u.Bytes, MaxBytes: reaction.MaxListBytes, Lines: u.Lines, MaxLines: reaction.MaxListLines}
 		out.Degraded = u.Degraded()
@@ -143,28 +157,49 @@ func heldActive(held reaction.List, now time.Time) ([]reaction.Entry, int) {
 	return out, total
 }
 
-// unheldRuns names, in order, the runs of entries the runs directory holds no
-// record of under project, and those whose record it could not read: a stop
-// of a run that is not there, or is another project's, matches no call of a
-// plane of project, and one that cannot be read is not known to.
-func unheldRuns(dir *runs.Plane, project string, entries []reaction.Entry) (unheld, unread []string) {
-	unheld, unread = []string{}, []string{}
+// unheldStops names, in order, the entries that match no call of the plane
+// cfg configures, and those it cannot tell: a stop of a run the runs
+// directory holds no record of under the plane's project is unheld, and one
+// whose record cannot be read unread; a stop of an agent or a principal is
+// unheld unless its tenant and subject are the listener's, which every
+// opened run of the plane carries.
+func unheldStops(dir *runs.Plane, cfg *gatewayconfig.Config, entries []reaction.Entry) (unheld, unread []reaction.Entry) {
 	for _, e := range entries {
-		if dir == nil {
-			unread = append(unread, e.RunID)
-			continue
-		}
-		rec, err := dir.Lookup(context.Background(), e.RunID)
-		switch {
-		case errors.Is(err, runs.ErrNoRun):
-			unheld = append(unheld, e.RunID)
-		case err != nil:
-			unread = append(unread, e.RunID)
-		case rec.Who.ProjectID != project:
-			unheld = append(unheld, e.RunID)
+		switch t := e.Target(); t.Scope {
+		case reaction.ScopeAgent:
+			if e.TenantID != cfg.ListenerTenant() || t.Subject != cfg.Listener.AgentID {
+				unheld = append(unheld, e)
+			}
+		case reaction.ScopePrincipal:
+			if e.TenantID != cfg.ListenerTenant() || t.Subject != cfg.Listener.PrincipalID {
+				unheld = append(unheld, e)
+			}
+		default:
+			if held, known := runHeld(dir, cfg.ProjectID, e.RunID); !known {
+				unread = append(unread, e)
+			} else if !held {
+				unheld = append(unheld, e)
+			}
 		}
 	}
 	return unheld, unread
+}
+
+// runHeld reports whether the runs directory holds a record of id under
+// project, and known is false when it cannot say: no directory, or a record
+// that does not read.
+func runHeld(dir *runs.Plane, project, id string) (held, known bool) {
+	if dir == nil {
+		return false, false
+	}
+	rec, err := dir.Lookup(context.Background(), id)
+	switch {
+	case errors.Is(err, runs.ErrNoRun):
+		return false, true
+	case err != nil:
+		return false, false
+	}
+	return rec.Who.ProjectID == project, true
 }
 
 // countedHealth is the health answer as GET /healthz gives it: the stops'
@@ -175,13 +210,13 @@ type countedHealth struct {
 	Stops countedStops `json:"stops"`
 }
 
-// countedStops shadows the members of stopsAnswer that name runs with
+// countedStops shadows the members of stopsAnswer that list stops with
 // members that are always empty and so never encoded.
 type countedStops struct {
 	stopsAnswer
-	Entries    *struct{} `json:"entries,omitempty"`
-	UnheldRuns *struct{} `json:"unheld_runs,omitempty"`
-	UnreadRuns *struct{} `json:"unread_runs,omitempty"`
+	Entries       *struct{} `json:"entries,omitempty"`
+	UnheldEntries *struct{} `json:"unheld_entries,omitempty"`
+	UnreadEntries *struct{} `json:"unread_entries,omitempty"`
 }
 
 // counted is a as GET /healthz answers it, the operators who signed the

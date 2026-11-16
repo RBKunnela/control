@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/guardana/control/internal/gatewayconfig"
 	"github.com/guardana/control/internal/policystate"
 	"github.com/guardana/control/internal/reaction"
 	"github.com/guardana/control/internal/reaction/stoplist"
@@ -16,7 +17,7 @@ import (
 // takes no lock and writes nothing: the floor is read and never raised, so its
 // bytes and its time stay as they were. It prints the route, the floor, the
 // list's id and state, each active stop up to reaction.MaxListedEntries, each
-// of those naming a run the runs directory does not hold, and each rule whose
+// of those that matches no call of the plane, and each rule whose
 // lifetime ends a stop before its run can end. A route, a floor or a list the
 // start would refuse fails here, naming the cause.
 func (d *examination) reaction(context.Context) (string, string, string) {
@@ -69,10 +70,16 @@ func (d *examination) reaction(context.Context) (string, string, string) {
 	return verdictOK, "reaction", found
 }
 
-// printShortLifetimes prints each rule of route whose lifetime ends a stop
-// before its run can end.
+// printShortLifetimes prints each rule of route that stops an agent or a
+// principal, and so every run of the plane, for its lifetime, and each rule
+// whose lifetime ends a run's stop before its run can end.
 func (d *examination) printShortLifetimes(route reaction.Route) {
 	for _, r := range route.Rules() {
+		if r.Scope == reaction.ScopeAgent || r.Scope == reaction.ScopePrincipal {
+			writeLine(d.out, fmt.Sprintf("       rule %s %s of procedure %s %s stops the %s for %s, every run of this plane and calls with no run",
+				oneLine(r.RuleID), oneLine(r.RuleVersion), oneLine(r.ProcedureID), oneLine(r.ProcedureVersion), r.Scope, r.Lifetime))
+			continue
+		}
 		if r.Lifetime != 0 && r.Lifetime < runs.MaxTTL {
 			writeLine(d.out, fmt.Sprintf("       rule %s %s of procedure %s %s ends a stop after %s, before its run can end at %s",
 				oneLine(r.RuleID), oneLine(r.RuleVersion), oneLine(r.ProcedureID), oneLine(r.ProcedureVersion), r.Lifetime, runs.MaxTTL))
@@ -92,9 +99,10 @@ func signersText(route reaction.Route, snap reaction.Snapshot) string {
 		oneLine(signer.Subject), oneLine(signer.KeyID))
 }
 
-// printStops prints each listed active stop and, where the runs directory can
-// be read, each naming a run it does not hold for the plane's project, which
-// that stop never matches.
+// printStops prints each listed active stop, an agent's or a principal's
+// with the run its finding was about, and each that matches no call: a run
+// the runs directory, where it can be read, does not hold for the plane's
+// project, or an agent, principal or tenant other than the listener's.
 // It reports false when a stop's run could not be checked: the directory did
 // not open or close, or a record did not read.
 func (d *examination) printStops(entries []reaction.Entry) (checked bool) {
@@ -115,19 +123,36 @@ func (d *examination) printStops(entries []reaction.Entry) (checked bool) {
 			}()
 		}
 	}
-	unheld, unread := unheldRuns(dir, d.cfg.ProjectID, entries)
+	unheld, unread := unheldStops(dir, d.cfg, entries)
 	for _, e := range entries {
-		writeLine(d.out, fmt.Sprintf("       stop %s of run %s for finding %s under rule %s, until %s",
-			oneLine(e.EntryID), oneLine(e.RunID), oneLine(e.FindingID), oneLine(e.RuleID), e.ExpiresAt.UTC().Format(time.RFC3339)))
+		of := "of run " + oneLine(e.RunID)
+		if t := e.Target(); t.Scope != reaction.ScopeRun {
+			of = fmt.Sprintf("of %s %s, found on run %s,", t.Scope, oneLine(t.Subject), oneLine(e.RunID))
+		}
+		writeLine(d.out, fmt.Sprintf("       stop %s %s for finding %s under rule %s, until %s",
+			oneLine(e.EntryID), of, oneLine(e.FindingID), oneLine(e.RuleID), e.ExpiresAt.UTC().Format(time.RFC3339)))
 	}
-	for _, id := range unheld {
-		writeLine(d.out, fmt.Sprintf("       stop of run %s: the runs directory holds no such run of this plane's project, so the stop matches no call", oneLine(id)))
+	for _, e := range unheld {
+		t := e.Target()
+		why := "the runs directory holds no such run of this plane's project"
+		if t.Scope != reaction.ScopeRun {
+			why = fmt.Sprintf("this plane serves %s %s of tenant %s", t.Scope, oneLine(served(d.cfg, t.Scope)), oneLine(d.cfg.ListenerTenant()))
+		}
+		writeLine(d.out, fmt.Sprintf("       stop of %s %s: %s, so the stop matches no call", t.Scope, oneLine(t.Subject), why))
 	}
 	if dir != nil {
-		for _, id := range unread {
-			writeLine(d.out, fmt.Sprintf("       stop of run %s: the run's record cannot be read, so whether it is held is unknown", oneLine(id)))
+		for _, e := range unread {
+			writeLine(d.out, fmt.Sprintf("       stop of run %s: the run's record cannot be read, so whether it is held is unknown", oneLine(e.RunID)))
 			checked = false
 		}
 	}
 	return checked
+}
+
+// served is the agent or principal the listener serves, by scope.
+func served(cfg *gatewayconfig.Config, scope string) string {
+	if scope == reaction.ScopeAgent {
+		return cfg.Listener.AgentID
+	}
+	return cfg.Listener.PrincipalID
 }

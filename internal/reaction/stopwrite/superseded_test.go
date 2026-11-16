@@ -57,10 +57,10 @@ func TestACarryFromASupersededRouteKeepsItsStopsAndLifts(t *testing.T) {
 		t.Fatalf("the carried list:\n%s", content(t, dir))
 	}
 	p := planeOn(t, dir, to)
-	if s, _ := p.Current().ForCall("run-1", "acme", clock0, time.Time{}); s != reaction.Stopped {
+	if s, _, _ := p.Current().ForSubject(reaction.Subject{Tenant: "acme", Run: "run-1"}, clock0, time.Time{}); s != reaction.Stopped {
 		t.Errorf("run-1 on the carried list: %s, want %s", s, reaction.Stopped)
 	}
-	if s, _ := p.Current().ForCall("run-2", "acme", clock0, time.Time{}); s != reaction.Clear {
+	if s, _, _ := p.Current().ForSubject(reaction.Subject{Tenant: "acme", Run: "run-2"}, clock0, time.Time{}); s != reaction.Clear {
 		t.Errorf("run-2 on the carried list: %s, want %s", s, reaction.Clear)
 	}
 }

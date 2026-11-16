@@ -298,7 +298,8 @@ profile's statuses, <a href="/docs/extending/runtime-profiles">extending/runtime
   guardana-control stops init --route &lt;f&gt; (--public-key &lt;f&gt; | --roster &lt;f&gt; --root-key &lt;f&gt; --key &lt;k&gt;
       [--serial &lt;n&gt;]) [--carry &lt;dir&gt; --carry-route &lt;file&gt; [--stops-floor &lt;dir&gt;]] &lt;dir&gt;
   guardana-control stops lift --route &lt;f&gt; (--public-key &lt;f&gt; | --roster &lt;f&gt; --root-key &lt;f&gt;) --key &lt;k&gt;
-      --run &lt;run-id&gt; [--through &lt;line&gt;] &lt;dir&gt;
+      (--run &lt;run-id&gt; | --agent &lt;agent-id&gt; | --principal &lt;principal-id&gt;)
+      [--through &lt;line&gt;] &lt;dir&gt;
   guardana-control stops list --route &lt;f&gt; (--public-key &lt;f&gt; | --roster &lt;f&gt; --root-key &lt;f&gt;) &lt;dir&gt;
   guardana-control stops floor init --tenant &lt;t&gt; --project &lt;p&gt; &lt;dir&gt;
   guardana-control react --findings &lt;dir&gt; --runs &lt;dir&gt; --route &lt;file&gt;

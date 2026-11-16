@@ -372,6 +372,13 @@ map have their own pages: <a href="/docs/reference/observations">observations.md
 <a href="/docs/reference/coverage">coverage.md</a>. The example's README describes its
 <code>0.1</code> run; <code>notify</code> and child runs are in
 <a href="/docs/reference/supervision">supervision.md</a>.</p>
+<p>Under <code>signed</code> a route may stop the run's agent or principal in place of the
+run, for <code>REPEATED_DENIAL</code> and the two retry rules, for the rule's lifetime.
+Every opened run of a plane carries the listener's identity, so on one plane
+such a stop stops the plane: every run, later runs and calls with no run are
+refused <code>AGENT_OR_PRINCIPAL_STOPPED</code>, and <code>stops lift --agent</code> or
+<code>--principal</code> ends it; a lift of the run does not
+(<a href="/docs/reference/reaction-signed#a-stop-of-an-agent-or-a-principal">signed reaction</a>).</p>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/guides/supervise-and-stop-a-run.md">docs/guides/supervise-and-stop-a-run.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.17.0, and <a href="https://github.com/guardana/control/tree/v0.17.0/docs">its documentation</a> is in its tag.</p>
 </main>
 <nav class="side" aria-label="Documentation">

@@ -2,7 +2,7 @@
 title: Supervise and stop a run
 summary: Run the refund example by hand on a live plane, supervise the run against its procedure, read its page, and stop it on a confirmed finding.
 type: how-to
-covers: [examples/refund-supervision/**, cmd/guardana-control/supervise*.go, cmd/guardana-control/react.go, cmd/guardana-control/stops.go, cmd/guardana-control/route.go, cmd/guardana-control/findings.go, cmd/guardana-control/procedure*.go]
+covers: [examples/refund-supervision/**, cmd/guardana-control/supervise*.go, cmd/guardana-control/react.go, cmd/guardana-control/stops.go, cmd/guardana-control/stops_lift.go, cmd/guardana-control/route.go, cmd/guardana-control/findings.go, cmd/guardana-control/procedure*.go]
 ---
 
 # Supervise and stop a run
@@ -353,3 +353,11 @@ map have their own pages: [observations.md](../reference/observations.md) and
 [coverage.md](../reference/coverage.md). The example's README describes its
 `0.1` run; `notify` and child runs are in
 [supervision.md](../reference/supervision.md).
+
+Under `signed` a route may stop the run's agent or principal in place of the
+run, for `REPEATED_DENIAL` and the two retry rules, for the rule's lifetime.
+Every opened run of a plane carries the listener's identity, so on one plane
+such a stop stops the plane: every run, later runs and calls with no run are
+refused `AGENT_OR_PRINCIPAL_STOPPED`, and `stops lift --agent` or
+`--principal` ends it; a lift of the run does not
+([signed reaction](../reference/reaction-signed.md#a-stop-of-an-agent-or-a-principal)).

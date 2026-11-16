@@ -22,6 +22,21 @@ var stoppingRules = [...]StoppingRule{
 	{"DENIED_ACTION_RETRIED_RESOURCE", "1"},
 }
 
+// widerRules is every rule in stoppingRules whose finding is the conduct of
+// the actor rather than a property of one task, and so the rules alone a
+// route may let stop an agent or a principal.
+var widerRules = [...]StoppingRule{
+	{"REPEATED_DENIAL", "2"},
+	{"DENIED_ACTION_RETRIED_ARGUMENTS", "1"},
+	{"DENIED_ACTION_RETRIED_RESOURCE", "1"},
+}
+
+// MayStopWider reports whether a route may let rule id at version stop an
+// agent or a principal, both compared byte for byte.
+func MayStopWider(id, version string) bool {
+	return slices.Contains(widerRules[:], StoppingRule{id, version})
+}
+
 // StoppingRules is a copy of every rule a route may name.
 func StoppingRules() []StoppingRule { return slices.Clone(stoppingRules[:]) }
 
@@ -64,7 +79,8 @@ func replacement(id, version string) (string, bool) {
 	return "", false
 }
 
-// CheckStopping refuses a route that names any rule outside StoppingRules.
+// CheckStopping refuses a route that names any rule outside StoppingRules,
+// or a rule of an agent or principal checkRuleScope refuses.
 // VerifyRoute, Judge and the stop list's writers call it, so a route read
 // from a signed file, judged against or handed to a writer is held to the
 // table however it was signed. ParseRoute does not, so route sign can first say which of
@@ -84,6 +100,9 @@ func checkRules(r Route, allowed func(id, version string) bool) error {
 	for i, rule := range r.rules {
 		if !allowed(rule.RuleID, rule.RuleVersion) {
 			return fmt.Errorf("rules[%d]: %w: rule_id %q rule_version %q", i, ErrRouteRuleStops, rule.RuleID, rule.RuleVersion)
+		}
+		if err := checkRuleScope(rule); err != nil {
+			return fmt.Errorf("rules[%d]: %w", i, err)
 		}
 	}
 	return nil

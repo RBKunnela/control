@@ -1881,9 +1881,13 @@ plane refuses each, naming <code>route sign</code> or <code>stops init --carry</
 <p>A list under a <code>v1alpha3</code> route is version <code>3.0</code>: its header line is
 <code>{&quot;envelope&quot;:…,&quot;kind&quot;:&quot;header&quot;,&quot;version&quot;:&quot;3.0&quot;}</code>, a <code>stop</code> and a <code>covered</code>
 line add <code>project_id</code>, <code>scope</code> and <code>subject</code>, and a <code>lift</code> line names <code>scope</code>
-and <code>subject</code> in place of <code>run_id</code> and holds a <code>v1alpha3</code> lift. This release
-serves scope <code>run</code> alone, whose subject is the line's <code>run_id</code>; a rule, a
-line or a lift of scope <code>agent</code> or <code>principal</code> is read and refused. A
+and <code>subject</code> in place of <code>run_id</code> and holds a <code>v1alpha3</code> lift. Under scope
+<code>run</code> the subject is the line's <code>run_id</code>. Scope <code>agent</code> or <code>principal</code> is
+taken on a rule only for <code>REPEATED_DENIAL</code> <code>2</code>,
+<code>DENIED_ACTION_RETRIED_ARGUMENTS</code> <code>1</code> and <code>DENIED_ACTION_RETRIED_RESOURCE</code>
+<code>1</code>, each with <code>expires_seconds</code>; on a line its subject is the agent or the
+principal, at most 256 bytes, and <code>run_id</code> is the finding's run
+(<a href="/docs/adr/0083-a-finding-may-stop-an-agent-or-a-principal">ADR-0083</a>). A
 header's digest is <code>sha256:</code> and the lowercase hex SHA-256 of its signed
 body. Every line of a list is of one version, and a <code>3.0</code> line is refused
 under a <code>v1alpha1</code> route, as a <code>1.0</code> or a <code>2.0</code> one is under a <code>v1alpha3</code>
@@ -1907,15 +1911,21 @@ route.</p>
 <td>the call's opened run, as the plane resolved it from the call's token, and its tenant are an active stop's</td>
 </tr>
 <tr>
+<td><code>AGENT_OR_PRINCIPAL_STOPPED</code></td>
+<td>48</td>
+<td><code>DENY</code></td>
+<td>the agent or the principal the plane's listener names, and its tenant, are an active stop's</td>
+</tr>
+<tr>
 <td><code>STOP_STATE_UNAVAILABLE</code></td>
 <td>46</td>
 <td><code>INDETERMINATE</code></td>
-<td>every call, while the plane cannot read or trust the stop list</td>
+<td>every call, while the plane cannot read or trust the stop list, or names no subject for an active stop</td>
 </tr>
 </tbody>
 </table>
 </div>
-<p>Both are the plane's own causes, named in every mode and for every effect
+<p>Each is one of the plane's own causes, named in every mode and for every effect
 class before an external decision point is asked, in the order
 <a href="/docs/adr/0046-a-finding-stops-one-run-through-a-signed-route">ADR-0046</a> gives.
 A decision names no stop's entry id.</p>

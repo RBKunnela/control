@@ -143,7 +143,7 @@ func TestTheWholeAnswerListsNoStopAsEmpty(t *testing.T) {
 	rec := httptest.NewRecorder()
 	p.serveWholeHealth(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
 	raw, _ := io.ReadAll(rec.Body)
-	for _, member := range []string{`"entries":[]`, `"unheld_runs":[]`, `"unread_runs":[]`} {
+	for _, member := range []string{`"entries":[]`, `"unheld_entries":[]`, `"unread_entries":[]`} {
 		if !strings.Contains(string(raw), member) {
 			t.Errorf("the whole answer lacks %s: %s", member, raw)
 		}

@@ -32,10 +32,10 @@ const (
 	ErrRouteMember       Error = "reaction: the route holds a member its format does not have, or lacks one it requires"
 	ErrRouteValue        Error = "reaction: a route member holds a value of the wrong type, form or length"
 	ErrRouteSerial       Error = "reaction: the route's serial is not an integer from 1 to 2^53-1"
-	ErrRouteScope        Error = "reaction: a scope is not one its format names, or not one this build serves"
+	ErrRouteScope        Error = "reaction: a scope is not one its format names, or the rule may not stop an agent or a principal"
 	ErrRouteRules        Error = "reaction: the route holds no rule, or more than its bound"
 	ErrRouteRuleRepeated Error = "reaction: the route names one rule twice"
-	ErrRouteLifetime     Error = "reaction: a rule's expires_seconds is not an integer from 60 to the longest run lifetime"
+	ErrRouteLifetime     Error = "reaction: a rule's expires_seconds is not an integer from 60 to the longest run lifetime, or a rule of an agent or a principal names none"
 	ErrRouteNotCanonical Error = "reaction: the signed route is not its own canonical form"
 	ErrRouteRuleStops    Error = "reaction: the route names a rule that may not stop a run"
 )
@@ -93,4 +93,5 @@ const (
 	ErrRunExpired     Error = "reaction: the finding's run is expired at the time given"
 	ErrRunExpiry      Error = "reaction: the finding's run holds no usable expiry"
 	ErrClock          Error = "reaction: the time given is not a usable time"
+	ErrStopSubject    Error = "reaction: the run record names no subject for the stop's scope"
 )

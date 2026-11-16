@@ -177,5 +177,6 @@ This is alpha software and not a security boundary: do not deploy it as one. Wha
 - [ADR-0080: Evidence leaves a plane over a unix socket or TLS](https://control.guardana.dev/docs/adr/0080-evidence-leaves-a-plane-over-a-unix-socket-or-tls): Decision record, accepted.
 - [ADR-0081: Tests that need a second account run in a required job](https://control.guardana.dev/docs/adr/0081-tests-that-need-a-second-account-run-in-a-required-job): Decision record, accepted.
 - [ADR-0082: A signed document names its plane, and a signed plane serves one tenant](https://control.guardana.dev/docs/adr/0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant): Decision record, accepted.
+- [ADR-0083: A finding may stop an agent or a principal](https://control.guardana.dev/docs/adr/0083-a-finding-may-stop-an-agent-or-a-principal): Decision record, accepted.
 - [ADR-0084: The site is redrawn: one system for the landing page and the docs, a light and a dark theme, llms.txt](https://control.guardana.dev/docs/adr/0084-the-site-is-redrawn-in-one-system): Decision record, accepted.
 - [ADR-0085: The 1.0 bar is met by the project's own evidence, and what needs outside people stays not met](https://control.guardana.dev/docs/adr/0085-the-1-0-bar-is-met-by-own-evidence-and-what-needs-outside-people-stays-not-met): Decision record, accepted.

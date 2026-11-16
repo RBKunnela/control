@@ -247,9 +247,9 @@ them:</p>
 <td>a read succeeds</td>
 </tr>
 <tr>
-<td>a call of an opened run a stop names, with a route, in every mode</td>
+<td>a call of a stopped run, or of the plane's stopped agent or principal</td>
 <td><code>DENY</code></td>
-<td><code>RUN_STOPPED</code></td>
+<td><code>RUN_STOPPED</code>, <code>AGENT_OR_PRINCIPAL_STOPPED</code></td>
 <td>the stop expires or is lifted (<a href="/docs/reference/reaction">reaction</a>)</td>
 </tr>
 <tr>
@@ -321,9 +321,9 @@ them:</p>
 </tbody>
 </table>
 </div>
-<p>When a call has more than one of the first eight causes, or one of them and
+<p>When a call has more than one of the first nine causes, or one of them and
 <code>LOCKDOWN</code> on a material call, the decision on the block lists every one, in
-this order: <code>PAUSED</code>, <code>RUN_STOPPED</code>, <code>EXECUTED_ARGS_MISMATCH</code>, <code>LOCKDOWN</code>,
+this order: <code>PAUSED</code>, <code>RUN_STOPPED</code>, <code>AGENT_OR_PRINCIPAL_STOPPED</code>, <code>EXECUTED_ARGS_MISMATCH</code>, <code>LOCKDOWN</code>,
 <code>PAUSE_STATE_UNAVAILABLE</code>, <code>STOP_STATE_UNAVAILABLE</code>, <code>EVIDENCE_UNAVAILABLE</code> (once, for a sink halt, a
 run or both), <code>ACTION_UNCLASSIFIED</code>. The block's verdict is <code>DENY</code> when any of
 them denies, and its first code is the one the block counters count. A forged

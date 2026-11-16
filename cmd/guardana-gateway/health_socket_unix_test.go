@@ -70,7 +70,7 @@ func stoppedRuns(t *testing.T, socket, allow string) (*plane, string, string) {
 }
 
 // TestHealthzNamesNoRun: a plane whose stops and pause entries name two
-// runs answers /healthz with their counts and neither id, under schema 2.
+// runs answers /healthz with their counts and neither id, under schema 3.
 func TestHealthzNamesNoRun(t *testing.T) {
 	p, own, other := stoppedRuns(t, "", "")
 	rec := httptest.NewRecorder()
@@ -89,15 +89,15 @@ func TestHealthzNamesNoRun(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
-	if body.Schema != "2" {
-		t.Errorf("schema = %q, want 2", body.Schema)
+	if body.Schema != "3" {
+		t.Errorf("schema = %q, want 3", body.Schema)
 	}
 	for member, want := range map[string]string{"active": "2", "unheld": "1", "unread": "0"} {
 		if got := string(body.Stops[member]); got != want {
 			t.Errorf("stops.%s = %s, want %s", member, got, want)
 		}
 	}
-	for _, member := range []string{"entries", "unheld_runs", "unread_runs"} {
+	for _, member := range []string{"entries", "unheld_entries", "unread_entries", "unheld_runs", "unread_runs"} {
 		if _, ok := body.Stops[member]; ok {
 			t.Errorf("/healthz carries stops.%s", member)
 		}
@@ -156,8 +156,8 @@ func TestTheHealthSocketAnswersThisAccountWhole(t *testing.T) {
 	runs := stopRuns(stops)
 	want := []string{own, other}
 	slices.Sort(want)
-	if schema != "2" || !slices.Equal(runs, want) || !slices.Equal(stops.UnheldRuns, []string{other}) || stops.Unheld != 1 {
-		t.Errorf("the socket answered schema %q, runs %v, unheld %v (%d); want 2, %v, [%s]", schema, runs, stops.UnheldRuns, stops.Unheld, want, other)
+	if unheld := unheldRunsOf(stops); schema != "3" || !slices.Equal(runs, want) || !slices.Equal(unheld, []string{other}) || stops.Unheld != 1 {
+		t.Errorf("the socket answered schema %q, runs %v, unheld %v (%d); want 3, %v, [%s]", schema, runs, unheld, stops.Unheld, want, other)
 	}
 	if err := bound[0].server.Close(); err != nil {
 		t.Fatal(err)
@@ -187,6 +187,22 @@ func wholeOverSocket(t *testing.T, path string) (string, stopsAnswer) {
 		t.Fatal(err)
 	}
 	return body.Schema, body.Stops
+}
+
+// unheldRunsOf is the subject of each entry s lists as unheld, in order;
+// an id no entry has is named as such.
+func unheldRunsOf(s stopsAnswer) []string {
+	out := []string{}
+	for _, id := range s.UnheldEntries {
+		subject := "no entry " + id
+		for _, e := range s.Entries {
+			if e.EntryID == id {
+				subject = e.Subject
+			}
+		}
+		out = append(out, subject)
+	}
+	return out
 }
 
 // stopRuns is the runs of s's entries, sorted.

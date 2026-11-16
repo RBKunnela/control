@@ -85,6 +85,7 @@
   <url><loc>https://control.guardana.dev/docs/adr/0080-evidence-leaves-a-plane-over-a-unix-socket-or-tls</loc></url>
   <url><loc>https://control.guardana.dev/docs/adr/0081-tests-that-need-a-second-account-run-in-a-required-job</loc></url>
   <url><loc>https://control.guardana.dev/docs/adr/0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant</loc></url>
+  <url><loc>https://control.guardana.dev/docs/adr/0083-a-finding-may-stop-an-agent-or-a-principal</loc></url>
   <url><loc>https://control.guardana.dev/docs/adr/0084-the-site-is-redrawn-in-one-system</loc></url>
   <url><loc>https://control.guardana.dev/docs/adr/0085-the-1-0-bar-is-met-by-own-evidence-and-what-needs-outside-people-stays-not-met</loc></url>
   <url><loc>https://control.guardana.dev/docs/backlog</loc></url>

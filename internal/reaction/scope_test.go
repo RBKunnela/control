@@ -9,12 +9,11 @@ import (
 	"github.com/guardana/control/internal/reaction"
 )
 
-// TestAScopeOtherThanRunParsesAndIsRefused: a v1alpha3 rule, a 3.0 stop,
-// covered or lift line and a v1alpha3 lift may name scope agent or
-// principal, which this build refuses with ErrRouteScope; a scope outside
-// the grammar, an empty one and none are refused too, and a v1alpha2 rule
-// names run alone.
-func TestAScopeOtherThanRunParsesAndIsRefused(t *testing.T) {
+// TestARuleOfRunsMayNotStopAnAgent: a v1alpha3 rule of
+// STEP_OUTSIDE_PROCEDURE naming scope agent or principal is refused with
+// ErrRouteScope, as is a scope outside the grammar, an empty one and none,
+// and a v1alpha2 rule names run alone.
+func TestARuleOfRunsMayNotStopAnAgent(t *testing.T) {
 	doc := strings.NewReplacer("PLANE", sPlane, "PROJECT", sProject).Replace(signedRouteDoc)
 	if _, err := reaction.ParseRouteDocument([]byte(doc)); err != nil {
 		t.Fatalf("a rule of scope run: %v", err)
@@ -48,8 +47,9 @@ func TestAScopeOtherThanRunParsesAndIsRefused(t *testing.T) {
 
 // TestA30LineNamesItsScopeAndARunSubjectIsItsRun: a 3.0 stop or covered
 // line of scope run whose subject is its run_id is read; another subject,
-// an empty or missing one, a missing or empty scope and scope agent or
-// principal are each refused.
+// an empty or missing one, a missing, empty or unknown scope are each
+// refused, and the same line of scope agent or principal names its subject
+// apart from its run.
 func TestA30LineNamesItsScopeAndARunSubjectIsItsRun(t *testing.T) {
 	covered, err := reaction.Covered{FindingID: "f-2", TenantID: sTenant, RunID: "run-1", ProjectID: sProject,
 		Scope: reaction.ScopeRun, Subject: "run-1", CreatedAt: sCreated}.Marshal()
@@ -70,8 +70,7 @@ func TestA30LineNamesItsScopeAndARunSubjectIsItsRun(t *testing.T) {
 			{"no subject", `,"subject":"run-1"`, ``, reaction.ErrLineMember},
 			{"no scope", `"scope":"run",`, ``, reaction.ErrLineMember},
 			{"an empty scope", `"scope":"run"`, `"scope":""`, reaction.ErrLineValue},
-			{"scope agent", `"scope":"run"`, `"scope":"agent"`, reaction.ErrRouteScope},
-			{"scope principal", `"scope":"run"`, `"scope":"principal"`, reaction.ErrRouteScope},
+			{"scope tree", `"scope":"run"`, `"scope":"tree"`, reaction.ErrLineValue},
 		} {
 			edited := strings.Replace(line, c.from, c.to, 1)
 			if edited == line {
@@ -81,12 +80,24 @@ func TestA30LineNamesItsScopeAndARunSubjectIsItsRun(t *testing.T) {
 				t.Errorf("a 3.0 %s line with %s: %v, want %v", kind, c.name, err, c.want)
 			}
 		}
+		for _, scope := range []string{reaction.ScopeAgent, reaction.ScopePrincipal} {
+			edited := strings.Replace(line, `"scope":"run"`, `"scope":"`+scope+`"`, 1)
+			l, err := reaction.ParseLine([]byte(edited))
+			got := l.Stop.Target()
+			if kind == "covered" {
+				got = reaction.Target{Scope: l.Covered.Scope, Subject: l.Covered.Subject}
+			}
+			if err != nil || got != (reaction.Target{Scope: scope, Subject: "run-1"}) {
+				t.Errorf("a 3.0 %s line of scope %s: %+v, %v", kind, scope, got, err)
+			}
+		}
 	}
 }
 
-// TestALiftOfAnAgentScopeIsRefused: a v1alpha3 lift naming scope agent or
-// principal is never signed, and a 3.0 lift line naming one never read.
-func TestALiftOfAnAgentScopeIsRefused(t *testing.T) {
+// TestALiftOfAnAgentScopeIsSignedAndRead: a v1alpha3 lift naming scope
+// agent or principal is signed and its 3.0 line read; one naming a scope
+// outside the grammar is neither.
+func TestALiftOfAnAgentScopeIsSignedAndRead(t *testing.T) {
 	r := vouchedRoute(t, newVoucher())
 	header, head := signedHeaderLine(t, r, headerOpts{})
 	lift := reaction.SignedLiftV3{KeyID: keyIDOf(operatorKey()), PlaneID: sPlane, ListHead: head, Scope: reaction.ScopeRun,
@@ -98,13 +109,22 @@ func TestALiftOfAnAgentScopeIsRefused(t *testing.T) {
 	for _, scope := range []string{reaction.ScopeAgent, reaction.ScopePrincipal} {
 		wide := lift
 		wide.Scope = scope
-		if _, err := wide.Payload(); !errors.Is(err, reaction.ErrRouteScope) {
-			t.Errorf("a v1alpha3 lift of scope %s: %v, want %v", scope, err, reaction.ErrRouteScope)
+		if _, err := wide.Payload(); err != nil {
+			t.Errorf("a v1alpha3 lift of scope %s: %v", scope, err)
 		}
 		edited := strings.Replace(string(line), `"scope":"run"`, `"scope":"`+scope+`"`, 1)
-		if _, err := reaction.ParseLine([]byte(edited)); !errors.Is(err, reaction.ErrRouteScope) {
-			t.Errorf("a 3.0 lift line of scope %s: %v, want %v", scope, err, reaction.ErrRouteScope)
+		if l, err := reaction.ParseLine([]byte(edited)); err != nil || l.Lift.Scope != scope {
+			t.Errorf("a 3.0 lift line of scope %s: %+v, %v", scope, l.Lift, err)
 		}
+	}
+	wide := lift
+	wide.Scope = "tree"
+	if _, err := wide.Payload(); !errors.Is(err, reaction.ErrLiftValue) {
+		t.Errorf("a v1alpha3 lift of scope tree: %v, want %v", err, reaction.ErrLiftValue)
+	}
+	edited := strings.Replace(string(line), `"scope":"run"`, `"scope":"tree"`, 1)
+	if _, err := reaction.ParseLine([]byte(edited)); !errors.Is(err, reaction.ErrLineValue) {
+		t.Errorf("a 3.0 lift line of scope tree: %v, want %v", err, reaction.ErrLineValue)
 	}
 }
 

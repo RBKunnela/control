@@ -88,7 +88,7 @@ them:
 | --- | --- | --- | --- |
 | a call an operator's pause covers, in every mode | `DENY` | `PAUSED` | the operator removes the entry |
 | every call, while a configured pause file cannot be read | `INDETERMINATE` | `PAUSE_STATE_UNAVAILABLE` | a read succeeds |
-| a call of an opened run a stop names, with a route, in every mode | `DENY` | `RUN_STOPPED` | the stop expires or is lifted ([reaction](../reference/reaction.md)) |
+| a call of a stopped run, or of the plane's stopped agent or principal | `DENY` | `RUN_STOPPED`, `AGENT_OR_PRINCIPAL_STOPPED` | the stop expires or is lifted ([reaction](../reference/reaction.md)) |
 | every call, while a configured stop list cannot be read or trusted | `INDETERMINATE` | `STOP_STATE_UNAVAILABLE` | a read extends the list accepted |
 | a call nothing classifies, in every mode but `OBSERVE` | `INDETERMINATE` | `ACTION_UNCLASSIFIED` | the operator classifies it |
 | a material call after an execution ran with bytes that were not authorized: of that execution's opened run when a cooperating client reported it and fewer than `flow.max_runs` runs are halted, otherwise every one | `DENY` | `EXECUTED_ARGS_MISMATCH` | the enforcement point restarts |
@@ -101,9 +101,9 @@ them:
 | an event the sink will not take before the effect, for a material call, or for a read without `AllowReadsUnrecorded` | `INDETERMINATE` | `EVIDENCE_UNAVAILABLE` | the sink takes events again |
 | an execution past `MaxOpen`, or a hold past `MaxHeld` or past one run's `approvals.max_held_per_run` | `INDETERMINATE` | `EVIDENCE_UNAVAILABLE` | an execution closes, or a hold ends |
 
-When a call has more than one of the first eight causes, or one of them and
+When a call has more than one of the first nine causes, or one of them and
 `LOCKDOWN` on a material call, the decision on the block lists every one, in
-this order: `PAUSED`, `RUN_STOPPED`, `EXECUTED_ARGS_MISMATCH`, `LOCKDOWN`,
+this order: `PAUSED`, `RUN_STOPPED`, `AGENT_OR_PRINCIPAL_STOPPED`, `EXECUTED_ARGS_MISMATCH`, `LOCKDOWN`,
 `PAUSE_STATE_UNAVAILABLE`, `STOP_STATE_UNAVAILABLE`, `EVIDENCE_UNAVAILABLE` (once, for a sink halt, a
 run or both), `ACTION_UNCLASSIFIED`. The block's verdict is `DENY` when any of
 them denies, and its first code is the one the block counters count. A forged

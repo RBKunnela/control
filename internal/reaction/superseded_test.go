@@ -145,7 +145,7 @@ func TestAListUnderTheCurrentVersionHoldsAStopOfTheSupersededOne(t *testing.T) {
 		t.Fatalf("a stop of version 1 under the route of version 2: %q, %v", entryRuns(l.Entries()), err)
 	}
 	s := reaction.Snapshot{}.Next(current, b.bytes(), clock0, poll)
-	if got, _ := s.ForCall("run-1", "acme", clock0.Add(time.Minute), time.Time{}); got != reaction.Stopped {
+	if got, _, _ := s.ForSubject(reaction.Subject{Tenant: "acme", Run: "run-1"}, clock0.Add(time.Minute), time.Time{}); got != reaction.Stopped {
 		t.Errorf("the carried stop's run: %s, want %s", got, reaction.Stopped)
 	}
 	if err := current.Permits(denialStop(t, "f-1", "1", 10*time.Minute).Claim()); !errors.Is(err, reaction.ErrClaimRule) {

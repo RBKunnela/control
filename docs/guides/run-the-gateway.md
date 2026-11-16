@@ -171,8 +171,8 @@ schema changes is unclassified again until reviewed.
 ### 6. Read the health
 
 ```
-curl -s http://127.0.0.1:8081/healthz | jq     # schema 2: counts, no run ids
-curl -s --unix-socket /run/guardana/health.sock http://plane/healthz | jq   # with health.socket: the runs too, to this account alone
+curl -s http://127.0.0.1:8081/healthz | jq     # schema 3: counts, no run or stop ids
+curl -s --unix-socket /run/guardana/health.sock http://plane/healthz | jq   # with health.socket: the runs and stops too, to this account alone
 ```
 
 `policy.freshness` is `confirmed`, `unconfirmed` or `expired`, beside its

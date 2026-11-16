@@ -809,8 +809,8 @@ envelope's <code>trace_id</code> and <code>span_id</code>, which correlate and d
 <li><code>cmd/guardana-gateway/</code> (<code>run</code>, <code>doctor</code>, <code>collect</code>, <code>trail</code> and <code>prune</code>, a
 <code>stateful_http</code> listener that caps live sessions at <code>listener.max_sessions</code>
 and counts its refusals in <code>/metrics</code>, <code>GET /healthz</code>, which answers
-<code>degraded</code> while the policy is not confirmed and, under <code>schema</code> <code>2</code>, counts
-without naming a run, a <code>health.socket</code> that answers it whole only to the
+<code>degraded</code> while the policy is not confirmed and, under <code>schema</code> <code>3</code>, counts
+without naming a run or a stop, a <code>health.socket</code> that answers it whole only to the
 plane's account and <code>health.socket_uid</code>, the peer read by <code>internal/peercred/</code>
 on Linux and macOS, <code>GET /metrics</code> in the Prometheus text format from
 <code>internal/metrics</code>, whose names <a href="/docs/reference/metrics">reference/metrics.md</a>
@@ -1172,8 +1172,10 @@ reported is suspected at most; a skipped step is never confirmed; the report
 names each source not read, never heard or silent</p>
 <h3 id="run-stop">run-stop</h3>
 <ul>
-<li><code>internal/reaction/</code> (the route, the six rules a route may name, the stop
-list's grammar and judge, the snapshot a plane decides under)</li>
+<li><code>internal/reaction/</code> (the route, the six rules a route may name and the
+three of them that may stop an agent or a principal, the stop list's grammar
+and judge, the snapshot a plane decides under and its matcher of a run, an
+agent and a principal)</li>
 <li><code>internal/reaction/stoplist/</code> (the reader a plane polls)</li>
 <li><code>internal/reaction/stopwrite/</code> (the writer, which the gateway binary does not
 link)</li>
@@ -1189,6 +1191,7 @@ the <code>route</code> and <code>stops</code> kinds of <code>internal/policystat
 <li><code>examples/refund-supervision/</code></li>
 <li><a href="/docs/reference/reaction">reference/reaction.md</a></li>
 <li><a href="/docs/adr/0046-a-finding-stops-one-run-through-a-signed-route">ADR-0046</a></li>
+<li><a href="/docs/adr/0083-a-finding-may-stop-an-agent-or-a-principal">ADR-0083</a></li>
 </ul>
 <p>A plane with a route refuses a stopped run's later calls <code>RUN_STOPPED</code> and no
 other run's, and every call <code>STOP_STATE_UNAVAILABLE</code> while it cannot read or
@@ -1200,6 +1203,11 @@ list chains to the floor and extends the part of it the plane accepted, a floor
 that account can still lower, after which a list the stop writers cut back is
 taken; <code>react</code>'s own lines are signed by no operator, and the checks read mode
 bits, not darwin access control lists</p>
+<p>Under <code>signed</code> a route may stop the agent or principal of the finding's run
+instead, for <code>REPEATED_DENIAL</code> and the two retry rules and for the rule's
+lifetime; matched against the listener's configured identity, such a stop
+refuses every call of the plane <code>AGENT_OR_PRINCIPAL_STOPPED</code>, runless calls and
+later runs included, and only a lift of that agent or principal ends it.</p>
 <h3 id="finding-review">finding-review</h3>
 <p><a href="/docs/backlog">backlog B26</a>,
 <a href="/docs/adoption-and-incident-workflows#b26-review-findings-and-export-an-incident-package">adoption requirements</a>;

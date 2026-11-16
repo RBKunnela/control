@@ -38,20 +38,20 @@ func TestForCallAppliesTheAgeRule(t *testing.T) {
 		{"the zero snapshot", reaction.Snapshot{}, "run-b", clock0, reaction.Unknown, reaction.CauseNeverRead},
 		{"a plane with no route", reaction.DisabledSnapshot(), "run-a", clock0, reaction.Disabled, ""},
 	} {
-		got, cause := tc.s.ForCall(tc.run, "acme", tc.now, time.Time{})
+		got, cause, _ := tc.s.ForSubject(reaction.Subject{Tenant: "acme", Run: tc.run}, tc.now, time.Time{})
 		if got != tc.want || cause != tc.wantCause {
 			t.Errorf("%s: %s %q, want %s %q", tc.name, got, cause, tc.want, tc.wantCause)
 		}
 	}
-	if got, _ := stopped.ForCall("run-a", "other", clock0, time.Time{}); got != reaction.Clear {
+	if got, _, _ := stopped.ForSubject(reaction.Subject{Tenant: "other", Run: "run-a"}, clock0, time.Time{}); got != reaction.Clear {
 		t.Errorf("the stopped run of another tenant: %s, want clearRead", got)
 	}
 	late := clock0.Add(time.Hour)
 	expired := reaction.Snapshot{}.Next(r, b.bytes(), late, poll)
-	if got, _ := expired.ForCall("run-a", "acme", late, late); got != reaction.Clear {
+	if got, _, _ := expired.ForSubject(reaction.Subject{Tenant: "acme", Run: "run-a"}, late, late); got != reaction.Clear {
 		t.Errorf("an expired stop under a trusted clock: %s, want clearRead", got)
 	}
-	if got, _ := expired.ForCall("run-a", "acme", late, late.Add(time.Second)); got != reaction.Stopped {
+	if got, _, _ := expired.ForSubject(reaction.Subject{Tenant: "acme", Run: "run-a"}, late, late.Add(time.Second)); got != reaction.Stopped {
 		t.Errorf("an expired stop under a clock behind the floor: %s, want stopped", got)
 	}
 }
@@ -71,7 +71,7 @@ func TestTheAgeOfAHugeIntervalSaturates(t *testing.T) {
 		if got := s.At(clock0.Add(time.Second)); got.State() != reaction.Stopped {
 			t.Errorf("interval %d, a second old: %s %s", interval, got.State(), got.Cause())
 		}
-		if got, _ := s.ForCall("run-a", "acme", clock0.Add(time.Second), clock0); got != reaction.Stopped {
+		if got, _, _ := s.ForSubject(reaction.Subject{Tenant: "acme", Run: "run-a"}, clock0.Add(time.Second), clock0); got != reaction.Stopped {
 			t.Errorf("interval %d, a call a second later: %s", interval, got)
 		}
 	}

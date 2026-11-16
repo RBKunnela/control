@@ -24,13 +24,29 @@ func TestNewRefusesAMissingOrRunlessStopSource(t *testing.T) {
 	if _, err := gateway.New(cfg); err != nil {
 		t.Errorf("New with the disabled source and no runs: %v", err)
 	}
-	cfg.Stops = newStopSource(stopped(t))
+	withStops(newStopSource(stopped(t)))(&cfg)
 	if _, err := gateway.New(cfg); !errors.Is(err, gateway.ErrStopsWithoutRuns) {
 		t.Errorf("New with a stop source and no runs = %v, want ErrStopsWithoutRuns", err)
 	}
 	withRuns(newRuns("root-1"))(&cfg)
 	if _, err := gateway.New(cfg); err != nil {
 		t.Errorf("New with a stop source and runs: %v", err)
+	}
+	for name, blank := range map[string]func(*gateway.RunIdentity){
+		"tenant":    func(w *gateway.RunIdentity) { w.TenantID = "" },
+		"principal": func(w *gateway.RunIdentity) { w.PrincipalID = "" },
+		"agent":     func(w *gateway.RunIdentity) { w.AgentID = "" },
+	} {
+		who := listener
+		blank(&who)
+		cfg.Listener = who
+		if _, err := gateway.New(cfg); !errors.Is(err, gateway.ErrStopsWithoutIdentity) {
+			t.Errorf("New with a stop source and a listener naming no %s = %v, want ErrStopsWithoutIdentity", name, err)
+		}
+	}
+	cfg.Stops, cfg.Listener = gateway.StopsDisabled(), gateway.RunIdentity{}
+	if _, err := gateway.New(cfg); err != nil {
+		t.Errorf("New with the disabled source and no listener: %v", err)
 	}
 }
 
@@ -106,11 +122,11 @@ func TestALocalRunIsNeverStopped(t *testing.T) {
 	}
 	snap := stopped(t, local, "run-1")
 	for _, id := range []string{local, "run-1"} {
-		if !snap.Active(id, "tenant-1", base(), time.Time{}) {
+		if !stopsRun(snap, "tenant-1", id, base()) {
 			t.Fatalf("the list does not stop %s, so this test examines nothing", id)
 		}
 	}
-	gateway.SetStops(h.p, newStopSource(snap))
+	gateway.SetStops(h.p, newStopSource(snap), listener)
 	if d := h.admit(requestNamed(tool(readEnvelope()), "second"), []byte(`{}`)); d.Action != core.Execute {
 		t.Errorf("the local run's next read: Action = %d, codes %v; want it run", d.Action, d.Decision.GetReasonCodes())
 	}

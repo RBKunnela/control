@@ -74,3 +74,25 @@ func TestAStoppedRunsBlocksAreNoDenial(t *testing.T) {
 		t.Fatalf("plane blocks %v, want %v", res.PlaneBlocks, want)
 	}
 }
+
+// TestAStoppedAgentsBlocksAreNoDenial: AGENT_OR_PRINCIPAL_STOPPED is the
+// plane's block as RUN_STOPPED is, alone or after it, so a stopped agent's
+// retries raise no REPEATED_DENIAL that would stop it again, and its blocks
+// are counted by their first code.
+func TestAStoppedAgentsBlocksAreNoDenial(t *testing.T) {
+	p := procWith(t)
+	calls := []call{{req: "r1", tool: "get_order", upstream: "shop"}}
+	for i := range 6 {
+		outcome := "agent stopped"
+		if i%2 == 1 {
+			outcome = "both stopped"
+		}
+		calls = append(calls, call{req: "s" + string(rune('1'+i)), tool: "issue_refund", upstream: "pay",
+			at: time.Duration(10*(i+1)) * time.Second, outcome: outcome})
+	}
+	res := evaluate(t, supervise.Input{Procedure: p, Exports: []supervise.Export{export(calls...)}})
+	sameFindings(t, res.Findings)
+	if want := map[string]uint64{"AGENT_OR_PRINCIPAL_STOPPED": 3, "RUN_STOPPED": 3}; !maps.Equal(res.PlaneBlocks, want) {
+		t.Fatalf("plane blocks %v, want %v", res.PlaneBlocks, want)
+	}
+}

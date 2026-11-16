@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 )
 
 // TestNoFormatIsNoneOfTheFormats: every switch on a route's format refuses
@@ -39,19 +40,44 @@ func (fakeInternalVoucher) Vouch(SignedKind, Envelope) (Signer, error) {
 	return Signer{Subject: "alice", KeyID: "k"}, nil
 }
 
-// TestARunLiftNamingNoRunIsRefused: a lift line of scope run ends a run's
-// stops only by its subject alone; one naming no subject, or a run_id beside
-// its subject, ends nothing and is refused.
-func TestARunLiftNamingNoRunIsRefused(t *testing.T) {
-	if run, err := liftedRun(LiftLine{Scope: ScopeRun, Subject: "run-1"}); err != nil || run != "run-1" {
-		t.Fatalf("a lift of run-1: %q, %v", run, err)
-	}
-	for _, l := range []LiftLine{{Scope: ScopeRun}, {Scope: ScopeRun, Subject: "run-1", RunID: "run-1"}, {Scope: ScopeRun, RunID: "run-1"}} {
-		if run, err := liftedRun(l); err == nil || run != "" {
-			t.Errorf("a lift line %+v: %q, %v; want a refusal", l, run, err)
+// TestALiftEndsTheScopeAndSubjectItNames: a 1.0 or 2.0 lift line ends its
+// run's stops, and a 3.0 one the stops of its scope and subject alone; one
+// naming no subject, a run_id beside its subject, or a scope outside the
+// grammar ends nothing and is refused.
+func TestALiftEndsTheScopeAndSubjectItNames(t *testing.T) {
+	for _, c := range []struct {
+		l    LiftLine
+		want Target
+	}{
+		{LiftLine{RunID: "run-1"}, Target{ScopeRun, "run-1"}},
+		{LiftLine{Scope: ScopeRun, Subject: "run-1"}, Target{ScopeRun, "run-1"}},
+		{LiftLine{Scope: ScopeAgent, Subject: "agent-a"}, Target{ScopeAgent, "agent-a"}},
+		{LiftLine{Scope: ScopePrincipal, Subject: "alice"}, Target{ScopePrincipal, "alice"}},
+	} {
+		if got, err := liftedTarget(c.l); err != nil || got != c.want {
+			t.Errorf("a lift line %+v: %+v, %v; want %+v", c.l, got, err, c.want)
 		}
 	}
-	if _, err := liftedRun(LiftLine{}); err == nil {
-		t.Error("the zero lift line was taken")
+	for _, l := range []LiftLine{
+		{}, {Scope: ScopeRun}, {Scope: ScopeAgent}, {Scope: ScopeRun, Subject: "run-1", RunID: "run-1"},
+		{Scope: ScopeAgent, Subject: "agent-a", RunID: "run-1"}, {Scope: ScopeRun, RunID: "run-1"},
+		{Scope: "tree", Subject: "run-1"}, {Subject: "run-1"},
+	} {
+		if got, err := liftedTarget(l); err == nil || got != (Target{}) {
+			t.Errorf("a lift line %+v: %+v, %v; want a refusal", l, got, err)
+		}
+	}
+}
+
+// TestAnEntryOfAScopeNoReaderMakesNamesNoCall: every reader refuses a scope
+// the grammar does not name, so no List holds one; the matcher still reads
+// an active entry of such a scope as a call it cannot name, never as clear.
+func TestAnEntryOfAScopeNoReaderMakesNamesNoCall(t *testing.T) {
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	l := List{entries: []Entry{{Line: 2, Stop: Stop{TenantID: "acme", Scope: "tree", Subject: "root-1", RunID: "run-1",
+		ExpiresAt: now.Add(time.Hour)}}}}
+	who := Subject{Tenant: "acme", Run: "run-1", Agent: "agent-a", Principal: "alice"}
+	if m, named := l.match(who, now, time.Time{}); named || m != 0 {
+		t.Errorf("an entry of scope tree: match %b, named %v; want none and not named", m, named)
 	}
 }

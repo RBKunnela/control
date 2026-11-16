@@ -75,7 +75,7 @@ func expectUnknown(t *testing.T, what string, s reaction.Snapshot, cause reactio
 	if s.State() != reaction.Unknown || s.Cause() != cause {
 		t.Errorf("%s: %v %q (%s), want unknown with %q", what, s.State(), s.Cause(), s.Detail(), cause)
 	}
-	if st, _ := s.ForCall("run-1", sTenant, sNow.Add(2*time.Second), time.Time{}); st != reaction.Unknown {
+	if st, _, _ := s.ForSubject(reaction.Subject{Tenant: sTenant, Run: "run-1"}, sNow.Add(2*time.Second), time.Time{}); st != reaction.Unknown {
 		t.Errorf("%s: a call of the stopped run is %v", what, st)
 	}
 }

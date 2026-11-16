@@ -2,22 +2,15 @@ package main
 
 import (
 	"bytes"
-	"context"
-	"crypto/ed25519"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/guardana/control/internal/policy"
-	"github.com/guardana/control/internal/policykey"
 	"github.com/guardana/control/internal/reaction"
 	"github.com/guardana/control/internal/reaction/stoplist"
-	"github.com/guardana/control/internal/reaction/stopwrite"
 )
 
 const (
@@ -28,7 +21,8 @@ const (
 	stopsInitForm      = "--route <f> (--public-key <f> | --roster <f> --root-key <f> --key <k>\n" +
 		"      [--serial <n>]) [--carry <dir> --carry-route <file> [--stops-floor <dir>]] <dir>"
 	stopsLiftForm = "--route <f> (--public-key <f> | --roster <f> --root-key <f>) --key <k>\n" +
-		"      --run <run-id> [--through <line>] <dir>"
+		"      (--run <run-id> | --agent <agent-id> | --principal <principal-id>)\n" +
+		"      [--through <line>] <dir>"
 	stopsListForm      = "--route <f> (--public-key <f> | --roster <f> --root-key <f>) <dir>"
 	stopsFloorInitForm = "--tenant <t> --project <p> <dir>"
 )
@@ -66,231 +60,6 @@ func (r routeFlags) verified(dir string, note *rosterNote) (reaction.Route, erro
 		return verifiedRoute("--route", r.route, r.publicKey)
 	}
 	return rosterRoute("--route", r.route, r.roster, r.rootKey, dir, "", note, reaction.VerifySignedRoute)
-}
-
-type stopsInitArgs struct {
-	routeFlags
-	carry, carryRoute string
-	key               string
-	serial            int64
-	stopsFloor        string
-}
-
-func stopsInitFlags(command string, out io.Writer) (*flag.FlagSet, *stopsInitArgs) {
-	flags := commandFlags(command, out)
-	a := &stopsInitArgs{}
-	a.declare(flags)
-	flags.StringVar(&a.carry, "carry", "", "the stops directory of the list to carry into the new one")
-	flags.StringVar(&a.carryRoute, "carry-route", "", "the signed route the list carried from is judged against, a v1alpha2 route among them")
-	flags.StringVar(&a.key, "key", "", "the operator's private key file, which signs a 3.0 list's header")
-	flags.Int64Var(&a.serial, "serial", 1, "a new 3.0 list's first serial, taken only by a plane whose stop list floor holds none; a carry takes the next")
-	flags.StringVar(&a.stopsFloor, "stops-floor", "", "the plane's reaction.stops_floor_dir, which a signed carry holds the old list to")
-	return flags, a
-}
-
-func stopsInitFlagSet(command string, out io.Writer) *flag.FlagSet {
-	flags, _ := stopsInitFlags(command, out)
-	return flags
-}
-
-// usable reports whether the flags name a route and its check, a key exactly
-// when the route is signed, --carry and --carry-route together, a --serial
-// only for a new signed list and a --stops-floor only for a signed carry.
-func (a stopsInitArgs) usable(serialGiven bool) bool {
-	return a.set() && (a.carry == "") == (a.carryRoute == "") && (a.key != "") == a.signed() &&
-		(!serialGiven || (a.signed() && a.carry == "")) && (a.stopsFloor == "" || (a.signed() && a.carry != ""))
-}
-
-func stopsInitCommand(args []string, stdout, stderr io.Writer) int {
-	if err := policykey.CheckArguments(args); err != nil {
-		return usageError(stderr, stopsInitName, err.Error())
-	}
-	flags, a := stopsInitFlags(stopsInitName, io.Discard)
-	err := flags.Parse(args)
-	serialGiven := false
-	flags.Visit(func(f *flag.Flag) { serialGiven = serialGiven || f.Name == "serial" })
-	if err != nil || flags.NArg() != 1 || !a.usable(serialGiven) {
-		return usageError(stderr, stopsInitName,
-			"takes --route with --public-key, or with --roster, --root-key and --key, --carry and --carry-route together or neither, "+
-				"a --serial only for a new signed list, a --stops-floor only for a signed carry, then the stops directory")
-	}
-	if a.signed() {
-		return stopsInitSigned(*a, flags.Arg(0), time.Now(), stdout, stderr)
-	}
-	return stopsInit(*a, flags.Arg(0), time.Now(), stdout, stderr)
-}
-
-// stopsInit starts a list in dir judged against the route, or carries the
-// list in --carry, judged against --carry-route under the same route key,
-// into it.
-func stopsInit(a stopsInitArgs, dir string, now time.Time, stdout, stderr io.Writer) int {
-	route, err := a.verified(dir, &rosterNote{w: stderr, command: stopsInitName})
-	if err != nil {
-		return fail(stderr, stopsInitName, err)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), stopsLockWait)
-	defer cancel()
-	if a.carry == "" {
-		h, err := stopwrite.Init(ctx, dir, route, now)
-		if err != nil {
-			return fail(stderr, stopsInitName, err)
-		}
-		return emit(stdout, stderr, stopsInitName, headerLines(h), dir)
-	}
-	from, err := verifiedCarrySource(a.carryRoute, a.publicKey)
-	if err != nil {
-		return fail(stderr, stopsInitName, err)
-	}
-	c, err := stopwrite.Carry(ctx, a.carry, from, dir, route, now)
-	if err != nil {
-		return fail(stderr, stopsInitName, err)
-	}
-	lines := append(headerLines(c.Header), "stops: "+strconv.Itoa(c.Stops), "covered: "+strconv.Itoa(c.Covered))
-	if c.LeftOut > 0 {
-		lines = append(lines, fmt.Sprintf("left out: the last %d line(s) of the old list, from %s", c.LeftOut, oneLine(c.Refused.Error())))
-	}
-	return emit(stdout, stderr, stopsInitName, lines, dir)
-}
-
-type stopsLiftArgs struct {
-	routeFlags
-	key, run string
-	through  int64
-}
-
-func stopsLiftFlags(command string, out io.Writer) (*flag.FlagSet, *stopsLiftArgs) {
-	flags := commandFlags(command, out)
-	a := &stopsLiftArgs{}
-	a.declare(flags)
-	flags.StringVar(&a.key, "key", "", "the private key file of the route's lift key, or the operator's for a v1alpha3 route")
-	flags.StringVar(&a.run, "run", "", "the opened run whose stops the lift ends")
-	flags.Int64Var(&a.through, "through", 0, "the last line the lift ends; the list's last complete line when left out")
-	return flags, a
-}
-
-func stopsLiftFlagSet(command string, out io.Writer) *flag.FlagSet {
-	flags, _ := stopsLiftFlags(command, out)
-	return flags
-}
-
-// stopsLiftCommand checks its own arguments for key text, as signCommand
-// does.
-func stopsLiftCommand(args []string, stdout, stderr io.Writer) int {
-	if err := policykey.CheckArguments(args); err != nil {
-		return usageError(stderr, stopsLiftName, err.Error())
-	}
-	flags, a := stopsLiftFlags(stopsLiftName, io.Discard)
-	err := flags.Parse(args)
-	throughGiven := false
-	flags.Visit(func(f *flag.Flag) { throughGiven = throughGiven || f.Name == "through" })
-	if err != nil || flags.NArg() != 1 || !a.set() || a.key == "" || a.run == "" || (throughGiven && a.through <= 0) {
-		return usageError(stderr, stopsLiftName,
-			"takes --route with --public-key or with --roster and --root-key, --key and --run, a --through above zero if any, then the stops directory")
-	}
-	if a.signed() {
-		return stopsLiftSigned(*a, flags.Arg(0), time.Now(), stdout, stderr)
-	}
-	return stopsLift(*a, flags.Arg(0), time.Now(), stdout, stderr)
-}
-
-// stopsLift refuses in a fixed order and writes nothing on any refusal: the
-// route, the key, which must be the route's lift key, the list, a lift that
-// would end no stop, then the lift as the plane's judge reads it.
-func stopsLift(a stopsLiftArgs, dir string, now time.Time, stdout, stderr io.Writer) int {
-	route, err := a.verified(dir, &rosterNote{w: stderr, command: stopsLiftName})
-	if err != nil {
-		return fail(stderr, stopsLiftName, err)
-	}
-	key, err := policykey.ReadPrivate(a.key)
-	if err != nil {
-		return fail(stderr, stopsLiftName, fmt.Errorf("--key: %w", err))
-	}
-	defer clear(key)
-	if pub, _ := key.Public().(ed25519.PublicKey); !bytes.Equal(pub, route.LiftKey()) {
-		return fail(stderr, stopsLiftName, errors.New("--key: its public half is not the route's lift_public_key"))
-	}
-	list, _, err := judgedList(dir, route, now)
-	if err != nil {
-		return fail(stderr, stopsLiftName, err)
-	}
-	through := a.through
-	if through == 0 {
-		through = list.Usage().Lines
-	}
-	if !slices.ContainsFunc(list.Entries(), func(e reaction.Entry) bool { return e.RunID == a.run && e.Line <= through }) {
-		return fail(stderr, stopsLiftName, fmt.Errorf("run %s has no stop through line %d for a lift to end", oneLine(a.run), through))
-	}
-	lift := reaction.Lift{Version: reaction.LiftVersion, ListID: list.Header().ListID, RouteDigest: route.Digest(),
-		RunID: a.run, ThroughLine: through}
-	env, err := reaction.SignLift(lift, key)
-	if err != nil {
-		return fail(stderr, stopsLiftName, err)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), stopsLockWait)
-	defer cancel()
-	n, err := stopwrite.AppendLift(ctx, dir, route, reaction.LiftLine{RunID: a.run, ThroughLine: through, Envelope: env}, now)
-	if err != nil {
-		return fail(stderr, stopsLiftName, err)
-	}
-	return emit(stdout, stderr, stopsLiftName,
-		[]string{fmt.Sprintf("lift line %d run %s through line %d", n, oneLine(a.run), through)}, dir)
-}
-
-type stopsListArgs struct{ routeFlags }
-
-func stopsListFlags(command string, out io.Writer) (*flag.FlagSet, *stopsListArgs) {
-	flags := commandFlags(command, out)
-	a := &stopsListArgs{}
-	a.declare(flags)
-	return flags, a
-}
-
-func stopsListFlagSet(command string, out io.Writer) *flag.FlagSet {
-	flags, _ := stopsListFlags(command, out)
-	return flags
-}
-
-func stopsListCommand(args []string, stdout, stderr io.Writer) int {
-	flags, a := stopsListFlags(stopsListName, io.Discard)
-	if err := flags.Parse(args); err != nil || flags.NArg() != 1 || !a.set() {
-		return usageError(stderr, stopsListName, "takes --route with --public-key or with --roster and --root-key, then the stops directory")
-	}
-	return stopsList(a.routeFlags, flags.Arg(0), time.Now(), stdout, stderr)
-}
-
-// stopsList prints the list as a plane with a trusted clock at now would
-// judge it: the header, each stop no lift ended and whether it is active,
-// the covered lines and lifts counted, and the use of the bounds.
-func stopsList(r routeFlags, dir string, now time.Time, stdout, stderr io.Writer) int {
-	route, err := r.verified(dir, &rosterNote{w: stderr, command: stopsListName})
-	if err != nil {
-		return fail(stderr, stopsListName, err)
-	}
-	list, accepted, err := judgedList(dir, route, now)
-	if err != nil {
-		return fail(stderr, stopsListName, fmt.Errorf("%w; a plane reading this list blocks every call", err))
-	}
-	lines := headerLines(list.Header())
-	for _, e := range list.Entries() {
-		state := "expired"
-		if activeAt(e, now) {
-			state = "active"
-		}
-		lines = append(lines, fmt.Sprintf("stop line %d run %s finding %s rule %s created_at %s expires_at %s %s",
-			e.Line, oneLine(e.RunID), oneLine(e.FindingID), oneLine(e.RuleID),
-			policy.FormatIssuedAt(e.CreatedAt), policy.FormatIssuedAt(e.ExpiresAt), state))
-	}
-	covered, lifts, err := countLines(accepted)
-	if err != nil {
-		return fail(stderr, stopsListName, err)
-	}
-	u := list.Usage()
-	use := fmt.Sprintf("bytes: %d of %d, lines: %d of %d", u.Bytes, reaction.MaxListBytes, u.Lines, reaction.MaxListLines)
-	if u.Degraded() {
-		use += ", past nine tenths"
-	}
-	lines = append(lines, fmt.Sprintf("covered: %d, lifts: %d", covered, lifts), use)
-	return emit(stdout, stderr, stopsListName, lines, "")
 }
 
 // countLines counts the covered and lift lines of accepted, the part of a

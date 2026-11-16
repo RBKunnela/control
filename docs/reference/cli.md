@@ -193,7 +193,8 @@ usage:
   guardana-control stops init --route <f> (--public-key <f> | --roster <f> --root-key <f> --key <k>
       [--serial <n>]) [--carry <dir> --carry-route <file> [--stops-floor <dir>]] <dir>
   guardana-control stops lift --route <f> (--public-key <f> | --roster <f> --root-key <f>) --key <k>
-      --run <run-id> [--through <line>] <dir>
+      (--run <run-id> | --agent <agent-id> | --principal <principal-id>)
+      [--through <line>] <dir>
   guardana-control stops list --route <f> (--public-key <f> | --roster <f> --root-key <f>) <dir>
   guardana-control stops floor init --tenant <t> --project <p> <dir>
   guardana-control react --findings <dir> --runs <dir> --route <file>

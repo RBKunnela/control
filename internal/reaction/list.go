@@ -71,9 +71,10 @@ func (l List) Entries() []Entry { return slices.Clone(l.entries) }
 // Names reports whether a stop or covered line names findingID.
 func (l List) Names(findingID string) bool { return l.seen != nil && l.seen.findings[findingID] }
 
+// liftKey is one lift: the scope and subject it ends and its last line.
 type liftKey struct {
-	run  string
-	line int64
+	target Target
+	line   int64
 }
 
 // seen is what the lines a judge accepted tell the judge of a later line.
@@ -81,7 +82,8 @@ type seen struct {
 	stops    []Entry
 	findings map[string]bool
 	lifts    map[liftKey]bool
-	through  map[string]int64
+	// through is the last line a lift ended for each scope and subject.
+	through map[Target]int64
 	// latest is the latest created_at a line names, and latestLine its line:
 	// a clock read behind it refuses the list, as judging every line would.
 	latest     time.Time
@@ -94,7 +96,7 @@ type seen struct {
 // fork is a copy of s that a judge may add to without writing s.
 func (s *seen) fork() seen {
 	if s == nil {
-		return seen{findings: map[string]bool{}, lifts: map[liftKey]bool{}, through: map[string]int64{}}
+		return seen{findings: map[string]bool{}, lifts: map[liftKey]bool{}, through: map[Target]int64{}}
 	}
 	return seen{
 		stops: slices.Clip(s.stops), findings: maps.Clone(s.findings), lifts: maps.Clone(s.lifts),

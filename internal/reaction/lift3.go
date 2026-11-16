@@ -50,8 +50,8 @@ func (l SignedLiftV3) Payload() ([]byte, error) {
 }
 
 // readSignedLiftV3 reads a v1alpha3 lift's body, which signedBody holds to
-// MaxSignedBytes. Its scope is one the grammar names and this build serves,
-// and its subject an identifier: a missing or empty one ends nothing.
+// MaxSignedBytes. Its scope is one the grammar names, and its subject an
+// identifier within its scope's bound: a missing or empty one ends nothing.
 func readSignedLiftV3(body []byte) (SignedLiftV3, error) {
 	refusals := docRefusals{json: ErrLiftJSON, repeated: ErrLiftRepeated, kind: ErrLiftKind, member: ErrLiftMember}
 	o, err := readDoc(body, SignedLiftKindV3, refusals, signedLiftMembersV3, signedLiftMembersV3)
@@ -65,7 +65,7 @@ func readSignedLiftV3(body []byte) (SignedLiftV3, error) {
 		limit int
 		into  *string
 	}{
-		{memberKeyID, MaxListIDBytes, &l.KeyID}, {memberSubject, MaxRunIDBytes, &l.Subject},
+		{memberKeyID, MaxListIDBytes, &l.KeyID},
 		{memberTenantID, MaxTenantIDBytes, &l.TenantID}, {memberProjectID, MaxProjectIDBytes, &l.Project},
 	} {
 		if *f.into, ok = identifier(o[f.name], f.limit); !ok {
@@ -75,7 +75,7 @@ func readSignedLiftV3(body []byte) (SignedLiftV3, error) {
 	if l.PlaneID, ok = planeIdentifier(o[memberPlaneID]); !ok {
 		return SignedLiftV3{}, fmt.Errorf("%w: %s", ErrLiftValue, memberPlaneID)
 	}
-	if l.Scope, err = liftScope(o[memberScope]); err != nil {
+	if l.Scope, l.Subject, err = liftTarget(o); err != nil {
 		return SignedLiftV3{}, err
 	}
 	if l.ListHead, ok = strictjson.String(o[memberListHead]); !ok || !canon.ValidDigest(l.ListHead) {
@@ -93,13 +93,17 @@ func readSignedLiftV3(body []byte) (SignedLiftV3, error) {
 	return l, nil
 }
 
-// liftScope is a lift's scope: one the grammar names and this build serves.
-func liftScope(raw []byte) (string, error) {
-	scope, ok := readScope(raw)
+// liftTarget is a lift's scope, one the grammar names, and its subject, an
+// identifier within that scope's bound.
+func liftTarget(o strictjson.Object) (scope, subject string, err error) {
+	scope, ok := readScope(o[memberScope])
 	if !ok {
-		return "", fmt.Errorf("%w: %s", ErrLiftValue, memberScope)
+		return "", "", fmt.Errorf("%w: %s", ErrLiftValue, memberScope)
 	}
-	return scope, scopeServed(scope)
+	if subject, ok = identifier(o[memberSubject], subjectBound(scope)); !ok {
+		return "", "", fmt.Errorf("%w: %s", ErrLiftValue, memberSubject)
+	}
+	return scope, subject, nil
 }
 
 // verifySignedLiftLineV3 is verifySignedLiftLine for a 3.0 lift line under a

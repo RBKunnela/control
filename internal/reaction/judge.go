@@ -33,7 +33,7 @@ const (
 	ErrStopRefused   Error = "reaction: a stop is one the route does not permit"
 	ErrDatedAhead    Error = "reaction: a line's created_at is later than the plane's clock and its tolerance"
 	ErrLiftOrder     Error = "reaction: a lift names a line at or after itself"
-	ErrLiftAgain     Error = "reaction: a lift names a run and line an earlier lift named"
+	ErrLiftAgain     Error = "reaction: a lift names a scope, subject and line an earlier lift named"
 	ErrLiftUnsigned  Error = "reaction: a lift's envelope does not verify under the route's lift key"
 	ErrLiftMismatch  Error = "reaction: a lift's signed run, line, list or route is not what its line and header name"
 	ErrJudgeClock    Error = "reaction: the plane's clock or tolerance is not usable"
@@ -262,7 +262,7 @@ func walk(ctx context.Context, route Route, from List, complete []byte, lines in
 		return l, nil
 	}
 	for _, e := range j.seen.stops {
-		if e.Line > j.seen.through[e.RunID] {
+		if e.Line > j.seen.through[e.Target()] {
 			l.entries = append(l.entries, e)
 		}
 	}
@@ -367,74 +367,4 @@ func (j *judging) named(n int64, findingID string, created time.Time) error {
 		j.seen.latest, j.seen.latestLine = created, n
 	}
 	return nil
-}
-
-func (j *judging) liftLine(n int64, l LiftLine) error {
-	if l.ThroughLine >= n {
-		return ErrLiftOrder
-	}
-	run, err := liftedRun(l)
-	if err != nil {
-		return err
-	}
-	key := liftKey{run, l.ThroughLine}
-	if j.seen.lifts[key] {
-		return ErrLiftAgain
-	}
-	switch j.route.format {
-	case FormatV1Alpha1:
-		if _, err := VerifyLiftLine(l, j.header, j.route); err != nil {
-			return err
-		}
-	case FormatV1Alpha2Carry, FormatV1Alpha3:
-		who, bound, err := verifySignedLiftLine(j.ctx, l, j.header, j.route)
-		if err != nil {
-			return err
-		}
-		j.seen.took(vouchedDoc{line: n, kind: VouchLift, env: l.Envelope, bound: bound, signer: who})
-	default:
-		return fmt.Errorf("%w: no route was read", ErrListRoute)
-	}
-	j.seen.lifts[key] = true
-	j.seen.through[run] = max(j.seen.through[run], l.ThroughLine)
-	j.lifted = true
-	return nil
-}
-
-// liftedRun is the run whose stops l ends: the run a 1.0 or 2.0 lift line
-// names, and the subject of a 3.0 one under ScopeRun. Any other lift is
-// refused: a scope this build does not serve, or a run lift naming no run.
-func liftedRun(l LiftLine) (string, error) {
-	switch {
-	case l.Scope == "" && l.Subject == "" && l.RunID != "":
-		return l.RunID, nil
-	case l.Scope == ScopeRun && l.Subject != "" && l.RunID == "":
-		return l.Subject, nil
-	}
-	if err := scopeServed(l.Scope); err != nil {
-		return "", err
-	}
-	return "", fmt.Errorf("%w: a lift of scope %s names no run", ErrLineValue, l.Scope)
-}
-
-// VerifyLiftLine verifies l's envelope under r's lift key and ties the lift
-// it signs to its place: the signed run and line are l's, the signed list id
-// is h's, and the signed route digest is h's and r's. A lift is never read
-// apart from the list and route it names.
-func VerifyLiftLine(l LiftLine, h Header, r Route) (Lift, error) {
-	if r.digest == "" {
-		return Lift{}, fmt.Errorf("%w: no route was read", ErrListRoute)
-	}
-	if r.format != FormatV1Alpha1 {
-		return Lift{}, fmt.Errorf("%w: the lifts of a route an operator signed are signed by operators", ErrLiftUnsigned)
-	}
-	signed, err := VerifyLift(l.Envelope, r.liftKey)
-	if err != nil {
-		return Lift{}, fmt.Errorf("%w: %w", ErrLiftUnsigned, err)
-	}
-	if signed.RunID != l.RunID || signed.ThroughLine != l.ThroughLine ||
-		signed.ListID != h.ListID || signed.RouteDigest != h.RouteDigest || h.RouteDigest != r.digest {
-		return Lift{}, ErrLiftMismatch
-	}
-	return signed, nil
 }

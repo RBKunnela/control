@@ -12,10 +12,10 @@ import (
 
 func TestSnapshotStates(t *testing.T) {
 	var zero reaction.Snapshot
-	if zero.State() != reaction.Unknown || zero.Cause() != reaction.CauseNeverRead || zero.Active("run-a", "acme", clock0, time.Time{}) {
+	if zero.State() != reaction.Unknown || zero.Cause() != reaction.CauseNeverRead || reaction.Matches(zero, reaction.Subject{Tenant: "acme", Run: "run-a"}, clock0, time.Time{}).Has(reaction.StopRun) {
 		t.Fatalf("the zero snapshot: %s %s", zero.State(), zero.Cause())
 	}
-	if d := reaction.DisabledSnapshot(); d.State() != reaction.Disabled || d.Cause() != "" || d.Active("run-a", "acme", clock0, time.Time{}) {
+	if d := reaction.DisabledSnapshot(); d.State() != reaction.Disabled || d.Cause() != "" || reaction.Matches(d, reaction.Subject{Tenant: "acme", Run: "run-a"}, clock0, time.Time{}).Has(reaction.StopRun) {
 		t.Fatalf("the disabled snapshot: %s %s", d.State(), d.Cause())
 	}
 	r := listRoute(t)
@@ -23,7 +23,7 @@ func TestSnapshotStates(t *testing.T) {
 	if refused.State() != reaction.Unknown || refused.Cause() != reaction.CauseMalformed || refused.Detail() == "" {
 		t.Fatalf("a malformed list: %s %s %q", refused.State(), refused.Cause(), refused.Detail())
 	}
-	if refused.Active("run-a", "acme", clock0, time.Time{}) || len(refused.Entries()) != 0 {
+	if reaction.Matches(refused, reaction.Subject{Tenant: "acme", Run: "run-a"}, clock0, time.Time{}).Has(reaction.StopRun) || len(refused.Entries()) != 0 {
 		t.Fatal("an unknown snapshot names an entry")
 	}
 }
@@ -79,7 +79,7 @@ func TestActiveKeepsAStopUnderAClockItCannotTrust(t *testing.T) {
 		{"its run of another tenant", "run-a", "other", clock0, time.Time{}, false, false},
 		{"no run", "", "acme", clock0, time.Time{}, false, false},
 	} {
-		if got := s.Active(tc.run, tc.tenant, tc.now, tc.floor); got != tc.want {
+		if got := reaction.Matches(s, reaction.Subject{Tenant: tc.tenant, Run: tc.run}, tc.now, tc.floor).Has(reaction.StopRun); got != tc.want {
 			t.Errorf("%s: Active = %v, want %v", tc.name, got, tc.want)
 		}
 		if tc.untrusted && !lapsedLikeAnApproval(tc.now, tc.floor, expires) {
@@ -98,10 +98,10 @@ func TestActiveReadsAClearSnapshotsEntries(t *testing.T) {
 	if s.State() != reaction.Clear {
 		t.Fatalf("state %s", s.State())
 	}
-	if s.Active("run-a", "acme", clock0, time.Time{}) {
+	if reaction.Matches(s, reaction.Subject{Tenant: "acme", Run: "run-a"}, clock0, time.Time{}).Has(reaction.StopRun) {
 		t.Fatal("an expired entry stops a call at a trusted clock")
 	}
-	if !s.Active("run-a", "acme", time.Time{}, time.Time{}) {
+	if !reaction.Matches(s, reaction.Subject{Tenant: "acme", Run: "run-a"}, time.Time{}, time.Time{}).Has(reaction.StopRun) {
 		t.Fatal("an expired entry does not stop a call at the zero clock")
 	}
 }
@@ -112,12 +112,12 @@ func TestALiftEndsOnlyTheStopsThroughItsLine(t *testing.T) {
 	b.stop("fnd-a1", "run-a", clock0, time.Hour) // 2
 	b.lift("run-a", 2)                           // 3
 	lifted := reaction.Snapshot{}.Next(r, b.bytes(), clock0, poll)
-	if lifted.State() != reaction.Clear || lifted.Active("run-a", "acme", time.Time{}, time.Time{}) {
+	if lifted.State() != reaction.Clear || reaction.Matches(lifted, reaction.Subject{Tenant: "acme", Run: "run-a"}, time.Time{}, time.Time{}).Has(reaction.StopRun) {
 		t.Fatalf("a lifted stop: %s", lifted.State())
 	}
 	b.stop("fnd-a2", "run-a", clock0, time.Hour) // 4
 	again := lifted.Next(r, b.bytes(), clock0, poll)
-	if again.State() != reaction.Stopped || !again.Active("run-a", "acme", clock0, time.Time{}) {
+	if again.State() != reaction.Stopped || !reaction.Matches(again, reaction.Subject{Tenant: "acme", Run: "run-a"}, clock0, time.Time{}).Has(reaction.StopRun) {
 		t.Fatalf("a stop after the lift: %s", again.State())
 	}
 }

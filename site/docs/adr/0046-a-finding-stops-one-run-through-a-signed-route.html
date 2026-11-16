@@ -146,6 +146,11 @@ floor holds the header's serial and digest; no route or lift key exists there.</
 under <code>signed</code> the route, the stop list header and each lift also name the
 plane's <code>plane_id</code>, and a stop names its scope and subject, which under scope
 <code>run</code> is its run.</p>
+<p>Amended by <a href="/docs/adr/0083-a-finding-may-stop-an-agent-or-a-principal">ADR-0083</a>:
+a signed route may stop the agent or the principal of a finding's run, for
+three rules about the actor and for the rule's lifetime; on one plane such a
+stop blocks every call, <code>AGENT_OR_PRINCIPAL_STOPPED</code>, and a lift ends only
+the scope and subject it names.</p>
 <p>Amended when <code>/healthz</code> stopped naming runs: it counts the active and unheld
 stops and leaves out their entries, which only <code>health.socket</code> lists
 (<a href="/docs/reference/versions">versions</a>).</p>

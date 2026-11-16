@@ -49,6 +49,8 @@ func (p *plane) pipelineConfig(adapter gateway.Adapter, mode controlv1.Enforceme
 	if p.runsDir != nil {
 		c.Runs = planeRuns(p.cfg, p.runsDir)
 	}
+	c.Listener = gateway.RunIdentity{TenantID: listenerTenant(p.cfg), PrincipalType: p.cfg.Listener.PrincipalType,
+		PrincipalID: p.cfg.Listener.PrincipalID, AgentID: p.cfg.Listener.AgentID}
 	if p.signed != nil {
 		c.Authenticator, c.Authorizer = p.signed.authn, p.signed.authz
 	}

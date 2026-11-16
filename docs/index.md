@@ -182,5 +182,6 @@ with `make docs-gen`; an edit made here does not survive the next run.
 - [ADR-0080: Evidence leaves a plane over a unix socket or TLS](adr/0080-evidence-leaves-a-plane-over-a-unix-socket-or-tls.md): accepted
 - [ADR-0081: Tests that need a second account run in a required job](adr/0081-tests-that-need-a-second-account-run-in-a-required-job.md): accepted
 - [ADR-0082: A signed document names its plane, and a signed plane serves one tenant](adr/0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant.md): accepted
+- [ADR-0083: A finding may stop an agent or a principal](adr/0083-a-finding-may-stop-an-agent-or-a-principal.md): accepted
 - [ADR-0084: The site is redrawn: one system for the landing page and the docs, a light and a dark theme, llms.txt](adr/0084-the-site-is-redrawn-in-one-system.md): accepted
 - [ADR-0085: The 1.0 bar is met by the project's own evidence, and what needs outside people stays not met](adr/0085-the-1-0-bar-is-met-by-own-evidence-and-what-needs-outside-people-stays-not-met.md): accepted

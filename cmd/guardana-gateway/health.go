@@ -17,7 +17,7 @@ import (
 
 // healthSchema names the shape of the health answer, so a reader tells it
 // from an answer with no schema member.
-const healthSchema = "2"
+const healthSchema = "3"
 
 // healthAnswer is what the plane says about itself. It carries no
 // credential: the mode, the bundle it serves, the plane's id, what each

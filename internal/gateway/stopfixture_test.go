@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -20,6 +21,7 @@ import (
 
 const (
 	codeRunStopped           = "RUN_STOPPED"
+	codeSubjectStopped       = "AGENT_OR_PRINCIPAL_STOPPED"
 	codeStopStateUnavailable = "STOP_STATE_UNAVAILABLE"
 
 	stopInterval = time.Minute
@@ -183,8 +185,14 @@ func (s *stopSource) set(snaps ...reaction.Snapshot) {
 	s.snaps, s.next = snaps, 0
 }
 
+// listener is the identity the plane's configuration names, the one
+// readEnvelope and opened carry.
+var listener = gateway.RunIdentity{TenantID: "tenant-1", PrincipalType: "user", PrincipalID: "user-1", AgentID: "agent-1"}
+
+// withStops serves the stop state from s to a plane whose listener is
+// listener.
 func withStops(s gateway.StopSource) func(*gateway.Config) {
-	return func(c *gateway.Config) { c.Stops = s }
+	return func(c *gateway.Config) { c.Stops, c.Listener = s, listener }
 }
 
 // stopPlane is a plane serving opened runs of root-1 and root-2 under src,
@@ -195,4 +203,13 @@ func stopPlane(t *testing.T, mode controlv1.EnforcementMode, rules []string, src
 	h := build(t, mode, snapshot(t, rules...), opts...)
 	h.run = opened("run-a", "root-1")
 	return h
+}
+
+// stopsRun reports whether an active entry of s, read with no age rule,
+// stops run of tenant at now.
+func stopsRun(s reaction.Snapshot, tenant, run string, now time.Time) bool {
+	entries, _ := s.ActiveEntries(now, time.Time{})
+	return slices.ContainsFunc(entries, func(e reaction.Entry) bool {
+		return e.TenantID == tenant && e.Target() == reaction.Target{Scope: reaction.ScopeRun, Subject: run}
+	})
 }

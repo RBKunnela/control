@@ -78,11 +78,33 @@ func readScope(raw json.RawMessage) (string, bool) {
 	return s, ok && (s == ScopeRun || s == ScopeAgent || s == ScopePrincipal)
 }
 
-// scopeServed refuses a scope the grammar names that this build does not
-// stop under yet: every scope but run.
-func scopeServed(scope string) error {
-	if scope != ScopeRun {
-		return fmt.Errorf("%w: %s stops are not served by this build", ErrRouteScope, scope)
+// MaxSubjectBytes bounds the agent or principal a stop or lift names, as a
+// run record bounds each field of its identity.
+const MaxSubjectBytes = 256
+
+// wider reports whether scope names an agent or a principal, whose stop
+// holds every run of it rather than one.
+func wider(scope string) bool { return scope == ScopeAgent || scope == ScopePrincipal }
+
+// subjectBound is the longest subject a line or lift of scope may name.
+func subjectBound(scope string) int {
+	if wider(scope) {
+		return MaxSubjectBytes
+	}
+	return MaxRunIDBytes
+}
+
+// checkRuleScope refuses a rule of an agent or a principal unless
+// MayStopWider names its rule and it names a lifetime: such a stop outlives
+// the run whose finding made it, so nothing else would end it.
+func checkRuleScope(r Rule) error {
+	switch {
+	case !wider(r.Scope):
+		return nil
+	case !MayStopWider(r.RuleID, r.RuleVersion):
+		return fmt.Errorf("%w: rule_id %q rule_version %q may not stop an %s", ErrRouteScope, r.RuleID, r.RuleVersion, r.Scope)
+	case r.Lifetime == 0:
+		return fmt.Errorf("%w: a rule of scope %s names no %s", ErrRouteLifetime, r.Scope, memberExpires)
 	}
 	return nil
 }

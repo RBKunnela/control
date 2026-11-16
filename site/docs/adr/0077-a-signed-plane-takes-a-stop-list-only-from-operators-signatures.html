@@ -132,6 +132,10 @@ own beside the file, and a stop or lift names a scope and subject in place of
 a run alone. The <code>v1alpha2</code> route, the <code>2.0</code> list and the <code>v1alpha2</code> lift are
 refused, naming <code>route sign</code> or <code>stops init --carry</code>, which alone reads them,
 as the list it carries into <code>3.0</code> at the next serial.</p>
+<p>Amended by <a href="/docs/adr/0083-a-finding-may-stop-an-agent-or-a-principal">ADR-0083</a>:
+a <code>v1alpha3</code> route rule may carry scope <code>agent</code> or <code>principal</code> for three
+rules with a lifetime, and a signed lift of either scope ends only the stops
+of its subject.</p>
 <h2 id="context">Context</h2>
 <p>Under ADR-0046 a route key signs the route and a lift key each lift, and
 write access to the stops directory adds any stop the route allows and,

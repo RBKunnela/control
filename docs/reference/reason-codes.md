@@ -73,3 +73,4 @@ with `make docs-gen`; an edit made here does not survive the next run.
 | `RUN_STOPPED` | 45 | `DENY` | A stop the operator's route allows names the opened run this call belongs to, so the enforcement point blocked it whatever the policy decided. |
 | `STOP_STATE_UNAVAILABLE` | 46 | `INDETERMINATE` | The enforcement point could not read or trust the stop list, so it blocked the call rather than assume that no run is stopped. |
 | `EXECUTION_ABANDONED` | 47 | `INDETERMINATE` | An execution the enforcement point handed out was neither completed nor aborted before it expired, so it was closed without knowing whether the call ran. |
+| `AGENT_OR_PRINCIPAL_STOPPED` | 48 | `DENY` | A stop the operator's route allows names the agent or the principal this call acts for, so the enforcement point blocked it whatever the policy decided. |

@@ -299,7 +299,7 @@ flowchart TB
         EX["OpenTelemetry, metrics, SIEM"]
         GR[Run graph and console]
     end
-    RE["Reaction: stop one run where allowed"]
+    RE["Reaction: stop a run, an agent or a principal where allowed"]
     AG --> MCP
     AG --> HK
     MCP -->|allowed calls| TL
@@ -343,8 +343,9 @@ Sources: `ROADMAP.md`, `internal/gateway/pause.go`, `adapters/authzen/client.go`
   that nothing happened. It runs beside the decision path and never changes a verdict.
 - **Notifiers and reactions.** A notifier delivers findings to the tools an
   operator already watches. A reaction is a separate, signed route: it stops
-  one run's later calls at the enforcement points, for a scope and an expiry,
-  and only from a finding the operator allowed to stop anything. Like a
+  one run's later calls at the enforcement points, or under `signed` those of
+  that run's agent or principal, for a scope and an expiry, and only from a
+  finding the operator allowed to stop anything. Like a
   pause, a stop applies after the kernel decides, and it never cuts a call
   already running.
 - **Extensions** are separate programs speaking versioned data contracts, and

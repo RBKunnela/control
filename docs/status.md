@@ -396,8 +396,8 @@ built
 - `cmd/guardana-gateway/` (`run`, `doctor`, `collect`, `trail` and `prune`, a
   `stateful_http` listener that caps live sessions at `listener.max_sessions`
   and counts its refusals in `/metrics`, `GET /healthz`, which answers
-  `degraded` while the policy is not confirmed and, under `schema` `2`, counts
-  without naming a run, a `health.socket` that answers it whole only to the
+  `degraded` while the policy is not confirmed and, under `schema` `3`, counts
+  without naming a run or a stop, a `health.socket` that answers it whole only to the
   plane's account and `health.socket_uid`, the peer read by `internal/peercred/`
   on Linux and macOS, `GET /metrics` in the Prometheus text format from
   `internal/metrics`, whose names [reference/metrics.md](reference/metrics.md)
@@ -807,8 +807,10 @@ names each source not read, never heard or silent
 
 ### run-stop
 
-- `internal/reaction/` (the route, the six rules a route may name, the stop
-  list's grammar and judge, the snapshot a plane decides under)
+- `internal/reaction/` (the route, the six rules a route may name and the
+  three of them that may stop an agent or a principal, the stop list's grammar
+  and judge, the snapshot a plane decides under and its matcher of a run, an
+  agent and a principal)
 - `internal/reaction/stoplist/` (the reader a plane polls)
 - `internal/reaction/stopwrite/` (the writer, which the gateway binary does not
   link)
@@ -824,6 +826,7 @@ names each source not read, never heard or silent
 - `examples/refund-supervision/`
 - [reference/reaction.md](reference/reaction.md)
 - [ADR-0046](adr/0046-a-finding-stops-one-run-through-a-signed-route.md)
+- [ADR-0083](adr/0083-a-finding-may-stop-an-agent-or-a-principal.md)
 
 A plane with a route refuses a stopped run's later calls `RUN_STOPPED` and no
 other run's, and every call `STOP_STATE_UNAVAILABLE` while it cannot read or
@@ -835,6 +838,12 @@ list chains to the floor and extends the part of it the plane accepted, a floor
 that account can still lower, after which a list the stop writers cut back is
 taken; `react`'s own lines are signed by no operator, and the checks read mode
 bits, not darwin access control lists
+
+Under `signed` a route may stop the agent or principal of the finding's run
+instead, for `REPEATED_DENIAL` and the two retry rules and for the rule's
+lifetime; matched against the listener's configured identity, such a stop
+refuses every call of the plane `AGENT_OR_PRINCIPAL_STOPPED`, runless calls and
+later runs included, and only a lift of that agent or principal ends it.
 
 ### finding-review
 

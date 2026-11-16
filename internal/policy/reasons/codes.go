@@ -315,4 +315,10 @@ var codes = [...]Code{
 		Verdict: controlv1.Verdict_VERDICT_INDETERMINATE,
 		Summary: "An execution the enforcement point handed out was neither completed nor aborted before it expired, so it was closed without knowing whether the call ran.",
 	},
+	{
+		ID:      "AGENT_OR_PRINCIPAL_STOPPED",
+		Num:     48,
+		Verdict: controlv1.Verdict_VERDICT_DENY,
+		Summary: "A stop the operator's route allows names the agent or the principal this call acts for, so the enforcement point blocked it whatever the policy decided.",
+	},
 }

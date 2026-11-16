@@ -2,7 +2,7 @@
 title: Signed reaction
 summary: How a signed plane takes its route, stop list header and lifts from roster operators, holds them to a stop list floor, and which commands sign them.
 type: reference
-covers: [internal/reaction/signed.go, internal/reaction/route2.go, internal/reaction/route3.go, internal/reaction/header2.go, internal/reaction/lift2.go, internal/reaction/lift3.go, internal/reaction/signedstops/**, internal/policystate/stops.go, cmd/guardana-control/stops_signed.go, cmd/guardana-gateway/reaction_signed.go]
+covers: [internal/reaction/signed.go, internal/reaction/route2.go, internal/reaction/route3.go, internal/reaction/header2.go, internal/reaction/lift2.go, internal/reaction/lift3.go, internal/reaction/subject.go, internal/reaction/maystop.go, internal/reaction/signedstops/**, internal/policystate/stops.go, cmd/guardana-control/stops_signed.go, cmd/guardana-control/stops_lift.go, cmd/guardana-gateway/reaction_signed.go]
 ---
 
 # Signed reaction
@@ -26,9 +26,9 @@ signed document to another plane of the same tenant and project is refused
 there for its `plane_id` even where the paths are alike, and for its `file`
 where they differ. The route names a `project_id` and a `scope` on each
 rule, and every stop and covered line of a `3.0` list names the project, the
-`scope` and the `subject`. This release serves scope `run` alone: its
-subject is the line's `run_id`, and a rule, a line or a lift of scope
-`agent` or `principal` is refused. The header names a `serial` and, after a carry, the `previous`
+`scope` and the `subject`. Under scope `run` the subject is the line's
+`run_id`; under `agent` or `principal`, below, it is the agent or principal
+and `run_id` is the run the finding was about. The header names a `serial` and, after a carry, the `previous`
 header's digest; a lift names the digest of the header it lifts from,
 `list_head`, and the `scope` and `subject` whose stops it ends, so a lift
 made against one list never verifies against a list carried or restored
@@ -88,6 +88,45 @@ init` in a new directory and names it in `reaction.stops_floor_dir`, an
 operator starts a new list with `stops init --key`, and `react` stops again
 what may still stop. A new floor takes any list, so this is the step that
 lowers it.
+
+## A stop of an agent or a principal
+
+A route rule may carry scope `agent` or `principal` for `REPEATED_DENIAL`
+version `2`, `DENIED_ACTION_RETRIED_ARGUMENTS` version `1` and
+`DENIED_ACTION_RETRIED_RESOURCE` version `1`, the rules about what the actor
+did, and only with `expires_seconds`. Every reader of a route refuses either
+scope on any other rule, and either scope without a lifetime
+([ADR-0083](../adr/0083-a-finding-may-stop-an-agent-or-a-principal.md)).
+
+`react` takes the subject from the judged run's record, its `agent_id` or
+`principal_id`, and writes nothing for a record that names none. Such a
+stop lasts the rule's lifetime from when `react` wrote it, whatever the run's
+expiry. A finding is covered only by an active stop of the same scope and
+subject that lasts as long, whichever run either was about.
+
+A plane matches such a stop against the agent and principal its listener's
+configuration names, within the listener's tenant, never against the
+envelope or a run record; a principal stop matches the principal's id
+alone, never its type. Every opened run of a plane carries the listener's
+identity, so **on one plane a stop of its agent or principal stops the
+plane**: every run, a run opened after the stop, and a call with no run, each
+`AGENT_OR_PRINCIPAL_STOPPED` (48, `DENY`). The tool listing is not stopped.
+A call under a stop of its run and of its agent lists both codes,
+`RUN_STOPPED` first. An active stop of either scope whose subject the call
+does not name reads as an unknown stop state, `STOP_STATE_UNAVAILABLE`, never
+as no stop; a plane with a stop list refuses to start unless its listener
+names a tenant, a principal and an agent.
+
+`stops lift` takes exactly one of `--run`, `--agent` and `--principal`, and
+the last two only under `signed`. A lift ends the stops of its scope and
+subject through its line alone: a lift of a run leaves a stop of its agent
+standing, and a lift of the agent ends that one.
+
+`doctor` names each rule that stops an agent or a principal, and each such
+stop whose agent, principal or tenant is not the listener's, which matches
+no call. `health.socket` lists each stop with its `scope` and `subject` and,
+under health schema `3`, names the stops that match no call by entry id in
+`unheld_entries` and `unread_entries`.
 
 `doctor` judges the route and the header through the roster file, holds the
 header to the stop list floor without raising it, and names who signed each.

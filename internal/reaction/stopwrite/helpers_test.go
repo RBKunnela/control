@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"sync"
 	"testing"
@@ -185,4 +186,13 @@ func planeOn(t testing.TB, dir string, r reaction.Route) *stoplist.Poller {
 		t.Fatalf("a plane's poller: %v", err)
 	}
 	return p
+}
+
+// stopsRun reports whether an active entry of s, read with no age rule,
+// stops run of tenant acme at now.
+func stopsRun(s reaction.Snapshot, run string, now time.Time) bool {
+	entries, _ := s.ActiveEntries(now, time.Time{})
+	return slices.ContainsFunc(entries, func(e reaction.Entry) bool {
+		return e.TenantID == "acme" && e.Target() == reaction.Target{Scope: reaction.ScopeRun, Subject: run}
+	})
 }

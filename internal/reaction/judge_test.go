@@ -320,7 +320,7 @@ func TestACoveredLineNamesAnyRunAndStopsNothing(t *testing.T) {
 	}
 	s := reaction.Snapshot{}.Next(r, b.bytes(), clock0, poll)
 	for _, run := range []string{"run-a", "run-b"} {
-		if got, cause := s.ForCall(run, "acme", clock0, clock0); got != reaction.Clear || cause != "" {
+		if got, cause, _ := s.ForSubject(reaction.Subject{Tenant: "acme", Run: run}, clock0, clock0); got != reaction.Clear || cause != "" {
 			t.Errorf("a call of %s: %s %q, want clear", run, got, cause)
 		}
 	}

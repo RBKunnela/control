@@ -18,9 +18,10 @@ type planeState struct {
 	unclassified bool
 	paused       bool
 	pauseUnknown bool
-	// stopped: an active stop names the opened run the plane vouched for,
-	// in its tenant (ADR-0046).
-	stopped      bool
+	// stops: the kinds of active stop that name the call: its opened run as
+	// the plane vouched for it (ADR-0046), or the agent or principal the
+	// plane serves (ADR-0083).
+	stops        reaction.StopMatch
 	stopUnknown  bool
 	sinkHalt     bool
 	mismatchHalt bool
@@ -50,7 +51,8 @@ func planeCauses(s planeState) []cause {
 		cause
 	}{
 		{s.paused, cause{codePaused, verdictDeny}},
-		{s.stopped, cause{codeRunStopped, verdictDeny}},
+		{s.stops.Has(reaction.StopRun), cause{codeRunStopped, verdictDeny}},
+		{s.stops.Has(reaction.StopWider), cause{codeSubjectStopped, verdictDeny}},
 		{s.material && (s.mismatchHalt || s.runHalt), cause{codeExecutedArgsMismatch, verdictDeny}},
 		{s.material && s.mode == modeLockdown, cause{codeLockdown, verdictDeny}},
 		{s.pauseUnknown, cause{codePauseStateUnavailable, verdictIndeterminate}},
@@ -112,7 +114,7 @@ func (c *call) blockIfCovered() bool {
 	c.takeStates()
 	state := c.planeState()
 	halted := state.material && (state.sinkHalt || state.mismatchHalt || state.runHalt)
-	if !halted && !state.paused && !state.pauseUnknown && !state.stopped && !state.stopUnknown {
+	if !halted && !state.paused && !state.pauseUnknown && state.stops == 0 && !state.stopUnknown {
 		return false
 	}
 	c.causes = planeCauses(state)
@@ -122,33 +124,44 @@ func (c *call) blockIfCovered() bool {
 
 // planeState is this call's state as the plane sees it now: the halts as
 // they stand, the pause and stop states the call took last and the run it
-// took when it started. A stop matches the opened run as the listener
-// resolved it and the plane checked it against the envelope, never a run id
-// the agent sent or a local run the plane minted: a call with no opened run
-// asks about the empty run id, which no line of a list can name. A pause
-// matches the same run, which a run entry covers when absent.
+// took when it started. A pause matches the opened run, which a run entry
+// covers when absent; stops match as stopSubject says.
 func (c *call) planeState() planeState {
 	sink, mismatch, runHalt := c.p.counts.halts(c.flow.openedID())
 	action := c.in.Envelope.GetAction()
 	state := c.pause.State()
-	var runID, tenantID string
-	if run := c.flow.opened; run != nil {
-		runID, tenantID = run.ID, run.Who.TenantID
-	}
-	stops, _ := c.stops.ForCall(runID, tenantID, c.now, c.floor)
+	stops, _, matched := c.stops.ForSubject(c.stopSubject(), c.now, c.floor)
 	return planeState{
 		mode:         c.p.cfg.Mode,
 		material:     contract.IsMaterial(action.GetEffect()),
 		unclassified: translationOf(c.in) == translationUnclassified,
 		paused:       state == pause.Paused && c.pause.Covers(action.GetKind(), action.GetProvider(), action.GetName(), c.vouched()),
 		pauseUnknown: state == pause.Unknown,
-		stopped:      stops == reaction.Stopped,
+		stops:        matched,
 		stopUnknown:  stops == reaction.Unknown,
 		sinkHalt:     sink,
 		mismatchHalt: mismatch,
 		runHalt:      runHalt,
 		runRefused:   c.flow.kind == flowUnnamed || c.flow.kind == flowUnavailable,
 	}
+}
+
+// stopSubject is what the call is matched against the stop list by: the
+// tenant, principal and agent the plane's configuration names, whatever the
+// envelope or a run record says, and the opened run as the listener resolved
+// it and the plane checked it against the envelope, never a run id the agent
+// sent or a local run the plane minted. A call with no opened run names no
+// run, which no stop of a run matches; a stop of the agent or principal
+// matches it all the same. Run ids are a tenant's own, so an opened run of
+// another tenant names no run either: a stop of the listener's tenant never
+// names it.
+func (c *call) stopSubject() reaction.Subject {
+	l := c.p.cfg.Listener
+	who := reaction.Subject{Tenant: l.TenantID, Agent: l.AgentID, Principal: l.PrincipalID}
+	if run := c.flow.opened; run != nil && run.Who.TenantID == l.TenantID {
+		who.Run = run.ID
+	}
+	return who
 }
 
 // vouched is the identity the plane vouches for the call: the opened run the

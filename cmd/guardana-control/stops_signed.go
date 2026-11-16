@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"slices"
 	"strconv"
 	"time"
 
@@ -166,62 +165,6 @@ func carryHold(floorDir string, from reaction.Route, stderr io.Writer) (func(rea
 		return nil, fmt.Errorf("--stops-floor %s: %w", floorDir, err)
 	}
 	return func(l reaction.List, content []byte) error { return signedstops.Hold(stored, l, content) }, nil
-}
-
-// stopsLiftSigned refuses in a fixed order and writes nothing on any
-// refusal: the route, the list, whose header and lifts are judged through
-// the roster before anything is signed, a lift that would end no stop, the
-// key, then the lift as the plane's judge reads it. The lift names the
-// list's head, so it never verifies against another list. It says on
-// standard error what it signed.
-func stopsLiftSigned(a stopsLiftArgs, dir string, now time.Time, stdout, stderr io.Writer) int {
-	route, err := a.verified(dir, &rosterNote{w: stderr, command: stopsLiftName})
-	if err != nil {
-		return fail(stderr, stopsLiftName, err)
-	}
-	list, _, err := judgedList(dir, route, now)
-	if err != nil {
-		return fail(stderr, stopsLiftName, err)
-	}
-	through := a.through
-	if through == 0 {
-		through = list.Usage().Lines
-	}
-	if !slices.ContainsFunc(list.Entries(), func(e reaction.Entry) bool { return e.RunID == a.run && e.Line <= through }) {
-		return fail(stderr, stopsLiftName, fmt.Errorf("run %s has no stop through line %d for a lift to end", oneLine(a.run), through))
-	}
-	key, release, err := readOperatorKey(a.key)
-	if err != nil {
-		return fail(stderr, stopsLiftName, err)
-	}
-	defer release()
-	lift := reaction.SignedLiftV3{
-		KeyID: policykey.KeyID(publicHalf(key)), PlaneID: route.PlaneID(), ListHead: list.Header().Signed.Digest,
-		Scope: reaction.ScopeRun, Subject: a.run, ThroughLine: through,
-		TenantID: route.TenantID(), Project: route.ProjectID(), File: route.Plane().ListFile,
-	}
-	body, err := lift.Payload()
-	if err != nil {
-		return fail(stderr, stopsLiftName, err)
-	}
-	sig, err := bundle.SignBytesAs(reaction.SignedLiftPayloadType, body, key)
-	if err != nil {
-		return fail(stderr, stopsLiftName, fmt.Errorf("--key: %w", err))
-	}
-	env := reaction.Envelope{PayloadType: reaction.SignedLiftPayloadType, Payload: body,
-		Signatures: []reaction.Signature{{KeyID: lift.KeyID, Signature: sig}}}
-	ctx, cancel := context.WithTimeout(context.Background(), stopsLockWait)
-	defer cancel()
-	n, err := stopwrite.AppendLift(ctx, dir, route,
-		reaction.LiftLine{Scope: reaction.ScopeRun, Subject: a.run, ThroughLine: through, Envelope: env}, now)
-	if err != nil {
-		return fail(stderr, stopsLiftName, err)
-	}
-	writeLine(stderr, fmt.Sprintf("%s: %s: signed lift of run %s through line %d of list head %s for plane %s tenant %s project %s of %s",
-		brand.CLI, stopsLiftName, oneLine(a.run), through, lift.ListHead, oneLine(lift.PlaneID), oneLine(lift.TenantID),
-		oneLine(lift.Project), oneLine(lift.File)))
-	return emit(stdout, stderr, stopsLiftName,
-		[]string{fmt.Sprintf("lift line %d run %s through line %d", n, oneLine(a.run), through)}, dir)
 }
 
 func stopsFloorInitFlags(command string, out io.Writer) (*flag.FlagSet, *string, *string) {

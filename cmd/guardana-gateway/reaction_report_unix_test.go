@@ -149,8 +149,8 @@ func TestAStopOfAnotherProjectsRunIsUnheld(t *testing.T) {
 	}
 	p.stops.poller.Poll()
 	answer, _ := p.health(p.pauseSource(), time.Now)
-	if s := answer.Stops; s.Active != 2 || !slices.Equal(s.UnheldRuns, []string{other}) || len(s.UnreadRuns) != 0 {
-		t.Errorf("/healthz lists %d active, unheld %v, unread %v; want 2 and %s alone unheld", s.Active, s.UnheldRuns, s.UnreadRuns, other)
+	if s := answer.Stops; s.Active != 2 || !slices.Equal(unheldRunsOf(s), []string{other}) || len(s.UnreadEntries) != 0 {
+		t.Errorf("/healthz lists %d active, unheld %v, unread %v; want 2 and %s alone unheld", s.Active, unheldRunsOf(s), s.UnreadEntries, other)
 	}
 }
 
@@ -281,8 +281,8 @@ func stoppedAnswer(t *testing.T, s stopsAnswer) {
 		t.Errorf("stops = %+v", s)
 	case s.Entries[0].RunID != unheldRun || s.Entries[0].FindingID != "finding-1" || s.Entries[0].RuleID != fixtureRule:
 		t.Errorf("the entry is %+v", s.Entries[0])
-	case len(s.UnheldRuns) != 1 || s.UnheldRuns[0] != unheldRun || len(s.UnreadRuns) != 0:
-		t.Errorf("unheld %v, unread %v", s.UnheldRuns, s.UnreadRuns)
+	case !slices.Equal(unheldRunsOf(s), []string{unheldRun}) || len(s.UnreadEntries) != 0:
+		t.Errorf("unheld %v, unread %v", unheldRunsOf(s), s.UnreadEntries)
 	}
 }
 

@@ -37,6 +37,12 @@ under `signed` the route, the stop list header and each lift also name the
 plane's `plane_id`, and a stop names its scope and subject, which under scope
 `run` is its run.
 
+Amended by [ADR-0083](0083-a-finding-may-stop-an-agent-or-a-principal.md):
+a signed route may stop the agent or the principal of a finding's run, for
+three rules about the actor and for the rule's lifetime; on one plane such a
+stop blocks every call, `AGENT_OR_PRINCIPAL_STOPPED`, and a lift ends only
+the scope and subject it names.
+
 Amended when `/healthz` stopped naming runs: it counts the active and unheld
 stops and leaves out their entries, which only `health.socket` lists
 ([versions](../reference/versions.md)).

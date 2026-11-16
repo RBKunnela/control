@@ -56,14 +56,17 @@ func AppendLift(ctx context.Context, dir string, route reaction.Route, l reactio
 }
 
 // AppendFinding appends, for the finding of the stop stopAt makes, a covered
-// line of that finding when the list holds a stop of its run and tenant
-// active at the writer's clock that lasts at least as long as the stop, and
+// line of that finding when the list holds a stop of its scope, subject and
+// tenant active at the writer's clock that lasts at least as long as the
+// stop, and
 // the stop itself when it holds none: a stop with a longer lifetime is never
 // cut short by covering it under a shorter one. The clock is read once the
 // lock is held and stopAt makes the stop from that reading, so the wait for
 // the lock shortens no stop and a line another writer added during it is not
 // ahead of the reading. The choice is made under the lock, over the list as
-// it stands, so two writers never stop one run twice for one lifetime.
+// it stands, so two writers never stop one subject twice for one lifetime.
+// A stop of another scope never covers it: a run's stop leaves its agent
+// free once lifted, and an agent's stop ends at its own expiry.
 // stopAt runs before the list is searched for the finding, so its refusal
 // stands even for a finding another writer named meanwhile. It refuses a
 // stop naming a rule version a later one superseded, which only a carry
@@ -88,7 +91,8 @@ func AppendFinding(ctx context.Context, dir string, route reaction.Route, clock 
 			return nil, ErrNamed
 		}
 		covered = slices.ContainsFunc(list.Entries(), func(e reaction.Entry) bool {
-			return e.RunID == s.RunID && e.TenantID == s.TenantID && e.ActiveAt(now, time.Time{}) && !e.ExpiresAt.Before(s.ExpiresAt)
+			return e.Target() == s.Target() && e.TenantID == s.TenantID && e.ActiveAt(now, time.Time{}) &&
+				!e.ExpiresAt.Before(s.ExpiresAt)
 		})
 		if covered {
 			return reaction.Covered{FindingID: s.FindingID, TenantID: s.TenantID, RunID: s.RunID, ProjectID: s.ProjectID,

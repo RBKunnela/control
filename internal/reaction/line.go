@@ -103,12 +103,14 @@ func HeaderFor(r Route, listID string) Header {
 	return Header{ListID: listID, RouteID: r.id, RouteSerial: r.serial, RouteDigest: r.digest}
 }
 
-// Stop is a stop line: one finding stops one run of one tenant from
-// CreatedAt until ExpiresAt, unless a lift ends it first.
+// Stop is a stop line: one finding stops one run, or under a 3.0 line one
+// agent or principal, of one tenant from CreatedAt until ExpiresAt, unless a
+// lift ends it first.
 type Stop struct {
 	EntryID, TenantID, RunID, FindingID string
 	// ProjectID and Scope are set in a 2.0 and a 3.0 line and empty in a 1.0
 	// one; Subject is set in a 3.0 line alone, and under ScopeRun is RunID.
+	// RunID is always the run of the finding behind the stop.
 	ProjectID, Scope, Subject                      string
 	ProcedureID, ProcedureVersion, ProcedureDigest string
 	RuleID, RuleVersion                            string
@@ -325,7 +327,8 @@ func scopeMembers(v string) []string {
 
 // lineScope reads the scope, and in 3.0 the subject, a stop or covered line
 // of version v and run runID names: in 2.0 scope run alone and no subject;
-// in 3.0 a scope this build serves, whose subject under run is runID.
+// in 3.0 any scope the grammar names, whose subject under run is runID and
+// otherwise the agent or principal, while run_id stays the finding's run.
 func lineScope(o strictjson.Object, v, runID string) (scope, subject string, err error) {
 	scope, ok := readScope(o[memberScope])
 	if !ok || (v == SignedListVersion && scope != ScopeRun) {
@@ -334,10 +337,7 @@ func lineScope(o strictjson.Object, v, runID string) (scope, subject string, err
 	if v != SignedListVersionV3 {
 		return scope, "", nil
 	}
-	if err := scopeServed(scope); err != nil {
-		return "", "", fmt.Errorf("%w: %w", ErrLineValue, err)
-	}
-	if err := identifierOf(o, memberSubject, MaxRunIDBytes, &subject); err != nil {
+	if err := identifierOf(o, memberSubject, subjectBound(scope), &subject); err != nil {
 		return "", "", err
 	}
 	if scope == ScopeRun && subject != runID {
@@ -388,10 +388,7 @@ func readLiftLine(o strictjson.Object, v string, l *LiftLine) error {
 		if l.Scope, ok = readScope(o[memberScope]); !ok {
 			return fmt.Errorf("%w: %s", ErrLineValue, memberScope)
 		}
-		if err := scopeServed(l.Scope); err != nil {
-			return fmt.Errorf("%w: %w", ErrLineValue, err)
-		}
-		if err := identifierOf(o, memberSubject, MaxRunIDBytes, &l.Subject); err != nil {
+		if err := identifierOf(o, memberSubject, subjectBound(l.Scope), &l.Subject); err != nil {
 			return err
 		}
 	} else {

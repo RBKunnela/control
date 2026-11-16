@@ -193,6 +193,14 @@ operator, usage and cost as observations, a rebuild from the public pages
 alone) and widens B11, B12, B13, B16, B23, B26, B33, B36 and B38.
 <a href="/docs/concepts/signed-operations">Signed operations</a> says what is
 signed, by whom, what each signature proves and what is not signed.</li>
+<li><strong>Breaking:</strong> the health answer is schema <code>3</code>. Under <code>stops</code>,
+<code>health.socket</code>'s <code>unheld_runs</code> and <code>unread_runs</code> are now <code>unheld_entries</code>
+and <code>unread_entries</code>, naming entry ids, and each listed stop names its
+<code>scope</code> and <code>subject</code>. A reader that checks <code>&quot;schema&quot;</code> takes <code>&quot;3&quot;</code>.</li>
+<li><strong>Breaking:</strong> <code>stops lift</code> takes exactly one of <code>--run</code>, <code>--agent</code> and
+<code>--principal</code>; the last two only under <code>signed</code>. A lift ends only the stops
+of the scope and subject it names, so a lift of a run leaves a stop of its
+agent standing.</li>
 <li>The website is redrawn in one system for the landing page and the
 documentation, with a light and a dark theme a reader switches without
 script, Geist fonts served from the site, and the new headline, &quot;Decide what
@@ -207,6 +215,15 @@ its own box on a phone.</li>
 </ul>
 <h3 id="added">Added</h3>
 <ul>
+<li>Under <code>signed</code> a route rule for <code>REPEATED_DENIAL</code>, <code>DENIED_ACTION_RETRIED_ARGUMENTS</code>
+or <code>DENIED_ACTION_RETRIED_RESOURCE</code> may stop the agent or the principal of
+the finding's run, with a lifetime it must name. A plane matches the stop
+against the agent and principal its listener serves, so on one plane it
+refuses every call, later runs and calls with no run included, with the new
+reason code <code>AGENT_OR_PRINCIPAL_STOPPED</code> (48, <code>DENY</code>). The tool listing is
+not stopped, <code>supervise</code> counts the code as the plane's block and not a
+denial, and <code>doctor</code> names each rule that stops an agent or a principal
+(<a href="/docs/adr/0083-a-finding-may-stop-an-agent-or-a-principal">ADR-0083</a>).</li>
 <li><code>llms.txt</code> on the website: every documentation page with its address and
 summary, grouped as the index groups them, and the records.</li>
 </ul>

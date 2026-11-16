@@ -83,6 +83,14 @@ verify one.
   alone) and widens B11, B12, B13, B16, B23, B26, B33, B36 and B38.
   [Signed operations](docs/concepts/signed-operations.md) says what is
   signed, by whom, what each signature proves and what is not signed.
+- **Breaking:** the health answer is schema `3`. Under `stops`,
+  `health.socket`'s `unheld_runs` and `unread_runs` are now `unheld_entries`
+  and `unread_entries`, naming entry ids, and each listed stop names its
+  `scope` and `subject`. A reader that checks `"schema"` takes `"3"`.
+- **Breaking:** `stops lift` takes exactly one of `--run`, `--agent` and
+  `--principal`; the last two only under `signed`. A lift ends only the stops
+  of the scope and subject it names, so a lift of a run leaves a stop of its
+  agent standing.
 - The website is redrawn in one system for the landing page and the
   documentation, with a light and a dark theme a reader switches without
   script, Geist fonts served from the site, and the new headline, "Decide what
@@ -97,6 +105,15 @@ verify one.
 
 ### Added
 
+- Under `signed` a route rule for `REPEATED_DENIAL`, `DENIED_ACTION_RETRIED_ARGUMENTS`
+  or `DENIED_ACTION_RETRIED_RESOURCE` may stop the agent or the principal of
+  the finding's run, with a lifetime it must name. A plane matches the stop
+  against the agent and principal its listener serves, so on one plane it
+  refuses every call, later runs and calls with no run included, with the new
+  reason code `AGENT_OR_PRINCIPAL_STOPPED` (48, `DENY`). The tool listing is
+  not stopped, `supervise` counts the code as the plane's block and not a
+  denial, and `doctor` names each rule that stops an agent or a principal
+  ([ADR-0083](docs/adr/0083-a-finding-may-stop-an-agent-or-a-principal.md)).
 - `llms.txt` on the website: every documentation page with its address and
   summary, grouped as the index groups them, and the records.
 

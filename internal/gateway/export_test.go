@@ -2,9 +2,10 @@ package gateway
 
 import "github.com/guardana/control/internal/core/approval"
 
-// SetStops replaces p's stop source after New, which reaches a plane New
-// refuses: one that serves local runs under a stop list.
-func SetStops(p *Pipeline, s StopSource) { p.cfg.Stops = s }
+// SetStops replaces p's stop source after New, and its Listener with who,
+// which reaches a plane New refuses: one that serves local runs under a stop
+// list.
+func SetStops(p *Pipeline, s StopSource, who RunIdentity) { p.cfg.Stops, p.cfg.Listener = s, who }
 
 // BindingOf is the binding m keeps approvalID under, which a test authority
 // asks the store's Find about.

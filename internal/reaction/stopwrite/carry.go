@@ -251,7 +251,7 @@ func coveredLines(old []byte, kept map[string]bool, into reaction.RouteFormat) (
 		switch l.Kind {
 		case reaction.KindStop:
 			c = reaction.Covered{FindingID: l.Stop.FindingID, TenantID: l.Stop.TenantID, RunID: l.Stop.RunID,
-				ProjectID: l.Stop.ProjectID, CreatedAt: l.Stop.CreatedAt}
+				ProjectID: l.Stop.ProjectID, Scope: l.Stop.Scope, Subject: l.Stop.Subject, CreatedAt: l.Stop.CreatedAt}
 		case reaction.KindCovered:
 			c = l.Covered
 		default:

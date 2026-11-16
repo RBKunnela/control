@@ -1466,9 +1466,13 @@ plane refuses each, naming `route sign` or `stops init --carry`, and only
 A list under a `v1alpha3` route is version `3.0`: its header line is
 `{"envelope":…,"kind":"header","version":"3.0"}`, a `stop` and a `covered`
 line add `project_id`, `scope` and `subject`, and a `lift` line names `scope`
-and `subject` in place of `run_id` and holds a `v1alpha3` lift. This release
-serves scope `run` alone, whose subject is the line's `run_id`; a rule, a
-line or a lift of scope `agent` or `principal` is read and refused. A
+and `subject` in place of `run_id` and holds a `v1alpha3` lift. Under scope
+`run` the subject is the line's `run_id`. Scope `agent` or `principal` is
+taken on a rule only for `REPEATED_DENIAL` `2`,
+`DENIED_ACTION_RETRIED_ARGUMENTS` `1` and `DENIED_ACTION_RETRIED_RESOURCE`
+`1`, each with `expires_seconds`; on a line its subject is the agent or the
+principal, at most 256 bytes, and `run_id` is the finding's run
+([ADR-0083](adr/0083-a-finding-may-stop-an-agent-or-a-principal.md)). A
 header's digest is `sha256:` and the lowercase hex SHA-256 of its signed
 body. Every line of a list is of one version, and a `3.0` line is refused
 under a `v1alpha1` route, as a `1.0` or a `2.0` one is under a `v1alpha3`
@@ -1479,9 +1483,10 @@ route.
 | Code | Number | Verdict | When |
 | --- | --- | --- | --- |
 | `RUN_STOPPED` | 45 | `DENY` | the call's opened run, as the plane resolved it from the call's token, and its tenant are an active stop's |
-| `STOP_STATE_UNAVAILABLE` | 46 | `INDETERMINATE` | every call, while the plane cannot read or trust the stop list |
+| `AGENT_OR_PRINCIPAL_STOPPED` | 48 | `DENY` | the agent or the principal the plane's listener names, and its tenant, are an active stop's |
+| `STOP_STATE_UNAVAILABLE` | 46 | `INDETERMINATE` | every call, while the plane cannot read or trust the stop list, or names no subject for an active stop |
 
-Both are the plane's own causes, named in every mode and for every effect
+Each is one of the plane's own causes, named in every mode and for every effect
 class before an external decision point is asked, in the order
 [ADR-0046](adr/0046-a-finding-stops-one-run-through-a-signed-route.md) gives.
 A decision names no stop's entry id.

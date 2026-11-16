@@ -28,6 +28,7 @@ var minted = map[string]controlv1.Verdict{
 	codePaused:                  verdictDeny,
 	codePauseStateUnavailable:   verdictIndeterminate,
 	codeRunStopped:              verdictDeny,
+	codeSubjectStopped:          verdictDeny,
 	codeStopStateUnavailable:    verdictIndeterminate,
 	codeLockdown:                verdictDeny,
 	codeEvidenceUnavailable:     verdictIndeterminate,
@@ -111,7 +112,7 @@ func TestTheAbortCausesAreExactlyTheTable(t *testing.T) {
 // as an operator's pause or a run's stop, or as a pause or stop state the
 // plane could not read.
 func TestNoRuleMaySpellThePlaneCodes(t *testing.T) {
-	for _, code := range []string{codePaused, codePauseStateUnavailable, codeRunStopped, codeStopStateUnavailable} {
+	for _, code := range []string{codePaused, codePauseStateUnavailable, codeRunStopped, codeSubjectStopped, codeStopStateUnavailable} {
 		for _, effect := range []string{"DENY", "ALLOW"} {
 			rule := `{"id":"r","effect":"` + effect + `","reason":"` + code + `","when":{"action":{"effect":["WRITE"]}}}`
 			if _, err := policy.Sign(document(rule), key(), "k1"); err == nil {
@@ -153,14 +154,14 @@ func TestSourceSpellsOnlyRegisteredCodes(t *testing.T) {
 }
 
 // TestTheKernelSpellsNoStopCode: the kernel's production source, which spells
-// every code it emits as a literal, spells neither stop code, so only the
-// plane names a stop.
+// every code it emits as a literal, spells no stop code, so only the plane
+// names a stop.
 func TestTheKernelSpellsNoStopCode(t *testing.T) {
 	kernel := codeLiteralsIn(t, filepath.Join("..", "core"))
 	if !slices.Contains(kernel, codePolicyUnavailable) {
 		t.Fatalf("the kernel's source spells %q and not POLICY_UNAVAILABLE; the wrong source was examined", kernel)
 	}
-	for _, code := range []string{codeRunStopped, codeStopStateUnavailable} {
+	for _, code := range []string{codeRunStopped, codeSubjectStopped, codeStopStateUnavailable} {
 		if slices.Contains(kernel, code) {
 			t.Errorf("the kernel's source spells %s", code)
 		}

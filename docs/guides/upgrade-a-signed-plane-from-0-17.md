@@ -76,6 +76,13 @@ lifted run's findings are carried as covered.
 - `/healthz` gives the new serial under `stops.signed`, and a run the old list
   stopped is still refused with `RUN_STOPPED`.
 
+The health answer is schema `3` in 0.18. A script that reads `/healthz` or
+`health.socket` and checks `"schema"` takes `"3"`. Under `stops`, the
+socket's `unheld_runs` and `unread_runs` are now `unheld_entries` and
+`unread_entries` and name entry ids, since a stop can name an agent or a
+principal; each entry in `entries` names its `scope` and `subject`. The
+counts `active`, `unheld` and `unread` are unchanged.
+
 ## Roll back
 
 0.17 refuses a `reaction-route/v1alpha3` route, a `3.0` list and a backup

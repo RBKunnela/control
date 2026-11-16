@@ -21,7 +21,7 @@ import (
 // planeCase is a set of the plane's own causes to block a call, each raised
 // the way a running plane raises it.
 type planeCase struct {
-	paused, stopped, mismatch, lockdown, unknown, stopUnknown, sink, unclassified bool
+	paused, stopped, wider, mismatch, lockdown, unknown, stopUnknown, sink, unclassified bool
 }
 
 // haltOnMismatch runs a read and closes it with other bytes.
@@ -67,6 +67,13 @@ func (c planeCase) admitUnder(t *testing.T, rules []string, mut ...func(*gateway
 		h.pause.set(pause.Snapshot{})
 	}
 	switch {
+	case c.wider:
+		l := newWideList(t, "tenant-1")
+		if c.stopped {
+			l.stop(reaction.ScopeRun, "run-a")
+		}
+		l.stop(reaction.ScopeAgent, "agent-1")
+		stops.set(l.readAt(base()))
 	case c.stopped:
 		stops.set(stopped(t, "run-a"))
 	case c.stopUnknown:
@@ -82,7 +89,8 @@ func (c planeCase) admitUnder(t *testing.T, rules []string, mut ...func(*gateway
 }
 
 // planeCases is every cause alone and every pair that can stand at once: a
-// pause state is paused or unknown, never both, and so is a stop state. The
+// pause state is paused or unknown, never both, and a stop state stops the
+// run, its agent or both, or is unknown. The
 // codes and verdicts are written out, in the order the decision has to list
 // them.
 var planeCases = []struct {
@@ -125,6 +133,14 @@ var planeCases = []struct {
 	{"KE", planeCase{stopUnknown: true, sink: true}, verdictIndeterminate, []string{codeStopStateUnavailable, codeEvidenceUnavailable}},
 	{"KC", planeCase{stopUnknown: true, unclassified: true}, verdictIndeterminate, []string{codeStopStateUnavailable, codeActionUnclassified}},
 	{"EC", planeCase{sink: true, unclassified: true}, verdictIndeterminate, []string{codeEvidenceUnavailable, codeActionUnclassified}},
+	{"W", planeCase{wider: true}, verdictDeny, []string{codeSubjectStopped}},
+	{"PW", planeCase{paused: true, wider: true}, verdictDeny, []string{codePaused, codeSubjectStopped}},
+	{"SW", planeCase{stopped: true, wider: true}, verdictDeny, []string{codeRunStopped, codeSubjectStopped}},
+	{"WM", planeCase{wider: true, mismatch: true}, verdictDeny, []string{codeSubjectStopped, codeExecutedArgsMismatch}},
+	{"WL", planeCase{wider: true, lockdown: true}, verdictDeny, []string{codeSubjectStopped, codeLockdown}},
+	{"WU", planeCase{wider: true, unknown: true}, verdictDeny, []string{codeSubjectStopped, codePauseStateUnavailable}},
+	{"WE", planeCase{wider: true, sink: true}, verdictDeny, []string{codeSubjectStopped, codeEvidenceUnavailable}},
+	{"WC", planeCase{wider: true, unclassified: true}, verdictDeny, []string{codeSubjectStopped, codeActionUnclassified}},
 }
 
 // TestEveryPairOfPlaneCauses: the decision lists every cause, DENY first, its

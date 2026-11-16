@@ -116,6 +116,14 @@ func (c call) kinds() ([]controlv1.EventKind, *controlv1.Decision, *controlv1.De
 		return []controlv1.EventKind{proposed, decided, blocked},
 			decision(k, c.req, controlv1.Verdict_VERDICT_DENY, "RULE_DENY"),
 			decision(p, c.req, controlv1.Verdict_VERDICT_DENY, "RUN_STOPPED")
+	case "agent stopped":
+		return []controlv1.EventKind{proposed, decided, blocked},
+			decision(k, c.req, controlv1.Verdict_VERDICT_DENY, "RULE_DENY"),
+			decision(p, c.req, controlv1.Verdict_VERDICT_DENY, "AGENT_OR_PRINCIPAL_STOPPED")
+	case "both stopped":
+		return []controlv1.EventKind{proposed, decided, blocked},
+			decision(k, c.req, controlv1.Verdict_VERDICT_DENY, "RULE_DENY"),
+			decision(p, c.req, controlv1.Verdict_VERDICT_DENY, "RUN_STOPPED", "AGENT_OR_PRINCIPAL_STOPPED")
 	case "denied and paused":
 		return []controlv1.EventKind{proposed, decided, blocked},
 			decision(k, c.req, controlv1.Verdict_VERDICT_DENY, "RULE_DENY"),

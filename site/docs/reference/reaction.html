@@ -118,7 +118,9 @@
 <h1 id="reaction">Reaction</h1>
 <p><code>guardana-control react</code> turns a confirmed finding of <code>supervise</code> into a stop
 of the run it is about, under a route the operator signed. A plane with that
-route refuses the run's later calls <code>RUN_STOPPED</code>, and no other run's. It is
+route refuses the run's later calls <code>RUN_STOPPED</code>, and no other run's; under
+<code>signed</code> a stop of its agent or principal stops every call
+(<a href="/docs/reference/reaction-signed#a-stop-of-an-agent-or-a-principal">signed reaction</a>). It is
 <code>experimental</code>: <a href="/docs/status">status.md</a> is the inventory,
 <a href="/docs/adr/0046-a-finding-stops-one-run-through-a-signed-route">ADR-0046</a> and
 <a href="/docs/adr/0047-a-procedure-states-its-exceptions-resources-and-children">ADR-0047</a>
@@ -138,15 +140,14 @@ guardana-control stops lift --route &lt;file&gt; --public-key &lt;file&gt; --key
 <p>The route says which findings may stop a run: its tenant, and rules, each a
 procedure by id, version and digest and a supervise rule, with an optional
 lifetime for the stops it allows. Without one a stop lasts as long as its run.
-<code>route sign</code> signs it with its own key, writes the file mode <code>0644</code>,
-replacing only an earlier signed route, and prints <code>route_id</code>, <code>serial</code>,
-<code>digest</code>, <code>key_id</code> and <code>out</code>. It refuses any rule but the six whose finding
+<code>route sign</code> signs it with its own key and writes it mode <code>0644</code>,
+replacing only an earlier signed route. It refuses any rule but the six whose finding
 may stop a run, each at its version: <code>REPEATED_DENIAL</code> at <code>2</code>, and
 <code>STEP_OUTSIDE_PROCEDURE</code>, <code>DEADLINE_EXCEEDED</code>, <code>RESOURCE_OUTSIDE_RUN</code>,
 <code>DENIED_ACTION_RETRIED_ARGUMENTS</code> and <code>DENIED_ACTION_RETRIED_RESOURCE</code> at <code>1</code>.
 Every reader of a signed route refuses one naming another, but
 <code>--carry-route</code>. The route also names the lift key, whose holder alone can
-lift a stop while a plane runs, and which need not be on the plane's machine.</p>
+lift a stop; it need not be on the plane's machine.</p>
 <p>The route floor keeps, per route id, the highest serial a plane took and its
 digest, in a directory of its own that <code>policy state init --kind route</code> makes.
 At start a plane refuses a missing floor, a route below the floor's serial,
@@ -174,9 +175,8 @@ the writer's clock. Point <code>react</code> at the new list: no plane reads the
 one. <code>stops lift</code> signs a lift of one run through a line, by default the
 last complete one, and refuses a key that is not the route's lift key and a
 lift that ends no stop. <code>stops list</code> prints the
-header, each stop no lift ended and whether it is active, the covered lines
-and lifts counted and the list's use of its bounds, as a plane with a trusted
-clock would judge it.</p>
+header, each unlifted stop and whether it is active, the covered lines
+and lifts counted and the list's use of its bounds.</p>
 <h2 id="what-react-writes">What react writes</h2>
 <p><code>react</code> verifies the route before reading a finding, refuses a list whose
 header names another route, reads the findings log and looks each finding's run up in the runs directory,
@@ -239,6 +239,12 @@ consumed closes the held trail and spends the approval.</p>
 <td>the call's run has an active stop</td>
 </tr>
 <tr>
+<td><code>AGENT_OR_PRINCIPAL_STOPPED</code></td>
+<td>48</td>
+<td><code>DENY</code></td>
+<td>a stop names the plane's agent or principal</td>
+</tr>
+<tr>
 <td><code>STOP_STATE_UNAVAILABLE</code></td>
 <td>46</td>
 <td><code>INDETERMINATE</code></td>
@@ -247,9 +253,9 @@ consumed closes the held trail and spends the approval.</p>
 </tbody>
 </table>
 </div>
-<p>Both apply in every mode and to every effect class, before an external
-decision point is asked, in this order of the plane's causes: <code>PAUSED</code>,
-<code>RUN_STOPPED</code>, <code>EXECUTED_ARGS_MISMATCH</code>, <code>LOCKDOWN</code>,
+<p>Each applies in every mode and to every effect class, before an external
+decision point is asked, in the plane's cause order: <code>PAUSED</code>,
+<code>RUN_STOPPED</code>, <code>AGENT_OR_PRINCIPAL_STOPPED</code>, <code>EXECUTED_ARGS_MISMATCH</code>, <code>LOCKDOWN</code>,
 <code>PAUSE_STATE_UNAVAILABLE</code>, <code>STOP_STATE_UNAVAILABLE</code>, <code>EVIDENCE_UNAVAILABLE</code>,
 <code>ACTION_UNCLASSIFIED</code>. A decision names no stop.</p>
 <h2 id="what-reports-it">What reports it</h2>
