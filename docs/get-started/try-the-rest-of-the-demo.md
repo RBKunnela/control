@@ -28,8 +28,8 @@ bin/guardana-control pause add --provider orders --key <state>/operator/signing.
   --roster <state>/trust/roster.json --root-key <state>/trust/root.pub -- <state>/pause/pause.json
 ```
 
-It prints the entry's id. Once the plane has read its pause file, which the
-demo has it do every half second, the read
+The command prints the entry's id. Once the plane has read its pause file,
+which the demo has it do every half second, the read
 
 ```
 examples/vulnerable-mcp-agent/call.sh "$MCP" read_order '{"id":"ord-1"}'
@@ -54,8 +54,8 @@ the pause stopped is under `code="PAUSED"`
 ([reference/metrics](../reference/metrics.md)).
 
 Stop `dev` with Ctrl-C. It stops every part, gives the exporter a moment to
-ship what the spool holds, and says how much it did not. The state directory
-stays.
+ship what the spool holds, and says how much it did not ship. The state
+directory stays.
 
 ## 3. Run the scenarios
 
@@ -106,8 +106,8 @@ cat "$journal/web.jsonl"
 ## 4. Make one fail
 
 Check that a scenario fails when the plane does something else. Copy one
-with its expected verdict changed; the file's name is the
-scenario's id, so keep it:
+with its expected verdict changed; the file's name is the scenario's id, so
+keep the name:
 
 ```
 mutant=$(mktemp -d)

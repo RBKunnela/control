@@ -121,10 +121,10 @@
 </details>
 <main id="main" class="prose">
 <h1 id="try-the-demo">Try the demo</h1>
-<p>You start a plane on your machine: the gateway, placed between an agent and
-two MCP servers the agent should not be trusted with. You make the calls an
-agent would, and the plane allows a read, blocks a refund and holds an update
-until you approve it. Then you read what it recorded.</p>
+<p>You start a plane on your machine: a running gateway, placed between an
+agent and two MCP servers the agent should not be trusted with. You make the
+calls an agent would, and the plane allows a read, blocks a refund and holds
+an update until you approve it. Then you read what it recorded.</p>
 <p>Everything here is <code>experimental</code> (<a href="/docs/status#demo-servers">status.md</a>) and
 runs on the loopback only. It is a demo, not a security boundary. What the
 demo holds is in
@@ -147,8 +147,8 @@ cd guardana-control-demo_&lt;version&gt;_&lt;os&gt;_&lt;arch&gt;
 quarantined, and macOS then refuses to run the binaries, which are not
 notarized.</p>
 <p>The directory is laid out as the repository is. <code>bin/</code> holds three programs:
-the gateway, <code>guardana-control</code>, the approvals tool, which <code>dev</code> needs beside
-the gateway, and <code>vulnerable-mcp-agent</code>, the two servers the demo's
+the gateway; <code>guardana-control</code>, the approvals tool, which <code>dev</code> needs beside
+the gateway; and <code>vulnerable-mcp-agent</code>, the two servers the demo's
 configuration starts. Every command below runs from this directory.</p>
 <p>From a checkout instead, with the Go version its <code>go.mod</code> names, build the
 same three into <code>bin/</code> from the repository's root:</p>
@@ -200,11 +200,12 @@ an answer an operator signs, and the page holds no key. Run the
 <code>approve_command</code> dev printed, with the <code>approval_id</code>:</p>
 <pre><code>bin/guardana-control approvals approve --key &lt;state&gt;/operator/signing.key --inbox &lt;state&gt;/inbox -- &lt;state&gt;/approvals &lt;approval_id&gt;
 </code></pre>
+<p>The command prints the action digest it signed; check it is the one the
+page shows.</p>
 <p>Now make the same call again, with the same arguments. It runs, and its
 <code>request_id</code> is the held one's: the retry resumed the held request. An
 approval covers one exact call: the same update with other arguments would
 be held as a request of its own.</p>
-<p>It prints the action digest it signed; check it is the one the page shows.</p>
 <h2 id="6-read-the-trail">6. Read the trail</h2>
 <p>The plane's evidence, the events of each call, went through its spool, a
 directory on disk, to the collector, which appends it to the trail. Run

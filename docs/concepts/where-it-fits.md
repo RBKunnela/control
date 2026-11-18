@@ -12,7 +12,7 @@ policy before their effect, and records each decision with the policy that
 made it. It is an alpha and not a security boundary
 ([status.md](../status.md)). Three other kinds of tool are often weighed
 against it: an authorization service, a model gateway and operating-system
-isolation. Each answers a different question, and they combine.
+isolation. Each answers a different question, and each combines with this one.
 
 ## What this project does
 
@@ -27,11 +27,13 @@ isolation. Each answers a different question, and they combine.
 
 ## What it does not do
 
-- It does not authenticate a caller: every call on a listener is made by the
-  principal its configuration names ([mcp-gateway](../status.md#mcp-gateway)).
+- It does not authenticate a caller: every call on a listener is attributed to
+  the principal its configuration names
+  ([mcp-gateway](../status.md#mcp-gateway)).
 - It sees only the calls routed through it. A client that reaches a server
   directly is decided by nothing here ([channels](../reference/channels.md)).
-- It cancels nothing already running: a pause or a stop bites later calls
+- It cancels nothing already running: a pause or a stop applies to
+  later calls
   ([run-stop](../status.md#run-stop)).
 - Its evidence trail is not tamper-evident: whoever can write the trail can
   rewrite it ([signed operations](signed-operations.md#what-is-not-signed));
@@ -51,7 +53,8 @@ This project fits when the actor is an agent and the action is a tool call
 whose arguments, effect class and flow of untrusted input decide it, with an
 approval bound to one exact call and a trail of each decision.
 
-Together: a plane can ask an organization's authorization service over
+Together: a plane, one running gateway, can ask an organization's
+authorization service over
 AuthZEN about calls its policy names. The answer can veto a call the policy
 allows and never grants one, and a silent service blocks those calls in every
 mode that enforces (`experimental`,
@@ -83,9 +86,10 @@ written outside a tool call, or a connection that does not cross the plane is
 not decided by it; the hook bridge lists such gaps for its runtime
 ([hook-bridge](../status.md#hook-bridge)).
 
-Together: isolation makes the plane the only path to the servers and hosts
-that matter, and the plane decides which calls on that path run. An egress
-proxy's log then shows the hosts reached that no declared path names
+Together: isolation can make the plane the only path to the servers and hosts
+that matter, and the plane decides which calls on that path run. Imported
+as observations, an egress proxy's log then shows the hosts reached that no
+declared path names
 (`experimental`,
 [watch an egress proxy](../guides/watch-an-egress-proxy.md)), and the
 gateway image runs in a container

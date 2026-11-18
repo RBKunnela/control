@@ -8,8 +8,8 @@ covers: [cmd/guardana-gateway/health.go, cmd/guardana-gateway/health_stops.go, c
 # Troubleshoot a plane
 
 Each entry starts from what you see, names the cause, and gives the command
-that shows it. What the plane does when a part it depends on fails, part by
-part, is on [failure modes](../reference/failure-modes.md). The gateway is
+that shows it. [Failure modes](../reference/failure-modes.md) says, part by
+part, what the plane does when a part it depends on fails. The gateway is
 `experimental` ([mcp-gateway](../status.md#mcp-gateway)).
 
 ## Prerequisites
@@ -52,12 +52,12 @@ under the same policy bundle, before it expires
 ([approvals](../concepts/approvals-and-the-held-call.md#the-states-of-a-held-request)):
 
 - No retry came: nothing runs until the agent sends the call again.
-- The retry's arguments differ: it is a new request, held anew with a new
-  `approval_id`.
+- The retry's arguments differ: it is a new request, decided anew; a hold
+  gives it a new `approval_id`.
 - The approval expired first (`approvals.ttl`, `15m` by default): the held
   trail closes `APPROVAL_EXPIRED`.
 - The bundle went stale or was replaced: the retry is blocked
-  `POLICY_STALE`, and one under the newer bundle is held anew.
+  `POLICY_STALE`, and one under the newer bundle is decided anew.
 - The plane restarted: a lost hold never runs; with a hold journal the next
   start closes an approved one `APPROVAL_NOT_RESUMED`.
 - The approved call already ran once: a later identical call is refused
@@ -88,11 +88,11 @@ curl -s http://127.0.0.1:8081/healthz | jq '{status, freshness: .policy.freshnes
 curl -s http://127.0.0.1:8081/metrics | grep policy_refresh_refused_total
 ```
 
-The counter names why each poll refused the bundle or statement. Rerun
-`policy renew` and copy the statement
+The counter names why each poll refused the bundle or statement. If the
+policy is not confirmed, rerun `policy renew` and copy the statement
 ([a policy that is not confirmed](../reference/failure-modes.md#a-policy-that-is-not-confirmed));
-start a new stop list with `stops init --carry` and restart
-([reaction](../reference/reaction.md)).
+if the stop list is degraded, start a new one with `stops init --carry` and
+restart ([reaction](../reference/reaction.md)).
 
 ## A signed plane will not start
 

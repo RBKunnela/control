@@ -14,8 +14,8 @@ your own: a plane decides an agent's calls under an opened run, `supervise`
 compares the run with its procedure, and `react` turns a confirmed finding
 into a stop that refuses the run's next call and no other run's. This guide
 does by hand what [examples/refund-supervision/](../../examples/refund-supervision/)
-does under its `0.2` procedure. Every command here is `experimental`
-([status.md](../status.md)). How the parts fit is in
+does under its `0.2` procedure. The run, supervision and stop commands here are
+`experimental` ([status.md](../status.md)). How the parts fit is in
 [observations-coverage-and-supervision.md](../concepts/observations-coverage-and-supervision.md).
 
 ## Prerequisites
@@ -124,7 +124,7 @@ guardana-gateway collect --listen "unix://$PWD/state/collect.sock" --dir trail/p
 
 The collector's page is
 [watch a plane without a collector](watch-a-plane-without-a-collector.md).
-Open both runs as step 5 shows first. Then check the configuration; every
+First open both runs, as step 5 shows. Then check the configuration; every
 check line should begin `ok`:
 
 ```
@@ -160,8 +160,8 @@ from the ones on this page; use yours.
 
 ### 6. Make the agent's calls
 
-Here `curl` stands in for the agent and presents the run's token. Define it
-in the terminal you opened the runs in:
+Here `curl` stands in for the agent and presents the run's token. Define
+`call` and `TOKEN` in the terminal you opened the runs in:
 
 ```
 call() {

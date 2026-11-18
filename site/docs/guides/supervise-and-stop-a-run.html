@@ -127,8 +127,8 @@ your own: a plane decides an agent's calls under an opened run, <code>supervise<
 compares the run with its procedure, and <code>react</code> turns a confirmed finding
 into a stop that refuses the run's next call and no other run's. This guide
 does by hand what <a href="https://github.com/guardana/control/tree/main/examples/refund-supervision">examples/refund-supervision/</a>
-does under its <code>0.2</code> procedure. Every command here is <code>experimental</code>
-(<a href="/docs/status">status.md</a>). How the parts fit is in
+does under its <code>0.2</code> procedure. The run, supervision and stop commands here are
+<code>experimental</code> (<a href="/docs/status">status.md</a>). How the parts fit is in
 <a href="/docs/concepts/observations-coverage-and-supervision">observations-coverage-and-supervision.md</a>.</p>
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
@@ -212,7 +212,7 @@ in a terminal of its own:</p>
 </code></pre>
 <p>The collector's page is
 <a href="/docs/guides/watch-a-plane-without-a-collector">watch a plane without a collector</a>.
-Open both runs as step 5 shows first. Then check the configuration; every
+First open both runs, as step 5 shows. Then check the configuration; every
 check line should begin <code>ok</code>:</p>
 <pre><code>$ guardana-gateway doctor --config plane.yaml
 …
@@ -236,8 +236,8 @@ token: run-9d9ad942e8427a0e36f6abd3fa8ced08.2sz2oVvp-yKBaXtfq47Gb133ucR_keAinwKS
 <p>Run it again for the second run. Your ids, tokens and approval id differ
 from the ones on this page; use yours.</p>
 <h3 id="6-make-the-agents-calls">6. Make the agent's calls</h3>
-<p>Here <code>curl</code> stands in for the agent and presents the run's token. Define it
-in the terminal you opened the runs in:</p>
+<p>Here <code>curl</code> stands in for the agent and presents the run's token. Define
+<code>call</code> and <code>TOKEN</code> in the terminal you opened the runs in:</p>
 <pre><code>call() {
   curl -sS http://127.0.0.1:8080 -H &#34;Run-Token: $TOKEN&#34; \
     -H &#39;Content-Type: application/json&#39; -H &#39;Accept: application/json, text/event-stream&#39; \

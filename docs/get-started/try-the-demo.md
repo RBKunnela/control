@@ -7,10 +7,10 @@ covers: [examples/vulnerable-mcp-agent/**]
 
 # Try the demo
 
-You start a plane on your machine: the gateway, placed between an agent and
-two MCP servers the agent should not be trusted with. You make the calls an
-agent would, and the plane allows a read, blocks a refund and holds an update
-until you approve it. Then you read what it recorded.
+You start a plane on your machine: a running gateway, placed between an
+agent and two MCP servers the agent should not be trusted with. You make the
+calls an agent would, and the plane allows a read, blocks a refund and holds
+an update until you approve it. Then you read what it recorded.
 
 Everything here is `experimental` ([status.md](../status.md#demo-servers)) and
 runs on the loopback only. It is a demo, not a security boundary. What the
@@ -40,8 +40,8 @@ quarantined, and macOS then refuses to run the binaries, which are not
 notarized.
 
 The directory is laid out as the repository is. `bin/` holds three programs:
-the gateway, `guardana-control`, the approvals tool, which `dev` needs beside
-the gateway, and `vulnerable-mcp-agent`, the two servers the demo's
+the gateway; `guardana-control`, the approvals tool, which `dev` needs beside
+the gateway; and `vulnerable-mcp-agent`, the two servers the demo's
 configuration starts. Every command below runs from this directory.
 
 From a checkout instead, with the Go version its `go.mod` names, build the
@@ -124,12 +124,13 @@ an answer an operator signs, and the page holds no key. Run the
 bin/guardana-control approvals approve --key <state>/operator/signing.key --inbox <state>/inbox -- <state>/approvals <approval_id>
 ```
 
+The command prints the action digest it signed; check it is the one the
+page shows.
+
 Now make the same call again, with the same arguments. It runs, and its
 `request_id` is the held one's: the retry resumed the held request. An
 approval covers one exact call: the same update with other arguments would
 be held as a request of its own.
-
-It prints the action digest it signed; check it is the one the page shows.
 
 ## 6. Read the trail
 

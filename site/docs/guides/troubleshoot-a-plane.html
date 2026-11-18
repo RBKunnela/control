@@ -122,8 +122,8 @@
 <main id="main" class="prose">
 <h1 id="troubleshoot-a-plane">Troubleshoot a plane</h1>
 <p>Each entry starts from what you see, names the cause, and gives the command
-that shows it. What the plane does when a part it depends on fails, part by
-part, is on <a href="/docs/reference/failure-modes">failure modes</a>. The gateway is
+that shows it. <a href="/docs/reference/failure-modes">Failure modes</a> says, part by
+part, what the plane does when a part it depends on fails. The gateway is
 <code>experimental</code> (<a href="/docs/status#mcp-gateway">mcp-gateway</a>).</p>
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
@@ -156,12 +156,12 @@ under the same policy bundle, before it expires
 (<a href="/docs/concepts/approvals-and-the-held-call#the-states-of-a-held-request">approvals</a>):</p>
 <ul>
 <li>No retry came: nothing runs until the agent sends the call again.</li>
-<li>The retry's arguments differ: it is a new request, held anew with a new
-<code>approval_id</code>.</li>
+<li>The retry's arguments differ: it is a new request, decided anew; a hold
+gives it a new <code>approval_id</code>.</li>
 <li>The approval expired first (<code>approvals.ttl</code>, <code>15m</code> by default): the held
 trail closes <code>APPROVAL_EXPIRED</code>.</li>
 <li>The bundle went stale or was replaced: the retry is blocked
-<code>POLICY_STALE</code>, and one under the newer bundle is held anew.</li>
+<code>POLICY_STALE</code>, and one under the newer bundle is decided anew.</li>
 <li>The plane restarted: a lost hold never runs; with a hold journal the next
 start closes an approved one <code>APPROVAL_NOT_RESUMED</code>.</li>
 <li>The approved call already ran once: a later identical call is refused
@@ -185,11 +185,11 @@ is unknown answers <code>503</code> instead.</p>
 <pre><code>curl -s http://127.0.0.1:8081/healthz | jq &#39;{status, freshness: .policy.freshness, stops_degraded: .stops.degraded}&#39;
 curl -s http://127.0.0.1:8081/metrics | grep policy_refresh_refused_total
 </code></pre>
-<p>The counter names why each poll refused the bundle or statement. Rerun
-<code>policy renew</code> and copy the statement
+<p>The counter names why each poll refused the bundle or statement. If the
+policy is not confirmed, rerun <code>policy renew</code> and copy the statement
 (<a href="/docs/reference/failure-modes#a-policy-that-is-not-confirmed">a policy that is not confirmed</a>);
-start a new stop list with <code>stops init --carry</code> and restart
-(<a href="/docs/reference/reaction">reaction</a>).</p>
+if the stop list is degraded, start a new one with <code>stops init --carry</code> and
+restart (<a href="/docs/reference/reaction">reaction</a>).</p>
 <h2 id="a-signed-plane-will-not-start">A signed plane will not start</h2>
 <p><strong>Symptom.</strong> Under <code>approvals.authority: signed</code>, <code>run</code> exits naming a key and
 <code>under the signed authority the plane's own account may not be able to change it</code>, or naming the environment.</p>

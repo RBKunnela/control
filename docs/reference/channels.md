@@ -7,9 +7,9 @@ covers: [internal/channel/**, adapters/mcp/**, adapters/enforce/**, internal/hoo
 
 # Channels
 
-One row per channel the plane has today. Each is `experimental`; its label
+One row per channel this project has today. Each is `experimental`; its label
 and its limits are on its row of [status.md](../status.md), linked from the
-first column. The detail stays where it is: what a record holds on
+first column. Each detail is on its own page: what a record holds on
 [privacy](../concepts/privacy.md), what each declared path got on
 [coverage](coverage.md), and the MCP methods on
 [MCP enforcement coverage](mcp-coverage.md).
@@ -30,7 +30,7 @@ first column. The detail stays where it is: what a record holds on
   and span id, against a whole evidence export only
   ([coverage-map](../status.md#coverage-map)).
 - A call around every channel is seen by none of them. The
-  [threat model](../concepts/threat-model.md) says who that leaves out of
-  reach.
+  [threat model](../concepts/threat-model.md) says who can make
+  such a call.
 - Channels not built yet: [more channels](../status.md#more-channels) and
   [host process events](../status.md#host-process-events), both `planned`.

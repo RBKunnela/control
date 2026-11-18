@@ -136,8 +136,8 @@ of <code>--global</code>:</p>
 <pre><code>bin/guardana-control pause add --provider orders --key &lt;state&gt;/operator/signing.key \
   --roster &lt;state&gt;/trust/roster.json --root-key &lt;state&gt;/trust/root.pub -- &lt;state&gt;/pause/pause.json
 </code></pre>
-<p>It prints the entry's id. Once the plane has read its pause file, which the
-demo has it do every half second, the read</p>
+<p>The command prints the entry's id. Once the plane has read its pause file,
+which the demo has it do every half second, the read</p>
 <pre><code>examples/vulnerable-mcp-agent/call.sh &#34;$MCP&#34; read_order &#39;{&#34;id&#34;:&#34;ord-1&#34;}&#39;
 </code></pre>
 <p>is blocked with <code>PAUSED</code>, although the policy allows it. Run <code>pause remove</code>
@@ -153,8 +153,8 @@ the same call runs again.</p>
 the pause stopped is under <code>code=&quot;PAUSED&quot;</code>
 (<a href="/docs/reference/metrics">reference/metrics</a>).</p>
 <p>Stop <code>dev</code> with Ctrl-C. It stops every part, gives the exporter a moment to
-ship what the spool holds, and says how much it did not. The state directory
-stays.</p>
+ship what the spool holds, and says how much it did not ship. The state
+directory stays.</p>
 <h2 id="3-run-the-scenarios">3. Run the scenarios</h2>
 <p>Each scenario is a JSON file of calls and operator steps, and for each call
 the answer, the decision and the trail the plane must produce
@@ -224,8 +224,8 @@ cat &#34;$journal/web.jsonl&#34;
 <p><code>web.jsonl</code> lists the <code>fetch_page</code> call and no <code>send_mail</code>.</p>
 <h2 id="4-make-one-fail">4. Make one fail</h2>
 <p>Check that a scenario fails when the plane does something else. Copy one
-with its expected verdict changed; the file's name is the
-scenario's id, so keep it:</p>
+with its expected verdict changed; the file's name is the scenario's id, so
+keep the name:</p>
 <pre><code>mutant=$(mktemp -d)
 sed &#39;s/&#34;verdict&#34;: &#34;ALLOW&#34;/&#34;verdict&#34;: &#34;DENY&#34;/&#39; examples/vulnerable-mcp-agent/scenarios/allow.json &gt; &#34;$mutant/allow.json&#34;
 bin/guardana-gateway dev --decision-point=silent --config examples/vulnerable-mcp-agent/demo.yaml --policy examples/vulnerable-mcp-agent/policy.json --scenario &#34;$mutant/allow.json&#34;

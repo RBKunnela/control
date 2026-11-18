@@ -126,7 +126,7 @@ policy before their effect, and records each decision with the policy that
 made it. It is an alpha and not a security boundary
 (<a href="/docs/status">status.md</a>). Three other kinds of tool are often weighed
 against it: an authorization service, a model gateway and operating-system
-isolation. Each answers a different question, and they combine.</p>
+isolation. Each answers a different question, and each combines with this one.</p>
 <h2 id="what-this-project-does">What this project does</h2>
 <div class="tbl">
 <table>
@@ -166,11 +166,13 @@ isolation. Each answers a different question, and they combine.</p>
 </div>
 <h2 id="what-it-does-not-do">What it does not do</h2>
 <ul>
-<li>It does not authenticate a caller: every call on a listener is made by the
-principal its configuration names (<a href="/docs/status#mcp-gateway">mcp-gateway</a>).</li>
+<li>It does not authenticate a caller: every call on a listener is attributed to
+the principal its configuration names
+(<a href="/docs/status#mcp-gateway">mcp-gateway</a>).</li>
 <li>It sees only the calls routed through it. A client that reaches a server
 directly is decided by nothing here (<a href="/docs/reference/channels">channels</a>).</li>
-<li>It cancels nothing already running: a pause or a stop bites later calls
+<li>It cancels nothing already running: a pause or a stop applies to
+later calls
 (<a href="/docs/status#run-stop">run-stop</a>).</li>
 <li>Its evidence trail is not tamper-evident: whoever can write the trail can
 rewrite it (<a href="/docs/concepts/signed-operations#what-is-not-signed">signed operations</a>);
@@ -187,7 +189,8 @@ answer.</p>
 <p>This project fits when the actor is an agent and the action is a tool call
 whose arguments, effect class and flow of untrusted input decide it, with an
 approval bound to one exact call and a trail of each decision.</p>
-<p>Together: a plane can ask an organization's authorization service over
+<p>Together: a plane, one running gateway, can ask an organization's
+authorization service over
 AuthZEN about calls its policy names. The answer can veto a call the policy
 allows and never grants one, and a silent service blocks those calls in every
 mode that enforces (<code>experimental</code>,
@@ -211,9 +214,10 @@ question is what the agent's process may touch at all.</p>
 written outside a tool call, or a connection that does not cross the plane is
 not decided by it; the hook bridge lists such gaps for its runtime
 (<a href="/docs/status#hook-bridge">hook-bridge</a>).</p>
-<p>Together: isolation makes the plane the only path to the servers and hosts
-that matter, and the plane decides which calls on that path run. An egress
-proxy's log then shows the hosts reached that no declared path names
+<p>Together: isolation can make the plane the only path to the servers and hosts
+that matter, and the plane decides which calls on that path run. Imported
+as observations, an egress proxy's log then shows the hosts reached that no
+declared path names
 (<code>experimental</code>,
 <a href="/docs/guides/watch-an-egress-proxy">watch an egress proxy</a>), and the
 gateway image runs in a container
