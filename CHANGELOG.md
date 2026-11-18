@@ -11,6 +11,35 @@ verify one.
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-11-18
+
+Upgrading from 0.17 changes three things on every plane, and more under
+`approvals.authority: signed`. On every plane the health answer is schema
+`3`, and `health.socket` names each stop's `scope` and `subject`
+(`unheld_entries` and `unread_entries` replace `unheld_runs` and
+`unread_runs`); `stops lift` takes exactly one of `--run`, `--agent` and
+`--principal`; and a state backup is manifest `0.2`, which 0.17 refuses when
+it is signed, so keep a backup taken by 0.17 for 0.17. Under `signed` a plane
+needs a `plane_id` and serves one tenant, and its pause file, route, stop
+list and lifts name the plane: with the plane stopped, sign the pause file
+again as version `4`, sign the route as `reaction-route/v1alpha3` at a new
+path and carry the old stop list into a new directory
+([upgrade a plane from 0.17](docs/guides/upgrade-a-plane-from-0-17.md)).
+Under `signed`, `state backup` and `state restore` refuse a configuration
+key the environment sets, and a new stop list is written `0640`, so a plane
+on an account of its own can read it.
+
+New: under `signed` a route rule may stop the agent or the principal of a
+confirmed finding's run, matched against the agent and principal the plane's
+listener is configured with; no listener authenticator is wired, so this is
+not a stop of an authenticated user. Under `signed`, `approvals list` works
+from an operator's account. The website is redrawn, the status page groups
+its rows under stable ids, and the 1.0 bar no longer waits for people from
+outside the project
+([ADR-0085](docs/adr/0085-the-1-0-bar-is-met-by-own-evidence-and-what-needs-outside-people-stays-not-met.md)).
+The hook profile, qualified on two releases of its runtime, was not
+qualified again for this release.
+
 ### Changed
 
 - **Breaking:** under `approvals.authority: signed` a plane needs `plane_id`, an
@@ -2620,7 +2649,8 @@ yet.
   independence of this project from Guardana
   ([ADR-0024](docs/adr/0024-control-and-guardana-are-independent.md)).
 
-[Unreleased]: https://github.com/guardana/control/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/guardana/control/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/guardana/control/releases/tag/v0.18.0
 [0.17.0]: https://github.com/guardana/control/releases/tag/v0.17.0
 [0.16.0]: https://github.com/guardana/control/releases/tag/v0.16.0
 [0.15.0]: https://github.com/guardana/control/releases/tag/v0.15.0

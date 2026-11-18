@@ -128,7 +128,33 @@
 <a href="/docs/adr/0008-branching-and-release-policy">ADR-0008</a>. Each release is built,
 signed and attested from its tag; <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a> shows how to
 verify one.</p>
-<h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.17.0...HEAD">Unreleased</a></h2>
+<h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.18.0...HEAD">Unreleased</a></h2>
+<h2 id="0180---2026-11-18"><a href="https://github.com/guardana/control/releases/tag/v0.18.0">0.18.0</a> - 2026-11-18</h2>
+<p>Upgrading from 0.17 changes three things on every plane, and more under
+<code>approvals.authority: signed</code>. On every plane the health answer is schema
+<code>3</code>, and <code>health.socket</code> names each stop's <code>scope</code> and <code>subject</code>
+(<code>unheld_entries</code> and <code>unread_entries</code> replace <code>unheld_runs</code> and
+<code>unread_runs</code>); <code>stops lift</code> takes exactly one of <code>--run</code>, <code>--agent</code> and
+<code>--principal</code>; and a state backup is manifest <code>0.2</code>, which 0.17 refuses when
+it is signed, so keep a backup taken by 0.17 for 0.17. Under <code>signed</code> a plane
+needs a <code>plane_id</code> and serves one tenant, and its pause file, route, stop
+list and lifts name the plane: with the plane stopped, sign the pause file
+again as version <code>4</code>, sign the route as <code>reaction-route/v1alpha3</code> at a new
+path and carry the old stop list into a new directory
+(<a href="/docs/guides/upgrade-a-plane-from-0-17">upgrade a plane from 0.17</a>).
+Under <code>signed</code>, <code>state backup</code> and <code>state restore</code> refuse a configuration
+key the environment sets, and a new stop list is written <code>0640</code>, so a plane
+on an account of its own can read it.</p>
+<p>New: under <code>signed</code> a route rule may stop the agent or the principal of a
+confirmed finding's run, matched against the agent and principal the plane's
+listener is configured with; no listener authenticator is wired, so this is
+not a stop of an authenticated user. Under <code>signed</code>, <code>approvals list</code> works
+from an operator's account. The website is redrawn, the status page groups
+its rows under stable ids, and the 1.0 bar no longer waits for people from
+outside the project
+(<a href="/docs/adr/0085-the-1-0-bar-is-met-by-own-evidence-and-what-needs-outside-people-stays-not-met">ADR-0085</a>).
+The hook profile, qualified on two releases of its runtime, was not
+qualified again for this release.</p>
 <h3 id="changed">Changed</h3>
 <ul>
 <li><strong>Breaking:</strong> under <code>approvals.authority: signed</code> a plane needs <code>plane_id</code>, an
