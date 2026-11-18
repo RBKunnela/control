@@ -16,8 +16,10 @@ const (
 	nightlyWorkflowPath = ".github/workflows/nightly.yml"
 	nightlyFuzzJob      = "fuzz"
 	nightlyFuzzCommand  = "/usr/bin/env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make fuzz-smoke"
-	// nightlyReportIf is the report job's condition: a red scheduled night.
-	nightlyReportIf = "${{ failure() && github.event_name == 'schedule' }}"
+	// nightlyReportIf is the report job's condition: a red scheduled night,
+	// a job cancelled by its timeout or for want of a runner included.
+	nightlyReportIf = "${{ !cancelled() && github.event_name == 'schedule' && " +
+		"(contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}"
 	// gateCommitFuzzLine is the line of scripts/gate-commit.sh that fuzzes
 	// the release commit's archive.
 	gateCommitFuzzLine = `(cd "${tree}" && "${clean[@]}" make GO=go fuzz-smoke) >>"${log}" 2>&1 || rc=$?`

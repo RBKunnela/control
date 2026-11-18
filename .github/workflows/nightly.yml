@@ -77,8 +77,10 @@ jobs:
     name: Report a red night
     needs: [race, fuzz]
     # Only a scheduled run speaks for main; a pull request's or a manual run's
-    # failure is read where it was started.
-    if: ${{ failure() && github.event_name == 'schedule' }}
+    # failure is read where it was started. A job that ran past its timeout or
+    # never got a runner ends cancelled, and failure() leaves it out, yet that
+    # night is red too.
+    if: ${{ !cancelled() && github.event_name == 'schedule' && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -96,7 +98,7 @@ jobs:
           title="The nightly run is red"
           body="On ${HEAD_SHA} the race tests under processor load ended ${RACE} and the fuzzing ${FUZZ}: ${RUN_URL}
 
-          A failure here is reproduced and fixed like any defect; it is not rerun until it passes."
+          A failure here is reproduced and fixed like any defect; it is not rerun until it passes. A job that ended cancelled ran past its timeout or never got a runner; its run says which."
           open="$(gh issue list --state open --search "in:title \"${title}\"" --json number,title \
             --jq "[.[] | select(.title == \"${title}\")][0].number // empty")"
           if [[ -n "${open}" ]]; then
