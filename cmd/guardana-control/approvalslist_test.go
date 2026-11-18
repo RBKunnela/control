@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/guardana/control/internal/approvals"
 	"github.com/guardana/control/internal/brand"
 )
 
@@ -162,6 +163,21 @@ func TestListRefusesADirectoryThatIsNotAStore(t *testing.T) {
 				t.Errorf("stderr = %q, want a refusal under the command's own name", line)
 			}
 		})
+	}
+}
+
+// TestListRefusesADirectoryAGroupMayWrite: a listing that reads a directory
+// another account may own still refuses one a group may write, whose records
+// anyone in that group could have put there.
+func TestListRefusesADirectoryAGroupMayWrite(t *testing.T) {
+	dir, p := newStore(t)
+	hold(t, p, waitingID, clockNow().Add(time.Hour))
+	if err := os.Chmod(dir, 0o770); err != nil { //nolint:gosec // G302: the group-writable directory under test
+		t.Fatal(err)
+	}
+	code, stdout, stderr := invoke(t, "approvals", "list", dir)
+	if code != exitFail || stdout != "" || !strings.Contains(stderr, string(approvals.ErrPermissions)) {
+		t.Errorf("approvals list over a group-writable directory: %d, %q, %q; want it refused", code, stdout, stderr)
 	}
 }
 

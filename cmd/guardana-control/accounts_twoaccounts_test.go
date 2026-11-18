@@ -188,6 +188,8 @@ func TestHelperActsAsAnotherAccount(t *testing.T) {
 			os.Exit(2)
 		}
 		os.Exit(holdApprovals(dir))
+	case "read-stops":
+		os.Exit(readStopsAsPlane(raw))
 	}
 	fmt.Fprintf(os.Stderr, "no role %q\n", role)
 	os.Exit(2)

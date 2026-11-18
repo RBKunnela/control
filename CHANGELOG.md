@@ -48,9 +48,10 @@ verify one.
   list `3.0` with a `reaction-list-header/3.0` header, and a lift
   `reaction-lift/v1alpha3`; each names the plane's `plane_id`, and a plane
   takes one only when the id is its own. A stop, covered or lift line names a
-  `scope` and a `subject`; this release serves scope `run`, whose subject is
-  the run. A plane refuses the `v1alpha2` route and the `2.0` list 0.17 signed
-  at start, naming the way forward, and raises no floor. With the plane
+  `scope` and a `subject`: the run under scope `run`, the agent or the
+  principal under scope `agent` or `principal`. A plane refuses the
+  `v1alpha2` route and the `2.0` list 0.17 signed at start, naming the way
+  forward, and raises no floor. With the plane
   stopped, as an admin of the roster, edit the route document to
   `reaction-route/v1alpha3`, add `plane_id` and raise its serial, then sign it
   at a new path with `guardana-control route sign`, since a signed route names
@@ -73,10 +74,11 @@ verify one.
 - The 1.0 release bar no longer waits for people from outside the project
   ([ADR-0085](docs/adr/0085-the-1-0-bar-is-met-by-own-evidence-and-what-needs-outside-people-stays-not-met.md)).
   An outside threat-model review, trials with new users and new approvers'
-  understanding stay written and are stated as not met; the rest of the bar
-  is met by the project's own evidence, from runs whose manifest is fixed
-  before they start. Each task the bar names carries its disposition, and
-  `make docs-check` refuses one that carries none or another word. The
+  understanding of what they approve stay in the bar, stated as not met; the
+  rest of the bar is met by the project's own evidence, from runs whose
+  manifest is fixed before they start. Each task the bar names carries its
+  disposition, and `make docs-check` refuses one that carries none or
+  another word. The
   backlog gains B39 to B43 (a run drawn as a graph beside a rule editor, a
   mapping to the published risk lists, approvals that need more than one
   operator, usage and cost as observations, a rebuild from the public pages
@@ -116,6 +118,33 @@ verify one.
   ([ADR-0083](docs/adr/0083-a-finding-may-stop-an-agent-or-a-principal.md)).
 - `llms.txt` on the website: every documentation page with its address and
   summary, grouped as the index groups them, and the records.
+
+### Fixed
+
+- Under `signed` a new stop list is written `0640`, so a plane on an account
+  of its own reads it through the group of the list's directory: the stop
+  writers' directory, mode `2750`, in a group that holds the plane's account
+  alone. It was `0600`, which such a plane could not read, so it refused
+  every call with `STOP_STATE_UNAVAILABLE`. `react` and `stops lift` keep
+  the mode, and the carry of the 0.18 upgrade writes its new list `0640`
+  ([signed reaction](docs/reference/reaction-signed.md)).
+- `approvals list` reads an approvals directory another account owns and
+  writes nothing, so an operator under `signed` lists the plane's directory
+  from their own account; it refused that directory as another account's. It
+  still refuses one a group or others may write.
+- Under `signed`, `runs open --key` keeps the setgid bit `records/` takes
+  from a setgid runs directory, so the records take `records/`'s group and a
+  plane in that group reads them. The bit was cleared, so the records took
+  the operator's primary group, which such a plane could not read. The
+  operator must be in that group: Linux drops the bit of a `chmod` by an
+  account outside it, and `runs open` then refuses. Over a layout made
+  before, the operator, in that group, runs `chmod g+s records` and gives the
+  records already there `records/`'s group with `chgrp`.
+- The console no longer says an approved record past its expiry expired
+  before a retry used it: it cannot see whether a retry spent it first, and
+  says so. An OpenTelemetry or egress log import whose source fails with an
+  error wrapping `io.EOF`, or one matching a full read buffer, now fails,
+  where it ended as a complete import.
 
 ### Documentation
 

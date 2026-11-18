@@ -166,8 +166,8 @@ format character or bytes that are not UTF-8 is printed as a quoted Go string.</
 <p><code>policy lint</code>, <code>policy test</code> and <code>policy explain</code> (<a href="/docs/reference/policy-explain">policy-explain.md</a>) read a document without a plane, and
 <code>policy keygen</code> and <code>policy sign</code> make the key and the signed bundle a plane
 loads: <a href="/docs/guides/write-and-test-a-policy">guides/write-and-test-a-policy.md</a>
-is their page. The <code>approvals</code> commands read and answer the records under an
-approvals directory, from outside the gateway process.</p>
+is their page. The <code>approvals</code> commands read and answer an approvals
+directory's records.</p>
 <p><code>policy renew</code> verifies the bundle against its public key, raises a signer's
 floor, then writes the statement it signs with the freshness key. <code>policy state init</code> and <code>reset</code> make and lower floors
 (<a href="/docs/adr/0038-a-signed-freshness-statement-and-a-serial-floor">ADR-0038</a>);
@@ -203,9 +203,10 @@ through the operators' group (<code>0750</code> directory, <code>0640</code> fil
 run as the plane's account it warns. <code>--approver-id</code> is a claim, refused for
 a signed hold.</p>
 <p><code>approvals list</code> prints, for each record, its state, both digests and the
-readable fields of the projection the plane wrote at hold time, which are
-not bound to the digest; the listing says so. A listing the store
-reports incomplete exits 1 and names what it could not read.</p>
+readable fields of the projection the plane wrote at hold time, not bound
+to the digest; the listing says so. An incomplete listing exits 1 naming
+what it could not read. Writing nothing, it lists the plane's directory from
+a signed operator's account.</p>
 <p>A claim is written whether or not a
 plane runs, and exit 0 either way: the record waits for the next
 plane. Where no plane holds the directory they say so on stderr: no held

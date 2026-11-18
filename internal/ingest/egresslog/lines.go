@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"hash"
 	"io"
 )
@@ -38,8 +37,8 @@ func (l *lines) next() (line []byte, tooLong, ok bool, err error) {
 	var buf []byte
 	for {
 		chunk, err := l.br.ReadSlice('\n')
-		if err != nil && !errors.Is(err, bufio.ErrBufferFull) {
-			if errors.Is(err, io.EOF) {
+		if err != nil && err != bufio.ErrBufferFull { //nolint:errorlint // identity: ReadSlice returns the sentinel itself; a source error matching it is a failure
+			if err == io.EOF {
 				return nil, false, false, nil
 			}
 			return nil, false, false, err

@@ -181,7 +181,7 @@ root's directories of mode <code>0755</code> pass.</p>
 </tr>
 <tr>
 <td>the route and the stop list</td>
-<td>as <a href="/docs/reference/reaction-signed">reaction under signed</a> says</td>
+<td>the route <code>0644</code>, as <code>route sign</code> writes it, in a directory the plane's account cannot write; <code>reaction.stops</code> the stop writers', in a group of the plane's account alone, mode <code>2750</code>, where they write the list <code>0640</code> (<a href="/docs/reference/reaction-signed">reaction under signed</a>)</td>
 </tr>
 </tbody>
 </table>
@@ -197,8 +197,8 @@ guardana-control policy keygen --out op      # each operator
 <p>Each prints <code>key_id</code> and <code>public_key</code>. A command refuses a private key file
 another account owns, or one the group or others have any permission on, so
 each key stays in its holder's account. The root and operator keys must
-differ from the policy, freshness and route keys: the plane refuses such a
-root, and a roster naming such a key or the root.
+differ from the policy, freshness and route keys: the plane refuses a root
+that is one of them, and a roster naming one of them or the root.
 Copy <code>root/signing.pub</code> to <code>/etc/guardana/root.pub</code>.</p>
 <h3 id="2-sign-the-roster">2. Sign the roster</h3>
 <p>Write the source with one entry per operator key, <code>level</code> being <code>read</code>,
@@ -269,7 +269,7 @@ counts.</p>
 <p>To revoke a key, leave its entry out and sign at the next serial. A plane
 that never reads the new roster, because it is not installed or is withheld,
 trusts the old one until it expires: a short <code>--valid-for</code> bounds how long a
-revoked key can still sign.</p>
+revoked key's signature still counts.</p>
 <h2 id="verify">Verify</h2>
 <p><code>doctor</code> prints an <code>ok</code> line for <code>trust</code> naming the plane, its tenant, the
 roster's id and serial, how many keys it names and the floor's serial. A

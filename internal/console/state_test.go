@@ -232,7 +232,7 @@ func TestEachRecordSaysWhatItCan(t *testing.T) {
 		{"approved with no plane", tableEntry(approvedState, time.Minute, "duty-officer", tableView()), false,
 			"Approved by duty-officer. No plane holds this directory, so the call it was held for will not run.", false},
 		{"approved and expired", tableEntry(approvedState, 0, "duty-officer", tableView()), true,
-			"Approved by duty-officer. It expired before a retry used it.", false},
+			"Approved by duty-officer. It expired; this page cannot see whether a retry spent it first.", false},
 		{"rejected", tableEntry(rejectedState, time.Minute, "duty-officer", tableView()), true,
 			"Rejected by duty-officer.", false},
 		{"rejected by nobody named", tableEntry(rejectedState, time.Minute, "", tableView()), true,

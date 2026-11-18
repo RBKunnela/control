@@ -18,9 +18,15 @@ import (
 	"github.com/guardana/control/internal/reaction/stoplist"
 )
 
-// fileMode is the mode a new list is written with; a plane refuses a list the
-// group or others may write.
+// fileMode is the mode a new list is written with under a route a plane on
+// the writer's own account serves; a plane refuses a list the group or others
+// may write.
 const fileMode fs.FileMode = 0o600
+
+// signedFileMode is the mode a new list is written with under a v1alpha3
+// route: the plane's account is another than the writer's and reads the list
+// through its group.
+const signedFileMode fs.FileMode = 0o640
 
 // listIDPrefix begins every list id this package draws.
 const listIDPrefix = "lst-"
@@ -203,7 +209,7 @@ func create(ctx context.Context, dir string, route reaction.Route, now time.Time
 		return refusal(err)
 	}
 	return locked(ctx, dir, func(root *os.Root) error {
-		if err := files.CreateNoReplaceIn(root, stoplist.FileName, body, fileMode); err != nil {
+		if err := files.CreateNoReplaceIn(root, stoplist.FileName, body, modeFor(route)); err != nil {
 			if errors.Is(err, files.ErrExists) {
 				return fmt.Errorf("%w: %s", ErrExists, dir)
 			}
@@ -211,6 +217,14 @@ func create(ctx context.Context, dir string, route reaction.Route, now time.Time
 		}
 		return nil
 	})
+}
+
+// modeFor is the mode a new list judged against route is written with.
+func modeFor(route reaction.Route) fs.FileMode {
+	if route.Format() == reaction.FormatV1Alpha3 {
+		return signedFileMode
+	}
+	return fileMode
 }
 
 // stopping refuses a route naming a rule that may not stop a run. A caller

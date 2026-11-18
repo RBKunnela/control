@@ -735,7 +735,8 @@ at its next start, and counts one it cannot close as left open
 <ul>
 <li><code>internal/approvals/</code> (a directory of records an approver writes and the plane
 reads back, two openers kept apart by the compiler, <code>0600</code> records under an
-owner-only directory, each refused when read if another account owns it or a
+owner-only directory, or under <code>signed</code> <code>0640</code> ones the operators' group may
+read, each refused when read if another account owns it or a
 group or the world may write it)</li>
 <li><code>internal/holdjournal/</code> (the plane's own durable record of its own holds,
 under its own exclusive lock, refusing a directory another account owns, and

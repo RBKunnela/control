@@ -11,9 +11,9 @@ covers: [cmd/guardana-control/pause*.go, cmd/guardana-control/route.go, cmd/guar
 
 A plane ran 0.17 and is to run 0.18. Every plane follows the first part. A
 plane under `approvals.authority: signed` also follows the second: 0.18 names
-the plane in every signed document it serves, so it refuses the pause file,
-the route and the stop list 0.17 signed, each naming the command that
-replaces it, and raises no floor while it does
+the plane in the signed pause file, route, stop list and lifts, so it
+refuses the pause file, the route and the stop list 0.17 signed, each naming
+the command that replaces it, and raises no floor while it does
 ([ADR-0082](../adr/0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant.md)).
 
 ## Every plane
@@ -51,7 +51,8 @@ same files; a signed plane goes back as its [roll back](#roll-back) says.
   plane's account may not, or the plane refuses to start;
   `/var/lib/guardana/stopsfloor` is the plane's stop list floor;
   `orders-eu-1` is its `plane_id`, `ops` is the stop writers' account, which
-  holds an operator's key, and `guardana` is the plane's group.
+  holds an operator's key, and `guardana` is a group of the plane's account
+  alone.
 
 ### Steps
 
@@ -128,8 +129,9 @@ lifted run's findings are carried as covered.
 0.17 refuses a `reaction-route/v1alpha3` route, a `3.0` list, a backup
 whose manifest names a plane and the `plane_id` key. To go back, stop the
 plane, remove `plane_id` from its configuration, point `reaction.route` and
-`reaction.stops` at the 0.17 files you kept, copy the 0.17 pause file you kept
-back to its path, and start 0.17. Three floors hold what 0.18 took:
+`reaction.stops` at the 0.17 files you kept, and copy the 0.17 pause file you
+kept back to its path. Three floors hold what 0.18 took; replace each before
+you start 0.17:
 
 - The pause floor holds the serial `pause sign` gave the pause file, so 0.17
   refuses the copy below it. Make a new pause floor with `pause floor init
@@ -147,5 +149,6 @@ back to its path, and start 0.17. Three floors hold what 0.18 took:
   directory, name it in `reaction.stops_floor_dir`, and start a new list with
   `stops init --key`.
 
-Run `react` with the 0.17 binary against them; it stops again what may still
+Then start 0.17, and run `react` with the 0.17 binary against the route and
+the new list; it stops again each run that a finding and the route still
 stop.

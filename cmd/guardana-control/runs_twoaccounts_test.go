@@ -46,6 +46,60 @@ func TestAnOperatorsSignedRunIsTakenByAPlaneInItsGroup(t *testing.T) {
 	}
 }
 
+// TestASetgidRunsDirectoryGivesItsGroupToTheRecords: the runs directory is
+// the operator's, 2750 in the plane's group, which the operator is in beside
+// its own; records/ keeps the setgid bit it takes from it, so the record
+// "runs open --key" writes is in the plane's group and the plane, in no
+// group of the operator's, resolves the token.
+func TestASetgidRunsDirectoryGivesItsGroupToTheRecords(t *testing.T) {
+	plane, operator := twoAccounts(t)
+	operator.groups = []uint32{plane.gid}
+	s := newSignedRuns(t)
+	handToOperator(t, s, operator)
+	if err := os.Lchown(s.dir, int(operator.uid), int(plane.gid)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(s.dir, 0o750|os.ModeSetgid); err != nil {
+		t.Fatal(err)
+	}
+	token := openAsOperator(t, s, operator)
+	info, err := os.Lstat(filepath.Join(s.dir, runs.RecordsDir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode()&os.ModeSetgid == 0 {
+		t.Errorf("records/ is %v; want it to keep the setgid bit of the runs directory", info.Mode())
+	}
+	state := filepath.Join(s.dir, runs.StateDir)
+	if err := os.Lchown(state, int(plane.uid), int(plane.gid)); err != nil {
+		t.Fatal(err)
+	}
+	if out := resolveAs(t, plane, resolveArg{Dir: s.dir, Roster: s.roster, Root: s.root, Token: token}); out != "ok" {
+		t.Errorf("a plane in the runs directory's group: %q; want the token resolved", out)
+	}
+}
+
+// TestASetgidRunsDirectoryOutsideTheOperatorsGroupsIsRefused: the runs
+// directory is the operator's, 2750 in the plane's group, which the operator
+// is not in. Linux drops the setgid bit of the operator's chmod of records/
+// without an error, so "runs open --key" refuses rather than make records/
+// whose records the plane could not read.
+func TestASetgidRunsDirectoryOutsideTheOperatorsGroupsIsRefused(t *testing.T) {
+	plane, operator := twoAccounts(t)
+	s := newSignedRuns(t)
+	handToOperator(t, s, operator)
+	if err := os.Lchown(s.dir, int(operator.uid), int(plane.gid)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(s.dir, 0o750|os.ModeSetgid); err != nil {
+		t.Fatal(err)
+	}
+	stdout, stderr, code := operator.as(t, "cli", openArgs(s.dir, tenantP1, "1h", s.flags()...))
+	if code == exitOK || !strings.Contains(stderr, "lost the setgid bit") {
+		t.Errorf("runs open --key outside the runs directory's group answered %d: %q %q; want it refused for the lost setgid bit", code, stdout, stderr)
+	}
+}
+
 // handToOperator gives the signed layout's tree to the operator, the runs
 // directory 0750 and the trust files 0644 in directories every account may
 // search.

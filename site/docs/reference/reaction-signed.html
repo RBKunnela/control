@@ -190,7 +190,10 @@ one at that serial shorter than the part the floor holds or beginning with
 other bytes. It refuses <code>reaction.route</code>, <code>reaction.stops</code> or the
 directory of either when its own account may write them, and a route file,
 stop list or their directory its own account owns; only <code>dev</code>, on one
-account, reads them. A <code>v1alpha1</code> route, <code>reaction.public_key</code> and a <code>1.0</code>
+account, reads them. The stop writers' account owns the list and its
+directory, mode <code>2750</code> in a group of the plane's account alone, since an
+account that opens the directory can hold the writers' lock: <code>stops init --key</code> writes a new list <code>0640</code>, which takes that group, <code>react</code> and <code>stops lift</code> append as that account and keep the mode, and the plane reads the list
+through the group. A <code>v1alpha1</code> route, <code>reaction.public_key</code> and a <code>1.0</code>
 list are refused. A <code>reaction-route/v1alpha2</code> route, a <code>2.0</code> list and a
 <code>reaction-lift/v1alpha2</code> lift, which 0.17 signed without <code>plane_id</code>, are
 refused at start and at every read, naming <code>route sign</code> or <code>stops init --carry</code>, and raise no floor.</p>

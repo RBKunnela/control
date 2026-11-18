@@ -212,9 +212,10 @@ func answerHint(err error) string {
 }
 
 // approvalsList prints what is waiting under dir and what was answered. A directory that is not an approvals store is refused rather than
-// printed as an empty one.
+// printed as an empty one. It writes nothing, so it reads a directory another
+// account owns, as an operator under the signed authority lists the plane's.
 func approvalsList(dir string, stdout, stderr io.Writer) int {
-	store, err := approvals.OpenApprover(dir)
+	store, err := approvals.OpenReader(dir)
 	if err != nil {
 		return fail(stderr, listName, err)
 	}
@@ -228,7 +229,7 @@ func approvalsList(dir string, stdout, stderr io.Writer) int {
 // printListing writes the listing to stdout and every record it could not read
 // to stderr. A listing the store reports incomplete fails: it is not every
 // record under the directory, and nothing here can say which are missing.
-func printListing(store *approvals.Approver, dir string, stdout, stderr io.Writer) int {
+func printListing(store *approvals.Reader, dir string, stdout, stderr io.Writer) int {
 	l, err := store.List(context.Background())
 	if err != nil {
 		return fail(stderr, listName, err)

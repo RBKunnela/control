@@ -279,7 +279,8 @@ What the plane does today:
   the file a second name, so it is refused.
 - The approvals directory is refused when another account owns it or the
   group or the world may write it. It is judged again at every call, and a
-  change of owner or of directory is refused too; each record is `0600`
+  change of owner or of directory is refused too; each record is `0600`, or
+  `0640` under `signed`
   (`internal/approvals/dirid.go`; `TestADirectoryAnotherAccountOwnsIsRefused`,
   `TestADirectoryOthersMayWriteIsRefused`,
   `TestADirectoryLoosenedAfterOpenIsRefusedByBothHandles`).

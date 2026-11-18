@@ -43,7 +43,7 @@ root's directories of mode `0755` pass.
 | `approvals.hold_journal_dir`, `trust.floor_dir`, `pause.floor_dir` | the plane's |
 | the pause file's directory | the operator's, the plane's group, mode `2750`; the operator writes the signed pause file `0640` |
 | `runs.dir` | as [a signed runs directory](../reference/runs.md#a-signed-runs-directory) says |
-| the route and the stop list | as [reaction under signed](../reference/reaction-signed.md) says |
+| the route and the stop list | the route `0644`, as `route sign` writes it, in a directory the plane's account cannot write; `reaction.stops` the stop writers', in a group of the plane's account alone, mode `2750`, where they write the list `0640` ([reaction under signed](../reference/reaction-signed.md)) |
 
 The `2` in `2750` is the setgid bit: on Linux it gives a new file the
 directory's group rather than its writer's, as BSD and macOS do without it.
@@ -62,8 +62,8 @@ guardana-control policy keygen --out op      # each operator
 Each prints `key_id` and `public_key`. A command refuses a private key file
 another account owns, or one the group or others have any permission on, so
 each key stays in its holder's account. The root and operator keys must
-differ from the policy, freshness and route keys: the plane refuses such a
-root, and a roster naming such a key or the root.
+differ from the policy, freshness and route keys: the plane refuses a root
+that is one of them, and a roster naming one of them or the root.
 Copy `root/signing.pub` to `/etc/guardana/root.pub`.
 
 ### 2. Sign the roster
@@ -161,7 +161,7 @@ counts.
 To revoke a key, leave its entry out and sign at the next serial. A plane
 that never reads the new roster, because it is not installed or is withheld,
 trusts the old one until it expires: a short `--valid-for` bounds how long a
-revoked key can still sign.
+revoked key's signature still counts.
 
 ## Verify
 

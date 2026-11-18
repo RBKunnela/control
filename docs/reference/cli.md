@@ -38,8 +38,8 @@ format character or bytes that are not UTF-8 is printed as a quoted Go string.
 `policy lint`, `policy test` and `policy explain` ([policy-explain.md](policy-explain.md)) read a document without a plane, and
 `policy keygen` and `policy sign` make the key and the signed bundle a plane
 loads: [guides/write-and-test-a-policy.md](../guides/write-and-test-a-policy.md)
-is their page. The `approvals` commands read and answer the records under an
-approvals directory, from outside the gateway process.
+is their page. The `approvals` commands read and answer an approvals
+directory's records.
 
 `policy renew` verifies the bundle against its public key, raises a signer's
 floor, then writes the statement it signs with the freshness key. `policy
@@ -82,9 +82,10 @@ run as the plane's account it warns. `--approver-id` is a claim, refused for
 a signed hold.
 
 `approvals list` prints, for each record, its state, both digests and the
-readable fields of the projection the plane wrote at hold time, which are
-not bound to the digest; the listing says so. A listing the store
-reports incomplete exits 1 and names what it could not read.
+readable fields of the projection the plane wrote at hold time, not bound
+to the digest; the listing says so. An incomplete listing exits 1 naming
+what it could not read. Writing nothing, it lists the plane's directory from
+a signed operator's account.
 
 A claim is written whether or not a
 plane runs, and exit 0 either way: the record waits for the next

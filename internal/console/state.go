@@ -232,7 +232,7 @@ func statusOf(r recordReply, planeRunning bool) string {
 	case controlv1.ApprovalState_APPROVAL_STATE_APPROVED.String():
 		switch {
 		case r.Expired:
-			return "Approved" + by + ". It expired before a retry used it."
+			return "Approved" + by + ". It expired; this page cannot see whether a retry spent it first."
 		case !planeRunning:
 			return "Approved" + by + ". No plane holds this directory, so the call it was held for will not run."
 		}

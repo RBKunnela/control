@@ -8,7 +8,12 @@
 # refuses a list that leaves out a top-level test of a twoaccounts file or a
 # test skipped as needing root, or names any other.
 github.com/guardana/control/cmd/guardana-control TestAnOperatorsSignedRunIsTakenByAPlaneInItsGroup
+github.com/guardana/control/cmd/guardana-control TestASetgidRunsDirectoryGivesItsGroupToTheRecords
+github.com/guardana/control/cmd/guardana-control TestASetgidRunsDirectoryOutsideTheOperatorsGroupsIsRefused
+github.com/guardana/control/cmd/guardana-control TestAnOperatorListsTheApprovalsThePlaneHolds
 github.com/guardana/control/cmd/guardana-control TestReactUnderASignedRouteRunsAsTheOperatorBesideThePlane
+github.com/guardana/control/cmd/guardana-control TestASignedStopListIsReadByAPlaneInTheWritersGroup
+github.com/guardana/control/cmd/guardana-control TestTheUpgradeGuidesSignedStepsRunOnTwoAccounts
 github.com/guardana/control/cmd/guardana-gateway TestTheHealthSocketAnswersTheNamedAccountAndClosesAThird
 github.com/guardana/control/cmd/guardana-gateway TestTheHealthSocketOfThePlaneAloneTakesNoOtherConnection
 github.com/guardana/control/cmd/guardana-gateway TestADirectoryTheNamedAccountCannotSearchKeepsItOutAndDoctorSaysSo

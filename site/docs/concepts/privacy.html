@@ -319,7 +319,7 @@ to the plane, no field of the contract holds it, and no adapter reads it.</p>
 <tr>
 <td>the stop list, <code>reaction.stops</code></td>
 <td>per stop the tenant, run id, finding id, procedure, rule and times, and under <code>approvals.authority: signed</code> its scope and subject, a run, agent or principal id; per covered finding its id, tenant and run, and under <code>signed</code> its scope and subject; per lift the run, or under <code>signed</code> the scope and subject, a line number and its signature</td>
-<td>the plane's account, and any account the file's and directory's modes let read it: a new list is <code>0600</code>, and the list is refused when another account owns it or its directory, or a group or others may write either; under <code>approvals.authority: signed</code> it is refused when the plane's own account owns either, and its header and lifts also name the signing operator's key id, the project and the stop list's path</td>
+<td>the plane's account, and any account the file's and directory's modes let read it: a new list is <code>0600</code>, or <code>0640</code> under <code>approvals.authority: signed</code>, and the list is refused when another account owns it or its directory, or a group or others may write either; under <code>signed</code> it is refused when the plane's own account owns either, and its header and lifts also name the signing operator's key id, the project and the stop list's path</td>
 </tr>
 <tr>
 <td>the decision point at <code>pdp.identifier</code></td>

@@ -124,9 +124,9 @@
 <h2 id="when-to-use-this">When to use this</h2>
 <p>A plane ran 0.17 and is to run 0.18. Every plane follows the first part. A
 plane under <code>approvals.authority: signed</code> also follows the second: 0.18 names
-the plane in every signed document it serves, so it refuses the pause file,
-the route and the stop list 0.17 signed, each naming the command that
-replaces it, and raises no floor while it does
+the plane in the signed pause file, route, stop list and lifts, so it
+refuses the pause file, the route and the stop list 0.17 signed, each naming
+the command that replaces it, and raises no floor while it does
 (<a href="/docs/adr/0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant">ADR-0082</a>).</p>
 <h2 id="every-plane">Every plane</h2>
 <p>Under <code>directory</code> and <code>memory</code> the plane reads the files 0.17 wrote: replace
@@ -160,7 +160,8 @@ the stop lists, which the account that signs the route may write and the
 plane's account may not, or the plane refuses to start;
 <code>/var/lib/guardana/stopsfloor</code> is the plane's stop list floor;
 <code>orders-eu-1</code> is its <code>plane_id</code>, <code>ops</code> is the stop writers' account, which
-holds an operator's key, and <code>guardana</code> is the plane's group.</li>
+holds an operator's key, and <code>guardana</code> is a group of the plane's account
+alone.</li>
 </ul>
 <h3 id="steps">Steps</h3>
 <pre><code># 1. As the operator: the pause file&#39;s entries signed again for this plane at
@@ -229,8 +230,9 @@ stopped is still refused with <code>RUN_STOPPED</code>.</li>
 <p>0.17 refuses a <code>reaction-route/v1alpha3</code> route, a <code>3.0</code> list, a backup
 whose manifest names a plane and the <code>plane_id</code> key. To go back, stop the
 plane, remove <code>plane_id</code> from its configuration, point <code>reaction.route</code> and
-<code>reaction.stops</code> at the 0.17 files you kept, copy the 0.17 pause file you kept
-back to its path, and start 0.17. Three floors hold what 0.18 took:</p>
+<code>reaction.stops</code> at the 0.17 files you kept, and copy the 0.17 pause file you
+kept back to its path. Three floors hold what 0.18 took; replace each before
+you start 0.17:</p>
 <ul>
 <li>The pause floor holds the serial <code>pause sign</code> gave the pause file, so 0.17
 refuses the copy below it. Make a new pause floor with <code>pause floor init --tenant &lt;tenant&gt; --project &lt;project&gt;</code> in a new directory and name it in
@@ -246,7 +248,8 @@ old list below it. Make a new floor with <code>stops floor init</code> in a new
 directory, name it in <code>reaction.stops_floor_dir</code>, and start a new list with
 <code>stops init --key</code>.</li>
 </ul>
-<p>Run <code>react</code> with the 0.17 binary against them; it stops again what may still
+<p>Then start 0.17, and run <code>react</code> with the 0.17 binary against the route and
+the new list; it stops again each run that a finding and the route still
 stop.</p>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/guides/upgrade-a-plane-from-0-17.md">docs/guides/upgrade-a-plane-from-0-17.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.17.0, and <a href="https://github.com/guardana/control/tree/v0.17.0/docs">its documentation</a> is in its tag.</p>
 </main>

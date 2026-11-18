@@ -165,9 +165,10 @@ configuration key the environment sets, as a signed start does. Unset the
 list <code>3.0</code> with a <code>reaction-list-header/3.0</code> header, and a lift
 <code>reaction-lift/v1alpha3</code>; each names the plane's <code>plane_id</code>, and a plane
 takes one only when the id is its own. A stop, covered or lift line names a
-<code>scope</code> and a <code>subject</code>; this release serves scope <code>run</code>, whose subject is
-the run. A plane refuses the <code>v1alpha2</code> route and the <code>2.0</code> list 0.17 signed
-at start, naming the way forward, and raises no floor. With the plane
+<code>scope</code> and a <code>subject</code>: the run under scope <code>run</code>, the agent or the
+principal under scope <code>agent</code> or <code>principal</code>. A plane refuses the
+<code>v1alpha2</code> route and the <code>2.0</code> list 0.17 signed at start, naming the way
+forward, and raises no floor. With the plane
 stopped, as an admin of the roster, edit the route document to
 <code>reaction-route/v1alpha3</code>, add <code>plane_id</code> and raise its serial, then sign it
 at a new path with <code>guardana-control route sign</code>, since a signed route names
@@ -188,10 +189,11 @@ file of the earlier version at its bound still fits once it names the plane.</li
 <li>The 1.0 release bar no longer waits for people from outside the project
 (<a href="/docs/adr/0085-the-1-0-bar-is-met-by-own-evidence-and-what-needs-outside-people-stays-not-met">ADR-0085</a>).
 An outside threat-model review, trials with new users and new approvers'
-understanding stay written and are stated as not met; the rest of the bar
-is met by the project's own evidence, from runs whose manifest is fixed
-before they start. Each task the bar names carries its disposition, and
-<code>make docs-check</code> refuses one that carries none or another word. The
+understanding of what they approve stay in the bar, stated as not met; the
+rest of the bar is met by the project's own evidence, from runs whose
+manifest is fixed before they start. Each task the bar names carries its
+disposition, and <code>make docs-check</code> refuses one that carries none or
+another word. The
 backlog gains B39 to B43 (a run drawn as a graph beside a rule editor, a
 mapping to the published risk lists, approvals that need more than one
 operator, usage and cost as observations, a rebuild from the public pages
@@ -231,6 +233,33 @@ denial, and <code>doctor</code> names each rule that stops an agent or a princip
 (<a href="/docs/adr/0083-a-finding-may-stop-an-agent-or-a-principal">ADR-0083</a>).</li>
 <li><code>llms.txt</code> on the website: every documentation page with its address and
 summary, grouped as the index groups them, and the records.</li>
+</ul>
+<h3 id="fixed">Fixed</h3>
+<ul>
+<li>Under <code>signed</code> a new stop list is written <code>0640</code>, so a plane on an account
+of its own reads it through the group of the list's directory: the stop
+writers' directory, mode <code>2750</code>, in a group that holds the plane's account
+alone. It was <code>0600</code>, which such a plane could not read, so it refused
+every call with <code>STOP_STATE_UNAVAILABLE</code>. <code>react</code> and <code>stops lift</code> keep
+the mode, and the carry of the 0.18 upgrade writes its new list <code>0640</code>
+(<a href="/docs/reference/reaction-signed">signed reaction</a>).</li>
+<li><code>approvals list</code> reads an approvals directory another account owns and
+writes nothing, so an operator under <code>signed</code> lists the plane's directory
+from their own account; it refused that directory as another account's. It
+still refuses one a group or others may write.</li>
+<li>Under <code>signed</code>, <code>runs open --key</code> keeps the setgid bit <code>records/</code> takes
+from a setgid runs directory, so the records take <code>records/</code>'s group and a
+plane in that group reads them. The bit was cleared, so the records took
+the operator's primary group, which such a plane could not read. The
+operator must be in that group: Linux drops the bit of a <code>chmod</code> by an
+account outside it, and <code>runs open</code> then refuses. Over a layout made
+before, the operator, in that group, runs <code>chmod g+s records</code> and gives the
+records already there <code>records/</code>'s group with <code>chgrp</code>.</li>
+<li>The console no longer says an approved record past its expiry expired
+before a retry used it: it cannot see whether a retry spent it first, and
+says so. An OpenTelemetry or egress log import whose source fails with an
+error wrapping <code>io.EOF</code>, or one matching a full read buffer, now fails,
+where it ended as a complete import.</li>
 </ul>
 <h3 id="documentation">Documentation</h3>
 <ul>
@@ -346,7 +375,7 @@ socket path is at most 103 bytes.</li>
 <li><strong>Breaking:</strong> <code>otel.Options.AllowPlaintext</code> is gone, and the exporter
 refuses an <code>http</code> endpoint even when built directly.</li>
 </ul>
-<h3 id="fixed">Fixed</h3>
+<h3 id="fixed-1">Fixed</h3>
 <ul>
 <li>A signed start judges the very configuration file the plane read, and
 refuses a file renamed over its path after the read; a path holding a
@@ -600,7 +629,7 @@ serve it before anything is uploaded; a tag that already has a release, or
 a draft of the same name, is refused, a draft a failed run left included
 (<a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a>).</li>
 </ul>
-<h3 id="fixed-1">Fixed</h3>
+<h3 id="fixed-2">Fixed</h3>
 <ul>
 <li>A long-running plane no longer reaches <code>approvals.max_records</code> and refuses
 every hold: it forgets expired approval records and ledger marks older
@@ -994,7 +1023,7 @@ are named there
 time, which no lint read before.</p>
 </li>
 </ul>
-<h3 id="fixed-2">Fixed</h3>
+<h3 id="fixed-3">Fixed</h3>
 <ul>
 <li><code>policy test</code> skipped a case named <code>*.json</code> that is a pipe or a socket and
 passed on the rest; it now refuses the directory, naming the entry.</li>
@@ -1162,7 +1191,7 @@ fingerprints were taken from; nothing this project ships uses them.</li>
 effect class
 (<a href="/docs/adr/0060-pkg-contract-exports-what-each-effect-class-requires">ADR-0060</a>).</li>
 </ul>
-<h3 id="fixed-3">Fixed</h3>
+<h3 id="fixed-4">Fixed</h3>
 <ul>
 <li><code>scripts/github-bootstrap.sh</code>'s preflight runs the docscheck test that
 holds <code>.github/CODEOWNERS</code> on every pull request, so it judges each file by
@@ -1386,7 +1415,7 @@ reference filesystem server, on every pull request
 The example now pins the server and its packages in a lockfile, and the
 guide installs it with <code>npm ci --ignore-scripts</code>.</li>
 </ul>
-<h3 id="fixed-4">Fixed</h3>
+<h3 id="fixed-5">Fixed</h3>
 <ul>
 <li>An enforcement receiver's <code>Serve</code> refuses any listener but the one its own
 <code>Listen</code> bound with the socket's lock held, and that one a second time, so
@@ -1486,7 +1515,7 @@ for the commit a <code>v*</code> tag names, and for nothing else: a branch push 
 none. A <code>main</code> the remote does not hold yet counts every commit. The hook
 has a negative control, <code>make pre-push-probe</code>, in <code>make quality</code>.</li>
 </ul>
-<h3 id="fixed-5">Fixed</h3>
+<h3 id="fixed-6">Fixed</h3>
 <ul>
 <li>The enforcement receiver removes a socket left at its path only when a
 connection to it is refused. A timeout, a full backlog on Linux or a
@@ -1623,7 +1652,7 @@ and links to the policies and runnable example.</li>
 controlling how they act. The 1.0 goal is marked <code>planned</code> beside what the
 alpha does, and the declared repository description says the same.</li>
 </ul>
-<h3 id="fixed-6">Fixed</h3>
+<h3 id="fixed-7">Fixed</h3>
 <ul>
 <li><code>scripts/github-settings-check.sh</code> and the bootstrap, run by macOS's bash
 3.2 on a loaded machine, could build a declared ruleset as nothing and
@@ -1749,7 +1778,7 @@ GitHub's <code>good first issue</code> and <code>help wanted</code>.</li>
 <li>CI's quality job may run 45 minutes; its fuzz smoke alone took 14 of the 30
 it had.</li>
 </ul>
-<h3 id="fixed-7">Fixed</h3>
+<h3 id="fixed-8">Fixed</h3>
 <ul>
 <li>A plane reading the pause file while a writer replaced it, as
 <code>guardana-control pause add</code> and <code>remove</code> and most editors do, turned the
@@ -1861,7 +1890,7 @@ finding's id, so supervising a run again writes their findings as new
 records and alerts again. Neither may stop a run; the six that may stay at
 version <code>1</code>, so a route signed before still holds.</li>
 </ul>
-<h3 id="fixed-8">Fixed</h3>
+<h3 id="fixed-9">Fixed</h3>
 <ul>
 <li>A finding that rests on many events, such as ten thousand denials, was past
 the log's line bound and refused the whole write. It now cites ten
@@ -1955,7 +1984,7 @@ the answer bound measures a slow client's progress in steps of that size.
 Linux grows a connection's buffer to megabytes, which cut off a client
 reading steadily but slowly.</li>
 </ul>
-<h3 id="fixed-9">Fixed</h3>
+<h3 id="fixed-10">Fixed</h3>
 <ul>
 <li>A plane whose policy floor is read back below the statement it confirmed,
 a copy restored from before its raise, counts the poll as refused under
@@ -2090,7 +2119,7 @@ closing record keeps the upstream's outcome and hash, with <code>withheld:</code
 its protocol status. <code>doctor</code> names the values too short to scan, and
 <code>/metrics</code> counts withheld answers.</li>
 </ul>
-<h3 id="fixed-10">Fixed</h3>
+<h3 id="fixed-11">Fixed</h3>
 <ul>
 <li>A call that needs an approval, under a run an operator opened, was blocked
 with <code>EVIDENCE_UNAVAILABLE</code> on a live plane instead of held: the run's expiry
@@ -2160,7 +2189,7 @@ release, which <code>make docs-gen</code> takes from this file. Documentation pa
 a menu above the content on narrow screens, and a wide table scrolls inside
 itself instead of breaking words.</li>
 </ul>
-<h3 id="fixed-11">Fixed</h3>
+<h3 id="fixed-12">Fixed</h3>
 <ul>
 <li>A stateful listener near its <code>listener.max_sessions</code> cap no longer refuses
 an open while the previous open's answer is still being written: a session
@@ -2385,7 +2414,7 @@ seconds, which <code>doctor</code> now prints.</p>
 <code>policy.fail_open_read</code> lets a read run while the policy is unavailable.</p>
 </li>
 </ul>
-<h3 id="fixed-12">Fixed</h3>
+<h3 id="fixed-13">Fixed</h3>
 <ul>
 <li><code>runs list</code> and <code>runs close</code> no longer make an empty directory a runs
 directory; they refuse it, and only <code>runs open</code> makes one. A temporary file
@@ -2479,7 +2508,7 @@ use, and a profile for the MCP project's reference filesystem server that
 classifies its 14 tools and holds every write for approval
 (<a href="/docs/guides/connect-an-existing-mcp-setup">guides/connect-an-existing-mcp-setup.md</a>).</li>
 </ul>
-<h3 id="fixed-13">Fixed</h3>
+<h3 id="fixed-14">Fixed</h3>
 <ul>
 <li>A <code>tools/call</code> the plane blocked or held for a tool that declares an output
 schema reached the agent as a schema error from any client that checks
@@ -2537,7 +2566,7 @@ counted by cause. A plane without <code>runs.dir</code> is unchanged.</li>
 <li>The release job waits for a maintainer to approve it in the <code>release</code>
 environment before it builds; <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a> has the step.</li>
 </ul>
-<h3 id="fixed-14">Fixed</h3>
+<h3 id="fixed-15">Fixed</h3>
 <ul>
 <li>A plane with a stdio listener wrote its start lines, the mode and the count
 of held calls lost to a restart among them, to standard output, which is the agent's protocol stream,
@@ -2590,7 +2619,7 @@ cannot read, and a trailer; <code>examples/evidence-report</code> rebuilds each 
 lifecycle from it without importing the project's internals
 (<a href="/docs/adr/0035-a-versioned-evidence-export-and-a-bounded-query">ADR-0035</a>).</li>
 </ul>
-<h3 id="fixed-15">Fixed</h3>
+<h3 id="fixed-16">Fixed</h3>
 <ul>
 <li>A <code>restrict_resources</code> obligation with a <code>prefix</code> let a resource id such
 as <code>/srv/data/../../etc/passwd</code>, <code>/srv/data/%2e%2e/etc</code> or
@@ -2669,7 +2698,7 @@ literal only, as <code>pdp.allow_plaintext</code> already did and as
 states. A plaintext endpoint on any other host, a name such as <code>localhost</code>
 included, is refused at start.</li>
 </ul>
-<h3 id="fixed-16">Fixed</h3>
+<h3 id="fixed-17">Fixed</h3>
 <ul>
 <li>A tool whose definition holds a fractional number, such as
 <code>&quot;default&quot;: 0.7</code>, is fingerprinted and can be classified, and a call

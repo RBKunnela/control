@@ -408,7 +408,8 @@ another mount may still write the directory. A Nix store with <code>auto-optimis
 the file a second name, so it is refused.</li>
 <li>The approvals directory is refused when another account owns it or the
 group or the world may write it. It is judged again at every call, and a
-change of owner or of directory is refused too; each record is <code>0600</code>
+change of owner or of directory is refused too; each record is <code>0600</code>, or
+<code>0640</code> under <code>signed</code>
 (<code>internal/approvals/dirid.go</code>; <code>TestADirectoryAnotherAccountOwnsIsRefused</code>,
 <code>TestADirectoryOthersMayWriteIsRefused</code>,
 <code>TestADirectoryLoosenedAfterOpenIsRefusedByBothHandles</code>).</li>

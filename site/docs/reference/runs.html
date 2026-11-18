@@ -153,9 +153,8 @@ a record.</p>
 what its listener resolves: <code>listener.principal.tenant_id</code>, or else
 <code>tenant_id</code>, <code>listener.principal.type</code>, <code>listener.principal.id</code> and
 <code>listener.agent.id</code>. A token presented for any other identity is refused, so
-planes of two projects that share a directory and a listener identity never
-serve each other's runs. <code>--ttl</code> is a duration from <code>1m</code> to <code>720h</code>, with no
-default.</p>
+planes of two projects sharing a directory and a listener identity never
+serve each other's runs. <code>--ttl</code> is a duration from <code>1m</code> to <code>720h</code>.</p>
 <p><code>--parent &lt;run id&gt;</code> opens the run under an open run of the same project and
 tenant. The two then share the parent's root and its flow state, because data
 moves between a parent and the runs it spawned in ways the plane does not see.
@@ -201,9 +200,11 @@ by the plane's account, mode <code>0700</code>, and nothing else
 (<a href="/docs/adr/0076-a-signed-plane-takes-a-run-only-from-an-operators-signature">ADR-0076</a>).
 <code>runs open</code> with <code>--key &lt;operator key&gt; --roster &lt;roster&gt; --root-key &lt;root public key&gt;</code> makes an empty directory one, giving
 <code>state/</code> to the account that ran it: <code>chown</code> it to the plane's account, and
-put that account in <code>records/</code>'s group. A plane refuses an unsigned
-directory and a <code>records/</code> or record its own account owns, and will not
-start when that account may write <code>records/</code> or a directory on its path.</p>
+put that account in <code>records/</code>'s group. <code>records/</code> and its records take a
+setgid runs directory's group if the account running <code>runs open</code> is in it,
+or <code>runs open</code> refuses. A plane refuses an unsigned directory and a
+<code>records/</code> or record its own account owns, and will not start when that
+account may write <code>records/</code> or a directory on its path.</p>
 <p>Each record is a <code>3.0</code> envelope an operator granted <code>operate</code> signed for the
 run's tenant and project and for one <code>records/</code> path
 (<a href="/docs/contracts#the-runs-directory">contracts.md</a>); planes using one path
@@ -267,13 +268,12 @@ its id.</p>
 <h2 id="runs-an-earlier-release-opened">Runs an earlier release opened</h2>
 <p>A record from before <code>project_id</code> is of <code>schema_version</code> <code>1.0</code> and names no
 project. It is never read as any project's run: its token is refused as
-<code>unreadable</code>, a stdio plane given it refuses the start saying the record names
-no project, <code>runs list</code> refuses the directory while it holds one, and
-<code>runs close</code>, <code>runs open --parent</code> and <code>react</code>, for a finding that names it,
-refuse that run.</p>
+<code>unreadable</code>, a stdio plane refuses to start on it, <code>runs list</code> refuses its
+directory, and <code>runs close</code>, <code>runs open --parent</code> and <code>react</code> refuse that
+run.</p>
 <p>Move to a new, empty directory, never into the old one: while one <code>1.0</code>
-record is left, <code>runs list</code> refuses the whole directory, and
-so does <code>supervise</code> of every run under a procedure that reads children. Open
+record is left, <code>runs list</code> and <code>supervise</code> under a procedure that reads
+children refuse the whole directory. Open
 each run again there with <code>runs open --project</code>, point <code>runs.dir</code> at it, and
 remove the old directory once no plane names it.</p>
 <p>A reopened run starts with a clean flow state, so what an agent took in
