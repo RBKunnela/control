@@ -87,6 +87,31 @@ func serveCollector(t *testing.T, sink otel.Sink, w io.Closer, addr string) *fil
 	return c
 }
 
+// restartableAddr is a free loopback address below the ephemeral port ranges
+// of Linux, macOS and Windows, for a collector that stops and listens on it
+// again: the system hands an unasked-for port only from those ranges, so no
+// other socket can take this one in between.
+func restartableAddr(t *testing.T) string {
+	t.Helper()
+	const low, span = 20000, 12000
+	base := os.Getpid() % span
+	var last error
+	for i := range 100 {
+		addr := net.JoinHostPort("127.0.0.1", strconv.Itoa(low+(base+i)%span))
+		ln, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", addr)
+		if err != nil {
+			last = err
+			continue
+		}
+		if err := ln.Close(); err != nil {
+			t.Fatal(err)
+		}
+		return addr
+	}
+	t.Fatalf("no free loopback port from %d: %v", low+base, last)
+	return ""
+}
+
 func (c *fileCollector) url() string { return "https://" + c.addr + "/v1/logs" }
 
 // stop closes the listener and every connection, then the file.
@@ -181,7 +206,7 @@ func TestAPlaneExportsToTheCollectorItShips(t *testing.T) {
 		callTimeout: 300 * time.Millisecond,
 	})
 	path := filepath.Join(t.TempDir(), "trail.jsonl")
-	c := startFileCollector(t, path, "127.0.0.1:0")
+	c := startFileCollector(t, path, restartableAddr(t))
 	exporter := exportTo(t, p, c.url())
 	agent := p.connect(t, "agent-a")
 

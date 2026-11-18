@@ -42,7 +42,7 @@ func TestAtTheTrailsBudgetAMaterialCallIsBlocked(t *testing.T) {
 	})
 	dir := filepath.Join(t.TempDir(), "trail")
 	cfg := trailfile.LogConfig{Dir: dir, Tenant: "t1", Project: "p1", SegmentBytes: trailSegment, MaxBytes: trailBudget}
-	c, l := startLogCollector(t, cfg, "127.0.0.1:0")
+	c, l := startLogCollector(t, cfg, restartableAddr(t))
 	exporter := exportTo(t, p, c.url())
 	agent := p.connect(t, "agent-a")
 
