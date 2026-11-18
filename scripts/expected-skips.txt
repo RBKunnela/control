@@ -20,5 +20,6 @@ github.com/guardana/control/internal/gatewayconfig TestAnACLIsSeen chmod +a cann
 github.com/guardana/control/internal/holdjournal TestAnEntryAnotherAccountOwnsIsNotRead needs root
 github.com/guardana/control/internal/policykey TestReadPrivateRefusesAKeyOfAnotherAccount needs root
 github.com/guardana/control/internal/policystate TestHelperRaisesFromAnotherProcess run only as the other process of TestTwoProcessesAndTwoHandlesRaisingOneFloorNeverLowerIt
+github.com/guardana/control/internal/runs TestASetgidRunsDirectoryGivesRecordsItsBit a new directory does not take its parent's setgid bit on this platform
 github.com/guardana/control/internal/spool FuzzRecordAfter/seed#0 an offset outside the input leaves nothing to search
 github.com/guardana/control/internal/trailfile TestOpenRefusesAFileAnotherAccountOwns needs root
