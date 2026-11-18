@@ -49,7 +49,7 @@ type componentRow struct {
 func statusComponents(lines []string, minRows int) ([]componentRow, []string) {
 	p := &statusPage{detailLines: map[string][]int{}, detailBody: map[string]int{}}
 	for i, raw := range lines {
-		p.read(i+1, strings.TrimSpace(raw))
+		p.read(i+1, raw)
 	}
 	components, detailsAt := slices.Index(p.sections, "Components"), slices.Index(p.sections, "Details")
 	switch {
@@ -83,21 +83,24 @@ type statusPage struct {
 	detailBody                map[string]int
 	section, group, detail    string
 	tableLine                 int
-	fenced, comment           bool
+	fence                     string
+	comment                   bool
 }
 
 func (p *statusPage) add(format string, a ...any) {
 	p.problems = append(p.problems, fmt.Sprintf(format, a...))
 }
 
-// read takes line n, trimmed. Fenced code and HTML comments are neither
-// structure nor prose.
-func (p *statusPage) read(n int, s string) {
+// read takes line n. Fenced code and HTML comments are neither structure nor
+// prose, and a table line indented as code is refused: the renderer draws it
+// as code, not as a row.
+func (p *statusPage) read(n int, raw string) {
+	s := strings.TrimSpace(raw)
 	switch {
-	case strings.HasPrefix(s, "```"):
-		p.fenced = !p.fenced
+	case p.fenced(s):
 		return
-	case p.fenced:
+	case p.section == "Components" && strings.HasPrefix(s, "|") && indentedAsCode(raw):
+		p.add("line %d: a table line indented as code is drawn as code, not as a row: %s", n, s)
 		return
 	case p.comment || strings.HasPrefix(s, "<!--"):
 		p.comment = !strings.Contains(s, "-->")
@@ -106,6 +109,29 @@ func (p *statusPage) read(n int, s string) {
 		p.add("line %d: a pipe on a line that does not start with one is a table row this check cannot read: %s", n, s)
 	}
 	p.structure(n, s)
+}
+
+// fenced reports whether trimmed line s opens, closes or sits inside fenced
+// code, of backticks or of tildes; a fence closes only on the character it
+// opened with.
+func (p *statusPage) fenced(s string) bool {
+	switch {
+	case p.fence != "":
+		if strings.HasPrefix(s, p.fence) {
+			p.fence = ""
+		}
+		return true
+	case strings.HasPrefix(s, "```") || strings.HasPrefix(s, "~~~"):
+		p.fence = s[:3]
+		return true
+	}
+	return false
+}
+
+// indentedAsCode reports whether raw starts as indented code does: four
+// spaces or a tab.
+func indentedAsCode(raw string) bool {
+	return strings.HasPrefix(raw, "    ") || strings.HasPrefix(raw, "\t")
 }
 
 // structure takes line n as a section, a group, a table line, a details

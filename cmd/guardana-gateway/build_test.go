@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
+	"github.com/guardana/control/internal/gateway"
 	"github.com/guardana/control/internal/gatewayconfig"
 )
 
@@ -28,5 +29,24 @@ func TestThePipelineTakesTheConfiguredBoundOnOneRunsHolds(t *testing.T) {
 		if got := p.pipelineConfig(nil, controlv1.EnforcementMode_ENFORCEMENT_MODE_ENFORCE, nil).MaxHeldPerRun; got != held {
 			t.Errorf("approvals.max_held_per_run %d reaches the pipeline as %d", held, got)
 		}
+	}
+}
+
+// TestThePipelineServesTheConfiguredListener: a stop of an agent or a
+// principal is matched against the identity the pipeline is built with, so
+// that identity is the listener's configured agent, principal and principal
+// type, in the tenant the listener serves: its principal's tenant when one
+// is set, else tenant_id.
+func TestThePipelineServesTheConfiguredListener(t *testing.T) {
+	listener := gatewayconfig.ListenerConfig{AgentID: "orders-assistant", PrincipalID: "agent-runner", PrincipalType: "service"}
+	p := &plane{cfg: &gatewayconfig.Config{TenantID: "acme", Listener: listener}}
+	want := gateway.RunIdentity{TenantID: "acme", PrincipalType: "service", PrincipalID: "agent-runner", AgentID: "orders-assistant"}
+	if got := p.pipelineConfig(nil, controlv1.EnforcementMode_ENFORCEMENT_MODE_ENFORCE, nil).Listener; got != want {
+		t.Errorf("the pipeline serves %+v, want %+v", got, want)
+	}
+	p.cfg.Listener.PrincipalTenant = "globex"
+	want.TenantID = "globex"
+	if got := p.pipelineConfig(nil, controlv1.EnforcementMode_ENFORCEMENT_MODE_ENFORCE, nil).Listener; got != want {
+		t.Errorf("with the principal's tenant set the pipeline serves %+v, want %+v", got, want)
 	}
 }

@@ -95,6 +95,9 @@ func TestStatusComponentProblems(t *testing.T) {
 		"a sentence after a digit":   {"One module. [details]", "One module. 2 tools build it. [details]", "more than one sentence"},
 		"details out of order":       {"### decision-kernel\n\n`internal/core/`, [ADR-0012](adr/0012.md).\n\n### candidate-policy\n\nNo command.\n\n", "### candidate-policy\n\nNo command.\n\n### decision-kernel\n\n`internal/core/`, [ADR-0012](adr/0012.md).\n\n", `details heading 1 is "candidate-policy", want "decision-kernel", the tables' order`},
 		"no details section":         {"## Details\n\n", "## Notes\n\n", `no "## Details" section`},
+		"a row in a tilde fence":     {"| go-module | Go module | `implemented` | One module. [details](#go-module) |\n", "~~~\n| go-module | Go module | `implemented` | One module. [details](#go-module) |\n~~~\n", `the group "Project" holds no row`},
+		"backticks in a tilde fence": {"| go-module | Go module | `implemented` | One module. [details](#go-module) |\n", "~~~\n```\n| go-module | Go module | `implemented` | One module. [details](#go-module) |\n~~~\n", `the group "Project" holds no row`},
+		"a row indented as code":     {"| go-module | Go module |", "    | go-module | Go module |", "line 42: a table line indented as code is drawn as code, not as a row: | go-module"},
 		"details before components":  {"Intro.\n\n## Components", "Intro.\n\n## Details\n\n## Components", `"## Details" comes before "## Components"`},
 	} {
 		page := strings.Replace(goodStatus, c.from, c.to, 1)
