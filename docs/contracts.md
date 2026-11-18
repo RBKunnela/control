@@ -1364,7 +1364,10 @@ program that reads a list. `experimental`, in `internal/reaction/`
 [reference/reaction.md](reference/reaction.md) says what the commands and a
 plane do with them. Only `guardana-control route sign` signs a route, and
 only `stops` and `react` write a list, under its lock; a plane reads both and
-writes neither.
+writes neither. The route, the list and the lift below are the forms outside
+`approvals.authority: signed`;
+[under the signed authority](#under-the-signed-authority) gives the
+`v1alpha3` route, the `3.0` list and the `v1alpha3` lift.
 
 ### The route
 
@@ -1461,7 +1464,7 @@ without `plane_id`: a `reaction-route/v1alpha2` route, a
 `reaction-list-header/2.0` header and a `reaction-lift/v1alpha2` lift. A
 plane refuses each, naming `route sign` or `stops init --carry`, and only
 `stops init --carry` reads them, as the list it carries from; see
-[upgrade a signed plane from 0.17](guides/upgrade-a-signed-plane-from-0-17.md).
+[upgrade a plane from 0.17](guides/upgrade-a-plane-from-0-17.md).
 
 A list under a `v1alpha3` route is version `3.0`: its header line is
 `{"envelope":…,"kind":"header","version":"3.0"}`, a `stop` and a `covered`

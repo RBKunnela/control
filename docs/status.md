@@ -33,7 +33,8 @@ In short:
   can import runtime traces and an egress proxy's access log as observations,
   inspect coverage, and check one
   opened run against its procedure, draw it as a page, hand its findings to a
-  program, and stop that run where a signed route allows it.
+  program, and stop that run, or under `signed` its agent or principal, where
+  a signed route allows it.
 - The limits: the gateway sees only the calls routed through it, the caller's
   identity comes from its configuration rather than a login, and the evidence
   trail is not tamper-evident. It is not a security boundary.
@@ -112,7 +113,7 @@ Nothing here is a security boundary. Do not deploy it as one.
 | --- | --- | --- | --- |
 | operator-runs | Runs an operator opens | `experimental` | An operator opens a run with its own token and durable flow state, and a plane with a runs directory admits a call only under a live run's token. [details](#operator-runs) |
 | run-supervision | Supervision of a run against its procedure | `experimental` | Checks one opened run, or a root and its tree, against its procedure when an operator asks, reports findings, draws the run as a page and alerts a notifier. [details](#run-supervision) |
-| run-stop | Stopping a run through a signed route | `experimental` | A confirmed finding stops one opened run's later calls where a signed route allows it; a call already running is not cut. [details](#run-stop) |
+| run-stop | Stopping a run through a signed route | `experimental` | A confirmed finding stops one opened run's later calls, or under `signed` its agent or principal, where a signed route allows it; a call already running is not cut. [details](#run-stop) |
 | finding-review | Finding review and an incident package | `planned` | Reviewing findings with a case history and exporting a joined incident package; findings export exists, and neither of these is built. [details](#finding-review) |
 | web-ui | Web UI | `planned` | A web interface; no path is chosen, and one run is drawn as a static page by `supervise --view`. [details](#web-ui) |
 | graph-api | Graph API | `planned` | A graph API; no path is chosen and no milestone names it. [details](#graph-api) |
@@ -151,18 +152,18 @@ exact set rather than a list in prose, which drifts.
 
 `api/proto/guardana/control/v1/` (8 files), generated Go in `api/gen/go/`.
 `make proto-check` regenerates and diffs; `buf breaking` runs against the latest
-release tag, in CI on every push and pull request and in `make proto-breaking`
+release tag, in CI on every push and pull request and in `make proto-breaking`.
 
 ### strict-decoding
 
 `pkg/contract/`. Unknown fields and undeclared enum numbers refused on both wire
 paths, inside map entries too, which `Decode` reads before the runtime parses
-them ([ADR-0002](adr/0002-wire-contracts-and-versioning.md))
+them ([ADR-0002](adr/0002-wire-contracts-and-versioning.md)).
 
 ### effect-labels
 
 `pkg/contract/effect.go`, `labels.go`; the kernel's tenant rule and fail-closed
-table read materiality, the matcher reads the floors
+table read materiality, the matcher reads the floors.
 
 ### reason-codes
 
@@ -170,7 +171,7 @@ table read materiality, the matcher reads the floors
 [reference/reason-codes.md](reference/reason-codes.md), which the registry
 generates. The kernel and the matcher emit codes as their own literals, each
 held to the registry by a test; nothing on the decision path imports the
-registry
+registry.
 
 ### decision-kernel
 
@@ -188,14 +189,14 @@ bundle replaced or stale by then blocks the call with `POLICY_STALE` outside
 `OBSERVE`, except a read the fail-closed table opened under that same bundle
 ([ADR-0055](adr/0055-a-call-is-handed-out-only-while-its-policy-stands.md));
 `internal/core/recheck_test.go` holds `Recheck` to a second decision at the
-hand-out reading
+hand-out reading.
 
 ### action-digest
 
 `internal/canon/`, goldens in `testdata/digest/`,
 [ADR-0005](adr/0005-canonical-action-digest.md) and
 [ADR-0010](adr/0010-digest-domain-separation.md). Cross-language parity is
-unproved until a second implementation exists
+unproved until a second implementation exists.
 
 ### policy-cli
 
@@ -215,14 +216,14 @@ the rules that matched and the inputs a rule lacked
 
 The same binary holds the `approvals` commands and the `console` page in the
 [approval authority row](#approval-authority) below, and the page's loopback
-listener is its one server; `policy diff` is `planned`
+listener is its one server; `policy diff` is `planned`.
 
 ### starter-packs
 
 `examples/starter-packs/`,
 [reference/starter-packs.md](reference/starter-packs.md). Each is a document and
 its allow, deny and unknown cases; `cmd/guardana-control`'s tests run every case
-and hold each case's document to the pack's
+and hold each case's document to the pack's.
 
 ### policy-keys
 
@@ -236,7 +237,7 @@ key), [ADR-0018](adr/0018-keys-and-bundles-on-disk.md). `policy keygen` and
 same package.
 
 Unix-like systems only; the approvals store, the hold journal and the spool
-carry their own file code
+carry their own file code.
 
 ### policy-matcher
 
@@ -251,7 +252,7 @@ freshness statement bound to its bundle and signed under a key apart from the
 bundle's, and its serial floor is ordered by serial and then `issuedAt`
 (`internal/policy/statement.go`, `floor.go`, `experimental`,
 [ADR-0038](adr/0038-a-signed-freshness-statement-and-a-serial-floor.md)); an
-unconfirmed snapshot decides `POLICY_STALE`
+unconfirmed snapshot decides `POLICY_STALE`.
 
 ### policy-floor
 
@@ -263,7 +264,7 @@ operator's, and the gateway binary holds neither
 commands use it (`policy renew`, `policy state init` and `reset`), and so does
 every plane, through `policy.state_dir`. A floor protects only while its
 directory outlives the plane, and an account that can write the directory can
-lower it
+lower it.
 
 ### policy-refresh
 
@@ -283,7 +284,7 @@ A clock reading outside 1970 to 9999, or behind the verified time, the latest
 `issuedAt` the plane verified, decides nothing: every call is `POLICY_STALE`,
 reads included. `/healthz`, `/metrics` and `doctor` report it. Freshness trusts
 the plane's clock at start, and the operator schedules `policy renew`; nothing
-in the repository schedules it outside `dev`
+in the repository schedules it outside `dev`.
 
 ### external-pdp
 
@@ -295,7 +296,7 @@ the answer and the policy format reads it (`internal/core/`,
 metadata in `doctor` and counts the asks on `/healthz`. The end-to-end tests
 reach a decision point on the loopback over plaintext; TLS is exercised in the
 adapter's own tests, against the roots a test hands it, and the command has no
-setting for a private certificate authority
+setting for a private certificate authority.
 
 ### approval-binding
 
@@ -307,7 +308,7 @@ approver outside the plane answers through the
 [approval authority](#approval-authority) below; a hold does not survive a
 restart, and a plane that keeps a hold journal closes the trail of one it lost
 at its next start, and counts one it cannot close as left open
-([ADR-0016](adr/0016-approval-providers-and-the-lost-hold.md))
+([ADR-0016](adr/0016-approval-providers-and-the-lost-hold.md)).
 
 ### approval-authority
 
@@ -356,14 +357,14 @@ the next start closes a hold that ran `APPROVAL_NOT_RESUMED` on a trail already
 closed and its chain forks, though nothing runs twice: restore is B14's,
 `planned`; the page's printed token and the session it trades for are the only
 thing between it and another local account or a web page, and it cannot tell
-whether a plane reads its pause file; signed webhook callbacks are `planned`
+whether a plane reads its pause file; signed webhook callbacks are `planned`.
 
 ### candidate-policy
 
 [backlog B27](backlog.md),
 [adoption requirements](adoption-and-incident-workflows.md#b27-compare-and-simulate-a-candidate-policy);
 `policy explain` and `policy test` exist, but no diff or simulation command is
-built
+built.
 
 ### mcp-gateway
 
@@ -444,7 +445,7 @@ execution already running, names a run, an agent or a principal only as the
 plane vouches for it, says per entry in `/healthz` and `doctor` whether it
 covers all, some or none of the plane's calls, and cannot name a tenant;
 elicitation, multi-round requests (an upstream's `input_required`, which ends
-the call failed) and the Tasks extension are `planned`
+the call failed) and the Tasks extension are `planned`.
 
 ### credential-echo
 
@@ -457,7 +458,7 @@ listed), `doctor` (the values too short to scan),
 [ADR-0042](adr/0042-an-answer-that-quotes-a-configured-credential-is-withheld.md),
 [reference/mcp-coverage.md](reference/mcp-coverage.md). Catches an echo, not an
 upstream that sets out to leak; an endpoint's path and a command's arguments are
-not scanned, and no setting exempts a value that appears in normal answers
+not scanned, and no setting exempts a value that appears in normal answers.
 
 ### enforce-client
 
@@ -472,7 +473,7 @@ lets a client other than the Go reference refuse what the reference reads).
 
 `go test ./internal/enforceclient/` runs every case and vector against a
 receiver that answers from the files; the receiver in `adapters/enforce/`
-([row below](#enforce-receiver)) runs the same contract
+([row below](#enforce-receiver)) runs the same contract.
 
 ### python-client
 
@@ -491,7 +492,7 @@ the wheel.
 It cooperates: a plane reports its calls `decided, not enforced`. No `asyncio`
 entry point. The release workflow uploads the wheel and source archive to PyPI
 by trusted publishing, and its dry run to TestPyPI;
-`pip install guardana-control` installs it
+`pip install guardana-control` installs it.
 
 ### enforce-receiver
 
@@ -524,7 +525,7 @@ a defecting client under one policy,
 It declares `Cooperative`: the client sends the bytes, so nothing proves it
 obeyed. The socket checks read mode bits, not darwin access control lists, and
 cover the socket's directory, not the directories above it: an account that may
-write one of those can move the socket's directory aside
+write one of those can move the socket's directory aside.
 
 ### hook-bridge
 
@@ -539,7 +540,7 @@ a held call is denied with its approval named. One built-in profile,
 its fixtures are written from the runtime's documentation and run through the
 bridge against a plane in `make test`; it is qualified on two releases of that
 runtime, 20 cases run headless against a plane with the results beside the
-profile, and its gaps are on its page
+profile, and its gaps are on its page.
 
 ### connect-filesystem
 
@@ -557,36 +558,36 @@ project's Python SDK 1.30.0 over HTTP: 14 tools classified, a read, a write
 held, approved and run once, a reuse and a rejection refused, the report read;
 over stdio it runs in no test.
 
-The three-user trial `docs/backlog.md` asks of B06 has not run
+The three-user trial `docs/backlog.md` asks of B06 has not run.
 
 ### mcp-config-preview
 
 [backlog B23](backlog.md),
 [adoption requirements](adoption-and-incident-workflows.md#b23-preview-an-existing-mcp-setup);
-no command built
+no command built.
 
 ### tool-definition-review
 
 [backlog B25](backlog.md),
 [adoption requirements](adoption-and-incident-workflows.md#b25-review-tool-definition-changes);
 the gateway already binds classification to fingerprints, but no change report
-or review workflow is built
+or review workflow is built.
 
 ### a2a-adapter
 
-`adapters/`
+`adapters/`.
 
 ### framework-clients
 
 a client in another language under `clients/`, as
 [ADR-0053](adr/0053-a-python-client-of-the-enforcement-api-in-this-repository.md)
-lays out; framework SDKs: none chosen, [ROADMAP.md](../ROADMAP.md)
+lays out; framework SDKs: none chosen, [ROADMAP.md](../ROADMAP.md).
 
 ### more-channels
 
 notifiers `internal/notify/`, channels `adapters/`,
 [ADR-0039](adr/0039-many-channels-into-one-core.md),
-[ADR-0045](adr/0045-one-run-is-supervised-against-its-procedure.md)
+[ADR-0045](adr/0045-one-run-is-supervised-against-its-procedure.md).
 
 ### evidence-chain
 
@@ -594,7 +595,7 @@ notifiers `internal/notify/`, channels `adapters/`,
 `internal/trailchain/`. Builder, chain validation and a JSONL codec. A `Sink`
 seam and a memory sink for tests; the package itself reads no clock and touches
 no file, and the spool that writes disk implements the seam from
-`internal/spool/`
+`internal/spool/`.
 
 ### evidence-spool
 
@@ -617,7 +618,7 @@ modification times, link counts and owners as they were.
 
 `guardana-gateway spool drain` moves the quarantine into a new owner-only file,
 synced before the quarantine is emptied, and is refused while a plane holds the
-spool
+spool.
 
 ### otel-export
 
@@ -629,7 +630,7 @@ acknowledges only the protocol's own answer read strictly, follows no redirect,
 refuses a plaintext `http` endpoint, writes to a `unix:///path` endpoint only
 once the socket's peer is `export.collector_uid`, retries everything else,
 quarantines what a collector refuses, and drains one run at a time;
-`cmd/guardana-gateway` runs it
+`cmd/guardana-gateway` runs it.
 
 ### trail-collector
 
@@ -651,7 +652,7 @@ quarantines what a collector refuses, and drains one run at a time;
 A trail is at least once, its check proves each chain's shape, not its
 integrity, and the token goes only to a socket peer of `export.collector_uid`,
 or over `https` to whoever holds a certificate the system trusts for the
-collector's name
+collector's name.
 
 ### evidence-export
 
@@ -678,7 +679,7 @@ follows a trail export after export, onto each next segment and raises local
 alerts that a repeated delivery, a gap or its own outage neither loses nor
 repeats, reports a broken chain as unknown and an unfinished one as open, and a
 run that timed out or whose outcome is unknown as uncertain, exiting 1 on any of
-them
+them.
 
 ### observations
 
@@ -712,7 +713,7 @@ and `supervise` refuses such a source; `buf breaking` ignores that package and
 
 No content is kept and a capture setting is refused; the plane never reads an
 observation; `guardana-control coverage` joins one to a plane event by trace and
-span id against a whole evidence export ([row below](#coverage-map))
+span id against a whole evidence export ([row below](#coverage-map)).
 
 ### coverage-map
 
@@ -732,11 +733,11 @@ An egress path is observed by an egress source's connection to its host, and no
 plane decides egress; a host an egress source reached that no path declares is a
 row of its own, at most 256 printed in host order, which an agent can game, and
 so is each egress source whose import refused a line; either makes the exit 1
-([ADR-0069](adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor.md))
+([ADR-0069](adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor.md)).
 
 ### host-process-events
 
-none chosen
+none chosen.
 
 ### operator-runs
 
@@ -774,7 +775,7 @@ carried
 ([ADR-0079](adr/0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close.md));
 a token acts as its run until it expires or is closed; a run closed after its
 call passed the listener still runs that call; `dev` and scenarios serve local
-runs only
+runs only.
 
 ### run-supervision
 
@@ -803,7 +804,7 @@ It reads exports and logs when an operator runs it; nothing in a plane reads a
 finding, and `react` turns a confirmed one into a stop of the run it names, a
 root or a child ([row below](#run-stop)). A finding resting on what a runtime
 reported is suspected at most; a skipped step is never confirmed; the report
-names each source not read, never heard or silent
+names each source not read, never heard or silent.
 
 ### run-stop
 
@@ -830,36 +831,39 @@ names each source not read, never heard or silent
 
 A plane with a route refuses a stopped run's later calls `RUN_STOPPED` and no
 other run's, and every call `STOP_STATE_UNAVAILABLE` while it cannot read or
-trust the list. A call already running is not cut, a stopped run's children are
+trust the list. A call already handed out, or being handed out, is not cut by a
+stop of any scope, a stopped run's children are
 not stopped, a process of the plane's account can add stops the route allows and
 start a new list across a restart, except under `signed`, where the stops
 directory and the route are refused when that account may write them and every
 list chains to the floor and extends the part of it the plane accepted, a floor
 that account can still lower, after which a list the stop writers cut back is
 taken; `react`'s own lines are signed by no operator, and the checks read mode
-bits, not darwin access control lists
+bits, not darwin access control lists.
 
 Under `signed` a route may stop the agent or principal of the finding's run
 instead, for `REPEATED_DENIAL` and the two retry rules and for the rule's
 lifetime; matched against the listener's configured identity, such a stop
 refuses every call of the plane `AGENT_OR_PRINCIPAL_STOPPED`, runless calls and
-later runs included, and only a lift of that agent or principal ends it.
+later runs included, and only a lift of that agent or principal ends it. No
+configuration wires a listener authenticator, so such a stop matches the
+configured agent and principal, never an authenticated end user.
 
 ### finding-review
 
 [backlog B26](backlog.md),
 [adoption requirements](adoption-and-incident-workflows.md#b26-review-findings-and-export-an-incident-package);
 findings export exists, but no case review history or joined incident package is
-built
+built.
 
 ### web-ui
 
 no path chosen yet; one run's static page is `supervise --view`
-([row above](#run-supervision))
+([row above](#run-supervision)).
 
 ### graph-api
 
-no path chosen yet, and no milestone names it
+no path chosen yet, and no milestone names it.
 
 ### trust-roster
 
@@ -878,14 +882,15 @@ no path chosen yet, and no milestone names it
 A plane reads a roster only under `approvals.authority: signed`, where it needs
 a `plane_id`, serves one tenant
 ([ADR-0082](adr/0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant.md)),
-and `doctor` and `/healthz` report `trust`, naming that id,
-`operators.authenticator` and `operators.authorizer`; the plane refuses to start
+and `doctor` and `health.socket` report `trust`, naming that id,
+`operators.authenticator` and `operators.authorizer`, as `/healthz` does
+without the id; the plane refuses to start
 when its account may write the roster file, so that account cannot put an older
 roster in place; it still raises the roster's floor, so it can withhold a newer
 roster within the held one's lifetime; a `read` grant parses and grants nothing
 yet, which `doctor` says;
 [contracts.md](contracts.md#signed-files-and-their-project-checks) lists each
-signed file a plane takes with its project check
+signed file a plane takes with its project check.
 
 ### scenario-runs
 
@@ -897,7 +902,7 @@ approvals and pauses through the `guardana-control` beside it;
 [reference/scenario-format.md](reference/scenario-format.md),
 [ADR-0022](adr/0022-scenarios-are-data.md). It must be the plane's only client,
 a scenario must finish within the approval lifetime, and it trusts the trail
-beyond the ids, the bundle digest and the mode it checks
+beyond the ids, the bundle digest and the mode it checks.
 
 ### dev-mode
 
@@ -915,7 +920,7 @@ each scenario on a plane of its own.
 the statement every third of the staleness budget, or sooner when the poll
 interval asks, so a scenario that runs past the budget keeps its verdicts; a
 renewal that fails leaves the plane deciding `POLICY_STALE` once the budget has
-passed
+passed.
 
 ### demo-servers
 
@@ -933,7 +938,7 @@ published.
 
 Its test builds the binaries, runs each scenario on its own plane through `dev`,
 reads what each server received, and fails one mutant of each scenario on the
-member it changed
+member it changed.
 
 ### backup-restore
 
@@ -956,20 +961,20 @@ backup's serial refuses a list carried twice since, each until an operator takes
 the guide's way back.
 
 The manifest is unsigned: its hashes catch corruption, not a hostile writer of
-the backup; a signed restore of a `0.1` manifest, which names no plane, says
+the backup; under `signed` both commands refuse a key the environment sets; a signed restore of a `0.1` manifest, which names no plane, says
 `plane not checked`. A raw volume restore is unsupported.
 
 ### control-plane-api
 
-`internal/controlapi/`, [ADR-0009](adr/0009-open-core-boundary.md)
+`internal/controlapi/`, [ADR-0009](adr/0009-open-core-boundary.md).
 
 ### storage
 
-`internal/storage/`
+`internal/storage/`.
 
 ### go-module
 
-`go.mod` (`go 1.27.4`), `scripts/bootstrap.sh`
+`go.mod` (`go 1.27.4`), `scripts/bootstrap.sh`.
 
 ### quality-gate
 
@@ -994,15 +999,15 @@ lockfile left unread and a missing scanner. The documentation check judges every
 page's frontmatter, type, `covers`, budget and diagrams and pins every rendered
 page and block to its generator
 ([ADR-0015](adr/0015-documentation-structure-and-checks.md)); `make docs-impact`
-names the pages a change makes suspect
+names the pages a change makes suspect.
 
 ### brand-rename
 
-`internal/brand/`, `scripts/check-brand.sh`, `scripts/rename-product.sh`
+`internal/brand/`, `scripts/check-brand.sh`, `scripts/rename-product.sh`.
 
 ### decision-records
 
-`docs/adr/`
+`docs/adr/`.
 
 ### continuous-integration
 
@@ -1030,7 +1035,7 @@ night is red.
 Every workflow's steps start in a bash that ignores the startup files, options
 and functions an earlier step can set through `$GITHUB_ENV`; a bash script a
 step starts still reads them, and `make quality` refuses them
-([ADR-0062](adr/0062-the-gate-is-guarded-at-its-entry-points-and-fuzzed-at-night.md))
+([ADR-0062](adr/0062-the-gate-is-guarded-at-its-entry-points-and-fuzzed-at-night.md)).
 
 ### releases
 
@@ -1057,7 +1062,7 @@ has an open CodeQL alert of severity high or critical
 Also an OCI image of the gateway, `ghcr.io/guardana/control-gateway`, for
 linux/amd64 and linux/arm64 on a distroless nonroot base, signed and attested by
 digest the same way, its digest named in the release notes
-([guides/run-in-a-container.md](guides/run-in-a-container.md))
+([guides/run-in-a-container.md](guides/run-in-a-container.md)).
 
 ### benchmarks
 
@@ -1065,7 +1070,7 @@ digest the same way, its digest named in the release notes
 and with obligations, and one MCP tool call through the gateway against the same
 call made directly, with guard tests in `make test`. `scripts/bench.sh` keeps a
 run in the ignored `bench/results/local/`; `--publish` writes a tracked
-`bench/results/<stamp>-<os>-<arch>.txt` that names the machine
+`bench/results/<stamp>-<os>-<arch>.txt` that names the machine.
 
 ### website
 
@@ -1083,7 +1088,7 @@ https://control.guardana.dev, deployed from `main` on every push.
 
 The pages name the release `docs/docs.json` sets once it is published, and link
 its documentation at the tag
-([ADR-0049](adr/0049-the-site-names-the-published-release.md))
+([ADR-0049](adr/0049-the-site-names-the-published-release.md)).
 
 ## What it supervises today
 
@@ -1099,7 +1104,7 @@ this:
 | Attempts to gain access | Each refusal the pipeline decides is counted in `/metrics`, and recorded with its reason codes unless the call's identifiers name no trail, its request id already has an open trail, or the sink refuses one of its events; a request the listener refuses for its origin or its run token is not recorded, and only run token refusals are counted; within one run, `supervise` reports repeated denials of a tool and, under a `0.2` procedure, a denied action retried with other arguments, through another tool or upstream on the same resource, or around the plane as a source reports it, and the calls of one resource binding that reach more than one resource |
 | Quality: finished, not degraded, nothing skipped | A result's status and hash; within one run, `supervise` reports a skipped step, an order broken and a run that carried on after a failure |
 | Running beside the agents, reporting deviations | The plane writes evidence to a spool for export; `supervise` reads an export when an operator runs it, `notify` hands its alerts to a program, and `findings export` writes the findings out for a program that resumes from a cursor; nothing runs on its own |
-| Stopping an agent | A pause of every call, of one upstream, of one tool, of one opened run or every run under a root, of one agent or of one principal, for calls not yet running; a stop of one opened run's later calls, a root's or a child's, from a confirmed finding a signed route allows, when the operator runs `react`; a stop not of a whole tree, nor of one agent or principal |
+| Stopping an agent | A pause of every call, of one upstream, of one tool, of one opened run or every run under a root, of one agent or of one principal, for calls not yet running; a stop of one opened run's later calls, a root's or a child's, from a confirmed finding a signed route allows, when the operator runs `react`, and under `signed` of the plane's configured agent or principal, which stops every call of the plane for the rule's lifetime; a stop not of a whole tree |
 | A run drawn as a graph | A static page per run from `supervise --view`: the expected steps beside the calls observed, each marked by shape and line as well as colour; a table, not a graph, and not live |
 
 ## Open source, and what may be commercial

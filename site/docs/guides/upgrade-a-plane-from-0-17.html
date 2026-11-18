@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Upgrade a signed plane from 0.17 · Guardana Control</title>
-<meta name="description" content="Sign a 0.17 plane&#39;s pause file, route and stop list again for its plane_id, carry its stops and lifts into a new list, and point the plane at it."/>
-<link rel="canonical" href="https://control.guardana.dev/docs/guides/upgrade-a-signed-plane-from-0-17"/>
+<title>Upgrade a plane from 0.17 · Guardana Control</title>
+<meta name="description" content="What every plane meets in 0.18, and how a signed plane signs its pause file, route and stop list again for its plane_id and carries its stops."/>
+<link rel="canonical" href="https://control.guardana.dev/docs/guides/upgrade-a-plane-from-0-17"/>
 <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)"/>
 <meta name="theme-color" content="#0A0A0A" media="(prefers-color-scheme: dark)"/>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
@@ -26,7 +26,7 @@
 </div></header>
 <div class="w shell">
 <details class="mnav">
-<summary>Menu · <b>Upgrade a signed plane from 0.17</b></summary>
+<summary>Menu · <b>Upgrade a plane from 0.17</b></summary>
 <nav class="inner" aria-label="Documentation">
 <ul class="home"><li><a href="/docs/">Overview</a></li></ul>
 <h2>Get started</h2><ul>
@@ -46,7 +46,7 @@
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
-<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17" aria-current="page">Upgrade a signed plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-17" aria-current="page">Upgrade a plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -120,60 +120,103 @@
 </nav>
 </details>
 <main id="main" class="prose">
-<h1 id="upgrade-a-signed-plane-from-017">Upgrade a signed plane from 0.17</h1>
+<h1 id="upgrade-a-plane-from-017">Upgrade a plane from 0.17</h1>
 <h2 id="when-to-use-this">When to use this</h2>
-<p>A plane under <code>approvals.authority: signed</code> ran 0.17. 0.18 names the plane in
-every signed document it serves, so it refuses the pause file, the route and
-the stop list 0.17 signed, each naming the command that replaces it, and
-raises no floor while it does
+<p>A plane ran 0.17 and is to run 0.18. Every plane follows the first part. A
+plane under <code>approvals.authority: signed</code> also follows the second: 0.18 names
+the plane in every signed document it serves, so it refuses the pause file,
+the route and the stop list 0.17 signed, each naming the command that
+replaces it, and raises no floor while it does
 (<a href="/docs/adr/0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant">ADR-0082</a>).</p>
-<h2 id="prerequisites">Prerequisites</h2>
+<h2 id="every-plane">Every plane</h2>
+<p>Under <code>directory</code> and <code>memory</code> the plane reads the files 0.17 wrote: replace
+both binaries and start it. Three things it answers differ.</p>
 <ul>
-<li>The plane is stopped, and <code>plane_id</code> is set in its configuration.</li>
+<li>The health answer is schema <code>3</code>. A script that reads <code>/healthz</code> or
+<code>health.socket</code> and checks <code>&quot;schema&quot;</code> takes <code>&quot;3&quot;</code>. Under <code>stops</code>, the
+socket's <code>unheld_runs</code> and <code>unread_runs</code> are now <code>unheld_entries</code> and
+<code>unread_entries</code> and name entry ids, since a stop can name an agent or a
+principal; each entry in <code>entries</code> names its <code>scope</code> and <code>subject</code>. The
+counts <code>active</code>, <code>unheld</code> and <code>unread</code> are unchanged.</li>
+<li><code>state backup</code> writes manifest <code>0.2</code>. Under <code>directory</code> it names no plane,
+so 0.17 restores it, and 0.18 restores a <code>0.1</code> backup.</li>
+<li><code>stops lift</code> takes exactly one of <code>--run</code>, <code>--agent</code> and <code>--principal</code>, the
+last two only under <code>signed</code>, so a 0.17 lift with <code>--run</code> runs as before.</li>
+</ul>
+<p>To go back under <code>directory</code> or <code>memory</code>, start the 0.17 binaries on the
+same files; a signed plane goes back as its <a href="#roll-back">roll back</a> says.</p>
+<h2 id="a-signed-plane">A signed plane</h2>
+<h3 id="prerequisites">Prerequisites</h3>
+<ul>
+<li>The plane is stopped, <code>plane_id</code> is set in its configuration, and
+<code>listener.principal.tenant_id</code> is unset or equal to <code>tenant_id</code>: a signed
+plane serves one tenant.</li>
 <li>A copy of the pause file is kept aside for a roll back: step 1 signs the
 file again in place.</li>
 <li>An operator of the roster holds <code>admin</code> for the route and <code>operate</code> for the
 pause file and the stop list in the plane's tenant and project.</li>
-<li>The paths below are examples: <code>/srv/plane</code> holds the plane's files and
-<code>orders-eu-1</code> is its <code>plane_id</code>.</li>
+<li>The paths and names below are examples: <code>/srv/plane</code> holds the route and
+the stop lists, which the account that signs the route may write and the
+plane's account may not, or the plane refuses to start;
+<code>/var/lib/guardana/stopsfloor</code> is the plane's stop list floor;
+<code>orders-eu-1</code> is its <code>plane_id</code>, <code>ops</code> is the stop writers' account, which
+holds an operator's key, and <code>guardana</code> is the plane's group.</li>
 </ul>
-<h2 id="steps">Steps</h2>
-<pre><code># 1. The pause file: its entries signed again for this plane at the next serial.
-# A version 3 file names no plane: sign only the file this plane read.
+<h3 id="steps">Steps</h3>
+<pre><code># 1. As the operator: the pause file&#39;s entries signed again for this plane at
+# the next serial. A version 3 file names no plane: sign only the file this
+# plane read.
 guardana-control pause sign --key op.key --roster /etc/guardana/roster.json \
   --root-key /etc/guardana/root.pub --plane-id orders-eu-1 /srv/pause/pause.json
 
-# 2. The route: edit the route document to kind reaction-route/v1alpha3, add
+# 2. As an admin: edit the route document to kind reaction-route/v1alpha3, add
 # &#34;plane_id&#34;: &#34;orders-eu-1&#34; and raise its serial by one; keep its route_id.
-# Sign it at a new path: step 3 reads the old route at its own.
+# Sign it at a new path: step 4 reads the old route at its own.
 guardana-control route sign --key admin.key --out /srv/plane/route-018.json route.json
 
-# 3. The stop list: carried into a new directory, judged first as 0.17 judged it.
+# 3. As root: a copy of the plane&#39;s stop list floor for ops, and the new stops
+# directory.
+cp -Rp /var/lib/guardana/stopsfloor /srv/plane/stopsfloor-copy
+chown -R ops /srv/plane/stopsfloor-copy
+mkdir /srv/plane/stops-018
+chown ops:guardana /srv/plane/stops-018
+chmod 2750 /srv/plane/stops-018
+
+# 4. As ops: the stop list carried into the new directory, judged first as
+# 0.17 judged it.
 guardana-control stops init --key op.key --route /srv/plane/route-018.json \
   --roster /etc/guardana/roster.json --root-key /etc/guardana/root.pub \
   --carry /srv/plane/stops --carry-route /srv/plane/route.json \
-  --stops-floor /srv/plane/stopsfloor /srv/plane/stops-018
+  --stops-floor /srv/plane/stopsfloor-copy /srv/plane/stops-018
 
-# 4. As the plane: a new backup, whose manifest 0.2 names the plane.
+# 5. As root: the copy is no longer needed.
+rm -r /srv/plane/stopsfloor-copy
+
+# 6. In gateway.yaml: set reaction.route to /srv/plane/route-018.json and
+# reaction.stops to /srv/plane/stops-018. Then, with the plane still stopped,
+# as the plane: a new backup, whose manifest 0.2 names the plane and holds
+# the carried list.
 guardana-control state backup gateway.yaml /backups/plane-2
 </code></pre>
-<p>Then set <code>reaction.route</code> to <code>/srv/plane/route-018.json</code> and
-<code>reaction.stops</code> to <code>/srv/plane/stops-018</code>, and start the plane. Leave the new
-route where step 2 signed it: a signed route names its own file and the new
-list's header names that route, so a route moved to the old path is refused.
-Keep <code>route.json</code> and <code>stops</code> for a roll back.</p>
-<p>Run <code>react</code> with the 0.18 binary, with <code>--route /srv/plane/route-018.json</code> and
-<code>--stops /srv/plane/stops-018</code>. A 0.17 <code>react</code> left on the old route and
-directory keeps appending to a list the plane no longer reads.</p>
+<p>Then start the plane. Leave the new route where step 2 signed it: a signed
+route names its own file and the new list's header names that route, so a
+route moved to the old path is refused. Keep <code>/srv/plane/route.json</code> and
+<code>/srv/plane/stops</code> for a roll back.</p>
+<p>Run <code>react</code> with the 0.18 binary as <code>ops</code>, with <code>--route /srv/plane/route-018.json</code> and <code>--stops /srv/plane/stops-018</code>. A 0.17 <code>react</code>
+left on the old route and directory keeps appending to a list the plane no
+longer reads.</p>
 <p><code>stops init --carry</code> is the one command that reads a <code>reaction-route/v1alpha2</code>
 route and a <code>2.0</code> list. It judges every line through the roster, as a 0.17
-plane did, and with <code>--stops-floor</code> refuses an old list cut back below what
-the plane accepted. The old documents name no plane, so the operator vouches
-that the list is this plane's. The new <code>3.0</code> header takes the next serial and
-names the old head as <code>previous</code>, which the stop list floor needs to take it.
-Each stop no lift ended is carried with scope <code>run</code> and its run as subject; a
+plane did. Only the floor's owner may read a floor, so step 3 copies the
+plane's: with <code>--stops-floor</code> the carry refuses an old list cut back below
+the part the plane accepted. A floor names its tenant and project, not its
+directory, so the check trusts the operator, who chooses the old list and
+the floor. The old documents name no plane, so the operator also vouches that
+the list is this plane's. The new <code>3.0</code> header takes the next serial and names
+the old head as <code>previous</code>, which the stop list floor needs to take it. Each
+stop no lift ended is carried with scope <code>run</code> and its run as subject; a
 lifted run's findings are carried as covered.</p>
-<h2 id="verify">Verify</h2>
+<h3 id="verify">Verify</h3>
 <ul>
 <li><code>stops init</code> says on standard error <code>for plane orders-eu-1</code>, a serial one
 above the old list's, and the old head as <code>previous head</code>.</li>
@@ -182,18 +225,12 @@ header.</li>
 <li><code>/healthz</code> gives the new serial under <code>stops.signed</code>, and a run the old list
 stopped is still refused with <code>RUN_STOPPED</code>.</li>
 </ul>
-<p>The health answer is schema <code>3</code> in 0.18. A script that reads <code>/healthz</code> or
-<code>health.socket</code> and checks <code>&quot;schema&quot;</code> takes <code>&quot;3&quot;</code>. Under <code>stops</code>, the
-socket's <code>unheld_runs</code> and <code>unread_runs</code> are now <code>unheld_entries</code> and
-<code>unread_entries</code> and name entry ids, since a stop can name an agent or a
-principal; each entry in <code>entries</code> names its <code>scope</code> and <code>subject</code>. The
-counts <code>active</code>, <code>unheld</code> and <code>unread</code> are unchanged.</p>
-<h2 id="roll-back">Roll back</h2>
-<p>0.17 refuses a <code>reaction-route/v1alpha3</code> route, a <code>3.0</code> list and a backup
-whose manifest names a plane. To go back, stop the plane, point
-<code>reaction.route</code> and <code>reaction.stops</code> at the 0.17 files you kept, copy the
-0.17 pause file you kept back to its path, and start 0.17. Three floors hold
-what 0.18 took:</p>
+<h3 id="roll-back">Roll back</h3>
+<p>0.17 refuses a <code>reaction-route/v1alpha3</code> route, a <code>3.0</code> list, a backup
+whose manifest names a plane and the <code>plane_id</code> key. To go back, stop the
+plane, remove <code>plane_id</code> from its configuration, point <code>reaction.route</code> and
+<code>reaction.stops</code> at the 0.17 files you kept, copy the 0.17 pause file you kept
+back to its path, and start 0.17. Three floors hold what 0.18 took:</p>
 <ul>
 <li>The pause floor holds the serial <code>pause sign</code> gave the pause file, so 0.17
 refuses the copy below it. Make a new pause floor with <code>pause floor init --tenant &lt;tenant&gt; --project &lt;project&gt;</code> in a new directory and name it in
@@ -211,7 +248,7 @@ directory, name it in <code>reaction.stops_floor_dir</code>, and start a new lis
 </ul>
 <p>Run <code>react</code> with the 0.17 binary against them; it stops again what may still
 stop.</p>
-<p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/guides/upgrade-a-signed-plane-from-0-17.md">docs/guides/upgrade-a-signed-plane-from-0-17.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.17.0, and <a href="https://github.com/guardana/control/tree/v0.17.0/docs">its documentation</a> is in its tag.</p>
+<p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/guides/upgrade-a-plane-from-0-17.md">docs/guides/upgrade-a-plane-from-0-17.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.17.0, and <a href="https://github.com/guardana/control/tree/v0.17.0/docs">its documentation</a> is in its tag.</p>
 </main>
 <nav class="side" aria-label="Documentation">
 <ul class="home"><li><a href="/docs/">Overview</a></li></ul>
@@ -232,7 +269,7 @@ stop.</p>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
-<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17" aria-current="page">Upgrade a signed plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-17" aria-current="page">Upgrade a plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>

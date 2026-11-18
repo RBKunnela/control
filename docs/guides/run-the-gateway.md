@@ -236,7 +236,7 @@ pause:
 `refund` is blocked with `PAUSED` until `pause remove`
 ([more](../concepts/enforcement-modes.md#pausing-calls)). Under `signed`:
 [set up signed operators](set-up-signed-operators.md#5-pause-a-tool), and from
-0.17 [upgrade it](upgrade-a-signed-plane-from-0-17.md).
+0.17 [upgrade it](upgrade-a-plane-from-0-17.md).
 
 ## Verify
 

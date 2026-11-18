@@ -23,7 +23,8 @@ part, is on [failure modes](../reference/failure-modes.md). The gateway is
 reason codes, though `OBSERVE` enforces nothing the policy decides.
 
 **Cause.** What the plane refuses on its own account it refuses in every
-mode: an operator's pause (`PAUSED`), a stopped run (`RUN_STOPPED`), a pause
+mode: an operator's pause (`PAUSED`), a stopped run (`RUN_STOPPED`) or,
+under `signed`, a stopped agent or principal (`AGENT_OR_PRINCIPAL_STOPPED`), a pause
 file or stop list it cannot read (`PAUSE_STATE_UNAVAILABLE`,
 `STOP_STATE_UNAVAILABLE`), a halt after unauthorized bytes ran
 (`EXECUTED_ARGS_MISMATCH`), evidence it cannot keep (`EVIDENCE_UNAVAILABLE`),

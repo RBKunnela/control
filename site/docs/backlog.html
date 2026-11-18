@@ -46,7 +46,7 @@
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
-<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -287,7 +287,7 @@ mappings.</p>
 <td>B13</td>
 <td>Authenticate operators and scope authority</td>
 <td>none</td>
-<td>Under <code>approvals.authority: signed</code>, each receiver enforces operate and admin from the signed roster (<a href="/docs/adr/0071-operators-are-named-by-a-signed-roster">ADR-0071</a>, <a href="/docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it">ADR-0073</a>). Reads are checked by peer uid against <code>health.socket_uid</code> on the health socket and by file modes; the roster's <code>read</code> grant is reserved. A client's <code>Run-Token</code>, <code>Authorization</code> and <code>Cookie</code> reach no MCP upstream, and the paths that need a second account are tested under real accounts in a CI job declared required (<a href="/docs/adr/0081-tests-that-need-a-second-account-run-in-a-required-job">ADR-0081</a>). A signed plane serves one tenant: a configuration whose <code>listener.principal.tenant_id</code> differs from <code>tenant_id</code> is refused at load (<a href="/docs/adr/0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant">ADR-0082</a>). Open: reads and operations of another project are refused at every receiver, not only at the signed ones <a href="/docs/contracts#signed-files-and-their-project-checks">contracts.md</a> lists. Under <code>directory</code> and <code>memory</code>, each receiver judges a project under the same tenant: answers and pauses take <code>tenant_id</code>, runs and stops the listener's. A stop names its actual agent or principal scope. Two operators with overlapping runs pass adversarial tests</td>
+<td>Under <code>approvals.authority: signed</code>, each receiver enforces operate and admin from the signed roster (<a href="/docs/adr/0071-operators-are-named-by-a-signed-roster">ADR-0071</a>, <a href="/docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it">ADR-0073</a>). Reads are checked by peer uid against <code>health.socket_uid</code> on the health socket and by file modes; the roster's <code>read</code> grant is reserved. A client's <code>Run-Token</code>, <code>Authorization</code> and <code>Cookie</code> reach no MCP upstream, and the paths that need a second account are tested under real accounts in a CI job declared required (<a href="/docs/adr/0081-tests-that-need-a-second-account-run-in-a-required-job">ADR-0081</a>). A signed plane serves one tenant: a configuration whose <code>listener.principal.tenant_id</code> differs from <code>tenant_id</code> is refused at load (<a href="/docs/adr/0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant">ADR-0082</a>), and a signed route may stop a finding's agent or principal, matched against the identity the listener's configuration names (<a href="/docs/adr/0083-a-finding-may-stop-an-agent-or-a-principal">ADR-0083</a>). Open: reads and operations of another project are refused at every receiver, not only at the signed ones <a href="/docs/contracts#signed-files-and-their-project-checks">contracts.md</a> lists. Under <code>directory</code> and <code>memory</code>, each receiver judges a project under the same tenant: answers and pauses take <code>tenant_id</code>, runs and stops the listener's. A stop of an agent or a principal exists outside <code>signed</code> and matches an authenticated end user, which needs a listener authenticator no configuration wires. Two operators with overlapping runs pass adversarial tests</td>
 </tr>
 <tr>
 <td>B14</td>
@@ -458,7 +458,7 @@ sessions and feedback, consistent with the no-phone-home decision.</p>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
-<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>

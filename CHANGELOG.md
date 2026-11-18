@@ -62,7 +62,7 @@ verify one.
   route's path and `reaction.stops` to the new directory, and run `react` with
   this release against them. `route sign` refuses a `v1alpha2` document, and
   `react`, `stops lift` and `stops list` a `v1alpha2` route
-  ([upgrade a signed plane from 0.17](docs/guides/upgrade-a-signed-plane-from-0-17.md)).
+  ([upgrade a plane from 0.17](docs/guides/upgrade-a-plane-from-0-17.md)).
 - `doctor` names a `v1alpha2` route or a `2.0` stop list as the plane refuses
   it.
 - `doctor` judges a signed pause file with the plane's own check of its plane,
@@ -126,6 +126,10 @@ verify one.
   [channels](docs/reference/channels.md) and see
   [where it fits](docs/concepts/where-it-fits.md); the glossary defines a plane
   and a run.
+- [Upgrade a plane from 0.17](docs/guides/upgrade-a-plane-from-0-17.md), which
+  was for a signed plane alone, now says what every plane meets in 0.18, and
+  its signed steps copy the plane's stop list floor for the operator and make
+  the new stops directory before the carry.
 
 ### Security
 

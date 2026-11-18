@@ -46,7 +46,7 @@
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
-<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -393,23 +393,32 @@ their own, only the payload type each is signed under, and the evidence
 spool frames its segments with no version at all, so a spool another release
 wrote is not promised readable. <code>notify</code>'s <code>--state</code> list of delivered alerts,
 one quoted key per line, carries none either.</p>
-<p>Which version a plane reads depends on its authority:</p>
+<p>Which version a plane reads depends on its authority. 0.17 refuses each
+format 0.18 writes under <code>signed</code>
+(<a href="/docs/guides/upgrade-a-plane-from-0-17">upgrade a plane</a>).</p>
 <ul>
-<li>Pause file: <code>4</code> under <code>signed</code>; <code>1</code> and <code>2</code> elsewhere. <code>3</code> is read by
-<code>pause sign</code> alone, which signs its entries again as <code>4</code>.</li>
-<li>State backup manifest: <code>0.2</code>, naming <code>plane_id</code> under <code>signed</code>; a <code>0.1</code>
-manifest names no plane, and a signed restore of one says <code>plane not checked</code>. 0.17 reads <code>0.2</code> only where it names no plane.</li>
+<li>Pause file: <code>4</code>, naming <code>plane_id</code>, under <code>signed</code>; <code>2</code> written and <code>1</code> and
+<code>2</code> read elsewhere. A plane refuses <code>3</code> and blocks every call, as it does
+under any unreadable pause file; <code>pause sign</code> alone reads <code>3</code> and signs its
+entries again as <code>4</code>. 0.17 reads <code>3</code> alone under <code>signed</code>, so a <code>4</code> file
+blocks its every call.</li>
+<li>State backup manifest: <code>0.2</code> is written, naming <code>plane_id</code> under <code>signed</code>;
+any <code>0.x</code> is read, and a signed restore of a <code>0.1</code> manifest, which names no
+plane, says <code>plane not checked</code>. 0.17 restores <code>0.2</code> only where it names no
+plane, outside <code>signed</code>.</li>
 <li>Route: <code>reaction-route/v1alpha3</code>, naming <code>plane_id</code>, under <code>signed</code>;
-<code>v1alpha1</code> elsewhere. A <code>v1alpha2</code> route names no plane and is refused,
-naming <code>route sign</code>; <code>stops init --carry</code> reads one only as the route the
+<code>v1alpha1</code> elsewhere. A <code>v1alpha2</code> route names no plane: the plane, <code>react</code>,
+<code>stops lift</code> and <code>stops list</code> refuse it, naming <code>route sign</code>, which refuses
+a <code>v1alpha2</code> document; <code>stops init --carry</code> reads one only as the route the
 list it carries was judged under.</li>
-<li>Stop list: <code>3.0</code> under <code>signed</code>; <code>1.0</code> elsewhere. A <code>2.0</code> list is refused,
-naming <code>stops init --carry</code>, which carries it into <code>3.0</code>.</li>
-<li>Stop list header: <code>reaction-list-header/3.0</code>, the signed header of a <code>3.0</code>
-list, naming <code>plane_id</code>.</li>
+<li>Stop list: <code>3.0</code> under <code>signed</code>, whose header <code>reaction-list-header/3.0</code>
+names <code>plane_id</code>; <code>1.0</code> elsewhere. A <code>2.0</code> list is refused, naming <code>stops init --carry</code>, which alone reads it and carries it into <code>3.0</code>.</li>
 <li>Lift: <code>reaction-lift/v1alpha3</code>, naming <code>plane_id</code>, scope and subject, under
 <code>signed</code>; <code>reaction-lift/v1alpha1</code> elsewhere. A <code>v1alpha2</code> lift is read only
 by a carry.</li>
+<li>Health answer: schema <code>3</code> under every authority. Under <code>stops</code>,
+<code>health.socket</code> names <code>unheld_entries</code> and <code>unread_entries</code> where 0.17's
+schema <code>2</code> named <code>unheld_runs</code> and <code>unread_runs</code>.</li>
 </ul>
 <p>A <code>1.0</code> list is not carried into <code>3.0</code>: start a new list, and <code>react</code> stops
 again the findings that still may stop a run.</p>
@@ -483,7 +492,7 @@ accepts a version the page does not name.</p>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
-<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>

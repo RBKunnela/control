@@ -46,7 +46,7 @@
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
-<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -1693,7 +1693,10 @@ program that reads a list. <code>experimental</code>, in <code>internal/reaction
 <a href="/docs/reference/reaction">reference/reaction.md</a> says what the commands and a
 plane do with them. Only <code>guardana-control route sign</code> signs a route, and
 only <code>stops</code> and <code>react</code> write a list, under its lock; a plane reads both and
-writes neither.</p>
+writes neither. The route, the list and the lift below are the forms outside
+<code>approvals.authority: signed</code>;
+<a href="#under-the-signed-authority">under the signed authority</a> gives the
+<code>v1alpha3</code> route, the <code>3.0</code> list and the <code>v1alpha3</code> lift.</p>
 <h3 id="the-route">The route</h3>
 <p>One strict JSON object of at most 64 KiB: a member this build cannot name, one
 given twice, a <code>null</code> and a value of another type are refused.</p>
@@ -1882,7 +1885,7 @@ without <code>plane_id</code>: a <code>reaction-route/v1alpha2</code> route, a
 <code>reaction-list-header/2.0</code> header and a <code>reaction-lift/v1alpha2</code> lift. A
 plane refuses each, naming <code>route sign</code> or <code>stops init --carry</code>, and only
 <code>stops init --carry</code> reads them, as the list it carries from; see
-<a href="/docs/guides/upgrade-a-signed-plane-from-0-17">upgrade a signed plane from 0.17</a>.</p>
+<a href="/docs/guides/upgrade-a-plane-from-0-17">upgrade a plane from 0.17</a>.</p>
 <p>A list under a <code>v1alpha3</code> route is version <code>3.0</code>: its header line is
 <code>{&quot;envelope&quot;:…,&quot;kind&quot;:&quot;header&quot;,&quot;version&quot;:&quot;3.0&quot;}</code>, a <code>stop</code> and a <code>covered</code>
 line add <code>project_id</code>, <code>scope</code> and <code>subject</code>, and a <code>lift</code> line names <code>scope</code>
@@ -2235,7 +2238,7 @@ closing records.</p>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
-<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>

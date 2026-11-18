@@ -23,7 +23,7 @@ isolation. Each answers a different question, and they combine.
 | Let a person approve one exact call under one policy bundle, once | `implemented`, [approval-binding](../status.md#approval-binding) |
 | Answer a tool outside MCP that asks before it acts, which then enforces the answer itself | `experimental`, [enforce-receiver](../status.md#enforce-receiver) |
 | Import an agent's traces and an egress proxy's access log as observations, which decide nothing | `experimental`, [observations](../status.md#observations) |
-| Check one opened run against its procedure, and stop that run's later calls on a confirmed finding where a signed route allows it | `experimental`, [run-supervision](../status.md#run-supervision), [run-stop](../status.md#run-stop) |
+| Check one opened run against its procedure, and stop that run's later calls, or under `signed` its agent or principal, on a confirmed finding where a signed route allows it | `experimental`, [run-supervision](../status.md#run-supervision), [run-stop](../status.md#run-stop) |
 
 ## What it does not do
 

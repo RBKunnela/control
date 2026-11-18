@@ -46,7 +46,7 @@
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
-<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -180,8 +180,7 @@ and one lift of each operator who signed one, so revoking any of them,
 taking the route's admin grant away, or ports that do not answer in time
 make the stop state unknown until they answer again; a route refused then
 reads as <code>a route no operator vouches for</code>. The stop list floor, which <code>stops floor init --tenant --project</code> makes and <code>reaction.stops_floor_dir</code> names, is
-kept for the tenant the listener serves (<code>listener.principal.tenant_id</code> when set,
-else <code>tenant_id</code>) and the project. It keeps the highest header serial the
+kept for the plane's tenant and project. It keeps the highest header serial the
 plane took, that header's digest, and the length and SHA-256 of the part of
 that list the plane accepted, held to at every read and raised under the
 floor's lock each time that part grows. A plane
@@ -203,7 +202,9 @@ the list and its lifts on disk through the roster before it signs, and says
 on standard error what it signed. A carry judges every line of the old list
 as a plane does; with <code>--stops-floor</code>, the plane's floor directory, it also
 refuses an old list cut back below the part the plane accepted, and without
-it says that the floor was not read. <code>--carry-route</code> may name a
+it says that the floor was not read. Only the floor's owner reads it: on two
+accounts root copies it for the operator
+(<a href="/docs/guides/upgrade-a-plane-from-0-17">upgrade a plane</a>). <code>--carry-route</code> may name a
 <code>v1alpha2</code> route and <code>--carry</code> its <code>2.0</code> list: a carry is the one reader of
 both, judges them by tenant, project and file, as 0.17 did, and writes a
 <code>3.0</code> list for the plane the new route names, at the next serial, naming the
@@ -239,6 +240,8 @@ alone, never its type. Every opened run of a plane carries the listener's
 identity, so <strong>on one plane a stop of its agent or principal stops the
 plane</strong>: every run, a run opened after the stop, and a call with no run, each
 <code>AGENT_OR_PRINCIPAL_STOPPED</code> (48, <code>DENY</code>). The tool listing is not stopped.
+A call already handed out, or being handed out, finishes under a stop of any
+scope.
 A call under a stop of its run and of its agent lists both codes,
 <code>RUN_STOPPED</code> first. An active stop of either scope whose subject the call
 does not name reads as an unknown stop state, <code>STOP_STATE_UNAVAILABLE</code>, never
@@ -288,7 +291,7 @@ accepted, and no floor holds it.</li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
-<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>

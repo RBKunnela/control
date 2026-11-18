@@ -44,8 +44,7 @@ taking the route's admin grant away, or ports that do not answer in time
 make the stop state unknown until they answer again; a route refused then
 reads as `a route no operator vouches for`. The stop list floor, which `stops
 floor init --tenant --project` makes and `reaction.stops_floor_dir` names, is
-kept for the tenant the listener serves (`listener.principal.tenant_id` when set,
-else `tenant_id`) and the project. It keeps the highest header serial the
+kept for the plane's tenant and project. It keeps the highest header serial the
 plane took, that header's digest, and the length and SHA-256 of the part of
 that list the plane accepted, held to at every read and raised under the
 floor's lock each time that part grows. A plane
@@ -69,7 +68,9 @@ the list and its lifts on disk through the roster before it signs, and says
 on standard error what it signed. A carry judges every line of the old list
 as a plane does; with `--stops-floor`, the plane's floor directory, it also
 refuses an old list cut back below the part the plane accepted, and without
-it says that the floor was not read. `--carry-route` may name a
+it says that the floor was not read. Only the floor's owner reads it: on two
+accounts root copies it for the operator
+([upgrade a plane](../guides/upgrade-a-plane-from-0-17.md)). `--carry-route` may name a
 `v1alpha2` route and `--carry` its `2.0` list: a carry is the one reader of
 both, judges them by tenant, project and file, as 0.17 did, and writes a
 `3.0` list for the plane the new route names, at the next serial, naming the
@@ -111,6 +112,8 @@ alone, never its type. Every opened run of a plane carries the listener's
 identity, so **on one plane a stop of its agent or principal stops the
 plane**: every run, a run opened after the stop, and a call with no run, each
 `AGENT_OR_PRINCIPAL_STOPPED` (48, `DENY`). The tool listing is not stopped.
+A call already handed out, or being handed out, finishes under a stop of any
+scope.
 A call under a stop of its run and of its agent lists both codes,
 `RUN_STOPPED` first. An active stop of either scope whose subject the call
 does not name reads as an unknown stop state, `STOP_STATE_UNAVAILABLE`, never

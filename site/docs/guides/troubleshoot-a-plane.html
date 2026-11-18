@@ -46,7 +46,7 @@
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane" aria-current="page">Troubleshoot a plane</a></li>
-<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -134,7 +134,8 @@ configuration file, and the health address it serves.</li>
 <p><strong>Symptom.</strong> The answer is marked <code>blocked</code>, <code>isError: true</code>, its text the
 reason codes, though <code>OBSERVE</code> enforces nothing the policy decides.</p>
 <p><strong>Cause.</strong> What the plane refuses on its own account it refuses in every
-mode: an operator's pause (<code>PAUSED</code>), a stopped run (<code>RUN_STOPPED</code>), a pause
+mode: an operator's pause (<code>PAUSED</code>), a stopped run (<code>RUN_STOPPED</code>) or,
+under <code>signed</code>, a stopped agent or principal (<code>AGENT_OR_PRINCIPAL_STOPPED</code>), a pause
 file or stop list it cannot read (<code>PAUSE_STATE_UNAVAILABLE</code>,
 <code>STOP_STATE_UNAVAILABLE</code>), a halt after unauthorized bytes ran
 (<code>EXECUTED_ARGS_MISMATCH</code>), evidence it cannot keep (<code>EVIDENCE_UNAVAILABLE</code>),
@@ -229,7 +230,7 @@ lists the layout that passes.</p>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane" aria-current="page">Troubleshoot a plane</a></li>
-<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>

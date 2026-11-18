@@ -29,8 +29,9 @@ Guardana Control puts your rules between an AI agent and its tools. Each call th
   can refuse a call and never widen what your policy allows (`experimental`).
 - Let a tool of your own ask before it acts, through the enforcement API or
   a coding agent's hooks. Your client enforces the answer (`experimental`).
-- Check a recorded run against its procedure, and stop that run's later calls
-  through a signed route (`experimental`).
+- Check a recorded run against its procedure, and stop that run's later calls,
+  or under signed authority its agent's or principal's, through a signed route
+  (`experimental`).
 - Read each decision with the policy version that made it, and see in the
   coverage map which paths nobody observed (`experimental`).
 

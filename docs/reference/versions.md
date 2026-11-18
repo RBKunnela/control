@@ -68,24 +68,33 @@ spool frames its segments with no version at all, so a spool another release
 wrote is not promised readable. `notify`'s `--state` list of delivered alerts,
 one quoted key per line, carries none either.
 
-Which version a plane reads depends on its authority:
+Which version a plane reads depends on its authority. 0.17 refuses each
+format 0.18 writes under `signed`
+([upgrade a plane](../guides/upgrade-a-plane-from-0-17.md)).
 
-- Pause file: `4` under `signed`; `1` and `2` elsewhere. `3` is read by
-  `pause sign` alone, which signs its entries again as `4`.
-- State backup manifest: `0.2`, naming `plane_id` under `signed`; a `0.1`
-  manifest names no plane, and a signed restore of one says `plane not
-  checked`. 0.17 reads `0.2` only where it names no plane.
+- Pause file: `4`, naming `plane_id`, under `signed`; `2` written and `1` and
+  `2` read elsewhere. A plane refuses `3` and blocks every call, as it does
+  under any unreadable pause file; `pause sign` alone reads `3` and signs its
+  entries again as `4`. 0.17 reads `3` alone under `signed`, so a `4` file
+  blocks its every call.
+- State backup manifest: `0.2` is written, naming `plane_id` under `signed`;
+  any `0.x` is read, and a signed restore of a `0.1` manifest, which names no
+  plane, says `plane not checked`. 0.17 restores `0.2` only where it names no
+  plane, outside `signed`.
 - Route: `reaction-route/v1alpha3`, naming `plane_id`, under `signed`;
-  `v1alpha1` elsewhere. A `v1alpha2` route names no plane and is refused,
-  naming `route sign`; `stops init --carry` reads one only as the route the
+  `v1alpha1` elsewhere. A `v1alpha2` route names no plane: the plane, `react`,
+  `stops lift` and `stops list` refuse it, naming `route sign`, which refuses
+  a `v1alpha2` document; `stops init --carry` reads one only as the route the
   list it carries was judged under.
-- Stop list: `3.0` under `signed`; `1.0` elsewhere. A `2.0` list is refused,
-  naming `stops init --carry`, which carries it into `3.0`.
-- Stop list header: `reaction-list-header/3.0`, the signed header of a `3.0`
-  list, naming `plane_id`.
+- Stop list: `3.0` under `signed`, whose header `reaction-list-header/3.0`
+  names `plane_id`; `1.0` elsewhere. A `2.0` list is refused, naming `stops
+  init --carry`, which alone reads it and carries it into `3.0`.
 - Lift: `reaction-lift/v1alpha3`, naming `plane_id`, scope and subject, under
   `signed`; `reaction-lift/v1alpha1` elsewhere. A `v1alpha2` lift is read only
   by a carry.
+- Health answer: schema `3` under every authority. Under `stops`,
+  `health.socket` names `unheld_entries` and `unread_entries` where 0.17's
+  schema `2` named `unheld_runs` and `unread_runs`.
 
 A `1.0` list is not carried into `3.0`: start a new list, and `react` stops
 again the findings that still may stop a run.

@@ -15,6 +15,11 @@ and [ADR-0077](0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatu
 account may write the pause file, the run records, the route file or the stops
 directory, each record holding its part.
 
+Amended by [ADR-0082](0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant.md):
+under signed the plane also needs `plane_id`, read from the configuration
+file alone, and serves one tenant: a `listener.principal.tenant_id` that
+differs from `tenant_id` is refused at load.
+
 ## Context
 
 A held call ran on whatever the approvals store answered: one place both

@@ -46,7 +46,7 @@
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
-<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -144,7 +144,8 @@ enforce the answer itself. You
 can import runtime traces and an egress proxy's access log as observations,
 inspect coverage, and check one
 opened run against its procedure, draw it as a page, hand its findings to a
-program, and stop that run where a signed route allows it.</li>
+program, and stop that run, or under <code>signed</code> its agent or principal, where
+a signed route allows it.</li>
 <li>The limits: the gateway sees only the calls routed through it, the caller's
 identity comes from its configuration rather than a login, and the evidence
 trail is not tamper-evident. It is not a security boundary.</li>
@@ -453,7 +454,7 @@ already holds a package doc and a test holds nothing that decides.</li>
 <td>run-stop</td>
 <td>Stopping a run through a signed route</td>
 <td><code>experimental</code></td>
-<td>A confirmed finding stops one opened run's later calls where a signed route allows it; a call already running is not cut. <a href="#run-stop">details</a></td>
+<td>A confirmed finding stops one opened run's later calls, or under <code>signed</code> its agent or principal, where a signed route allows it; a call already running is not cut. <a href="#run-stop">details</a></td>
 </tr>
 <tr>
 <td>finding-review</td>
@@ -602,20 +603,20 @@ exact set rather than a list in prose, which drifts.</p>
 <h3 id="wire-contracts">wire-contracts</h3>
 <p><code>api/proto/guardana/control/v1/</code> (8 files), generated Go in <code>api/gen/go/</code>.
 <code>make proto-check</code> regenerates and diffs; <code>buf breaking</code> runs against the latest
-release tag, in CI on every push and pull request and in <code>make proto-breaking</code></p>
+release tag, in CI on every push and pull request and in <code>make proto-breaking</code>.</p>
 <h3 id="strict-decoding">strict-decoding</h3>
 <p><code>pkg/contract/</code>. Unknown fields and undeclared enum numbers refused on both wire
 paths, inside map entries too, which <code>Decode</code> reads before the runtime parses
-them (<a href="/docs/adr/0002-wire-contracts-and-versioning">ADR-0002</a>)</p>
+them (<a href="/docs/adr/0002-wire-contracts-and-versioning">ADR-0002</a>).</p>
 <h3 id="effect-labels">effect-labels</h3>
 <p><code>pkg/contract/effect.go</code>, <code>labels.go</code>; the kernel's tenant rule and fail-closed
-table read materiality, the matcher reads the floors</p>
+table read materiality, the matcher reads the floors.</p>
 <h3 id="reason-codes">reason-codes</h3>
 <p><code>internal/policy/reasons/</code>,
 <a href="/docs/reference/reason-codes">reference/reason-codes.md</a>, which the registry
 generates. The kernel and the matcher emit codes as their own literals, each
 held to the registry by a test; nothing on the decision path imports the
-registry</p>
+registry.</p>
 <h3 id="decision-kernel">decision-kernel</h3>
 <p><code>internal/core/</code>, <code>internal/core/delegation/</code>,
 <a href="/docs/adr/0012-policy-kernel-semantics">ADR-0012</a>. <code>policy test</code> and 25 fixtures
@@ -631,12 +632,12 @@ bundle replaced or stale by then blocks the call with <code>POLICY_STALE</code> 
 <code>OBSERVE</code>, except a read the fail-closed table opened under that same bundle
 (<a href="/docs/adr/0055-a-call-is-handed-out-only-while-its-policy-stands">ADR-0055</a>);
 <code>internal/core/recheck_test.go</code> holds <code>Recheck</code> to a second decision at the
-hand-out reading</p>
+hand-out reading.</p>
 <h3 id="action-digest">action-digest</h3>
 <p><code>internal/canon/</code>, goldens in <code>testdata/digest/</code>,
 <a href="/docs/adr/0005-canonical-action-digest">ADR-0005</a> and
 <a href="/docs/adr/0010-digest-domain-separation">ADR-0010</a>. Cross-language parity is
-unproved until a second implementation exists</p>
+unproved until a second implementation exists.</p>
 <h3 id="policy-cli">policy-cli</h3>
 <p><code>cmd/guardana-control/</code>,
 <a href="/docs/guides/write-and-test-a-policy">guides/write-and-test-a-policy.md</a>,
@@ -653,12 +654,12 @@ the rules that matched and the inputs a rule lacked
 <a href="#policy-floor">rows below</a>).</p>
 <p>The same binary holds the <code>approvals</code> commands and the <code>console</code> page in the
 <a href="#approval-authority">approval authority row</a> below, and the page's loopback
-listener is its one server; <code>policy diff</code> is <code>planned</code></p>
+listener is its one server; <code>policy diff</code> is <code>planned</code>.</p>
 <h3 id="starter-packs">starter-packs</h3>
 <p><code>examples/starter-packs/</code>,
 <a href="/docs/reference/starter-packs">reference/starter-packs.md</a>. Each is a document and
 its allow, deny and unknown cases; <code>cmd/guardana-control</code>'s tests run every case
-and hold each case's document to the pack's</p>
+and hold each case's document to the pack's.</p>
 <h3 id="policy-keys">policy-keys</h3>
 <p><code>internal/policykey/</code> (the private key file and its reader, the public key line
 and its one parser, the derived key id, the bundle file, and the freshness
@@ -669,7 +670,7 @@ key), <a href="/docs/adr/0018-keys-and-bundles-on-disk">ADR-0018</a>. <code>poli
 <code>policy sign</code> write them and the gateway parses <code>policy.public_key</code> through the
 same package.</p>
 <p>Unix-like systems only; the approvals store, the hold journal and the spool
-carry their own file code</p>
+carry their own file code.</p>
 <h3 id="policy-matcher">policy-matcher</h3>
 <p><code>internal/policy/rules/</code> parses <code>agent-policy/v1alpha1</code> strictly,
 <code>internal/policy/bundle/</code> signs and verifies bundle bytes (Ed25519 over the DSSE
@@ -682,7 +683,7 @@ freshness statement bound to its bundle and signed under a key apart from the
 bundle's, and its serial floor is ordered by serial and then <code>issuedAt</code>
 (<code>internal/policy/statement.go</code>, <code>floor.go</code>, <code>experimental</code>,
 <a href="/docs/adr/0038-a-signed-freshness-statement-and-a-serial-floor">ADR-0038</a>); an
-unconfirmed snapshot decides <code>POLICY_STALE</code></p>
+unconfirmed snapshot decides <code>POLICY_STALE</code>.</p>
 <h3 id="policy-floor">policy-floor</h3>
 <p><code>internal/policystate/</code>. One strict-JSON file per bundle id in an owner-only
 directory whose marker names a plane's or a signer's kind; raised under the
@@ -692,7 +693,7 @@ operator's, and the gateway binary holds neither
 commands use it (<code>policy renew</code>, <code>policy state init</code> and <code>reset</code>), and so does
 every plane, through <code>policy.state_dir</code>. A floor protects only while its
 directory outlives the plane, and an account that can write the directory can
-lower it</p>
+lower it.</p>
 <h3 id="policy-refresh">policy-refresh</h3>
 <p><code>internal/policywatch/</code>, wired by <code>cmd/guardana-gateway/planepolicy.go</code>,
 <a href="/docs/adr/0038-a-signed-freshness-statement-and-a-serial-floor">ADR-0038</a>. At
@@ -709,7 +710,7 @@ statement issued after that arrives.</p>
 <code>issuedAt</code> the plane verified, decides nothing: every call is <code>POLICY_STALE</code>,
 reads included. <code>/healthz</code>, <code>/metrics</code> and <code>doctor</code> report it. Freshness trusts
 the plane's clock at start, and the operator schedules <code>policy renew</code>; nothing
-in the repository schedules it outside <code>dev</code></p>
+in the repository schedules it outside <code>dev</code>.</p>
 <h3 id="external-pdp">external-pdp</h3>
 <p><a href="/docs/adr/0017-an-external-decision-point-can-veto">ADR-0017</a>. The kernel takes
 the answer and the policy format reads it (<code>internal/core/</code>,
@@ -719,7 +720,7 @@ the answer and the policy format reads it (<code>internal/core/</code>,
 metadata in <code>doctor</code> and counts the asks on <code>/healthz</code>. The end-to-end tests
 reach a decision point on the loopback over plaintext; TLS is exercised in the
 adapter's own tests, against the roots a test hands it, and the command has no
-setting for a private certificate authority</p>
+setting for a private certificate authority.</p>
 <h3 id="approval-binding">approval-binding</h3>
 <p><code>internal/core/approval/</code> (<code>Bind</code>), golden in <code>testdata/digest/binding.json</code>.
 <code>internal/gateway/</code> holds a request for approval, keeps the record of what it
@@ -729,7 +730,7 @@ approver outside the plane answers through the
 <a href="#approval-authority">approval authority</a> below; a hold does not survive a
 restart, and a plane that keeps a hold journal closes the trail of one it lost
 at its next start, and counts one it cannot close as left open
-(<a href="/docs/adr/0016-approval-providers-and-the-lost-hold">ADR-0016</a>)</p>
+(<a href="/docs/adr/0016-approval-providers-and-the-lost-hold">ADR-0016</a>).</p>
 <h3 id="approval-authority">approval-authority</h3>
 <ul>
 <li><code>internal/approvals/</code> (a directory of records an approver writes and the plane
@@ -777,12 +778,12 @@ the next start closes a hold that ran <code>APPROVAL_NOT_RESUMED</code> on a tra
 closed and its chain forks, though nothing runs twice: restore is B14's,
 <code>planned</code>; the page's printed token and the session it trades for are the only
 thing between it and another local account or a web page, and it cannot tell
-whether a plane reads its pause file; signed webhook callbacks are <code>planned</code></p>
+whether a plane reads its pause file; signed webhook callbacks are <code>planned</code>.</p>
 <h3 id="candidate-policy">candidate-policy</h3>
 <p><a href="/docs/backlog">backlog B27</a>,
 <a href="/docs/adoption-and-incident-workflows#b27-compare-and-simulate-a-candidate-policy">adoption requirements</a>;
 <code>policy explain</code> and <code>policy test</code> exist, but no diff or simulation command is
-built</p>
+built.</p>
 <h3 id="mcp-gateway">mcp-gateway</h3>
 <ul>
 <li><code>internal/gateway/</code> (the protocol-neutral pipeline: <code>Admit</code>, <code>Close</code>, <code>Abort</code>,
@@ -862,7 +863,7 @@ execution already running, names a run, an agent or a principal only as the
 plane vouches for it, says per entry in <code>/healthz</code> and <code>doctor</code> whether it
 covers all, some or none of the plane's calls, and cannot name a tenant;
 elicitation, multi-round requests (an upstream's <code>input_required</code>, which ends
-the call failed) and the Tasks extension are <code>planned</code></p>
+the call failed) and the Tasks extension are <code>planned</code>.</p>
 <h3 id="credential-echo">credential-echo</h3>
 <p><code>internal/secretscan/</code> (the scan: every key, string and number of an answer, as
 written, percent-decoded and JSON-unescaped, for each credential raw,
@@ -873,7 +874,7 @@ listed), <code>doctor</code> (the values too short to scan),
 <a href="/docs/adr/0042-an-answer-that-quotes-a-configured-credential-is-withheld">ADR-0042</a>,
 <a href="/docs/reference/mcp-coverage">reference/mcp-coverage.md</a>. Catches an echo, not an
 upstream that sets out to leak; an endpoint's path and a command's arguments are
-not scanned, and no setting exempts a value that appears in normal answers</p>
+not scanned, and no setting exempts a value that appears in normal answers.</p>
 <h3 id="enforce-client">enforce-client</h3>
 <p><code>internal/enforceclient/</code> (a Go client of <code>admit</code>, <code>complete</code> and <code>abort</code> over a
 Unix socket, and <code>Admit</code>, <code>Complete</code> and <code>Abort</code>, which hold every client rule,
@@ -885,7 +886,7 @@ with the reading or the refusal a client must give, where a <code>may_refuse</co
 lets a client other than the Go reference refuse what the reference reads).</p>
 <p><code>go test ./internal/enforceclient/</code> runs every case and vector against a
 receiver that answers from the files; the receiver in <code>adapters/enforce/</code>
-(<a href="#enforce-receiver">row below</a>) runs the same contract</p>
+(<a href="#enforce-receiver">row below</a>) runs the same contract.</p>
 <h3 id="python-client">python-client</h3>
 <p><code>clients/python/</code> (<code>guardana_control.enforce</code>, a project of its own outside the
 Go module: one synchronous call that admits, runs the tool only with the
@@ -901,7 +902,7 @@ the wheel.</p>
 <p>It cooperates: a plane reports its calls <code>decided, not enforced</code>. No <code>asyncio</code>
 entry point. The release workflow uploads the wheel and source archive to PyPI
 by trusted publishing, and its dry run to TestPyPI;
-<code>pip install guardana-control</code> installs it</p>
+<code>pip install guardana-control</code> installs it.</p>
 <h3 id="enforce-receiver">enforce-receiver</h3>
 <ul>
 <li><code>adapters/enforce/</code> (<code>admit</code>, <code>complete</code> and <code>abort</code> on a Unix socket created
@@ -932,7 +933,7 @@ a defecting client under one policy,
 <p>It declares <code>Cooperative</code>: the client sends the bytes, so nothing proves it
 obeyed. The socket checks read mode bits, not darwin access control lists, and
 cover the socket's directory, not the directories above it: an account that may
-write one of those can move the socket's directory aside</p>
+write one of those can move the socket's directory aside.</p>
 <h3 id="hook-bridge">hook-bridge</h3>
 <p><code>internal/hookbridge/</code> and <code>guardana-control hook</code>
 (<a href="/docs/adr/0056-a-coding-runtimes-hooks-reach-the-plane-through-one-bridge">ADR-0056</a>,
@@ -945,7 +946,7 @@ a held call is denied with its approval named. One built-in profile,
 its fixtures are written from the runtime's documentation and run through the
 bridge against a plane in <code>make test</code>; it is qualified on two releases of that
 runtime, 20 cases run headless against a plane with the results beside the
-profile, and its gaps are on its page</p>
+profile, and its gaps are on its page.</p>
 <h3 id="connect-filesystem">connect-filesystem</h3>
 <p><code>examples/connect-a-filesystem-server/</code>,
 <a href="/docs/guides/connect-an-existing-mcp-setup">guides/connect-an-existing-mcp-setup.md</a>.
@@ -960,32 +961,32 @@ runs the guide with that version from the example's lockfile and the MCP
 project's Python SDK 1.30.0 over HTTP: 14 tools classified, a read, a write
 held, approved and run once, a reuse and a rejection refused, the report read;
 over stdio it runs in no test.</p>
-<p>The three-user trial <code>docs/backlog.md</code> asks of B06 has not run</p>
+<p>The three-user trial <code>docs/backlog.md</code> asks of B06 has not run.</p>
 <h3 id="mcp-config-preview">mcp-config-preview</h3>
 <p><a href="/docs/backlog">backlog B23</a>,
 <a href="/docs/adoption-and-incident-workflows#b23-preview-an-existing-mcp-setup">adoption requirements</a>;
-no command built</p>
+no command built.</p>
 <h3 id="tool-definition-review">tool-definition-review</h3>
 <p><a href="/docs/backlog">backlog B25</a>,
 <a href="/docs/adoption-and-incident-workflows#b25-review-tool-definition-changes">adoption requirements</a>;
 the gateway already binds classification to fingerprints, but no change report
-or review workflow is built</p>
+or review workflow is built.</p>
 <h3 id="a2a-adapter">a2a-adapter</h3>
-<p><code>adapters/</code></p>
+<p><code>adapters/</code>.</p>
 <h3 id="framework-clients">framework-clients</h3>
 <p>a client in another language under <code>clients/</code>, as
 <a href="/docs/adr/0053-a-python-client-of-the-enforcement-api-in-this-repository">ADR-0053</a>
-lays out; framework SDKs: none chosen, <a href="/docs/roadmap">ROADMAP.md</a></p>
+lays out; framework SDKs: none chosen, <a href="/docs/roadmap">ROADMAP.md</a>.</p>
 <h3 id="more-channels">more-channels</h3>
 <p>notifiers <code>internal/notify/</code>, channels <code>adapters/</code>,
 <a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a>,
-<a href="/docs/adr/0045-one-run-is-supervised-against-its-procedure">ADR-0045</a></p>
+<a href="/docs/adr/0045-one-run-is-supervised-against-its-procedure">ADR-0045</a>.</p>
 <h3 id="evidence-chain">evidence-chain</h3>
 <p><code>internal/evidence/</code>, with the order check and the quoting rule in
 <code>internal/trailchain/</code>. Builder, chain validation and a JSONL codec. A <code>Sink</code>
 seam and a memory sink for tests; the package itself reads no clock and touches
 no file, and the spool that writes disk implements the seam from
-<code>internal/spool/</code></p>
+<code>internal/spool/</code>.</p>
 <h3 id="evidence-spool">evidence-spool</h3>
 <p><code>internal/spool/</code> (segmented log with CRC32C per record, fsync policy, a budget
 with a reservation per open trail, a quarantine for what a collector refuses, an
@@ -1004,7 +1005,7 @@ crash-damaged tree, alone and beside live writers, to leave bytes, modes,
 modification times, link counts and owners as they were.</p>
 <p><code>guardana-gateway spool drain</code> moves the quarantine into a new owner-only file,
 synced before the quarantine is emptied, and is refused while a plane holds the
-spool</p>
+spool.</p>
 <h3 id="otel-export">otel-export</h3>
 <p><code>adapters/otel/</code>, OTLP logs over HTTP in the protocol's JSON encoding on the
 standard library, pinned by a golden in <code>testdata/otlp/</code>,
@@ -1014,7 +1015,7 @@ acknowledges only the protocol's own answer read strictly, follows no redirect,
 refuses a plaintext <code>http</code> endpoint, writes to a <code>unix:///path</code> endpoint only
 once the socket's peer is <code>export.collector_uid</code>, retries everything else,
 quarantines what a collector refuses, and drains one run at a time;
-<code>cmd/guardana-gateway</code> runs it</p>
+<code>cmd/guardana-gateway</code> runs it.</p>
 <h3 id="trail-collector">trail-collector</h3>
 <ul>
 <li><code>adapters/otel/</code> also reads what the exporter sends, strictly, answers only
@@ -1035,7 +1036,7 @@ file or every segment back with each trail's chain checked;
 <p>A trail is at least once, its check proves each chain's shape, not its
 integrity, and the token goes only to a socket peer of <code>export.collector_uid</code>,
 or over <code>https</code> to whoever holds a certificate the system trusts for the
-collector's name</p>
+collector's name.</p>
 <h3 id="evidence-export">evidence-export</h3>
 <p><code>internal/trailfile/</code> (<code>Export</code>), <code>internal/lineexport/</code> (the cursor and the
 read side a JSON Lines export shares), <code>guardana-gateway trail export</code>,
@@ -1059,7 +1060,7 @@ follows a trail export after export, onto each next segment and raises local
 alerts that a repeated delivery, a gap or its own outage neither loses nor
 repeats, reports a broken chain as unknown and an unfinished one as open, and a
 run that timed out or whose outcome is unknown as uncertain, exiting 1 on any of
-them</p>
+them.</p>
 <h3 id="observations">observations</h3>
 <ul>
 <li><code>internal/observe/</code> (the version table, the table of source kinds and their
@@ -1091,7 +1092,7 @@ and <code>supervise</code> refuses such a source; <code>buf breaking</code> igno
 <code>scripts/proto-breaking-probe.sh</code> shows v1 still compared.</p>
 <p>No content is kept and a capture setting is refused; the plane never reads an
 observation; <code>guardana-control coverage</code> joins one to a plane event by trace and
-span id against a whole evidence export (<a href="#coverage-map">row below</a>)</p>
+span id against a whole evidence export (<a href="#coverage-map">row below</a>).</p>
 <h3 id="coverage-map">coverage-map</h3>
 <p><code>internal/coverage/</code> (the inventory, the evidence export reader, one state per
 declared path, the join), <code>coverage</code> in <code>cmd/guardana-control/</code>,
@@ -1108,9 +1109,9 @@ no source yet.</p>
 plane decides egress; a host an egress source reached that no path declares is a
 row of its own, at most 256 printed in host order, which an agent can game, and
 so is each egress source whose import refused a line; either makes the exit 1
-(<a href="/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor">ADR-0069</a>)</p>
+(<a href="/docs/adr/0069-an-egress-proxys-access-log-is-an-independent-sensor-on-a-kind-neutral-descriptor">ADR-0069</a>).</p>
 <h3 id="host-process-events">host-process-events</h3>
-<p>none chosen</p>
+<p>none chosen.</p>
 <h3 id="operator-runs">operator-runs</h3>
 <ul>
 <li><code>internal/runs/</code> (the runs directory: a record per run, a state and a lock
@@ -1146,7 +1147,7 @@ carried
 (<a href="/docs/adr/0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close">ADR-0079</a>);
 a token acts as its run until it expires or is closed; a run closed after its
 call passed the listener still runs that call; <code>dev</code> and scenarios serve local
-runs only</p>
+runs only.</p>
 <h3 id="run-supervision">run-supervision</h3>
 <ul>
 <li><code>internal/supervise/</code> (a guarded tree: procedure schemas <code>0.1</code> and <code>0.2</code>, the
@@ -1174,7 +1175,7 @@ and <code>procedure test</code> in <code>cmd/guardana-control/</code></li>
 finding, and <code>react</code> turns a confirmed one into a stop of the run it names, a
 root or a child (<a href="#run-stop">row below</a>). A finding resting on what a runtime
 reported is suspected at most; a skipped step is never confirmed; the report
-names each source not read, never heard or silent</p>
+names each source not read, never heard or silent.</p>
 <h3 id="run-stop">run-stop</h3>
 <ul>
 <li><code>internal/reaction/</code> (the route, the six rules a route may name and the
@@ -1200,29 +1201,32 @@ the <code>route</code> and <code>stops</code> kinds of <code>internal/policystat
 </ul>
 <p>A plane with a route refuses a stopped run's later calls <code>RUN_STOPPED</code> and no
 other run's, and every call <code>STOP_STATE_UNAVAILABLE</code> while it cannot read or
-trust the list. A call already running is not cut, a stopped run's children are
+trust the list. A call already handed out, or being handed out, is not cut by a
+stop of any scope, a stopped run's children are
 not stopped, a process of the plane's account can add stops the route allows and
 start a new list across a restart, except under <code>signed</code>, where the stops
 directory and the route are refused when that account may write them and every
 list chains to the floor and extends the part of it the plane accepted, a floor
 that account can still lower, after which a list the stop writers cut back is
 taken; <code>react</code>'s own lines are signed by no operator, and the checks read mode
-bits, not darwin access control lists</p>
+bits, not darwin access control lists.</p>
 <p>Under <code>signed</code> a route may stop the agent or principal of the finding's run
 instead, for <code>REPEATED_DENIAL</code> and the two retry rules and for the rule's
 lifetime; matched against the listener's configured identity, such a stop
 refuses every call of the plane <code>AGENT_OR_PRINCIPAL_STOPPED</code>, runless calls and
-later runs included, and only a lift of that agent or principal ends it.</p>
+later runs included, and only a lift of that agent or principal ends it. No
+configuration wires a listener authenticator, so such a stop matches the
+configured agent and principal, never an authenticated end user.</p>
 <h3 id="finding-review">finding-review</h3>
 <p><a href="/docs/backlog">backlog B26</a>,
 <a href="/docs/adoption-and-incident-workflows#b26-review-findings-and-export-an-incident-package">adoption requirements</a>;
 findings export exists, but no case review history or joined incident package is
-built</p>
+built.</p>
 <h3 id="web-ui">web-ui</h3>
 <p>no path chosen yet; one run's static page is <code>supervise --view</code>
-(<a href="#run-supervision">row above</a>)</p>
+(<a href="#run-supervision">row above</a>).</p>
 <h3 id="graph-api">graph-api</h3>
-<p>no path chosen yet, and no milestone names it</p>
+<p>no path chosen yet, and no milestone names it.</p>
 <h3 id="trust-roster">trust-roster</h3>
 <ul>
 <li><code>internal/trust/</code> (the <code>Roster</code> port and its <code>file</code> kind: one DSSE envelope of
@@ -1240,14 +1244,15 @@ flight), <code>operators roster sign</code> and <code>operators floor init</code
 <p>A plane reads a roster only under <code>approvals.authority: signed</code>, where it needs
 a <code>plane_id</code>, serves one tenant
 (<a href="/docs/adr/0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant">ADR-0082</a>),
-and <code>doctor</code> and <code>/healthz</code> report <code>trust</code>, naming that id,
-<code>operators.authenticator</code> and <code>operators.authorizer</code>; the plane refuses to start
+and <code>doctor</code> and <code>health.socket</code> report <code>trust</code>, naming that id,
+<code>operators.authenticator</code> and <code>operators.authorizer</code>, as <code>/healthz</code> does
+without the id; the plane refuses to start
 when its account may write the roster file, so that account cannot put an older
 roster in place; it still raises the roster's floor, so it can withhold a newer
 roster within the held one's lifetime; a <code>read</code> grant parses and grants nothing
 yet, which <code>doctor</code> says;
 <a href="/docs/contracts#signed-files-and-their-project-checks">contracts.md</a> lists each
-signed file a plane takes with its project check</p>
+signed file a plane takes with its project check.</p>
 <h3 id="scenario-runs">scenario-runs</h3>
 <p><code>internal/scenario/</code> reads <code>agent-scenario/v1alpha1</code> strictly;
 <code>guardana-gateway scenario run</code> (<code>cmd/guardana-gateway/</code>) calls a running plane
@@ -1257,7 +1262,7 @@ approvals and pauses through the <code>guardana-control</code> beside it;
 <a href="/docs/reference/scenario-format">reference/scenario-format.md</a>,
 <a href="/docs/adr/0022-scenarios-are-data">ADR-0022</a>. It must be the plane's only client,
 a scenario must finish within the approval lifetime, and it trusts the trail
-beyond the ids, the bundle digest and the mode it checks</p>
+beyond the ids, the bundle digest and the mode it checks.</p>
 <h3 id="dev-mode">dev-mode</h3>
 <p><code>guardana-gateway dev</code> (<code>cmd/guardana-gateway/dev*.go</code>) lays out a new state
 directory, signs the demo's document under a key it clears once signed, writes
@@ -1272,7 +1277,7 @@ each scenario on a plane of its own.</p>
 the statement every third of the staleness budget, or sooner when the poll
 interval asks, so a scenario that runs past the budget keeps its verdicts; a
 renewal that fails leaves the plane deciding <code>POLICY_STALE</code> once the budget has
-passed</p>
+passed.</p>
 <h3 id="demo-servers">demo-servers</h3>
 <p><code>examples/vulnerable-mcp-agent/</code>,
 <a href="/docs/get-started/try-the-demo">get-started/try-the-demo.md</a>,
@@ -1287,7 +1292,7 @@ refusing an archive built from another commit or version, before a release is
 published.</p>
 <p>Its test builds the binaries, runs each scenario on its own plane through <code>dev</code>,
 reads what each server received, and fails one mutant of each scenario on the
-member it changed</p>
+member it changed.</p>
 <h3 id="backup-restore">backup-restore</h3>
 <p><code>internal/recovery/</code>, <code>state backup</code> and <code>state restore</code> in
 <code>cmd/guardana-control/</code>,
@@ -1306,14 +1311,14 @@ refuses the backup's stop list, and a signed stop list floor put back at the
 backup's serial refuses a list carried twice since, each until an operator takes
 the guide's way back.</p>
 <p>The manifest is unsigned: its hashes catch corruption, not a hostile writer of
-the backup; a signed restore of a <code>0.1</code> manifest, which names no plane, says
+the backup; under <code>signed</code> both commands refuse a key the environment sets; a signed restore of a <code>0.1</code> manifest, which names no plane, says
 <code>plane not checked</code>. A raw volume restore is unsupported.</p>
 <h3 id="control-plane-api">control-plane-api</h3>
-<p><code>internal/controlapi/</code>, <a href="/docs/adr/0009-open-core-boundary">ADR-0009</a></p>
+<p><code>internal/controlapi/</code>, <a href="/docs/adr/0009-open-core-boundary">ADR-0009</a>.</p>
 <h3 id="storage">storage</h3>
-<p><code>internal/storage/</code></p>
+<p><code>internal/storage/</code>.</p>
 <h3 id="go-module">go-module</h3>
-<p><code>go.mod</code> (<code>go 1.27.4</code>), <code>scripts/bootstrap.sh</code></p>
+<p><code>go.mod</code> (<code>go 1.27.4</code>), <code>scripts/bootstrap.sh</code>.</p>
 <h3 id="quality-gate">quality-gate</h3>
 <p><code>Makefile</code>, <code>.golangci.yml</code>, <code>internal/testreport/</code> (the test reporter
 <code>make test</code> and <code>make test-race</code> read; it refuses a package with no test files
@@ -1335,11 +1340,11 @@ lockfile left unread and a missing scanner. The documentation check judges every
 page's frontmatter, type, <code>covers</code>, budget and diagrams and pins every rendered
 page and block to its generator
 (<a href="/docs/adr/0015-documentation-structure-and-checks">ADR-0015</a>); <code>make docs-impact</code>
-names the pages a change makes suspect</p>
+names the pages a change makes suspect.</p>
 <h3 id="brand-rename">brand-rename</h3>
-<p><code>internal/brand/</code>, <code>scripts/check-brand.sh</code>, <code>scripts/rename-product.sh</code></p>
+<p><code>internal/brand/</code>, <code>scripts/check-brand.sh</code>, <code>scripts/rename-product.sh</code>.</p>
 <h3 id="decision-records">decision-records</h3>
-<p><code>docs/adr/</code></p>
+<p><code>docs/adr/</code>.</p>
 <h3 id="continuous-integration">continuous-integration</h3>
 <p><code>.github/workflows/</code>: <code>ci.yml</code> runs <code>make quality</code> on Linux for every push to
 <code>main</code> and every pull request, its quality job also checking every action pin
@@ -1364,7 +1369,7 @@ night is red.</p>
 <p>Every workflow's steps start in a bash that ignores the startup files, options
 and functions an earlier step can set through <code>$GITHUB_ENV</code>; a bash script a
 step starts still reads them, and <code>make quality</code> refuses them
-(<a href="/docs/adr/0062-the-gate-is-guarded-at-its-entry-points-and-fuzzed-at-night">ADR-0062</a>)</p>
+(<a href="/docs/adr/0062-the-gate-is-guarded-at-its-entry-points-and-fuzzed-at-night">ADR-0062</a>).</p>
 <h3 id="releases">releases</h3>
 <p><code>.goreleaser.yaml</code>, <code>.github/workflows/release.yml</code>,
 <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a>,
@@ -1387,13 +1392,13 @@ has an open CodeQL alert of severity high or critical
 <p>Also an OCI image of the gateway, <code>ghcr.io/guardana/control-gateway</code>, for
 linux/amd64 and linux/arm64 on a distroless nonroot base, signed and attested by
 digest the same way, its digest named in the release notes
-(<a href="/docs/guides/run-in-a-container">guides/run-in-a-container.md</a>)</p>
+(<a href="/docs/guides/run-in-a-container">guides/run-in-a-container.md</a>).</p>
 <h3 id="benchmarks">benchmarks</h3>
 <p><code>bench/</code>: envelope validation, the digest, <code>Decide</code> at 10, 100 and 1000 rules
 and with obligations, and one MCP tool call through the gateway against the same
 call made directly, with guard tests in <code>make test</code>. <code>scripts/bench.sh</code> keeps a
 run in the ignored <code>bench/results/local/</code>; <code>--publish</code> writes a tracked
-<code>bench/results/&lt;stamp&gt;-&lt;os&gt;-&lt;arch&gt;.txt</code> that names the machine</p>
+<code>bench/results/&lt;stamp&gt;-&lt;os&gt;-&lt;arch&gt;.txt</code> that names the machine.</p>
 <h3 id="website">website</h3>
 <p><code>site/</code>, <code>wrangler.json</code>, <code>internal/docscheck/sitedoc/</code>,
 <a href="/docs/adr/0030-a-static-website-drawn-from-the-repository">ADR-0030</a>. One static
@@ -1408,7 +1413,7 @@ and a dark theme a checkbox switches without script
 <a href="https://control.guardana.dev">https://control.guardana.dev</a>, deployed from <code>main</code> on every push.</p>
 <p>The pages name the release <code>docs/docs.json</code> sets once it is published, and link
 its documentation at the tag
-(<a href="/docs/adr/0049-the-site-names-the-published-release">ADR-0049</a>)</p>
+(<a href="/docs/adr/0049-the-site-names-the-published-release">ADR-0049</a>).</p>
 <h2 id="what-it-supervises-today">What it supervises today</h2>
 <p>The project means to supervise an organization's AI agents
 (<a href="/docs/roadmap">ROADMAP.md</a>). Against that aim, the components above add up to
@@ -1448,7 +1453,7 @@ this:</p>
 </tr>
 <tr>
 <td>Stopping an agent</td>
-<td>A pause of every call, of one upstream, of one tool, of one opened run or every run under a root, of one agent or of one principal, for calls not yet running; a stop of one opened run's later calls, a root's or a child's, from a confirmed finding a signed route allows, when the operator runs <code>react</code>; a stop not of a whole tree, nor of one agent or principal</td>
+<td>A pause of every call, of one upstream, of one tool, of one opened run or every run under a root, of one agent or of one principal, for calls not yet running; a stop of one opened run's later calls, a root's or a child's, from a confirmed finding a signed route allows, when the operator runs <code>react</code>, and under <code>signed</code> of the plane's configured agent or principal, which stops every call of the plane for the rule's lifetime; a stop not of a whole tree</td>
 </tr>
 <tr>
 <td>A run drawn as a graph</td>
@@ -1534,7 +1539,7 @@ never withheld from the open build, whatever its status above.</p>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
-<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>

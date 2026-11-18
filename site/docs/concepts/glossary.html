@@ -46,7 +46,7 @@
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
-<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -159,6 +159,11 @@ for the same thing; the right column is where the code defines it.</p>
 <td><code>PolicyBundle</code> in <code>api/proto/guardana/control/v1/bundle.proto</code>, <code>internal/policy/bundle/</code></td>
 </tr>
 <tr>
+<td>carry</td>
+<td><code>stops init --carry</code>: a new stop list begun from an old one, judged by the old route, holding each stop of the old list no lift ended, expired or not, and a covered line for every other finding it names; the old list stays locked until the new one is written; the one way a list moves to another route or format</td>
+<td><code>Carry</code> and <code>CarrySigned</code> in <code>internal/reaction/stopwrite/carry.go</code>, <a href="/docs/reference/reaction#the-stop-list">reference/reaction</a></td>
+</tr>
+<tr>
 <td>channel</td>
 <td>a way an agent's actions reach Control: through an enforcement point, which decides before the effect, or a sensor, which reports after it; MCP is the first, the OpenTelemetry GenAI trace importer the first sensor, and an egress proxy's access log the second</td>
 <td><a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a>; both importers <code>experimental</code>, other channels <code>planned</code></td>
@@ -264,6 +269,11 @@ for the same thing; the right column is where the code defines it.</p>
 <td><code>heldRequest</code> in <code>internal/gateway/trails.go</code>, <code>Held</code> in <code>internal/gateway/approvals.go</code></td>
 </tr>
 <tr>
+<td>lift</td>
+<td>a signed line of the stop list that ends every stop of one run, or under <code>signed</code> of one scope and subject, up to and including a line it names; under <code>signed</code> a roster operator granted <code>operate</code> signs it, otherwise the holder of the route's lift key</td>
+<td><code>Lift</code> in <code>internal/reaction/lift.go</code>, <code>SignedLiftV3</code> in <code>internal/reaction/lift3.go</code>, <a href="/docs/reference/reaction#the-stop-list">reference/reaction</a></td>
+</tr>
+<tr>
 <td>manifest</td>
 <td>for the MCP gateway, what the upstreams list plus the operator's classification of each definition, pinned by fingerprint; where a tool's effect class, resource type and trust zone come from</td>
 <td><code>adapters/mcp/manifest.go</code></td>
@@ -339,6 +349,11 @@ for the same thing; the right column is where the code defines it.</p>
 <td><code>RoleOperator</code> and <code>Level</code> in <code>internal/trust/format.go</code>, the acts in <code>internal/operators/answer.go</code></td>
 </tr>
 <tr>
+<td>route</td>
+<td>the operator's signed document saying which confirmed findings may stop a run, and under <code>signed</code> its agent or principal: its tenant, under <code>signed</code> also its plane and project, and rules, each a procedure and a supervise rule; a plane reads it at start only</td>
+<td><code>Route</code> in <code>internal/reaction/route.go</code>, <a href="/docs/reference/reaction#the-route">reference/reaction</a></td>
+</tr>
+<tr>
 <td>run</td>
 <td>the calls whose events share a <code>run_id</code> and whose flow state is kept together: without <code>runs.dir</code>, those of the listener's principal and agent, kept in memory and started clean at each restart; with it, those presenting the token of a run an operator opened</td>
 <td><code>runKey</code> and <code>run</code> in <code>internal/gateway/flow.go</code>, <code>internal/runs/</code>, <a href="/docs/reference/runs">reference/runs</a></td>
@@ -387,6 +402,16 @@ for the same thing; the right column is where the code defines it.</p>
 <td>spool</td>
 <td>the evidence sink that writes disk: an append-only, checksummed, bounded log an exporter drains and acknowledges</td>
 <td><code>spool.Spool</code> in <code>internal/spool/spool.go</code></td>
+</tr>
+<tr>
+<td>stop</td>
+<td>a line of the stop list by which one confirmed finding stops the later calls of its run, or under <code>signed</code> of that run's agent or principal, until it expires or a lift ends it; a plane refuses those calls with <code>RUN_STOPPED</code> or <code>AGENT_OR_PRINCIPAL_STOPPED</code></td>
+<td><code>Stop</code> in <code>internal/reaction/line.go</code>, <a href="/docs/reference/reaction#what-react-writes">reference/reaction</a></td>
+</tr>
+<tr>
+<td>stop list</td>
+<td><code>stops.jsonl</code> in the directory <code>reaction.stops</code> names: a header naming the route, then <code>stop</code>, <code>covered</code> and <code>lift</code> lines, appended and never rewritten, which <code>react</code> and the <code>stops</code> commands write under the list's lock; a plane reads it every poll interval and takes no lock</td>
+<td><code>internal/reaction/stoplist/</code>, <code>internal/reaction/stopwrite/</code>, <a href="/docs/reference/reaction#the-stop-list">reference/reaction</a></td>
 </tr>
 <tr>
 <td>stop list header</td>
@@ -452,7 +477,7 @@ for the same thing; the right column is where the code defines it.</p>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
-<li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
