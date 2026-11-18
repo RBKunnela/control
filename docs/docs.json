@@ -60,5 +60,44 @@
     "internal/hookbridge/profiles/**",
     "examples/**"
   ],
+  "reading_paths": [
+    {
+      "reader": "You run one MCP server",
+      "lead": "Put the plane in front of a server you use, decide its calls from a policy you can test, and know what happens when a part fails.",
+      "pages": [
+        "docs/get-started/try-the-demo.md",
+        "docs/guides/connect-an-existing-mcp-setup.md",
+        "docs/reference/starter-packs.md",
+        "docs/guides/write-and-test-a-policy.md",
+        "docs/reference/failure-modes.md"
+      ]
+    },
+    {
+      "reader": "You evaluate its security",
+      "lead": "What it defends against, what each channel sees and keeps, what each mode enforces, how an approval binds, and what is measured.",
+      "pages": [
+        "docs/concepts/threat-model.md",
+        "docs/reference/channels.md",
+        "docs/concepts/privacy.md",
+        "docs/concepts/enforcement-modes.md",
+        "docs/reference/mcp-coverage.md",
+        "docs/concepts/approvals-and-the-held-call.md",
+        "docs/reference/failure-modes.md",
+        "docs/reference/benchmarks.md",
+        "docs/status.md"
+      ]
+    },
+    {
+      "reader": "You integrate a tool, a runtime or a sensor",
+      "lead": "Have a tool ask before it acts or a sensor report what happened, hold a client to the wire contracts and their conformance cases, and bring a runtime's hooks.",
+      "pages": [
+        "docs/guides/decide-a-tool-of-your-own.md",
+        "docs/guides/watch-an-egress-proxy.md",
+        "docs/reference/observations.md",
+        "docs/contracts.md",
+        "docs/extending/runtime-profiles.md"
+      ]
+    }
+  ],
   "released": "0.17.0"
 }

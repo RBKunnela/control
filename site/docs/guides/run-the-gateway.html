@@ -31,6 +31,7 @@
 <ul class="home"><li><a href="/docs/">Overview</a></li></ul>
 <h2>Get started</h2><ul>
 <li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+<li><a href="/docs/get-started/try-the-rest-of-the-demo">Try the rest of the demo</a></li>
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
@@ -41,8 +42,10 @@
 <li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
 <li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
 <li><a href="/docs/guides/run-the-gateway" aria-current="page">Run the gateway</a></li>
+<li><a href="/docs/guides/set-up-signed-operators">Set up signed operators</a></li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
 <li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
@@ -61,9 +64,11 @@
 <li><a href="/docs/concepts/privacy">Privacy</a></li>
 <li><a href="/docs/concepts/signed-operations">Signed operations</a></li>
 <li><a href="/docs/concepts/threat-model">Threat model</a></li>
+<li><a href="/docs/concepts/where-it-fits">Where it fits</a></li>
 </ul>
 <h2>Reference</h2><ul>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/channels">Channels</a></li>
 <li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
 <li><a href="/docs/reference/cli">Command line</a></li>
 <li><a href="/docs/reference/configuration">Configuration</a></li>
@@ -290,30 +295,17 @@ complete. Then change the mode and restart.</p>
 </table>
 </div>
 <h3 id="8-let-a-person-answer-a-held-call">8. Let a person answer a held call</h3>
-<pre><code class="language-yaml">plane_id: orders-eu-1           # under signed: this plane&#39;s own id, one per plane
-approvals:
-  authority: signed             # or directory, with the next two keys alone
-  dir: /var/lib/guardana/approvals    # the plane&#39;s, the operators&#39; group, mode 0750, setgid where needed
+<pre><code class="language-yaml">approvals:
+  authority: directory
+  dir: /var/lib/guardana/approvals
   hold_journal_dir: /var/lib/guardana/holds
-  inbox_dir: /var/lib/guardana/inbox   # the plane&#39;s, the operators&#39; group, mode 1770
-trust:
-  root_public_key: /etc/guardana/root.pub   # under signed the plane&#39;s account may write
-  roster: /etc/guardana/roster.json         # neither these, the configuration nor their directories
-  roster_id: acme-operators
-  floor_dir: /var/lib/guardana/roster-floor
-operators:
-  authenticator:
-    kind: roster
-  authorizer:
-    kind: roster
 </code></pre>
 <p>Under <code>directory</code>, whoever writes <code>approvals.dir</code> approves, by a claim
-(<a href="/docs/reference/cli">reference/cli.md</a>). Under <code>signed</code>, an operator signs
-with <code>approvals approve --key</code> from their own account, reading the plane's
-<code>0640</code> files
-(<a href="/docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it">ADR-0073</a>).
-No test here runs a second account. A lost hold never runs; the next start closes its trail
-(<a href="/docs/concepts/approvals-and-the-held-call">concepts/approvals-and-the-held-call.md</a>).</p>
+(<a href="/docs/reference/cli">reference/cli.md</a>). A lost hold never runs; the next
+start closes its trail
+(<a href="/docs/concepts/approvals-and-the-held-call">concepts/approvals-and-the-held-call.md</a>).
+To name each approver by a key instead:
+<a href="/docs/guides/set-up-signed-operators">set up signed operators</a>.</p>
 <h3 id="9-set-the-evidence-rules-on-purpose">9. Set the evidence rules on purpose</h3>
 <div class="tbl">
 <table>
@@ -344,26 +336,18 @@ No test here runs a second account. A lost hold never runs; the next start close
 </table>
 </div>
 <h3 id="10-pause-a-tool">10. Pause a tool</h3>
-<p>Before setting <code>pause.file</code> and restarting:</p>
-<pre><code># directory: as the plane&#39;s user
-mkdir -m 700 /srv/pause
+<p>Before setting <code>pause.file</code> and restarting, as the plane's user:</p>
+<pre><code>mkdir -m 700 /srv/pause
 guardana-control pause init /srv/pause/pause.json
 guardana-control pause add --action tool --provider orders --name refund /srv/pause/pause.json
-
-# signed: as the operator, who owns /srv/pause (0750, the plane&#39;s group), and floor init as the plane
-guardana-control pause init --key op.key --plane-id orders-eu-1 --tenant acme --project orders \
-  /srv/pause/pause.json
-guardana-control pause floor init --tenant acme --project orders /var/lib/guardana/pause-floor
-guardana-control pause add --action tool --provider orders --name refund \
-  --key op.key --roster /etc/guardana/roster.json --root-key /etc/guardana/root.pub /srv/pause/pause.json
 </code></pre>
 <pre><code class="language-yaml">pause:
   file: /srv/pause/pause.json
-  floor_dir: /var/lib/guardana/pause-floor   # signed only
 </code></pre>
 <p><code>refund</code> is blocked with <code>PAUSED</code> until <code>pause remove</code>
-(<a href="/docs/concepts/enforcement-modes#pausing-calls">more</a>). A signed plane from
-0.17: <a href="/docs/guides/upgrade-a-signed-plane-from-0-17">upgrade it</a>.</p>
+(<a href="/docs/concepts/enforcement-modes#pausing-calls">more</a>). Under <code>signed</code>:
+<a href="/docs/guides/set-up-signed-operators#5-pause-a-tool">set up signed operators</a>, and from
+0.17 <a href="/docs/guides/upgrade-a-signed-plane-from-0-17">upgrade it</a>.</p>
 <h2 id="verify">Verify</h2>
 <ul>
 <li><code>doctor</code> prints <code>ok policy</code> and <code>ok upstreams ... 0 unclassified</code> in the
@@ -401,6 +385,7 @@ the next run from the collector's last acknowledgement.</p>
 <ul class="home"><li><a href="/docs/">Overview</a></li></ul>
 <h2>Get started</h2><ul>
 <li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+<li><a href="/docs/get-started/try-the-rest-of-the-demo">Try the rest of the demo</a></li>
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
@@ -411,8 +396,10 @@ the next run from the collector's last acknowledgement.</p>
 <li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
 <li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
 <li><a href="/docs/guides/run-the-gateway" aria-current="page">Run the gateway</a></li>
+<li><a href="/docs/guides/set-up-signed-operators">Set up signed operators</a></li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
 <li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
@@ -431,9 +418,11 @@ the next run from the collector's last acknowledgement.</p>
 <li><a href="/docs/concepts/privacy">Privacy</a></li>
 <li><a href="/docs/concepts/signed-operations">Signed operations</a></li>
 <li><a href="/docs/concepts/threat-model">Threat model</a></li>
+<li><a href="/docs/concepts/where-it-fits">Where it fits</a></li>
 </ul>
 <h2>Reference</h2><ul>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/channels">Channels</a></li>
 <li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
 <li><a href="/docs/reference/cli">Command line</a></li>
 <li><a href="/docs/reference/configuration">Configuration</a></li>

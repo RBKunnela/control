@@ -11,7 +11,8 @@ import (
 )
 
 // The pin between the pages and the index: the map is rendered here from
-// every page's frontmatter and every record, and must be the committed page.
+// every page's frontmatter, every record and the reading paths, and must be
+// the committed page.
 func TestIndexIsCurrent(t *testing.T) {
 	fsys := repoFS(t)
 	data, err := fs.ReadFile(fsys, "docs/docs.json")
@@ -29,7 +30,7 @@ func TestIndexIsCurrent(t *testing.T) {
 	if len(pages) < minPagesToday-1 {
 		t.Fatalf("the index would list %d pages, fewer than exist", len(pages))
 	}
-	got, err := indexdoc.Render(pages, records)
+	got, err := indexdoc.Render(pages, records, cfg.ReadingPaths)
 	if err != nil {
 		t.Fatal(err)
 	}

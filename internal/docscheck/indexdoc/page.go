@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/guardana/control/internal/docscheck/docsconfig"
 	"github.com/guardana/control/internal/docscheck/frontmatter"
 )
 
@@ -168,9 +169,11 @@ func parseRecord(rel string, data []byte) (Record, bool, error) {
 	return Record{}, false, fmt.Errorf("%s: no line names the record's status", rel)
 }
 
-// Render renders the index: a section per page type that has a page, each page
-// as a link with its summary, then every record with its status.
-func Render(pages []Page, records []Record) ([]byte, error) {
+// Render renders the index: the reading paths, each page under its own title,
+// then a section per page type that has a page, each page as a link with its
+// summary, then every record with its status. A path naming a page that is not
+// among pages is a refusal.
+func Render(pages []Page, records []Record, paths []docsconfig.ReadingPath) ([]byte, error) {
 	if len(pages) == 0 || len(records) == 0 {
 		return nil, fmt.Errorf("%w: nothing to list", ErrIndex)
 	}
@@ -186,7 +189,10 @@ func Render(pages []Page, records []Record) ([]byte, error) {
 	}
 	var b strings.Builder
 	b.Write(head)
-	b.WriteString("\n# Documentation\n\nRendered from every page's own frontmatter and from the records. Rebuild it\nwith `make docs-gen`; an edit made here does not survive the next run.\n")
+	b.WriteString("\n# Documentation\n\nRendered from every page's own frontmatter, the records and the reading paths\nin `docs/docs.json`. Rebuild it with `make docs-gen`; an edit made here does\nnot survive the next run.\n")
+	if err := renderPaths(&b, pages, paths); err != nil {
+		return nil, err
+	}
 	sorted := slices.Clone(pages)
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Path < sorted[j].Path })
 	for _, typ := range frontmatter.Types {
@@ -210,4 +216,28 @@ func Render(pages []Page, records []Record) ([]byte, error) {
 		fmt.Fprintf(&b, "- [%s](%s): %s\n", r.Title, strings.TrimPrefix(r.Path, "docs/"), r.Status)
 	}
 	return []byte(b.String()), nil
+}
+
+// renderPaths writes one section holding every reading path, each a numbered
+// list of its pages by title.
+func renderPaths(b *strings.Builder, pages []Page, paths []docsconfig.ReadingPath) error {
+	if len(paths) == 0 {
+		return nil
+	}
+	titles := make(map[string]string, len(pages))
+	for _, p := range pages {
+		titles[p.Path] = p.Meta.Title
+	}
+	b.WriteString("\n## Reading paths\n")
+	for _, path := range paths {
+		fmt.Fprintf(b, "\n### %s\n\n%s\n\n", path.Reader, path.Lead)
+		for i, rel := range path.Pages {
+			title, ok := titles[rel]
+			if !ok {
+				return fmt.Errorf("%w: the reading path for %q names %s, which is not a page the index lists", ErrIndex, path.Reader, rel)
+			}
+			fmt.Fprintf(b, "%d. [%s](%s)\n", i+1, title, strings.TrimPrefix(rel, "docs/"))
+		}
+	}
+	return nil
 }

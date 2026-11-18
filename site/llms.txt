@@ -6,7 +6,8 @@ This is alpha software and not a security boundary: do not deploy it as one. Wha
 
 ## Get started
 
-- [Try the demo](https://control.guardana.dev/docs/get-started/try-the-demo): Start a plane in front of two vulnerable MCP servers, answer a held call, pause a server, read the trail and the counters, and run the demo's scenarios.
+- [Try the demo](https://control.guardana.dev/docs/get-started/try-the-demo): Start a plane in front of two vulnerable MCP servers, watch it allow a read, block a refund and hold an update for your approval, and read the trail.
+- [Try the rest of the demo](https://control.guardana.dev/docs/get-started/try-the-rest-of-the-demo): On the demo's running plane, pause a server, read the counters, run the seven scenarios and make one fail on purpose.
 
 ## Guides
 
@@ -18,8 +19,10 @@ This is alpha software and not a security boundary: do not deploy it as one. Wha
 - [Read the evidence from a program](https://control.guardana.dev/docs/guides/read-the-evidence-from-a-program): Export a trail file in the versioned format, resume where the last export stopped, and rebuild each call's lifecycle without importing the project's internals.
 - [Run the gateway in a container](https://control.guardana.dev/docs/guides/run-in-a-container): Run the release image of the gateway with Docker, with its evidence on a volume and its port reachable from the host alone.
 - [Run the gateway](https://control.guardana.dev/docs/guides/run-the-gateway): Set up a plane's policy files, start the MCP gateway in OBSERVE, keep its policy confirmed, read its health, classify the tools it sees, and move it to ENFORCE.
+- [Set up signed operators](https://control.guardana.dev/docs/guides/set-up-signed-operators): Lay out the accounts and directories of a signed plane, sign and renew its operator roster, revoke a key, and approve or pause as a named operator.
 - [Supervise and stop a run](https://control.guardana.dev/docs/guides/supervise-and-stop-a-run): Run the refund example by hand on a live plane, supervise the run against its procedure, read its page, and stop it on a confirmed finding.
 - [Test a procedure](https://control.guardana.dev/docs/guides/test-a-procedure): Lint a procedure document, then prove what supervise finds with cases that state a run, its evidence and every expected finding.
+- [Troubleshoot a plane](https://control.guardana.dev/docs/guides/troubleshoot-a-plane): Why a call was refused in OBSERVE, why an approval did not let a call run, why health says degraded with HTTP 200, and why a signed plane will not start.
 - [Upgrade a signed plane from 0.17](https://control.guardana.dev/docs/guides/upgrade-a-signed-plane-from-0-17): Sign a 0.17 plane's pause file, route and stop list again for its plane_id, carry its stops and lifts into a new list, and point the plane at it.
 - [Watch a plane without a collector](https://control.guardana.dev/docs/guides/watch-a-plane-without-a-collector): Run the collector the gateway binary ships, point a plane at it with its credential, read each request's trail in the segments it writes, and prune them.
 - [Watch an egress proxy](https://control.guardana.dev/docs/guides/watch-an-egress-proxy): Have Envoy or Squid write their access log as JSON lines, import it as observations, and see in the coverage map the destinations the proxy logged.
@@ -39,10 +42,12 @@ This is alpha software and not a security boundary: do not deploy it as one. Wha
 - [Privacy](https://control.guardana.dev/docs/concepts/privacy): What the plane records about a call, where each record goes and who can read it, how long it stays, and that nothing goes to the project.
 - [Signed operations](https://control.guardana.dev/docs/concepts/signed-operations): What is signed in Guardana Control, by whom, what each signature proves, what is not signed, and what a signature never proves.
 - [Threat model](https://control.guardana.dev/docs/concepts/threat-model): What the plane protects, from whom, what it does about each attacker today with the code and the test behind it, and where it stops.
+- [Where it fits](https://control.guardana.dev/docs/concepts/where-it-fits): When this project fits an agent's tool calls, when an authorization service, a model gateway or operating-system isolation fits instead, and how they combine.
 
 ## Reference
 
 - [Benchmarks](https://control.guardana.dev/docs/reference/benchmarks): What three calls on the authorization path and one tool call through the gateway cost on one machine, how they are measured, and what the numbers are not.
+- [Channels](https://control.guardana.dev/docs/reference/channels): For each way an agent's actions reach the plane, what it sees, what it keeps, what it decides, what it enforces, and the bypasses that remain.
 - [Claude Code hooks](https://control.guardana.dev/docs/reference/claude-code-hooks): What the claude-code hook profile covers, the hook settings it needs, what the bridge reads and answers per event, and the gaps it leaves.
 - [Command line](https://control.guardana.dev/docs/reference/cli): The two binaries, what each prints as its help, and the exit statuses they share.
 - [Configuration](https://control.guardana.dev/docs/reference/configuration): Every key the gateway reads, with its environment variable, kind, default, whether it is required and the spellings it takes.

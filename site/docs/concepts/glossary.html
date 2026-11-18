@@ -31,6 +31,7 @@
 <ul class="home"><li><a href="/docs/">Overview</a></li></ul>
 <h2>Get started</h2><ul>
 <li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+<li><a href="/docs/get-started/try-the-rest-of-the-demo">Try the rest of the demo</a></li>
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
@@ -41,8 +42,10 @@
 <li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
 <li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
 <li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/set-up-signed-operators">Set up signed operators</a></li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
 <li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
@@ -61,9 +64,11 @@
 <li><a href="/docs/concepts/privacy">Privacy</a></li>
 <li><a href="/docs/concepts/signed-operations">Signed operations</a></li>
 <li><a href="/docs/concepts/threat-model">Threat model</a></li>
+<li><a href="/docs/concepts/where-it-fits">Where it fits</a></li>
 </ul>
 <h2>Reference</h2><ul>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/channels">Channels</a></li>
 <li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
 <li><a href="/docs/reference/cli">Command line</a></li>
 <li><a href="/docs/reference/configuration">Configuration</a></li>
@@ -289,6 +294,11 @@ for the same thing; the right column is where the code defines it.</p>
 <td><code>Pipeline</code> in <code>internal/gateway/pipeline.go</code></td>
 </tr>
 <tr>
+<td>plane</td>
+<td>one running enforcement point with what it serves from: one configuration, one listener, MCP or the enforcement API, its policy, its spool and its state directories; under the signed authority it is named by <code>plane_id</code> and serves one tenant</td>
+<td><code>plane</code> in <code>cmd/guardana-gateway/build.go</code>, <a href="/docs/guides/run-the-gateway">run the gateway</a></td>
+</tr>
+<tr>
 <td>port</td>
 <td>a decision about authority behind an interface, with a tested default kind, an unavailable answer that blocks, bounds and conformance cases; <code>scripts/ports.txt</code> lists the ports that exist, and a port's record states where it still falls short</td>
 <td><a href="/docs/adr/0066-each-decision-about-authority-is-a-port">ADR-0066</a>, <code>testdata/ports/</code></td>
@@ -329,6 +339,11 @@ for the same thing; the right column is where the code defines it.</p>
 <td><code>RoleOperator</code> and <code>Level</code> in <code>internal/trust/format.go</code>, the acts in <code>internal/operators/answer.go</code></td>
 </tr>
 <tr>
+<td>run</td>
+<td>the calls whose events share a <code>run_id</code> and whose flow state is kept together: without <code>runs.dir</code>, those of the listener's principal and agent, kept in memory and started clean at each restart; with it, those presenting the token of a run an operator opened</td>
+<td><code>runKey</code> and <code>run</code> in <code>internal/gateway/flow.go</code>, <code>internal/runs/</code>, <a href="/docs/reference/runs">reference/runs</a></td>
+</tr>
+<tr>
 <td>run tree</td>
 <td>the runs a <code>0.2</code> report lists with the supervised run, each naming its parent: under <code>inherit</code> the root's whole tree, every member judged; under <code>separate</code> the run's children, not judged</td>
 <td><code>RunTreeMember</code> in <code>api/proto/guardana/control/finding/v1alpha1/report.proto</code></td>
@@ -350,7 +365,7 @@ for the same thing; the right column is where the code defines it.</p>
 </tr>
 <tr>
 <td>signed authority</td>
-<td><code>approvals.authority: signed</code>; a plane under it, a signed plane, takes an approval, a pause, a run and a stop list only as a roster operator signed it for the plane's tenant and project, refuses to start when its own account may write the roster, the pause file, <code>records/</code>, the route or the stops directory, and holds the roster, the pause file, the route and the stop list each to a serial floor</td>
+<td><code>approvals.authority: signed</code>; a plane under it, a signed plane, takes an approval, a pause, a run and a stop list only as a roster operator signed it for the plane's tenant and project. What it refuses at start is on <a href="/docs/guides/set-up-signed-operators#which-account-owns-what">set up signed operators</a>, and the serial floors it keeps on <a href="/docs/concepts/signed-operations#what-is-not-signed">signed operations</a></td>
 <td><code>AuthoritySigned</code> in <code>internal/gatewayconfig/config.go</code>, <a href="/docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it">ADR-0073</a>, <a href="/docs/adr/0075-a-signed-plane-takes-a-pause-only-from-an-operators-signature">ADR-0075</a>, <a href="/docs/adr/0076-a-signed-plane-takes-a-run-only-from-an-operators-signature">ADR-0076</a>, <a href="/docs/adr/0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatures">ADR-0077</a></td>
 </tr>
 <tr>
@@ -422,6 +437,7 @@ for the same thing; the right column is where the code defines it.</p>
 <ul class="home"><li><a href="/docs/">Overview</a></li></ul>
 <h2>Get started</h2><ul>
 <li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+<li><a href="/docs/get-started/try-the-rest-of-the-demo">Try the rest of the demo</a></li>
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
@@ -432,8 +448,10 @@ for the same thing; the right column is where the code defines it.</p>
 <li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
 <li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
 <li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/set-up-signed-operators">Set up signed operators</a></li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
 <li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
@@ -452,9 +470,11 @@ for the same thing; the right column is where the code defines it.</p>
 <li><a href="/docs/concepts/privacy">Privacy</a></li>
 <li><a href="/docs/concepts/signed-operations">Signed operations</a></li>
 <li><a href="/docs/concepts/threat-model">Threat model</a></li>
+<li><a href="/docs/concepts/where-it-fits">Where it fits</a></li>
 </ul>
 <h2>Reference</h2><ul>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/channels">Channels</a></li>
 <li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
 <li><a href="/docs/reference/cli">Command line</a></li>
 <li><a href="/docs/reference/configuration">Configuration</a></li>

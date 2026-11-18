@@ -196,31 +196,18 @@ complete. Then change the mode and restart.
 ### 8. Let a person answer a held call
 
 ```yaml
-plane_id: orders-eu-1           # under signed: this plane's own id, one per plane
 approvals:
-  authority: signed             # or directory, with the next two keys alone
-  dir: /var/lib/guardana/approvals    # the plane's, the operators' group, mode 0750, setgid where needed
+  authority: directory
+  dir: /var/lib/guardana/approvals
   hold_journal_dir: /var/lib/guardana/holds
-  inbox_dir: /var/lib/guardana/inbox   # the plane's, the operators' group, mode 1770
-trust:
-  root_public_key: /etc/guardana/root.pub   # under signed the plane's account may write
-  roster: /etc/guardana/roster.json         # neither these, the configuration nor their directories
-  roster_id: acme-operators
-  floor_dir: /var/lib/guardana/roster-floor
-operators:
-  authenticator:
-    kind: roster
-  authorizer:
-    kind: roster
 ```
 
 Under `directory`, whoever writes `approvals.dir` approves, by a claim
-([reference/cli.md](../reference/cli.md)). Under `signed`, an operator signs
-with `approvals approve --key` from their own account, reading the plane's
-`0640` files
-([ADR-0073](../adr/0073-an-approval-counts-only-as-the-plane-judges-it.md)).
-No test here runs a second account. A lost hold never runs; the next start closes its trail
+([reference/cli.md](../reference/cli.md)). A lost hold never runs; the next
+start closes its trail
 ([concepts/approvals-and-the-held-call.md](../concepts/approvals-and-the-held-call.md)).
+To name each approver by a key instead:
+[set up signed operators](set-up-signed-operators.md).
 
 ### 9. Set the evidence rules on purpose
 
@@ -233,31 +220,23 @@ No test here runs a second account. A lost hold never runs; the next start close
 
 ### 10. Pause a tool
 
-Before setting `pause.file` and restarting:
+Before setting `pause.file` and restarting, as the plane's user:
 
 ```
-# directory: as the plane's user
 mkdir -m 700 /srv/pause
 guardana-control pause init /srv/pause/pause.json
 guardana-control pause add --action tool --provider orders --name refund /srv/pause/pause.json
-
-# signed: as the operator, who owns /srv/pause (0750, the plane's group), and floor init as the plane
-guardana-control pause init --key op.key --plane-id orders-eu-1 --tenant acme --project orders \
-  /srv/pause/pause.json
-guardana-control pause floor init --tenant acme --project orders /var/lib/guardana/pause-floor
-guardana-control pause add --action tool --provider orders --name refund \
-  --key op.key --roster /etc/guardana/roster.json --root-key /etc/guardana/root.pub /srv/pause/pause.json
 ```
 
 ```yaml
 pause:
   file: /srv/pause/pause.json
-  floor_dir: /var/lib/guardana/pause-floor   # signed only
 ```
 
 `refund` is blocked with `PAUSED` until `pause remove`
-([more](../concepts/enforcement-modes.md#pausing-calls)). A signed plane from
-0.17: [upgrade it](upgrade-a-signed-plane-from-0-17.md).
+([more](../concepts/enforcement-modes.md#pausing-calls)). Under `signed`:
+[set up signed operators](set-up-signed-operators.md#5-pause-a-tool), and from
+0.17 [upgrade it](upgrade-a-signed-plane-from-0-17.md).
 
 ## Verify
 

@@ -47,6 +47,10 @@ type Config struct {
 	// it once the release is out, since its changelog section is dated before
 	// the tag exists and the site deploys from main.
 	Released string `json:"released"`
+	// ReadingPaths are the paths through the pages that docs/index.md
+	// renders above its catalogue, each refused there when it names a page
+	// that does not exist. May be empty.
+	ReadingPaths []ReadingPath `json:"reading_paths"`
 }
 
 // Excludes reports whether rel, a repository path, is one Excluded names: the
@@ -217,7 +221,7 @@ func last(stack []*frame) *frame {
 }
 
 func validate(c Config) error {
-	for _, check := range []func(Config) error{validateBudgets, validateExemptions, validateCeilings, validateDirectories, validatePageTypes, validateLists, validateReleased} {
+	for _, check := range []func(Config) error{validateBudgets, validateExemptions, validateCeilings, validateDirectories, validatePageTypes, validateLists, validateReleased, validateReadingPaths} {
 		if err := check(c); err != nil {
 			return err
 		}

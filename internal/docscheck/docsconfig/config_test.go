@@ -23,6 +23,10 @@ const good = `{
   "frozen": ["docs/contracts.md", "docs/adr/"],
   "excluded": [],
   "surfaces": ["api/proto/**"],
+  "reading_paths": [
+    {"reader": "A developer", "lead": "Start here.", "pages": ["docs/a.md", "docs/guides/b.md"]},
+    {"reader": "An evaluator", "lead": "Read these.", "pages": ["docs/a.md"]}
+  ],
   "released": "1.2.3-alpha.1"
 }
 `
@@ -52,6 +56,9 @@ func TestTheRepositoryFileParses(t *testing.T) {
 	if c.Released == "" {
 		t.Error("docs/docs.json names no released version")
 	}
+	if len(c.ReadingPaths) != 3 {
+		t.Errorf("docs/docs.json holds %d reading paths, want the three the index renders", len(c.ReadingPaths))
+	}
 	if !c.Directories["docs/spec"].MayBeEmpty || c.Directories["docs/guides"].MayBeEmpty {
 		t.Errorf("may_be_empty read wrong: %+v", c.Directories)
 	}
@@ -62,7 +69,8 @@ func TestParseReadsEverySection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
-	if c.Ceilings["AGENTS.md"] != 1059 || c.PageTypes["docs/contracts.md"] != "spec" || len(c.Frozen) != 2 || c.Surfaces[0] != "api/proto/**" || c.Released != "1.2.3-alpha.1" {
+	if c.Ceilings["AGENTS.md"] != 1059 || c.PageTypes["docs/contracts.md"] != "spec" || len(c.Frozen) != 2 || c.Surfaces[0] != "api/proto/**" || c.Released != "1.2.3-alpha.1" ||
+		len(c.ReadingPaths) != 2 || c.ReadingPaths[0].Reader != "A developer" || c.ReadingPaths[0].Lead != "Start here." || c.ReadingPaths[0].Pages[1] != "docs/guides/b.md" {
 		t.Errorf("Parse = %+v", c)
 	}
 }
@@ -75,46 +83,56 @@ func edit(old, repl string) string {
 
 func TestParseRefusals(t *testing.T) {
 	cases := map[string]struct{ doc, want string }{
-		"not json":                        {"budgets", "invalid character"},
-		"empty":                           {"", "EOF"},
-		"text after the document":         {good + "{}", "text after the document"},
-		"an unknown key":                  {edit(`"surfaces"`, `"site": 1, "surfaces"`), "unknown field"},
-		"a key twice at the top":          {edit(`"excluded": [],`, `"excluded": [], "excluded": [],`), "given twice"},
-		"a key twice inside":              {edit(`"root": 600,`, `"root": 600, "root": 600,`), "given twice"},
-		"a key twice in a nested object":  {edit(`{"type": "project"}`, `{"type": "project", "type": "project"}`), "given twice"},
-		"a member twice in two cases":     {edit(`"folder": 300`, `"folder": 300, "FOLDER": 30`), `"FOLDER" is not spelled as member "folder"`},
-		"a member in another case":        {edit(`"folder": 300`, `"Folder": 300`), `"Folder" is not spelled as member "folder"`},
-		"a top member in another case":    {edit(`"released":`, `"Released":`), `"Released" is not spelled as member "released"`},
-		"a nested member in another case": {edit(`{"type": "project"}`, `{"Type": "project"}`), `"Type" is not spelled as member "type"`},
-		"no budgets":                      {edit(`"budgets": {"tutorial": 1500, "how-to": 1200, "explanation": 3000, "reference": 1500, "extending": 2000},`, ``), "budgets is empty"},
-		"a budget for no type":            {edit(`"tutorial": 1500`, `"guide": 1500, "tutorial": 1500`), "not a page type"},
-		"a zero budget":                   {edit(`"tutorial": 1500`, `"tutorial": 0`), "no positive budget"},
-		"a type budgeted and exempt":      {edit(`["spec", "project"]`, `["spec", "project", "tutorial"]`), "has a budget and is exempt"},
-		"a type neither":                  {edit(`["spec", "project"]`, `["spec"]`), "has no budget and is not exempt"},
-		"an exempt type twice":            {edit(`["spec", "project"]`, `["spec", "project", "spec"]`), "listed twice"},
-		"a readme budget of zero":         {edit(`"folder": 300`, `"folder": 0`), "must be positive"},
-		"a ceiling of zero":               {edit(`"AGENTS.md": 1059`, `"AGENTS.md": 0`), "no positive count"},
-		"an absolute ceiling path":        {edit(`"AGENTS.md": 1059`, `"/AGENTS.md": 1059`), "not a relative slash path"},
-		"a parent reference":              {edit(`"AGENTS.md": 1059`, `"../AGENTS.md": 1059`), "not a clean path"},
-		"an unclean path":                 {edit(`"AGENTS.md": 1059`, `"docs//x.md": 1059`), "not a clean path"},
-		"no directories":                  {edit(`"directories": {"docs": {"type": "project"}, "docs/spec": {"type": "spec", "may_be_empty": true}},`, `"directories": {},`), "directories is empty"},
-		"a directory of unknown type":     {edit(`{"type": "project"}`, `{"type": "pages"}`), "not one of"},
-		"a page type on no page":          {edit(`"docs/contracts.md": "spec"`, `"docs/contracts": "spec"`), "is not a page"},
-		"a page type unknown":             {edit(`"docs/contracts.md": "spec"`, `"docs/contracts.md": "law"`), "not one of"},
-		"a frozen path twice":             {edit(`["docs/contracts.md", "docs/adr/"]`, `["docs/contracts.md", "docs/contracts.md"]`), "listed twice"},
-		"an empty excluded entry":         {edit(`"excluded": []`, `"excluded": [""]`), "a path is empty"},
-		"no surfaces":                     {edit(`["api/proto/**"]`, `[]`), "surfaces is empty"},
-		"no released":                     {edit(",\n  \"released\": \"1.2.3-alpha.1\"", ""), "released is empty"},
-		"an empty released":               {edit(`"1.2.3-alpha.1"`, `""`), "released is empty"},
-		"a null released":                 {edit(`"1.2.3-alpha.1"`, `null`), "released is empty"},
-		"a released number":               {edit(`"1.2.3-alpha.1"`, `1.2`), "cannot unmarshal number"},
-		"a released with a v":             {edit(`"1.2.3-alpha.1"`, `"v1.2.3-alpha.1"`), `released: "v1.2.3-alpha.1" is not a version`},
-		"a released of two parts":         {edit(`"1.2.3-alpha.1"`, `"1.2"`), `released: "1.2" is not a version`},
-		"a released with a leading zero":  {edit(`"1.2.3-alpha.1"`, `"1.02.3"`), `released: "1.02.3" is not a version`},
-		"a released with a date":          {edit(`"1.2.3-alpha.1"`, `"1.2.3 - 2026-01-02"`), "is not a version"},
-		"a released with a space":         {edit(`"1.2.3-alpha.1"`, `" 1.2.3"`), "is not a version"},
-		"a released with a newline":       {edit(`"1.2.3-alpha.1"`, `"1.2.3\n"`), "is not a version"},
-		"an empty pre-release":            {edit(`"1.2.3-alpha.1"`, `"1.2.3-"`), "is not a version"},
+		"not json":                              {"budgets", "invalid character"},
+		"empty":                                 {"", "EOF"},
+		"text after the document":               {good + "{}", "text after the document"},
+		"an unknown key":                        {edit(`"surfaces"`, `"site": 1, "surfaces"`), "unknown field"},
+		"a key twice at the top":                {edit(`"excluded": [],`, `"excluded": [], "excluded": [],`), "given twice"},
+		"a key twice inside":                    {edit(`"root": 600,`, `"root": 600, "root": 600,`), "given twice"},
+		"a key twice in a nested object":        {edit(`{"type": "project"}`, `{"type": "project", "type": "project"}`), "given twice"},
+		"a member twice in two cases":           {edit(`"folder": 300`, `"folder": 300, "FOLDER": 30`), `"FOLDER" is not spelled as member "folder"`},
+		"a member in another case":              {edit(`"folder": 300`, `"Folder": 300`), `"Folder" is not spelled as member "folder"`},
+		"a top member in another case":          {edit(`"released":`, `"Released":`), `"Released" is not spelled as member "released"`},
+		"a nested member in another case":       {edit(`{"type": "project"}`, `{"Type": "project"}`), `"Type" is not spelled as member "type"`},
+		"no budgets":                            {edit(`"budgets": {"tutorial": 1500, "how-to": 1200, "explanation": 3000, "reference": 1500, "extending": 2000},`, ``), "budgets is empty"},
+		"a budget for no type":                  {edit(`"tutorial": 1500`, `"guide": 1500, "tutorial": 1500`), "not a page type"},
+		"a zero budget":                         {edit(`"tutorial": 1500`, `"tutorial": 0`), "no positive budget"},
+		"a type budgeted and exempt":            {edit(`["spec", "project"]`, `["spec", "project", "tutorial"]`), "has a budget and is exempt"},
+		"a type neither":                        {edit(`["spec", "project"]`, `["spec"]`), "has no budget and is not exempt"},
+		"an exempt type twice":                  {edit(`["spec", "project"]`, `["spec", "project", "spec"]`), "listed twice"},
+		"a readme budget of zero":               {edit(`"folder": 300`, `"folder": 0`), "must be positive"},
+		"a ceiling of zero":                     {edit(`"AGENTS.md": 1059`, `"AGENTS.md": 0`), "no positive count"},
+		"an absolute ceiling path":              {edit(`"AGENTS.md": 1059`, `"/AGENTS.md": 1059`), "not a relative slash path"},
+		"a parent reference":                    {edit(`"AGENTS.md": 1059`, `"../AGENTS.md": 1059`), "not a clean path"},
+		"an unclean path":                       {edit(`"AGENTS.md": 1059`, `"docs//x.md": 1059`), "not a clean path"},
+		"no directories":                        {edit(`"directories": {"docs": {"type": "project"}, "docs/spec": {"type": "spec", "may_be_empty": true}},`, `"directories": {},`), "directories is empty"},
+		"a directory of unknown type":           {edit(`{"type": "project"}`, `{"type": "pages"}`), "not one of"},
+		"a page type on no page":                {edit(`"docs/contracts.md": "spec"`, `"docs/contracts": "spec"`), "is not a page"},
+		"a page type unknown":                   {edit(`"docs/contracts.md": "spec"`, `"docs/contracts.md": "law"`), "not one of"},
+		"a frozen path twice":                   {edit(`["docs/contracts.md", "docs/adr/"]`, `["docs/contracts.md", "docs/contracts.md"]`), "listed twice"},
+		"an empty excluded entry":               {edit(`"excluded": []`, `"excluded": [""]`), "a path is empty"},
+		"no surfaces":                           {edit(`["api/proto/**"]`, `[]`), "surfaces is empty"},
+		"no released":                           {edit(",\n  \"released\": \"1.2.3-alpha.1\"", ""), "released is empty"},
+		"an empty released":                     {edit(`"1.2.3-alpha.1"`, `""`), "released is empty"},
+		"a null released":                       {edit(`"1.2.3-alpha.1"`, `null`), "released is empty"},
+		"a released number":                     {edit(`"1.2.3-alpha.1"`, `1.2`), "cannot unmarshal number"},
+		"a released with a v":                   {edit(`"1.2.3-alpha.1"`, `"v1.2.3-alpha.1"`), `released: "v1.2.3-alpha.1" is not a version`},
+		"a released of two parts":               {edit(`"1.2.3-alpha.1"`, `"1.2"`), `released: "1.2" is not a version`},
+		"a released with a leading zero":        {edit(`"1.2.3-alpha.1"`, `"1.02.3"`), `released: "1.02.3" is not a version`},
+		"a released with a date":                {edit(`"1.2.3-alpha.1"`, `"1.2.3 - 2026-01-02"`), "is not a version"},
+		"a released with a space":               {edit(`"1.2.3-alpha.1"`, `" 1.2.3"`), "is not a version"},
+		"a released with a newline":             {edit(`"1.2.3-alpha.1"`, `"1.2.3\n"`), "is not a version"},
+		"an empty pre-release":                  {edit(`"1.2.3-alpha.1"`, `"1.2.3-"`), "is not a version"},
+		"a reading path of no page":             {edit(`["docs/a.md"]`, `[]`), "reading_paths[1]: pages is empty"},
+		"a reading path page outside docs":      {edit(`["docs/a.md"]`, `["README.md"]`), "README.md is not a page under docs/"},
+		"a reading path page not a page":        {edit(`["docs/a.md"]`, `["docs/a"]`), "docs/a is not a page under docs/"},
+		"an unclean reading path page":          {edit(`["docs/a.md"]`, `["docs//a.md"]`), "not a clean path"},
+		"a reading path page twice":             {edit(`["docs/a.md"]`, `["docs/a.md", "docs/a.md"]`), "docs/a.md is listed twice"},
+		"a reader twice":                        {edit(`"An evaluator"`, `"A developer"`), `reader "A developer" is listed twice`},
+		"an empty lead":                         {edit(`"Read these."`, `""`), "lead is empty"},
+		"a padded reader":                       {edit(`"An evaluator"`, `" An evaluator"`), "reader is empty, padded"},
+		"a lead of two lines":                   {edit(`"Read these."`, `"Read\nthese."`), "lead is empty, padded or more than one line"},
+		"a reading path member in another case": {edit(`"lead": "Read these."`, `"Lead": "Read these."`), `"Lead" is not spelled as member "lead"`},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {

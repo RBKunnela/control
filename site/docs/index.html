@@ -31,6 +31,7 @@
 <ul class="home"><li><a href="/docs/" aria-current="page">Overview</a></li></ul>
 <h2>Get started</h2><ul>
 <li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+<li><a href="/docs/get-started/try-the-rest-of-the-demo">Try the rest of the demo</a></li>
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
@@ -41,8 +42,10 @@
 <li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
 <li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
 <li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/set-up-signed-operators">Set up signed operators</a></li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
 <li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
@@ -61,9 +64,11 @@
 <li><a href="/docs/concepts/privacy">Privacy</a></li>
 <li><a href="/docs/concepts/signed-operations">Signed operations</a></li>
 <li><a href="/docs/concepts/threat-model">Threat model</a></li>
+<li><a href="/docs/concepts/where-it-fits">Where it fits</a></li>
 </ul>
 <h2>Reference</h2><ul>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/channels">Channels</a></li>
 <li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
 <li><a href="/docs/reference/cli">Command line</a></li>
 <li><a href="/docs/reference/configuration">Configuration</a></li>
@@ -116,11 +121,45 @@
 </details>
 <main id="main" class="prose">
 <h1 id="documentation">Documentation</h1>
-<p>Rendered from every page's own frontmatter and from the records. Rebuild it
-with <code>make docs-gen</code>; an edit made here does not survive the next run.</p>
+<p>Rendered from every page's own frontmatter, the records and the reading paths
+in <code>docs/docs.json</code>. Rebuild it with <code>make docs-gen</code>; an edit made here does
+not survive the next run.</p>
+<h2 id="reading-paths">Reading paths</h2>
+<h3 id="you-run-one-mcp-server">You run one MCP server</h3>
+<p>Put the plane in front of a server you use, decide its calls from a policy you can test, and know what happens when a part fails.</p>
+<ol>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+</ol>
+<h3 id="you-evaluate-its-security">You evaluate its security</h3>
+<p>What it defends against, what each channel sees and keeps, what each mode enforces, how an approval binds, and what is measured.</p>
+<ol>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+<li><a href="/docs/reference/channels">Channels</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+</ol>
+<h3 id="you-integrate-a-tool-a-runtime-or-a-sensor">You integrate a tool, a runtime or a sensor</h3>
+<p>Have a tool ask before it acts or a sensor report what happened, hold a client to the wire contracts and their conformance cases, and bring a runtime's hooks.</p>
+<ol>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime's hooks</a></li>
+</ol>
 <h2 id="get-started">Get started</h2>
 <ul>
-<li><a href="/docs/get-started/try-the-demo">Try the demo</a>: Start a plane in front of two vulnerable MCP servers, answer a held call, pause a server, read the trail and the counters, and run the demo's scenarios.</li>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a>: Start a plane in front of two vulnerable MCP servers, watch it allow a read, block a refund and hold an update for your approval, and read the trail.</li>
+<li><a href="/docs/get-started/try-the-rest-of-the-demo">Try the rest of the demo</a>: On the demo's running plane, pause a server, read the counters, run the seven scenarios and make one fail on purpose.</li>
 </ul>
 <h2 id="guides">Guides</h2>
 <ul>
@@ -132,8 +171,10 @@ with <code>make docs-gen</code>; an edit made here does not survive the next run
 <li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a>: Export a trail file in the versioned format, resume where the last export stopped, and rebuild each call's lifecycle without importing the project's internals.</li>
 <li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a>: Run the release image of the gateway with Docker, with its evidence on a volume and its port reachable from the host alone.</li>
 <li><a href="/docs/guides/run-the-gateway">Run the gateway</a>: Set up a plane's policy files, start the MCP gateway in OBSERVE, keep its policy confirmed, read its health, classify the tools it sees, and move it to ENFORCE.</li>
+<li><a href="/docs/guides/set-up-signed-operators">Set up signed operators</a>: Lay out the accounts and directories of a signed plane, sign and renew its operator roster, revoke a key, and approve or pause as a named operator.</li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a>: Run the refund example by hand on a live plane, supervise the run against its procedure, read its page, and stop it on a confirmed finding.</li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a>: Lint a procedure document, then prove what supervise finds with cases that state a run, its evidence and every expected finding.</li>
+<li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a>: Why a call was refused in OBSERVE, why an approval did not let a call run, why health says degraded with HTTP 200, and why a signed plane will not start.</li>
 <li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a>: Sign a 0.17 plane's pause file, route and stop list again for its plane_id, carry its stops and lifts into a new list, and point the plane at it.</li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a>: Run the collector the gateway binary ships, point a plane at it with its credential, read each request's trail in the segments it writes, and prune them.</li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a>: Have Envoy or Squid write their access log as JSON lines, import it as observations, and see in the coverage map the destinations the proxy logged.</li>
@@ -153,10 +194,12 @@ with <code>make docs-gen</code>; an edit made here does not survive the next run
 <li><a href="/docs/concepts/privacy">Privacy</a>: What the plane records about a call, where each record goes and who can read it, how long it stays, and that nothing goes to the project.</li>
 <li><a href="/docs/concepts/signed-operations">Signed operations</a>: What is signed in Guardana Control, by whom, what each signature proves, what is not signed, and what a signature never proves.</li>
 <li><a href="/docs/concepts/threat-model">Threat model</a>: What the plane protects, from whom, what it does about each attacker today with the code and the test behind it, and where it stops.</li>
+<li><a href="/docs/concepts/where-it-fits">Where it fits</a>: When this project fits an agent's tool calls, when an authorization service, a model gateway or operating-system isolation fits instead, and how they combine.</li>
 </ul>
 <h2 id="reference">Reference</h2>
 <ul>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a>: What three calls on the authorization path and one tool call through the gateway cost on one machine, how they are measured, and what the numbers are not.</li>
+<li><a href="/docs/reference/channels">Channels</a>: For each way an agent's actions reach the plane, what it sees, what it keeps, what it decides, what it enforces, and the bypasses that remain.</li>
 <li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a>: What the claude-code hook profile covers, the hook settings it needs, what the bridge reads and answers per event, and the gaps it leaves.</li>
 <li><a href="/docs/reference/cli">Command line</a>: The two binaries, what each prints as its help, and the exit statuses they share.</li>
 <li><a href="/docs/reference/configuration">Configuration</a>: Every key the gateway reads, with its environment variable, kind, default, whether it is required and the spellings it takes.</li>
@@ -299,6 +342,7 @@ with <code>make docs-gen</code>; an edit made here does not survive the next run
 <ul class="home"><li><a href="/docs/" aria-current="page">Overview</a></li></ul>
 <h2>Get started</h2><ul>
 <li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+<li><a href="/docs/get-started/try-the-rest-of-the-demo">Try the rest of the demo</a></li>
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
@@ -309,8 +353,10 @@ with <code>make docs-gen</code>; an edit made here does not survive the next run
 <li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
 <li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
 <li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/set-up-signed-operators">Set up signed operators</a></li>
 <li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
 <li><a href="/docs/guides/upgrade-a-signed-plane-from-0-17">Upgrade a signed plane from 0.17</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
@@ -329,9 +375,11 @@ with <code>make docs-gen</code>; an edit made here does not survive the next run
 <li><a href="/docs/concepts/privacy">Privacy</a></li>
 <li><a href="/docs/concepts/signed-operations">Signed operations</a></li>
 <li><a href="/docs/concepts/threat-model">Threat model</a></li>
+<li><a href="/docs/concepts/where-it-fits">Where it fits</a></li>
 </ul>
 <h2>Reference</h2><ul>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/channels">Channels</a></li>
 <li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
 <li><a href="/docs/reference/cli">Command line</a></li>
 <li><a href="/docs/reference/configuration">Configuration</a></li>

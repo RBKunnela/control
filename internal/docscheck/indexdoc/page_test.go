@@ -7,6 +7,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/guardana/control/internal/docscheck/docsconfig"
 	"github.com/guardana/control/internal/docscheck/impact"
 	"github.com/guardana/control/internal/docscheck/indexdoc"
 )
@@ -121,7 +122,7 @@ func TestRenderGroupsByTypeInOrderAndSortsWithin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := indexdoc.Render(pages, records)
+	out, err := indexdoc.Render(pages, records, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,11 +134,49 @@ func TestRenderGroupsByTypeInOrderAndSortsWithin(t *testing.T) {
 	if !strings.HasPrefix(text, "---\ntitle: Documentation\n") || !strings.Contains(text, "\ngenerated: "+indexdoc.Script+"\n---\n") {
 		t.Errorf("the head does not name the generator:\n%s", text)
 	}
-	if strings.Contains(text, "## Get started") || strings.Contains(text, "Reference") {
+	if strings.Contains(text, "## Get started") || strings.Contains(text, "Reference") || strings.Contains(text, "## Reading paths") {
 		t.Errorf("a section with no page is listed:\n%s", text)
 	}
-	if _, err := indexdoc.Render(nil, records); !errors.Is(err, indexdoc.ErrIndex) {
+	if _, err := indexdoc.Render(nil, records, nil); !errors.Is(err, indexdoc.ErrIndex) {
 		t.Errorf("Render with no page: %v", err)
+	}
+}
+
+func TestRenderPutsTheReadingPathsAboveTheCatalogue(t *testing.T) {
+	pages, records, err := indexdoc.Collect(tree(), listing(tree()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	paths := []docsconfig.ReadingPath{
+		{Reader: "Operator", Lead: "Run a plane.", Pages: []string{"docs/guides/run.md", "docs/status.md"}},
+		{Reader: "Reader", Lead: "Understand it.", Pages: []string{"docs/concepts/x.md"}},
+	}
+	out, err := indexdoc.Render(pages, records, paths)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "\n## Reading paths\n\n### Operator\n\nRun a plane.\n\n1. [Run it](guides/run.md)\n2. [Status](status.md)\n\n### Reader\n\nUnderstand it.\n\n1. [X](concepts/x.md)\n\n## Guides\n"
+	if !strings.Contains(string(out), want) {
+		t.Errorf("Render =\n%s\nwant the paths, in order, right above the catalogue:\n%s", out, want)
+	}
+}
+
+// A reading path is refused for a page the index does not list: one that is
+// not there, one the documentation checks exclude and one the repository
+// does not list.
+func TestRenderRefusesAPathNamingNoPage(t *testing.T) {
+	pages, records, err := indexdoc.Collect(tree(), listing(tree()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, missing := range []string{"docs/guides/gone.md", "docs/notes/secret.md", "docs/guides/local.md", "docs/adr/0001-first.md"} {
+		t.Run(missing, func(t *testing.T) {
+			paths := []docsconfig.ReadingPath{{Reader: "Operator", Lead: "Run a plane.", Pages: []string{"docs/guides/run.md", missing}}}
+			out, err := indexdoc.Render(pages, records, paths)
+			if !errors.Is(err, indexdoc.ErrIndex) || !strings.Contains(err.Error(), missing) || out != nil {
+				t.Errorf("Render with a path naming %s = %q, %v; want a refusal naming it", missing, out, err)
+			}
+		})
 	}
 }
 

@@ -64,8 +64,9 @@ The demo needs no Go and no model key. On Linux or macOS:
    Approve it with the `approve_command` the gateway printed, then send the same
    call again: it runs once.
 
-[The tutorial](docs/get-started/try-the-demo.md) goes on with a pause, the
-trail, the counters and the demo's scenarios.
+[The tutorial](docs/get-started/try-the-demo.md) does the same with the
+trail of those calls, and [its follow-up](docs/get-started/try-the-rest-of-the-demo.md)
+goes on with a pause, the counters and the demo's scenarios.
 
 ## How to use it
 

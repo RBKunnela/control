@@ -117,6 +117,16 @@ verify one.
 - `llms.txt` on the website: every documentation page with its address and
   summary, grouped as the index groups them, and the records.
 
+### Documentation
+
+- Three reading paths on the documentation index, a shorter first tutorial
+  with [a follow-up](docs/get-started/try-the-rest-of-the-demo.md), and pages
+  to [set up signed operators](docs/guides/set-up-signed-operators.md),
+  [troubleshoot a plane](docs/guides/troubleshoot-a-plane.md), compare
+  [channels](docs/reference/channels.md) and see
+  [where it fits](docs/concepts/where-it-fits.md); the glossary defines a plane
+  and a run.
+
 ### Security
 
 - The filesystem server the MCP client check installs locks `hono` 4.13.18,

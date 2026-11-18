@@ -8,12 +8,50 @@ generated: scripts/gen-index.go
 
 # Documentation
 
-Rendered from every page's own frontmatter and from the records. Rebuild it
-with `make docs-gen`; an edit made here does not survive the next run.
+Rendered from every page's own frontmatter, the records and the reading paths
+in `docs/docs.json`. Rebuild it with `make docs-gen`; an edit made here does
+not survive the next run.
+
+## Reading paths
+
+### You run one MCP server
+
+Put the plane in front of a server you use, decide its calls from a policy you can test, and know what happens when a part fails.
+
+1. [Try the demo](get-started/try-the-demo.md)
+2. [Connect an existing MCP setup](guides/connect-an-existing-mcp-setup.md)
+3. [Starter policy packs](reference/starter-packs.md)
+4. [Write and test a policy](guides/write-and-test-a-policy.md)
+5. [Failure modes](reference/failure-modes.md)
+
+### You evaluate its security
+
+What it defends against, what each channel sees and keeps, what each mode enforces, how an approval binds, and what is measured.
+
+1. [Threat model](concepts/threat-model.md)
+2. [Channels](reference/channels.md)
+3. [Privacy](concepts/privacy.md)
+4. [Enforcement modes](concepts/enforcement-modes.md)
+5. [MCP enforcement coverage](reference/mcp-coverage.md)
+6. [Approvals and the held request](concepts/approvals-and-the-held-call.md)
+7. [Failure modes](reference/failure-modes.md)
+8. [Benchmarks](reference/benchmarks.md)
+9. [Implementation status](status.md)
+
+### You integrate a tool, a runtime or a sensor
+
+Have a tool ask before it acts or a sensor report what happened, hold a client to the wire contracts and their conformance cases, and bring a runtime's hooks.
+
+1. [Decide a tool of your own](guides/decide-a-tool-of-your-own.md)
+2. [Watch an egress proxy](guides/watch-an-egress-proxy.md)
+3. [Observations](reference/observations.md)
+4. [Wire contracts](contracts.md)
+5. [Adding a coding runtime's hooks](extending/runtime-profiles.md)
 
 ## Get started
 
-- [Try the demo](get-started/try-the-demo.md): Start a plane in front of two vulnerable MCP servers, answer a held call, pause a server, read the trail and the counters, and run the demo's scenarios.
+- [Try the demo](get-started/try-the-demo.md): Start a plane in front of two vulnerable MCP servers, watch it allow a read, block a refund and hold an update for your approval, and read the trail.
+- [Try the rest of the demo](get-started/try-the-rest-of-the-demo.md): On the demo's running plane, pause a server, read the counters, run the seven scenarios and make one fail on purpose.
 
 ## Guides
 
@@ -25,8 +63,10 @@ with `make docs-gen`; an edit made here does not survive the next run.
 - [Read the evidence from a program](guides/read-the-evidence-from-a-program.md): Export a trail file in the versioned format, resume where the last export stopped, and rebuild each call's lifecycle without importing the project's internals.
 - [Run the gateway in a container](guides/run-in-a-container.md): Run the release image of the gateway with Docker, with its evidence on a volume and its port reachable from the host alone.
 - [Run the gateway](guides/run-the-gateway.md): Set up a plane's policy files, start the MCP gateway in OBSERVE, keep its policy confirmed, read its health, classify the tools it sees, and move it to ENFORCE.
+- [Set up signed operators](guides/set-up-signed-operators.md): Lay out the accounts and directories of a signed plane, sign and renew its operator roster, revoke a key, and approve or pause as a named operator.
 - [Supervise and stop a run](guides/supervise-and-stop-a-run.md): Run the refund example by hand on a live plane, supervise the run against its procedure, read its page, and stop it on a confirmed finding.
 - [Test a procedure](guides/test-a-procedure.md): Lint a procedure document, then prove what supervise finds with cases that state a run, its evidence and every expected finding.
+- [Troubleshoot a plane](guides/troubleshoot-a-plane.md): Why a call was refused in OBSERVE, why an approval did not let a call run, why health says degraded with HTTP 200, and why a signed plane will not start.
 - [Upgrade a signed plane from 0.17](guides/upgrade-a-signed-plane-from-0-17.md): Sign a 0.17 plane's pause file, route and stop list again for its plane_id, carry its stops and lifts into a new list, and point the plane at it.
 - [Watch a plane without a collector](guides/watch-a-plane-without-a-collector.md): Run the collector the gateway binary ships, point a plane at it with its credential, read each request's trail in the segments it writes, and prune them.
 - [Watch an egress proxy](guides/watch-an-egress-proxy.md): Have Envoy or Squid write their access log as JSON lines, import it as observations, and see in the coverage map the destinations the proxy logged.
@@ -46,10 +86,12 @@ with `make docs-gen`; an edit made here does not survive the next run.
 - [Privacy](concepts/privacy.md): What the plane records about a call, where each record goes and who can read it, how long it stays, and that nothing goes to the project.
 - [Signed operations](concepts/signed-operations.md): What is signed in Guardana Control, by whom, what each signature proves, what is not signed, and what a signature never proves.
 - [Threat model](concepts/threat-model.md): What the plane protects, from whom, what it does about each attacker today with the code and the test behind it, and where it stops.
+- [Where it fits](concepts/where-it-fits.md): When this project fits an agent's tool calls, when an authorization service, a model gateway or operating-system isolation fits instead, and how they combine.
 
 ## Reference
 
 - [Benchmarks](reference/benchmarks.md): What three calls on the authorization path and one tool call through the gateway cost on one machine, how they are measured, and what the numbers are not.
+- [Channels](reference/channels.md): For each way an agent's actions reach the plane, what it sees, what it keeps, what it decides, what it enforces, and the bypasses that remain.
 - [Claude Code hooks](reference/claude-code-hooks.md): What the claude-code hook profile covers, the hook settings it needs, what the bridge reads and answers per event, and the gaps it leaves.
 - [Command line](reference/cli.md): The two binaries, what each prints as its help, and the exit statuses they share.
 - [Configuration](reference/configuration.md): Every key the gateway reads, with its environment variable, kind, default, whether it is required and the spellings it takes.

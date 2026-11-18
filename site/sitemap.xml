@@ -102,11 +102,13 @@
   <url><loc>https://control.guardana.dev/docs/concepts/privacy</loc></url>
   <url><loc>https://control.guardana.dev/docs/concepts/signed-operations</loc></url>
   <url><loc>https://control.guardana.dev/docs/concepts/threat-model</loc></url>
+  <url><loc>https://control.guardana.dev/docs/concepts/where-it-fits</loc></url>
   <url><loc>https://control.guardana.dev/docs/contracts</loc></url>
   <url><loc>https://control.guardana.dev/docs/dependencies</loc></url>
   <url><loc>https://control.guardana.dev/docs/extending/adapters</loc></url>
   <url><loc>https://control.guardana.dev/docs/extending/runtime-profiles</loc></url>
   <url><loc>https://control.guardana.dev/docs/get-started/try-the-demo</loc></url>
+  <url><loc>https://control.guardana.dev/docs/get-started/try-the-rest-of-the-demo</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/back-up-and-restore-a-plane</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/connect-an-existing-mcp-setup</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/decide-a-tool-of-your-own</loc></url>
@@ -115,13 +117,16 @@
   <url><loc>https://control.guardana.dev/docs/guides/read-the-evidence-from-a-program</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/run-in-a-container</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/run-the-gateway</loc></url>
+  <url><loc>https://control.guardana.dev/docs/guides/set-up-signed-operators</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/supervise-and-stop-a-run</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/test-a-procedure</loc></url>
+  <url><loc>https://control.guardana.dev/docs/guides/troubleshoot-a-plane</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/upgrade-a-signed-plane-from-0-17</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/watch-a-plane-without-a-collector</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/watch-an-egress-proxy</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/write-and-test-a-policy</loc></url>
   <url><loc>https://control.guardana.dev/docs/reference/benchmarks</loc></url>
+  <url><loc>https://control.guardana.dev/docs/reference/channels</loc></url>
   <url><loc>https://control.guardana.dev/docs/reference/claude-code-hooks</loc></url>
   <url><loc>https://control.guardana.dev/docs/reference/cli</loc></url>
   <url><loc>https://control.guardana.dev/docs/reference/configuration</loc></url>

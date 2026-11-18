@@ -7,8 +7,8 @@
 //
 // Everything this program decides lives in internal/docscheck/indexdoc, which
 // the gate compiles, vets, lints and tests. What is left here is argument
-// handling, a read of docs/docs.json for the exclusions, the repository's file
-// list, a walk and a write.
+// handling, a read of docs/docs.json for the exclusions and the reading paths,
+// the repository's file list, a walk and a write.
 package main
 
 import (
@@ -45,7 +45,7 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
-	page, err := indexdoc.Render(pages, records)
+	page, err := indexdoc.Render(pages, records, cfg.ReadingPaths)
 	if err != nil {
 		fail(err)
 	}
