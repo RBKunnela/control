@@ -1,6 +1,9 @@
 package supervise
 
 import (
+	"cmp"
+	"slices"
+
 	findingv1alpha1 "github.com/guardana/control/api/gen/go/guardana/control/finding/v1alpha1"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/channel"
@@ -27,8 +30,8 @@ type request struct {
 	approval controlv1.ApprovalState
 }
 
-// requestsOf groups the run's events by request id, in the order each request
-// was first read.
+// requestsOf groups the run's events by request id, in the plane's time
+// order of their proposals (byPlaneTime).
 func requestsOf(events []*controlv1.Event, doubtful map[string]bool) []*request {
 	var out []*request
 	byID := map[string]*request{}
@@ -49,7 +52,26 @@ func requestsOf(events []*controlv1.Event, doubtful map[string]bool) []*request 
 			rq.note(ev)
 		}
 	}
+	slices.SortFunc(out, byPlaneTime)
 	return out
+}
+
+// byPlaneTime orders requests by the plane's time of their proposals, those
+// without one after the rest, and requests of one instant by id. A plane ships
+// several batches at once, so where an export places a request says nothing.
+func byPlaneTime(a, b *request) int {
+	at, bt := a.proposal.GetOccurredAt(), b.proposal.GetOccurredAt()
+	switch {
+	case at.IsValid() && bt.IsValid():
+		if c := at.AsTime().Compare(bt.AsTime()); c != 0 {
+			return c
+		}
+	case at.IsValid():
+		return -1
+	case bt.IsValid():
+		return 1
+	}
+	return cmp.Compare(a.id, b.id)
 }
 
 // linked is events in the order their links give, the event that links to

@@ -11,6 +11,16 @@ verify one.
 
 ## [Unreleased]
 
+### Fixed
+
+- `supervise` lists a step's requests, and a finding cites and keeps its
+  references, in the order of the plane's times of the proposals, a tie by
+  request id. It used the order in which an export first held each request,
+  which follows the order the plane's batches reached the collector, so two
+  exports of one run could list requests differently and a finding citing
+  more than ten could keep other references
+  ([supervision](docs/reference/supervision.md)).
+
 ## [0.18.0] - 2026-11-18
 
 Upgrading from 0.17 changes three things on every plane, and more under
