@@ -178,8 +178,9 @@ registry.
 `internal/core/`, `internal/core/delegation/`,
 [ADR-0012](adr/0012-policy-kernel-semantics.md). `policy test` and 25 fixtures
 under `testdata/policy/fixtures/` exercise every verdict and every cause but the
-clock, the external decision point's answers among them, and
-`internal/core/clock_test.go` holds the clock step; a 10 000-case determinism
+clock and a missing bundle, the external decision point's answers among them;
+`TestFixturesWithoutABundle` holds the missing bundle and
+`internal/core/clock_test.go` the clock step; a 10 000-case determinism
 property and `FuzzDecide` run in `make test` and `make fuzz-smoke`. `ENFORCE`
 only; the modes are the enforcement point's
 ([ADR-0013](adr/0013-mcp-interception-approvals-and-modes.md)), and

@@ -138,6 +138,8 @@ the group nor others may write; the trail directory is created in it mode
 ids.</li>
 <li>A credential: 32 to 512 printable ASCII bytes with no space, in a file only
 this account may read.</li>
+<li>The socket's directory, <code>/run/collector</code> below, already made: owned by
+this account or root, and not writable by the group or others unless sticky.</li>
 </ul>
 <h2 id="steps">Steps</h2>
 <h3 id="1-make-the-credential">1. Make the credential</h3>

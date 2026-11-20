@@ -8,8 +8,8 @@ covers: [cmd/guardana-gateway/serve.go, cmd/guardana-gateway/serve_listen.go, cm
 # Failure modes
 
 Each row says whether the plane blocks the call, its code, what the agent
-gets, whether the plane recovers alone, and the test that makes
-the failure happen; the sections say what the trail holds. The `chaos_` tests
+gets, whether the plane recovers alone, and the test that causes
+it; the sections say what the trail holds. The `chaos_` tests
 of `cmd/guardana-gateway/` run the built binary in `ENFORCE` against
 listeners, files and a child process that really fail. Nothing here is a
 security boundary ([status](../status.md)).
@@ -26,7 +26,7 @@ security boundary ([status](../status.md)).
 | Stop list unknown | blocked | `STOP_STATE_UNAVAILABLE` | `isError` and the code | yes, at a whole read extending the accepted list; shrunk or rewritten, no | `TestAnUnknownStopStateBlocksEveryCall`, `TestHealthAnswersTheStopStateAnd503WhenTheListIsRewritten` |
 | No freshness statement current | blocked outside `OBSERVE`, a read too unless `policy.fail_open_read` opened it outside `LOCKDOWN` | `POLICY_STALE` | `isError` and the code | yes, at the first poll taking a statement bound to the bundle | `TestAnUnconfirmedPlaneBlocksMaterialCalls`, `TestARenewalConfirmsAgain` |
 | Bundle file torn, unsigned, older or another id's | runs on the last good bundle until its statement expires, then blocked | none, then `POLICY_STALE` | the upstream's answer, then `isError` and the code | yes, once the file holds the served bundle or a newer one with its statement | `TestEveryRefusedReplacementMovesNothing` |
-| Clock outside 1970 to 9999, or behind the verified time | blocked outside `OBSERVE`, a read too, whatever `policy.fail_open_read` says | `POLICY_STALE` | `isError` and the code | yes, once the clock passes the verified time and, after a step back, a newer statement arrives, or a restart follows `policy state reset`; outside 1970 to 9999, no | `TestAClockOutsideTheUsableRangeIsACauseInTheRequest`, `TestAClockBehindAVerifiedTimeIsACauseInTheRequest`, `TestAClockBehindTheFloorStopsAnUnconfirmedSnapshotsRead` |
+| Clock outside 1970 to 9999, or behind the verified time | blocked outside `OBSERVE`, a read too, whatever `policy.fail_open_read` says; in `OBSERVE` under an opened run | `POLICY_STALE`; in `OBSERVE`, `EVIDENCE_UNAVAILABLE` | `isError` and the code | yes, once the clock passes the verified time and, after a step back, a newer statement arrives, or a restart follows `policy state reset`; outside 1970 to 9999, no | `TestAClockOutsideTheUsableRangeIsACauseInTheRequest`, `TestAClockBehindAVerifiedTimeIsACauseInTheRequest`, `TestAClockBehindTheFloorStopsAnUnconfirmedSnapshotsRead`, `TestARunUnderObserveBehindTheVerifiedTimeStartsNothing` |
 | Floor directory or file missing or unreadable at start | none: the plane does not start | none | no listener | no: restore it, or make it again with `policy state init` or `reset` | `TestAStartWithNoFloorIsRefused`, `TestAStartIsRefusedForWhatItCannotRead` |
 | Plane killed with calls held | never runs | `APPROVAL_NOT_RESUMED`, `APPROVAL_REJECTED`, `APPROVAL_EXPIRED` or `APPROVAL_STATE_UNKNOWN` on the closing record | `APPROVAL_PENDING`, before the kill | at the next start, with a hold journal | `TestAnApproverOutsideThePlaneAnswersAndALostHoldIsClosed`, `TestTheLostHoldCodesTellTheFourAnswersApart` |
 
@@ -40,7 +40,7 @@ the adapter's code.
 ## Collector gone, then back
 
 The exporter resends with a backoff growing to `export.max_backoff`; every record stays in the spool (`/healthz`: `spool.unacknowledged`), and no
-call is blocked until the spool is full. Once a collector answers again, every record it accepts
+call is blocked until it is full. Once a collector answers again, every record it accepts
 arrives, at least once, so it tells copies apart by `event_id`; one refused
 with `400`, `413` or `422` three times running goes to `quarantine.log`.
 
@@ -65,12 +65,12 @@ read as an allow ([threat model](../concepts/threat-model.md)).
 
 ## An upstream that dies mid-call
 
-The agent gets a JSON-RPC error, never a result; the call is not sent again, and
+The agent gets a JSON-RPC error, never a result; the call is not resent, and
 its trail ends `ACTION_FAILED` with an `UNKNOWN` result and
 `tool_protocol_status: error`, never `ACTION_COMPLETED`.
 
 - A `stdio` upstream that exits during a call is not
-  started again: every later call to it is closed that way and answered with an error until
+  started again: every later call to it ends that way until
 the plane restarts. Other upstreams run.
 - An HTTP upstream that closes the connection after reading the call leaves that call's outcome unknown; the next
   call to it is sent and answered.

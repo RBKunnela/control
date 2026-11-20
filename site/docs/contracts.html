@@ -1586,7 +1586,7 @@ plane never delivered.</p>
 beside the evidence export: <code>Event.run_id</code> names a record, and the record names
 the root whose state a call was decided under. <code>experimental</code>, in
 <code>internal/runs/</code> (<a href="/docs/adr/0034-a-run-the-operator-opens-has-an-identity-of-its-own">ADR-0034</a>).
-Only <code>guardana-control runs</code> writes a record, and a plane writes only a root's
+Only <code>guardana-control runs</code> writes a record, save <code>guardana-control state restore</code>, which writes a restored record closed; a plane writes only a root's
 state.</p>
 <p>Both files are one JSON object, a record of <code>schema_version</code> major <code>2</code> and a
 state of major <code>1</code>. Every key is required, none has a default, a key given

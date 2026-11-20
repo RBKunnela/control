@@ -53,6 +53,11 @@ tools:
     resource_from: /order_id
 ```
 
+These blocks replace the MCP listener of the configuration from
+[run-the-gateway.md](run-the-gateway.md): remove its `upstreams` and
+`overrides` too, since an `enforce_api` listener calls no upstream and
+classifies its tools in `tools`; `doctor` refuses either.
+
 The socket's directory must be yours with no permission for group or others,
 and its path at most 103 bytes. A running plane holds a lock on
 `enforce.sock.lock` beside the socket, so a second plane on the same socket is

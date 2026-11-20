@@ -69,7 +69,7 @@
 <section class="sec" id="how"><div class="w">
   <div class="hd2"><div><p class="k">How it works</p><h2>Set the rules. Review the run.</h2></div><p class="intro">You write the rules once. Control applies them to every call, and helps you check the whole task afterwards.</p></div>
 
-  <div class="step"><div class="txt" data-status="mcp-gateway" title="Model Context Protocol (MCP) gateway"><span class="num">01 · Decide</span><h3>Rules in front of every call</h3><p>A signed policy allows, blocks or holds each tool call before it runs. In a mode that enforces, a call that cannot be decided does not go through.</p><p class="state"><span class="st">experimental</span></p><a class="more" href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></div>
+  <div class="step"><div class="txt" data-status="mcp-gateway" title="Model Context Protocol (MCP) gateway"><span class="num">01 · Decide</span><h3>Rules in front of every call</h3><p>A signed policy allows, blocks or holds each tool call before it runs. In a mode that enforces, a call that cannot be decided does not go through, unless it is a read and you chose to let such reads through.</p><p class="state"><span class="st">experimental</span></p><a class="more" href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></div>
     <div class="pad" aria-hidden="true"><div class="ui">
       <div class="uh"><span class="file">policy.json</span><span class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.500l4.500 4.500L19 7.500"></path></svg>signed</span></div>
       <div class="li"><span><i class="dt ok"></i>Reads</span><span>Allow</span></div>
@@ -87,7 +87,7 @@
       <div class="after"><div class="li"><span>The same call, sent again</span><span>Refused</span></div><div class="li"><span>The call, with one value changed</span><span>Refused</span></div></div>
     </div></div></div>
 
-  <div class="step"><div class="txt" data-status="run-supervision" title="Supervision of a run against its procedure"><span class="num">03 · Supervise</span><h3>Catch what went around the rules</h3><p>Compare a recorded run with its procedure. When an agent is denied and tries another way, you get a finding and can stop that run's later calls.</p><p class="state"><span class="st">experimental</span> · you start the check today</p><a class="more" href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></div>
+  <div class="step"><div class="txt" data-status="run-supervision" title="Supervision of a run against its procedure"><span class="num">03 · Supervise</span><h3>Catch what went around the rules</h3><p>Compare a recorded run with its procedure. When a denied agent retries through the plane with other arguments or on another resource, you get a finding and can stop that run's later calls. A retry seen only outside the plane is reported as suspected, and stops nothing.</p><p class="state"><span class="st">experimental</span> · you start the check today</p><a class="more" href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></div>
     <div class="pad" aria-hidden="true"><div class="ui">
       <div class="uh"><span class="file">Refund run</span><span class="badge q">checked against its procedure</span></div>
       <div class="tl">

@@ -1309,7 +1309,8 @@ What a run record and a root's state hold, for a program that reads them
 beside the evidence export: `Event.run_id` names a record, and the record names
 the root whose state a call was decided under. `experimental`, in
 `internal/runs/` ([ADR-0034](adr/0034-a-run-the-operator-opens-has-an-identity-of-its-own.md)).
-Only `guardana-control runs` writes a record, and a plane writes only a root's
+Only `guardana-control runs` writes a record, save `guardana-control state
+restore`, which writes a restored record closed; a plane writes only a root's
 state.
 
 Both files are one JSON object, a record of `schema_version` major `2` and a

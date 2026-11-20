@@ -26,6 +26,8 @@ Both commands are `experimental`; [status.md](../status.md) is the inventory.
   ids.
 - A credential: 32 to 512 printable ASCII bytes with no space, in a file only
   this account may read.
+- The socket's directory, `/run/collector` below, already made: owned by
+  this account or root, and not writable by the group or others unless sticky.
 
 ## Steps
 

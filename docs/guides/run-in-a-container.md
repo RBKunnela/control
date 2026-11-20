@@ -39,7 +39,8 @@ is published with each release, whose notes name its digest.
    - The collector at an `https` endpoint, which reaches it off the host. An
      `http` endpoint is refused, since plaintext export was removed in 0.17; a
      `unix:///path` one needs the collector's socket mounted into the
-     container and its account named by `export.collector_uid`.
+     container and its account named by `export.collector_uid`. Remove
+     `export.collector_uid` for an `https` endpoint: the plane refuses it there.
    - `policy.state_dir: /var/lib/guardana/floors`, a volume that outlives the
      container, beside the spool and the approvals directory. Make it on the
      host with `guardana-control policy state init --kind plane --bundle-id <bundle id>

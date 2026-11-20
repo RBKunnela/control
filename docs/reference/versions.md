@@ -118,7 +118,8 @@ again the findings that still may stop a run.
   again ([runs.md](runs.md#runs-an-earlier-release-opened)).
 - **Policy document, scenario, reaction route, freshness statement and
   lift.** One exact `kind` is read; another is refused, never read as this
-  one.
+  one. `stops init --carry` alone also reads a `v1alpha2` route and its
+  `v1alpha2` lifts, to carry a 0.17 list (above).
 - **Procedure.** A `0.1` document reads as before, with the same digest,
   rules and findings, and the records it gives keep schema `0.1`, unless the
   report names a source in doubt.
