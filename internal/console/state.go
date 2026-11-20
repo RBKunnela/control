@@ -12,6 +12,7 @@ import (
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/approvals"
 	"github.com/guardana/control/internal/brand"
+	"github.com/guardana/control/internal/core/approval"
 	"github.com/guardana/control/internal/keytext"
 )
 
@@ -174,7 +175,7 @@ func (p *page) recordOf(e approvals.Entry, now time.Time, planeRunning bool) rec
 		ActionDigest: a.GetActionDigest(),
 		BundleDigest: keytext.Printable(a.GetPolicyBundleDigest()),
 		Expires:      stamp(a.GetExpiresAt()),
-		Expired:      a.GetExpiresAt() == nil || !now.Before(a.GetExpiresAt().AsTime()),
+		Expired:      approval.Expired(a, now),
 		Title:        "Approval " + keytext.Printable(e.Record.ApprovalID),
 		requested:    a.GetRequestedAt().AsTime(),
 	}

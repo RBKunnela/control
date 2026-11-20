@@ -98,6 +98,7 @@ on every question, and `doctor` never prints its value. The other keys:
 - `informational_context`, the context members an allowing answer may carry.
   None by default: any member but those and `obligations` makes an allow
   unreadable, and the call is blocked. A non-empty `obligations` is a veto.
+  An answer that is not UTF-8 is unreadable whatever it says.
 
 `timeout` covers connecting too: the first ask on a new connection pays for
 the handshake, so a decision point on another host may need more than the

@@ -254,6 +254,16 @@ func TestTheReconciliationClosesAnAnswerItCannotReadOrTrustAsUnknown(t *testing.
 		{"an answer with no expiry", base().Add(time.Minute), func(t *testing.T, store *fakeStore, pending gateway.Disposition) {
 			answeredThen(t, store, pending, func(a *controlv1.Approval) { a.ExpiresAt = nil })
 		}},
+		{"an answer with a malformed decision time", base().Add(time.Minute), func(t *testing.T, store *fakeStore, pending gateway.Disposition) {
+			answeredThen(t, store, pending, func(a *controlv1.Approval) {
+				a.DecidedAt = &timestamppb.Timestamp{Seconds: base().Add(time.Minute).Unix() - 2, Nanos: 1_999_999_999}
+			})
+		}},
+		{"an answer with a malformed expiry", base().Add(time.Minute), func(t *testing.T, store *fakeStore, pending gateway.Disposition) {
+			answeredThen(t, store, pending, func(a *controlv1.Approval) {
+				a.ExpiresAt = &timestamppb.Timestamp{Seconds: base().Add(2*time.Minute).Unix() - 1, Nanos: 2_000_000_000}
+			})
+		}},
 		{"an answer for another request only", base().Add(time.Minute), func(t *testing.T, store *fakeStore, pending gateway.Disposition) {
 			answeredThen(t, store, pending, func(a *controlv1.Approval) { a.RequestId = "req-other" })
 		}},

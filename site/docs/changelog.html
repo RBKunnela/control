@@ -138,6 +138,28 @@ which follows the order the plane's batches reached the collector, so two
 exports of one run could list requests differently and a finding citing
 more than ten could keep other references
 (<a href="/docs/reference/supervision">supervision</a>).</li>
+<li>An answer of the AuthZEN decision point whose body is not UTF-8 is refused
+with <code>PDP_ANSWER_REFUSED</code>, so the call is blocked. JSON text is UTF-8; such
+a body was read with replacement characters in its strings
+(<a href="/docs/guides/let-a-decision-point-veto">let a decision point veto</a>).</li>
+<li>An answer a decision point returns once its deadline, or the caller's, has
+passed is a timeout, <code>PDP_TIMEOUT</code>, and one returned after the caller
+cancelled is <code>PDP_UNAVAILABLE</code>, whatever either says. The gateway took the
+answer an in-process decision point returned late, so an allow that came
+after the deadline lifted the veto.</li>
+<li>An approval whose expiry is not a valid timestamp, with nanos out of range
+or a second past year 9999, is expired and never spent, and one whose
+decision time is not a valid timestamp is no decision. Each was normalised
+to another moment, which could fall inside the hold's window.</li>
+<li>The binary decoder refuses an int32 member outside int32, as it does an
+enum number, so a timestamp's <code>nanos</code> sent as 2^32+1 is refused before the
+parse instead of arriving as one nanosecond. Only bytes no conforming
+encoder writes are refused
+(<a href="/docs/contracts#decoding-and-validation">contracts</a>).</li>
+<li>A retry whose approval names a major this build does not read is refused
+with <code>EVIDENCE_UNAVAILABLE</code> also when its expiry has passed. Such an
+approval closed the hold as <code>APPROVAL_EXPIRED</code> before its version was
+read.</li>
 </ul>
 <h2 id="0180---2026-11-18"><a href="https://github.com/guardana/control/releases/tag/v0.18.0">0.18.0</a> - 2026-11-18</h2>
 <p>Upgrading from 0.17 changes three things on every plane, and more under

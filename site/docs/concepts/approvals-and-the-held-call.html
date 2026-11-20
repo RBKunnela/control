@@ -494,7 +494,7 @@ record of the approval it minted, by approval and request id, and records
 </thead>
 <tbody>
 <tr>
-<td>pending, approved with no <code>approver_id</code>, multi-use (counted), or decided never, before <code>requested_at</code> or after now</td>
+<td>pending, approved with no <code>approver_id</code>, multi-use (counted), or decided never, at no valid time, before <code>requested_at</code> or after now</td>
 <td>the hold waits; the retry is told the same <code>approval_id</code></td>
 </tr>
 <tr>
@@ -506,11 +506,11 @@ record of the approval it minted, by approval and request id, and records
 <td>this call's own trail is blocked <code>INDETERMINATE</code>, <code>EVIDENCE_UNAVAILABLE</code>; the hold stands, unspent</td>
 </tr>
 <tr>
-<td>expired, or with no expiry, and not marked spent</td>
+<td>expired, with no expiry or an invalid one, of a major this build reads, not marked spent</td>
 <td>the held trail closes <code>DENY</code>, <code>APPROVAL_EXPIRED</code></td>
 </tr>
 <tr>
-<td>approved or rejected, but of another major, another <code>requested_at</code>, a refused <code>approver_id</code>, or an expiry later than minted</td>
+<td>approved, rejected or expired of another major; approved or rejected with another <code>requested_at</code>, a refused <code>approver_id</code>, or an expiry later than minted</td>
 <td>the held trail closes with the plane's own approval, expired, <code>INDETERMINATE</code>, <code>EVIDENCE_UNAVAILABLE</code></td>
 </tr>
 <tr>

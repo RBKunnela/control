@@ -12,6 +12,7 @@ import (
 
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/pkg/contract"
@@ -166,6 +167,38 @@ func TestDecodeRefusesAnEnumNumberOutsideInt32(t *testing.T) {
 	} {
 		env, err := contract.Decode(concat(base, lenField(fieldData, labels)))
 		t.Run(name, func(t *testing.T) { assertRefusedBeforeTheParse(t, env, err, "data.sensitivities[1]") })
+	}
+}
+
+// TestDecodeRefusesAnInt32MemberOutsideInt32: the runtime truncates a
+// timestamp's nanos to 32 bits as it does an enum's number, so 2^32+1 arrives
+// as one nanosecond and a hop's expiry passes the timestamp check. Read as a
+// two's-complement int64 and outside int32 is refused before the parse; the
+// same expiry with nanos sent as 1 decodes.
+func TestDecodeRefusesAnInt32MemberOutsideInt32(t *testing.T) {
+	withNanos := func(v uint64) []byte {
+		env := withDelegation(1)
+		hop := env.Delegation[0]
+		seconds := hop.GetExpiresAt()
+		seconds.Nanos = 0
+		env.Delegation, hop.ExpiresAt = nil, nil
+		expiry := concat(marshalled(t, seconds), varintField(2, v))
+		return concat(marshalled(t, env), lenField(fieldDelegation, concat(marshalled(t, hop), lenField(6, expiry))))
+	}
+	if _, err := contract.Decode(withNanos(1)); err != nil {
+		t.Fatalf("the expiry with nanos sent as 1: %v; want it decoded, so the cases below prove nothing", err)
+	}
+	for _, v := range []uint64{1<<32 + 1, 1<<63 + 1} {
+		parsed := &controlv1.ActionEnvelope{}
+		if err := proto.Unmarshal(withNanos(v), parsed); err != nil || parsed.GetDelegation()[0].GetExpiresAt().GetNanos() != 1 ||
+			contract.Validate(parsed) != nil {
+			t.Fatalf("the runtime does not turn nanos %d into an accepted envelope with one nanosecond (%v, %v), so it proves nothing",
+				v, err, contract.Validate(parsed))
+		}
+	}
+	for _, v := range []uint64{1<<32 + 1, 1<<63 + 1, 1 << 31, varintBelowMinInt32} {
+		env, err := contract.Decode(withNanos(v))
+		assertRefusedBeforeTheParse(t, env, err, "delegation[0].expires_at.nanos")
 	}
 }
 
@@ -423,4 +456,39 @@ func reversed(t *testing.T, b []byte) []byte {
 	}
 	slices.Reverse(fields)
 	return concat(fields...)
+}
+
+// TestNoVarintThePreScanLeavesUncheckedIsReachable: the pre-scan holds an
+// enum number and a singular int32 to int32, and the runtime truncates any
+// other 32-bit varint unseen, so a sint32, a uint32 or a repeated int32 the
+// envelope reaches would need a check of its own.
+func TestNoVarintThePreScanLeavesUncheckedIsReachable(t *testing.T) {
+	seen := map[protoreflect.FullName]bool{}
+	singularInt32 := 0
+	var walk func(protoreflect.MessageDescriptor)
+	walk = func(md protoreflect.MessageDescriptor) {
+		if seen[md.FullName()] {
+			return
+		}
+		seen[md.FullName()] = true
+		fields := md.Fields()
+		for i := range fields.Len() {
+			fd := fields.Get(i)
+			switch {
+			case fd.Kind() == protoreflect.Sint32Kind, fd.Kind() == protoreflect.Uint32Kind:
+				t.Errorf("%s is a %s, which the pre-scan does not hold to its width", fd.FullName(), fd.Kind())
+			case fd.Kind() == protoreflect.Int32Kind && fd.IsList():
+				t.Errorf("%s is a repeated int32, which the pre-scan does not hold to its width", fd.FullName())
+			case fd.Kind() == protoreflect.Int32Kind:
+				singularInt32++
+			}
+			if m := fd.Message(); m != nil {
+				walk(m)
+			}
+		}
+	}
+	walk((*controlv1.ActionEnvelope)(nil).ProtoReflect().Descriptor())
+	if singularInt32 == 0 {
+		t.Fatalf("the walk met no int32 in %d messages, so it reached nothing the pre-scan holds", len(seen))
+	}
 }

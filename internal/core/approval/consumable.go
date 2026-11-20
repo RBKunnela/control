@@ -31,7 +31,8 @@ const (
 //
 //  1. a zero now, or no approval, is unusable;
 //  2. an approval marked multi-use is multi-use;
-//  3. one at or past its expiry, or with none, is expired;
+//  3. one at or past its expiry, or with none or one that is no valid
+//     timestamp, is expired;
 //  4. one decided at no time, before its request, or after now is unusable;
 //  5. a rejected one is rejected;
 //  6. an approved one with an approver is usable;
@@ -59,19 +60,22 @@ func Consumable(a *controlv1.Approval, now time.Time) Standing {
 
 // Expired reports whether a is at or past its expiry at now. An approval with
 // no expiry is expired: a record that never expires is one no bound reaches.
-// A zero now stands before every expiry and reads as unexpired, so a record
-// long past its expiry would read as live: every caller refuses a zero time
-// before it asks, as Consumable does.
+// So is one whose expiry is no valid timestamp, which AsTime would normalise
+// to some other moment. A zero now stands before every expiry and reads as
+// unexpired, so a record long past its expiry would read as live: every
+// caller refuses a zero time before it asks, as Consumable does.
 func Expired(a *controlv1.Approval, now time.Time) bool {
-	return a.GetExpiresAt() == nil || !now.Before(a.GetExpiresAt().AsTime())
+	expiry := a.GetExpiresAt()
+	return expiry.CheckValid() != nil || !now.Before(expiry.AsTime())
 }
 
 // decidedWithin reports whether a was decided at or after its request and not
-// after now. An answer is only an answer from the time it was decided at. A
-// missing request time reads as the Unix epoch, which only a store that
-// takes such a record can hand in.
+// after now. An answer is only an answer from the time it was decided at,
+// and a decision time that is no valid timestamp names no time. A missing
+// request time reads as the Unix epoch, which only a store that takes such a
+// record can hand in.
 func decidedWithin(a *controlv1.Approval, now time.Time) bool {
-	if a.GetDecidedAt() == nil {
+	if a.GetDecidedAt().CheckValid() != nil {
 		return false
 	}
 	at := a.GetDecidedAt().AsTime()

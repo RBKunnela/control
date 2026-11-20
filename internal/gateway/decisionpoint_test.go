@@ -40,12 +40,14 @@ const (
 )
 
 // fakeDecisionPoint answers every ask with answer and records what it was
-// asked about. A blocking one waits for its ctx and answers a timeout; during
-// runs while an ask is in flight.
+// asked about. A blocking one waits for its ctx and answers a timeout, a late
+// one waits for its ctx and then answers answer; during runs while an ask is
+// in flight.
 type fakeDecisionPoint struct {
 	mu        sync.Mutex
 	answer    core.External
 	block     bool
+	late      bool
 	during    func()
 	asked     []*controlv1.ActionEnvelope
 	deadlines []time.Duration
@@ -64,7 +66,7 @@ func (f *fakeDecisionPoint) Ask(ctx context.Context, env *controlv1.ActionEnvelo
 	} else {
 		f.undated++
 	}
-	answer, block, during := f.answer, f.block, f.during
+	answer, block, late, during := f.answer, f.block, f.late, f.during
 	if f.scribble {
 		env.RequestId, env.Action.Name, env.Action.Effect = "req-scribbled", "orders.read", controlv1.EffectClass_EFFECT_CLASS_READ
 	}
@@ -72,11 +74,14 @@ func (f *fakeDecisionPoint) Ask(ctx context.Context, env *controlv1.ActionEnvelo
 	if during != nil {
 		during()
 	}
-	if !block {
+	if !block && !late {
 		return answer
 	}
 	select {
 	case <-ctx.Done():
+		if late {
+			return answer
+		}
 		return core.ExternalTimeout()
 	case <-time.After(released):
 		f.mu.Lock()
@@ -429,6 +434,86 @@ func TestSilenceBlocksEveryEffectClassUnderEnforce(t *testing.T) {
 	declared := controlv1.EffectClass(0).Descriptor().Values().Len() - 1
 	if want := len(unanswered()) * declared * 2; ran != want {
 		t.Errorf("%d cases ran, want %d", ran, want)
+	}
+}
+
+// TestAnAnswerAfterTheDeadlineIsATimeout: a decision point that waits out
+// its deadline and then answers, whatever it answers, gave no answer within
+// it. The write is blocked as a timeout and counted as one; an allowing
+// answer that arrives late never lifts the veto.
+func TestAnAnswerAfterTheDeadlineIsATimeout(t *testing.T) {
+	for _, answer := range []core.External{core.ExternalAllowed(), core.ExternalDenied(), core.ExternalDeniedObligations()} {
+		t.Run(answer.String(), func(t *testing.T) {
+			dp := &fakeDecisionPoint{answer: answer, late: true}
+			h := build(t, modeEnforce, snapshot(t, allowWrites, vetoWrites), withDecisionPoint(dp))
+			d := h.admit(writeEnvelope(), []byte(`{"k":1}`))
+			if d.Action != core.Block || d.AuthorizedArgs != nil {
+				t.Errorf("a write answered %v after the deadline: Action = %d, want Block", answer, d.Action)
+			}
+			expectConsulted(t, h.recorded(t, "req-1"), verdictIndeterminate, codePDPTimeout)
+			dp.expectAsks(t, 1)
+			if got := h.p.Stats().Asks; got != (gateway.Asks{Made: 1, TimedOut: 1}) {
+				t.Errorf("Stats.Asks = %+v, want one ask counted as timed out", got)
+			}
+		})
+	}
+}
+
+// TestAnAnswerAfterTheCallerLeftIsUnavailable: an allowing answer that
+// comes after the caller's own context ended came back to nobody, which is no
+// answer: the write is blocked with the decision point unavailable.
+func TestAnAnswerAfterTheCallerLeftIsUnavailable(t *testing.T) {
+	dp := &fakeDecisionPoint{answer: core.ExternalAllowed(), late: true}
+	h := build(t, modeEnforce, snapshot(t, allowWrites, vetoWrites), withDecisionPoint(dp))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	dp.during = cancel
+	d := h.p.Admit(ctx, h.onPlane(admission(writeEnvelope(), []byte(`{"k":1}`))))
+	if d.Action != core.Block || d.AuthorizedArgs != nil {
+		t.Errorf("a write answered after its caller left: Action = %d, want Block", d.Action)
+	}
+	expectConsulted(t, h.recorded(t, "req-1"), verdictIndeterminate, codePDPUnavailable)
+	if got := h.p.Stats().Asks; got != (gateway.Asks{Made: 1, Unavailable: 1}) {
+		t.Errorf("Stats.Asks = %+v, want one ask counted as unavailable", got)
+	}
+}
+
+// callerDeadline is a caller's context whose deadline, sooner than the ask's,
+// passes when expire is called rather than by the clock.
+type callerDeadline struct {
+	context.Context
+	at   time.Time
+	done chan struct{}
+}
+
+func (c *callerDeadline) Deadline() (time.Time, bool) { return c.at, true }
+func (c *callerDeadline) Done() <-chan struct{}       { return c.done }
+func (c *callerDeadline) expire()                     { close(c.done) }
+
+func (c *callerDeadline) Err() error {
+	select {
+	case <-c.done:
+		return context.DeadlineExceeded
+	default:
+		return nil
+	}
+}
+
+// TestAnAnswerAfterTheCallersDeadlineIsATimeout: an allowing answer that comes
+// after a deadline the caller's context carries, sooner than the ask's own, is
+// a timeout, as one after the ask's own deadline is.
+func TestAnAnswerAfterTheCallersDeadlineIsATimeout(t *testing.T) {
+	dp := &fakeDecisionPoint{answer: core.ExternalAllowed(), late: true}
+	h := build(t, modeEnforce, snapshot(t, allowWrites, vetoWrites), withDecisionPoint(dp))
+	ctx := &callerDeadline{Context: context.Background(), at: time.Now().Add(askDeadline / 2), done: make(chan struct{})}
+	dp.during = ctx.expire
+	d := h.p.Admit(ctx, h.onPlane(admission(writeEnvelope(), []byte(`{"k":1}`))))
+	if d.Action != core.Block || d.AuthorizedArgs != nil {
+		t.Errorf("a write answered after its caller's deadline: Action = %d, want Block", d.Action)
+	}
+	expectConsulted(t, h.recorded(t, "req-1"), verdictIndeterminate, codePDPTimeout)
+	if got := h.p.Stats().Asks; got != (gateway.Asks{Made: 1, TimedOut: 1}) {
+		t.Errorf("Stats.Asks = %+v, want one ask counted as timed out", got)
 	}
 }
 

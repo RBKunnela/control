@@ -7,6 +7,7 @@ import (
 	"io"
 	"mime"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/guardana/control/internal/core"
 )
@@ -30,12 +31,17 @@ func isJSON(values []string) bool {
 }
 
 // readAnswer reads the body of a 200. Its structure is always strict: one
-// JSON object, each member once under its exact name, and decision a JSON
-// boolean. A false is a denial whatever else the answer holds. A true counts
-// only as {decision, context?} whose context holds listed members and
+// JSON object in UTF-8, each member once under its exact name, and decision a
+// JSON boolean. A false is a denial whatever else the answer holds. A true
+// counts only as {decision, context?} whose context holds listed members and
 // obligations that are absent or empty; a non-empty list of obligations is a
 // denial, and anything else is refused.
 func readAnswer(body []byte, listed map[string]bool) core.External {
+	// encoding/json replaces a byte that is not UTF-8 inside a string rather
+	// than refusing it.
+	if !utf8.Valid(body) {
+		return core.ExternalAnswerRefused()
+	}
 	top, err := members(body)
 	if err != nil {
 		return core.ExternalAnswerRefused()

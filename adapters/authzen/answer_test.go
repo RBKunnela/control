@@ -61,6 +61,10 @@ var answerCases = []struct {
 	{"context twice on true", `{"decision":true,"context":{},"context":{}}`, core.ExternalAnswerRefused()},
 	{"context null on false", `{"decision":false,"context":null}`, core.ExternalDenied()},
 	{"obligations at the top level", `{"decision":true,"obligations":[{"id":"x"}]}`, core.ExternalAnswerRefused()},
+	{"a byte that is not UTF-8 in a listed member on true", "{\"decision\":true,\"context\":{\"reason_user\":\"fine\xff\"}}", core.ExternalAnswerRefused()},
+	{"a byte that is not UTF-8 in a listed member's name on true", "{\"decision\":true,\"context\":{\"reason_user\xff\":1}}", core.ExternalAnswerRefused()},
+	{"a byte that is not UTF-8 in an unknown member on false", "{\"decision\":false,\"reason\":\"no\xff\"}", core.ExternalAnswerRefused()},
+	{"a lone surrogate's bytes on true", "{\"decision\":true,\"context\":{\"reason_user\":\"\xed\xa0\x80\"}}", core.ExternalAnswerRefused()},
 }
 
 // TestAnswers runs every answer case through the decision point, so each one

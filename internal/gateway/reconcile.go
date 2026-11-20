@@ -199,7 +199,7 @@ func (p *Pipeline) lostHoldAnswer(ctx context.Context, entry HoldEntry, now time
 // matched: the checks a live resume makes first, then its state.
 func judgeLostAnswer(entry HoldEntry, a *controlv1.Approval, now time.Time, kind AuthorityKind) (*controlv1.Approval, controlv1.Verdict, string) {
 	if _, code, refused := approvalFields(entry.Approval, a, entry.Expires, now, kind); refused {
-		if code == codeApprovalExpired && a.GetExpiresAt() != nil {
+		if code == codeApprovalExpired && a.GetExpiresAt().CheckValid() == nil {
 			return nil, verdictDeny, codeApprovalExpired
 		}
 		return nil, verdictIndeterminate, codeApprovalStateUnknown

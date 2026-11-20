@@ -194,7 +194,8 @@ and nowhere else.</li>
 whatever the environment says.</li>
 <li><code>informational_context</code>, the context members an allowing answer may carry.
 None by default: any member but those and <code>obligations</code> makes an allow
-unreadable, and the call is blocked. A non-empty <code>obligations</code> is a veto.</li>
+unreadable, and the call is blocked. A non-empty <code>obligations</code> is a veto.
+An answer that is not UTF-8 is unreadable whatever it says.</li>
 </ul>
 <p><code>timeout</code> covers connecting too: the first ask on a new connection pays for
 the handshake, so a decision point on another host may need more than the

@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -15,7 +16,8 @@ import (
 // and can only veto with (ADR-0017). Ask asks about one envelope and has no
 // error return: whatever it cannot do is an unanswered state naming its
 // cause. It has to return by ctx's deadline, which carries the configured
-// DecisionTimeout, and has to be safe for concurrent use.
+// DecisionTimeout, and has to be safe for concurrent use; what it returns
+// once ctx has ended is no answer.
 type DecisionPoint interface {
 	Ask(ctx context.Context, env *controlv1.ActionEnvelope) core.External
 }
@@ -50,7 +52,9 @@ func checkDecisionPoint(cfg Config) error {
 // ask asks the decision point about env within the configured deadline, and
 // counts the ask. With none configured there is nobody to ask, which is an
 // unavailable decision point; a decision point that answers the zero value
-// gave no answer either.
+// gave no answer either. An answer that comes back once ctx has ended, past
+// the deadline or after the caller left, is no answer within it, whatever it
+// says.
 func (p *Pipeline) ask(ctx context.Context, env *controlv1.ActionEnvelope) core.External {
 	if p.cfg.DecisionPoint == nil {
 		return core.ExternalUnavailable()
@@ -60,7 +64,10 @@ func (p *Pipeline) ask(ctx context.Context, env *controlv1.ActionEnvelope) core.
 	start := p.cfg.Clock()
 	answer := p.cfg.DecisionPoint.Ask(ctx, proto.CloneOf(env))
 	took := p.cfg.Clock().Sub(start)
-	if answer == (core.External{}) {
+	switch err := ctx.Err(); {
+	case errors.Is(err, context.DeadlineExceeded):
+		answer = core.ExternalTimeout()
+	case err != nil, answer == (core.External{}):
 		answer = core.ExternalUnavailable()
 	}
 	p.counts.asked(answer, took)

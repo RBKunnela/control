@@ -20,9 +20,10 @@ import (
 //     runtime keeps the last scalar and merges a second message into the
 //     first, so two byte strings become one accepted envelope, and a reader of
 //     the bytes that kept the first occurrence would see a different action;
-//   - an enum number outside int32 when its varint is read as a two's-
-//     complement int64. The runtime truncates it, and 2^32+1 arrives as a
-//     declared class. A number inside int32 is the declared-value check's;
+//   - an enum number, or a singular int32 member, outside int32 when its varint is read
+//     as a two's-complement int64. The runtime truncates it, and 2^32+1
+//     arrives as a declared class or as a timestamp's one nanosecond. A number
+//     inside int32 is the declared-value or timestamp check's;
 //   - a repeated or map field past the bound Validate holds it to. The runtime
 //     builds every element before any check runs: 262144 bytes of empty
 //     delegation hops cost 22 MB to refuse the ninth. It also copies a packed
@@ -132,12 +133,17 @@ func scanField(fd protoreflect.FieldDescriptor, typ protowire.Type, v wireValue,
 	return scanValue(fd, v, path, depth)
 }
 
-// scanValue checks one value: an enum's number, a message's fields.
+// scanValue checks one value: an enum's number, an int32's width, a
+// message's fields.
 func scanValue(fd protoreflect.FieldDescriptor, v wireValue, path string, depth int) error {
 	switch fd.Kind() {
 	case protoreflect.EnumKind:
 		if !fitsInt32(v.varint) {
 			return enumOutsideInt32(path)
+		}
+	case protoreflect.Int32Kind:
+		if !fitsInt32(v.varint) {
+			return int32OutsideInt32(path)
 		}
 	case protoreflect.MessageKind, protoreflect.GroupKind:
 		return scanMessage(v.bytes, fd.Message(), path, depth+1)
@@ -242,4 +248,8 @@ func sentTwice(path string) error {
 
 func enumOutsideInt32(path string) error {
 	return &ValidationError{Field: path, Err: errors.New("decode: an enum number outside int32")}
+}
+
+func int32OutsideInt32(path string) error {
+	return &ValidationError{Field: path, Err: errors.New("decode: an int32 outside int32")}
 }

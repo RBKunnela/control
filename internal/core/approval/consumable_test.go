@@ -237,3 +237,60 @@ func TestExpiredIsAtOrPastTheExpiry(t *testing.T) {
 		}
 	}
 }
+
+// TestAMalformedExpiryIsExpired: an expiry that is not a timestamp, which
+// the runtime would normalise to a moment after now, bounds nothing and is
+// read as no expiry. The same approval with a well-formed expiry one second
+// later is usable, so the expiry alone decides each row.
+func TestAMalformedExpiryIsExpired(t *testing.T) {
+	approved := func(expiry *timestamppb.Timestamp) *controlv1.Approval {
+		return &controlv1.Approval{
+			State:       controlv1.ApprovalState_APPROVAL_STATE_APPROVED,
+			ApproverId:  "duty-officer",
+			RequestedAt: timestamppb.New(requestedAt),
+			DecidedAt:   timestamppb.New(judgedAt),
+			ExpiresAt:   expiry,
+		}
+	}
+	second := judgedAt.Unix()
+	if got := approval.Consumable(approved(&timestamppb.Timestamp{Seconds: second + 1}), judgedAt); got != approval.StandingUsable {
+		t.Fatalf("the approval with a well-formed expiry = %d, want usable, so the rows below prove nothing", got)
+	}
+	for name, expiry := range map[string]*timestamppb.Timestamp{
+		"nanos of two seconds":   {Seconds: second - 1, Nanos: 2_000_000_000},
+		"nanos of one second":    {Seconds: second, Nanos: 1_000_000_000},
+		"negative nanos":         {Seconds: second + 2, Nanos: -1},
+		"seconds past year 9999": {Seconds: 253_402_300_800},
+	} {
+		if got := approval.Consumable(approved(expiry), judgedAt); got != approval.StandingExpired {
+			t.Errorf("%s: Consumable = %d, want expired", name, got)
+		}
+		if !approval.Expired(approved(expiry), judgedAt) {
+			t.Errorf("%s: Expired = false, want true", name)
+		}
+	}
+}
+
+func TestAMalformedDecisionTimeIsNoDecision(t *testing.T) {
+	approved := func(decided *timestamppb.Timestamp) *controlv1.Approval {
+		return &controlv1.Approval{
+			State:       controlv1.ApprovalState_APPROVAL_STATE_APPROVED,
+			ApproverId:  "duty-officer",
+			RequestedAt: timestamppb.New(requestedAt),
+			DecidedAt:   decided,
+			ExpiresAt:   timestamppb.New(judgedAt.Add(time.Minute)),
+		}
+	}
+	if got := approval.Consumable(approved(timestamppb.New(judgedAt)), judgedAt); got != approval.StandingUsable {
+		t.Fatalf("the approval decided at a well-formed time = %d, want usable, so the rows below prove nothing", got)
+	}
+	second := judgedAt.Unix()
+	for name, decided := range map[string]*timestamppb.Timestamp{
+		"nanos of two seconds": {Seconds: second - 2, Nanos: 1_999_999_999},
+		"negative nanos":       {Seconds: second - 1, Nanos: -5},
+	} {
+		if got := approval.Consumable(approved(decided), judgedAt); got != approval.StandingUnusable {
+			t.Errorf("%s: Consumable = %d, want unusable", name, got)
+		}
+	}
+}

@@ -3,6 +3,7 @@ package authzen
 import (
 	"encoding/json"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/guardana/control/internal/core"
 )
@@ -10,7 +11,8 @@ import (
 // FuzzAnswer reads arbitrary bodies and checks each state against a second,
 // independent reading: an allow is exactly {decision: true, context?} with
 // only listed members and no obligation, and nothing but a well-formed
-// document is ever read as a decision.
+// document in UTF-8 is ever read as a decision. The second reading decodes as
+// leniently as the first, so the encoding is checked on its own.
 func FuzzAnswer(f *testing.F) {
 	for _, tc := range answerCases {
 		f.Add([]byte(tc.body))
@@ -24,6 +26,9 @@ func FuzzAnswer(f *testing.F) {
 		case core.ExternalAllowed(), core.ExternalDenied(), core.ExternalDeniedObligations():
 		default:
 			t.Fatalf("readAnswer(%q) = %v, a state no answer can be", body, got)
+		}
+		if !utf8.Valid(body) {
+			t.Fatalf("readAnswer(%q) = %v, but the body is not UTF-8", body, got)
 		}
 		var top map[string]json.RawMessage
 		if err := json.Unmarshal(body, &top); err != nil {

@@ -352,7 +352,7 @@ is not a valid one**: `err == nil` is the only test that separates the two.
 
 **The bytes received are not the envelope.** The pre-scan refuses the byte
 strings two parsers would read as different envelopes: a field sent twice, an
-enum number past 32 bits, one key in two entries. Many other byte strings
+enum number or an int32 past 32 bits, one key in two entries. Many other byte strings
 still decode to one envelope: fields in any order, a repeated scalar packed or
 not, empty packed runs, a map entry without its value. Received bytes are
 therefore never evidence and never a key: hash, compare and store the
@@ -362,10 +362,11 @@ The checks run in a fixed order, so the same bytes always name the same field:
 
 1. the length of the input against `MaxEnvelopeBytes`
 2. on the binary path, a pre-scan of the wire bytes, before the parse builds
-   anything: a field that is not repeated sent twice, an enum number outside
-   int32 read as a two's-complement int64, a collection past its bound, two
-   entries of one map whose keys the runtime reads as one (an entry with no
-   key reads as the empty key), a field in a map entry other than its key and
+   anything: a field that is not repeated sent twice, an enum number or an
+   int32 member, such as a timestamp's `nanos`, outside int32 read as a
+   two's-complement int64, a collection past its bound, two entries of one
+   map whose keys the runtime reads as one (an entry with no key reads as
+   the empty key), a field in a map entry other than its key and
    value or either of those on a wire type other than its own
    (`ErrUnknownField` at the map), and bytes that are not wire format. The
    JSON codec itself refuses a field sent twice, an enum number outside int32

@@ -228,11 +228,11 @@ record of the approval it minted, by approval and request id, and records
 
 | The answer | What happens |
 | --- | --- |
-| pending, approved with no `approver_id`, multi-use (counted), or decided never, before `requested_at` or after now | the hold waits; the retry is told the same `approval_id` |
+| pending, approved with no `approver_id`, multi-use (counted), or decided never, at no valid time, before `requested_at` or after now | the hold waits; the retry is told the same `approval_id` |
 | missing, or filed under another request | the retry is held anew |
 | two records of the minted approval, an unnamed state, or a store or ledger that cannot answer | this call's own trail is blocked `INDETERMINATE`, `EVIDENCE_UNAVAILABLE`; the hold stands, unspent |
-| expired, or with no expiry, and not marked spent | the held trail closes `DENY`, `APPROVAL_EXPIRED` |
-| approved or rejected, but of another major, another `requested_at`, a refused `approver_id`, or an expiry later than minted | the held trail closes with the plane's own approval, expired, `INDETERMINATE`, `EVIDENCE_UNAVAILABLE` |
+| expired, with no expiry or an invalid one, of a major this build reads, not marked spent | the held trail closes `DENY`, `APPROVAL_EXPIRED` |
+| approved, rejected or expired of another major; approved or rejected with another `requested_at`, a refused `approver_id`, or an expiry later than minted | the held trail closes with the plane's own approval, expired, `INDETERMINATE`, `EVIDENCE_UNAVAILABLE` |
 | another action or bundle digest | the same close, `DENY`, `APPROVAL_DIGEST_MISMATCH` or `APPROVAL_BUNDLE_MISMATCH` |
 | rejected, passing those checks | `APPROVAL_DECIDED`, then `DENY`, `APPROVAL_REJECTED` |
 | approved, passing those checks | spent in the ledger, then `APPROVAL_DECIDED` and `ACTION_STARTED` once the hold flips to running; a mark already there answers `APPROVAL_ALREADY_USED`, a hold another call took `INDETERMINATE` |

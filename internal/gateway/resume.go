@@ -110,6 +110,8 @@ func (c *call) closeUnlessSpent(own *heldRequest, binding approval.Binding, a *c
 	case spent:
 		r.consumed = true
 		return d, false
+	case !readsApprovalVersion(a.GetSchemaVersion()):
+		d = c.resumeBlocked(own, verdictIndeterminate, codeEvidenceUnavailable, expiredEvent(own.approval))
 	case standing == approval.StandingExpired:
 		d = c.resumeBlocked(own, verdictDeny, codeApprovalExpired, expiredEvent(own.approval))
 	default:
@@ -276,7 +278,7 @@ func approvalFields(want, a *controlv1.Approval, expires, now time.Time, kind Au
 		return verdictDeny, codeApprovalDigestMismatch, true
 	case a.GetPolicyBundleDigest() != want.GetPolicyBundleDigest():
 		return verdictDeny, codeApprovalBundleMismatch, true
-	case a.GetExpiresAt() == nil || !now.Before(a.GetExpiresAt().AsTime()):
+	case approval.Expired(a, now):
 		return verdictDeny, codeApprovalExpired, true
 	case a.GetExpiresAt().AsTime().After(expires):
 		return verdictIndeterminate, codeEvidenceUnavailable, true
@@ -301,6 +303,9 @@ func decidedWithin(a *controlv1.Approval, requested, now time.Time) bool {
 	decided := a.GetDecidedAt()
 	if decided == nil {
 		return a.GetState() == approvalPending || a.GetState() == approvalExpired
+	}
+	if decided.CheckValid() != nil {
+		return false
 	}
 	at := decided.AsTime()
 	return !at.Before(requested) && !at.After(now)
