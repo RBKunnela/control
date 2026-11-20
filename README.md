@@ -112,3 +112,5 @@ run. The projects are independent.
 
 [Governance](GOVERNANCE.md) · [Decision records](docs/adr/README.md) ·
 [Code of conduct](CODE_OF_CONDUCT.md) · [Trademarks](TRADEMARKS.md)
+
+[Star Guardana Control on GitHub](https://github.com/guardana/control) to help others find it.

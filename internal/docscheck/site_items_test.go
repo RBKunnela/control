@@ -19,6 +19,10 @@ type siteItem struct{ heading, source string }
 // card that claims a row it does not describe, a row used once more, or a
 // card that is gone fails until this list is reviewed with it.
 var landingItems = []siteItem{
+	{"Policy tests", "status: policy-cli"},
+	{"Approvals", "status: approval-binding"},
+	{"Run review", "status: run-supervision"},
+	{"Downloads", "status: releases"},
 	{"Rules in front of every call", "status: mcp-gateway"},
 	{"A person signs off the risky ones", "status: approval-binding"},
 	{"Catch what went around the rules", "status: run-supervision"},
@@ -36,6 +40,7 @@ var landingItems = []siteItem{
 	{"Watch a run as a graph. Change the rule beside it.", "backlog: B39"},
 	{"The record itself", "backlog: B29"},
 	{"The evidence trail is checked for order, not yet for tampering (planned, B29).", "backlog: B29"},
+	{"The bundled demo saves its call records on your machine (experimental).", "status: dev-mode"},
 	{"Does supervision run on its own?", "backlog: B28"},
 }
 

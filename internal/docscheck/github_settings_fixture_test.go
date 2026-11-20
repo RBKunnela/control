@@ -91,7 +91,7 @@ func matchingAnswers(t *testing.T) answers {
 			"id": 77, "full_name": "acme/demo", "private": false, "permissions": map[string]any{"admin": true},
 			"description":    settingsValues(t, `printf '%s\n' "${DESCRIPTION}"`)[0],
 			"homepage":       settingsValues(t, `printf '%s\n' "${HOMEPAGE}"`)[0],
-			"default_branch": "main", "has_issues": true, "has_wiki": false, "has_projects": false, "has_discussions": false,
+			"default_branch": "main", "has_issues": true, "has_wiki": false, "has_projects": false, "has_discussions": true,
 			"allow_squash_merge": true, "allow_merge_commit": false, "allow_rebase_merge": false,
 			"squash_merge_commit_title": "PR_TITLE", "squash_merge_commit_message": "COMMIT_MESSAGES",
 			"delete_branch_on_merge": true, "allow_update_branch": true, "allow_auto_merge": false, "web_commit_signoff_required": true,

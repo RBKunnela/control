@@ -43,7 +43,7 @@ func header(pill string) string {
   <nav class="links" aria-label="Primary"><a href="/#how">How it works</a><a href="/#signed">Signed</a><a href="/#get">What you get</a><a href="/#start">Quickstart</a><a href="/#limits">Limits</a><a href="/docs/">Docs</a></nav>
   <div class="right">
     ` + themeSwitch + `
-    <a class="btn s sm" href="` + repository + `">GitHub</a>
+    <a class="btn s sm" href="` + repository + `">Star on GitHub</a>
   </div>
 </div></header>
 `
@@ -51,7 +51,7 @@ func header(pill string) string {
 
 // footer is the site's one footer, the landing page's as well.
 var footer = `<footer class="ft"><div class="w">
-  <div class="fb">` + logo + `<p>A control and supervision layer for AI agents. <a href="` + repository + `/blob/main/LICENSE">Apache-2.0</a>.</p></div>
+  <div class="fb">` + logo + `<p>A control and supervision layer for AI agents. <a href="` + repository + `/blob/main/LICENSE">Apache-2.0</a>.</p><p><a href="https://guardana.dev">Guardana</a> and ` + esc(brand.Name) + ` are independent projects. See <a href="https://github.com/guardana/guardana">Guardana on GitHub</a>.</p></div>
   <div><b>Product</b><a href="/#how">How it works</a><a href="/#get">What you get</a><a href="/#limits">Limits</a><a href="/docs/status">Status</a></div>
   <div><b>Docs</b><a href="/docs/get-started/try-the-demo">Try the demo</a><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an MCP setup</a><a href="/docs/guides/write-and-test-a-policy">Write a policy</a><a href="/docs/concepts/threat-model">Threat model</a></div>
   <div><b>Project</b><a href="` + repository + `">GitHub</a><a href="` + repository + `/releases">Releases</a><a href="/docs/roadmap">Roadmap</a><a href="` + repository + `/blob/main/SECURITY.md">Security</a><a href="` + repository + `/blob/main/TRADEMARKS.md">Trademarks</a></div>

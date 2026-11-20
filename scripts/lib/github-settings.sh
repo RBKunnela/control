@@ -18,7 +18,7 @@ DEFAULT_BRANCH="main"
 ADMIN_LOGIN="${ADMIN_LOGIN:-karauda}"
 HOMEPAGE="https://control.guardana.dev"
 
-DESCRIPTION="Open-source AI agent supervision framework: MCP policy decisions, approvals and procedure checks. Experimental alpha."
+DESCRIPTION="AI agent supervision framework in alpha. Decide MCP tool calls by policy and check recorded runs (experimental)."
 TOPICS=(
   ai-agents
   agentic-ai
