@@ -36,6 +36,7 @@
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a></li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
@@ -67,6 +68,7 @@
 <li><a href="/docs/concepts/where-it-fits">Where it fits</a></li>
 </ul>
 <h2>Reference</h2><ul>
+<li><a href="/docs/reference/attempt-format">Attempt format</a></li>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
 <li><a href="/docs/reference/channels">Channels</a></li>
 <li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
@@ -512,6 +514,12 @@ already holds a package doc and a test holds nothing that decides.</li>
 <td>Demo servers and scenarios</td>
 <td><code>experimental</code></td>
 <td>Two vulnerable MCP servers, their plane and seven scenarios, shipped in an archive per platform that runs without Go or a checkout. <a href="#demo-servers">details</a></td>
+</tr>
+<tr>
+<td>controlled-attempts</td>
+<td>Controlled attempts counted at the victim</td>
+<td><code>experimental</code></td>
+<td>Runs scripted attempts against the demo's victims, each on a fresh dev plane, and counts effects and legitimate steps at the victims' journals, with both controls. <a href="#controlled-attempts">details</a></td>
 </tr>
 <tr>
 <td>backup-restore</td>
@@ -1295,6 +1303,27 @@ published.</p>
 <p>Its test builds the binaries, runs each scenario on its own plane through <code>dev</code>,
 reads what each server received, and fails one mutant of each scenario on the
 member it changed.</p>
+<h3 id="controlled-attempts">controlled-attempts</h3>
+<p><code>internal/attempts/</code> reads <code>attempt-manifest/v1alpha1</code> strictly, judges each
+victim's journal and counts; <code>guardana-gateway attempts run</code>
+(<code>cmd/guardana-gateway/attempts*.go</code>) runs every attempt of a manifest on a
+fresh dev plane per repetition and plane configuration, one at a time, sends
+every call step whatever earlier answers were, and writes an
+<code>attempt-report/v1alpha1</code> line by line;
+<a href="/docs/reference/attempt-format">reference/attempt-format.md</a>,
+<a href="/docs/guides/count-controlled-attempts">guides/count-controlled-attempts.md</a>,
+<a href="/docs/adr/0086-controlled-attempts-are-counted-at-the-victim">ADR-0086</a>.
+<code>examples/vulnerable-mcp-agent/attempts/manifest.json</code> labels the demo's
+seven scenarios and runs them on ENFORCE, measured, and OBSERVE, the positive
+control, three times.</p>
+<p>Its limits: the attempts are scripted and no model drives them; every plane
+has dev's wiring (keys made in the process, the bundle signed at start, the
+collector in the process, approvals, trust, operators and runs owned by dev,
+no run tokens, no taint across runs); pause and stops have no positive
+control, and no broken copy of the plane's code is run; only the demo's
+victims keep a journal, so an effect elsewhere cannot be counted; numbers in
+a condition compare as written. A plane starts for every attempt-run, so the
+demo's manifest at one repetition starts fourteen.</p>
 <h3 id="backup-restore">backup-restore</h3>
 <p><code>internal/recovery/</code>, <code>state backup</code> and <code>state restore</code> in
 <code>cmd/guardana-control/</code>,
@@ -1531,6 +1560,7 @@ never withheld from the open build, whatever its status above.</p>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a></li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
@@ -1562,6 +1592,7 @@ never withheld from the open build, whatever its status above.</p>
 <li><a href="/docs/concepts/where-it-fits">Where it fits</a></li>
 </ul>
 <h2>Reference</h2><ul>
+<li><a href="/docs/reference/attempt-format">Attempt format</a></li>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
 <li><a href="/docs/reference/channels">Channels</a></li>
 <li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>

@@ -36,6 +36,7 @@
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a></li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
@@ -67,6 +68,7 @@
 <li><a href="/docs/concepts/where-it-fits">Where it fits</a></li>
 </ul>
 <h2>Reference</h2><ul>
+<li><a href="/docs/reference/attempt-format">Attempt format</a></li>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
 <li><a href="/docs/reference/channels">Channels</a></li>
 <li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
@@ -165,6 +167,7 @@ not survive the next run.</p>
 <ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a>: Copy a stopped plane's floors, runs, pause file and stop list, and after a loss raise them back so no floor ends lower, every run is closed and no hold resumes.</li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a>: Put the plane between an MCP client and a server you already use, classify the server's tools, hold its writes for approval, and end in a local report.</li>
+<li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a>: Run the demo's attempt manifest, read what its victims received, and write a manifest of your own.</li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a>: Serve the enforcement API, classify your tools by name, and have a client ask before each call and report how it ended, under one policy and trail.</li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a>: Open a run per task in a runs directory, point a plane at it, and give each agent its token, so what one task took in never decides another's calls.</li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a>: Point the gateway at an AuthZEN decision point, write the two rules that let it veto a scope, test what each answer does, and check the plane before it serves.</li>
@@ -198,6 +201,7 @@ not survive the next run.</p>
 </ul>
 <h2 id="reference">Reference</h2>
 <ul>
+<li><a href="/docs/reference/attempt-format">Attempt format</a>: Every member of an attempt manifest and an attempt report, how attempts run counts outcomes at the victim, and what it exits with.</li>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a>: What three calls on the authorization path and one tool call through the gateway cost on one machine, how they are measured, and what the numbers are not.</li>
 <li><a href="/docs/reference/channels">Channels</a>: For each way an agent's actions reach the plane, what it sees, what it keeps, what it decides, what it enforces, and the bypasses that remain.</li>
 <li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a>: What the claude-code hook profile covers, the hook settings it needs, what the bridge reads and answers per event, and the gaps it leaves.</li>
@@ -335,6 +339,7 @@ not survive the next run.</p>
 <li><a href="/docs/adr/0083-a-finding-may-stop-an-agent-or-a-principal">ADR-0083: A finding may stop an agent or a principal</a>: accepted</li>
 <li><a href="/docs/adr/0084-the-site-is-redrawn-in-one-system">ADR-0084: The site is redrawn: one system for the landing page and the docs, a light and a dark theme, llms.txt</a>: accepted</li>
 <li><a href="/docs/adr/0085-the-1-0-bar-is-met-by-own-evidence-and-what-needs-outside-people-stays-not-met">ADR-0085: The 1.0 bar is met by the project's own evidence, and what needs outside people stays not met</a>: accepted</li>
+<li><a href="/docs/adr/0086-controlled-attempts-are-counted-at-the-victim">ADR-0086: Controlled attempts are counted at the victim, by an executor of their own</a>: accepted</li>
 </ul>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/index.md">docs/index.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.18.0, and <a href="https://github.com/guardana/control/tree/v0.18.0/docs">its documentation</a> is in its tag.</p>
 </main>
@@ -347,6 +352,7 @@ not survive the next run.</p>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a></li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
@@ -378,6 +384,7 @@ not survive the next run.</p>
 <li><a href="/docs/concepts/where-it-fits">Where it fits</a></li>
 </ul>
 <h2>Reference</h2><ul>
+<li><a href="/docs/reference/attempt-format">Attempt format</a></li>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
 <li><a href="/docs/reference/channels">Channels</a></li>
 <li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>

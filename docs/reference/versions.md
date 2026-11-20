@@ -34,6 +34,8 @@ version. [status.md](../status.md) is the inventory.
 | Floor directories (`schema_version`) | `1.0` | `1.x` | `experimental` | [cli.md](cli.md#guardana-control) |
 | State backup manifest (`schema_version`) | `0.2` | `0.x` | `experimental` | [back up and restore a plane](../guides/back-up-and-restore-a-plane.md#what-a-backup-holds) |
 | Scenario (`kind`) | — | `agent-scenario/v1alpha1` | `experimental` | [scenario-format.md](scenario-format.md#the-document) |
+| Attempt manifest (`kind`) | — | `attempt-manifest/v1alpha1` | `experimental` | [attempt-format.md](attempt-format.md#the-manifest) |
+| Attempt report (`kind`) | `attempt-report/v1alpha1` | — | `experimental` | [attempt-format.md](attempt-format.md#the-report) |
 | Pause file (`schema_version`) | `2`, `4` | `1`, `2`, `3`, `4` | `experimental` | [pausing calls](../concepts/enforcement-modes.md#pausing-calls) |
 | Approvals directory (`schema_version`) | `2.1` | `2.x` | `experimental` | [approvals](../concepts/approvals-and-the-held-call.md#what-is-held-and-by-whom) |
 | Hold journal (`schema_version`) | `1.0` | `1.x` | `experimental` | [approvals](../concepts/approvals-and-the-held-call.md#a-hold-the-plane-loses) |

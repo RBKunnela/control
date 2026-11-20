@@ -36,6 +36,7 @@
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a></li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
@@ -67,6 +68,7 @@
 <li><a href="/docs/concepts/where-it-fits">Where it fits</a></li>
 </ul>
 <h2>Reference</h2><ul>
+<li><a href="/docs/reference/attempt-format">Attempt format</a></li>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
 <li><a href="/docs/reference/channels">Channels</a></li>
 <li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
@@ -226,9 +228,9 @@ input is incomplete, never complete.</p>
 </tr>
 <tr>
 <td>B37</td>
-<td>Measure controlled attempts and the cost to legitimate work</td>
+<td>Measure model-driven attempts and their cost to legitimate work</td>
 <td>none</td>
-<td>A manifest fixed before the run names the attempts and how they were chosen, the repetitions, the corpus digest, the model and its settings or &quot;no model&quot;, the permissions, the tool definitions, the policy and procedure digests, and what counts as each named effect. The report counts the attempts selected, started and not run. For each named effect it counts the attempts in which the effect was observed, verified absent or unknown; effects are checked at the victim, not read from the plane's verdicts, with positive and negative controls. A labelled set of legitimate operations is reported as completed, held, blocked and unknown over its own count. The first set is scripted against the demo's victim; nothing in it enters the authorization path</td>
+<td>Attempts driven by a model run as a lab job outside CI, from an <code>attempt-manifest</code> that names the model and its settings, against the demo's victim, and write the same <code>attempt-report</code> with its counts, controls and scope. The scripted set is built (<a href="/docs/status#controlled-attempts">status</a>); nothing in either enters the authorization path</td>
 </tr>
 <tr>
 <td>B36</td>
@@ -448,6 +450,7 @@ sessions and feedback, consistent with the no-phone-home decision.</p>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a></li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
 <li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
 <li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
@@ -479,6 +482,7 @@ sessions and feedback, consistent with the no-phone-home decision.</p>
 <li><a href="/docs/concepts/where-it-fits">Where it fits</a></li>
 </ul>
 <h2>Reference</h2><ul>
+<li><a href="/docs/reference/attempt-format">Attempt format</a></li>
 <li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
 <li><a href="/docs/reference/channels">Channels</a></li>
 <li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>

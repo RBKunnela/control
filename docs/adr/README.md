@@ -94,3 +94,4 @@ request with `Status: proposed`, and set it to `accepted` when it merges.
 | [0083](0083-a-finding-may-stop-an-agent-or-a-principal.md) | A finding may stop an agent or a principal |
 | [0084](0084-the-site-is-redrawn-in-one-system.md) | The site is redrawn: one system for the landing page and the docs, a light and a dark theme, llms.txt |
 | [0085](0085-the-1-0-bar-is-met-by-own-evidence-and-what-needs-outside-people-stays-not-met.md) | The 1.0 bar is met by the project's own evidence, and what needs outside people stays not met |
+| [0086](0086-controlled-attempts-are-counted-at-the-victim.md) | Controlled attempts are counted at the victim, by an executor of their own |

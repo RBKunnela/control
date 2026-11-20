@@ -57,6 +57,7 @@ the check has to catch it. Every result carries the
 backlog's scope block. The parts:
 
 1. an adversarial matrix run by `scenario run` against the demo's victim (B37);
+   Amended by [ADR-0086](0086-controlled-attempts-are-counted-at-the-victim.md): it runs on `attempts run`, not `scenario run`.
 2. scripted agents, then agents driven by a model, as a lab job outside CI
    (B37);
 3. scripted operator and approver personas, for the functional half of B38;

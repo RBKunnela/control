@@ -11,6 +11,17 @@ verify one.
 
 ## [Unreleased]
 
+### Added
+
+- `guardana-gateway attempts run` (`experimental`) runs a manifest of scripted
+  attempts against the demo's victims, each on a fresh dev plane, and counts
+  each named effect and each legitimate step at the victims' journals, with a
+  positive control on an OBSERVE plane and a negative control, in a report
+  written line by line
+  ([attempt format](docs/reference/attempt-format.md),
+  [ADR-0086](docs/adr/0086-controlled-attempts-are-counted-at-the-victim.md)).
+  The demo's manifest is `examples/vulnerable-mcp-agent/attempts/manifest.json`.
+
 ### Fixed
 
 - `supervise` lists a step's requests, and a finding cites and keeps its

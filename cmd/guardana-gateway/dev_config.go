@@ -59,6 +59,18 @@ var silentSet = []string{
 	"pdp.allow_plaintext",
 }
 
+// overrideSet is the keys an attempt run sets over the value the demo's file
+// gives them, which dev otherwise leaves to the file.
+var overrideSet = []string{"mode"}
+
+// over sets the plane's mode over the demo's file, unless mode is empty.
+func (l devLayer) over(mode string) devLayer {
+	if mode != "" {
+		l["mode"] = mode
+	}
+	return l
+}
+
 // ownedPrefixes is what dev owns beyond the keys the layer sets.
 func (l devLayer) ownedPrefixes() []string {
 	if _, silent := l["pdp.identifier"]; silent {
@@ -134,7 +146,7 @@ func newLayer(st devState, keys devKeys, listen, health, collector, token, silen
 // keys is every key the layer sets, in a fixed order.
 func (l devLayer) keys() []string {
 	var out []string
-	for _, key := range slices.Concat(devSet, silentSet) {
+	for _, key := range slices.Concat(devSet, silentSet, overrideSet) {
 		if _, ok := l[key]; ok {
 			out = append(out, key)
 		}
@@ -174,6 +186,9 @@ func resolveDemo(path string, l devLayer) (*gatewayconfig.Config, error) {
 		return layered || !slices.ContainsFunc(l.ownedPrefixes(), func(p string) bool { return strings.HasPrefix(key, p) })
 	})
 	for _, key := range slices.Concat(l.keys(), owned) {
+		if slices.Contains(overrideSet, key) {
+			continue
+		}
 		set := true
 		if _, layered := l[key]; layered {
 			set = fileSets(path, l, key)

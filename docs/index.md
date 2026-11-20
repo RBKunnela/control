@@ -57,6 +57,7 @@ Have a tool ask before it acts or a sensor report what happened, hold a client t
 
 - [Back up and restore a plane](guides/back-up-and-restore-a-plane.md): Copy a stopped plane's floors, runs, pause file and stop list, and after a loss raise them back so no floor ends lower, every run is closed and no hold resumes.
 - [Connect an existing MCP setup](guides/connect-an-existing-mcp-setup.md): Put the plane between an MCP client and a server you already use, classify the server's tools, hold its writes for approval, and end in a local report.
+- [Count controlled attempts](guides/count-controlled-attempts.md): Run the demo's attempt manifest, read what its victims received, and write a manifest of your own.
 - [Decide a tool of your own](guides/decide-a-tool-of-your-own.md): Serve the enforcement API, classify your tools by name, and have a client ask before each call and report how it ended, under one policy and trail.
 - [Keep two tasks apart](guides/keep-two-tasks-apart.md): Open a run per task in a runs directory, point a plane at it, and give each agent its token, so what one task took in never decides another's calls.
 - [Let a decision point veto calls](guides/let-a-decision-point-veto.md): Point the gateway at an AuthZEN decision point, write the two rules that let it veto a scope, test what each answer does, and check the plane before it serves.
@@ -90,6 +91,7 @@ Have a tool ask before it acts or a sensor report what happened, hold a client t
 
 ## Reference
 
+- [Attempt format](reference/attempt-format.md): Every member of an attempt manifest and an attempt report, how attempts run counts outcomes at the victim, and what it exits with.
 - [Benchmarks](reference/benchmarks.md): What three calls on the authorization path and one tool call through the gateway cost on one machine, how they are measured, and what the numbers are not.
 - [Channels](reference/channels.md): For each way an agent's actions reach the plane, what it sees, what it keeps, what it decides, what it enforces, and the bypasses that remain.
 - [Claude Code hooks](reference/claude-code-hooks.md): What the claude-code hook profile covers, the hook settings it needs, what the bridge reads and answers per event, and the gaps it leaves.
@@ -227,3 +229,4 @@ Have a tool ask before it acts or a sensor report what happened, hold a client t
 - [ADR-0083: A finding may stop an agent or a principal](adr/0083-a-finding-may-stop-an-agent-or-a-principal.md): accepted
 - [ADR-0084: The site is redrawn: one system for the landing page and the docs, a light and a dark theme, llms.txt](adr/0084-the-site-is-redrawn-in-one-system.md): accepted
 - [ADR-0085: The 1.0 bar is met by the project's own evidence, and what needs outside people stays not met](adr/0085-the-1-0-bar-is-met-by-own-evidence-and-what-needs-outside-people-stays-not-met.md): accepted
+- [ADR-0086: Controlled attempts are counted at the victim, by an executor of their own](adr/0086-controlled-attempts-are-counted-at-the-victim.md): accepted

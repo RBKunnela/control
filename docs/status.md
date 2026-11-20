@@ -126,6 +126,7 @@ Nothing here is a security boundary. Do not deploy it as one.
 | scenario-runs | Scenarios held against a live plane | `experimental` | Runs a scenario against a running plane as its MCP client and compares each call's answer, decision and trail with what the scenario expects. [details](#scenario-runs) |
 | dev-mode | Dev mode | `experimental` | One command, `guardana-gateway dev`, starts a local plane with the demo's signed policy, a collector and the approvals page, in a new state directory. [details](#dev-mode) |
 | demo-servers | Demo servers and scenarios | `experimental` | Two vulnerable MCP servers, their plane and seven scenarios, shipped in an archive per platform that runs without Go or a checkout. [details](#demo-servers) |
+| controlled-attempts | Controlled attempts counted at the victim | `experimental` | Runs scripted attempts against the demo's victims, each on a fresh dev plane, and counts effects and legitimate steps at the victims' journals, with both controls. [details](#controlled-attempts) |
 | backup-restore | Backup and restore of authority state | `experimental` | Backs up a plane's floors, runs, pause file and stop list, and restores them only upward: every floor rises and every run closes. [details](#backup-restore) |
 | control-plane-api | Control plane API | `planned` | A control plane API; it is not built. [details](#control-plane-api) |
 | storage | Storage | `planned` | A storage layer; it is not built. [details](#storage) |
@@ -941,6 +942,30 @@ published.
 Its test builds the binaries, runs each scenario on its own plane through `dev`,
 reads what each server received, and fails one mutant of each scenario on the
 member it changed.
+
+### controlled-attempts
+
+`internal/attempts/` reads `attempt-manifest/v1alpha1` strictly, judges each
+victim's journal and counts; `guardana-gateway attempts run`
+(`cmd/guardana-gateway/attempts*.go`) runs every attempt of a manifest on a
+fresh dev plane per repetition and plane configuration, one at a time, sends
+every call step whatever earlier answers were, and writes an
+`attempt-report/v1alpha1` line by line;
+[reference/attempt-format.md](reference/attempt-format.md),
+[guides/count-controlled-attempts.md](guides/count-controlled-attempts.md),
+[ADR-0086](adr/0086-controlled-attempts-are-counted-at-the-victim.md).
+`examples/vulnerable-mcp-agent/attempts/manifest.json` labels the demo's
+seven scenarios and runs them on ENFORCE, measured, and OBSERVE, the positive
+control, three times.
+
+Its limits: the attempts are scripted and no model drives them; every plane
+has dev's wiring (keys made in the process, the bundle signed at start, the
+collector in the process, approvals, trust, operators and runs owned by dev,
+no run tokens, no taint across runs); pause and stops have no positive
+control, and no broken copy of the plane's code is run; only the demo's
+victims keep a journal, so an effect elsewhere cannot be counted; numbers in
+a condition compare as written. A plane starts for every attempt-run, so the
+demo's manifest at one repetition starts fourteen.
 
 ### backup-restore
 

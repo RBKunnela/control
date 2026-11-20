@@ -120,6 +120,8 @@ type devInputs struct {
 	document []byte
 	control  sibling
 	silent   bool
+	// mode is the mode set over the demo's file, or empty for the file's.
+	mode string
 }
 
 // newKey draws the signing key, which is never written.
@@ -155,7 +157,7 @@ func checkDemo(in devInputs, dir string) error {
 	}
 	keys := devKeys{bundle: publicHalf(bundleKey), freshness: publicHalf(freshnessKey)}
 	socket := filepath.Join(os.TempDir(), collectDirPrefix+strings.Repeat("0", maxTempSuffix), collectSocket)
-	_, err = resolveDemo(in.config, newLayer(devState{dir: dir}, keys, unbound, unbound, socket, newToken(), silent))
+	_, err = resolveDemo(in.config, newLayer(devState{dir: dir}, keys, unbound, unbound, socket, newToken(), silent).over(in.mode))
 	return err
 }
 
@@ -224,7 +226,7 @@ func startDevPlane(ctx context.Context, in devInputs, dir string, log io.Writer)
 	if err != nil {
 		return nil, errors.Join(err, closeAll(listeners))
 	}
-	if err = d.configure(ctx, in, newLayer(st, keys, addr(1), addr(2), addr(0), token, d.takeSilent(listeners))); err != nil {
+	if err = d.configure(ctx, in, newLayer(st, keys, addr(1), addr(2), addr(0), token, d.takeSilent(listeners)).over(in.mode)); err != nil {
 		return nil, errors.Join(err, closeAll(listeners))
 	}
 	coll := collectorConfig{dir: st.path(stateTrail), tenant: d.cfg.TenantID, project: d.cfg.ProjectID, cred: cred,

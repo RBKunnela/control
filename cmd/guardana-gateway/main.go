@@ -152,6 +152,7 @@ var commands = []subcommand{
 	{"spool", spoolForm, declareSpool, writes},
 	{"scenario", scenarioForm, declareScenario, writes},
 	{"dev", devForm, declareDev, writes},
+	{"attempts", attemptsForm, declareAttempts, writes},
 }
 
 // commandFlags is one command's empty flag set, writing to out.

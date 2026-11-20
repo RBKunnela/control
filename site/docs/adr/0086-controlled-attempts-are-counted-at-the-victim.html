@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ADR-0086: Controlled attempts are counted at the victim, by an executor of their own · Guardana Control</title>
+<meta name="description" content="Decision record, accepted."/>
+<link rel="canonical" href="https://control.guardana.dev/docs/adr/0086-controlled-attempts-are-counted-at-the-victim"/>
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)"/>
+<meta name="theme-color" content="#0A0A0A" media="(prefers-color-scheme: dark)"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="stylesheet" href="/assets/control/v2/tokens.css"/>
+<link rel="stylesheet" href="/assets/control/control.css"/>
+<link rel="stylesheet" href="/assets/control/docs.css"/>
+</head>
+<body class="doc">
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="w">
+  <a class="logo" href="/"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 4.5 5.6v6.1c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V5.6z"/><path d="M10.2 8.4v7.8M10.2 12.3h5.3"/></svg>Guardana Control</a>
+  <a class="vlink" href="https://github.com/guardana/control/releases/tag/v0.18.0"><span class="ver">v0.18.0</span></a>
+  <nav class="links" aria-label="Primary"><a href="/#how">How it works</a><a href="/#signed">Signed</a><a href="/#get">What you get</a><a href="/#start">Quickstart</a><a href="/#limits">Limits</a><a href="/docs/">Docs</a></nav>
+  <div class="right">
+    <input type="checkbox" id="theme" aria-label="Switch between light and dark"/><label class="tgl" for="theme" title="Switch theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg></label>
+    <a class="btn s sm" href="https://github.com/guardana/control">GitHub</a>
+  </div>
+</div></header>
+<div class="w shell">
+<details class="mnav">
+<summary>Menu · <b>ADR-0086: Controlled attempts are counted at the victim, by an executor of their own</b></summary>
+<nav class="inner" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+<li><a href="/docs/get-started/try-the-rest-of-the-demo">Try the rest of the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/set-up-signed-operators">Set up signed operators</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/signed-operations">Signed operations</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+<li><a href="/docs/concepts/where-it-fits">Where it fits</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/attempt-format">Attempt format</a></li>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/channels">Channels</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/egress-access-log">Egress access log</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</details>
+<main id="main" class="prose">
+<h1 id="adr-0086-controlled-attempts-are-counted-at-the-victim-by-an-executor-of-their-own">ADR-0086: Controlled attempts are counted at the victim, by an executor of their own</h1>
+<p>Status: accepted
+Date: 2026-11-20</p>
+<p>Amends <a href="/docs/adr/0085-the-1-0-bar-is-met-by-own-evidence-and-what-needs-outside-people-stays-not-met">ADR-0085</a>
+part 1, which named <code>scenario run</code> as the runner of the adversarial matrix.
+Builds on <a href="/docs/adr/0022-scenarios-are-data">ADR-0022</a> and
+<a href="/docs/adr/0023-a-local-page-answers-through-the-directory">ADR-0023</a>.</p>
+<h2 id="context">Context</h2>
+<p>B37 asks for a fixed set of attempts against the demo's victims, counted
+where the effect would land, with the cost to legitimate work beside it.
+ADR-0085 named <code>scenario run</code> as the runner. <code>scenario run</code> holds a plane to
+its own account: it stops at the first step that differs, and it refuses a
+plane whose mode is not the scenario's. Both are right for a test of the
+plane, and both make an absence the harness's: an attack step after a
+difference is never sent, and the positive control, the same attack on a
+plane that lets it through, could not run at all. A count read from the
+plane's verdicts would also measure the plane by its own word.</p>
+<p>The demo's victims already journal every call they receive, one line each,
+in a file under a directory the plane passes them at start. The plane's stop
+closes each victim's input and waits for it to exit, and returns an error
+when one does not.</p>
+<h2 id="decision">Decision</h2>
+<p><strong>An executor of its own.</strong> <code>guardana-gateway attempts run --manifest &lt;file&gt; --report &lt;file&gt;</code> reads an <code>attempt-manifest/v1alpha1</code>, strict JSON as a
+scenario is, which names the scenarios to run, labels every step of each
+exactly once as <code>attack</code> (with the effects it aims at), <code>legitimate</code> or
+<code>operator</code>, names the plane configurations (mode, decision point, role), the
+repetitions, the effects and the thresholds, and says how the attempts were
+chosen and that no model drives them. For every repetition, plane
+configuration and attempt, one at a time, it lays out a fresh dev plane and a
+fresh journal directory, sends every call step in order whatever earlier
+answers were, runs operator steps through <code>guardana-control</code> as <code>scenario run</code> does, stops the plane, and only then reads the journals. A step whose
+input names an output the run does not have is not sent, and says so. The
+answer each call got is compared with the scenario's answer and reported as
+the plane's agreement, apart; no count reads it.</p>
+<p><strong>Counted at the victim.</strong> An effect is observed when a journal line of its
+server and call meets every condition on its arguments. An absence on a
+measured plane is verified only when the journal is a regular, owner-only
+file with one name whose every line parses and whose last line is whole;
+every line of that call is the exact line of a legitimate or operator step
+of the same run; the same effect was observed on every positive plane in
+every repetition of the report; and no line a legitimate or operator step
+accounts for, anywhere in the report, meets the effect; and every attack step
+aiming at it was sent and answered after every operator action before it ran.
+An attack step that was not sent leaves the effect absent and not sent,
+counted apart. Anything else is unknown.
+A legitimate step is completed only with a result and its exact journal
+line, held or blocked by its answer, and unknown otherwise.</p>
+<p><strong>The positive control is OBSERVE.</strong> OBSERVE runs the calls the other modes
+block or hold, so the same attempts on an OBSERVE plane show each effect the
+victim can be made to receive. Pause and stops have no such control, and no
+broken copy of the plane's code is run; every report says both.</p>
+<p><strong>What the run measured, never what a flag states.</strong> The report's header
+records the binary's commit and modified flag from its build information, the
+sha256 of the manifest, of every file it names and of a corpus digest over
+them, the sha256 of this binary, of <code>guardana-control</code> and of each victim,
+the platform and the start time. Each attempt line records the policy digest
+the plane's <code>/healthz</code> reported. The summary line records the binaries' sha256
+after the run. A changed binary, more than one policy digest or an interrupt
+makes the run incomplete; a file without its summary line is incomplete.</p>
+<p><strong>Exits.</strong> 0 when the run is complete, every threshold is met on every
+measured plane and nothing is unknown or absent and not sent; 1 when it is
+complete otherwise; 2 for a usage error, a refused manifest, or a run that
+could not complete.</p>
+<h2 id="security--compatibility-impact">Security / compatibility impact</h2>
+<p>Nothing enters the authorization path. The executor is a client of planes it
+starts itself, in its own process, with the dev wiring: keys made in the
+process, a bundle signed at start, a collector in the process, approvals,
+trust and operators owned by dev, no run tokens. The one change to dev is a
+mode the executor sets over the demo's file. Both formats are versioned and
+<code>experimental</code>; a change is a new kind.</p>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li><strong><code>scenario run</code> as ADR-0085 wrote it.</strong> An absence would be the harness
+stopping, and the positive control would be refused for its mode.</li>
+<li><strong>Counting from the trail.</strong> The plane's own account, which B37 rules out.</li>
+<li><strong>A script under <code>examples/</code>.</strong> No versioned format and nothing another
+operator could rerun as it ran here.</li>
+<li><strong>The blocking rule removed as a positive control.</strong> With no rule the
+kernel denies, so the control would observe nothing.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<p>A report of the demo states its counts over their denominators, the controls
+that held and the scope that was not measured. A plane start per attempt-run
+makes a run slow: the demo's manifest at one repetition starts fourteen
+planes. A model-driven set stays a lab job outside CI, with the same
+manifest and report.</p>
+<h2 id="validation">Validation</h2>
+<ul>
+<li><code>internal/attempts</code>: one refusal per rule of the manifest, each bound at its
+edge and one past it, the kind judged before every other member, the path
+rule, the labels against the scenario; conditions on nested members and
+non-strings; the journal's refusals (missing, a link, a second name, a mode
+others may read, a torn or unparsable line); the controls (a positive
+plane that missed once, one of two positive planes that missed, a
+legitimate line that meets the effect); an attack not sent, one sent
+without an answer, one after an operator's action that did not run; and the
+counts against literal numbers; fuzz targets for both parsers.</li>
+<li><code>cmd/guardana-gateway</code>: on live planes, a refund verified absent on ENFORCE
+and observed on OBSERVE, an attempt whose first answer differs still sending
+its refund, which the OBSERVE victim journals, a report path that exists
+refused, and the demo's manifest as it ships meeting its thresholds and
+printing the counts its guide shows.</li>
+</ul>
+<p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/adr/0086-controlled-attempts-are-counted-at-the-victim.md">docs/adr/0086-controlled-attempts-are-counted-at-the-victim.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.18.0, and <a href="https://github.com/guardana/control/tree/v0.18.0/docs">its documentation</a> is in its tag.</p>
+</main>
+<nav class="side" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+<li><a href="/docs/get-started/try-the-rest-of-the-demo">Try the rest of the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/set-up-signed-operators">Set up signed operators</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/signed-operations">Signed operations</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+<li><a href="/docs/concepts/where-it-fits">Where it fits</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/attempt-format">Attempt format</a></li>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/channels">Channels</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/egress-access-log">Egress access log</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</div>
+<footer class="ft"><div class="w">
+  <div class="fb"><a class="logo" href="/"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 4.5 5.6v6.1c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V5.6z"/><path d="M10.2 8.4v7.8M10.2 12.3h5.3"/></svg>Guardana Control</a><p>A control and supervision layer for AI agents. <a href="https://github.com/guardana/control/blob/main/LICENSE">Apache-2.0</a>.</p></div>
+  <div><b>Product</b><a href="/#how">How it works</a><a href="/#get">What you get</a><a href="/#limits">Limits</a><a href="/docs/status">Status</a></div>
+  <div><b>Docs</b><a href="/docs/get-started/try-the-demo">Try the demo</a><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an MCP setup</a><a href="/docs/guides/write-and-test-a-policy">Write a policy</a><a href="/docs/concepts/threat-model">Threat model</a></div>
+  <div><b>Project</b><a href="https://github.com/guardana/control">GitHub</a><a href="https://github.com/guardana/control/releases">Releases</a><a href="/docs/roadmap">Roadmap</a><a href="https://github.com/guardana/control/blob/main/SECURITY.md">Security</a><a href="https://github.com/guardana/control/blob/main/TRADEMARKS.md">Trademarks</a></div>
+</div></footer>
+</body>
+</html>

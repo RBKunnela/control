@@ -266,7 +266,7 @@ tombstones first, while no `collect` holds them. `spool drain`:
 
 <!-- generated: go test ./cmd/guardana-gateway -run TestCLIPage -->
 ```
-usage: guardana-gateway [run --config <file> [--run-token-file <file>] | doctor --config <file> | collect --listen unix:///<path> --dir <dir> --tenant <id> --project <id> --credential-file <file> [--segment-bytes <n>] [--max-bytes <n>] | trail [segments] [export [--after <cursor>] [--limit <n>] [--max-bytes <n>] [--request <id>]... [--run <id>]... [--tenant <id>]... [--project <id>]... [--kind <kind>]...] <file or dir> | prune --through <segment> <dir> | spool drain <dir> <out> | scenario run --config <file> --trail <file> [--control <file>] [--timeout <d>] <path>... | dev --config <file> --policy <file> [--decision-point=silent] [--state <dir>] [--scenario <file>]...]
+usage: guardana-gateway [run --config <file> [--run-token-file <file>] | doctor --config <file> | collect --listen unix:///<path> --dir <dir> --tenant <id> --project <id> --credential-file <file> [--segment-bytes <n>] [--max-bytes <n>] | trail [segments] [export [--after <cursor>] [--limit <n>] [--max-bytes <n>] [--request <id>]... [--run <id>]... [--tenant <id>]... [--project <id>]... [--kind <kind>]...] <file or dir> | prune --through <segment> <dir> | spool drain <dir> <out> | scenario run --config <file> --trail <file> [--control <file>] [--timeout <d>] <path>... | dev --config <file> --policy <file> [--decision-point=silent] [--state <dir>] [--scenario <file>]... | attempts run --manifest <file> --report <file> [--state <dir>]]
 
 run
   -config string
@@ -339,5 +339,13 @@ dev
     	a scenario file to run on a plane of its own; repeatable
   -state string
     	a new directory for the plane's state; by default a temporary one
+
+attempts
+  -manifest string
+    	the attempt manifest to run, attempt-manifest/v1alpha1
+  -report string
+    	the report to write, attempt-report/v1alpha1; a file that exists is refused
+  -state string
+    	a new directory for every run's state and journals; by default a temporary one
 ```
 <!-- /generated -->

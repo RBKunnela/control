@@ -88,6 +88,7 @@
   <url><loc>https://control.guardana.dev/docs/adr/0083-a-finding-may-stop-an-agent-or-a-principal</loc></url>
   <url><loc>https://control.guardana.dev/docs/adr/0084-the-site-is-redrawn-in-one-system</loc></url>
   <url><loc>https://control.guardana.dev/docs/adr/0085-the-1-0-bar-is-met-by-own-evidence-and-what-needs-outside-people-stays-not-met</loc></url>
+  <url><loc>https://control.guardana.dev/docs/adr/0086-controlled-attempts-are-counted-at-the-victim</loc></url>
   <url><loc>https://control.guardana.dev/docs/backlog</loc></url>
   <url><loc>https://control.guardana.dev/docs/changelog</loc></url>
   <url><loc>https://control.guardana.dev/docs/concepts/approvals-and-the-held-call</loc></url>
@@ -111,6 +112,7 @@
   <url><loc>https://control.guardana.dev/docs/get-started/try-the-rest-of-the-demo</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/back-up-and-restore-a-plane</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/connect-an-existing-mcp-setup</loc></url>
+  <url><loc>https://control.guardana.dev/docs/guides/count-controlled-attempts</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/decide-a-tool-of-your-own</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/keep-two-tasks-apart</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/let-a-decision-point-veto</loc></url>
@@ -125,6 +127,7 @@
   <url><loc>https://control.guardana.dev/docs/guides/watch-a-plane-without-a-collector</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/watch-an-egress-proxy</loc></url>
   <url><loc>https://control.guardana.dev/docs/guides/write-and-test-a-policy</loc></url>
+  <url><loc>https://control.guardana.dev/docs/reference/attempt-format</loc></url>
   <url><loc>https://control.guardana.dev/docs/reference/benchmarks</loc></url>
   <url><loc>https://control.guardana.dev/docs/reference/channels</loc></url>
   <url><loc>https://control.guardana.dev/docs/reference/claude-code-hooks</loc></url>

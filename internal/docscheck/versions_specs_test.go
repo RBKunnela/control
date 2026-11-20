@@ -19,6 +19,7 @@ import (
 	observev1 "github.com/guardana/control/api/gen/go/guardana/control/observe/v1alpha1"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/approvals"
+	"github.com/guardana/control/internal/attempts"
 	"github.com/guardana/control/internal/brand"
 	"github.com/guardana/control/internal/coverage"
 	"github.com/guardana/control/internal/evidence"
@@ -130,6 +131,16 @@ func versionSpecs() map[string]versionSpec {
 				_, err := scenario.Read("probe.json", []byte(`{"kind":`+strconv.Quote(v)+`}`))
 				return errors.Is(err, scenario.ErrKind), nil
 			},
+		},
+		"Attempt manifest": {
+			cites: []versionCite{{"internal/attempts/manifest.go#ManifestKind", reads}},
+			refuses: func(v string) (bool, error) {
+				_, err := attempts.ReadManifest([]byte(`{"kind":` + strconv.Quote(v) + `}`))
+				return errors.Is(err, attempts.ErrKind), nil
+			},
+		},
+		"Attempt report": {
+			cites: []versionCite{{"internal/attempts/report.go#ReportKind", writes}},
 		},
 		"Pause file": {
 			cites: []versionCite{
