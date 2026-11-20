@@ -14,6 +14,9 @@ made it. It is an alpha and not a security boundary
 against it: an authorization service, a model gateway and operating-system
 isolation. Each answers a different question, and each combines with this one.
 
+For products that check an agent's tool calls against policy before they
+run, see the [comparison of Guardana Control and other tool call controls](agent-tool-call-controls.md).
+
 ## What this project does
 
 | It does | Status |

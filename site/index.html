@@ -188,6 +188,24 @@
   <div class="also"><span>The caller's identity is configured, not logged in.</span><span data-backlog="B29" title="Make the evidence trail tamper-evident">The evidence trail is checked for order, not yet for tampering (<code>planned</code>, <a class="id" href="/docs/backlog">B29</a>).</span><span>A stop refuses later calls. It does not undo what already ran.</span></div>
 </div></section>
 
+<section class="sec" id="risks"><div class="w">
+  <div class="hd2"><div><p class="k">Risk references</p><h2>Which risks apply to your agents?</h2></div><p class="intro">See which controls a test exercises, how an agent can bypass them, and where gaps remain.</p></div>
+  <div class="risks">
+    <div class="paths">
+      <a href="/docs/reference/risks/owasp-agentic-top-10"><b>Agentic applications</b><span>Goals, tools and delegated authority</span><i aria-hidden="true">→</i></a>
+      <a href="/docs/reference/risks/owasp-llm-top-10"><b>LLM applications</b><span>Model inputs, outputs and data</span><i aria-hidden="true">→</i></a>
+      <a href="https://owasp.org/projects/mcp-top-10"><b>OWASP MCP project</b><span>External reference · beta in pilot testing</span><i aria-hidden="true">→</i></a>
+    </div>
+    <!-- List an advisory only when a general control or a guide covers part of it. Show at most three. A new advisory replaces the oldest. -->
+    <h3 class="k">Recent advisories</h3>
+    <div class="paths">
+      <a href="/docs/reference/risks/advisories#google-gtig"><b>When should a child run stop after a refused call?</b><span><time datetime="2026-11-16">2026-11-16</time> · Google GTIG</span><i aria-hidden="true">→</i></a>
+      <a href="/docs/reference/risks/advisories#fbi-flash-on-artex"><b>Which tools and targets may your own testing agent use?</b><span><time datetime="2026-11-13">2026-11-13</time> · FBI FLASH</span><i aria-hidden="true">→</i></a>
+      <a href="/docs/reference/risks/advisories#workos"><b>Did your test environment contact a host outside its inventory?</b><span><time datetime="2026-11-06">2026-11-06</time> · WorkOS</span><i aria-hidden="true">→</i></a>
+    </div>
+  </div>
+</div></section>
+
 <section class="sec" id="first-run"><div class="w">
   <h2>Try Guardana Control with the maintainer</h2>
   <p class="intro" data-status="dev-mode" title="Dev mode">The bundled demo saves its call records on your machine (<span class="st">experimental</span>).</p>
@@ -204,6 +222,7 @@
     <details><summary>Does it stop prompt injection?</summary><p>It does not detect it. It limits what an injected agent can do: each action is still decided by your rules, and the risky ones wait for a person.</p></details>
     <details data-backlog="B28" title="Run continuous supervision and authorized reaction"><summary>Does supervision run on its own?</summary><p>Not yet. You start a check on a recorded run today. Continuous supervision is <code>planned</code> (<a class="id" href="/docs/backlog">B28</a>).</p></details>
     <details><summary>What does it store, and where?</summary><p>The action, the decision, the policy version and a hash of the answer, on your machines. Capturing prompt or tool content is off by default. There is no hosted service.</p></details>
+    <details data-status="mcp-gateway" title="Model Context Protocol (MCP) gateway"><summary>Which tools check AI agent tool calls against policy before they run?</summary><p>Microsoft's agent controls, Policy in Amazon Bedrock AgentCore and Hexgate check tool calls against rules. Guardana Control's MCP gateway (<code class="st">experimental</code>) checks routed calls against signed policy in every mode. In <code>OBSERVE</code>, it records the decision and forwards the call regardless of that decision, unless a pause or a call it cannot translate blocks it. Enforcing modes can block a call or hold it for approval. <a href="/docs/concepts/agent-tool-call-controls">Compare where checks run and how approvals work</a>.</p></details>
   </div>
 </div></section>
 

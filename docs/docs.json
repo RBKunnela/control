@@ -22,6 +22,7 @@
     "docs/concepts": {"type": "explanation"},
     "docs/reference": {"type": "reference"},
     "docs/reference/wire": {"type": "reference"},
+    "docs/reference/risks": {"type": "reference"},
     "docs/spec": {"type": "spec", "may_be_empty": true},
     "docs/extending": {"type": "extending"}
   },

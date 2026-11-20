@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>OWASP Top 10 for Agentic Applications · Guardana Control</title>
+<meta name="description" content="The 2026 agentic risks, the tests that exercise Guardana Control&#39;s controls, the paths around them, and the remaining gaps."/>
+<link rel="canonical" href="https://control.guardana.dev/docs/reference/risks/owasp-agentic-top-10"/>
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)"/>
+<meta name="theme-color" content="#0A0A0A" media="(prefers-color-scheme: dark)"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="stylesheet" href="/assets/control/v2/tokens.css"/>
+<link rel="stylesheet" href="/assets/control/control.css"/>
+<link rel="stylesheet" href="/assets/control/docs.css"/>
+</head>
+<body class="doc">
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="w">
+  <a class="logo" href="/"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 4.5 5.6v6.1c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V5.6z"/><path d="M10.2 8.4v7.8M10.2 12.3h5.3"/></svg>Guardana Control</a>
+  <a class="vlink" href="https://github.com/guardana/control/releases/tag/v0.18.0"><span class="ver">v0.18.0</span></a>
+  <nav class="links" aria-label="Primary"><a href="/#how">How it works</a><a href="/#signed">Signed</a><a href="/#get">What you get</a><a href="/#start">Quickstart</a><a href="/#limits">Limits</a><a href="/docs/">Docs</a></nav>
+  <div class="right">
+    <input type="checkbox" id="theme" aria-label="Switch between light and dark"/><label class="tgl" for="theme" title="Switch theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg></label>
+    <a class="btn s sm" href="https://github.com/guardana/control">Star on GitHub</a>
+  </div>
+</div></header>
+<div class="w shell">
+<details class="mnav">
+<summary>Menu · <b>OWASP Top 10 for Agentic Applications</b></summary>
+<nav class="inner" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+<li><a href="/docs/get-started/try-the-rest-of-the-demo">Try the rest of the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
+<li><a href="/docs/guides/check-a-security-testing-agent">Check a security-testing agent&#39;s calls against a scope you declare</a></li>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/set-up-signed-operators">Set up signed operators</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/agent-tool-call-controls">Which tools check AI agent tool calls against policy?</a></li>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/signed-operations">Signed operations</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+<li><a href="/docs/concepts/where-it-fits">Where it fits</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/attempt-format">Attempt format</a></li>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/channels">Channels</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/egress-access-log">Egress access log</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/risks/advisories">Advisories on agentic attacks</a></li>
+<li><a href="/docs/reference/risks/owasp-agentic-top-10" aria-current="page">OWASP Top 10 for Agentic Applications</a></li>
+<li><a href="/docs/reference/risks/owasp-llm-top-10">OWASP Top 10 for LLM Applications</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</details>
+<main id="main" class="prose">
+<h1 id="owasp-top-10-for-agentic-applications">OWASP Top 10 for Agentic Applications</h1>
+<p>OWASP published the 2026 edition on 2025-12-09. The identifiers and risk titles come from that edition. Guardana Control maps each risk to the behavior its tests exercise. <a href="https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/">OWASP edition page</a> and <a href="https://genai.owasp.org/download/52117/?tmstv=1765059207">published report</a>, read 2026-11-20.</p>
+<h2 id="risks">Risks</h2>
+<p>The gateway examples use <code>ENFORCE</code>. In <code>OBSERVE</code>, the gateway records a policy denial and lets the call run. A gap means there is no exercised control for the behavior described. <a href="/docs/concepts/threat-model#an-agent-that-is-wrong-or-steered">Threat model</a>.</p>
+<div class="tbl">
+<table>
+<thead>
+<tr>
+<th>Published risk</th>
+<th>Exercised control</th>
+<th>Test file and function</th>
+<th>Known bypass and remaining gap</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ASI01: Agent Goal Hijack</td>
+<td><a href="/docs/status#mcp-gateway">Model Context Protocol (MCP) gateway</a> (<code>experimental</code>). A flow rule blocks outbound mail if the run previously read untrusted content and confidential data. This limits one way a steered agent can send data out.</td>
+<td><code>internal/gateway/e2e/flow_test.go</code> · <code>TestTheToxicFlowIsDeniedAcrossSessions</code>. <a href="/docs/guides/count-controlled-attempts#2-run-it">B37 mail cases</a>.</td>
+<td>Goal hijacking itself can go undetected. User prompts and tool descriptions fall outside the tracked flow, and a changed goal can lead to a harmful call that policy allows. <a href="/docs/concepts/threat-model#an-agent-that-is-wrong-or-steered">Threat model</a>.</td>
+</tr>
+<tr>
+<td>ASI02: Tool Misuse and Exploitation</td>
+<td><a href="/docs/status#mcp-gateway">Model Context Protocol (MCP) gateway</a> (<code>experimental</code>). A delete denied by policy never reaches the tool server.</td>
+<td><code>internal/gateway/e2e/call_test.go</code> · <code>TestDeniedCallNeverReachesTheUpstream</code>. <a href="/docs/guides/count-controlled-attempts#2-run-it">B37 refund case</a>.</td>
+<td>An agent can bypass the gateway by reaching the server directly. It can also misuse a tool that policy allows. <a href="/docs/concepts/threat-model#an-agent-that-is-wrong-or-steered">Threat model</a>.</td>
+</tr>
+<tr>
+<td>ASI03: Identity and Privilege Abuse</td>
+<td><a href="/docs/status#decision-kernel">Decision kernel</a> (<code>implemented</code>), exercised with delegation chains supplied by a kernel unit test. The kernel denies an expired chain, a cycle, or a child scope wider than its parent's.</td>
+<td><code>internal/core/decide_test.go</code> · <code>TestDelegationRefusalIsABuiltInDeny</code>. The MCP path is exercised separately in <code>internal/gateway/e2e/classes_test.go</code> · <code>TestEveryEffectClassUnderEveryAnswer</code>.</td>
+<td>The live MCP listener uses its configured principal for every caller and supplies no delegation chain. In <code>ENFORCE</code>, a <code>SPAWN_OR_DELEGATE</code> call gets <code>REQUIRED_FIELD_ABSENT</code> before the delegation check. End-user authentication and enforcement of a caller's delegation chain remain gaps on this path, and no backlog task covers them. <a href="/docs/reference/mcp-coverage#what-the-gateway-cannot-do">MCP coverage</a>.</td>
+</tr>
+<tr>
+<td>ASI04: Agentic Supply Chain Vulnerabilities</td>
+<td><a href="/docs/status#mcp-gateway">Model Context Protocol (MCP) gateway</a> (<code>experimental</code>). A tool whose definition changes upstream at run time becomes unclassified until it is classified again. Its call is blocked.</td>
+<td><code>adapters/mcp/list_test.go</code> · <code>TestListChangedRefreshesTheManifest</code>.</td>
+<td>An operator can pin a hostile definition, and server behavior can change behind an unchanged definition. <a href="/docs/concepts/threat-model#a-hostile-or-compromised-mcp-server">Threat model</a>. <a href="/docs/status#tool-definition-review">Tool-definition change review</a> is <code>planned</code> in <a href="/docs/backlog">B25</a>.</td>
+</tr>
+<tr>
+<td>ASI05: Unexpected Code Execution (RCE)</td>
+<td>Gap.</td>
+<td>No test exercises process containment.</td>
+<td>The agent can run code directly, and an allowed tool can execute code on its host. <a href="/docs/status#host-process-events">Host process events</a> are <code>planned</code> in <a href="/docs/backlog">B35</a> for observation. Host isolation remains a gap. <a href="/docs/concepts/threat-model#an-agent-that-is-wrong-or-steered">Threat model</a>.</td>
+</tr>
+<tr>
+<td>ASI06: Memory &amp; Context Poisoning</td>
+<td>Gap.</td>
+<td>No test exercises agent memory integrity.</td>
+<td>Injected text in a tool result can reach the agent. No exercised check governs what enters persistent memory or what a later task retrieves. <a href="/docs/concepts/threat-model#a-hostile-or-compromised-mcp-server">Threat model</a>.</td>
+</tr>
+<tr>
+<td>ASI07: Insecure Inter-Agent Communication</td>
+<td>Gap.</td>
+<td>No test exercises peer authentication or message integrity on an agent-to-agent channel.</td>
+<td>Peers can communicate outside the plane. The <a href="/docs/status#a2a-adapter">Agent-to-agent (A2A) adapter</a> is <code>planned</code>. <a href="/docs/backlog">B16</a> includes adapter conformance.</td>
+</tr>
+<tr>
+<td>ASI08: Cascading Failures</td>
+<td>Gap. OWASP describes a fault that spreads and grows as other agents, tools, or workflows act on it. <a href="https://genai.owasp.org/download/52117/?tmstv=1765059207#page=31">ASI08, report p. 30</a>.</td>
+<td><code>internal/gateway/decisionpoint_test.go</code> · <code>TestSilenceBlocksEveryEffectClassUnderEnforce</code> checks one authorization at a time. An unanswered external veto blocks the call that needed it.</td>
+<td>A wrong result can pass to another agent and trigger further allowed actions. The test exercises neither detection of that spread nor recovery of the affected workflow. <a href="/docs/concepts/threat-model#a-decision-point-that-is-slow-wrong-or-hostile">Decision-point limits</a>.</td>
+</tr>
+<tr>
+<td>ASI09: Human-Agent Trust Exploitation</td>
+<td><a href="/docs/status#approval-binding">Approval binding</a> (<code>implemented</code>). An approved transfer runs once. A repeated request cannot reuse the approval.</td>
+<td><code>internal/gateway/e2e/approval_test.go</code> · <code>TestPendingApprovalAndItsRetry</code>. <a href="/docs/guides/count-controlled-attempts#2-run-it">B37 changed-update case</a>.</td>
+<td>A person can still be persuaded to approve the original harmful transfer. <a href="/docs/backlog">B38</a> covers showing the exact action to the approver.</td>
+</tr>
+<tr>
+<td>ASI10: Rogue Agents</td>
+<td><a href="/docs/status#run-stop">Stopping a run through a signed route</a> (<code>experimental</code>). After <code>supervise</code> reports a confirmed finding that a child retried a denied call with changed arguments, a signed route can stop later calls by that child.</td>
+<td><code>cmd/guardana-gateway/reaction_tree_unix_test.go</code> · <code>TestAChildsRetryIsSupervisedOverTheTreeAndStopsTheChild</code>.</td>
+<td>The parent can still act. A call already running can finish, and the child can use a path outside the gateway. Continuous checks are work in <a href="/docs/backlog">B28</a>. <a href="/docs/concepts/threat-model#an-agent-that-is-wrong-or-steered">Threat model</a>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="what-b37-measured">What B37 measured</h2>
+<p><a href="/docs/status#controlled-attempts">Controlled attempts counted at the victim</a> (<code>experimental</code>) compares the demo victims' journals under <code>ENFORCE</code> and <code>OBSERVE</code>. The results show which scripted effects reached the victims and the cost to legitimate work, including updates held for approval. A script chose the calls. <a href="/docs/guides/count-controlled-attempts#2-run-it">B37 results</a> and <a href="/docs/adr/0086-controlled-attempts-are-counted-at-the-victim">counting method</a>.</p>
+<p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/reference/risks/owasp-agentic-top-10.md">docs/reference/risks/owasp-agentic-top-10.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.18.0, and <a href="https://github.com/guardana/control/tree/v0.18.0/docs">its documentation</a> is in its tag.</p>
+</main>
+<nav class="side" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+<li><a href="/docs/get-started/try-the-rest-of-the-demo">Try the rest of the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
+<li><a href="/docs/guides/check-a-security-testing-agent">Check a security-testing agent&#39;s calls against a scope you declare</a></li>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/set-up-signed-operators">Set up signed operators</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/agent-tool-call-controls">Which tools check AI agent tool calls against policy?</a></li>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/signed-operations">Signed operations</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+<li><a href="/docs/concepts/where-it-fits">Where it fits</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/attempt-format">Attempt format</a></li>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/channels">Channels</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/egress-access-log">Egress access log</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/risks/advisories">Advisories on agentic attacks</a></li>
+<li><a href="/docs/reference/risks/owasp-agentic-top-10" aria-current="page">OWASP Top 10 for Agentic Applications</a></li>
+<li><a href="/docs/reference/risks/owasp-llm-top-10">OWASP Top 10 for LLM Applications</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</div>
+<footer class="ft"><div class="w">
+  <div class="fb"><a class="logo" href="/"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 4.5 5.6v6.1c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V5.6z"/><path d="M10.2 8.4v7.8M10.2 12.3h5.3"/></svg>Guardana Control</a><p>A control and supervision layer for AI agents. <a href="https://github.com/guardana/control/blob/main/LICENSE">Apache-2.0</a>.</p><p><a href="https://guardana.dev">Guardana</a> and Guardana Control are independent projects. See <a href="https://github.com/guardana/guardana">Guardana on GitHub</a>.</p></div>
+  <div><b>Product</b><a href="/#how">How it works</a><a href="/#get">What you get</a><a href="/#limits">Limits</a><a href="/docs/status">Status</a></div>
+  <div><b>Docs</b><a href="/docs/get-started/try-the-demo">Try the demo</a><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an MCP setup</a><a href="/docs/guides/write-and-test-a-policy">Write a policy</a><a href="/docs/concepts/threat-model">Threat model</a></div>
+  <div><b>Project</b><a href="https://github.com/guardana/control">GitHub</a><a href="https://github.com/guardana/control/releases">Releases</a><a href="/docs/roadmap">Roadmap</a><a href="https://github.com/guardana/control/blob/main/SECURITY.md">Security</a><a href="https://github.com/guardana/control/blob/main/TRADEMARKS.md">Trademarks</a></div>
+</div></footer>
+</body>
+</html>

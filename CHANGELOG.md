@@ -56,6 +56,19 @@ verify one.
 
 ### Documentation
 
+- Risk references map the 2026 OWASP Top 10 lists for Agentic Applications
+  and LLM Applications to project controls and tests
+  ([risk references](docs/reference/risks/owasp-agentic-top-10.md)). For
+  each risk, the page lists the controls that apply, known bypasses and
+  the gaps. It does the same for published advisories on agentic attacks.
+- A comparison, checked on 2026-11-20, of tools that check an agent's tool
+  calls against policy before they run: Microsoft's agent controls, Policy in Amazon
+  Bedrock AgentCore, Hexgate and Guardana Control
+  ([comparison](docs/concepts/agent-tool-call-controls.md)).
+- [Check a security-testing agent's calls against a scope you declare](docs/guides/check-a-security-testing-agent.md)
+  covers policy tests (`implemented`), and the MCP gateway, approvals by
+  command, a stop after repeated denials, proxy observations and coverage
+  (all `experimental`).
 - The fail-closed table names its third column "a cause in the policy's
   availability". It was previously headed "the policy available" over the
   same values, which made it appear that a fail-open read ran when the policy

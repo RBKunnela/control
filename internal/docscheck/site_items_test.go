@@ -41,6 +41,7 @@ var landingItems = []siteItem{
 	{"The record itself", "backlog: B29"},
 	{"The evidence trail is checked for order, not yet for tampering (planned, B29).", "backlog: B29"},
 	{"The bundled demo saves its call records on your machine (experimental).", "status: dev-mode"},
+	{"Which tools check AI agent tool calls against policy before they run?", "status: mcp-gateway"},
 	{"Does supervision run on its own?", "backlog: B28"},
 }
 

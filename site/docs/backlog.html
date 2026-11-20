@@ -35,6 +35,7 @@
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
+<li><a href="/docs/guides/check-a-security-testing-agent">Check a security-testing agent&#39;s calls against a scope you declare</a></li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
 <li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a></li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
@@ -53,6 +54,7 @@
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
 </ul>
 <h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/agent-tool-call-controls">Which tools check AI agent tool calls against policy?</a></li>
 <li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
 <li><a href="/docs/concepts/architecture">Architecture</a></li>
 <li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
@@ -88,6 +90,9 @@
 <li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
 <li><a href="/docs/reference/reaction">Reaction</a></li>
 <li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/risks/advisories">Advisories on agentic attacks</a></li>
+<li><a href="/docs/reference/risks/owasp-agentic-top-10">OWASP Top 10 for Agentic Applications</a></li>
+<li><a href="/docs/reference/risks/owasp-llm-top-10">OWASP Top 10 for LLM Applications</a></li>
 <li><a href="/docs/reference/run-view">Run view</a></li>
 <li><a href="/docs/reference/runs">Runs</a></li>
 <li><a href="/docs/reference/scenario-format">Scenario format</a></li>
@@ -245,6 +250,12 @@ input is incomplete, never complete.</p>
 <td>Each list is cited at a pinned edition. Per risk, the page names the control that addresses it and the test that exercises that control, the known bypasses and the gaps, and links B37's results where they apply. A risk with no exercised control is a gap, and no protection percentage is published</td>
 </tr>
 <tr>
+<td>B44</td>
+<td>Refuse calls outside a declared scope, and flag egress outside it</td>
+<td>B21 for the egress half</td>
+<td>This is an authorization path: a record of its own first. A scope fixed and signed before a run starts names the hosts, networks, environments and effect classes the run may reach, and a configuration may require one for every run. The gateway reads the target destination and resource from the argument the tool's classification names. If the target cannot be read, the gateway refuses the call. It reads no other argument. A call outside the scope is blocked with its reason and recorded. If the egress sensor attributes a connection outside the scope to a run (B21), that is a confirmed finding, and a signed route can stop later calls in that run; the connection itself is not refused. An unattributed connection stays unknown. B37 adds an attempt that leaves the scope, checked at the victim with positive and negative controls. A run, a child run, a reconnect or a restart cannot widen or reset its scope. No model, and no reading of an argument's meaning beyond the named target, takes part in these decisions</td>
+</tr>
+<tr>
 <td>B11</td>
 <td>Ship one framework integration</td>
 <td>none</td>
@@ -257,8 +268,8 @@ input is incomplete, never complete.</p>
 the sensor contract B12 publishes needs a second kind of sensor, and B28
 needs both. The process sensor is B35. The egress sensor itself is built
 (<a href="/docs/status">status</a>); B21 adds attribution, so each connection stays
-unknown until then. B35 comes later. B25, B27, B36, B37 and B40 block
-nothing and go beside them. No task here, or later, adds a model that
+unknown until then. B35 comes later. B25, B27, B36, B37, B40 and B44
+block nothing and go beside them. No task here, or later, adds a model that
 approves, takes justification text as authority, decides by pattern
 heuristics, or keeps a security control out of the open build
 (<a href="/docs/adr/0009-open-core-boundary">ADR-0009</a>).
@@ -449,6 +460,7 @@ sessions and feedback, consistent with the no-phone-home decision.</p>
 </ul>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
+<li><a href="/docs/guides/check-a-security-testing-agent">Check a security-testing agent&#39;s calls against a scope you declare</a></li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
 <li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a></li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
@@ -467,6 +479,7 @@ sessions and feedback, consistent with the no-phone-home decision.</p>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
 </ul>
 <h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/agent-tool-call-controls">Which tools check AI agent tool calls against policy?</a></li>
 <li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
 <li><a href="/docs/concepts/architecture">Architecture</a></li>
 <li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
@@ -502,6 +515,9 @@ sessions and feedback, consistent with the no-phone-home decision.</p>
 <li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
 <li><a href="/docs/reference/reaction">Reaction</a></li>
 <li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/risks/advisories">Advisories on agentic attacks</a></li>
+<li><a href="/docs/reference/risks/owasp-agentic-top-10">OWASP Top 10 for Agentic Applications</a></li>
+<li><a href="/docs/reference/risks/owasp-llm-top-10">OWASP Top 10 for LLM Applications</a></li>
 <li><a href="/docs/reference/run-view">Run view</a></li>
 <li><a href="/docs/reference/runs">Runs</a></li>
 <li><a href="/docs/reference/scenario-format">Scenario format</a></li>
