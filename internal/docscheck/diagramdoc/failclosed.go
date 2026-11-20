@@ -11,7 +11,7 @@ import (
 
 // The five inputs of the fail-closed rule beside the effect, in the order
 // the table's columns show them and the reverse of the order rows collapse.
-var dimensions = []string{"a cause in the request", "the policy available", "fail-open reads on", "a snapshot present", "the determinate verdict"}
+var dimensions = []string{"a cause in the request", "a cause in the policy's availability", "fail-open reads on", "a snapshot present", "the determinate verdict"}
 
 // row is one line of the rendered table: a value per dimension, or "any",
 // or a list of the values that share the action.

@@ -174,6 +174,14 @@ with <code>EVIDENCE_UNAVAILABLE</code> also when its expiry has passed. Such an
 approval closed the hold as <code>APPROVAL_EXPIRED</code> before its version was
 read.</li>
 </ul>
+<h3 id="documentation">Documentation</h3>
+<ul>
+<li>The fail-closed table names its third column &quot;a cause in the policy's
+availability&quot;. It was previously headed &quot;the policy available&quot; over the
+same values, which made it appear that a fail-open read ran when the policy
+was available rather than when it was unavailable
+(<a href="/docs/concepts/how-a-call-is-decided#when-the-kernel-cannot-decide">how a call is decided</a>).</li>
+</ul>
 <h2 id="0180---2026-11-18"><a href="https://github.com/guardana/control/releases/tag/v0.18.0">0.18.0</a> - 2026-11-18</h2>
 <p>Upgrading from 0.17 changes three things on every plane, and more under
 <code>approvals.authority: signed</code>. On every plane the health answer is schema
@@ -332,7 +340,7 @@ says so. An OpenTelemetry or egress log import whose source fails with an
 error wrapping <code>io.EOF</code>, or one matching a full read buffer, now fails,
 where it ended as a complete import.</li>
 </ul>
-<h3 id="documentation">Documentation</h3>
+<h3 id="documentation-1">Documentation</h3>
 <ul>
 <li>Three reading paths on the documentation index, a shorter first tutorial
 with <a href="/docs/get-started/try-the-rest-of-the-demo">a follow-up</a>, and pages

@@ -88,7 +88,7 @@ call blocks under every cause; a read runs only when the operator has turned
 fail-open reads on and the only causes are in the policy's availability.
 
 <!-- generated: scripts/gen-diagrams.go -->
-| Effect class | a cause in the request | the policy available | fail-open reads on | a snapshot present | the determinate verdict | Action |
+| Effect class | a cause in the request | a cause in the policy's availability | fail-open reads on | a snapshot present | the determinate verdict | Action |
 | --- | --- | --- | --- | --- | --- | --- |
 | `UNSPECIFIED`, `WRITE`, `DELETE`, `EXECUTE`, `COMMUNICATE`, `TRANSACT`, `IDENTITY_OR_ACCESS`, `CONFIGURE`, `SPAWN_OR_DELEGATE`, a number no build declares | any | any | any | any | any | blocks |
 | `READ` | no | no | any | any | any | blocks |

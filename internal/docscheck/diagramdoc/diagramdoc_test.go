@@ -84,7 +84,7 @@ func TestFailClosedTableIsTheRecordsRule(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "| Effect class | a cause in the request | the policy available | fail-open reads on | a snapshot present | the determinate verdict | Action |\n" +
+	want := "| Effect class | a cause in the request | a cause in the policy's availability | fail-open reads on | a snapshot present | the determinate verdict | Action |\n" +
 		"| --- | --- | --- | --- | --- | --- | --- |\n" +
 		"| `UNSPECIFIED`, `WRITE`, `DELETE`, `EXECUTE`, `COMMUNICATE`, `TRANSACT`, `IDENTITY_OR_ACCESS`, `CONFIGURE`, `SPAWN_OR_DELEGATE`, a number no build declares | any | any | any | any | any | blocks |\n" +
 		"| `READ` | no | no | any | any | any | blocks |\n" +
