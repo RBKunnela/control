@@ -169,13 +169,15 @@ class Written(unittest.TestCase):
                     "endedAt": datetime(
                         2026, 10, 11, 14, 0, 3, 250000, tzinfo=timezone(timedelta(hours=2))
                     ),
-                    "resultHash": "sha256:77aa",
+                    "resultHash": "sha256:2c26b46b68ffc68ff99b453c1d304134"
+                    "13422d706483bfa0f98a5e886266e7ae",
                     "sideEffectConfirmation": "",
                 },
             ),
             b'{"handle":"h-1","sentArguments":"+/+/","status":"COMPLETION_STATUS_FAILURE",'
             b'"startedAt":"2026-10-11T12:00:01Z","endedAt":"2026-10-11T12:00:03.250Z",'
-            b'"resultHash":"sha256:77aa"}',
+            b'"resultHash":"sha256:2c26b46b68ffc68ff99b453c1d304134'
+            b'13422d706483bfa0f98a5e886266e7ae"}',
         )
 
     def test_a_time_is_written_with_no_three_or_six_fractional_digits(self) -> None:

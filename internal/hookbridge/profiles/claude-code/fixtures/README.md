@@ -19,8 +19,8 @@ come to; a claim in `../profile.json` names some of them in `backed_by`.
 - `post-differs-*`: a completion whose input is another value (a member
   added, removed or null, a number written as a string, array order); the
   plane records `EXECUTED_ARGS_MISMATCH`.
-- The rest are refused before anything is sent: a member named twice, a
-  member name in another case, an input that is null, a string or absent, no
+- The rest are refused before anything is sent: a member named twice, in
+  the event or in its tool input, a member name in another case, an input that is null, a string or absent, no
   call id, an event the profile does not name, bytes after the event, and
   invalid UTF-8 (`pre-invalid-utf8.json` holds one byte that is not, on
   purpose).

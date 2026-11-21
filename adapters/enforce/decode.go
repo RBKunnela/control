@@ -1,8 +1,10 @@
 package enforce
 
 import (
+	"crypto/sha256"
 	"errors"
 	"io"
+	"strings"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -57,7 +59,7 @@ func decodeComplete(data []byte) (*enforcev1alpha1.CompleteRequest, error) {
 	case req.GetHandle() == "",
 		req.GetStatus() == enforcev1alpha1.CompletionStatus_COMPLETION_STATUS_UNSPECIFIED || !declared(req.GetStatus()),
 		len(req.GetSentArguments()) == 0 || len(req.GetSentArguments()) > contract.MaxArgumentsBytes,
-		len(req.GetResultHash()) > contract.MaxStringBytes,
+		!resultHash(req.GetResultHash()),
 		len(req.GetSideEffectConfirmation()) > contract.MaxStringBytes,
 		!validTime(req.GetStartedAt()), !validTime(req.GetEndedAt()):
 		return nil, errMalformed
@@ -92,6 +94,25 @@ func requestKey(k string) bool {
 	for i := 0; i < len(k); i++ {
 		c := k[i]
 		if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && (c < '0' || c > '9') && c != '.' && c != '_' && c != '-' {
+			return false
+		}
+	}
+	return true
+}
+
+// resultHash reports whether h is no hash, or "sha256:" and 64 lower-case
+// hex digits. Nothing else is taken: text of any other form could be the
+// tool's result itself, which capture off keeps out of the trail.
+func resultHash(h string) bool {
+	if h == "" {
+		return true
+	}
+	digits, ok := strings.CutPrefix(h, "sha256:")
+	if !ok || len(digits) != sha256.Size*2 {
+		return false
+	}
+	for i := 0; i < len(digits); i++ {
+		if c := digits[i]; (c < '0' || c > '9') && (c < 'a' || c > 'f') {
 			return false
 		}
 	}

@@ -106,7 +106,11 @@ For each call step the runner:
 
 It also holds each trail to the plane: every event carries the plane's mode,
 every `POLICY_DECIDED` the bundle digest `/healthz` reported, and, where the
-trail records a decision, the answer's decision id is one of them. A pending
+trail records a decision, the answer's decision id is one of them. A
+`/healthz` answer without a bundle digest is refused, and the decision a
+step is judged by must be of the major this build reads; either is a
+scenario that could not run, never a pass. Reason codes are compared item
+by item. A pending
 answer's approval id must be the one the trail's last `APPROVAL_REQUESTED`
 names, or the step differs on `answer.approval_id` and no operator step
 answers it. The first call's
@@ -145,7 +149,7 @@ differs, `<id> step[<i>].<member>: want <x>, got <y>`; then `<id> passed`,
 | --- | --- |
 | 0 | No member of any scenario differed. |
 | 1 | A member of some scenario differed. |
-| 2 | None differed, and some scenario could not run: no scenario, a file refused, a precondition, an answer naming no trail, a barrier past its bound, another client, a `guardana-control` missing or of another version, a trail file that is not the plane's. A gate treats 2 as a failure. |
+| 2 | None differed, and some scenario could not run: no scenario, a file refused, a precondition, an answer naming no trail, a barrier past its bound, another client, a `guardana-control` missing or of another version, a trail file that is not the plane's, or a report standard output did not take whole. A gate treats 2 as a failure. |
 
 ## Example
 

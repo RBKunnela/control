@@ -180,7 +180,7 @@ func (m *mutant) call(ctx context.Context, tool string, args []byte, exec enforc
 }
 
 func (m *mutant) execute(ctx context.Context, ans enforceclient.Answer, ex *enforcev1alpha1.Execution, args []byte, exec enforceclient.Exec) (enforceclient.Answer, error) {
-	if cause, ok := m.refusal(ctx, ex, args); ok {
+	if cause, ok := m.refusal(ctx, ex); ok {
 		return m.abort(ctx, ans, ex.GetHandle(), cause)
 	}
 	authorized := ex.GetAuthorizedArguments()
@@ -200,11 +200,11 @@ func (m *mutant) execute(ctx context.Context, ans enforceclient.Answer, ex *enfo
 }
 
 // refusal is the abort cause of an execution the client must not run.
-func (m *mutant) refusal(ctx context.Context, ex *enforcev1alpha1.Execution, args []byte) (enforcev1alpha1.AbortCause, bool) {
+func (m *mutant) refusal(ctx context.Context, ex *enforcev1alpha1.Execution) (enforcev1alpha1.AbortCause, bool) {
 	switch {
 	case len(ex.GetObligations()) > 0 && !m.is("ignores-obligations"):
 		return enforcev1alpha1.AbortCause_ABORT_CAUSE_OBLIGATION, true
-	case len(ex.GetAuthorizedArguments()) == 0 && len(args) > 0 && !m.is("sends-proposed-when-empty"):
+	case len(ex.GetAuthorizedArguments()) == 0 && !m.is("sends-proposed-when-empty"):
 		return enforcev1alpha1.AbortCause_ABORT_CAUSE_ARGUMENTS_DIFFER, true
 	case ctx.Err() != nil && !m.is("ignores-context"):
 		return enforcev1alpha1.AbortCause_ABORT_CAUSE_NOT_SENT, true

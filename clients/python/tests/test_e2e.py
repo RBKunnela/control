@@ -329,22 +329,22 @@ class Plane(unittest.TestCase):
                 answer += more
         return answer
 
-    def assert_a_large_answer_is_chunked(
+    def assert_a_large_answer_carries_its_length(
         self, socket_path: str, token: str, arguments: bytes
     ) -> None:
-        """Admits arguments by hand, reads how the answer is framed, and gives the handle up."""
+        """Admits arguments by hand, reads how the answer is framed, and gives the handle up.
+
+        The plane frames every answer by its length, so an EXECUTE can be read
+        whole before the plane's handler ends."""
         proposed = base64.b64encode(arguments).decode("ascii")
         answer = self.post_raw(
             socket_path, token, "admit", {"tool": "read_order", "arguments": proposed}
         )
-        head, _, rest = answer.partition(b"\r\n\r\n")
+        head, _, body = answer.partition(b"\r\n\r\n")
         self.assertTrue(head.startswith(b"HTTP/1.1 200 "), head)
-        self.assertIn(b"\r\ntransfer-encoding: chunked", head.lower())
-        body = b""
-        while rest:
-            size, _, rest = rest.partition(b"\r\n")
-            count = int(size.partition(b";")[0], 16)
-            body, rest = body + rest[:count], rest[count + 2 :]
+        self.assertNotIn(b"\r\ntransfer-encoding:", head.lower())
+        length = f"\r\ncontent-length: {len(body)}\r\n".encode("ascii")
+        self.assertIn(length, head.lower() + b"\r\n")
         self.assertGreater(len(body), 2048)
         handle = json.loads(body)["execution"]["handle"]
         gave_up = self.post_raw(
@@ -362,7 +362,7 @@ class Plane(unittest.TestCase):
             return Result(Status.SUCCESS)
 
         large = b'{"id":"ord-1","note":"' + b"n" * 3000 + b'"}'
-        self.assert_a_large_answer_is_chunked(socket_path, token, large)
+        self.assert_a_large_answer_carries_its_length(socket_path, token, large)
         allowed = client.call("read_order", large, tool)
         self.assertEqual((allowed.outcome, allowed.ran), ("OUTCOME_EXECUTE", True))
         self.assertEqual(allowed.ending, "ENDING_RECORDED")

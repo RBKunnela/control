@@ -32,7 +32,7 @@ func compareScenario(t *testing.T, step string) *scenario.Call {
 // field and never from the scenario.
 func compareSeen() (callSeen, planeFacts) {
 	mode := controlv1.EnforcementMode_ENFORCEMENT_MODE_APPROVE
-	decision := &controlv1.Decision{DecisionId: "d1", Verdict: controlv1.Verdict_VERDICT_DENY,
+	decision := &controlv1.Decision{SchemaVersion: "1.0", DecisionId: "d1", Verdict: controlv1.Verdict_VERDICT_DENY,
 		ReasonCodes: []string{"RULE_DENY"}, PolicyBundleDigest: "sha256:bb",
 		Obligations: []*controlv1.Obligation{{Type: "emit_alert", Params: map[string]string{"n": "1", "to": "ops"}, Advisory: true}}}
 	trail := []*controlv1.Event{
@@ -67,12 +67,18 @@ func TestEachMemberIsComparedOnItsOwn(t *testing.T) {
 			"step[3].answer.kind: want blocked, got result"},
 		{"answer.codes", compareCall, func(s *callSeen, _ *planeFacts) { s.answer.codes = []string{"RULE_DENY", "PAUSED"} },
 			"step[3].answer.codes: want [RULE_DENY], got [RULE_DENY, PAUSED]"},
+		{"answer.codes one code holding two", strings.Replace(compareCall, `"blocked","codes":["RULE_DENY"]`, `"blocked","codes":["RULE_DENY","PAUSED"]`, 1),
+			func(s *callSeen, _ *planeFacts) { s.answer.codes = []string{"RULE_DENY, PAUSED"} },
+			`step[3].answer.codes: want ["RULE_DENY", "PAUSED"], got ["RULE_DENY, PAUSED"]`},
 		{"decided", strings.Replace(compareCall, `{"verdict":"DENY","codes":["RULE_DENY"],"obligations":[{"type":"emit_alert","params":{"to":"ops","n":"1"},"advisory":true}]}`, `"none"`, 1),
 			func(*callSeen, *planeFacts) {}, "step[3].decided: want none, got a decision of DENY"},
 		{"decided.verdict", compareCall, func(s *callSeen, _ *planeFacts) { decisionOf(*s).Verdict = controlv1.Verdict_VERDICT_ALLOW },
 			"step[3].decided.verdict: want DENY, got ALLOW"},
 		{"decided.codes", compareCall, func(s *callSeen, _ *planeFacts) { decisionOf(*s).ReasonCodes = nil },
 			"step[3].decided.codes: want [RULE_DENY], got []"},
+		{"decided.codes one code holding two", strings.Replace(compareCall, `"verdict":"DENY","codes":["RULE_DENY"]`, `"verdict":"DENY","codes":["RULE_DENY","PAUSED"]`, 1),
+			func(s *callSeen, _ *planeFacts) { decisionOf(*s).ReasonCodes = []string{"RULE_DENY, PAUSED"} },
+			`step[3].decided.codes: want ["RULE_DENY", "PAUSED"], got ["RULE_DENY, PAUSED"]`},
 		{"decided.obligations params", compareCall, func(s *callSeen, _ *planeFacts) { decisionOf(*s).Obligations[0].Params["to"] = "sec" },
 			`step[3].decided.obligations: want [{"advisory":true,"params":{"n":"1","to":"ops"},"type":"emit_alert"}], got [{"advisory":true,"params":{"n":"1","to":"sec"},"type":"emit_alert"}]`},
 		{"decided.obligations advisory", compareCall, func(s *callSeen, _ *planeFacts) { decisionOf(*s).Obligations[0].Advisory = false },
@@ -160,6 +166,53 @@ func TestATrailThatCannotBeComparedIsNotADifference(t *testing.T) {
 	facts.fresh = false
 	if _, err := judgeCall(3, compareScenario(t, compareCall), seen, facts); err != nil {
 		t.Errorf("no proposal on a continued run: err = %v", err)
+	}
+}
+
+// TestNoBundleDigestIsNeverEqual: a plane that reported no bundle digest
+// cannot have its trail held to one, even a trail that records none either.
+func TestNoBundleDigestIsNeverEqual(t *testing.T) {
+	seen, facts := compareSeen()
+	facts.digest = ""
+	for _, ev := range seen.trail {
+		if d := ev.GetDecision(); d != nil {
+			d.PolicyBundleDigest = ""
+		}
+	}
+	diffs, err := judgeCall(3, compareScenario(t, compareCall), seen, facts)
+	if err == nil || !strings.Contains(err.Error(), "no policy bundle digest") {
+		t.Fatalf("judgeCall = %q, %v; want an error naming the missing digest", rendered(diffs), err)
+	}
+	seen, facts = compareSeen()
+	decisionOf(seen).PolicyBundleDigest = ""
+	diffs, err = judgeCall(3, compareScenario(t, compareCall), seen, facts)
+	if want := []string{"step[3].plane.bundle.digest: want sha256:bb, got "}; err != nil || !slices.Equal(rendered(diffs), want) {
+		t.Fatalf("a decision with no digest: %q, %v; want %q", rendered(diffs), err, want)
+	}
+}
+
+// TestADecisionOfAnotherMajorIsNotRead: the decision a step is judged by is
+// read only on the major this build reads, whatever the event around it
+// says; a later minor is read.
+func TestADecisionOfAnotherMajorIsNotRead(t *testing.T) {
+	for _, version := range []string{"2.0", "0.9", "", "1", "1.x", "+1.0"} {
+		seen, facts := compareSeen()
+		decisionOf(seen).SchemaVersion = version
+		diffs, err := judgeCall(3, compareScenario(t, compareCall), seen, facts)
+		if err == nil || !strings.Contains(err.Error(), "schema_version") {
+			t.Errorf("a decision of version %q: %q, %v; want it refused", version, rendered(diffs), err)
+		}
+	}
+	seen, facts := compareSeen()
+	decisionOf(seen).SchemaVersion = strings.Repeat("9", 4096) + ".0\x1b[2J"
+	_, err := judgeCall(3, compareScenario(t, compareCall), seen, facts)
+	if err == nil || strings.Contains(err.Error(), strings.Repeat("9", 33)) || strings.ContainsRune(err.Error(), 0x1b) {
+		t.Fatalf("a long version written with an escape: %v; want it refused, quoting at most 32 bytes and no escape", err)
+	}
+	seen, facts = compareSeen()
+	decisionOf(seen).SchemaVersion = "1.7"
+	if diffs, err := judgeCall(3, compareScenario(t, compareCall), seen, facts); err != nil || len(diffs) != 0 {
+		t.Fatalf("a decision of a later minor: %q, %v; want no difference", rendered(diffs), err)
 	}
 }
 

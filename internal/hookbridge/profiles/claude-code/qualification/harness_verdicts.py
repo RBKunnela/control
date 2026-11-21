@@ -280,9 +280,9 @@ def judge_subagent(c: Cases) -> Verdict:
     inv = c("subagent", "run")
     agents = {u["id"] for u in inv.calls() if u["name"] == "Agent" and not u["parent"]}
     writes = {u["id"] for u in inv.calls() if u["name"] == "Write" and u["parent"] in agents}
-    admits = [
-        e for e in inv.hook("PreToolUse", "Write", "sub.txt") if e["agent"] and e["call"] in writes
-    ]
+    sub_writes = inv.hook("PreToolUse", "Write", "sub.txt")
+    admits = [e for e in sub_writes if e["agent"] and e["call"] in writes]
+    others = [e for e in sub_writes if not (e["agent"] and e["call"] in writes)]
     why = (
         missing(inv)
         or (None if agents else "the model made no Agent call in " + inv.name)
@@ -301,7 +301,9 @@ def judge_subagent(c: Cases) -> Verdict:
         "decided": [r.get("verdict") for r in reqs],
         "file": inv.files.get("sub.txt"),
     }
-    ok = bool(admits) and any(r.get("verdict") for r in reqs)
+    # The trail does not name the call a request came from, so a decision is
+    # the sub-agent's only when there are more than the other writes made.
+    ok = bool(admits) and sum(1 for r in reqs if r.get("verdict")) > len(others)
     return verdict(
         "a Write a sub-agent makes under the Agent call reaches the hook with the sub-agent's id, "
         "and the plane decides it",

@@ -34,6 +34,9 @@ class Result:
     An empty status, or one the contract does not declare, is completed as
     UNKNOWN. value is handed back to the caller and never sent. A time left
     as None is read from the client's clock; one given must be aware.
+    result_hash is empty or "sha256:" and 64 lower-case hex digits. A time
+    that is not aware, or a hash in any other form, cannot be reported: the
+    run is completed UNKNOWN and the call raises BadResult.
     """
 
     status: str = ""

@@ -111,6 +111,7 @@ func TestAClosedRunCanNeitherAdmitNorCloseWhatItOpened(t *testing.T) {
 	r.refused(t, runShut, enforce.PathAdmit, admitBody("read_file", `{"path":"a"}`), http.StatusUnauthorized, enforcev1alpha1.ErrorCode_ERROR_CODE_UNAUTHENTICATED)
 	r.refused(t, runShut, enforce.PathComplete, completeBody(handle, refund, "COMPLETION_STATUS_SUCCESS", ""), http.StatusUnauthorized, enforcev1alpha1.ErrorCode_ERROR_CODE_UNAUTHENTICATED)
 	r.refused(t, runA, enforce.PathComplete, completeBody(handle, refund, "COMPLETION_STATUS_SUCCESS", ""), http.StatusNotFound, codeUnknown)
+	r.settle(t)
 	if n := r.a.Sweep(t.Context(), r.clock.read().Add(time.Minute)); n != 1 {
 		t.Fatalf("Sweep abandoned %d", n)
 	}

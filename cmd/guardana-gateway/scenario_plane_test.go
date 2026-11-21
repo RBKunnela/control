@@ -38,7 +38,11 @@ func (h healthDoc) body() string {
 	if h.cause != "" {
 		parts["pause"] = strings.TrimSuffix(parts["pause"], "}") + fmt.Sprintf(`,"cause":%q}`, h.cause)
 	}
-	members := []string{`"mode":"APPROVE"`, `"bundle":{"id":"b","digest":"sha256:bb"}`}
+	bundle := `"bundle":{"id":"b","digest":"sha256:bb"}`
+	if h.omit == "digest" {
+		bundle = `"bundle":{"id":"b"}`
+	}
+	members := []string{`"mode":"APPROVE"`, bundle}
 	for _, k := range []string{"halted", "pipeline", "spool", "exporter", "pause", "policy"} {
 		if k != h.omit {
 			members = append(members, parts[k])
@@ -65,10 +69,10 @@ func scriptedPlane(t *testing.T, script ...healthDoc) *runner {
 	return &runner{plane: planeTarget{healthURL: ts.URL}, timeout: 300 * time.Millisecond, http: ts.Client()}
 }
 
-// TestHealthRefusesAnAnswerWithoutACounter: a counter the answer does not
-// carry is refused, never read as zero.
+// TestHealthRefusesAnAnswerWithoutACounter: a counter or the bundle digest
+// the answer does not carry is refused, never read as zero or as empty.
 func TestHealthRefusesAnAnswerWithoutACounter(t *testing.T) {
-	for _, omit := range []string{"halted", "pipeline", "spool", "exporter", "pause", "policy"} {
+	for _, omit := range []string{"halted", "pipeline", "spool", "exporter", "pause", "policy", "digest"} {
 		r := scriptedPlane(t, healthDoc{pauseState: "clear", omit: omit})
 		if _, err := r.health(context.Background()); err == nil || !strings.Contains(err.Error(), "without") {
 			t.Errorf("an answer without %s: err = %v", omit, err)

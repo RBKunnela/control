@@ -89,7 +89,7 @@ func TestACompleteIsRecordedAsTheClientReportedIt(t *testing.T) {
 	started, ended := base().Add(time.Second), base().Add(3*time.Second)
 	code, body := r.post(t, runA, enforce.PathComplete, completeBody(handle, refund, "COMPLETION_STATUS_SUCCESS",
 		`,"startedAt":"`+started.Format(time.RFC3339)+`","endedAt":"`+ended.Format(time.RFC3339)+
-			`","resultHash":"sha256:abc","sideEffectConfirmation":"rcpt-1"`))
+			`","resultHash":"sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae","sideEffectConfirmation":"rcpt-1"`))
 	if code != http.StatusOK || !strings.Contains(string(body), "ENDING_RECORDED") {
 		t.Fatalf("complete answered %d: %s", code, body)
 	}
@@ -103,7 +103,7 @@ func TestACompleteIsRecordedAsTheClientReportedIt(t *testing.T) {
 		{"status", res.GetStatus(), controlv1.ResultStatus_RESULT_STATUS_SUCCESS},
 		{"started_at", res.GetStartedAt().AsTime(), started},
 		{"ended_at", res.GetEndedAt().AsTime(), ended},
-		{"result_hash", res.GetResultHash(), "sha256:abc"},
+		{"result_hash", res.GetResultHash(), "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"},
 		{"side_effect_confirmation", res.GetSideEffectConfirmation(), "rcpt-1"},
 		{"retryable", res.GetRetryable(), false},
 		{"result_schema_valid", res.GetResultSchemaValid(), false},
@@ -222,11 +222,59 @@ func TestACompleteOrAbortBodyIsDecodedStrictly(t *testing.T) {
 	}
 }
 
+// A result hash is "sha256:" and 64 lower-case hex digits or nothing: any
+// other text could be the result itself, which capture off keeps out of the
+// trail, so it is refused before anything is written.
+func TestAResultHashThatIsNotAHashIsRefused(t *testing.T) {
+	const marker = "the-tool-printed-this"
+	hex64 := strings.Repeat("0123456789abcdef", 4)
+	r := newRig(t, defaults())
+	handle := r.executed(t, runA, "refund", refund)
+	for _, tc := range []struct{ name, hash string }{
+		{"raw output", `{\"stdout\":\"` + marker + `\"}`},
+		{"a marker after a valid hash", "sha256:" + hex64 + marker},
+		{"one digit short", "sha256:" + hex64[:63]},
+		{"one digit long", "sha256:" + hex64 + "0"},
+		{"upper-case digits", "sha256:" + strings.ToUpper(hex64)},
+		{"a digit that is not hex", "sha256:" + hex64[:63] + "g"},
+		{"another algorithm", "sha512:" + hex64},
+		{"no algorithm", hex64},
+		{"a prefix in another case", "SHA256:" + hex64},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			status, body := r.post(t, runA, enforce.PathComplete, completeBody(handle, refund, "COMPLETION_STATUS_SUCCESS", `,"resultHash":"`+tc.hash+`"`))
+			refusal(t, status, body, http.StatusBadRequest, enforcev1alpha1.ErrorCode_ERROR_CODE_MALFORMED)
+		})
+	}
+	for _, e := range r.sink.Events() {
+		if strings.Contains(protojson.Format(e), marker) {
+			t.Fatalf("a refused result hash reached the trail: %v", e)
+		}
+	}
+	if r.count(kindDone)+r.count(kindFailed) != 0 {
+		t.Fatalf("a refused complete closed the execution: %v", r.kinds())
+	}
+	code, body := r.post(t, runA, enforce.PathComplete, completeBody(handle, refund, "COMPLETION_STATUS_SUCCESS", `,"resultHash":"sha256:`+hex64+`"`))
+	if code != http.StatusOK {
+		t.Fatalf("a complete with a valid hash answered %d: %s", code, body)
+	}
+	if got := r.closing(t).GetResult().GetResultHash(); got != "sha256:"+hex64 {
+		t.Fatalf("result_hash %q", got)
+	}
+	second := r.executed(t, runA, "refund", refund)
+	if ending := r.complete(t, runA, second, refund, "COMPLETION_STATUS_SUCCESS"); ending != recorded {
+		t.Fatalf("a complete with no hash ended %s", ending)
+	}
+	if got := r.closing(t).GetResult().GetResultHash(); got != "" {
+		t.Fatalf("a complete with no hash recorded %q", got)
+	}
+}
+
 func TestTheCompleteBoundsAreWhereTheyAreDocumented(t *testing.T) {
 	r := newRig(t, defaults())
 	handle := r.executed(t, runA, "refund", refund)
 	sent := `{"p":"` + strings.Repeat("x", 65536-8) + `"}`
-	extra := `,"resultHash":"` + strings.Repeat("h", 1024) + `","sideEffectConfirmation":"` + strings.Repeat("c", 1024) + `"`
+	extra := `,"resultHash":"sha256:` + strings.Repeat("f", 64) + `","sideEffectConfirmation":"` + strings.Repeat("c", 1024) + `"`
 	code, body := r.post(t, runA, enforce.PathComplete, completeBody(handle, sent, "COMPLETION_STATUS_SUCCESS", extra))
 	if code != http.StatusOK {
 		t.Fatalf("a complete at every bound answered %d: %s", code, body)

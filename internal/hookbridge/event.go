@@ -1,6 +1,9 @@
 package hookbridge
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"unicode/utf8"
@@ -60,18 +63,88 @@ func ReadEvent(p *Profile, r io.Reader) (Event, error) {
 	if err != nil {
 		return Event{}, err
 	}
-	m := p.Members
-	input, present := o[m.Input]
-	switch {
-	case !present && ev.Phase == PhaseAdmit:
-		return Event{}, ErrNoInput
-	case present && (len(input) == 0 || input[0] != '{'):
-		return Event{}, ErrInputNotObject
-	case present:
-		ev.Input = input
+	if ev.Input, err = readInput(o[p.Members.Input], ev.Phase); err != nil {
+		return Event{}, err
 	}
-	ev.Interrupt = readInterrupt(o[m.Interrupt])
+	ev.Interrupt = readInterrupt(o[p.Members.Interrupt])
 	return ev, nil
+}
+
+// readInput reads the tool input as written: absent is nil, which an admit
+// may not be, and present is an object naming no member twice in any of its
+// objects.
+func readInput(input []byte, phase Phase) ([]byte, error) {
+	switch {
+	case input == nil && phase == PhaseAdmit:
+		return nil, ErrNoInput
+	case input == nil:
+		return nil, nil
+	case len(input) == 0 || input[0] != '{':
+		return nil, ErrInputNotObject
+	case repeatsAName(input):
+		return nil, fmt.Errorf("%w: the tool input names a member twice or cannot be read", ErrEventMalformed)
+	}
+	return input, nil
+}
+
+// repeatsAName reports whether any object of raw, a JSON value already read
+// as valid, names a member twice by its decoded name, or whether raw cannot
+// be read to its end after all, so that nothing unread passes as unrepeated.
+// The tokens are read one at a time, so no depth is bounded here: that is the
+// plane's to judge.
+func repeatsAName(raw []byte) bool {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	var s nameScan
+	for {
+		tok, err := dec.Token()
+		if err != nil {
+			return !errors.Is(err, io.EOF) || len(s.stack) > 0
+		}
+		if s.repeated(tok) {
+			return true
+		}
+	}
+}
+
+// nameScan follows the containers a token stream is in. In an object, a
+// string where a name stands is a member name; any other token there is a
+// value, after which a name stands again.
+type nameScan struct{ stack []*scanFrame }
+
+type scanFrame struct {
+	names  map[string]bool // nil for an array
+	atName bool
+}
+
+// repeated takes the next token and reports whether it names a member of its
+// object a second time.
+func (s *nameScan) repeated(tok json.Token) bool {
+	var top *scanFrame
+	if len(s.stack) > 0 {
+		top = s.stack[len(s.stack)-1]
+	}
+	inObject := top != nil && top.names != nil
+	if name, ok := tok.(string); ok && inObject && top.atName {
+		top.atName = false
+		if top.names[name] {
+			return true
+		}
+		top.names[name] = true
+		return false
+	}
+	if inObject {
+		top.atName = true
+	}
+	switch tok {
+	case json.Delim('{'):
+		s.stack = append(s.stack, &scanFrame{names: map[string]bool{}, atName: true})
+	case json.Delim('['):
+		s.stack = append(s.stack, &scanFrame{})
+	case json.Delim('}'), json.Delim(']'):
+		s.stack = s.stack[:len(s.stack)-1]
+	}
+	return false
 }
 
 // readInterrupt reads a flag written true or false; anything else, absence

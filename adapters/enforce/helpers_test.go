@@ -322,6 +322,31 @@ func (r *rig) post(t testing.TB, token, path, body string) (int, []byte) {
 	return resp.StatusCode, data
 }
 
+// settledWithin waits up to bound until no admit is still writing its
+// EXECUTE, and reports whether none is. An admit's client hears the answer
+// before the admit opens the execution, and a sweep passes over one still
+// being written, so a step that sweeps waits for this first.
+func (r *rig) settledWithin(bound time.Duration) bool {
+	deadline := time.Now().Add(bound)
+	for enforce.Minting(r.a) > 0 {
+		if !time.Now().Before(deadline) {
+			return false
+		}
+		time.Sleep(time.Millisecond)
+	}
+	return true
+}
+
+const settleBound = 10 * time.Second
+
+// settle fails t when an admit is still writing its EXECUTE after settleBound.
+func (r *rig) settle(t testing.TB) {
+	t.Helper()
+	if !r.settledWithin(settleBound) {
+		t.Fatalf("an admit was still writing its EXECUTE after %s", settleBound)
+	}
+}
+
 func (r *rig) kinds() []controlv1.EventKind {
 	var out []controlv1.EventKind
 	for _, e := range r.sink.Events() {

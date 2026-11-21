@@ -54,13 +54,22 @@ class Aborting(Rules):
             [self.admitted, (ABORT, {"handle": "h-1", "cause": "ABORT_CAUSE_ARGUMENTS_DIFFER"})],
         )
 
-    def test_a_call_that_proposed_no_bytes_runs_with_none(self) -> None:
-        client = self.serve(admit(b'{"outcome":1,"execution":{"handle":"h-1"}}'), complete())
-        got: list[bytes] = []
-        answer = client.call("t", b"", got.append)
-        self.assertEqual((got, answer.ran), ([b""], True))
-        self.assertEqual(self.sent()[0], (ADMIT, {"tool": "t"}))
-        self.assertNotIn("sentArguments", harness.as_object(self.sent()[1][1], "the complete"))
+    def test_a_call_that_proposed_no_bytes_is_aborted_when_none_are_authorized(self) -> None:
+        client = self.serve(admit(b'{"outcome":1,"execution":{"handle":"h-1"}}'), abort())
+        with self.assertRaises(CallAborted) as raised:
+            client.call("t", b"", self.untouched)
+        self.assertEqual(raised.exception.cause, "ABORT_CAUSE_ARGUMENTS_DIFFER")
+        self.assertEqual(
+            (raised.exception.answer.ran, raised.exception.answer.ending),
+            (False, "ENDING_RECORDED"),
+        )
+        self.assertEqual(
+            self.sent(),
+            [
+                (ADMIT, {"tool": "t"}),
+                (ABORT, {"handle": "h-1", "cause": "ABORT_CAUSE_ARGUMENTS_DIFFER"}),
+            ],
+        )
 
     def test_a_refused_abort_is_still_an_abort(self) -> None:
         client = self.serve(

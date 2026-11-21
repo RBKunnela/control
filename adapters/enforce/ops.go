@@ -79,6 +79,10 @@ func (a *Adapter) execute(ctx context.Context, w http.ResponseWriter, p Pipeline
 		Handle: id, ExpiresAt: timestamppb.New(e.expires), AuthorizedArguments: d.AuthorizedArgs, Obligations: toHonour(d.Obligations),
 	}
 	write(w, http.StatusOK, resp)
+	// The server would otherwise hold a small answer until the handler
+	// returns, after the abandon below; a writer that cannot flush, or a
+	// client gone, leaves nothing more to do than abandon.
+	_ = http.NewResponseController(w).Flush()
 	if a.handles.settle(e) {
 		a.abandon(ctx, p, []taken{{id, e}})
 	}

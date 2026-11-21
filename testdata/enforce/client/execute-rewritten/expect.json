@@ -17,7 +17,7 @@
         "status": "COMPLETION_STATUS_SUCCESS",
         "startedAt": "2026-10-11T12:00:01Z",
         "endedAt": "2026-10-11T12:00:02Z",
-        "resultHash": "sha256:5f1e",
+        "resultHash": "sha256:2689367b205c16ce32ed4200942b8b8b1e262dfc70d9bc9fbc77c49699a4f1df",
         "sideEffectConfirmation": "refund r-1"
       }
     }

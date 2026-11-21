@@ -213,13 +213,20 @@ def rewrite_denied(run: Run, halted: bool = False) -> Invocation:
     return inv
 
 
-def subagent(run: Run, under_agent: bool = True) -> Invocation:
+def subagent(
+    run: Run, under_agent: bool = True, decided: bool = True, parent_write: bool = False
+) -> Invocation:
     inv = run.inv("subagent")
     agent = inv.call("Agent", {"description": "write sub.txt"})
     i = {"file_path": inv.path("sub.txt"), "content": "sub"}
     cid = inv.call("Write", i, parent=agent if under_agent else None)
     inv.hook("PreToolUse", "Write", i, cid, agent="agent-1")
-    inv.request("r-sub", "Write", "sub.txt", PROPOSED, verdict="VERDICT_ALLOW")
+    if decided:
+        inv.request("r-sub", "Write", "sub.txt", PROPOSED, verdict="VERDICT_ALLOW")
+    if parent_write:
+        pid = inv.call("Write", i)
+        inv.hook("PreToolUse", "Write", i, pid)
+        inv.request("r-parent", "Write", "sub.txt", PROPOSED, verdict="VERDICT_ALLOW")
     return inv
 
 

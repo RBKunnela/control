@@ -208,7 +208,7 @@ class SecondClient:
             raise TypeError("the reader left no bytes")
         if execution.get("obligations") and not self._is("ignores-obligations"):
             self._abort(answer, handle, "ABORT_CAUSE_OBLIGATION")
-        if not authorized and arguments and not self._is("sends-proposed-when-empty"):
+        if not authorized and not self._is("sends-proposed-when-empty"):
             self._abort(answer, handle, "ABORT_CAUSE_ARGUMENTS_DIFFER")
         if _left(gone) and not self._is("ignores-context"):
             self._abort(answer, handle, "ABORT_CAUSE_NOT_SENT")

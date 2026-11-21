@@ -211,7 +211,9 @@ after <code>pending.retryAfter</code>.</li>
 <p>Send <code>complete</code> to <code>/enforce/v1alpha1/complete</code> with the handle, the bytes you
 sent and a status: success, failure, timeout, cancelled or unknown. When you
 cannot tell whether the effect happened, say timeout or unknown; the trail
-keeps it uncertain. Send <code>abort</code> only when nothing left: the bytes differ
+keeps it uncertain. A <code>resultHash</code>, if you send one, is <code>sha256:</code> and 64
+lower-case hex digits; anything else is refused. Send <code>abort</code> only when
+nothing left: the bytes differ, or the answer carries none
 (<code>ABORT_CAUSE_ARGUMENTS_DIFFER</code>), an obligation you cannot apply
 (<code>ABORT_CAUSE_OBLIGATION</code>), or you gave
 up before sending (<code>ABORT_CAUSE_NOT_SENT</code>). Never send an action again after a

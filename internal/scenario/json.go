@@ -35,9 +35,9 @@ type member struct {
 // keeps the last of two repeated members.
 //
 // A refusal about what a value holds (null, a repeated member, a string that
-// is not UTF-8 or escapes a lone surrogate, text after the document) is noted
-// and the parse goes on, so that the kind can be checked before any of them
-// is reported. A refusal about the shape of the text ends the parse, since
+// is not UTF-8 or escapes a lone surrogate, containers past the depth bound,
+// text after the document) is noted and the parse goes on, so that the kind
+// can be checked before any of them is reported. A refusal about the shape of the text ends the parse, since
 // nothing after it can be read.
 type parser struct {
 	raw   []byte
@@ -145,9 +145,111 @@ func (p *parser) tooDeep(depth int) *Refusal {
 	return refuse(p.stack, ErrTooDeep, fmt.Sprintf("%d containers, the bound is %d", depth, MaxDepth))
 }
 
+// skip notes the depth refusal for the container at p and reads past it,
+// still holding it to JSON syntax, with a stack of its own rather than the
+// call stack, so that the kind can be checked before the depth is reported.
+// Nothing inside it is kept.
+func (p *parser) skip(depth int) (*node, *Refusal) {
+	if p.first == nil {
+		p.first = p.tooDeep(depth)
+	}
+	n := &node{kind: kindArray, start: p.pos}
+	if p.at('{') {
+		n.kind = kindObject
+	}
+	var closers []byte
+	for {
+		p.ws()
+		complete := true
+		var fatal *Refusal
+		if p.at('{') || p.at('[') {
+			closers, complete, fatal = p.open(closers)
+		} else {
+			_, fatal = p.value(0)
+		}
+		if fatal != nil {
+			return nil, fatal
+		}
+		if !complete {
+			continue
+		}
+		if closers, fatal = p.after(closers); fatal != nil {
+			return nil, fatal
+		}
+		if len(closers) == 0 {
+			n.end = p.pos
+			return n, nil
+		}
+	}
+}
+
+// open reads the opening of a skipped container. An empty one is read whole
+// and complete; otherwise its closer is pushed, and an object's first name
+// read, so that a value comes next.
+func (p *parser) open(closers []byte) ([]byte, bool, *Refusal) {
+	closer := byte(']')
+	if p.at('{') {
+		closer = '}'
+	}
+	p.pos++
+	p.ws()
+	if p.at(closer) {
+		p.pos++
+		return closers, true, nil
+	}
+	if closer == '}' {
+		if fatal := p.memberName(); fatal != nil {
+			return nil, false, fatal
+		}
+	}
+	return append(closers, closer), false, nil
+}
+
+// after reads what follows a complete value in a skipped container: the
+// closers it ends, then a comma, and an object's next name, before the next
+// value. It returns the containers still open, none once the skipped one
+// closed.
+func (p *parser) after(closers []byte) ([]byte, *Refusal) {
+	for len(closers) > 0 {
+		closer := closers[len(closers)-1]
+		done, fatal := p.next(closer)
+		if fatal != nil {
+			return nil, fatal
+		}
+		if done {
+			closers = closers[:len(closers)-1]
+			continue
+		}
+		if closer == '}' {
+			if fatal := p.memberName(); fatal != nil {
+				return nil, fatal
+			}
+		}
+		return closers, nil
+	}
+	return closers, nil
+}
+
+// memberName reads a member's name and its colon inside a skipped container.
+func (p *parser) memberName() *Refusal {
+	p.ws()
+	if !p.at('"') {
+		return p.syntax("a member name is missing")
+	}
+	if _, _, fatal := p.str(); fatal != nil {
+		return fatal
+	}
+	p.ws()
+	if !p.at(':') {
+		return p.syntax("a colon is missing")
+	}
+	p.pos++
+	return nil
+}
+
 func (p *parser) object(depth int) (*node, *Refusal) {
 	if depth > MaxDepth {
-		return nil, p.tooDeep(depth)
+		return p.skip(depth)
 	}
 	n := &node{kind: kindObject, start: p.pos}
 	p.pos++
@@ -196,7 +298,7 @@ func (p *parser) object(depth int) (*node, *Refusal) {
 
 func (p *parser) array(depth int) (*node, *Refusal) {
 	if depth > MaxDepth {
-		return nil, p.tooDeep(depth)
+		return p.skip(depth)
 	}
 	n := &node{kind: kindArray, start: p.pos}
 	p.pos++

@@ -278,9 +278,14 @@ environment, never from a flag or the event. Start Claude Code with it set.</p>
 its effect class; a tool it does not name is refused, and the call blocked,
 except on a plane in <code>OBSERVE</code>. Name <code>ToolSearch</code> too: Claude Code calls it
 to load a deferred tool, an MCP tool among them, so a table without it
-blocks every deferred tool <em>(seen on 2.1.303)</em>. Class <code>Agent</code> as <code>EXECUTE</code>:
-<code>SPAWN_OR_DELEGATE</code> needs a delegation the enforcement API does not carry,
-so the plane refuses to start with a tool of that class. For example:</p>
+blocks every deferred tool <em>(seen on 2.1.303)</em>. <code>SPAWN_OR_DELEGATE</code> needs
+a delegation the enforcement API does not carry, so the plane refuses to
+start with a tool of that class, and <code>Agent</code> has to be classed <code>EXECUTE</code>.
+A rule on <code>SPAWN_OR_DELEGATE</code> then never sees a sub-agent start, and a
+rule that allows <code>EXECUTE</code> allows it unless another rule stops it: a rule
+on <code>action.name</code> <code>[Agent]</code> or <code>resource.type</code> <code>[agent]</code> whose <code>DENY</code> or
+<code>REQUIRE_APPROVAL</code> matches overrides an <code>ALLOW</code> on <code>EXECUTE</code>, wherever it
+stands in the policy. For example:</p>
 <pre><code class="language-yaml">tools:
   - name: Bash
     effect: EXECUTE
@@ -340,8 +345,9 @@ so the plane refuses to start with a tool of that class. For example:</p>
 </table>
 </div>
 <p>An event that is over 16 MiB, is not one JSON object of valid UTF-8, names a
-member twice, lacks the tool name, the call id or the session id, carries a
-<code>tool_input</code> that is not an object, or is a <code>PreToolUse</code> without one is
+member twice, in the event or in any object of its <code>tool_input</code>, lacks the
+tool name, the call id or the session id, carries a <code>tool_input</code> that is not
+an object, or is a <code>PreToolUse</code> without one is
 refused before anything is sent, with the profile's block status, 2, and so
 is any event when the hook has no run token. A member spelled in another case
 is not read, so it counts as absent.</p>
@@ -364,6 +370,9 @@ more than 32 nested containers is refused by the plane and denied.</p>
 <p>None of these is closed by the profile.</p>
 <ul>
 <li>A file referenced with <code>@</code> enters the context with no tool call.</li>
+<li>A sub-agent's start is decided as an <code>EXECUTE</code> call with no delegation:
+a policy that judges effect classes alone cannot tell it from a shell
+command.</li>
 <li><code>EndConversation</code> starts no hook.</li>
 <li>A process a shell command starts, or a shell command that writes a file, is
 not seen beyond the shell call itself.</li>

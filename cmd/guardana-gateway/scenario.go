@@ -84,6 +84,28 @@ type runner struct {
 // each in order. It exits 1 when any scenario differed, else 2 when any could
 // not run, else 0.
 func runScenarios(ctx context.Context, opts scenarioOptions, paths []string, stdout, stderr io.Writer) int {
+	return reported("scenario", stdout, stderr, func(stdout io.Writer) int {
+		return runEach(ctx, opts, paths, stdout, stderr)
+	})
+}
+
+// reported runs a command that reports on stdout and holds its status to
+// that report: a status of 0 whose report stdout did not take whole is 2,
+// since a pass nobody could read is none.
+func reported(command string, stdout, stderr io.Writer, run func(stdout io.Writer) int) int {
+	out := &reportWriter{w: stdout}
+	status := run(out)
+	if out.err == nil {
+		return status
+	}
+	writeLine(stderr, brand.Gateway+": "+command+": writing the report: "+oneLine(out.err.Error()))
+	if status == exitOK {
+		return exitCouldNotRun
+	}
+	return status
+}
+
+func runEach(ctx context.Context, opts scenarioOptions, paths []string, stdout, stderr io.Writer) int {
 	loaded, err := loadScenarios(paths, stdout)
 	if err != nil {
 		return couldNotRun(stderr, err)

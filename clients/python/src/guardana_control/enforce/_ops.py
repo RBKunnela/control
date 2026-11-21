@@ -151,7 +151,7 @@ def admit(post: Post, tool: str, arguments: bytes) -> Admitted:
     cause = ""
     if execution.get("obligations"):
         cause = OBLIGATION
-    elif not authorized and arguments:
+    elif not authorized:
         cause = ARGUMENTS_DIFFER
     return Admitted(EXECUTE, decision, handle=handle, authorized=authorized, abort_cause=cause)
 

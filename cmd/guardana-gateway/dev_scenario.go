@@ -17,6 +17,12 @@ import (
 // no page. It exits 1 when any scenario differed, else 2 when any could not
 // run or its plane stopped on its own or did not stop cleanly, else 0.
 func devScenarios(ctx context.Context, in devInputs, o devOptions, stdout, stderr io.Writer) int {
+	return reported("dev", stdout, stderr, func(stdout io.Writer) int {
+		return devEach(ctx, in, o, stdout, stderr)
+	})
+}
+
+func devEach(ctx context.Context, in devInputs, o devOptions, stdout, stderr io.Writer) int {
 	loaded, err := loadScenarios(o.scenarios, stdout)
 	if err != nil {
 		return couldNotRun(stderr, err)

@@ -25,6 +25,7 @@
     "tools_seen": {"value": ["Bash", "PowerShell", "Edit", "Write", "Read", "Glob", "Grep", "Agent", "Workflow", "WebFetch", "WebSearch", "AskUserQuestion", "ExitPlanMode", "ToolSearch"], "backed_by": []},
     "bypasses": [
       {"text": "a file referenced with @ enters the context with no tool call", "backed_by": []},
+      {"text": "a sub-agent's start is decided as an EXECUTE call with no delegation, so a policy that judges effect classes alone cannot tell it from a shell command", "backed_by": []},
       {"text": "EndConversation starts no hook", "backed_by": []},
       {"text": "a process a shell command starts, or a shell command that writes a file, is not seen beyond the shell call itself", "backed_by": []},
       {"text": "a hook with async: true cannot decide", "backed_by": []},

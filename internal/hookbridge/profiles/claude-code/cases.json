@@ -28,6 +28,7 @@
     "pre-bash": {"input": "{\"command\":\"npm test\",\"description\":\"Run the test suite\",\"timeout\":120000}", "policy": "allow", "allow": true},
     "pre-depth-32": {"input": "{\"command\":\"true\",\"nested\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}", "policy": "allow", "allow": true},
     "pre-depth-33": {"input": "{\"command\":\"true\",\"nested\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}", "policy": "allow", "reason": "blocked by policy"},
+    "pre-duplicate-input-member": {"refused": "malformed"},
     "pre-duplicate-tool-input": {"refused": "malformed"},
     "pre-edit": {"input": "{\"file_path\":\"/work/project/src/app.js\",\"old_string\":\"const port = 3000;\",\"new_string\":\"const port = 8080;\",\"replace_all\":false}", "policy": "deny", "reason": "blocked by policy (RULE_DENY)"},
     "pre-input-absent": {"refused": "no-input"},

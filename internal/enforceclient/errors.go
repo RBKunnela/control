@@ -49,6 +49,11 @@ const (
 	// ENDING_RECORDED: the tool ran, but no closing record is known to have
 	// landed.
 	ErrNotRecorded Error = "enforceclient: the closing record did not land"
+	// ErrBadResult is a run whose Result cannot be reported as it stands:
+	// its ResultHash is not empty or "sha256:" and 64 lower-case hex digits.
+	// The complete said UNKNOWN and carried neither the hash nor the
+	// confirmation.
+	ErrBadResult Error = "enforceclient: the tool's result cannot be reported"
 	// ErrTransport is a request that got no answer.
 	ErrTransport Error = "enforceclient: no answer from the receiver"
 	// ErrNotSent is what an Exec returns when it knows the bytes never left,

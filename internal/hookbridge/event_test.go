@@ -29,6 +29,9 @@ func eventRefusals() []eventCase {
 	return []eventCase{
 		{"a member named twice", `{"event":"BeforeTool","session":"s-1","call":"c-1","call":"c-2","tool":"refund","input":{}}`, hookbridge.ErrEventMalformed},
 		{"a member named twice in another spelling", `{"event":"BeforeTool","session":"s-1","call":"c-1","tool":"refund","input":{},"input":{"a":1}}`, hookbridge.ErrEventMalformed},
+		{"an input member named twice", strings.Replace(plainAdmit, `"amount":5`, `"amount":5,"amount":6`, 1), hookbridge.ErrEventMalformed},
+		{"an input member named twice in another spelling", strings.Replace(plainAdmit, `"amount":5`, `"amount":5,"\u0061mount":6`, 1), hookbridge.ErrEventMalformed},
+		{"a member named twice deep in the input", strings.Replace(plainAdmit, `"amount":5`, `"opts":{"items":[1,{"a":1,"a":2}]}`, 1), hookbridge.ErrEventMalformed},
 		{"bytes after the object", plainAdmit + `{}`, hookbridge.ErrEventMalformed},
 		{"text after the object", plainAdmit + ` x`, hookbridge.ErrEventMalformed},
 		{"an array", `[` + plainAdmit + `]`, hookbridge.ErrEventMalformed},
@@ -117,6 +120,16 @@ func interruptMisses(p *hookbridge.Profile, read reader) []string {
 		}
 	}
 	return miss
+}
+
+// A name repeated in another object of the input, nested or beside it, is
+// not a member named twice.
+func TestANameInAnotherObjectOfTheInputIsNotRepeated(t *testing.T) {
+	input := `{"a":{"a":1,"b":{"a":2}},"b":[{"a":1},{"a":2}],"c":{}}`
+	ev, err := hookbridge.ReadEvent(neutral(t), strings.NewReader(strings.Replace(plainAdmit, `{"account":"acct-1", "amount":5}`, input, 1)))
+	if err != nil || string(ev.Input) != input {
+		t.Fatalf("ReadEvent = %q, %v; want the input as written", ev.Input, err)
+	}
 }
 
 func TestAnEventIsReadAsWritten(t *testing.T) {

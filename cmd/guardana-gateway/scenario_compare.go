@@ -4,11 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/canon"
+	"github.com/guardana/control/internal/policy/strictjson"
 	"github.com/guardana/control/internal/scenario"
+	"github.com/guardana/control/internal/trailchain"
 )
 
 // The flow state a fresh run starts from, as its first proposal records it.
@@ -61,10 +64,19 @@ func judgeCall(i int, c *scenario.Call, seen callSeen, plane planeFacts) ([]diff
 		}
 	}
 	add("answer.kind", string(c.Answer.Kind), string(seen.answer.kind))
-	add("answer.codes", list(c.Answer.Codes), list(seen.answer.codes))
-	decided := withKind(seen.trail, controlv1.EventKind_EVENT_KIND_POLICY_DECIDED)
-	if len(decided) > 1 {
-		return nil, fmt.Errorf("the trail holds %d POLICY_DECIDED events", len(decided))
+	addList := func(member string, want, got []string) {
+		if !slices.Equal(want, got) {
+			w, g := list(want), list(got)
+			if w == g {
+				w, g = quotedList(want), quotedList(got)
+			}
+			out = append(out, difference{i, member, w, g})
+		}
+	}
+	addList("answer.codes", c.Answer.Codes, seen.answer.codes)
+	decided, err := decidedOf(seen.trail)
+	if err != nil {
+		return nil, err
 	}
 	switch {
 	case c.Decided.None || len(decided) == 0:
@@ -72,7 +84,7 @@ func judgeCall(i int, c *scenario.Call, seen callSeen, plane planeFacts) ([]diff
 	default:
 		d := decided[0].GetDecision()
 		add("decided.verdict", verdictName(c.Decided.Verdict), verdictName(d.GetVerdict()))
-		add("decided.codes", list(c.Decided.Codes), list(d.GetReasonCodes()))
+		addList("decided.codes", c.Decided.Codes, d.GetReasonCodes())
 		want, err := wantObligations(c.Decided.Obligations)
 		if err != nil {
 			return nil, err
@@ -94,6 +106,21 @@ func judgeCall(i int, c *scenario.Call, seen callSeen, plane planeFacts) ([]diff
 	return out, nil
 }
 
+// decidedOf is the trail's POLICY_DECIDED, none or one, whose decision is of
+// the major this build reads; anything else cannot be compared.
+func decidedOf(trail []*controlv1.Event) ([]*controlv1.Event, error) {
+	decided := withKind(trail, controlv1.EventKind_EVENT_KIND_POLICY_DECIDED)
+	if len(decided) > 1 {
+		return nil, fmt.Errorf("the trail holds %d POLICY_DECIDED events", len(decided))
+	}
+	if len(decided) == 1 {
+		if err := checkDecisionVersion(decided[0].GetDecision()); err != nil {
+			return nil, err
+		}
+	}
+	return decided, nil
+}
+
 // judgePlane holds a trail to what the plane is. The decision id is checked
 // against a trail that records a decision; a trail that records none shows
 // that in its kinds. A pending answer's approval id must be the one the
@@ -101,6 +128,9 @@ func judgeCall(i int, c *scenario.Call, seen callSeen, plane planeFacts) ([]diff
 // arguments sent are held to the trail's first proposal, which for a retry
 // is the held call's.
 func judgePlane(seen callSeen, plane planeFacts, add func(member, want, got string)) error {
+	if plane.digest == "" {
+		return errors.New("the plane reported no policy bundle digest to hold the trail to")
+	}
 	var modes, digests, recorded []string
 	for _, ev := range seen.trail {
 		modes = append(modes, modeName(ev.GetEnforcementMode()))
@@ -247,6 +277,31 @@ func modeName(m controlv1.EnforcementMode) string {
 }
 
 func list(items []string) string { return "[" + strings.Join(items, ", ") + "]" }
+
+// quotedList renders items each quoted, for two lists that list renders alike.
+func quotedList(items []string) string {
+	quoted := make([]string, len(items))
+	for i, s := range items {
+		quoted[i] = strconv.Quote(s)
+	}
+	return list(quoted)
+}
+
+// maxQuotedVersionBytes bounds how much of a refused version an error quotes.
+const maxQuotedVersionBytes = 32
+
+// checkDecisionVersion refuses a decision whose schema_version is not
+// MAJOR.MINOR on the major the generated Decision carries; a later minor is
+// read.
+func checkDecisionVersion(d *controlv1.Decision) error {
+	pkg := string((&controlv1.Decision{}).ProtoReflect().Descriptor().ParentFile().Package())
+	want := strings.TrimPrefix(pkg[strings.LastIndex(pkg, ".")+1:], "v")
+	if !strictjson.IsVersion(d.GetSchemaVersion(), want) {
+		return fmt.Errorf("the trail's POLICY_DECIDED carries a decision of schema_version %s, and this build reads major %s",
+			trailchain.Quoted(d.GetSchemaVersion(), maxQuotedVersionBytes), want)
+	}
+	return nil
+}
 
 // wantObligations renders the scenario's obligations as canonical JSON, the
 // parameters as written and canonicalized.

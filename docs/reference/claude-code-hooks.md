@@ -116,9 +116,14 @@ not the plane, runs the call.
   its effect class; a tool it does not name is refused, and the call blocked,
   except on a plane in `OBSERVE`. Name `ToolSearch` too: Claude Code calls it
   to load a deferred tool, an MCP tool among them, so a table without it
-  blocks every deferred tool *(seen on 2.1.303)*. Class `Agent` as `EXECUTE`:
-  `SPAWN_OR_DELEGATE` needs a delegation the enforcement API does not carry,
-  so the plane refuses to start with a tool of that class. For example:
+  blocks every deferred tool *(seen on 2.1.303)*. `SPAWN_OR_DELEGATE` needs
+  a delegation the enforcement API does not carry, so the plane refuses to
+  start with a tool of that class, and `Agent` has to be classed `EXECUTE`.
+  A rule on `SPAWN_OR_DELEGATE` then never sees a sub-agent start, and a
+  rule that allows `EXECUTE` allows it unless another rule stops it: a rule
+  on `action.name` `[Agent]` or `resource.type` `[agent]` whose `DENY` or
+  `REQUIRE_APPROVAL` matches overrides an `ALLOW` on `EXECUTE`, wherever it
+  stands in the policy. For example:
 
   ```yaml
   tools:
@@ -150,8 +155,9 @@ not the plane, runs the call.
 | `PostToolUseFailure` | complete-failure | the same, and `is_interrupt`: `false` reports a failure, `true` or absent reports an unknown outcome | as `PostToolUse` | as `PostToolUse` |
 
 An event that is over 16 MiB, is not one JSON object of valid UTF-8, names a
-member twice, lacks the tool name, the call id or the session id, carries a
-`tool_input` that is not an object, or is a `PreToolUse` without one is
+member twice, in the event or in any object of its `tool_input`, lacks the
+tool name, the call id or the session id, carries a `tool_input` that is not
+an object, or is a `PreToolUse` without one is
 refused before anything is sent, with the profile's block status, 2, and so
 is any event when the hook has no run token. A member spelled in another case
 is not read, so it counts as absent.
@@ -177,6 +183,9 @@ more than 32 nested containers is refused by the plane and denied.
 None of these is closed by the profile.
 
 - A file referenced with `@` enters the context with no tool call.
+- A sub-agent's start is decided as an `EXECUTE` call with no delegation:
+  a policy that judges effect classes alone cannot tell it from a shell
+  command.
 - `EndConversation` starts no hook.
 - A process a shell command starts, or a shell command that writes a file, is
   not seen beyond the shell call itself.

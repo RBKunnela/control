@@ -13,7 +13,10 @@ import (
 
 // Result is what the tool reports of one run. A Status that is UNSPECIFIED,
 // or a number the contract does not declare, is completed as UNKNOWN; a
-// zero StartedAt or EndedAt is taken from the client's clock.
+// zero StartedAt or EndedAt is taken from the client's clock. ResultHash is
+// empty or "sha256:" and 64 lower-case hex digits; any other value cannot be
+// reported, so the run is completed UNKNOWN without the hash or the
+// confirmation, and ErrBadResult is returned.
 type Result struct {
 	Status                 enforcev1alpha1.CompletionStatus
 	StartedAt              time.Time
@@ -46,11 +49,10 @@ type Answer struct {
 // Call admits tool with args and, only on an EXECUTE answer it can read in
 // full, runs exec with exactly the authorized bytes and reports the run with
 // one complete. It aborts instead when the execution carries an obligation,
-// carries no bytes for a call that proposed some, or ctx ended before exec
-// started. It never sends an admit, a complete or an abort twice.
+// carries no authorized bytes, or ctx ended before exec started. It never sends an admit, a complete or an abort twice.
 //
-// The error is nil only when exec ran, returned no error and the receiver
-// answered ENDING_RECORDED. Answer.Ran says whether an effect may have
+// The error is nil only when exec ran, returned no error and a Result that
+// could be reported, and the receiver answered ENDING_RECORDED. Answer.Ran says whether an effect may have
 // happened whatever the error.
 func (c *Client) Call(ctx context.Context, tool string, args []byte, exec Exec) (Answer, error) {
 	ans, adm, cause, err := c.Admit(ctx, tool, args, "", CarryAuthorized)

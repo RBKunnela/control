@@ -45,6 +45,9 @@ from tests.rules import (
     succeed,
 )
 
+HASH = "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
+HEX64 = "0123456789abcdef" * 4
+
 
 class Running(Rules):
     """What the tool gets, and what becomes of what it does."""
@@ -108,7 +111,7 @@ class Running(Rules):
             Status.SUCCESS,
             started_at=datetime(2026, 10, 11, 14, 0, 1, tzinfo=PLUS_TWO),
             ended_at=datetime(2026, 10, 11, 12, 0, 3, 250, tzinfo=UTC),
-            result_hash="sha256:77aa",
+            result_hash=HASH,
             side_effect_confirmation="za\u017c\u00f3\u0142\u0107 r-1",
         )
         answer = client.call("t", ARGUMENTS, lambda _: reported)
@@ -123,7 +126,7 @@ class Running(Rules):
                     "status": "COMPLETION_STATUS_SUCCESS",
                     "startedAt": "2026-10-11T12:00:01Z",
                     "endedAt": "2026-10-11T12:00:03.000250Z",
-                    "resultHash": "sha256:77aa",
+                    "resultHash": HASH,
                     "sideEffectConfirmation": "za\u017c\u00f3\u0142\u0107 r-1",
                 },
             ),
@@ -367,6 +370,14 @@ class Running(Rules):
             (misreporting(result_hash=7), "Result.result_hash"),
             (misreporting(side_effect_confirmation=b"r-1"), "Result.side_effect_confirmation"),
             (misreporting(result_hash="\udc00"), "Result.result_hash"),
+            (misreporting(result_hash="sha256:77aa"), "Result.result_hash"),
+            (misreporting(result_hash="sha256:" + HEX64 + "0"), "Result.result_hash"),
+            (misreporting(result_hash="sha256:" + HEX64.upper()), "Result.result_hash"),
+            (misreporting(result_hash="sha256:" + HEX64[:63] + "g"), "Result.result_hash"),
+            (misreporting(result_hash="sha512:" + HEX64), "Result.result_hash"),
+            (misreporting(result_hash="sha256:"), "Result.result_hash"),
+            (misreporting(result_hash=HEX64), "Result.result_hash"),
+            (misreporting(result_hash="sha256:" + HEX64 + "\n"), "Result.result_hash"),
             (misreporting(started_at=datetime(2026, 10, 11, 12, 0, 1)), "Result.started_at"),
             (misreporting(ended_at="2026-10-11T12:00:01Z"), "Result.ended_at"),
             (misreporting(ended_at=datetime.min.replace(tzinfo=PLUS_TWO)), "Result.ended_at"),

@@ -149,5 +149,6 @@ each on a plane of its own: a new state directory (a numbered one under
 `--state` when given), a new plane, no page, stopped once the scenario ends.
 Each line is the runner's ([scenario-format.md](scenario-format.md)), after
 one line naming the scenario's state directory. It exits 1 when any
-scenario differed, else 2 when any could not run, or its plane stopped on its
-own or did not stop cleanly, else 0.
+scenario differed, else 2 when any could not run, its plane stopped on its own
+or did not stop cleanly, or standard output did not take the report whole,
+else 0.

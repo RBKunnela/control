@@ -1625,7 +1625,10 @@ the run and the operator's table of tools. The answer's `outcome` is one of:
 `decision` is the v1 `Decision` the outcome was answered from.
 
 A complete names the handle, the bytes that were sent, a `status`, the start
-and end times, a `result_hash` and a `side_effect_confirmation`. A client that
+and end times, a `result_hash` and a `side_effect_confirmation`. A
+`result_hash` is `sha256:` and 64 lower-case hex digits, or absent; any other
+text is refused as `ERROR_CODE_MALFORMED`, so a tool's output cannot reach the
+trail through it. A client that
 cannot tell whether the bytes left completes with `COMPLETION_STATUS_UNKNOWN`
 and never aborts. An abort names the handle and one cause:
 `ABORT_CAUSE_ARGUMENTS_DIFFER`, `ABORT_CAUSE_OBLIGATION` or

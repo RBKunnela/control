@@ -23,6 +23,24 @@ func TestKindIsCheckedFirst(t *testing.T) {
 	}
 }
 
+// TestKindIsCheckedBeforeTheDepth: containers past the bound, before or
+// after kind and however many, do not hide a kind this build does not read;
+// the text past the bound is still held to JSON syntax.
+func TestKindIsCheckedBeforeTheDepth(t *testing.T) {
+	nest := func(n int, inner string) string { return strings.Repeat("[", n) + inner + strings.Repeat("]", n) }
+	for _, raw := range []string{
+		`{"kind":"agent-scenario/v2","deep":` + nest(64, "") + `}`,
+		`{"deep":` + nest(64, "") + `,"kind":"agent-scenario/v2"}`,
+		`{"deep":` + nest(64, `{"a":[1,"x",true,false,{}],"b":{"c":[]}}`) + `,"kind":"agent-scenario/v2"}`,
+		`{"deep":{"x":` + nest(100000, "") + `},"kind":"agent-scenario/v2"}`,
+	} {
+		refused(t, raw, scenario.ErrKind, "kind")
+	}
+	refused(t, `{"kind":"agent-scenario/v2","deep":`+nest(64, "1,,2")+`}`, scenario.ErrSyntax, "deep"+strings.Repeat("[0]", 63))
+	refused(t, `{"kind":"agent-scenario/v2","deep":`+nest(64, `{"a" 1}`)+`}`, scenario.ErrSyntax, "deep"+strings.Repeat("[0]", 63))
+	refused(t, `{"kind":"agent-scenario/v2","deep":`+strings.Repeat("[", 66)+"]", scenario.ErrSyntax, "deep"+strings.Repeat("[0]", 63))
+}
+
 // TestKindRefusals: a document with no kind, two, or one that is not a
 // string names kind; one that is not an object has no kind to name.
 func TestKindRefusals(t *testing.T) {

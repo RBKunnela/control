@@ -146,24 +146,32 @@ func (r *runner) health(ctx context.Context) (planeState, error) {
 	return b.state(resp.StatusCode)
 }
 
+// missing names the first member the runner reads that the answer lacks, or
+// is empty when it carries every one.
+func (b healthBody) missing() string {
+	switch {
+	case b.Bundle.Digest == "":
+		return "bundle.digest"
+	case b.Halted == nil:
+		return "halted"
+	case b.Pipeline.Admitted == nil:
+		return "pipeline.admitted"
+	case b.Spool == nil || b.Spool.Unacknowledged == nil || b.Spool.Quarantined == nil:
+		return "the spool's counters"
+	case b.Exporter.Acknowledged == nil || b.Exporter.PartialRejected == nil:
+		return "the exporter's counters"
+	case b.Pause.Entries == nil:
+		return "pause.entries"
+	case b.Policy.Freshness == "":
+		return "policy.freshness"
+	}
+	return ""
+}
+
 func (b healthBody) state(status int) (planeState, error) {
 	s := planeState{status: status, mode: b.Mode, bundleID: b.Bundle.ID, digest: b.Bundle.Digest, pauseState: b.Pause.State, pauseCause: b.Pause.Cause, polls: -1}
-	missing := func(name string) (planeState, error) {
+	if name := b.missing(); name != "" {
 		return planeState{}, fmt.Errorf("/healthz answered %d without %s", status, name)
-	}
-	switch {
-	case b.Halted == nil:
-		return missing("halted")
-	case b.Pipeline.Admitted == nil:
-		return missing("pipeline.admitted")
-	case b.Spool == nil || b.Spool.Unacknowledged == nil || b.Spool.Quarantined == nil:
-		return missing("the spool's counters")
-	case b.Exporter.Acknowledged == nil || b.Exporter.PartialRejected == nil:
-		return missing("the exporter's counters")
-	case b.Pause.Entries == nil:
-		return missing("pause.entries")
-	case b.Policy.Freshness == "":
-		return missing("policy.freshness")
 	}
 	s.freshness = b.Policy.Freshness
 	s.halted, s.admitted, s.entries = *b.Halted, *b.Pipeline.Admitted, *b.Pause.Entries

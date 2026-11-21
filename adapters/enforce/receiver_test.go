@@ -52,7 +52,20 @@ func runReceiverCase(t *testing.T, id string, d defect) []string {
 	return x.miss
 }
 
+// settledFor waits, before a step that advances the clock or sweeps, until
+// no admit is still writing its EXECUTE, and reports whether the step may run.
+func (x *exchange) settledFor(line int, s step) bool {
+	if (s.Advance == "" && s.Sweep == nil) || x.r.settledWithin(settleBound) {
+		return true
+	}
+	x.missf("line %d: an admit was still writing its EXECUTE after %s", line, settleBound)
+	return false
+}
+
 func (x *exchange) step(line int, s step) {
+	if !x.settledFor(line, s) {
+		return
+	}
 	switch {
 	case s.Advance != "":
 		d, err := time.ParseDuration(s.Advance)

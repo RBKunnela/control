@@ -96,6 +96,14 @@ class Subagent(Case):
         layouts.subagent(self.run_)
         self.assertEqual(self.result("subagent"), ("pass", None))
 
+    def test_a_parents_decision_is_not_credited_to_the_sub_agent(self) -> None:
+        layouts.subagent(self.run_, decided=False, parent_write=True)
+        self.assertEqual(self.result("subagent"), ("fail", None))
+
+    def test_a_sub_agents_write_decided_beside_the_parents_passes(self) -> None:
+        layouts.subagent(self.run_, parent_write=True)
+        self.assertEqual(self.result("subagent"), ("pass", None))
+
     def test_a_write_not_under_the_agent_is_unknown(self) -> None:
         layouts.subagent(self.run_, under_agent=False)
         want = "no Write ran under the Agent call in subagent/run"

@@ -2172,7 +2172,10 @@ approval.</li>
 </ul>
 <p><code>decision</code> is the v1 <code>Decision</code> the outcome was answered from.</p>
 <p>A complete names the handle, the bytes that were sent, a <code>status</code>, the start
-and end times, a <code>result_hash</code> and a <code>side_effect_confirmation</code>. A client that
+and end times, a <code>result_hash</code> and a <code>side_effect_confirmation</code>. A
+<code>result_hash</code> is <code>sha256:</code> and 64 lower-case hex digits, or absent; any other
+text is refused as <code>ERROR_CODE_MALFORMED</code>, so a tool's output cannot reach the
+trail through it. A client that
 cannot tell whether the bytes left completes with <code>COMPLETION_STATUS_UNKNOWN</code>
 and never aborts. An abort names the handle and one cause:
 <code>ABORT_CAUSE_ARGUMENTS_DIFFER</code>, <code>ABORT_CAUSE_OBLIGATION</code> or

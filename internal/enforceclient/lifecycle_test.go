@@ -17,6 +17,7 @@ import (
 const (
 	argumentsDiffer = enforcev1alpha1.AbortCause_ABORT_CAUSE_ARGUMENTS_DIFFER
 	noCause         = enforcev1alpha1.AbortCause_ABORT_CAUSE_UNSPECIFIED
+	validHash       = "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
 )
 
 func TestExactOnlyRefusesARewrittenExecute(t *testing.T) {
@@ -65,10 +66,26 @@ func TestExactOnlyHandsOutAnUnchangedExecute(t *testing.T) {
 	if adm.Handle != "h-2" || string(adm.Authorized) != `{"a":1}` || !adm.ExpiresAt.Equal(want) {
 		t.Fatalf("admission %+v", adm)
 	}
+}
 
-	c, _ = scriptedClient(t, answer(enforceclient.PathAdmit, 200, `{"outcome":"OUTCOME_EXECUTE","execution":{"handle":"h-3"}}`))
-	if _, adm, _, err := c.Admit(context.Background(), "t", nil, "", enforceclient.CarryExactOnly); err != nil || adm.Handle != "h-3" || !adm.ExpiresAt.IsZero() {
-		t.Fatalf("no bytes proposed, none authorized: %+v, %v", adm, err)
+// An EXECUTE that carries no authorized bytes is aborted whatever was
+// proposed, nothing included: the tool runs only on bytes the plane handed
+// back.
+func TestAnExecuteWithoutAuthorizedBytesIsAborted(t *testing.T) {
+	for _, carry := range []enforceclient.Carry{enforceclient.CarryExactOnly, enforceclient.CarryAuthorized} {
+		for _, proposed := range []string{"", `{"a":1}`} {
+			c, r := scriptedClient(t, answer(enforceclient.PathAdmit, 200, `{"outcome":"OUTCOME_EXECUTE","execution":{"handle":"h-3"}}`))
+			_, adm, cause, err := c.Admit(context.Background(), "t", []byte(proposed), "", carry)
+			if !errors.Is(err, enforceclient.ErrAbortOwed) || cause != argumentsDiffer {
+				t.Fatalf("carry %d, proposed %q: Admit = %v, cause %s; want ErrAbortOwed with ARGUMENTS_DIFFER", carry, proposed, err, cause)
+			}
+			if adm.Authorized != nil || adm.Handle != "h-3" || !adm.ExpiresAt.IsZero() {
+				t.Fatalf("carry %d, proposed %q: admission %+v; want only the handle h-3 to abort", carry, proposed, adm)
+			}
+			if got := r.requests(); len(got) != 1 {
+				t.Fatalf("carry %d, proposed %q: %d requests, want the admit alone", carry, proposed, len(got))
+			}
+		}
 	}
 }
 
@@ -158,7 +175,7 @@ func TestCompleteSendsOneCompleteAndReportsTheEnding(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			res := enforceclient.Result{Status: enforcev1alpha1.CompletionStatus_COMPLETION_STATUS_SUCCESS, EndedAt: clock.Add(time.Second), ResultHash: "rh"}
+			res := enforceclient.Result{Status: enforcev1alpha1.CompletionStatus_COMPLETION_STATUS_SUCCESS, EndedAt: clock.Add(time.Second), ResultHash: validHash}
 			ending, err := c.Complete(context.Background(), "h-9", []byte(`{"b":2}`), res, tc.toolErr)
 			if ending != tc.ending || !isOnly(err, tc.want) || tc.toolErr != nil && errors.Is(err, tc.toolErr) {
 				t.Fatalf("Complete = %s, %v; want %s, %v", ending, err, tc.ending, tc.want)
@@ -167,10 +184,46 @@ func TestCompleteSendsOneCompleteAndReportsTheEnding(t *testing.T) {
 			body := onlyRequest(t, r, enforceclient.PathComplete, &req)
 			want := &enforcev1alpha1.CompleteRequest{
 				Handle: "h-9", SentArguments: []byte(`{"b":2}`), Status: tc.status,
-				StartedAt: timestamppb.New(clock), EndedAt: timestamppb.New(clock.Add(time.Second)), ResultHash: "rh",
+				StartedAt: timestamppb.New(clock), EndedAt: timestamppb.New(clock.Add(time.Second)), ResultHash: validHash,
 			}
 			if !proto.Equal(&req, want) {
 				t.Fatalf("complete %s", body)
+			}
+		})
+	}
+}
+
+// A result hash the receiver would refuse is not sent: the run is completed
+// UNKNOWN with neither the hash nor the confirmation, and Call says why.
+func TestAResultHashThatIsNotAHashIsCompletedUnknown(t *testing.T) {
+	hex64 := strings.Repeat("0123456789abcdef", 4)
+	for _, hash := range []string{
+		"sha256:77aa",
+		"sha256:" + hex64 + "0",
+		"sha256:" + strings.ToUpper(hex64),
+		"sha256:" + hex64[:63] + "g",
+		"sha512:" + hex64,
+		"sha256:",
+		hex64,
+		" sha256:" + hex64,
+	} {
+		t.Run(hash, func(t *testing.T) {
+			c, r := scriptedClient(t, answer(enforceclient.PathAdmit, 200, execute), answer(enforceclient.PathComplete, 200, recorded))
+			exec := func(context.Context, []byte) (enforceclient.Result, error) {
+				return enforceclient.Result{Status: enforcev1alpha1.CompletionStatus_COMPLETION_STATUS_SUCCESS, ResultHash: hash, SideEffectConfirmation: "r-1"}, nil
+			}
+			a, err := c.Call(context.Background(), "t", []byte(`{"a":1}`), exec)
+			if !errors.Is(err, enforceclient.ErrBadResult) || !a.Ran || a.Ending != enforcev1alpha1.Ending_ENDING_RECORDED {
+				t.Fatalf("Call = %+v, %v; want a recorded run and ErrBadResult", a, err)
+			}
+			got := r.requests()
+			if len(got) != 2 || got[1].path != enforceclient.PathComplete {
+				t.Fatalf("requests %q, want the admit and one complete", got)
+			}
+			var req enforcev1alpha1.CompleteRequest
+			decodeRequest(t, got[1].body, &req)
+			if req.GetStatus() != enforcev1alpha1.CompletionStatus_COMPLETION_STATUS_UNKNOWN || req.GetResultHash() != "" || req.GetSideEffectConfirmation() != "" {
+				t.Fatalf("complete %s; want UNKNOWN with no hash and no confirmation", got[1].body)
 			}
 		})
 	}

@@ -37,6 +37,7 @@ from ._types import (
 from ._wire import WireError
 
 _TOKEN = re.compile(r"[\x20-\x7e]+")
+_RESULT_HASH = re.compile(r"(sha256:[0-9a-f]{64})?")
 _DECLARED = (Status.SUCCESS, Status.FAILURE, Status.TIMEOUT, Status.CANCELLED, Status.UNKNOWN)
 _NOTHING = Answer(outcome=BLOCK, decision=None, held=None, ran=False, result=None, ending="")
 _FAILURES = (_ops.RefusalError, WireError, TransportError)
@@ -114,6 +115,8 @@ def _misreported(returned: object) -> str:
     for name in ("result_hash", "side_effect_confirmation"):
         if not _encodable(getattr(returned, name)):
             return f"the tool's Result.{name} is not a string that UTF-8 can carry"
+    if not _RESULT_HASH.fullmatch(returned.result_hash):
+        return "the tool's Result.result_hash is not empty or sha256: and 64 lower-case hex digits"
     for name in ("started_at", "ended_at"):
         if getattr(returned, name) is not None and not _aware(getattr(returned, name)):
             return f"the tool's Result.{name} is not an aware datetime"

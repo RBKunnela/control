@@ -6,7 +6,7 @@
     "status": "COMPLETION_STATUS_FAILURE",
     "started_at": "2026-10-11T12:00:01Z",
     "ended_at": "2026-10-11T12:00:03Z",
-    "result_hash": "sha256:77aa",
+    "result_hash": "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
     "side_effect_confirmation": "declined by bank"
   }
 }

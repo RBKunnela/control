@@ -107,7 +107,9 @@ An obligation you do not know is a reason to abort, never to run.
 Send `complete` to `/enforce/v1alpha1/complete` with the handle, the bytes you
 sent and a status: success, failure, timeout, cancelled or unknown. When you
 cannot tell whether the effect happened, say timeout or unknown; the trail
-keeps it uncertain. Send `abort` only when nothing left: the bytes differ
+keeps it uncertain. A `resultHash`, if you send one, is `sha256:` and 64
+lower-case hex digits; anything else is refused. Send `abort` only when
+nothing left: the bytes differ, or the answer carries none
 (`ABORT_CAUSE_ARGUMENTS_DIFFER`), an obligation you cannot apply
 (`ABORT_CAUSE_OBLIGATION`), or you gave
 up before sending (`ABORT_CAUSE_NOT_SENT`). Never send an action again after a

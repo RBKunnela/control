@@ -339,12 +339,7 @@ func (p *process) stop(t *testing.T) {
 // and everything it wrote.
 func (r *rig) runScenarios(extra []string, files ...string) (int, string) {
 	r.t.Helper()
-	args := append([]string{"scenario", "run", "--config", r.config, "--trail", r.trail}, extra...)
-	cmd := exec.Command(r.gateway, append(args, files...)...) //nolint:gosec // G204: the binary this test built
-	cmd.Env = environ(
-		brand.Env(gatewayconfig.EnvName("listener.address"))+"="+r.listen,
-		brand.Env(gatewayconfig.EnvName("health.address"))+"="+r.health,
-	)
+	cmd := r.scenarioCommand(extra, files...)
 	var out syncBuffer
 	cmd.Stdout, cmd.Stderr = &out, &out
 	err := cmd.Run()
@@ -357,6 +352,18 @@ func (r *rig) runScenarios(extra []string, files ...string) (int, string) {
 	}
 	r.t.Fatalf("running the scenarios: %v\n%s", err, out.String())
 	return -1, ""
+}
+
+// scenarioCommand is the built gateway's scenario command against the rig's
+// plane with extra flags and the named scenario files, its streams unset.
+func (r *rig) scenarioCommand(extra []string, files ...string) *exec.Cmd {
+	args := append([]string{"scenario", "run", "--config", r.config, "--trail", r.trail}, extra...)
+	cmd := exec.Command(r.gateway, append(args, files...)...) //nolint:gosec // G204: the binary this test built
+	cmd.Env = environ(
+		brand.Env(gatewayconfig.EnvName("listener.address"))+"="+r.listen,
+		brand.Env(gatewayconfig.EnvName("health.address"))+"="+r.health,
+	)
+	return cmd
 }
 
 // lines is what a command wrote, one entry per line.

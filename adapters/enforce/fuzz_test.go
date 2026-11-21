@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 
 	"google.golang.org/protobuf/encoding/protojson"
@@ -102,11 +103,14 @@ func checkAdmit(t *testing.T, req *enforcev1alpha1.AdmitRequest) {
 	}
 }
 
+// aHash is the result hash format, stated apart from the decoder's check.
+var aHash = regexp.MustCompile(`^(sha256:[0-9a-f]{64})?$`)
+
 func checkComplete(t *testing.T, req *enforcev1alpha1.CompleteRequest) {
 	t.Helper()
 	if req.GetHandle() == "" || req.GetStatus() == 0 || !declared(req.GetStatus()) ||
 		len(req.GetSentArguments()) == 0 || len(req.GetSentArguments()) > contract.MaxArgumentsBytes ||
-		len(req.GetResultHash()) > contract.MaxStringBytes || len(req.GetSideEffectConfirmation()) > contract.MaxStringBytes {
+		!aHash.MatchString(req.GetResultHash()) || len(req.GetSideEffectConfirmation()) > contract.MaxStringBytes {
 		t.Fatalf("accepted a complete out of bounds: %v", req)
 	}
 }

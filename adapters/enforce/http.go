@@ -3,6 +3,7 @@ package enforce
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -116,6 +117,7 @@ func write(w http.ResponseWriter, status int, m proto.Message) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
+	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 	w.WriteHeader(status)
 	_, _ = w.Write(body) // the status is sent; a client gone mid-body has nothing to read
 }

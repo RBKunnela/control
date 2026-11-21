@@ -3,7 +3,10 @@ package enforceclient
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	enforcev1alpha1 "github.com/guardana/control/api/gen/go/guardana/control/enforce/v1alpha1"
@@ -84,7 +87,7 @@ func owed(ctx context.Context, ex *enforcev1alpha1.Execution, args []byte, carry
 	switch {
 	case len(ex.GetObligations()) > 0:
 		return enforcev1alpha1.AbortCause_ABORT_CAUSE_OBLIGATION
-	case len(authorized) == 0 && len(args) > 0,
+	case len(authorized) == 0,
 		carry != CarryAuthorized && !bytes.Equal(authorized, args):
 		return enforcev1alpha1.AbortCause_ABORT_CAUSE_ARGUMENTS_DIFFER
 	case ctx.Err() != nil:
@@ -95,10 +98,12 @@ func owed(ctx context.Context, ex *enforcev1alpha1.Execution, args []byte, carry
 
 // Complete sends one complete for handle, reporting sent as the bytes that
 // left and r's status as completionStatus reads it with toolErr. A zero
-// StartedAt or EndedAt is taken from the client's clock.
+// StartedAt or EndedAt is taken from the client's clock. An r whose
+// ResultHash is not a result hash is completed UNKNOWN with neither the hash
+// nor the confirmation, and the error includes ErrBadResult.
 //
-// The error is nil only when the receiver answered ENDING_RECORDED; it never
-// includes toolErr.
+// The error is nil only when r could be reported and the receiver answered
+// ENDING_RECORDED; it never includes toolErr.
 func (c *Client) Complete(ctx context.Context, handle string, sent []byte, r Result, toolErr error) (enforcev1alpha1.Ending, error) {
 	if r.StartedAt.IsZero() {
 		r.StartedAt = c.now()
@@ -115,14 +120,38 @@ func (c *Client) Complete(ctx context.Context, handle string, sent []byte, r Res
 		ResultHash:             r.ResultHash,
 		SideEffectConfirmation: r.SideEffectConfirmation,
 	}
+	var bad error
+	if !resultHash(r.ResultHash) {
+		bad = ErrBadResult
+		req.Status = enforcev1alpha1.CompletionStatus_COMPLETION_STATUS_UNKNOWN
+		req.ResultHash, req.SideEffectConfirmation = "", ""
+	}
 	resp := &enforcev1alpha1.CompleteResponse{}
 	if err := c.post(ctx, PathComplete, req, resp); err != nil {
-		return refusedEnding(err), err
+		return refusedEnding(err), errors.Join(bad, err)
 	}
 	if resp.GetEnding() != enforcev1alpha1.Ending_ENDING_RECORDED {
-		return resp.GetEnding(), fmt.Errorf("%w: %s", ErrNotRecorded, resp.GetEnding())
+		return resp.GetEnding(), errors.Join(bad, fmt.Errorf("%w: %s", ErrNotRecorded, resp.GetEnding()))
 	}
-	return resp.GetEnding(), nil
+	return resp.GetEnding(), bad
+}
+
+// resultHash reports whether h is no hash, or "sha256:" and 64 lower-case
+// hex digits: the one form the receiver takes.
+func resultHash(h string) bool {
+	if h == "" {
+		return true
+	}
+	digits, ok := strings.CutPrefix(h, "sha256:")
+	if !ok || len(digits) != sha256.Size*2 {
+		return false
+	}
+	for i := range len(digits) {
+		if c := digits[i]; (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 // Abort sends one abort for handle with cause, and returns the ending the

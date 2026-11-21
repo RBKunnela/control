@@ -191,6 +191,46 @@ encoder writes are refused
 with <code>EVIDENCE_UNAVAILABLE</code> also when its expiry has passed. Such an
 approval closed the hold as <code>APPROVAL_EXPIRED</code> before its version was
 read.</li>
+<li>The page of the <a href="/docs/reference/claude-code-hooks">Claude Code hooks</a>
+says what classing <code>Agent</code> as <code>EXECUTE</code> costs: a rule on
+<code>SPAWN_OR_DELEGATE</code> never sees a sub-agent start and a rule that allows
+<code>EXECUTE</code> allows it, so a policy decides <code>Agent</code> by its name or its
+resource type, where a <code>DENY</code> or <code>REQUIRE_APPROVAL</code> overrides an <code>ALLOW</code>
+on <code>EXECUTE</code>; the profile lists it among its gaps.</li>
+<li>The enforcement API refuses a complete whose <code>resultHash</code> is not <code>sha256:</code>
+and 64 lower-case hex digits as <code>ERROR_CODE_MALFORMED</code>. Any text up to
+1 KiB was recorded, so a client could put a tool's output in the trail
+and the collector's export with capture off
+(<a href="/docs/contracts">contracts</a>). The Go and Python clients judge the hash
+before sending it: a tool's result whose hash is in any other form is
+completed <code>UNKNOWN</code> without the hash, and the Python client raises
+<code>BadResult</code>.</li>
+<li>An <code>EXECUTE</code> answer a shutdown overtakes reaches its client before the
+plane records the execution abandoned. The answer could wait in the
+server's buffer until after the abandon.</li>
+<li>The Go and Python clients of the enforcement API abort an <code>EXECUTE</code> that
+carries no authorized bytes also when the call proposed none, as ADR-0051
+requires; they ran the tool with no bytes.</li>
+<li><code>scenario run</code> refuses a <code>/healthz</code> answer without a bundle digest, and a
+trail compared against no digest cannot pass; both sides empty compared
+equal (<a href="/docs/reference/scenario-format">scenario format</a>).</li>
+<li><code>scenario run</code> refuses to judge a step by a <code>POLICY_DECIDED</code> whose decision
+is of a major this build does not read, whatever the event's own version.</li>
+<li><code>scenario run</code> compares reason codes item by item: one code holding
+<code>RULE_UNDETERMINED, PDP_TIMEOUT</code> compared equal to the two codes.</li>
+<li><code>scenario run</code> and <code>dev --scenario</code> exit 2 when the report could not be
+written to standard output, and say so on standard error; a pass nobody
+could read exited 0.</li>
+<li>The hook bridge refuses an event whose <code>tool_input</code> names a member twice
+in any of its objects, before anything is sent; only a member the event
+itself named twice was refused.</li>
+<li>The scenario reader judges <code>kind</code> before the depth bound, as ADR-0022
+orders it: a document of another kind with containers past the bound was
+refused for its depth.</li>
+<li>The qualification of the
+<a href="/docs/reference/claude-code-hooks">Claude Code hooks</a> credits a decision
+to a sub-agent's <code>Write</code> only when the trail holds more decided writes of that file than the other
+calls that wrote it could account for.</li>
 </ul>
 <h3 id="documentation">Documentation</h3>
 <ul>

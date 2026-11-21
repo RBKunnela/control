@@ -64,6 +64,46 @@ verify one.
   with `EVIDENCE_UNAVAILABLE` also when its expiry has passed. Such an
   approval closed the hold as `APPROVAL_EXPIRED` before its version was
   read.
+- The page of the [Claude Code hooks](docs/reference/claude-code-hooks.md)
+  says what classing `Agent` as `EXECUTE` costs: a rule on
+  `SPAWN_OR_DELEGATE` never sees a sub-agent start and a rule that allows
+  `EXECUTE` allows it, so a policy decides `Agent` by its name or its
+  resource type, where a `DENY` or `REQUIRE_APPROVAL` overrides an `ALLOW`
+  on `EXECUTE`; the profile lists it among its gaps.
+- The enforcement API refuses a complete whose `resultHash` is not `sha256:`
+  and 64 lower-case hex digits as `ERROR_CODE_MALFORMED`. Any text up to
+  1 KiB was recorded, so a client could put a tool's output in the trail
+  and the collector's export with capture off
+  ([contracts](docs/contracts.md)). The Go and Python clients judge the hash
+  before sending it: a tool's result whose hash is in any other form is
+  completed `UNKNOWN` without the hash, and the Python client raises
+  `BadResult`.
+- An `EXECUTE` answer a shutdown overtakes reaches its client before the
+  plane records the execution abandoned. The answer could wait in the
+  server's buffer until after the abandon.
+- The Go and Python clients of the enforcement API abort an `EXECUTE` that
+  carries no authorized bytes also when the call proposed none, as ADR-0051
+  requires; they ran the tool with no bytes.
+- `scenario run` refuses a `/healthz` answer without a bundle digest, and a
+  trail compared against no digest cannot pass; both sides empty compared
+  equal ([scenario format](docs/reference/scenario-format.md)).
+- `scenario run` refuses to judge a step by a `POLICY_DECIDED` whose decision
+  is of a major this build does not read, whatever the event's own version.
+- `scenario run` compares reason codes item by item: one code holding
+  `RULE_UNDETERMINED, PDP_TIMEOUT` compared equal to the two codes.
+- `scenario run` and `dev --scenario` exit 2 when the report could not be
+  written to standard output, and say so on standard error; a pass nobody
+  could read exited 0.
+- The hook bridge refuses an event whose `tool_input` names a member twice
+  in any of its objects, before anything is sent; only a member the event
+  itself named twice was refused.
+- The scenario reader judges `kind` before the depth bound, as ADR-0022
+  orders it: a document of another kind with containers past the bound was
+  refused for its depth.
+- The qualification of the
+  [Claude Code hooks](docs/reference/claude-code-hooks.md) credits a decision
+  to a sub-agent's `Write` only when the trail holds more decided writes of that file than the other
+  calls that wrote it could account for.
 
 ### Documentation
 

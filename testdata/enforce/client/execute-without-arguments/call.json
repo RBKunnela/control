@@ -6,7 +6,7 @@
     "status": "COMPLETION_STATUS_SUCCESS",
     "started_at": "2026-10-11T12:00:01Z",
     "ended_at": "2026-10-11T12:00:02Z",
-    "result_hash": "sha256:5f1e",
+    "result_hash": "sha256:2689367b205c16ce32ed4200942b8b8b1e262dfc70d9bc9fbc77c49699a4f1df",
     "side_effect_confirmation": "refund r-1"
   }
 }

@@ -58,7 +58,7 @@ func fakeTrail(request string, verdict controlv1.Verdict, hash, approval string,
 			if verdict == controlv1.Verdict_VERDICT_DENY {
 				codes = []string{"RULE_DENY"}
 			}
-			ev.Payload = &controlv1.Event_Decision{Decision: &controlv1.Decision{DecisionId: "d-" + request,
+			ev.Payload = &controlv1.Event_Decision{Decision: &controlv1.Decision{SchemaVersion: "1.0", DecisionId: "d-" + request,
 				Verdict: verdict, ReasonCodes: codes, PolicyBundleDigest: fakeDigest}}
 		case approvalAsked:
 			ev.Payload = &controlv1.Event_Approval{Approval: &controlv1.Approval{ApprovalId: approval}}

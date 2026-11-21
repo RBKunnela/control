@@ -287,7 +287,11 @@ included, differs on <code>trail.others</code>.</li>
 </ol>
 <p>It also holds each trail to the plane: every event carries the plane's mode,
 every <code>POLICY_DECIDED</code> the bundle digest <code>/healthz</code> reported, and, where the
-trail records a decision, the answer's decision id is one of them. A pending
+trail records a decision, the answer's decision id is one of them. A
+<code>/healthz</code> answer without a bundle digest is refused, and the decision a
+step is judged by must be of the major this build reads; either is a
+scenario that could not run, never a pass. Reason codes are compared item
+by item. A pending
 answer's approval id must be the one the trail's last <code>APPROVAL_REQUESTED</code>
 names, or the step differs on <code>answer.approval_id</code> and no operator step
 answers it. The first call's
@@ -337,7 +341,7 @@ differs, <code>&lt;id&gt; step[&lt;i&gt;].&lt;member&gt;: want &lt;x&gt;, got &l
 </tr>
 <tr>
 <td>2</td>
-<td>None differed, and some scenario could not run: no scenario, a file refused, a precondition, an answer naming no trail, a barrier past its bound, another client, a <code>guardana-control</code> missing or of another version, a trail file that is not the plane's. A gate treats 2 as a failure.</td>
+<td>None differed, and some scenario could not run: no scenario, a file refused, a precondition, an answer naming no trail, a barrier past its bound, another client, a <code>guardana-control</code> missing or of another version, a trail file that is not the plane's, or a report standard output did not take whole. A gate treats 2 as a failure.</td>
 </tr>
 </tbody>
 </table>

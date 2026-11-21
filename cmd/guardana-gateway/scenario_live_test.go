@@ -305,6 +305,29 @@ func TestATrailFileThatIsNotThePlanesCannotPass(t *testing.T) {
 	}
 }
 
+// TestAPassNobodyCouldReadIsNotAPass: a scenario that passes while its
+// standard output takes no write exits 2 and says why on standard error.
+func TestAPassNobodyCouldReadIsNotAPass(t *testing.T) {
+	t.Parallel()
+	r := newRig(t)
+	sink := filepath.Join(t.TempDir(), "stdout")
+	if err := os.WriteFile(sink, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	readOnly, err := os.Open(sink) //nolint:gosec // G304: a file this test made
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = readOnly.Close() }()
+	cmd := r.scenarioCommand(nil, filepath.Join("testdata", "scenario", "allowed-read.json"))
+	var stderr syncBuffer
+	cmd.Stdout, cmd.Stderr = readOnly, &stderr
+	code := exitOf(t, cmd.Run())
+	if code != exitCouldNotRun || !strings.Contains(stderr.String(), "scenario: writing the report: ") {
+		t.Fatalf("exit %d, want 2 naming the report that could not be written:\n%s", code, stderr.String())
+	}
+}
+
 // TestNoScenarioIsNotAPass: an empty directory runs nothing, and nothing is
 // not a pass; a file the reader refuses stops every scenario before the
 // plane's configuration is read.
