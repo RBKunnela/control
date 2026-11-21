@@ -2,8 +2,11 @@ package mcp_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
+	"net/http"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -34,6 +37,55 @@ func TestAllowSendsTheAuthorizedBytes(t *testing.T) {
 		}
 		assertClosedSuccess(t, r, env, `{"path":"/x"}`)
 	})
+}
+
+// TestTheBytesSentAreTheBytesRecorded: what the upstream receives is what
+// Close is told was sent, whatever the agent's document spells: whitespace
+// between tokens, a number as the agent wrote it, characters an HTML-safe or
+// a JavaScript-safe encoder would escape, and escapes it would not.
+func TestTheBytesSentAreTheBytesRecorded(t *testing.T) {
+	m, err := json.Marshal(meta())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct{ name, args, wire string }{
+		{"spaced", `{ "path" : "/x", "n" : 1.0 }`, `{"path":"/x","n":1.0}`},
+		{"tab", "{\"path\":\"/x\"\t}", `{"path":"/x"}`},
+		// How the library's encoder spells these is its own; that Close is
+		// told the same spelling is the point.
+		{"line separator", "{\"path\":\"a\u2028b\"}", ""},
+		{"paragraph separator", "{\"path\":\"a\u2029b\"}", ""},
+		{"html", `{"path":"<a>&b"}`, `{"path":"<a>&b"}`},
+		{"escaped solidus", `{"path":"\/x"}`, `{"path":"\/x"}`},
+		{"exponent", `{"path":"/x","n":1E2}`, `{"path":"/x","n":1E2}`},
+		{"negative zero", `{"path":"/x","n":-0}`, `{"path":"/x","n":-0}`},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			r := newRig(t, mcp.KindStatelessHTTP, rigOptions{})
+			body := `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"read_file","arguments":` + c.args + `,"_meta":` + string(m) + `}}`
+			if status, out := rawPostWith(t, r.url, nil, body, "read_file"); status != http.StatusOK || !bytes.Contains(out, []byte(upstreamMark)) {
+				t.Fatalf("the call: %d %s", status, out)
+			}
+			got := r.victim.args("read_file")
+			if len(got) != 1 || c.wire != "" && string(got[0]) != c.wire {
+				t.Fatalf("the upstream received %q, want one call carrying %q", got, c.wire)
+			}
+			if adm := r.pipe.admitted(); len(adm) != 1 || string(adm[0].a.Arguments) != c.args {
+				t.Errorf("Admit was not asked about the agent's own bytes: %+v", adm)
+			}
+			if closes := r.pipe.closed(); len(closes) != 1 || string(closes[0].sent) != string(got[0]) {
+				t.Errorf("Close was told %q was sent, the upstream received %q", sentOf(closes), got[0])
+			}
+		})
+	}
+}
+
+func sentOf(closes []closed) []string {
+	var out []string
+	for _, c := range closes {
+		out = append(out, string(c.sent))
+	}
+	return out
 }
 
 // assertAdmittedFirst checks the one admission names the tool with the
@@ -258,6 +310,9 @@ func TestRefusedTranslationIsNeverSent(t *testing.T) {
 			}
 			if got := codesOf(t, res); !slices.Equal(got, []string{"REQUIRED_FIELD_ABSENT"}) {
 				t.Errorf("the block names %v, want the kernel's REQUIRED_FIELD_ABSENT alone", got)
+			}
+			if refused, _ := structured(t, res)["refused"].(string); !strings.Contains(refused, "resource.id") {
+				t.Errorf("the block's refused is %q, want what the refusal of the envelope said", refused)
 			}
 			if n := r.victim.count("delete_file"); n != 0 {
 				t.Fatalf("victim ran %d times", n)

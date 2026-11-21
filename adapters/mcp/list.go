@@ -173,15 +173,16 @@ type shaping struct {
 	probe  *Entry
 	probed gateway.Previewed
 	digest string
-	// mixed is a preview decided under a bundle other than probed's: the list
-	// straddles two bundles and is cached under neither.
+	// mixed is a preview decided under a bundle or a halt other than probed's:
+	// the list straddles two states and is cached under neither.
 	mixed bool
 }
 
 // bundle previews the first entry shaping would preview and returns the
-// bundle that decided it, so a list is cached and looked up under the bundle
-// in force. A list no preview shapes reads no bundle. A preview that names
-// no bundle leaves nothing to tell the next one from, and nothing is cached.
+// bundle that decided it, beside whether a halt stood, so a list is cached
+// and looked up under the bundle and the halts in force. A list no preview
+// shapes reads no bundle. A preview that names no bundle leaves nothing to
+// tell the next one from, and nothing is cached.
 func (s *shaping) bundle(entries []Entry) (string, bool) {
 	if s.a.cfg.Shaping == ShapeNone {
 		return "", true
@@ -191,7 +192,11 @@ func (s *shaping) bundle(entries []Entry) (string, bool) {
 			s.probe = &entries[i]
 			s.probed = s.a.preview(s.ctx, s.p, s.req, s.probe, s.principal, s.agent)
 			s.digest = s.probed.Decision.GetPolicyBundleDigest()
-			return s.digest, s.digest != ""
+			key := s.digest
+			if s.probed.Halted {
+				key += "\x00halted"
+			}
+			return key, s.digest != ""
 		}
 	}
 	return "", true
@@ -203,7 +208,7 @@ func (s *shaping) decide(e *Entry) gateway.Previewed {
 		return s.probed
 	}
 	d := s.a.preview(s.ctx, s.p, s.req, e, s.principal, s.agent)
-	if s.probe != nil && d.Decision.GetPolicyBundleDigest() != s.digest {
+	if s.probe != nil && (d.Decision.GetPolicyBundleDigest() != s.digest || d.Halted != s.probed.Halted) {
 		s.mixed = true
 	}
 	return d

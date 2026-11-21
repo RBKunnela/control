@@ -2,8 +2,10 @@ package mcp_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -208,4 +210,35 @@ func entriesNamed(a *mcp.Adapter, name string) int {
 		}
 	}
 	return n
+}
+
+// TestACallAdmittedBeforeItsToolMovedIsNotSent: a refresh that moves a tool
+// to another upstream that classifies it too leaves the tool classified, but
+// not as the call was admitted; outside OBSERVE the call goes to neither
+// upstream and is aborted as unclassified.
+func TestACallAdmittedBeforeItsToolMovedIsNotSent(t *testing.T) {
+	a, pipe, first, second, url := twoUpstreams(t, false)
+	var once sync.Once
+	pipe.onAdmit = func(context.Context) {
+		once.Do(func() {
+			second.server.AddTool(second.tools["read_file"], second.handler("read_file"))
+			first.server.RemoveTools("read_file")
+			for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+				if e := entryOf(a, "read_file"); entriesNamed(a, "read_file") == 1 && e != nil && e.Upstream == "second" && e.Classified {
+					return
+				}
+			}
+			t.Error("the manifest never moved read_file to the second upstream")
+		})
+	}
+	res, err := callTool(t, connectHTTP(t, url, "agent-a", v20260728, nil), "read_file", map[string]any{"path": "/x"})
+	if err != nil || !res.IsError || !slices.Equal(codesOf(t, res), []string{"ACTION_UNCLASSIFIED"}) {
+		t.Fatalf("the call admitted before the move: %v %+v", err, res)
+	}
+	if n := first.count("read_file") + second.count("read_file"); n != 0 {
+		t.Errorf("the upstreams received %d call(s)", n)
+	}
+	if aborts := pipe.aborted(); len(aborts) != 1 || aborts[0].cause != gateway.AbortUnroutable {
+		t.Errorf("aborts = %+v, want one as unroutable", aborts)
+	}
 }

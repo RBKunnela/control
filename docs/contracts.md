@@ -271,7 +271,11 @@ resource id it takes off becomes `overlong:sha256:` followed by the lower-case
 hex SHA-256 of the original bytes, 80 bytes in all, so the recorded proposal
 keeps the fields the contract requires and can be tied to what was sent
 ([ADR-0043](adr/0043-a-refused-over-long-name-is-recorded-by-its-digest.md)).
-No policy reads it: the refusal stops the decision first.
+No policy reads it: the refusal stops the decision first. A called tool name,
+prompt name or resource URI that quotes a credential the plane holds, cannot
+be scanned or starts with `withheld:sha256:` is recorded as that prefix and
+the same digest of the name, and a policy reads that form
+([ADR-0042](adr/0042-an-answer-that-quotes-a-configured-credential-is-withheld.md)).
 
 The error types and the validation that returns them are `implemented`, and so
 is the mapping: the kernel in `internal/core` turns each refusal into the
@@ -823,7 +827,9 @@ even though the two values are equal: this call is the first place those bytes
 exist.
 
 The gateway sends the agent's own bytes upstream when no obligation rewrites
-them, and those bytes may spell a number differently from the canonical form:
+them, without the whitespace between tokens, which the protocol library
+removes from every message it writes; the closing record is told those bytes.
+They may still spell a number differently from the canonical form:
 `1.0` where the digest holds `1`. The digest binds a number's value, not its
 spelling, its scale or whether it was written as an integer, so an upstream
 that reads `1.0` as a float and `1` as an integer sees a difference the digest

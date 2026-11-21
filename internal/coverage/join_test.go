@@ -51,6 +51,8 @@ func TestNothingJoinsOnLessThanEverything(t *testing.T) {
 		"another project in the envelope alone": {observedA, proposal{trace: traceA, span: spanA, envelopeProject: "p2"}},
 		"another tool":                          {observedA, proposal{trace: traceA, span: spanA, tool: "delete_issue"}},
 		"another upstream":                      {observedA, proposal{trace: traceA, span: spanA, upstream: "gitlab"}},
+		"the enforcement API's proposal":        {observedA, proposal{trace: traceA, span: spanA, protocol: "enforce"}},
+		"no protocol":                           {observedA, proposal{trace: traceA, span: spanA, protocol: "none"}},
 		"an OBSERVE-mode proposal":              {observedA, proposal{trace: traceA, span: spanA, mode: "OBSERVE"}},
 		"a SHADOW-mode proposal":                {observedA, proposal{trace: traceA, span: spanA, mode: "SHADOW"}},
 		"an unspecified mode":                   {observedA, proposal{trace: traceA, span: spanA, mode: "UNSPECIFIED"}},

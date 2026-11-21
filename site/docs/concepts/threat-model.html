@@ -132,8 +132,8 @@
 <h1 id="threat-model">Threat model</h1>
 <p>Nothing in this repository is a security boundary yet
 (<a href="/docs/status">status</a>, <a href="https://github.com/guardana/control/blob/main/SECURITY.md">SECURITY.md</a>). This page says
-what the plane is built to protect, from whom, what it does about each of them
-today, and where it stops. Each defence names the code that makes it and,
+what the plane protects, from whom, what it does about each today, and where
+it stops. Each defence names the code that makes it and,
 where one exists, the test that exercises it.</p>
 <h2 id="what-is-in-scope">What is in scope</h2>
 <ul>
@@ -198,7 +198,7 @@ outside the plane. They appear below as parties the plane has to deal with.</p>
 </table>
 </div>
 <h2 id="who-it-is-meant-to-stop">Who it is meant to stop</h2>
-<p>The main attacker is <strong>the agent itself</strong>, when it is wrong or when content it
+<p>The main attacker is <strong>the agent itself</strong>, when it is wrong or content it
 read steers it. Each of the others has a section below.</p>
 <h2 id="trust-boundaries">Trust boundaries</h2>
 <figure class="dg-text" id="diagram-1"><figcaption>Trust boundaries</figcaption><p>The agent reaches the plane over MCP with no credential and may have paths around it; one account on the plane&#39;s machine holds the plane, its stdio upstreams, its files and the approvals page, another account is refused on the files by their mode, on the pause file, the approvals directory, the hold journal, the trail and the key by their owner too, and on the spool&#39;s directory, whose owner and mode are checked; the plane sends HTTP upstreams the authorized bytes, a decision point no arguments, and a collector its evidence. <a href="https://github.com/guardana/control/blob/main/docs/concepts/threat-model.md">Drawn on GitHub</a>.</p><details><summary>The diagram's source</summary><pre><code class="language-mermaid">flowchart TD
@@ -233,8 +233,8 @@ read steers it. Each of the others has a section below.</p>
 <code>internal/approvals/dirid.go</code>, <code>internal/pause/snapshot.go</code>,
 <code>internal/console/console.go</code>, <code>cmd/guardana-gateway/collect.go</code>,
 <code>adapters/authzen/mapping.go</code>.</p>
-<p>A dotted line is either a path that goes around
-the plane or a write that the file checks refuse. The account is the strongest boundary this
+<p>A dotted line is a path around the plane or a
+write the file checks refuse. The account is the strongest boundary this
 build has: the approvals directory, the pause file, the hold journal, the
 trail file and the key are each refused when the group or the world may write
 them, and the hold journal, the trail file and the key also when another
@@ -288,7 +288,7 @@ default, so a plane runs in <code>OBSERVE</code> only when configured so
 constraint reads the arguments, which enter as a hash, except the one value
 an override's <code>resource_from</code> points at. A harmful call that a rule allows
 runs.</li>
-<li>It does not see a call that does not pass through it. An agent, or a tool
+<li>It does not see a call that bypasses it. An agent, or a tool
 behind the plane, that can reach an upstream directly, or run code, goes
 around it. Which network paths and credentials an agent holds is the
 operator's to arrange.</li>
@@ -296,7 +296,8 @@ operator's to arrange.</li>
 end user's authenticator, so every call on a listener is the one configured principal
 (<a href="/docs/reference/mcp-coverage">MCP coverage</a>), and a pause names no tenant.</li>
 <li>The flow state is a lower bound: a run starts clean, and the user's prompt,
-the tools' descriptions and tools outside the plane are not tracked
+tool descriptions, listed resources and prompts, and tools outside the
+plane are not tracked
 (<a href="/docs/adr/0021-a-run-carries-what-it-took-in">ADR-0021</a>).</li>
 <li>A pause takes effect up to one poll interval after it is written, and never
 stops a call already running (<a href="/docs/adr/0019-an-operator-can-pause-calls">ADR-0019</a>).</li>
@@ -312,9 +313,11 @@ rolls the floor back with it
 <h2 id="a-hostile-or-compromised-mcp-server">A hostile or compromised MCP server</h2>
 <p>What the plane does today:</p>
 <ul>
-<li>A server that changes a tool's definition changes its fingerprint, and the
-tool is unclassified again until the operator looks
-(<code>adapters/mcp/manifest.go</code>; <code>TestFingerprintCoversTheWholeDefinition</code>).</li>
+<li>A changed tool definition changes its fingerprint; once the list refreshes,
+the tool is unclassified until the operator looks, and a call admitted
+earlier runs only under <code>OBSERVE</code> (<code>adapters/mcp/manifest.go</code>;
+<code>TestFingerprintCoversTheWholeDefinition</code>,
+<code>TestACallAdmittedBeforeARefreshRunsUnderObserveOnly</code>).</li>
 <li>A server cannot answer as the plane: the plane's marker is stripped from
 what a server sends, so its answer never reads as the plane's pending or
 block (<code>adapters/mcp/answer.go</code>; <code>TestUpstreamCannotAnswerAsTheGateway</code>,
@@ -345,8 +348,9 @@ sends, which is withheld (below). The plane records a hash of a result it can
 encode.</li>
 <li>A tool the agent is shown comes with its description as the server wrote
 it. List shaping can hide denied and unclassified tools, never rewrite a
-description, and the fingerprint catches a definition that changes, not one
-that was hostile from the start.</li>
+description, and the fingerprint catches a changed definition only after
+a <code>list_changed</code>, which a server may never send, never one hostile from the
+start.</li>
 <li>It cannot see what a server did with the bytes it was sent.</li>
 <li><strong>A <code>stdio</code> upstream is a child process of the plane</strong>: it runs as the
 plane's account and can read and write everything that account can

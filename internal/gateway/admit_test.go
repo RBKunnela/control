@@ -62,6 +62,9 @@ func TestAnAllowedReadRunsWithTheExactBytes(t *testing.T) {
 	if d.Decision.GetPdpType() != "builtin" || !slices.Equal(d.Decision.GetReasonCodes(), []string{codeRuleAllow}) {
 		t.Errorf("the decision is not the kernel's ALLOW: %+v", d.Decision)
 	}
+	if d.RunsUnclassified {
+		t.Error("an execution under ENFORCE says an unclassified call would run")
+	}
 	expectKinds(t, h.kinds(), []controlv1.EventKind{kindProposed, kindDecided, kindStarted})
 	if err := h.p.Close(context.Background(), d, args, result(controlv1.ResultStatus_RESULT_STATUS_SUCCESS)); err != nil {
 		t.Fatalf("Close: %v", err)

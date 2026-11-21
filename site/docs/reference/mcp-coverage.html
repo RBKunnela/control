@@ -168,8 +168,8 @@ decisions.</p>
 </tbody>
 </table>
 </div>
-<p>No configuration key wires an end user's authenticator, so every call is made by the
-principal the operator configured. <code>_meta.clientInfo</code> is a run-context tag no
+<p>No key wires an end user's authenticator: every call is the configured
+principal's. <code>_meta.clientInfo</code> is a run-context tag no
 digest covers. A request with a body gets 30 seconds for it, and 30 seconds
 per 64 KiB slice of its answer: a client reading slower is cut, and one reading
 a slice every 29 seconds holds a handler throughout.</p>
@@ -189,16 +189,16 @@ child process (<code>upstreams[].command</code>).</p>
 <tr>
 <td><code>tools/list</code></td>
 <td>Answers from the manifest, without a <a href="/docs/concepts/mcp-gateway#an-answer-that-quotes-a-credential">withheld</a> definition, shaped for the principal, with <code>cacheScope: private</code> and the operator's <code>ttlMs</code></td>
-<td>under <code>annotate</code> or <code>hide</code>, one preview per classified tool one upstream serves; a cached list, one naming the bundle in force; nothing recorded</td>
+<td>under <code>annotate</code> or <code>hide</code>, one preview per classified tool one upstream serves; a cached list, one naming the bundle and halts in force; nothing recorded</td>
 </tr>
 <tr>
 <td><code>tools/call</code></td>
-<td>Admits an <code>ActionEnvelope</code>; if the mode lets it run, applies the plane's obligations, none under <code>OBSERVE</code>, sends exactly the authorized bytes and closes the trail with their digest</td>
+<td>Admits an <code>ActionEnvelope</code>; if the mode lets it run, applies the plane's obligations, none under <code>OBSERVE</code>, sends the authorized bytes, compacted by the adapter, and closes the trail with those</td>
 <td>yes</td>
 </tr>
 <tr>
 <td><code>resources/read</code></td>
-<td>Translated as a <code>READ</code> of the URI. Routed only when one upstream is configured; with several it is <code>ACTION_UNCLASSIFIED</code>, since nothing says which server holds the URI</td>
+<td>Translated as a <code>READ</code> of the URI. Routed only when one upstream is configured; with several it is <code>ACTION_UNCLASSIFIED</code>: nothing says which server holds the URI</td>
 <td>yes</td>
 </tr>
 <tr>
@@ -212,8 +212,23 @@ child process (<code>upstreams[].command</code>).</p>
 <td>no: a listing names no action</td>
 </tr>
 <tr>
+<td>a batch</td>
+<td>On <code>stateful_http</code>, before <code>2025-06-18</code>: each member as if sent alone</td>
+<td>each call</td>
+</tr>
+<tr>
+<td><code>tools/call</code> with no <code>id</code></td>
+<td>Dropped by the library</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>notifications/cancelled</code></td>
+<td>After the send, the upstream's call is cancelled, never resent, and recorded unknown</td>
+<td>no</td>
+</tr>
+<tr>
 <td>everything else</td>
-<td>Handled by the library's own server, which registers nothing, so nothing is forwarded</td>
+<td>Handled by the library's own server, which registers nothing to forward</td>
 <td>no</td>
 </tr>
 </tbody>
@@ -239,19 +254,19 @@ child process (<code>upstreams[].command</code>).</p>
 </tr>
 <tr>
 <td><code>notifications/tools/list_changed</code> toward the agent</td>
-<td>The library emits it only for its own registry, empty here, so the listener declares it sends none; an agent refreshes when <code>list.ttl</code> runs out</td>
+<td>The library emits it only for its own, empty registry, so the listener declares none; an agent refreshes when <code>list.ttl</code> runs out</td>
 </tr>
 <tr>
-<td>An upstream's own notifications and server-initiated requests, other than a changed tool list</td>
-<td>Only a changed tool list is handled, by refreshing the manifest; sampling, roots and progress from an upstream reach no agent</td>
+<td>An upstream's own notifications and requests</td>
+<td>A changed tool list refreshes the manifest; sampling, roots and progress reach no agent</td>
 </tr>
 <tr>
 <td>Resuming a hold the plane lost</td>
-<td>A hold does not survive a restart, and its call never runs. With a hold journal the next start closes its trail, with the approver's answer and <code>APPROVAL_NOT_RESUMED</code> or as expired, or counts it left open; without one it stays open (ADR-0016)</td>
+<td>A hold dies with a restart; its call never runs. With a hold journal the next start closes its trail, with the approver's answer and <code>APPROVAL_NOT_RESUMED</code> or as expired, or counts it left open; without one it stays open (ADR-0016)</td>
 </tr>
 <tr>
 <td>Telling one approver from another</td>
-<td>Under <code>directory</code>, write access to the approvals directory is the approval authority and <code>approver_id</code> a claim (ADR-0016); under <code>signed</code>, a roster operator's key (ADR-0073)</td>
+<td>Under <code>directory</code>, write access to the approvals directory is the authority and <code>approver_id</code> a claim (ADR-0016); under <code>signed</code>, a roster operator's key (ADR-0073)</td>
 </tr>
 <tr>
 <td>A client other than the library's own</td>
@@ -259,18 +274,18 @@ child process (<code>upstreams[].command</code>).</p>
 </tr>
 <tr>
 <td>A tool classified <code>SPAWN_OR_DELEGATE</code></td>
-<td>The contract requires a delegation chain for that class and the listener carries none, so every such call is refused as <code>REQUIRED_FIELD_ABSENT</code> before a rule or a decision point is read</td>
+<td>The class needs a delegation chain, which the listener never carries: every such call is refused <code>REQUIRED_FIELD_ABSENT</code> before any rule or decision point</td>
 </tr>
 <tr>
 <td>What a run read outside the gateway</td>
-<td>A run, without <code>runs.dir</code>, is the listener's principal and starts clean at each restart; on stdio a run lasts its client's one connection. The user's prompt, tool descriptions and tools not behind the gateway are not tracked, and a call carries no data label, so a <code>flow</code> rule blocks every untrusted destination after untrusted input. A <code>resources/read</code> and a <code>prompts/get</code> carry no declared result, so each leaves its run untrusted and unknown from then on (ADR-0021)</td>
+<td>Without <code>runs.dir</code>, a run is the listener's principal and starts clean at each restart; on stdio it lasts one connection. The user's prompt, tool descriptions, listed resources and prompts, and tools not behind the gateway are not tracked, and a call carries no data label, so a <code>flow</code> rule blocks every untrusted destination after untrusted input. A <code>resources/read</code> and a <code>prompts/get</code> carry no declared result, so each leaves its run untrusted and unknown from then on (ADR-0021)</td>
 </tr>
 </tbody>
 </table>
 </div>
 <h2 id="list-shaping-under-each-mode">List shaping under each mode</h2>
-<p><code>list.shaping</code> only subtracts, and the configuration is refused at start
-when it is not <code>none</code> in a mode that does not enforce.</p>
+<p><code>list.shaping</code> only subtracts; anything but <code>none</code> is refused at start in a
+mode that does not enforce.</p>
 <div class="tbl">
 <table>
 <thead>
@@ -304,9 +319,9 @@ needs the id is no verdict at preview and stays listed; one whose only <code>ALL
 reads the id stays listed, marked <code>DECIDED_PER_CALL</code> under <code>annotate</code>, unless
 a rule denies it without its arguments.</p>
 <h2 id="the-codes-the-adapter-mints">The codes the adapter mints</h2>
-<p>A <code>tools/call</code> answers a block and a pending state as a tool result with
-<code>isError: true</code>, the fields below in its <code>_meta</code> under <code>&lt;ns&gt;/</code> and no
-structured content, which a client checks against the tool's output schema. A <code>resources/read</code> and a
+<p>A <code>tools/call</code> answers a block or a pending state as an <code>isError: true</code> tool
+result, the fields below in its <code>_meta</code> under <code>&lt;ns&gt;/</code>, with no structured
+content for a client to check against the tool's output schema. A <code>resources/read</code> and a
 <code>prompts/get</code> have no <code>isError</code>, so there the fields travel as a JSON-RPC
 error, outside the protocol's reserved range and the library's private code.</p>
 <div class="tbl">
@@ -322,7 +337,7 @@ error, outside the protocol's reserved range and the library's private code.</p>
 <tr>
 <td><code>-31100</code></td>
 <td>the gateway blocked the call</td>
-<td><code>reason_codes</code>, <code>decision_id</code>, and <code>refused</code> with what the refusal said when the envelope could not be built</td>
+<td><code>reason_codes</code>, <code>decision_id</code>, and <code>refused</code> with why the envelope could not be built or a handed-out call was not sent</td>
 </tr>
 <tr>
 <td><code>-31101</code></td>
@@ -346,9 +361,8 @@ error, outside the protocol's reserved range and the library's private code.</p>
 credential the plane sends; any
 other failure, a timeout or a broken session, answers <code>-32603</code> <code>the upstream did not answer</code>, never the transport's text, which can quote the endpoint. Only <code>&lt;ns&gt;/answer</code> (<code>blocked</code>,
 <code>pending</code> or <code>withheld</code>, <code>&lt;ns&gt;</code> being the product's namespace) in an answer's <code>_meta</code> or in
-the error's <code>data</code> marks an answer the gateway made. The namespace is stripped
-from both places in everything an upstream sends, so an upstream cannot answer
-as the gateway.</p>
+the error's <code>data</code> marks an answer the gateway made; the namespace is stripped
+from both in everything an upstream sends.</p>
 <p>A <code>tools/call</code> answer the pipeline decided names its decision's trail with the
 strings <code>&lt;ns&gt;/request_id</code> and <code>&lt;ns&gt;/decision_id</code>:</p>
 <div class="tbl">
@@ -365,7 +379,7 @@ strings <code>&lt;ns&gt;/request_id</code> and <code>&lt;ns&gt;/decision_id</cod
 <td>the result's <code>_meta</code></td>
 </tr>
 <tr>
-<td>an upstream's wire error, <code>data</code> an object, <code>null</code> or absent</td>
+<td>an upstream's wire error, <code>data</code> an object, <code>null</code> or absent; the gateway's own <code>-32603</code></td>
 <td>the top level of <code>data</code></td>
 </tr>
 <tr>
@@ -377,10 +391,10 @@ strings <code>&lt;ns&gt;/request_id</code> and <code>&lt;ns&gt;/decision_id</cod
 </div>
 <p>A retry told to wait again, or run, names the held request's trail; one refused
 on its own trail names that. The ids are added after the result is hashed,
-so the closing record's <code>result_hash</code> is the upstream's. Reads, prompts, lists
+so <code>result_hash</code> stays the upstream's. Reads, prompts, lists
 and undecided answers carry neither.</p>
 <h2 id="reason-codes-in-the-gateways-answers">Reason codes in the gateway's answers</h2>
-<p>A kernel decision comes back as written, with the kernel's codes such as <code>NO_MATCHING_RULE</code>;
+<p>A kernel decision comes back as written, with codes such as <code>NO_MATCHING_RULE</code>;
 <a href="/docs/reference/reason-codes">reference/reason-codes</a> lists every code; an untranslatable call is the kernel's
 block in every mode. The codes below are the enforcement point's own.</p>
 <div class="tbl">
@@ -394,7 +408,7 @@ block in every mode. The codes below are the enforcement point's own.</p>
 <tbody>
 <tr>
 <td><code>ACTION_UNCLASSIFIED</code></td>
-<td>no manifest entry classifies the operation; blocked outside <code>OBSERVE</code></td>
+<td>no manifest entry classifies the operation, or a refresh withdrew its classification after admission, which spends an approved retry's approval unrun; blocked outside <code>OBSERVE</code></td>
 </tr>
 <tr>
 <td><code>LOCKDOWN</code></td>
@@ -414,7 +428,7 @@ block in every mode. The codes below are the enforcement point's own.</p>
 </tr>
 <tr>
 <td><code>EVIDENCE_UNAVAILABLE</code></td>
-<td>a record the decision depends on could not be written, kept or read back: the sink refused an event, a bound on held requests or open executions was reached, or the approval store or the hold journal could not answer, or answered with an approval that names another request, is not approved, or outlives the expiry the gateway minted; or, under <code>runs.dir</code>, its run (<a href="/docs/reference/runs#what-a-plane-does-with-a-token">runs.md</a>)</td>
+<td>a record the decision depends on could not be written, kept or read back: the sink refused an event, a bound on held requests or open executions was reached, or the approval store or the hold journal could not answer, or answered with an approval naming another request, not approved, or outliving the expiry the gateway minted; or, under <code>runs.dir</code>, its run (<a href="/docs/reference/runs#what-a-plane-does-with-a-token">runs.md</a>)</td>
 </tr>
 <tr>
 <td><code>APPROVAL_PENDING</code>, <code>APPROVAL_EXPIRED</code>, <code>APPROVAL_REJECTED</code>, <code>APPROVAL_ALREADY_USED</code></td>
@@ -442,7 +456,7 @@ block in every mode. The codes below are the enforcement point's own.</p>
 </tr>
 <tr>
 <td><code>INVALID_FIELD_VALUE</code></td>
-<td>the request id names a trail still open in the gateway, or the protocol cannot carry the bytes</td>
+<td>the request id names a trail still open, or the protocol cannot carry the bytes</td>
 </tr>
 <tr>
 <td><code>POLICY_STALE</code></td>
@@ -450,7 +464,7 @@ block in every mode. The codes below are the enforcement point's own.</p>
 </tr>
 <tr>
 <td><code>POLICY_UNAVAILABLE</code></td>
-<td>a block reached the adapter with a decision naming no cause; it answers with the kernel's code for an absent policy</td>
+<td>a block whose decision names no cause, answered with the kernel's code for an absent policy</td>
 </tr>
 <tr>
 <td><code>REQUIRED_FIELD_ABSENT</code></td>

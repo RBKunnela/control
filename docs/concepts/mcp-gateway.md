@@ -265,7 +265,7 @@ in every mode, before the closing record is written.
 | a `tools/call` result with `isError` | an `isError` result saying the error was withheld |
 | a wire error | its code, a fixed message, and `<ns>/answer: withheld` as data |
 | a `resources/read` or `prompts/get` result, a forwarded list | `-31103` |
-| a tool definition | the tool is never listed, and a call to it is unclassified, which every mode but `OBSERVE` blocks |
+| a tool definition | the tool is never listed, and a call to it is unclassified, which every mode but `OBSERVE` blocks; a name that quotes the credential is recorded as `withheld:sha256:` and its digest |
 
 It catches an upstream that echoes what it was sent, not one that sets out to
 leak: hex, a changed case or a split value pass. `doctor` names each value too

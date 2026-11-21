@@ -147,7 +147,8 @@ const plainQuery = `{"limit":1000}`
 // names another action kind, its envelope one the contract accepts. tenant
 // and project set both the event's and its envelope's; the event and
 // envelope fields set one side. unclassified leaves the effect class out, as
-// a plane records a call nothing classifies.
+// a plane records a call nothing classifies. protocol is "mcp" unless set,
+// and "none" leaves it out.
 type proposal struct {
 	mode, trace, span, tenant, project, tool, upstream, kind string
 	protocol                                                 string
@@ -169,8 +170,8 @@ func (p proposal) line() string {
 	if p.unclassified {
 		effect = ""
 	}
-	if p.protocol != "" {
-		effect += fmt.Sprintf(`,"protocol":%q`, p.protocol)
+	if protocol := pick(p.protocol, "mcp"); protocol != "none" {
+		effect += fmt.Sprintf(`,"protocol":%q`, protocol)
 	}
 	return fmt.Sprintf(`{"type":"event","offset":0,"cursor":"c","event":{"eventId":"e1",`+
 		`"kind":"EVENT_KIND_ACTION_PROPOSED","projectId":%q,"tenantId":%q,"occurredAt":%q,"schemaVersion":"1.0",`+

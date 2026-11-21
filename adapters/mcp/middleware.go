@@ -1,8 +1,10 @@
 package mcp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -86,13 +88,23 @@ func (a *Adapter) middleware(next mcp.MethodHandler) mcp.MethodHandler {
 // toolSender sends the authorized bytes as the call's arguments, in params
 // the adapter builds: what the agent put beside them, its _meta and its
 // input responses, is the agent's business with the gateway and reaches no
-// upstream.
+// upstream. The library writes the message through an encoder that leaves
+// HTML alone, which drops the whitespace between tokens and escapes what that
+// encoder escapes; the arguments are encoded the same way here, so what is
+// sent is what the upstream receives, and the library's pass changes nothing.
 func toolSender(name string) sender {
 	return func(authorized []byte) (func(context.Context, *mcp.ClientSession) (mcp.Result, error), []byte, error) {
-		params := &mcp.CallToolParams{Name: name, Arguments: json.RawMessage(authorized)}
+		var wire bytes.Buffer
+		enc := json.NewEncoder(&wire)
+		enc.SetEscapeHTML(false)
+		if err := enc.Encode(json.RawMessage(authorized)); err != nil {
+			return nil, nil, fmt.Errorf("%w: %w", ErrArguments, err)
+		}
+		sent := bytes.TrimSuffix(wire.Bytes(), []byte("\n"))
+		params := &mcp.CallToolParams{Name: name, Arguments: json.RawMessage(sent)}
 		return func(ctx context.Context, cs *mcp.ClientSession) (mcp.Result, error) {
 			return cs.CallTool(ctx, params)
-		}, authorized, nil
+		}, sent, nil
 	}
 }
 
@@ -199,26 +211,37 @@ func (a *Adapter) run(ctx context.Context, c call, send sender) (outcome, error)
 		return outcome{decision: d.Decision, pending: d.Pending}, nil
 	default:
 		a.blocked.Add(1)
-		return outcome{decision: d.Decision, blocked: true}, nil
+		return outcome{decision: d.Decision, blocked: true, extra: refusedOf(c.admission.Refusal)}, nil
 	}
-	cs := sessions[c.upstream]
+	return a.dispatch(ctx, p, sessions[c.upstream], d, &c, send), nil
+}
+
+// dispatch sends an execution the pipeline handed out over cs, or aborts it
+// when nothing serves it, its bytes are not the authorized ones, an
+// obligation does not hold, a refresh withdrew the classification it was
+// admitted under in a mode that blocks an unclassified call, or the method
+// cannot carry its bytes.
+func (a *Adapter) dispatch(ctx context.Context, p Pipeline, cs *mcp.ClientSession, d gateway.Disposition, c *call, send sender) outcome {
 	if cs == nil {
-		return a.abort(ctx, p, d, gateway.AbortUnroutable, nil, ErrUnroutable), nil
+		return a.abort(ctx, p, d, gateway.AbortUnroutable, nil, ErrUnroutable)
 	}
 	got, err := canon.ArgumentsHashV1(d.AuthorizedArgs)
 	if err != nil || got != d.AuthorizedDigest {
-		return a.abort(ctx, p, d, gateway.AbortArgsMismatch, nil, nil), nil
+		return a.abort(ctx, p, d, gateway.AbortArgsMismatch, nil, nil)
 	}
 	obl, err := applyObligations(d.Obligations)
 	if err != nil {
-		return a.abort(ctx, p, d, gateway.AbortObligation, d.Decision.GetReasonCodes(), err), nil
+		return a.abort(ctx, p, d, gateway.AbortObligation, d.Decision.GetReasonCodes(), err)
+	}
+	if c.entry != nil && c.entry.Classified && !d.RunsUnclassified && !a.manifest.holds(c.entry) {
+		return a.abort(ctx, p, d, gateway.AbortUnroutable, nil, ErrReclassified)
 	}
 	do, sent, err := send(d.AuthorizedArgs)
 	if err != nil {
 		// The bytes are the authorized ones; this protocol cannot carry them.
-		return a.abort(ctx, p, d, gateway.AbortUntranslatable, nil, err), nil
+		return a.abort(ctx, p, d, gateway.AbortUntranslatable, nil, err)
 	}
-	return a.sendOnce(ctx, p, d, &c, upstreamCall{session: cs, do: do, sent: sent, timeout: obl.timeout}), nil
+	return a.sendOnce(ctx, p, d, c, upstreamCall{session: cs, do: do, sent: sent, timeout: obl.timeout})
 }
 
 // upstreamCall is the one send an admitted call comes to: the session it
@@ -247,6 +270,16 @@ func (a *Adapter) sendOnce(ctx context.Context, p Pipeline, d gateway.Dispositio
 	ans := a.scan(d, c, res, callErr)
 	a.close(ctx, p, d, u.sent, resultOf(d, started, ended, ans))
 	return outcome{decision: d.Decision, res: res, err: callErr, withheld: ans.withheld}
+}
+
+// refusedOf is what a block adds for a call whose envelope could not be
+// built: what the refusal said. A call nothing classifies was built, and
+// adds nothing.
+func refusedOf(refusal error) map[string]any {
+	if refusal == nil || errors.Is(refusal, gateway.ErrUnclassified) {
+		return nil
+	}
+	return map[string]any{keyRefused: refusal.Error()}
 }
 
 // abort records an execution the adapter was handed and did not send, and

@@ -166,11 +166,11 @@ func withheldResult(res mcp.Result, e *Entry) *mcp.CallToolResult {
 
 // withheldError is an upstream wire error in place of the upstream's: its
 // code, a fixed message, and as data the marker and the keys naming d's
-// trail, none without a decision. Any other failure is upstreamFailed.
+// trail, none without a decision. Any other failure is failedNamed.
 func withheldError(err error, d *controlv1.Decision) error {
 	var werr *jsonrpc.Error
 	if !errors.As(err, &werr) {
-		return upstreamFailed(err)
+		return failedNamed(err, d)
 	}
 	return &jsonrpc.Error{Code: werr.Code, Message: messageErrorWithheld, Data: withheldData(d)}
 }

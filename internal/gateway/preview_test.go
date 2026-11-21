@@ -3,6 +3,7 @@ package gateway_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"testing"
@@ -63,8 +64,8 @@ func TestAnUnclassifiedCallRunsUnderObserve(t *testing.T) {
 	args := []byte(`{"k": 1}`)
 	a := unclassified(args)
 	d := h.p.Admit(context.Background(), a)
-	if d.Action != core.Execute || !bytes.Equal(d.AuthorizedArgs, args) {
-		t.Fatalf("under OBSERVE: Action = %d, args %q; want the proposed bytes run", d.Action, d.AuthorizedArgs)
+	if d.Action != core.Execute || !bytes.Equal(d.AuthorizedArgs, args) || !d.RunsUnclassified {
+		t.Fatalf("under OBSERVE: Action = %d, args %q, RunsUnclassified %v; want the proposed bytes run", d.Action, d.AuthorizedArgs, d.RunsUnclassified)
 	}
 	for _, e := range h.events() {
 		if slices.Contains(e.GetDecision().GetReasonCodes(), codeActionUnclassified) {
@@ -142,4 +143,45 @@ func TestAnUnbuiltPipelinePreviewsTheUnbuiltDecision(t *testing.T) {
 			t.Errorf("%s pipeline previews as %+v", name, d)
 		}
 	}
+}
+
+// TestAPreviewSaysWhetherAHaltStands: a preview decided while the plane
+// takes no material call says so, whichever of its halts stands. A run's own
+// halt is not in it, since a preview reads no run and a listing outlives one.
+func TestAPreviewSaysWhetherAHaltStands(t *testing.T) {
+	halted := func(h *harness, a gateway.Admission) bool { return h.p.Preview(context.Background(), a).Halted }
+	t.Run("mismatch", func(t *testing.T) {
+		h := build(t, modeEnforce, snapshot(t, allowReads, allowWrites))
+		if halted(h, admission(writeEnvelope(), nil)) {
+			t.Fatal("a fresh plane previews as halted")
+		}
+		d := h.admit(readEnvelope(), []byte(`{"q":1}`))
+		if err := h.p.Close(context.Background(), d, []byte(`{"q":2}`), result(controlv1.ResultStatus_RESULT_STATUS_SUCCESS)); !errors.Is(err, gateway.ErrExecutedArgsMismatch) {
+			t.Fatalf("Close with other bytes = %v", err)
+		}
+		if !halted(h, admission(requestNamed(writeEnvelope(), "req-2"), nil)) {
+			t.Error("a mismatch halt is not in the preview")
+		}
+	})
+	t.Run("sink", func(t *testing.T) {
+		h := build(t, modeEnforce, snapshot(t, allowReads, allowWrites))
+		d := h.admit(writeEnvelope(), []byte(`{}`))
+		h.sink.fail(true)
+		if err := h.p.Close(context.Background(), d, []byte(`{}`), result(controlv1.ResultStatus_RESULT_STATUS_SUCCESS)); !errors.Is(err, errSink) {
+			t.Fatalf("Close under a failing sink = %v", err)
+		}
+		if !halted(h, admission(requestNamed(writeEnvelope(), "req-2"), nil)) {
+			t.Error("a sink halt is not in the preview")
+		}
+	})
+	t.Run("run", func(t *testing.T) {
+		h := build(t, modeEnforce, snapshot(t, allowReads, allowWrites), withRuns(newRuns("root-a", "root-b")), cooperative)
+		reportMismatch(t, h, "a-1", "run-a", "root-a")
+		if h.p.Stats().RunsHalted != 1 {
+			t.Fatal("the reported mismatch halted no run")
+		}
+		if halted(h, writeIn("a-2", "run-a", "root-a", []byte(`{}`))) {
+			t.Error("a preview names a run's own halt")
+		}
+	})
 }

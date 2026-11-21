@@ -170,8 +170,9 @@ func proposes(ev *controlv1.Event, o *observev1.Observation, path Path, need mod
 }
 
 // names reports whether ev, a proposal carrying o's ids, names a call of
-// path's tool in o's tenant and project: on its upstream for an mcp_tool, and
-// through the enforcement API for an enforce_tool, whose provider is the
+// path's tool in o's tenant and project: through the MCP adapter on its
+// upstream for an mcp_tool, and through the enforcement API for an
+// enforce_tool, whose provider is the
 // operator's word for it and no upstream. A prompt or a resource read through
 // the plane under a tool's name is not the call. An empty tenant or project
 // names nothing: a refused envelope may lack both.
@@ -183,7 +184,7 @@ func names(ev *controlv1.Event, o *observev1.Observation, path Path) bool {
 	if path.Kind == KindEnforceTool {
 		return action.GetProtocol() == channel.ProtocolEnforce
 	}
-	return action.GetProvider() == path.Upstream
+	return action.GetProtocol() == channel.ProtocolMCP && action.GetProvider() == path.Upstream
 }
 
 func sameScope(ev *controlv1.Event, env *controlv1.ActionEnvelope, o *observev1.Observation) bool {

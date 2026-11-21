@@ -183,7 +183,7 @@ plane mints or, under <code>runs.dir</code>, the id of the run the operator open
 </tr>
 <tr>
 <td><code>resource</code></td>
-<td>the override's <code>type</code>, and <code>id</code>: the string or number at the override's <code>resource_from</code> pointer into the arguments, none for another value, the URI of a <code>resources/read</code>, or the name of a <code>prompts/get</code>; the upstream's <code>tenant_id</code> and <code>environment</code>. An action name or resource id refused as over-long is recorded as <code>overlong:sha256:</code> and the hex SHA-256 of what was sent</td>
+<td>the override's <code>type</code>, and <code>id</code>: the string or number at the override's <code>resource_from</code> pointer into the arguments, none for another value, the URI of a <code>resources/read</code>, or the name of a <code>prompts/get</code>; the upstream's <code>tenant_id</code> and <code>environment</code>. An action name or resource id refused as over-long is recorded as <code>overlong:sha256:</code> and the hex SHA-256 of what was sent, and a called tool name, prompt name or resource URI that quotes a credential the plane holds, cannot be scanned or starts with <code>withheld:sha256:</code> is recorded as that prefix and the hex SHA-256 of it, in the action name and, for a read, the resource id; the upstream receives it as called</td>
 </tr>
 <tr>
 <td><code>destination</code></td>

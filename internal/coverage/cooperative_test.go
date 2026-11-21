@@ -201,7 +201,7 @@ func TestAnEnforceProposalJoinsAnEnforceToolPath(t *testing.T) {
 	}{
 		{"the enforcement API's proposal", proposal{trace: traceA, span: spanA, tool: "refund", upstream: "payments", protocol: channel.ProtocolEnforce}, coverage.Joined},
 		{"an MCP proposal of the tool's name", proposal{trace: traceA, span: spanA, tool: "refund", upstream: "payments", protocol: "mcp"}, coverage.JoinAround},
-		{"no protocol", proposal{trace: traceA, span: spanA, tool: "refund", upstream: "payments"}, coverage.JoinAround},
+		{"no protocol", proposal{trace: traceA, span: spanA, tool: "refund", upstream: "payments", protocol: "none"}, coverage.JoinAround},
 		{"another tool", proposal{trace: traceA, span: spanA, tool: "refunds", upstream: "payments", protocol: channel.ProtocolEnforce}, coverage.JoinAround},
 		{"a prompt", proposal{trace: traceA, span: spanA, tool: "refund", kind: "prompt", protocol: channel.ProtocolEnforce}, coverage.JoinAround},
 	}

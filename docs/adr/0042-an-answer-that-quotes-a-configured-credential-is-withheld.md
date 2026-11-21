@@ -114,6 +114,20 @@ their keys and kinds, the command resolves the variables' values, and
 without a secret set, as it refuses one without a clock: a forgotten wiring
 would otherwise turn the scan off unseen. An empty set is allowed.
 
+Amended in 0.19: a name an agent calls is withheld from the record too. A
+`tools/call` tool name, a `prompts/get` name or a `resources/read` URI that
+quotes a configured credential, cannot be scanned, or starts with
+`withheld:sha256:` is recorded as `withheld:sha256:` followed by the
+lower-case hex SHA-256 of the name as sent, in the action's name and, for a
+read, the resource's id. The upstream still receives the name as called. A
+name the agent spells with the prefix is digested again, so a withheld name on
+the record is never one the agent wrote. A policy reads the withheld form in
+every mode, so a rule that names the tool or the resource does not match the
+call. The digest is unsalted, as `overlong:sha256:` is
+([ADR-0043](0043-a-refused-over-long-name-is-recorded-by-its-digest.md)): it
+ties the record to a name someone already holds, and reveals the name to
+whoever can guess it.
+
 ## Security / compatibility impact
 
 This is a tripwire for an upstream that echoes what it was sent, not a

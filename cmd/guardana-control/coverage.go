@@ -99,9 +99,9 @@ func coverageFlagSet(command string, out io.Writer) *flag.FlagSet {
 // no call went around a plane, no egress host is undeclared, no egress line
 // was refused and every egress source is live; 1 when a path is weaker, a
 // call did, a walk down a trace was cut at its bound, an egress host is
-// undeclared, printed or cut from the rows, an egress line was refused or an
-// egress source is not live; and 2 when an input was refused, with no map
-// printed.
+// undeclared, printed or cut from the rows, an egress line was refused, an
+// egress source is not live or the map could not be written; and 2 when an
+// input was refused, with no map printed.
 func coverageCommand(args []string, stdout, stderr io.Writer) int {
 	flags, a := coverageFlags(coverageName, io.Discard)
 	err := flags.Parse(args)
@@ -123,7 +123,7 @@ func coverageCommand(args []string, stdout, stderr io.Writer) int {
 		return refuseCoverage(stderr, err.Error())
 	}
 	if _, err := io.WriteString(stdout, strings.Join(report.Lines(), "\n")+"\n"); err != nil {
-		return refuseCoverage(stderr, "writing to standard output: "+err.Error())
+		return fail(stderr, coverageName, fmt.Errorf("writing to standard output: %w", err))
 	}
 	return coverage.ExitStatus(report, nil)
 }

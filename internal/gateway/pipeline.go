@@ -68,6 +68,11 @@ type Disposition struct {
 	// AllowReadsUnrecorded after the sink refused its trail: no record of it
 	// is written, its closing included.
 	Unrecorded bool
+	// RunsUnclassified says the mode runs a call nothing classifies, as
+	// OBSERVE does. An adapter that finds, after Admit, that the
+	// classification the call was admitted under no longer holds sends it
+	// only when this is set, and aborts it otherwise.
+	RunsUnclassified bool
 	// handle names the execution in the pipeline's own record; Close and
 	// Abort resolve it there and trust nothing else in this value.
 	handle string
@@ -215,11 +220,16 @@ func (p *Pipeline) Preview(ctx context.Context, a Admission) Previewed {
 	c.checkTranslation()
 	c.refuseFlowTags()
 	c.stampFlow()
-	c.causes = planeCauses(c.planeState())
+	state := c.planeState()
+	c.causes = planeCauses(state)
 	c.decideProposed(p.cfg.Policy.Current(), false)
 	c.applyMode()
 	c.refuseFlow()
-	return Previewed{Decision: c.decision, Listing: listingOf(c.decision, c.kernel, c.noRuleMatched, c.unknownAllows, c.in)}
+	return Previewed{
+		Decision: c.decision,
+		Listing:  listingOf(c.decision, c.kernel, c.noRuleMatched, c.unknownAllows, c.in),
+		Halted:   state.sinkHalt || state.mismatchHalt,
+	}
 }
 
 // Stats returns what the pipeline counted so far. A nil or zero Pipeline

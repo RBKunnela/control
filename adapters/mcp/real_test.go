@@ -44,6 +44,12 @@ const (
 type realPipeline struct {
 	*gateway.Pipeline
 	previews atomic.Int64
+	// misreport, when set, has Close told of other bytes than were sent, as
+	// a mismatch the plane halts on.
+	misreport atomic.Bool
+	// onAdmit, when set before the first call, runs after every Admit and
+	// before the adapter reads the disposition.
+	onAdmit func()
 
 	mu       sync.Mutex
 	proposed []string
@@ -53,7 +59,11 @@ func (r *realPipeline) Admit(ctx context.Context, a gateway.Admission) gateway.D
 	r.mu.Lock()
 	r.proposed = append(r.proposed, a.Envelope.GetRequestId())
 	r.mu.Unlock()
-	return r.Pipeline.Admit(ctx, a)
+	d := r.Pipeline.Admit(ctx, a)
+	if r.onAdmit != nil {
+		r.onAdmit()
+	}
+	return d
 }
 
 // admitted are the request ids the adapter proposed, in order.
@@ -61,6 +71,13 @@ func (r *realPipeline) admitted() []string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return slices.Clone(r.proposed)
+}
+
+func (r *realPipeline) Close(ctx context.Context, d gateway.Disposition, sent []byte, result *controlv1.ActionResult) error {
+	if r.misreport.Load() {
+		sent = []byte(`{"to":"someone-else@example.com"}`)
+	}
+	return r.Pipeline.Close(ctx, d, sent, result)
 }
 
 func (r *realPipeline) Preview(ctx context.Context, a gateway.Admission) gateway.Previewed {

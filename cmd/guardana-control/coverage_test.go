@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -151,6 +152,21 @@ func TestCoverageOfAnEnforcedObservedPathExitsZero(t *testing.T) {
 	}
 	if last := lines[len(lines)-1]; last != "undeclared paths: unknown" {
 		t.Errorf("last line %q, want the standing row", last)
+	}
+}
+
+// TestCoverageWhoseMapCannotBeWrittenExitsOne: every input was read and the
+// map made, so a standard output that refuses it fails the command; it is
+// not a refused input.
+func TestCoverageWhoseMapCannotBeWrittenExitsOne(t *testing.T) {
+	tr := newCoverageTree(t, "")
+	tr.importFresh(t)
+	var stderr bytes.Buffer
+	if code := run(tr.args("--plane", tr.plane), failingWriter{}, &stderr); code != exitFail {
+		t.Errorf("exit %d, want %d", code, exitFail)
+	}
+	if want := brand.CLI + ": coverage: writing to standard output: broken pipe\n"; stderr.String() != want {
+		t.Errorf("stderr %q, want %q", stderr.String(), want)
 	}
 }
 

@@ -92,6 +92,9 @@ const (
 	ErrArguments Error = "mcp: the authorized arguments are not what this method sends"
 	// ErrUnroutable is an execution no configured upstream is known to serve.
 	ErrUnroutable Error = "mcp: no upstream serves this operation"
+	// ErrReclassified is an execution whose tool a manifest refresh no longer
+	// classifies as it did when the call was admitted.
+	ErrReclassified Error = "mcp: the tool's definition or classification changed after the call was admitted"
 )
 
 // ErrNoEndUser is a request on an authenticated listener that carries no

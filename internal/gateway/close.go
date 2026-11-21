@@ -134,9 +134,9 @@ const (
 	// AbortObligation is an obligation the adapter applies refusing the call
 	// or failing to apply; nothing was sent.
 	AbortObligation
-	// AbortUnroutable is a call no upstream of the adapter serves, so nothing
-	// says where it would have gone and no effect class covers it; nothing
-	// was sent.
+	// AbortUnroutable is a call no upstream of the adapter serves, or one
+	// whose classification the adapter withdrew after admitting it, so no
+	// effect class covers it any more; nothing was sent.
 	AbortUnroutable
 	// AbortUntranslatable is a call the adapter cannot express in its
 	// protocol from the authorized bytes, because a field it needs is not

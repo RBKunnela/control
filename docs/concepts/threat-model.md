@@ -9,8 +9,8 @@ covers: [adapters/mcp/**, adapters/authzen/**, adapters/otel/**, cmd/guardana-ga
 
 Nothing in this repository is a security boundary yet
 ([status](../status.md), [SECURITY.md](../../SECURITY.md)). This page says
-what the plane is built to protect, from whom, what it does about each of them
-today, and where it stops. Each defence names the code that makes it and,
+what the plane protects, from whom, what it does about each today, and where
+it stops. Each defence names the code that makes it and,
 where one exists, the test that exercises it.
 
 ## What is in scope
@@ -49,7 +49,7 @@ outside the plane. They appear below as parties the plane has to deal with.
 
 ## Who it is meant to stop
 
-The main attacker is **the agent itself**, when it is wrong or when content it
+The main attacker is **the agent itself**, when it is wrong or content it
 read steers it. Each of the others has a section below.
 
 ## Trust boundaries
@@ -89,8 +89,8 @@ Sources: `adapters/mcp/listener.go`, `cmd/guardana-gateway/adapter.go`,
 `internal/console/console.go`, `cmd/guardana-gateway/collect.go`,
 `adapters/authzen/mapping.go`.
 
-A dotted line is either a path that goes around
-the plane or a write that the file checks refuse. The account is the strongest boundary this
+A dotted line is a path around the plane or a
+write the file checks refuse. The account is the strongest boundary this
 build has: the approvals directory, the pause file, the hold journal, the
 trail file and the key are each refused when the group or the world may write
 them, and the hold journal, the trail file and the key also when another
@@ -146,7 +146,7 @@ What it does not do:
   constraint reads the arguments, which enter as a hash, except the one value
   an override's `resource_from` points at. A harmful call that a rule allows
   runs.
-- It does not see a call that does not pass through it. An agent, or a tool
+- It does not see a call that bypasses it. An agent, or a tool
   behind the plane, that can reach an upstream directly, or run code, goes
   around it. Which network paths and credentials an agent holds is the
   operator's to arrange.
@@ -154,7 +154,8 @@ What it does not do:
   end user's authenticator, so every call on a listener is the one configured principal
   ([MCP coverage](../reference/mcp-coverage.md)), and a pause names no tenant.
 - The flow state is a lower bound: a run starts clean, and the user's prompt,
-  the tools' descriptions and tools outside the plane are not tracked
+  tool descriptions, listed resources and prompts, and tools outside the
+  plane are not tracked
   ([ADR-0021](../adr/0021-a-run-carries-what-it-took-in.md)).
 - A pause takes effect up to one poll interval after it is written, and never
   stops a call already running ([ADR-0019](../adr/0019-an-operator-can-pause-calls.md)).
@@ -171,9 +172,11 @@ What it does not do:
 
 What the plane does today:
 
-- A server that changes a tool's definition changes its fingerprint, and the
-  tool is unclassified again until the operator looks
-  (`adapters/mcp/manifest.go`; `TestFingerprintCoversTheWholeDefinition`).
+- A changed tool definition changes its fingerprint; once the list refreshes,
+  the tool is unclassified until the operator looks, and a call admitted
+  earlier runs only under `OBSERVE` (`adapters/mcp/manifest.go`;
+  `TestFingerprintCoversTheWholeDefinition`,
+  `TestACallAdmittedBeforeARefreshRunsUnderObserveOnly`).
 - A server cannot answer as the plane: the plane's marker is stripped from
   what a server sends, so its answer never reads as the plane's pending or
   block (`adapters/mcp/answer.go`; `TestUpstreamCannotAnswerAsTheGateway`,
@@ -204,8 +207,9 @@ What it does not do:
   encode.
 - A tool the agent is shown comes with its description as the server wrote
   it. List shaping can hide denied and unclassified tools, never rewrite a
-  description, and the fingerprint catches a definition that changes, not one
-  that was hostile from the start.
+  description, and the fingerprint catches a changed definition only after
+  a `list_changed`, which a server may never send, never one hostile from the
+  start.
 - It cannot see what a server did with the bytes it was sent.
 - **A `stdio` upstream is a child process of the plane**: it runs as the
   plane's account and can read and write everything that account can

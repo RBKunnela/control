@@ -26,9 +26,14 @@ const (
 )
 
 // Previewed is a preview's decision and what a listing may do with the tool.
+// Halted says the plane's halt of material calls, after a mismatch or a
+// refused closing record, stood when it was decided, which shapes a listing
+// as much as the bundle the decision names. A run's own halt is not in it: a
+// preview reads no run.
 type Previewed struct {
 	Decision *controlv1.Decision
 	Listing  Listing
+	Halted   bool
 }
 
 // listingOf is what a listing may do with a tool previewed as decision under

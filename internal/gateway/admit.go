@@ -354,6 +354,7 @@ func (c *call) start(trail *evidence.Builder) Disposition {
 		ExecutionID:      executionID,
 		Obligations:      c.rest,
 		Unrecorded:       ex.unrecorded,
+		RunsUnclassified: c.p.cfg.Mode == modeObserve,
 		handle:           handle,
 	}
 }

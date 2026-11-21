@@ -198,6 +198,17 @@ func (m *manifest) replace(upstream string, entries []*Entry) {
 	m.generation++
 }
 
+// holds reports whether the manifest still classifies e's tool as e does: the
+// same upstream, definition and classification. A refresh builds new entries,
+// so they are compared by value.
+func (m *manifest) holds(e *Entry) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	cur, ok := m.byName[e.Tool.Name]
+	return ok && !m.ambiguous[e.Tool.Name] && cur.Classified &&
+		cur.Upstream == e.Upstream && cur.Fingerprint == e.Fingerprint && cur.Classification == e.Classification
+}
+
 // route returns the entry for name and, when a call to it cannot be
 // classified, gateway.ErrUnclassified wrapped with the reason. The entry is
 // nil when no upstream, or more than one, lists the name.

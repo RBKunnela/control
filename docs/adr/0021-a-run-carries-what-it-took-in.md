@@ -197,6 +197,11 @@ short tags more.
   an envelope already at the bound is refused.
 - Notifications and requests an upstream sends are not tracked as influence.
 
+Amended in 0.19: `prompts/list` and `resources/list`, like the tools'
+descriptions, are listings that leave a run's flow state clean. What a listed
+prompt or resource says reaches the model untracked until a `prompts/get` or a
+`resources/read` of it.
+
 ## Validation
 
 The exit criteria of the change that brings this record:

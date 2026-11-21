@@ -277,7 +277,7 @@ receive time; one heard after the command's clock is unknown.</p>
 <p>Beside an enforced or decided path, each matching observation is checked
 against the exports of the planes that count for it. It is joined when a
 whole export holds, for it or an observation below it in the same trace,
-tenant and project, the span id of a tool call's proposal for that tool on that upstream, or for an
+tenant and project, the span id of an MCP tool call's proposal for that tool on that upstream, or for an
 <code>enforce_tool</code> of that tool through the enforcement API, in the same tenant
 and project, recorded in a mode
 at least as strong as the path's state. A call every such plane's export could
@@ -326,9 +326,8 @@ and the count by reason, from <code>refused</code> and <code>refused_by</code>, 
 and a count of the rest:</p>
 <pre><code>refused egress by egress-envoy: 2 lines refused, so their connections are unknown: destination 1, port 1; no plane decides egress
 </code></pre>
-<p>Each report counts what its own import refused, so a line two imports of
-the same file refused counts twice; the row stays until the observation log
-is rotated by hand.</p>
+<p>Each report counts its own import's refusals, so a line refused by two
+imports counts twice; the row stays until the log is rotated by hand.</p>
 <p>An egress source not live gets an unseen row, named by a path or not; a
 path naming it stays unknown:</p>
 <pre><code>unseen egress by egress-envoy: past its heartbeat: last heard 2026-10-04T10:00:01Z, heartbeat 300 s; connections since its last import are unseen; no plane decides egress
@@ -351,7 +350,7 @@ bits only, not an access control list or the file's owner
 </tr>
 <tr>
 <td>1</td>
-<td>a path is unknown or not covered; a call around the plane or a cut walk was found, since an agent chooses its spans and can cut a walk on purpose; an egress source reached a host no path declares, its row printed or cut; an egress import refused a line; or an egress source is not live</td>
+<td>a path is unknown or not covered; a call around the plane or a cut walk was found, since an agent chooses its spans and can cut a walk on purpose; an egress source reached a host no path declares, its row printed or cut; an egress import refused a line; an egress source is not live; or writing the map failed</td>
 </tr>
 <tr>
 <td>2</td>

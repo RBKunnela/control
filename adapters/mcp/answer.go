@@ -106,11 +106,11 @@ func named(res mcp.Result, d *controlv1.Decision) mcp.Result {
 // message and data, the data without the keys under the namespace and with
 // the keys naming d's trail when it is an object or absent. Data of any
 // other shape has no place for them and arrives as it was sent. Any other
-// failure is upstreamFailed.
+// failure is failedNamed.
 func namedError(err error, d *controlv1.Decision) error {
 	var werr *jsonrpc.Error
 	if !errors.As(err, &werr) {
-		return upstreamFailed(err)
+		return failedNamed(err, d)
 	}
 	out := &jsonrpc.Error{Code: werr.Code, Message: werr.Message, Data: werr.Data}
 	var data map[string]json.RawMessage
@@ -271,11 +271,24 @@ func upstreamError(err error) error {
 // upstream's, a timeout, a broken connection or an input request: a fixed
 // code and message, because the error's own text can quote the endpoint,
 // credential and all.
-func upstreamFailed(err error) error {
+func upstreamFailed(err error) *jsonrpc.Error {
 	if errors.Is(err, errInputRequired) {
 		return &jsonrpc.Error{Code: jsonrpc.CodeInternalError, Message: errInputRequired.Error()}
 	}
 	return &jsonrpc.Error{Code: jsonrpc.CodeInternalError, Message: "the upstream did not answer"}
+}
+
+// failedNamed is upstreamFailed with the keys naming d's trail as its data,
+// none without a decision; a map of strings always marshals, so a failure
+// leaves the data out rather than the code.
+func failedNamed(err error, d *controlv1.Decision) error {
+	out := upstreamFailed(err)
+	if ids := trailIDs(d); len(ids) > 0 {
+		if raw, merr := json.Marshal(ids); merr == nil {
+			out.Data = raw
+		}
+	}
+	return out
 }
 
 // codeRejectedByTransport is the code the SDK's HTTP client wraps around a

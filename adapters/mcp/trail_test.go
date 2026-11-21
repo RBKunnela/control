@@ -181,6 +181,29 @@ func TestUpstreamErrorNamesThePlanesTrail(t *testing.T) {
 	}
 }
 
+// TestAFailedSendNamesThePlanesTrail: a call the upstream never answered,
+// cut by the call timeout, is answered with the fixed code and message and
+// names in data the trail that recorded the decision, and nothing else.
+func TestAFailedSendNamesThePlanesTrail(t *testing.T) {
+	r := newRig(t, mcp.KindStdio, rigOptions{mode: modeEnforce, rules: []string{allowReads}, timeout: 100 * time.Millisecond})
+	_, err := callTool(t, r.connect(t, "agent-a"), "slow", map[string]any{"path": "/x"})
+	var werr *jsonrpc.Error
+	if !errors.As(err, &werr) || werr.Code != jsonrpc.CodeInternalError || werr.Message != "the upstream did not answer" {
+		t.Fatalf("the cut call = %v, want the fixed code and message", err)
+	}
+	if got := r.lastOf(t, kindFailed).GetResult().GetToolProtocolStatus(); got != "timeout" {
+		t.Fatalf("the trail recorded %q, want the timeout", got)
+	}
+	var data map[string]any
+	if err := json.Unmarshal(werr.Data, &data); err != nil {
+		t.Fatalf("data %q is not an object: %v", werr.Data, err)
+	}
+	wantTrail(t, "a failed send", data, r.lastOf(t, kindDecided).GetDecision())
+	if len(data) != 2 {
+		t.Errorf("data %v holds more than the two ids", data)
+	}
+}
+
 // TestBlockNamesItsTrail: a block names the decision ACTION_BLOCKED
 // recorded, beside the marker.
 func TestBlockNamesItsTrail(t *testing.T) {
