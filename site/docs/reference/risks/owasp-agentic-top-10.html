@@ -133,80 +133,18 @@
 <p>OWASP published the 2026 edition on 2025-12-09. The identifiers and risk titles come from that edition. Guardana Control maps each risk to the behavior its tests exercise. <a href="https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/">OWASP edition page</a> and <a href="https://genai.owasp.org/download/52117/?tmstv=1765059207">published report</a>, read 2026-11-20.</p>
 <h2 id="risks">Risks</h2>
 <p>The gateway examples use <code>ENFORCE</code>. In <code>OBSERVE</code>, the gateway records a policy denial and lets the call run. A gap means there is no exercised control for the behavior described. <a href="/docs/concepts/threat-model#an-agent-that-is-wrong-or-steered">Threat model</a>.</p>
-<div class="tbl">
-<table>
-<thead>
-<tr>
-<th>Published risk</th>
-<th>Exercised control</th>
-<th>Test file and function</th>
-<th>Known bypass and remaining gap</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>ASI01: Agent Goal Hijack</td>
-<td><a href="/docs/status#mcp-gateway">Model Context Protocol (MCP) gateway</a> (<code>experimental</code>). A flow rule blocks outbound mail if the run previously read untrusted content and confidential data. This limits one way a steered agent can send data out.</td>
-<td><code>internal/gateway/e2e/flow_test.go</code> · <code>TestTheToxicFlowIsDeniedAcrossSessions</code>. <a href="/docs/guides/count-controlled-attempts#2-run-it">B37 mail cases</a>.</td>
-<td>Goal hijacking itself can go undetected. User prompts and tool descriptions fall outside the tracked flow, and a changed goal can lead to a harmful call that policy allows. <a href="/docs/concepts/threat-model#an-agent-that-is-wrong-or-steered">Threat model</a>.</td>
-</tr>
-<tr>
-<td>ASI02: Tool Misuse and Exploitation</td>
-<td><a href="/docs/status#mcp-gateway">Model Context Protocol (MCP) gateway</a> (<code>experimental</code>). A delete denied by policy never reaches the tool server.</td>
-<td><code>internal/gateway/e2e/call_test.go</code> · <code>TestDeniedCallNeverReachesTheUpstream</code>. <a href="/docs/guides/count-controlled-attempts#2-run-it">B37 refund case</a>.</td>
-<td>An agent can bypass the gateway by reaching the server directly. It can also misuse a tool that policy allows. <a href="/docs/concepts/threat-model#an-agent-that-is-wrong-or-steered">Threat model</a>.</td>
-</tr>
-<tr>
-<td>ASI03: Identity and Privilege Abuse</td>
-<td><a href="/docs/status#decision-kernel">Decision kernel</a> (<code>implemented</code>), exercised with delegation chains supplied by a kernel unit test. The kernel denies an expired chain, a cycle, or a child scope wider than its parent's.</td>
-<td><code>internal/core/decide_test.go</code> · <code>TestDelegationRefusalIsABuiltInDeny</code>. The MCP path is exercised separately in <code>internal/gateway/e2e/classes_test.go</code> · <code>TestEveryEffectClassUnderEveryAnswer</code>.</td>
-<td>The live MCP listener uses its configured principal for every caller and supplies no delegation chain. In <code>ENFORCE</code>, a <code>SPAWN_OR_DELEGATE</code> call gets <code>REQUIRED_FIELD_ABSENT</code> before the delegation check. End-user authentication and enforcement of a caller's delegation chain remain gaps on this path, and no backlog task covers them. <a href="/docs/reference/mcp-coverage#what-the-gateway-cannot-do">MCP coverage</a>.</td>
-</tr>
-<tr>
-<td>ASI04: Agentic Supply Chain Vulnerabilities</td>
-<td><a href="/docs/status#mcp-gateway">Model Context Protocol (MCP) gateway</a> (<code>experimental</code>). A tool whose definition changes upstream at run time becomes unclassified until it is classified again. Its call is blocked.</td>
-<td><code>adapters/mcp/list_test.go</code> · <code>TestListChangedRefreshesTheManifest</code>.</td>
-<td>An operator can pin a hostile definition, and server behavior can change behind an unchanged definition. <a href="/docs/concepts/threat-model#a-hostile-or-compromised-mcp-server">Threat model</a>. <a href="/docs/status#tool-definition-review">Tool-definition change review</a> is <code>planned</code> in <a href="/docs/backlog">B25</a>.</td>
-</tr>
-<tr>
-<td>ASI05: Unexpected Code Execution (RCE)</td>
-<td>Gap.</td>
-<td>No test exercises process containment.</td>
-<td>The agent can run code directly, and an allowed tool can execute code on its host. <a href="/docs/status#host-process-events">Host process events</a> are <code>planned</code> in <a href="/docs/backlog">B35</a> for observation. Host isolation remains a gap. <a href="/docs/concepts/threat-model#an-agent-that-is-wrong-or-steered">Threat model</a>.</td>
-</tr>
-<tr>
-<td>ASI06: Memory &amp; Context Poisoning</td>
-<td>Gap.</td>
-<td>No test exercises agent memory integrity.</td>
-<td>Injected text in a tool result can reach the agent. No exercised check governs what enters persistent memory or what a later task retrieves. <a href="/docs/concepts/threat-model#a-hostile-or-compromised-mcp-server">Threat model</a>.</td>
-</tr>
-<tr>
-<td>ASI07: Insecure Inter-Agent Communication</td>
-<td>Gap.</td>
-<td>No test exercises peer authentication or message integrity on an agent-to-agent channel.</td>
-<td>Peers can communicate outside the plane. The <a href="/docs/status#a2a-adapter">Agent-to-agent (A2A) adapter</a> is <code>planned</code>. <a href="/docs/backlog">B16</a> includes adapter conformance.</td>
-</tr>
-<tr>
-<td>ASI08: Cascading Failures</td>
-<td>Gap. OWASP describes a fault that spreads and grows as other agents, tools, or workflows act on it. <a href="https://genai.owasp.org/download/52117/?tmstv=1765059207#page=31">ASI08, report p. 30</a>.</td>
-<td><code>internal/gateway/decisionpoint_test.go</code> · <code>TestSilenceBlocksEveryEffectClassUnderEnforce</code> checks one authorization at a time. An unanswered external veto blocks the call that needed it.</td>
-<td>A wrong result can pass to another agent and trigger further allowed actions. The test exercises neither detection of that spread nor recovery of the affected workflow. <a href="/docs/concepts/threat-model#a-decision-point-that-is-slow-wrong-or-hostile">Decision-point limits</a>.</td>
-</tr>
-<tr>
-<td>ASI09: Human-Agent Trust Exploitation</td>
-<td><a href="/docs/status#approval-binding">Approval binding</a> (<code>implemented</code>). An approved transfer runs once. A repeated request cannot reuse the approval.</td>
-<td><code>internal/gateway/e2e/approval_test.go</code> · <code>TestPendingApprovalAndItsRetry</code>. <a href="/docs/guides/count-controlled-attempts#2-run-it">B37 changed-update case</a>.</td>
-<td>A person can still be persuaded to approve the original harmful transfer. <a href="/docs/backlog">B38</a> covers showing the exact action to the approver.</td>
-</tr>
-<tr>
-<td>ASI10: Rogue Agents</td>
-<td><a href="/docs/status#run-stop">Stopping a run through a signed route</a> (<code>experimental</code>). After <code>supervise</code> reports a confirmed finding that a child retried a denied call with changed arguments, a signed route can stop later calls by that child.</td>
-<td><code>cmd/guardana-gateway/reaction_tree_unix_test.go</code> · <code>TestAChildsRetryIsSupervisedOverTheTreeAndStopsTheChild</code>.</td>
-<td>The parent can still act. A call already running can finish, and the child can use a path outside the gateway. Continuous checks are work in <a href="/docs/backlog">B28</a>. <a href="/docs/concepts/threat-model#an-agent-that-is-wrong-or-steered">Threat model</a>.</td>
-</tr>
-</tbody>
-</table>
-</div>
+<ul class="stack">
+<li><p class="rt">ASI01: Agent Goal Hijack</p><dl><dt>Exercised control</dt><dd><a href="/docs/status#mcp-gateway">Model Context Protocol (MCP) gateway</a> (<code>experimental</code>). A flow rule blocks outbound mail if the run previously read untrusted content and confidential data. This limits one way a steered agent can send data out.</dd><dt>Test file and function</dt><dd><code>internal/<wbr/>gateway/<wbr/>e2e/<wbr/>flow_test.go</code> · <code>TestTheToxicFlowIsDeniedAcrossSessions</code>. <a href="/docs/guides/count-controlled-attempts#2-run-it">B37 mail cases</a>.</dd><dt>Known bypass and remaining gap</dt><dd>Goal hijacking itself can go undetected. User prompts and tool descriptions fall outside the tracked flow, and a changed goal can lead to a harmful call that policy allows. <a href="/docs/concepts/threat-model#an-agent-that-is-wrong-or-steered">Threat model</a>.</dd></dl></li>
+<li><p class="rt">ASI02: Tool Misuse and Exploitation</p><dl><dt>Exercised control</dt><dd><a href="/docs/status#mcp-gateway">Model Context Protocol (MCP) gateway</a> (<code>experimental</code>). A delete denied by policy never reaches the tool server.</dd><dt>Test file and function</dt><dd><code>internal/<wbr/>gateway/<wbr/>e2e/<wbr/>call_test.go</code> · <code>TestDeniedCallNeverReachesTheUpstream</code>. <a href="/docs/guides/count-controlled-attempts#2-run-it">B37 refund case</a>.</dd><dt>Known bypass and remaining gap</dt><dd>An agent can bypass the gateway by reaching the server directly. It can also misuse a tool that policy allows. <a href="/docs/concepts/threat-model#an-agent-that-is-wrong-or-steered">Threat model</a>.</dd></dl></li>
+<li><p class="rt">ASI03: Identity and Privilege Abuse</p><dl><dt>Exercised control</dt><dd><a href="/docs/status#decision-kernel">Decision kernel</a> (<code>implemented</code>), exercised with delegation chains supplied by a kernel unit test. The kernel denies an expired chain, a cycle, or a child scope wider than its parent's.</dd><dt>Test file and function</dt><dd><code>internal/<wbr/>core/<wbr/>decide_test.go</code> · <code>TestDelegationRefusalIsABuiltInDeny</code>. The MCP path is exercised separately in <code>internal/<wbr/>gateway/<wbr/>e2e/<wbr/>classes_test.go</code> · <code>TestEveryEffectClassUnderEveryAnswer</code>.</dd><dt>Known bypass and remaining gap</dt><dd>The live MCP listener uses its configured principal for every caller and supplies no delegation chain. In <code>ENFORCE</code>, a <code>SPAWN_OR_DELEGATE</code> call gets <code>REQUIRED_FIELD_ABSENT</code> before the delegation check. End-user authentication and enforcement of a caller's delegation chain remain gaps on this path, and no backlog task covers them. <a href="/docs/reference/mcp-coverage#what-the-gateway-cannot-do">MCP coverage</a>.</dd></dl></li>
+<li><p class="rt">ASI04: Agentic Supply Chain Vulnerabilities</p><dl><dt>Exercised control</dt><dd><a href="/docs/status#mcp-gateway">Model Context Protocol (MCP) gateway</a> (<code>experimental</code>). A tool whose definition changes upstream at run time becomes unclassified until it is classified again. Its call is blocked.</dd><dt>Test file and function</dt><dd><code>adapters/<wbr/>mcp/<wbr/>list_test.go</code> · <code>TestListChangedRefreshesTheManifest</code>.</dd><dt>Known bypass and remaining gap</dt><dd>An operator can pin a hostile definition, and server behavior can change behind an unchanged definition. <a href="/docs/concepts/threat-model#a-hostile-or-compromised-mcp-server">Threat model</a>. <a href="/docs/status#tool-definition-review">Tool-definition change review</a> is <code>planned</code> in <a href="/docs/backlog">B25</a>.</dd></dl></li>
+<li><p class="rt">ASI05: Unexpected Code Execution (RCE)</p><dl><dt>Exercised control</dt><dd>Gap.</dd><dt>Test file and function</dt><dd>No test exercises process containment.</dd><dt>Known bypass and remaining gap</dt><dd>The agent can run code directly, and an allowed tool can execute code on its host. <a href="/docs/status#host-process-events">Host process events</a> are <code>planned</code> in <a href="/docs/backlog">B35</a> for observation. Host isolation remains a gap. <a href="/docs/concepts/threat-model#an-agent-that-is-wrong-or-steered">Threat model</a>.</dd></dl></li>
+<li><p class="rt">ASI06: Memory &amp; Context Poisoning</p><dl><dt>Exercised control</dt><dd>Gap.</dd><dt>Test file and function</dt><dd>No test exercises agent memory integrity.</dd><dt>Known bypass and remaining gap</dt><dd>Injected text in a tool result can reach the agent. No exercised check governs what enters persistent memory or what a later task retrieves. <a href="/docs/concepts/threat-model#a-hostile-or-compromised-mcp-server">Threat model</a>.</dd></dl></li>
+<li><p class="rt">ASI07: Insecure Inter-Agent Communication</p><dl><dt>Exercised control</dt><dd>Gap.</dd><dt>Test file and function</dt><dd>No test exercises peer authentication or message integrity on an agent-to-agent channel.</dd><dt>Known bypass and remaining gap</dt><dd>Peers can communicate outside the plane. The <a href="/docs/status#a2a-adapter">Agent-to-agent (A2A) adapter</a> is <code>planned</code>. <a href="/docs/backlog">B16</a> includes adapter conformance.</dd></dl></li>
+<li><p class="rt">ASI08: Cascading Failures</p><dl><dt>Exercised control</dt><dd>Gap. OWASP describes a fault that spreads and grows as other agents, tools, or workflows act on it. <a href="https://genai.owasp.org/download/52117/?tmstv=1765059207#page=31">ASI08, report p. 30</a>.</dd><dt>Test file and function</dt><dd><code>internal/<wbr/>gateway/<wbr/>decisionpoint_test.go</code> · <code>TestSilenceBlocksEveryEffectClassUnderEnforce</code> checks one authorization at a time. An unanswered external veto blocks the call that needed it.</dd><dt>Known bypass and remaining gap</dt><dd>A wrong result can pass to another agent and trigger further allowed actions. The test exercises neither detection of that spread nor recovery of the affected workflow. <a href="/docs/concepts/threat-model#a-decision-point-that-is-slow-wrong-or-hostile">Decision-point limits</a>.</dd></dl></li>
+<li><p class="rt">ASI09: Human-Agent Trust Exploitation</p><dl><dt>Exercised control</dt><dd><a href="/docs/status#approval-binding">Approval binding</a> (<code>implemented</code>). An approved transfer runs once. A repeated request cannot reuse the approval.</dd><dt>Test file and function</dt><dd><code>internal/<wbr/>gateway/<wbr/>e2e/<wbr/>approval_test.go</code> · <code>TestPendingApprovalAndItsRetry</code>. <a href="/docs/guides/count-controlled-attempts#2-run-it">B37 changed-update case</a>.</dd><dt>Known bypass and remaining gap</dt><dd>A person can still be persuaded to approve the original harmful transfer. <a href="/docs/backlog">B38</a> covers showing the exact action to the approver.</dd></dl></li>
+<li><p class="rt">ASI10: Rogue Agents</p><dl><dt>Exercised control</dt><dd><a href="/docs/status#run-stop">Stopping a run through a signed route</a> (<code>experimental</code>). After <code>supervise</code> reports a confirmed finding that a child retried a denied call with changed arguments, a signed route can stop later calls by that child.</dd><dt>Test file and function</dt><dd><code>cmd/<wbr/>guardana-gateway/<wbr/>reaction_tree_unix_test.go</code> · <code>TestAChildsRetryIsSupervisedOverTheTreeAndStopsTheChild</code>.</dd><dt>Known bypass and remaining gap</dt><dd>The parent can still act. A call already running can finish, and the child can use a path outside the gateway. Continuous checks are work in <a href="/docs/backlog">B28</a>. <a href="/docs/concepts/threat-model#an-agent-that-is-wrong-or-steered">Threat model</a>.</dd></dl></li>
+</ul>
 <h2 id="what-b37-measured">What B37 measured</h2>
 <p><a href="/docs/status#controlled-attempts">Controlled attempts counted at the victim</a> (<code>experimental</code>) compares the demo victims' journals under <code>ENFORCE</code> and <code>OBSERVE</code>. The results show which scripted effects reached the victims and the cost to legitimate work, including updates held for approval. A script chose the calls. <a href="/docs/guides/count-controlled-attempts#2-run-it">B37 results</a> and <a href="/docs/adr/0086-controlled-attempts-are-counted-at-the-victim">counting method</a>.</p>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/reference/risks/owasp-agentic-top-10.md">docs/reference/risks/owasp-agentic-top-10.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.18.0, and <a href="https://github.com/guardana/control/tree/v0.18.0/docs">its documentation</a> is in its tag.</p>

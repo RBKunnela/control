@@ -183,7 +183,7 @@ plane mints or, under <code>runs.dir</code>, the id of the run the operator open
 </tr>
 <tr>
 <td><code>resource</code></td>
-<td>the override's <code>type</code>, and <code>id</code>: the string or number at the override's <code>resource_from</code> pointer into the arguments, none for another value, the URI of a <code>resources/read</code>, or the name of a <code>prompts/get</code>; the upstream's <code>tenant_id</code> and <code>environment</code>. An action name or resource id refused as over-long is recorded as <code>overlong:sha256:</code> and the hex SHA-256 of what was sent, and a called tool name, prompt name or resource URI that quotes a credential the plane holds, cannot be scanned or starts with <code>withheld:sha256:</code> is recorded as that prefix and the hex SHA-256 of it, in the action name and, for a read, the resource id; the upstream receives it as called</td>
+<td>the override's <code>type</code>, and <code>id</code>: the string or number at the override's <code>resource_from</code> pointer into the arguments, none for another value, the URI of a <code>resources/<wbr/>read</code>, or the name of a <code>prompts/<wbr/>get</code>; the upstream's <code>tenant_id</code> and <code>environment</code>. An action name or resource id refused as over-long is recorded as <code>overlong:sha256:</code> and the hex SHA-256 of what was sent, and a called tool name, prompt name or resource URI that quotes a credential the plane holds, cannot be scanned or starts with <code>withheld:sha256:</code> is recorded as that prefix and the hex SHA-256 of it, in the action name and, for a read, the resource id; the upstream receives it as called</td>
 </tr>
 <tr>
 <td><code>destination</code></td>
@@ -245,210 +245,48 @@ sends is not kept either (<code>adapters/otel/receiver.go</code>).</p>
 <p>Hidden model reasoning is never stored at any setting. MCP does not carry it
 to the plane, no field of the contract holds it, and no adapter reads it.</p>
 <h2 id="where-records-go-and-who-can-read-them">Where records go, and who can read them</h2>
-<div class="tbl">
-<table>
-<thead>
-<tr>
-<th>Where</th>
-<th>What</th>
-<th>Who can read it</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>the plane's memory</td>
-<td>a held request, its envelope and its decision; without <code>runs.dir</code>, the run state of each principal</td>
-<td>the plane's process: a held request until its hold ends, a run's state until the plane stops</td>
-</tr>
-<tr>
-<td>the runs directory, <code>runs.dir</code></td>
-<td>each run's record, its project, tenant, principal, agent, lifetime and the SHA-256 of its token's secret, and each root run's flow state</td>
-<td>the operator's account, in a directory only it may write, until the operator removes them; under <code>approvals.authority: signed</code>, <code>records/</code> is the operators', each record also naming its signer's key id and the <code>records/</code> path, and <code>state/</code> the plane's</td>
-</tr>
-<tr>
-<td>the spool, <code>evidence.dir</code></td>
-<td>every event, one framed JSON line each, until a collector accepts it or it is moved to <code>quarantine.log</code></td>
-<td>the plane's account: new files are <code>0600</code>; the directory must be the plane's account's and writable by no one else, and an existing segment or <code>quarantine.log</code> is refused when another account owns it or a group or others may write it</td>
-</tr>
-<tr>
-<td>the collector at <code>export.endpoint</code></td>
-<td>every event, as the body of one OTLP log record, with its ids, kind and mode as attributes</td>
-<td>whoever runs that collector and wherever it sends them; <code>https</code>, or a unix socket whose peer is <code>export.collector_uid</code>; never plaintext</td>
-</tr>
-<tr>
-<td>the trail segments <code>collect</code> writes</td>
-<td>every event the collector accepted, at least once</td>
-<td>the account that ran <code>collect</code>: the directory is <code>0700</code> and each file <code>0600</code>; a directory the group or others may reach, a file they may write, or either of another account is refused</td>
-</tr>
-<tr>
-<td>the approvals directory</td>
-<td>per held call, the approval record and a projection: principal, agent, tool, upstream, resource type and id, effect class, rule ids, times</td>
-<td>the plane's account: records are <code>0600</code>, and the directory is refused when another account owns it or others may write it; under <code>approvals.authority: signed</code> the plane writes them <code>0640</code> for an operators' group</td>
-</tr>
-<tr>
-<td>the inbox, <code>approvals.inbox_dir</code></td>
-<td>per signed answer, the tenant, project, request and approval ids, both digests, the decision, its time, the optional reason and the signer's key id</td>
-<td>the operators' group the directory admits; each answer is <code>0644</code></td>
-</tr>
-<tr>
-<td>the approvals page and <code>approvals list</code></td>
-<td>the projection, and the approval's state, ids, digests, expiry and approver; no arguments, no preview, no trail</td>
-<td>the page: whoever holds its session, on <code>127.0.0.1</code> (<a href="/docs/reference/console">reference/console</a>); <code>approvals list</code>: any account that can read the approvals directory</td>
-</tr>
-<tr>
-<td>the hold journal, <code>approvals.hold_journal_dir</code></td>
-<td>per hold, the trail's ids, the binding, the approval and its expiry; no envelope and no decision</td>
-<td>the plane's account: entries are <code>0600</code></td>
-</tr>
-<tr>
-<td>the ledger, <code>ledger/</code> in the hold journal's directory</td>
-<td>per spent or settled approval, the binding, the request and approval ids, the approver id the plane recorded and when</td>
-<td>the plane's account: marks are <code>0600</code></td>
-</tr>
-<tr>
-<td>the floor directory, <code>policy.state_dir</code></td>
-<td>per bundle id, the serial, digest and <code>issuedAt</code> of the newest freshness statement taken, and the reason and prior value of the last reset</td>
-<td>the plane's account: the directory is owner-only and its files <code>0600</code></td>
-</tr>
-<tr>
-<td>the other floor directories, <code>trust.floor_dir</code>, <code>pause.floor_dir</code>, <code>reaction.floor_dir</code> and <code>reaction.stops_floor_dir</code></td>
-<td>the serial and digest of the newest roster, signed pause file, route and stop list header taken, with the tenant and project for the pause file and the stop list, and the length and digest of the stop list part accepted</td>
-<td>the plane's account, as <code>policy.state_dir</code></td>
-</tr>
-<tr>
-<td>the trust roster, <code>trust.roster</code></td>
-<td>per operator key, its subject, public key and grants</td>
-<td>any account the file's modes let read it</td>
-</tr>
-<tr>
-<td>the pause file</td>
-<td>each entry's scope and its optional reason; a signed one also the tenant, project, its path, serial and signer's key id</td>
-<td>the plane's account, and any account the file's and directory's modes let read it; under <code>approvals.authority: signed</code> the operator's account, never the plane's</td>
-</tr>
-<tr>
-<td>the stop list, <code>reaction.stops</code></td>
-<td>per stop the tenant, run id, finding id, procedure, rule and times, and under <code>approvals.authority: signed</code> its scope and subject, a run, agent or principal id; per covered finding its id, tenant and run, and under <code>signed</code> its scope and subject; per lift the run, or under <code>signed</code> the scope and subject, a line number and its signature</td>
-<td>the plane's account, and any account the file's and directory's modes let read it: a new list is <code>0600</code>, or <code>0640</code> under <code>approvals.authority: signed</code>, and the list is refused when another account owns it or its directory, or a group or others may write either; under <code>signed</code> it is refused when the plane's own account owns either, and its header and lifts also name the signing operator's key id, the project and the stop list's path</td>
-</tr>
-<tr>
-<td>the decision point at <code>pdp.identifier</code></td>
-<td>the principal, the action, the resource with its id, the destination, the data labels and the ids; never the arguments, their hash or a digest</td>
-<td>whoever runs it, and a proxy configured for it (<a href="/docs/adr/0017-an-external-decision-point-can-veto">ADR-0017</a>)</td>
-</tr>
-<tr>
-<td><code>/metrics</code> and <code>/healthz</code></td>
-<td>counts and states; <code>/healthz</code> also the mode, the bundle's id, version, digest and serial, its confirmation and expiry times, the id of every pause entry with the share of calls it covers, the ids of those that match no listed tool, and a signed pause's serial and floor; with a route, also the route's id, serial and digest, its floor's serial and digest, the stop list's <code>list_id</code>, state, age and stop list header's serial, and how many stops are active, how many match no call of the plane (a run the runs directory does not hold for the plane's project, or an agent, principal or tenant other than the listener's) and how many have a run whose record cannot be read, as counts, never ids; <code>health.socket</code> adds, under <code>approvals.authority: signed</code>, the plane's <code>plane_id</code>, and the subject and key id that signed the pause and, for each active stop up to 64, its entry id, scope, subject (a run, agent or principal id), run id, finding id, rule id and expiry, and the entry ids of those that match no call or whose run's record cannot be read (<code>unheld_entries</code>, <code>unread_entries</code>), and under <code>approvals.authority: signed</code> the subject and key id of the operators who signed the stop list's header and the route. No metric label carries an identifier, a digest or free text; <code>pipeline_blocks_total</code> is labelled with a reason code (<a href="/docs/reference/metrics">reference/metrics</a>)</td>
-<td>anyone who reaches <code>health.address</code>, which takes no credential; <code>health.socket</code>, the plane's account and <code>health.socket_uid</code></td>
-</tr>
-<tr>
-<td>the observation log, <code>observe import --log</code></td>
-<td>per observation its source and trust, its times, the tool name and server address it names, and its correlation ids; per connection from a proxy's log, the host, port, method, status, byte counts and the caller as the proxy wrote it, which can be an address or a user name; never a prompt, an output, reasoning, or a member of the proxy's line the descriptor does not map, such as a path, query, header or body</td>
-<td>the operator's account: the directory is owner-only and the log <code>0600</code></td>
-</tr>
-<tr>
-<td>the findings log, <code>supervise --findings</code></td>
-<td>per finding the tenant, project, procedure, rule, verdict and the ids of the events and observations it cites</td>
-<td>the operator's account: the directory is owner-only and the log <code>0600</code></td>
-</tr>
-<tr>
-<td>notify's state, <code>notify --state</code></td>
-<td>the keys delivered and the digest of the findings log's first line</td>
-<td>the operator's account: owner-only, files <code>0600</code></td>
-</tr>
-<tr>
-<td>the program <code>notify</code> runs</td>
-<td>each alert finding's record, one JSON line on its standard input</td>
-<td>that program, and wherever it sends it</td>
-</tr>
-<tr>
-<td>the plane's log, on stderr</td>
-<td>messages with ids such as <code>request_id</code>, <code>execution_id</code> and an upstream's name, and error text, never an upstream's or a collector's URL past its scheme and host, an upstream's error message, which is logged by its code, nor a transport error's text, which is logged by its type; header values are never printed</td>
-<td>wherever the operator sends stderr</td>
-</tr>
-</tbody>
-</table>
-</div>
+<ul class="stack">
+<li><p class="rt">the plane's memory</p><dl><dt>What</dt><dd>a held request, its envelope and its decision; without <code>runs.dir</code>, the run state of each principal</dd><dt>Who can read it</dt><dd>the plane's process: a held request until its hold ends, a run's state until the plane stops</dd></dl></li>
+<li><p class="rt">the runs directory, <code>runs.dir</code></p><dl><dt>What</dt><dd>each run's record, its project, tenant, principal, agent, lifetime and the SHA-256 of its token's secret, and each root run's flow state</dd><dt>Who can read it</dt><dd>the operator's account, in a directory only it may write, until the operator removes them; under <code>approvals.authority: signed</code>, <code>records/</code> is the operators', each record also naming its signer's key id and the <code>records/</code> path, and <code>state/</code> the plane's</dd></dl></li>
+<li><p class="rt">the spool, <code>evidence.dir</code></p><dl><dt>What</dt><dd>every event, one framed JSON line each, until a collector accepts it or it is moved to <code>quarantine.log</code></dd><dt>Who can read it</dt><dd>the plane's account: new files are <code>0600</code>; the directory must be the plane's account's and writable by no one else, and an existing segment or <code>quarantine.log</code> is refused when another account owns it or a group or others may write it</dd></dl></li>
+<li><p class="rt">the collector at <code>export.endpoint</code></p><dl><dt>What</dt><dd>every event, as the body of one OTLP log record, with its ids, kind and mode as attributes</dd><dt>Who can read it</dt><dd>whoever runs that collector and wherever it sends them; <code>https</code>, or a unix socket whose peer is <code>export.collector_uid</code>; never plaintext</dd></dl></li>
+<li><p class="rt">the trail segments <code>collect</code> writes</p><dl><dt>What</dt><dd>every event the collector accepted, at least once</dd><dt>Who can read it</dt><dd>the account that ran <code>collect</code>: the directory is <code>0700</code> and each file <code>0600</code>; a directory the group or others may reach, a file they may write, or either of another account is refused</dd></dl></li>
+<li><p class="rt">the approvals directory</p><dl><dt>What</dt><dd>per held call, the approval record and a projection: principal, agent, tool, upstream, resource type and id, effect class, rule ids, times</dd><dt>Who can read it</dt><dd>the plane's account: records are <code>0600</code>, and the directory is refused when another account owns it or others may write it; under <code>approvals.authority: signed</code> the plane writes them <code>0640</code> for an operators' group</dd></dl></li>
+<li><p class="rt">the inbox, <code>approvals.inbox_dir</code></p><dl><dt>What</dt><dd>per signed answer, the tenant, project, request and approval ids, both digests, the decision, its time, the optional reason and the signer's key id</dd><dt>Who can read it</dt><dd>the operators' group the directory admits; each answer is <code>0644</code></dd></dl></li>
+<li><p class="rt">the approvals page and <code>approvals list</code></p><dl><dt>What</dt><dd>the projection, and the approval's state, ids, digests, expiry and approver; no arguments, no preview, no trail</dd><dt>Who can read it</dt><dd>the page: whoever holds its session, on <code>127.0.0.1</code> (<a href="/docs/reference/console">reference/console</a>); <code>approvals list</code>: any account that can read the approvals directory</dd></dl></li>
+<li><p class="rt">the hold journal, <code>approvals.hold_journal_dir</code></p><dl><dt>What</dt><dd>per hold, the trail's ids, the binding, the approval and its expiry; no envelope and no decision</dd><dt>Who can read it</dt><dd>the plane's account: entries are <code>0600</code></dd></dl></li>
+<li><p class="rt">the ledger, <code>ledger/</code> in the hold journal's directory</p><dl><dt>What</dt><dd>per spent or settled approval, the binding, the request and approval ids, the approver id the plane recorded and when</dd><dt>Who can read it</dt><dd>the plane's account: marks are <code>0600</code></dd></dl></li>
+<li><p class="rt">the floor directory, <code>policy.state_dir</code></p><dl><dt>What</dt><dd>per bundle id, the serial, digest and <code>issuedAt</code> of the newest freshness statement taken, and the reason and prior value of the last reset</dd><dt>Who can read it</dt><dd>the plane's account: the directory is owner-only and its files <code>0600</code></dd></dl></li>
+<li><p class="rt">the other floor directories, <code>trust.floor_dir</code>, <code>pause.floor_dir</code>, <code>reaction.floor_dir</code> and <code>reaction.stops_floor_dir</code></p><dl><dt>What</dt><dd>the serial and digest of the newest roster, signed pause file, route and stop list header taken, with the tenant and project for the pause file and the stop list, and the length and digest of the stop list part accepted</dd><dt>Who can read it</dt><dd>the plane's account, as <code>policy.state_dir</code></dd></dl></li>
+<li><p class="rt">the trust roster, <code>trust.roster</code></p><dl><dt>What</dt><dd>per operator key, its subject, public key and grants</dd><dt>Who can read it</dt><dd>any account the file's modes let read it</dd></dl></li>
+<li><p class="rt">the pause file</p><dl><dt>What</dt><dd>each entry's scope and its optional reason; a signed one also the tenant, project, its path, serial and signer's key id</dd><dt>Who can read it</dt><dd>the plane's account, and any account the file's and directory's modes let read it; under <code>approvals.authority: signed</code> the operator's account, never the plane's</dd></dl></li>
+<li><p class="rt">the stop list, <code>reaction.stops</code></p><dl><dt>What</dt><dd>per stop the tenant, run id, finding id, procedure, rule and times, and under <code>approvals.authority: signed</code> its scope and subject, a run, agent or principal id; per covered finding its id, tenant and run, and under <code>signed</code> its scope and subject; per lift the run, or under <code>signed</code> the scope and subject, a line number and its signature</dd><dt>Who can read it</dt><dd>the plane's account, and any account the file's and directory's modes let read it: a new list is <code>0600</code>, or <code>0640</code> under <code>approvals.authority: signed</code>, and the list is refused when another account owns it or its directory, or a group or others may write either; under <code>signed</code> it is refused when the plane's own account owns either, and its header and lifts also name the signing operator's key id, the project and the stop list's path</dd></dl></li>
+<li><p class="rt">the decision point at <code>pdp.identifier</code></p><dl><dt>What</dt><dd>the principal, the action, the resource with its id, the destination, the data labels and the ids; never the arguments, their hash or a digest</dd><dt>Who can read it</dt><dd>whoever runs it, and a proxy configured for it (<a href="/docs/adr/0017-an-external-decision-point-can-veto">ADR-0017</a>)</dd></dl></li>
+<li><p class="rt"><code>/<wbr/>metrics</code> and <code>/<wbr/>healthz</code></p><dl><dt>What</dt><dd>counts and states; <code>/<wbr/>healthz</code> also the mode, the bundle's id, version, digest and serial, its confirmation and expiry times, the id of every pause entry with the share of calls it covers, the ids of those that match no listed tool, and a signed pause's serial and floor; with a route, also the route's id, serial and digest, its floor's serial and digest, the stop list's <code>list_id</code>, state, age and stop list header's serial, and how many stops are active, how many match no call of the plane (a run the runs directory does not hold for the plane's project, or an agent, principal or tenant other than the listener's) and how many have a run whose record cannot be read, as counts, never ids; <code>health.socket</code> adds, under <code>approvals.authority: signed</code>, the plane's <code>plane_id</code>, and the subject and key id that signed the pause and, for each active stop up to 64, its entry id, scope, subject (a run, agent or principal id), run id, finding id, rule id and expiry, and the entry ids of those that match no call or whose run's record cannot be read (<code>unheld_entries</code>, <code>unread_entries</code>), and under <code>approvals.authority: signed</code> the subject and key id of the operators who signed the stop list's header and the route. No metric label carries an identifier, a digest or free text; <code>pipeline_blocks_total</code> is labelled with a reason code (<a href="/docs/reference/metrics">reference/metrics</a>)</dd><dt>Who can read it</dt><dd>anyone who reaches <code>health.address</code>, which takes no credential; <code>health.socket</code>, the plane's account and <code>health.socket_uid</code></dd></dl></li>
+<li><p class="rt">the observation log, <code>observe import --log</code></p><dl><dt>What</dt><dd>per observation its source and trust, its times, the tool name and server address it names, and its correlation ids; per connection from a proxy's log, the host, port, method, status, byte counts and the caller as the proxy wrote it, which can be an address or a user name; never a prompt, an output, reasoning, or a member of the proxy's line the descriptor does not map, such as a path, query, header or body</dd><dt>Who can read it</dt><dd>the operator's account: the directory is owner-only and the log <code>0600</code></dd></dl></li>
+<li><p class="rt">the findings log, <code>supervise --findings</code></p><dl><dt>What</dt><dd>per finding the tenant, project, procedure, rule, verdict and the ids of the events and observations it cites</dd><dt>Who can read it</dt><dd>the operator's account: the directory is owner-only and the log <code>0600</code></dd></dl></li>
+<li><p class="rt">notify's state, <code>notify --state</code></p><dl><dt>What</dt><dd>the keys delivered and the digest of the findings log's first line</dd><dt>Who can read it</dt><dd>the operator's account: owner-only, files <code>0600</code></dd></dl></li>
+<li><p class="rt">the program <code>notify</code> runs</p><dl><dt>What</dt><dd>each alert finding's record, one JSON line on its standard input</dd><dt>Who can read it</dt><dd>that program, and wherever it sends it</dd></dl></li>
+<li><p class="rt">the plane's log, on stderr</p><dl><dt>What</dt><dd>messages with ids such as <code>request_id</code>, <code>execution_id</code> and an upstream's name, and error text, never an upstream's or a collector's URL past its scheme and host, an upstream's error message, which is logged by its code, nor a transport error's text, which is logged by its type; header values are never printed</dd><dt>Who can read it</dt><dd>wherever the operator sends stderr</dd></dl></li>
+</ul>
 <p>The upstream server receives the authorized arguments, as it would without
 the plane. A plane in <code>OBSERVE</code> sends the proposed ones.</p>
 <h2 id="how-long-records-stay">How long records stay</h2>
-<div class="tbl">
-<table>
-<thead>
-<tr>
-<th>Record</th>
-<th>Removed when</th>
-<th>What the operator does</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>a spool segment</td>
-<td>every record in it is accepted by the collector or moved to <code>quarantine.log</code></td>
-<td>nothing; <code>evidence.max_bytes</code> bounds what waits</td>
-</tr>
-<tr>
-<td><code>quarantine.log</code> in the spool</td>
-<td>when an operator drains it; the plane never removes it, and its bytes count against the budget until then</td>
-<td>stop the plane, then <code>guardana-gateway spool drain &lt;dir&gt; &lt;out&gt;</code>, which writes every record to a new file before it empties the quarantine</td>
-</tr>
-<tr>
-<td>the trail segments</td>
-<td>when an operator runs <code>prune</code> on sealed segments; at <code>--max-bytes</code> the collector takes nothing more and the plane blocks material calls</td>
-<td>stop <code>collect</code>, then <code>guardana-gateway prune --through &lt;n&gt; &lt;dir&gt;</code>, which keeps each segment's tombstone: its lines, bytes and the digests of its first and last line</td>
-</tr>
-<tr>
-<td>an approval record and its projection</td>
-<td>once its approval has expired, whether it was consumed or not, by a sweep at a plane's start and every quarter of <code>approvals.ttl</code> while it runs, and when the plane settles a hold it lost</td>
-<td>nothing; a sweep that fails is logged and counted under <code>approvals.sweep</code> in <code>/healthz</code>, and a directory left to grow refuses holds at <code>approvals.max_records</code></td>
-</tr>
-<tr>
-<td>a ledger mark</td>
-<td>once it is older than <code>approvals.ttl</code>, by the same sweeps</td>
-<td>nothing; the ledger refuses a mark past <code>approvals.max_records</code></td>
-</tr>
-<tr>
-<td>a run record and its root's state</td>
-<td>when an operator prunes a tree whose every run expired</td>
-<td><code>guardana-control runs prune --expired-before &lt;time&gt; --archive &lt;dir&gt; &lt;runs-dir&gt;</code>, which copies the tree into a new archive first</td>
-</tr>
-<tr>
-<td>a hold journal entry</td>
-<td>when its trail can take nothing more</td>
-<td>nothing</td>
-</tr>
-<tr>
-<td>a pause entry</td>
-<td>when an operator removes it; the file keeps no history</td>
-<td>nothing</td>
-</tr>
-<tr>
-<td>a stop list's line</td>
-<td>never: lines are appended, and a lift ends a stop without removing it; a list is refused past 4 MiB or 20 000 lines</td>
-<td>start a new list with <code>stops init --carry</code>, which keeps every unlifted stop, and restart the plane</td>
-</tr>
-<tr>
-<td>the collector's copy, the log</td>
-<td>as the operator's systems keep them</td>
-<td>the operator's retention</td>
-</tr>
-<tr>
-<td>the observation log and the findings log</td>
-<td>never: neither is rotated or pruned, and each is refused past 1 GiB</td>
-<td>move the directory aside and start a new one</td>
-</tr>
-<tr>
-<td>notify's state</td>
-<td>never</td>
-<td>delete it; <code>notify --init</code> on a new state delivers every alert again</td>
-</tr>
-<tr>
-<td>a <code>dev</code> state directory</td>
-<td>never: it is left behind when <code>dev</code> stops</td>
-<td>delete it</td>
-</tr>
-</tbody>
-</table>
-</div>
+<ul class="stack">
+<li><p class="rt">a spool segment</p><dl><dt>Removed when</dt><dd>every record in it is accepted by the collector or moved to <code>quarantine.log</code></dd><dt>What the operator does</dt><dd>nothing; <code>evidence.max_bytes</code> bounds what waits</dd></dl></li>
+<li><p class="rt"><code>quarantine.log</code> in the spool</p><dl><dt>Removed when</dt><dd>when an operator drains it; the plane never removes it, and its bytes count against the budget until then</dd><dt>What the operator does</dt><dd>stop the plane, then <code>guardana-gateway spool drain &lt;dir&gt; &lt;out&gt;</code>, which writes every record to a new file before it empties the quarantine</dd></dl></li>
+<li><p class="rt">the trail segments</p><dl><dt>Removed when</dt><dd>when an operator runs <code>prune</code> on sealed segments; at <code>--max-bytes</code> the collector takes nothing more and the plane blocks material calls</dd><dt>What the operator does</dt><dd>stop <code>collect</code>, then <code>guardana-gateway prune --through &lt;n&gt; &lt;dir&gt;</code>, which keeps each segment's tombstone: its lines, bytes and the digests of its first and last line</dd></dl></li>
+<li><p class="rt">an approval record and its projection</p><dl><dt>Removed when</dt><dd>once its approval has expired, whether it was consumed or not, by a sweep at a plane's start and every quarter of <code>approvals.ttl</code> while it runs, and when the plane settles a hold it lost</dd><dt>What the operator does</dt><dd>nothing; a sweep that fails is logged and counted under <code>approvals.sweep</code> in <code>/<wbr/>healthz</code>, and a directory left to grow refuses holds at <code>approvals.max_records</code></dd></dl></li>
+<li><p class="rt">a ledger mark</p><dl><dt>Removed when</dt><dd>once it is older than <code>approvals.ttl</code>, by the same sweeps</dd><dt>What the operator does</dt><dd>nothing; the ledger refuses a mark past <code>approvals.max_records</code></dd></dl></li>
+<li><p class="rt">a run record and its root's state</p><dl><dt>Removed when</dt><dd>when an operator prunes a tree whose every run expired</dd><dt>What the operator does</dt><dd><code>guardana-control runs prune --expired-before &lt;time&gt; --archive &lt;dir&gt; &lt;runs-dir&gt;</code>, which copies the tree into a new archive first</dd></dl></li>
+<li><p class="rt">a hold journal entry</p><dl><dt>Removed when</dt><dd>when its trail can take nothing more</dd><dt>What the operator does</dt><dd>nothing</dd></dl></li>
+<li><p class="rt">a pause entry</p><dl><dt>Removed when</dt><dd>when an operator removes it; the file keeps no history</dd><dt>What the operator does</dt><dd>nothing</dd></dl></li>
+<li><p class="rt">a stop list's line</p><dl><dt>Removed when</dt><dd>never: lines are appended, and a lift ends a stop without removing it; a list is refused past 4 MiB or 20 000 lines</dd><dt>What the operator does</dt><dd>start a new list with <code>stops init --carry</code>, which keeps every unlifted stop, and restart the plane</dd></dl></li>
+<li><p class="rt">the collector's copy, the log</p><dl><dt>Removed when</dt><dd>as the operator's systems keep them</dd><dt>What the operator does</dt><dd>the operator's retention</dd></dl></li>
+<li><p class="rt">the observation log and the findings log</p><dl><dt>Removed when</dt><dd>never: neither is rotated or pruned, and each is refused past 1 GiB</dd><dt>What the operator does</dt><dd>move the directory aside and start a new one</dd></dl></li>
+<li><p class="rt">notify's state</p><dl><dt>Removed when</dt><dd>never</dd><dt>What the operator does</dt><dd>delete it; <code>notify --init</code> on a new state delivers every alert again</dd></dl></li>
+<li><p class="rt">a <code>dev</code> state directory</p><dl><dt>Removed when</dt><dd>never: it is left behind when <code>dev</code> stops</dd><dt>What the operator does</dt><dd>delete it</dd></dl></li>
+</ul>
 <p>No command finds or deletes the records about one person. A plane without
 an authenticator records one configured principal for every call, so a
 person's identity enters a record through what the operator configured, what

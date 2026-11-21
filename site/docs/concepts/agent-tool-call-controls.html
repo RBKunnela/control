@@ -135,70 +135,15 @@
 and Guardana Control's MCP gateway (<code>experimental</code>) can check an agent's
 tool call against rules before it runs. The check can run at a gateway,
 in the agent's process, or in a service the agent host calls.</p>
-<div class="tbl">
-<table>
-<thead>
-<tr>
-<th>Question</th>
-<th>Microsoft's agent controls</th>
-<th>Policy in Amazon Bedrock AgentCore</th>
-<th>Hexgate</th>
-<th>Guardana Control</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Where does the check run?</td>
-<td>The agent host sends the proposed call to a managed Azure service. The host applies the decision. <a href="https://learn.microsoft.com/en-us/azure/foundry/agent-controls/overview">Microsoft overview</a></td>
-<td>The AWS policy engine checks the request at AgentCore Gateway before it reaches the tool. <a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy.html">AWS policy guide</a></td>
-<td>The SDK can check inside the agent process. Hexgate also supports remote checks on a self-hosted control plane or Hexgate Cloud. <a href="https://docs.hexgate.ai/platform/overview">Platform overview</a></td>
-<td>The MCP gateway (<a href="/docs/status#mcp-gateway"><code>experimental</code></a>) decides routed calls before they reach the server in every mode. In <code>OBSERVE</code>, it records the decision and forwards the call regardless of that decision, unless a pause or a call it cannot translate blocks it. Enforcing modes can block or hold a call. <a href="/docs/concepts/threat-model">Threat model</a> Outside MCP, a tool can ask the enforcement API before acting. The client applies the answer, and Guardana Control cannot verify that it did. <a href="/docs/status#enforce-receiver">Enforcement API receiver (<code>experimental</code>)</a></td>
-</tr>
-<tr>
-<td>What decides?</td>
-<td>Rego rules under the Agent Control Specification. The rules can use input from classifiers or language models. <a href="https://learn.microsoft.com/en-us/azure/foundry/agent-controls/overview">Microsoft overview</a></td>
-<td>Cedar rules and Dogwood, a language that supports Cedar rules and can check earlier steps in a session. <a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy-authoring-guide.html">AWS authoring guide</a></td>
-<td>YAML rules can run in Python or be compiled through Rego into WebAssembly. <a href="https://docs.hexgate.ai/policy/wasm-bundles">Hexgate policy bundles</a></td>
-<td>The decision kernel decides each call in a fixed order (<a href="/docs/status#decision-kernel"><code>implemented</code></a>). The policy matcher evaluates rules from signed bundles containing <code>agent-policy/v1alpha1</code> policy documents (<a href="/docs/status#policy-matcher"><code>implemented</code></a>).</td>
-</tr>
-<tr>
-<td>Can a person approve a held call?</td>
-<td>Yes. A denial can include an approval request. The host runs the review workflow and keeps the call blocked pending approval. <a href="https://learn.microsoft.com/en-us/azure/foundry/agent-controls/overview">Microsoft overview</a></td>
-<td>A rule can require an earlier human approval on record. The examples show a tool call issued after approval. A workflow that holds and resumes the original call remains unverified. <a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/example-policies-temporal.html">AWS temporal policy examples</a> · <a href="https://aws.amazon.com/bedrock/agentcore/faqs/">AWS AgentCore FAQ</a></td>
-<td>Yes. The SDK waits for the application's approval handler, which can ask a person. <a href="https://docs.hexgate.ai/concepts/approval-required">Hexgate approval guide</a></td>
-<td>An operator can approve by command or from a local page (<a href="/docs/status#approval-authority"><code>experimental</code></a>). The approval binds to one exact call and one policy bundle and is used once when the caller retries that call (<a href="/docs/status#approval-binding"><code>implemented</code></a>).</td>
-</tr>
-<tr>
-<td>What gets recorded?</td>
-<td>The service returns a receipt with the policies and versions used. The host records the receipt with the outcome. <a href="https://commandline.microsoft.com/introducing-agent-controls-an-enterprise-control-plane-for-agent-behavior/">Microsoft launch</a></td>
-<td>CloudWatch gets counts by default. With gateway tracing enabled, it also gets the allow or deny decision, the reason, and the policy IDs that decided it. <a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability-policy-metrics.html">AWS policy observability</a></td>
-<td>The platform stores policy decisions, model usage and refusals of banned agents or users in ClickHouse. In local mode the events stay on the agent's machine. <a href="https://docs.hexgate.ai/concepts/audit-trail">Hexgate audit trail</a></td>
-<td>The gateway writes a local evidence log with the decision, policy version and a hash of the result when there is one (<a href="/docs/status#evidence-spool"><code>experimental</code></a>).</td>
-</tr>
-<tr>
-<td>How is it deployed?</td>
-<td>Managed on Microsoft Azure. The calling agent can run on other clouds. <a href="https://commandline.microsoft.com/introducing-agent-controls-an-enterprise-control-plane-for-agent-behavior/">Microsoft launch</a></td>
-<td>Managed on AWS in supported regions. <a href="https://aws.amazon.com/about-aws/whats-new/2026/03/policy-amazon-bedrock-agentcore-generally-available/">AWS release announcement</a></td>
-<td>Run the SDK locally, host the platform yourself, or use managed Hexgate Cloud. The cloud provider is not stated in the Hexgate Cloud docs. <a href="https://docs.hexgate.ai/platform/overview">Platform overview</a> · <a href="https://docs.hexgate.ai/platform/hosted">Hexgate Cloud docs</a></td>
-<td>Self-hosted using Linux or macOS archives or a gateway container image (<a href="/docs/status#releases"><code>experimental</code></a>). Guardana Control offers no hosted service. <a href="/docs/status#open-source-and-what-may-be-commercial">Open source, and what may be commercial</a></td>
-</tr>
-<tr>
-<td>What is the licence?</td>
-<td>The managed service licence is not stated in the Microsoft overview. <a href="https://learn.microsoft.com/en-us/azure/foundry/agent-controls/overview">Microsoft overview</a></td>
-<td>The managed service licence is not stated in the AWS policy guide. <a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy.html">AWS policy guide</a></td>
-<td>The published code uses the MIT licence. A separate service licence is not stated in the Hexgate Cloud docs. <a href="https://github.com/HexamindOrganisation/hexgate/blob/main/LICENSE">MIT licence</a> · <a href="https://docs.hexgate.ai/platform/hosted">Hexgate Cloud docs</a></td>
-<td>Open source (<a href="https://github.com/guardana/control/blob/main/LICENSE">Apache 2.0</a>).</td>
-</tr>
-<tr>
-<td>What is the release status?</td>
-<td>Public preview, announced on 2026-11-18. <a href="https://commandline.microsoft.com/introducing-agent-controls-an-enterprise-control-plane-for-agent-behavior/">Microsoft launch</a></td>
-<td>Generally available since 2026-03-03. <a href="https://aws.amazon.com/about-aws/whats-new/2026/03/policy-amazon-bedrock-agentcore-generally-available/">AWS release announcement</a></td>
-<td>Preview or general availability is not stated in the release notes or cloud documentation. <a href="https://github.com/HexamindOrganisation/hexgate/releases">Hexgate releases</a> · <a href="https://docs.hexgate.ai/platform/hosted">Hexgate Cloud docs</a></td>
-<td>Alpha. <a href="/docs/status">Implementation status</a></td>
-</tr>
-</tbody>
-</table>
-</div>
+<ul class="stack">
+<li><p class="rt">Where does the check run?</p><dl><dt>Microsoft's agent controls</dt><dd>The agent host sends the proposed call to a managed Azure service. The host applies the decision. <a href="https://learn.microsoft.com/en-us/azure/foundry/agent-controls/overview">Microsoft overview</a></dd><dt>Policy in Amazon Bedrock AgentCore</dt><dd>The AWS policy engine checks the request at AgentCore Gateway before it reaches the tool. <a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy.html">AWS policy guide</a></dd><dt>Hexgate</dt><dd>The SDK can check inside the agent process. Hexgate also supports remote checks on a self-hosted control plane or Hexgate Cloud. <a href="https://docs.hexgate.ai/platform/overview">Platform overview</a></dd><dt>Guardana Control</dt><dd>The MCP gateway (<a href="/docs/status#mcp-gateway"><code>experimental</code></a>) decides routed calls before they reach the server in every mode. In <code>OBSERVE</code>, it records the decision and forwards the call regardless of that decision, unless a pause or a call it cannot translate blocks it. Enforcing modes can block or hold a call. <a href="/docs/concepts/threat-model">Threat model</a> Outside MCP, a tool can ask the enforcement API before acting. The client applies the answer, and Guardana Control cannot verify that it did. <a href="/docs/status#enforce-receiver">Enforcement API receiver (<code>experimental</code>)</a></dd></dl></li>
+<li><p class="rt">What decides?</p><dl><dt>Microsoft's agent controls</dt><dd>Rego rules under the Agent Control Specification. The rules can use input from classifiers or language models. <a href="https://learn.microsoft.com/en-us/azure/foundry/agent-controls/overview">Microsoft overview</a></dd><dt>Policy in Amazon Bedrock AgentCore</dt><dd>Cedar rules and Dogwood, a language that supports Cedar rules and can check earlier steps in a session. <a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy-authoring-guide.html">AWS authoring guide</a></dd><dt>Hexgate</dt><dd>YAML rules can run in Python or be compiled through Rego into WebAssembly. <a href="https://docs.hexgate.ai/policy/wasm-bundles">Hexgate policy bundles</a></dd><dt>Guardana Control</dt><dd>The decision kernel decides each call in a fixed order (<a href="/docs/status#decision-kernel"><code>implemented</code></a>). The policy matcher evaluates rules from signed bundles containing <code>agent-policy/<wbr/>v1alpha1</code> policy documents (<a href="/docs/status#policy-matcher"><code>implemented</code></a>).</dd></dl></li>
+<li><p class="rt">Can a person approve a held call?</p><dl><dt>Microsoft's agent controls</dt><dd>Yes. A denial can include an approval request. The host runs the review workflow and keeps the call blocked pending approval. <a href="https://learn.microsoft.com/en-us/azure/foundry/agent-controls/overview">Microsoft overview</a></dd><dt>Policy in Amazon Bedrock AgentCore</dt><dd>A rule can require an earlier human approval on record. The examples show a tool call issued after approval. A workflow that holds and resumes the original call remains unverified. <a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/example-policies-temporal.html">AWS temporal policy examples</a> · <a href="https://aws.amazon.com/bedrock/agentcore/faqs/">AWS AgentCore FAQ</a></dd><dt>Hexgate</dt><dd>Yes. The SDK waits for the application's approval handler, which can ask a person. <a href="https://docs.hexgate.ai/concepts/approval-required">Hexgate approval guide</a></dd><dt>Guardana Control</dt><dd>An operator can approve by command or from a local page (<a href="/docs/status#approval-authority"><code>experimental</code></a>). The approval binds to one exact call and one policy bundle and is used once when the caller retries that call (<a href="/docs/status#approval-binding"><code>implemented</code></a>).</dd></dl></li>
+<li><p class="rt">What gets recorded?</p><dl><dt>Microsoft's agent controls</dt><dd>The service returns a receipt with the policies and versions used. The host records the receipt with the outcome. <a href="https://commandline.microsoft.com/introducing-agent-controls-an-enterprise-control-plane-for-agent-behavior/">Microsoft launch</a></dd><dt>Policy in Amazon Bedrock AgentCore</dt><dd>CloudWatch gets counts by default. With gateway tracing enabled, it also gets the allow or deny decision, the reason, and the policy IDs that decided it. <a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability-policy-metrics.html">AWS policy observability</a></dd><dt>Hexgate</dt><dd>The platform stores policy decisions, model usage and refusals of banned agents or users in ClickHouse. In local mode the events stay on the agent's machine. <a href="https://docs.hexgate.ai/concepts/audit-trail">Hexgate audit trail</a></dd><dt>Guardana Control</dt><dd>The gateway writes a local evidence log with the decision, policy version and a hash of the result when there is one (<a href="/docs/status#evidence-spool"><code>experimental</code></a>).</dd></dl></li>
+<li><p class="rt">How is it deployed?</p><dl><dt>Microsoft's agent controls</dt><dd>Managed on Microsoft Azure. The calling agent can run on other clouds. <a href="https://commandline.microsoft.com/introducing-agent-controls-an-enterprise-control-plane-for-agent-behavior/">Microsoft launch</a></dd><dt>Policy in Amazon Bedrock AgentCore</dt><dd>Managed on AWS in supported regions. <a href="https://aws.amazon.com/about-aws/whats-new/2026/03/policy-amazon-bedrock-agentcore-generally-available/">AWS release announcement</a></dd><dt>Hexgate</dt><dd>Run the SDK locally, host the platform yourself, or use managed Hexgate Cloud. The cloud provider is not stated in the Hexgate Cloud docs. <a href="https://docs.hexgate.ai/platform/overview">Platform overview</a> · <a href="https://docs.hexgate.ai/platform/hosted">Hexgate Cloud docs</a></dd><dt>Guardana Control</dt><dd>Self-hosted using Linux or macOS archives or a gateway container image (<a href="/docs/status#releases"><code>experimental</code></a>). Guardana Control offers no hosted service. <a href="/docs/status#open-source-and-what-may-be-commercial">Open source, and what may be commercial</a></dd></dl></li>
+<li><p class="rt">What is the licence?</p><dl><dt>Microsoft's agent controls</dt><dd>The managed service licence is not stated in the Microsoft overview. <a href="https://learn.microsoft.com/en-us/azure/foundry/agent-controls/overview">Microsoft overview</a></dd><dt>Policy in Amazon Bedrock AgentCore</dt><dd>The managed service licence is not stated in the AWS policy guide. <a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy.html">AWS policy guide</a></dd><dt>Hexgate</dt><dd>The published code uses the MIT licence. A separate service licence is not stated in the Hexgate Cloud docs. <a href="https://github.com/HexamindOrganisation/hexgate/blob/main/LICENSE">MIT licence</a> · <a href="https://docs.hexgate.ai/platform/hosted">Hexgate Cloud docs</a></dd><dt>Guardana Control</dt><dd>Open source (<a href="https://github.com/guardana/control/blob/main/LICENSE">Apache 2.0</a>).</dd></dl></li>
+<li><p class="rt">What is the release status?</p><dl><dt>Microsoft's agent controls</dt><dd>Public preview, announced on 2026-11-18. <a href="https://commandline.microsoft.com/introducing-agent-controls-an-enterprise-control-plane-for-agent-behavior/">Microsoft launch</a></dd><dt>Policy in Amazon Bedrock AgentCore</dt><dd>Generally available since 2026-03-03. <a href="https://aws.amazon.com/about-aws/whats-new/2026/03/policy-amazon-bedrock-agentcore-generally-available/">AWS release announcement</a></dd><dt>Hexgate</dt><dd>Preview or general availability is not stated in the release notes or cloud documentation. <a href="https://github.com/HexamindOrganisation/hexgate/releases">Hexgate releases</a> · <a href="https://docs.hexgate.ai/platform/hosted">Hexgate Cloud docs</a></dd><dt>Guardana Control</dt><dd>Alpha. <a href="/docs/status">Implementation status</a></dd></dl></li>
+</ul>
 <h2 id="microsofts-agent-controls">Microsoft's agent controls</h2>
 <p>Agent controls is a managed Azure service for evaluating proposed agent
 actions and content against policy. Microsoft's launch example shows an

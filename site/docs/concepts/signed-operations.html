@@ -145,63 +145,14 @@ Nothing in this repository is a security boundary yet.</p>
 <code>internal/reaction/lift2.go</code>, <code>internal/reaction/judge.go</code>,
 <code>internal/gatewayconfig/reaction.go</code>, <code>internal/evidence/chain.go</code>,
 <code>.goreleaser.yaml</code>.</p>
-<div class="tbl">
-<table>
-<thead>
-<tr>
-<th>What is signed</th>
-<th>By whom</th>
-<th>What the plane checks</th>
-<th>Status</th>
-<th>Where</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>The policy bundle</td>
-<td>the holder of the policy key, with <code>policy sign</code></td>
-<td>an Ed25519 signature over the DSSE encoding of the bundle's canonical bytes, under the bundle's payload type, by a key the plane pins; a holder pinned to one bundle id refuses every other</td>
-<td><code>implemented</code></td>
-<td><code>internal/policy/bundle/</code>, <code>internal/policy/holder.go</code></td>
-</tr>
-<tr>
-<td>The freshness statement and the serial floor</td>
-<td>the holder of a second key, the freshness key, with <code>policy renew</code></td>
-<td>a statement bound to the bundle's id, serial and digest, signed by the freshness key, which may not be the bundle's key; the floor keeps a bundle from going back</td>
-<td><code>experimental</code></td>
-<td><code>internal/policy/statement.go</code>, <code>internal/policy/floor.go</code>, <code>internal/policystate/</code></td>
-</tr>
-<tr>
-<td>The trust roster</td>
-<td>the holder of the root key, with <code>operators roster sign</code></td>
-<td>a roster signed by the pinned root, of the configured id, unexpired, with a serial that only climbs; it names each operator's key and grants of tenant, project and level</td>
-<td><code>experimental</code></td>
-<td><code>internal/trust/</code></td>
-</tr>
-<tr>
-<td>Approval answers, pause files, run records, routes, stop list headers and lifts</td>
-<td>roster operators, each with <code>--key</code> on its own command</td>
-<td>under <code>approvals.authority: signed</code> only: the signer is a roster operator whose grant covers the act, the tenant and the project; a pause file, a route, a stop list header and a lift also name the plane's <code>plane_id</code> and the file the plane reads, an answer the held call, and a lift the list it was made against</td>
-<td><code>experimental</code></td>
-<td><code>internal/gateway/authority.go</code>, <code>internal/pause/signedpause/</code>, <code>internal/runs/signedruns/</code>, <code>internal/reaction/</code></td>
-</tr>
-<tr>
-<td>A <code>v1alpha1</code> route and its lifts</td>
-<td>outside <code>signed</code>: the holder of the route key, with <code>route sign</code>, and the holder of the lift key the route names, with <code>stops lift</code></td>
-<td>the route verifies under <code>reaction.public_key</code> and names the listener's tenant, and no project; a lift verifies under the route's lift key; the route, lift, policy and freshness keys are four different keys</td>
-<td><code>experimental</code></td>
-<td><code>internal/gatewayconfig/reaction.go</code>, <code>internal/reaction/route.go</code>, <code>internal/reaction/judge.go</code></td>
-</tr>
-<tr>
-<td>Releases</td>
-<td>the release workflow, from a tag on <code>main</code></td>
-<td>not a plane's check: <code>checksums.txt</code> is signed without a stored key, and each archive and the image carry a build provenance attestation, which a user verifies with the commands in <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a></td>
-<td><code>experimental</code></td>
-<td><code>.goreleaser.yaml</code>, <code>.github/workflows/release.yml</code></td>
-</tr>
-</tbody>
-</table>
-</div>
+<ul class="stack">
+<li><p class="rt">The policy bundle</p><dl><dt>By whom</dt><dd>the holder of the policy key, with <code>policy sign</code></dd><dt>What the plane checks</dt><dd>an Ed25519 signature over the DSSE encoding of the bundle's canonical bytes, under the bundle's payload type, by a key the plane pins; a holder pinned to one bundle id refuses every other</dd><dt>Status</dt><dd><code>implemented</code></dd><dt>Where</dt><dd><code>internal/<wbr/>policy/<wbr/>bundle/</code>, <code>internal/<wbr/>policy/<wbr/>holder.go</code></dd></dl></li>
+<li><p class="rt">The freshness statement and the serial floor</p><dl><dt>By whom</dt><dd>the holder of a second key, the freshness key, with <code>policy renew</code></dd><dt>What the plane checks</dt><dd>a statement bound to the bundle's id, serial and digest, signed by the freshness key, which may not be the bundle's key; the floor keeps a bundle from going back</dd><dt>Status</dt><dd><code>experimental</code></dd><dt>Where</dt><dd><code>internal/<wbr/>policy/<wbr/>statement.go</code>, <code>internal/<wbr/>policy/<wbr/>floor.go</code>, <code>internal/<wbr/>policystate/</code></dd></dl></li>
+<li><p class="rt">The trust roster</p><dl><dt>By whom</dt><dd>the holder of the root key, with <code>operators roster sign</code></dd><dt>What the plane checks</dt><dd>a roster signed by the pinned root, of the configured id, unexpired, with a serial that only climbs; it names each operator's key and grants of tenant, project and level</dd><dt>Status</dt><dd><code>experimental</code></dd><dt>Where</dt><dd><code>internal/<wbr/>trust/</code></dd></dl></li>
+<li><p class="rt">Approval answers, pause files, run records, routes, stop list headers and lifts</p><dl><dt>By whom</dt><dd>roster operators, each with <code>--key</code> on its own command</dd><dt>What the plane checks</dt><dd>under <code>approvals.authority: signed</code> only: the signer is a roster operator whose grant covers the act, the tenant and the project; a pause file, a route, a stop list header and a lift also name the plane's <code>plane_id</code> and the file the plane reads, an answer the held call, and a lift the list it was made against</dd><dt>Status</dt><dd><code>experimental</code></dd><dt>Where</dt><dd><code>internal/<wbr/>gateway/<wbr/>authority.go</code>, <code>internal/<wbr/>pause/<wbr/>signedpause/</code>, <code>internal/<wbr/>runs/<wbr/>signedruns/</code>, <code>internal/<wbr/>reaction/</code></dd></dl></li>
+<li><p class="rt">A <code>v1alpha1</code> route and its lifts</p><dl><dt>By whom</dt><dd>outside <code>signed</code>: the holder of the route key, with <code>route sign</code>, and the holder of the lift key the route names, with <code>stops lift</code></dd><dt>What the plane checks</dt><dd>the route verifies under <code>reaction.public_key</code> and names the listener's tenant, and no project; a lift verifies under the route's lift key; the route, lift, policy and freshness keys are four different keys</dd><dt>Status</dt><dd><code>experimental</code></dd><dt>Where</dt><dd><code>internal/<wbr/>gatewayconfig/<wbr/>reaction.go</code>, <code>internal/<wbr/>reaction/<wbr/>route.go</code>, <code>internal/<wbr/>reaction/<wbr/>judge.go</code></dd></dl></li>
+<li><p class="rt">Releases</p><dl><dt>By whom</dt><dd>the release workflow, from a tag on <code>main</code></dd><dt>What the plane checks</dt><dd>not a plane's check: <code>checksums.txt</code> is signed without a stored key, and each archive and the image carry a build provenance attestation, which a user verifies with the commands in <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a></dd><dt>Status</dt><dd><code>experimental</code></dd><dt>Where</dt><dd><code>.goreleaser.yaml</code>, <code>.github/<wbr/>workflows/<wbr/>release.yml</code></dd></dl></li>
+</ul>
 <h2 id="what-a-signature-proves-here">What a signature proves here</h2>
 <p>A bundle's signature proves that the holder of the pinned policy key signed
 those exact bytes as a policy; the bundle digest every decision records names

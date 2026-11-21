@@ -288,44 +288,13 @@ it, and counts it in <code>held_trails_left_open</code>; after hand-out it count
 loses.</strong> The other two authorities require <code>approvals.hold_journal_dir</code>, and
 <code>doctor</code> and <code>/healthz</code> both say it out loud.</p>
 <h2 id="what-is-held-and-by-whom">What is held, and by whom</h2>
-<div class="tbl">
-<table>
-<thead>
-<tr>
-<th>Kept by</th>
-<th>What</th>
-<th>Used for</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>the pipeline, in memory</td>
-<td>the held request: its identifiers, the approval it minted, the envelope, the decision <code>POLICY_DECIDED</code> recorded, the binding, where the trail stands, the expiry</td>
-<td>what a retry is compared with, and what resumes; every answer is checked against it field by field</td>
-</tr>
-<tr>
-<td>the approval store</td>
-<td>the file store: one record per held request, under its binding, holding the approval, request id, authority, tenant and project, never an envelope, a decision or a trail; the memory store: the whole hold, in the plane's memory</td>
-<td>which holds are kept; outside <code>signed</code>, the answer</td>
-</tr>
-<tr>
-<td>the ledger, beside the journal</td>
-<td>a mark per approval spent or given up</td>
-<td>spending once</td>
-</tr>
-<tr>
-<td>the hold journal, outside <code>memory</code></td>
-<td>one entry per hold: the trail's identifiers and position, the binding, the approval and the expiry</td>
-<td>closing a hold this plane lost to a restart</td>
-</tr>
-<tr>
-<td>the agent</td>
-<td><code>approval_id</code>, <code>action_digest</code>, <code>expires_at</code>, <code>retry_after</code></td>
-<td>retrying the same call after <code>retry_after</code></td>
-</tr>
-</tbody>
-</table>
-</div>
+<ul class="stack">
+<li><p class="rt">the pipeline, in memory</p><dl><dt>What</dt><dd>the held request: its identifiers, the approval it minted, the envelope, the decision <code>POLICY_DECIDED</code> recorded, the binding, where the trail stands, the expiry</dd><dt>Used for</dt><dd>what a retry is compared with, and what resumes; every answer is checked against it field by field</dd></dl></li>
+<li><p class="rt">the approval store</p><dl><dt>What</dt><dd>the file store: one record per held request, under its binding, holding the approval, request id, authority, tenant and project, never an envelope, a decision or a trail; the memory store: the whole hold, in the plane's memory</dd><dt>Used for</dt><dd>which holds are kept; outside <code>signed</code>, the answer</dd></dl></li>
+<li><p class="rt">the ledger, beside the journal</p><dl><dt>What</dt><dd>a mark per approval spent or given up</dd><dt>Used for</dt><dd>spending once</dd></dl></li>
+<li><p class="rt">the hold journal, outside <code>memory</code></p><dl><dt>What</dt><dd>one entry per hold: the trail's identifiers and position, the binding, the approval and the expiry</dd><dt>Used for</dt><dd>closing a hold this plane lost to a restart</dd></dl></li>
+<li><p class="rt">the agent</p><dl><dt>What</dt><dd><code>approval_id</code>, <code>action_digest</code>, <code>expires_at</code>, <code>retry_after</code></dd><dt>Used for</dt><dd>retrying the same call after <code>retry_after</code></dd></dl></li>
+</ul>
 <p>The store answers which of its records are still there and whether one was
 approved; it never defines what was held. A record the pipeline does not hold
 resumes nothing.</p>
@@ -362,39 +331,12 @@ refused bundle.</p>
 attempts, and the arguments' hash and preview, since it covers the arguments
 themselves. The pipeline neither requires those to change nor compares them.
 What it compares:</p>
-<div class="tbl">
-<table>
-<thead>
-<tr>
-<th>Compared</th>
-<th>With</th>
-<th>If it differs</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>the binding</td>
-<td>the hold's: same action digest, same bundle digest</td>
-<td>a new request, held anew with a new approval</td>
-</tr>
-<tr>
-<td>the data labels and the run context without the plane's flow tags</td>
-<td>the held envelope's, the two fields the digest leaves out that an approval was given under</td>
-<td>a new request, held anew</td>
-</tr>
-<tr>
-<td>the fresh decision</td>
-<td>the held one, in verdict, action digest, rule ids and obligations, because the trail has room for one <code>POLICY_DECIDED</code></td>
-<td>held anew as a request of its own; a delegation that expired or a bundle that went stale in between is a block the kernel makes before any of this</td>
-</tr>
-<tr>
-<td>the approval the store answers</td>
-<td>the enforcement point's record: same <code>approval_id</code> and <code>request_id</code>, state <code>APPROVED</code> with an <code>approver_id</code>, not multi-use, expiry no later than the enforcement point minted and after now</td>
-<td>see the checks below</td>
-</tr>
-</tbody>
-</table>
-</div>
+<ul class="stack">
+<li><p class="rt">the binding</p><dl><dt>With</dt><dd>the hold's: same action digest, same bundle digest</dd><dt>If it differs</dt><dd>a new request, held anew with a new approval</dd></dl></li>
+<li><p class="rt">the data labels and the run context without the plane's flow tags</p><dl><dt>With</dt><dd>the held envelope's, the two fields the digest leaves out that an approval was given under</dd><dt>If it differs</dt><dd>a new request, held anew</dd></dl></li>
+<li><p class="rt">the fresh decision</p><dl><dt>With</dt><dd>the held one, in verdict, action digest, rule ids and obligations, because the trail has room for one <code>POLICY_DECIDED</code></dd><dt>If it differs</dt><dd>held anew as a request of its own; a delegation that expired or a bundle that went stale in between is a block the kernel makes before any of this</dd></dl></li>
+<li><p class="rt">the approval the store answers</p><dl><dt>With</dt><dd>the enforcement point's record: same <code>approval_id</code> and <code>request_id</code>, state <code>APPROVED</code> with an <code>approver_id</code>, not multi-use, expiry no later than the enforcement point minted and after now</dd><dt>If it differs</dt><dd>see the checks below</dd></dl></li>
+</ul>
 <p>Two requests that differ only in the labels or the context share a binding,
 so the store holds every request under a binding and the pipeline picks the
 one the retry equals, oldest first.</p>
@@ -420,124 +362,35 @@ one the retry equals, oldest first.</p>
 <p>Sources: <code>internal/gateway/approve.go</code>, <code>internal/gateway/resume.go</code>,
 <code>internal/gateway/trails.go</code>, <code>internal/gateway/approvals.go</code>,
 <code>internal/gateway/reconcile.go</code>.</p>
-<div class="tbl">
-<table>
-<thead>
-<tr>
-<th>How the hold ends</th>
-<th>On the held trail</th>
-<th>The call that arrives gets</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>an approved retry</td>
-<td><code>APPROVAL_DECIDED</code>, <code>ACTION_STARTED</code>, then the closing event; the approval is spent before the event is written, so two retries cannot both write it</td>
-<td>the upstream's result, sent with exactly the authorized bytes</td>
-</tr>
-<tr>
-<td>an approved retry whose approval expires before the call is handed out</td>
-<td><code>APPROVAL_DECIDED</code>, then <code>ACTION_BLOCKED</code> with <code>DENY</code>, <code>APPROVAL_EXPIRED</code>, or <code>ACTION_STARTED</code> and <code>ACTION_FAILED</code> naming it when the expiry passed during that append; the approval stays spent</td>
-<td><code>DENY</code>, <code>APPROVAL_EXPIRED</code>, and nothing is sent</td>
-</tr>
-<tr>
-<td>an approved retry whose bundle went stale, or was replaced, before the call is handed out</td>
-<td>before the consume, this call's own trail: <code>ACTION_PROPOSED</code>, <code>POLICY_DECIDED</code>, <code>ACTION_BLOCKED</code>, nothing spent and the hold kept; after it, <code>APPROVAL_DECIDED</code> then <code>ACTION_BLOCKED</code>, or <code>ACTION_STARTED</code> and <code>ACTION_FAILED</code>, and the approval stays spent</td>
-<td><code>INDETERMINATE</code>, <code>POLICY_STALE</code>, and nothing is sent; a retry under a newer bundle is held anew</td>
-</tr>
-<tr>
-<td>the next identical call after the held one ran</td>
-<td>its own trail: <code>ACTION_PROPOSED</code>, <code>POLICY_DECIDED</code>, <code>ACTION_BLOCKED</code></td>
-<td><code>DENY</code>, <code>APPROVAL_ALREADY_USED</code>: the approval was spent, which does not by itself say the earlier call ran (<a href="/docs/reference/reason-codes">reference/reason-codes</a>); once the spent approval has expired, the same call is held anew</td>
-</tr>
-<tr>
-<td>it expired before a retry resumed it, answered or not</td>
-<td><code>APPROVAL_EXPIRED</code>, <code>ACTION_BLOCKED</code> with <code>DENY</code>, <code>APPROVAL_EXPIRED</code>; written by the next call that opens a trail, at most <code>maxSweep</code> holds per call, before the request id is freed</td>
-<td>a retry after the expiry is a new request with a new hold</td>
-</tr>
-<tr>
-<td>a retry finds the approver rejected it</td>
-<td><code>APPROVAL_DECIDED</code> with the answer, <code>ACTION_BLOCKED</code> with <code>DENY</code>, <code>APPROVAL_REJECTED</code>; a rejection that fails a check below is recorded as the enforcement point's own approval, <code>APPROVAL_EXPIRED</code>; a rejection nobody retries after is closed at the expiry like an unanswered hold</td>
-<td>that block</td>
-</tr>
-<tr>
-<td>the agent gave up on its retry before the approval was consumed or the call handed out</td>
-<td>this call's own trail: <code>ACTION_PROPOSED</code>, <code>POLICY_DECIDED</code>, <code>ACTION_BLOCKED</code> with <code>INDETERMINATE</code>, <code>EVIDENCE_UNAVAILABLE</code>; nothing is spent and the hold stands; after the consume, the execution is aborted unsent and the approval is spent</td>
-<td>nothing: the agent is gone</td>
-</tr>
-<tr>
-<td>the store would not keep the hold, or <code>MaxHeld</code> holds stand</td>
-<td><code>APPROVAL_EXPIRED</code>, <code>ACTION_BLOCKED</code> with <code>INDETERMINATE</code>, <code>EVIDENCE_UNAVAILABLE</code>: the window it opened is closed first, since nothing else may follow a request for approval</td>
-<td>that block</td>
-</tr>
-<tr>
-<td>the hold was dropped or resumed before the flip to running, or the store or the ledger cannot answer</td>
-<td>this call's own trail: <code>ACTION_PROPOSED</code>, <code>POLICY_DECIDED</code>, <code>ACTION_BLOCKED</code> with <code>INDETERMINATE</code>, <code>EVIDENCE_UNAVAILABLE</code></td>
-<td>that block</td>
-</tr>
-<tr>
-<td>the trail cannot be written</td>
-<td>nothing more: the block is not recorded either</td>
-<td><code>INDETERMINATE</code>, <code>EVIDENCE_UNAVAILABLE</code></td>
-</tr>
-<tr>
-<td>the plane stopped while the request was held</td>
-<td>at its next start: <code>APPROVAL_DECIDED</code> with the answer and <code>ACTION_BLOCKED</code> with <code>APPROVAL_NOT_RESUMED</code> or <code>APPROVAL_REJECTED</code>, or <code>APPROVAL_EXPIRED</code> and <code>ACTION_BLOCKED</code> with <code>APPROVAL_EXPIRED</code> or <code>APPROVAL_STATE_UNKNOWN</code>; nothing at all under <code>memory</code></td>
-<td>nothing: that connection was answered pending long ago, and a later identical call is held anew or, if the plane had spent the approval, refused <code>APPROVAL_ALREADY_USED</code> until it expires</td>
-</tr>
-</tbody>
-</table>
-</div>
+<ul class="stack">
+<li><p class="rt">an approved retry</p><dl><dt>On the held trail</dt><dd><code>APPROVAL_DECIDED</code>, <code>ACTION_STARTED</code>, then the closing event; the approval is spent before the event is written, so two retries cannot both write it</dd><dt>The call that arrives gets</dt><dd>the upstream's result, sent with exactly the authorized bytes</dd></dl></li>
+<li><p class="rt">an approved retry whose approval expires before the call is handed out</p><dl><dt>On the held trail</dt><dd><code>APPROVAL_DECIDED</code>, then <code>ACTION_BLOCKED</code> with <code>DENY</code>, <code>APPROVAL_EXPIRED</code>, or <code>ACTION_STARTED</code> and <code>ACTION_FAILED</code> naming it when the expiry passed during that append; the approval stays spent</dd><dt>The call that arrives gets</dt><dd><code>DENY</code>, <code>APPROVAL_EXPIRED</code>, and nothing is sent</dd></dl></li>
+<li><p class="rt">an approved retry whose bundle went stale, or was replaced, before the call is handed out</p><dl><dt>On the held trail</dt><dd>before the consume, this call's own trail: <code>ACTION_PROPOSED</code>, <code>POLICY_DECIDED</code>, <code>ACTION_BLOCKED</code>, nothing spent and the hold kept; after it, <code>APPROVAL_DECIDED</code> then <code>ACTION_BLOCKED</code>, or <code>ACTION_STARTED</code> and <code>ACTION_FAILED</code>, and the approval stays spent</dd><dt>The call that arrives gets</dt><dd><code>INDETERMINATE</code>, <code>POLICY_STALE</code>, and nothing is sent; a retry under a newer bundle is held anew</dd></dl></li>
+<li><p class="rt">the next identical call after the held one ran</p><dl><dt>On the held trail</dt><dd>its own trail: <code>ACTION_PROPOSED</code>, <code>POLICY_DECIDED</code>, <code>ACTION_BLOCKED</code></dd><dt>The call that arrives gets</dt><dd><code>DENY</code>, <code>APPROVAL_ALREADY_USED</code>: the approval was spent, which does not by itself say the earlier call ran (<a href="/docs/reference/reason-codes">reference/reason-codes</a>); once the spent approval has expired, the same call is held anew</dd></dl></li>
+<li><p class="rt">it expired before a retry resumed it, answered or not</p><dl><dt>On the held trail</dt><dd><code>APPROVAL_EXPIRED</code>, <code>ACTION_BLOCKED</code> with <code>DENY</code>, <code>APPROVAL_EXPIRED</code>; written by the next call that opens a trail, at most <code>maxSweep</code> holds per call, before the request id is freed</dd><dt>The call that arrives gets</dt><dd>a retry after the expiry is a new request with a new hold</dd></dl></li>
+<li><p class="rt">a retry finds the approver rejected it</p><dl><dt>On the held trail</dt><dd><code>APPROVAL_DECIDED</code> with the answer, <code>ACTION_BLOCKED</code> with <code>DENY</code>, <code>APPROVAL_REJECTED</code>; a rejection that fails a check below is recorded as the enforcement point's own approval, <code>APPROVAL_EXPIRED</code>; a rejection nobody retries after is closed at the expiry like an unanswered hold</dd><dt>The call that arrives gets</dt><dd>that block</dd></dl></li>
+<li><p class="rt">the agent gave up on its retry before the approval was consumed or the call handed out</p><dl><dt>On the held trail</dt><dd>this call's own trail: <code>ACTION_PROPOSED</code>, <code>POLICY_DECIDED</code>, <code>ACTION_BLOCKED</code> with <code>INDETERMINATE</code>, <code>EVIDENCE_UNAVAILABLE</code>; nothing is spent and the hold stands; after the consume, the execution is aborted unsent and the approval is spent</dd><dt>The call that arrives gets</dt><dd>nothing: the agent is gone</dd></dl></li>
+<li><p class="rt">the store would not keep the hold, or <code>MaxHeld</code> holds stand</p><dl><dt>On the held trail</dt><dd><code>APPROVAL_EXPIRED</code>, <code>ACTION_BLOCKED</code> with <code>INDETERMINATE</code>, <code>EVIDENCE_UNAVAILABLE</code>: the window it opened is closed first, since nothing else may follow a request for approval</dd><dt>The call that arrives gets</dt><dd>that block</dd></dl></li>
+<li><p class="rt">the hold was dropped or resumed before the flip to running, or the store or the ledger cannot answer</p><dl><dt>On the held trail</dt><dd>this call's own trail: <code>ACTION_PROPOSED</code>, <code>POLICY_DECIDED</code>, <code>ACTION_BLOCKED</code> with <code>INDETERMINATE</code>, <code>EVIDENCE_UNAVAILABLE</code></dd><dt>The call that arrives gets</dt><dd>that block</dd></dl></li>
+<li><p class="rt">the trail cannot be written</p><dl><dt>On the held trail</dt><dd>nothing more: the block is not recorded either</dd><dt>The call that arrives gets</dt><dd><code>INDETERMINATE</code>, <code>EVIDENCE_UNAVAILABLE</code></dd></dl></li>
+<li><p class="rt">the plane stopped while the request was held</p><dl><dt>On the held trail</dt><dd>at its next start: <code>APPROVAL_DECIDED</code> with the answer and <code>ACTION_BLOCKED</code> with <code>APPROVAL_NOT_RESUMED</code> or <code>APPROVAL_REJECTED</code>, or <code>APPROVAL_EXPIRED</code> and <code>ACTION_BLOCKED</code> with <code>APPROVAL_EXPIRED</code> or <code>APPROVAL_STATE_UNKNOWN</code>; nothing at all under <code>memory</code></dd><dt>The call that arrives gets</dt><dd>nothing: that connection was answered pending long ago, and a later identical call is held anew or, if the plane had spent the approval, refused <code>APPROVAL_ALREADY_USED</code> until it expires</dd></dl></li>
+</ul>
 <p>A consumed approval stays consumed when the upstream call then fails, because
 the effect may have happened; that failure is a new request.</p>
 <h2 id="what-is-checked-before-the-held-request-runs">What is checked before the held request runs</h2>
 <p>The enforcement point never trusts the store's answer: it judges only the
 record of the approval it minted, by approval and request id, and records
 <code>reason</code> and <code>approver_id</code> as the store gave them.</p>
-<div class="tbl">
-<table>
-<thead>
-<tr>
-<th>The answer</th>
-<th>What happens</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>pending, approved with no <code>approver_id</code>, multi-use (counted), or decided never, at no valid time, before <code>requested_at</code> or after now</td>
-<td>the hold waits; the retry is told the same <code>approval_id</code></td>
-</tr>
-<tr>
-<td>missing, or filed under another request</td>
-<td>the retry is held anew</td>
-</tr>
-<tr>
-<td>two records of the minted approval, an unnamed state, or a store or ledger that cannot answer</td>
-<td>this call's own trail is blocked <code>INDETERMINATE</code>, <code>EVIDENCE_UNAVAILABLE</code>; the hold stands, unspent</td>
-</tr>
-<tr>
-<td>expired, with no expiry or an invalid one, of a major this build reads, not marked spent</td>
-<td>the held trail closes <code>DENY</code>, <code>APPROVAL_EXPIRED</code></td>
-</tr>
-<tr>
-<td>approved, rejected or expired of another major; approved or rejected with another <code>requested_at</code>, a refused <code>approver_id</code>, or an expiry later than minted</td>
-<td>the held trail closes with the plane's own approval, expired, <code>INDETERMINATE</code>, <code>EVIDENCE_UNAVAILABLE</code></td>
-</tr>
-<tr>
-<td>another action or bundle digest</td>
-<td>the same close, <code>DENY</code>, <code>APPROVAL_DIGEST_MISMATCH</code> or <code>APPROVAL_BUNDLE_MISMATCH</code></td>
-</tr>
-<tr>
-<td>rejected, passing those checks</td>
-<td><code>APPROVAL_DECIDED</code>, then <code>DENY</code>, <code>APPROVAL_REJECTED</code></td>
-</tr>
-<tr>
-<td>approved, passing those checks</td>
-<td>spent in the ledger, then <code>APPROVAL_DECIDED</code> and <code>ACTION_STARTED</code> once the hold flips to running; a mark already there answers <code>APPROVAL_ALREADY_USED</code>, a hold another call took <code>INDETERMINATE</code></td>
-</tr>
-</tbody>
-</table>
-</div>
+<ul class="stack">
+<li><p class="rt">pending, approved with no <code>approver_id</code>, multi-use (counted), or decided never, at no valid time, before <code>requested_at</code> or after now</p><dl><dt>What happens</dt><dd>the hold waits; the retry is told the same <code>approval_id</code></dd></dl></li>
+<li><p class="rt">missing, or filed under another request</p><dl><dt>What happens</dt><dd>the retry is held anew</dd></dl></li>
+<li><p class="rt">two records of the minted approval, an unnamed state, or a store or ledger that cannot answer</p><dl><dt>What happens</dt><dd>this call's own trail is blocked <code>INDETERMINATE</code>, <code>EVIDENCE_UNAVAILABLE</code>; the hold stands, unspent</dd></dl></li>
+<li><p class="rt">expired, with no expiry or an invalid one, of a major this build reads, not marked spent</p><dl><dt>What happens</dt><dd>the held trail closes <code>DENY</code>, <code>APPROVAL_EXPIRED</code></dd></dl></li>
+<li><p class="rt">approved, rejected or expired of another major; approved or rejected with another <code>requested_at</code>, a refused <code>approver_id</code>, or an expiry later than minted</p><dl><dt>What happens</dt><dd>the held trail closes with the plane's own approval, expired, <code>INDETERMINATE</code>, <code>EVIDENCE_UNAVAILABLE</code></dd></dl></li>
+<li><p class="rt">another action or bundle digest</p><dl><dt>What happens</dt><dd>the same close, <code>DENY</code>, <code>APPROVAL_DIGEST_MISMATCH</code> or <code>APPROVAL_BUNDLE_MISMATCH</code></dd></dl></li>
+<li><p class="rt">rejected, passing those checks</p><dl><dt>What happens</dt><dd><code>APPROVAL_DECIDED</code>, then <code>DENY</code>, <code>APPROVAL_REJECTED</code></dd></dl></li>
+<li><p class="rt">approved, passing those checks</p><dl><dt>What happens</dt><dd>spent in the ledger, then <code>APPROVAL_DECIDED</code> and <code>ACTION_STARTED</code> once the hold flips to running; a mark already there answers <code>APPROVAL_ALREADY_USED</code>, a hold another call took <code>INDETERMINATE</code></dd></dl></li>
+</ul>
 <p><strong>Expiry is judged up to four times.</strong> The store's answer is checked before
 the spend; the expiry is checked again by the plane's clock with the pause
 state right before <code>ACTION_STARTED</code> is written, again once an opened run's

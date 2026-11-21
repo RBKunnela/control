@@ -337,7 +337,7 @@ is asked; three read only the envelope:</p>
 <tr>
 <td><code>restrict_resources</code></td>
 <td><code>ids</code> (comma-separated exact ids), <code>prefix</code> (a literal prefix)</td>
-<td>refuses a call whose resource id matches neither; ids compare as text and are never resolved as paths; under <code>prefix</code>, counted from the segment the prefix ends in, it also refuses what a resolver could read as leaving the prefix: a <code>%</code>, a <code>;</code>, a <code>?</code> or <code>#</code>, a backslash, a byte outside printable ASCII, a segment of only dots and spaces (<code>.</code>, <code>..</code>, <code>...</code>, <code>.. </code>) and an empty segment other than a trailing one; end a prefix with <code>/</code>, since <code>/srv/data</code> also matches <code>/srv/database</code>; with neither parameter, or no resource id, nothing matches</td>
+<td>refuses a call whose resource id matches neither; ids compare as text and are never resolved as paths; under <code>prefix</code>, counted from the segment the prefix ends in, it also refuses what a resolver could read as leaving the prefix: a <code>%</code>, a <code>;</code>, a <code>?</code> or <code>#</code>, a backslash, a byte outside printable ASCII, a segment of only dots and spaces (<code>.</code>, <code>..</code>, <code>...</code>, <code>.. </code>) and an empty segment other than a trailing one; end a prefix with <code>/</code>, since <code>/<wbr/>srv/<wbr/>data</code> also matches <code>/<wbr/>srv/<wbr/>database</code>; with neither parameter, or no resource id, nothing matches</td>
 </tr>
 <tr>
 <td><code>deny_external_sink</code></td>

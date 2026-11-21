@@ -167,39 +167,12 @@ plane made, and only the stop reaches a plane at all.</p>
 <code>cmd/guardana-control/supervise.go</code>, <code>cmd/guardana-control/react.go</code>,
 <code>internal/reaction/stoplist/poller.go</code>.</p>
 <h2 id="what-each-promises-and-what-it-does-not">What each promises, and what it does not</h2>
-<div class="tbl">
-<table>
-<thead>
-<tr>
-<th>Part</th>
-<th>Promises</th>
-<th>Does not promise</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>An observation</td>
-<td>what one source reported, with the source and the trust its descriptor declares; kept apart from the plane's evidence, and without content</td>
-<td>that the call happened as reported, or at all: a runtime that writes its own spans can omit, sample or invent them, and a proxy's log is only as independent as the account that writes it</td>
-</tr>
-<tr>
-<td>The coverage map</td>
-<td>one state per declared path: enforced, decided not enforced, observed, unknown or not covered; a row per egress host a source saw that no path declares</td>
-<td>that a plane runs the configuration it read, or that an undeclared path does not exist; it reads files and contacts no plane</td>
-</tr>
-<tr>
-<td>Supervision</td>
-<td>each finding cites its evidence and takes the weakest verdict of it; what it could not check is reported as not checked or indeterminate</td>
-<td>that a run without findings followed its procedure: it sees only the exports and logs it is given, when an operator runs it</td>
-</tr>
-<tr>
-<td>A stop</td>
-<td>a plane with the route refuses the stopped run's next call <code>RUN_STOPPED</code>, and every call while it cannot read or trust the list</td>
-<td>that a call already running is cut, or that any run other than the one named stops: a stop names one run, a root or a child, never its tree; under <code>signed</code> a route may stop the agent or principal instead, which on one plane stops the plane</td>
-</tr>
-</tbody>
-</table>
-</div>
+<ul class="stack">
+<li><p class="rt">An observation</p><dl><dt>Promises</dt><dd>what one source reported, with the source and the trust its descriptor declares; kept apart from the plane's evidence, and without content</dd><dt>Does not promise</dt><dd>that the call happened as reported, or at all: a runtime that writes its own spans can omit, sample or invent them, and a proxy's log is only as independent as the account that writes it</dd></dl></li>
+<li><p class="rt">The coverage map</p><dl><dt>Promises</dt><dd>one state per declared path: enforced, decided not enforced, observed, unknown or not covered; a row per egress host a source saw that no path declares</dd><dt>Does not promise</dt><dd>that a plane runs the configuration it read, or that an undeclared path does not exist; it reads files and contacts no plane</dd></dl></li>
+<li><p class="rt">Supervision</p><dl><dt>Promises</dt><dd>each finding cites its evidence and takes the weakest verdict of it; what it could not check is reported as not checked or indeterminate</dd><dt>Does not promise</dt><dd>that a run without findings followed its procedure: it sees only the exports and logs it is given, when an operator runs it</dd></dl></li>
+<li><p class="rt">A stop</p><dl><dt>Promises</dt><dd>a plane with the route refuses the stopped run's next call <code>RUN_STOPPED</code>, and every call while it cannot read or trust the list</dd><dt>Does not promise</dt><dd>that a call already running is cut, or that any run other than the one named stops: a stop names one run, a root or a child, never its tree; under <code>signed</code> a route may stop the agent or principal instead, which on one plane stops the plane</dd></dl></li>
+</ul>
 <p>The details are on each part's reference page:
 <a href="/docs/reference/observations">observations</a>,
 <a href="/docs/reference/coverage">coverage</a>,

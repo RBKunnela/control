@@ -235,29 +235,10 @@ after is refused as <code>closed</code>. So is a child it never admitted
 <code>runs.signed</code> the records judged, each refusal cause, the closes carried and
 <code>carry_failed</code>, held per plane; <code>doctor</code> counts records by state and signer.</p>
 <h2 id="what-a-plane-does-with-a-token">What a plane does with a token</h2>
-<div class="tbl">
-<table>
-<thead>
-<tr>
-<th>Listener</th>
-<th>Where the token comes from</th>
-<th>A token that does not resolve</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>stateless_http</code>, <code>stateful_http</code></td>
-<td>the <code>Run-Token</code> header of every request, on every method</td>
-<td><code>401</code> with <code>WWW-Authenticate: Run-Token</code> and one body whatever the cause, before the protocol library reads the request; the origin check and an authenticator answer first</td>
-</tr>
-<tr>
-<td><code>stdio</code></td>
-<td><code>run --run-token-file &lt;file&gt;</code>, read once at start; the file must be this user's and readable by nobody else</td>
-<td>refuses the start</td>
-</tr>
-</tbody>
-</table>
-</div>
+<ul class="stack">
+<li><p class="rt"><code>stateless_http</code>, <code>stateful_http</code></p><dl><dt>Where the token comes from</dt><dd>the <code>Run-Token</code> header of every request, on every method</dd><dt>A token that does not resolve</dt><dd><code>401</code> with <code>WWW-Authenticate: Run-Token</code> and one body whatever the cause, before the protocol library reads the request; the origin check and an authenticator answer first</dd></dl></li>
+<li><p class="rt"><code>stdio</code></p><dl><dt>Where the token comes from</dt><dd><code>run --run-token-file &lt;file&gt;</code>, read once at start; the file must be this user's and readable by nobody else</dd><dt>A token that does not resolve</dt><dd>refuses the start</dd></dl></li>
+</ul>
 <p>Every message is judged again, so a run closed or expired while a session or a
 process serves it is refused with the JSON-RPC error <code>-31102</code>, and nothing is
 admitted. <code>_meta</code>, any other header and the envelope's <code>context.run_id</code> never

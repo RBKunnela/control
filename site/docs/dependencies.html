@@ -295,20 +295,20 @@ binary and none is in the request path.</p>
 <tbody>
 <tr>
 <td><code>protoc-gen-go</code></td>
-<td><code>google.golang.org/protobuf</code></td>
+<td><code>google.golang.org/<wbr/>protobuf</code></td>
 <td><code>make proto</code>, <code>make proto-check</code></td>
 <td>BSD-3-Clause</td>
 </tr>
 <tr>
 <td><code>goimports</code></td>
-<td><code>golang.org/x/tools</code></td>
+<td><code>golang.org/<wbr/>x/<wbr/>tools</code></td>
 <td><code>make fmt</code>, <code>make fmt-check</code></td>
 <td>BSD-3-Clause</td>
 </tr>
 <tr>
 <td><code>govulncheck</code></td>
-<td><code>golang.org/x/vuln</code></td>
-<td><code>make security</code>; in binary mode, <code>scripts/scan-binaries.sh</code> over every binary of every release archive and the image's binary for each platform, before a release is attested or published</td>
+<td><code>golang.org/<wbr/>x/<wbr/>vuln</code></td>
+<td><code>make security</code>; in binary mode, <code>scripts/<wbr/>scan-binaries.sh</code> over every binary of every release archive and the image's binary for each platform, before a release is attested or published</td>
 <td>BSD-3-Clause</td>
 </tr>
 </tbody>
@@ -461,52 +461,52 @@ Each is pinned to a commit SHA with the version in a trailing comment;
 </thead>
 <tbody>
 <tr>
-<td><code>actions/checkout</code></td>
+<td><code>actions/<wbr/>checkout</code></td>
 <td>Fetches the tree every job works on</td>
 <td>MIT</td>
 </tr>
 <tr>
-<td><code>actions/setup-go</code></td>
+<td><code>actions/<wbr/>setup-go</code></td>
 <td>Installs the compiler named by <code>go-version-file: go.mod</code></td>
 <td>MIT</td>
 </tr>
 <tr>
-<td><code>bufbuild/buf-action</code></td>
-<td>Installs the pinned <code>buf</code>, with <code>setup_only</code>; <code>make proto-check</code> and the breaking-change step drive it. It replaced the archived <code>bufbuild/buf-setup-action</code></td>
+<td><code>bufbuild/<wbr/>buf-action</code></td>
+<td>Installs the pinned <code>buf</code>, with <code>setup_only</code>; <code>make proto-check</code> and the breaking-change step drive it. It replaced the archived <code>bufbuild/<wbr/>buf-setup-action</code></td>
 <td>Apache-2.0</td>
 </tr>
 <tr>
-<td><code>golangci/golangci-lint-action</code></td>
+<td><code>golangci/<wbr/>golangci-lint-action</code></td>
 <td>Installs the pinned linter, with <code>install-only</code>; <code>make lint</code> runs it</td>
 <td>MIT</td>
 </tr>
 <tr>
-<td><code>github/codeql-action</code></td>
+<td><code>github/<wbr/>codeql-action</code></td>
 <td>CodeQL static analysis, and the SARIF upload that publishes the supply-chain score to code scanning</td>
 <td>MIT</td>
 </tr>
 <tr>
-<td><code>actions/dependency-review-action</code></td>
+<td><code>actions/<wbr/>dependency-review-action</code></td>
 <td>Blocks a pull request that adds a vulnerable dependency</td>
 <td>MIT</td>
 </tr>
 <tr>
-<td><code>ossf/scorecard-action</code></td>
+<td><code>ossf/<wbr/>scorecard-action</code></td>
 <td>Scores the repository's own supply-chain settings</td>
 <td>Apache-2.0</td>
 </tr>
 <tr>
-<td><code>actions/upload-artifact</code></td>
+<td><code>actions/<wbr/>upload-artifact</code></td>
 <td>Keeps the raw supply-chain result that code scanning would trim, the dry run's release build, and the Python client's files for the job that uploads them</td>
 <td>MIT</td>
 </tr>
 <tr>
-<td><code>actions/download-artifact</code></td>
+<td><code>actions/<wbr/>download-artifact</code></td>
 <td>Hands the Python client's files to the job that uploads them to the package index, which verifies their provenance first</td>
 <td>MIT</td>
 </tr>
 <tr>
-<td><code>actions/attest-build-provenance</code></td>
+<td><code>actions/<wbr/>attest-build-provenance</code></td>
 <td>Records signed build provenance for every release asset, the Python client's files and the image before the release is published</td>
 <td>MIT</td>
 </tr>

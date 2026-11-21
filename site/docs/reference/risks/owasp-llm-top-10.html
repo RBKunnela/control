@@ -133,80 +133,18 @@
 <p>OWASP's release record dates the 2026 edition to 2026-08-04. The download page is dated 2026-08-03. The identifiers and titles below follow the final list. <a href="https://github.com/GenAI-Security-Project/GenAI-LLM-Top10/blob/main/2026/README.md">Release record</a>, <a href="https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/">download page</a>, and <a href="https://genai.owasp.org/download/56857/?tmstv=1785822482">edition PDF</a>, read 2026-11-20.</p>
 <h2 id="risks">Risks</h2>
 <p>Each test verifies a specific effect. For example, a mail server can receive no mail even after the run read untrusted content. The gateway enforcement examples use <code>ENFORCE</code>.</p>
-<div class="tbl">
-<table>
-<thead>
-<tr>
-<th>Published risk</th>
-<th>Exercised control</th>
-<th>Test file and function</th>
-<th>Known bypass and remaining gap</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>LLM01:2026 Prompt Injection</td>
-<td><a href="/docs/status#mcp-gateway">Model Context Protocol (MCP) gateway</a> (<code>experimental</code>). A flow rule blocks outbound mail after the run reads untrusted content and confidential data. This limits one possible effect of an injection.</td>
-<td><code>internal/gateway/e2e/flow_test.go</code> · <code>TestTheToxicFlowIsDeniedAcrossSessions</code>. <a href="/docs/guides/count-controlled-attempts#2-run-it">B37 mail cases</a>.</td>
-<td>Injected instructions in a tool result can reach the model. Prompt-injection detection and actions outside the tracked flow remain gaps. <a href="/docs/concepts/threat-model#a-hostile-or-compromised-mcp-server">Threat model</a>.</td>
-</tr>
-<tr>
-<td>LLM02:2026 Sensitive Information Disclosure</td>
-<td><a href="/docs/status#mcp-gateway">Model Context Protocol (MCP) gateway</a> (<code>experimental</code>). After reading untrusted content and then confidential data, the run cannot send mail through the tested external mail tool.</td>
-<td><code>internal/gateway/e2e/flow_test.go</code> · <code>TestTheToxicFlowIsDeniedAcrossSessions</code>. <a href="/docs/guides/count-controlled-attempts#2-run-it">B37 case with order data in the mail</a>.</td>
-<td>A direct connection can bypass the mail tool. The model can also disclose data in its own reply. <a href="/docs/concepts/threat-model#an-agent-that-is-wrong-or-steered">Threat model</a>.</td>
-</tr>
-<tr>
-<td>LLM03:2026 Excessive Agency</td>
-<td><a href="/docs/status#approval-binding">Approval binding</a> (<code>implemented</code>). The transfer waits for approval. Once approved, the retried call can run only once.</td>
-<td><code>internal/gateway/e2e/approval_test.go</code> · <code>TestPendingApprovalAndItsRetry</code>. <a href="/docs/guides/count-controlled-attempts#2-run-it">B37 changed-update case</a>.</td>
-<td>An overly broad allow rule can admit a harmful call. The operator chooses which actions require approval and which other paths the agent can reach. <a href="/docs/concepts/threat-model#an-agent-that-is-wrong-or-steered">Threat model</a>.</td>
-</tr>
-<tr>
-<td>LLM04:2026 Supply Chain</td>
-<td>Gap.</td>
-<td>No test verifies the provenance of a model, training dataset, or model adapter.</td>
-<td>Replacing a model artifact can change its behavior without changing a routed tool call. The model is outside the plane. <a href="/docs/concepts/threat-model#what-is-in-scope">Threat model</a>.</td>
-</tr>
-<tr>
-<td>LLM05:2026 Data and Model Poisoning</td>
-<td>Gap.</td>
-<td>No test checks training data or model weights for poisoning.</td>
-<td>A poisoned model can give a harmful answer without calling a tool. The model and its training are outside the plane. <a href="/docs/concepts/threat-model#what-is-in-scope">Threat model</a>.</td>
-</tr>
-<tr>
-<td>LLM06:2026 Unbounded Consumption</td>
-<td>Gap.</td>
-<td>No test enforces a token, inference, or spending budget.</td>
-<td>Repeated inference can incur cost without an MCP call. <a href="/docs/backlog">B42</a> covers usage and cost observations. A spending limit remains a gap.</td>
-</tr>
-<tr>
-<td>LLM07:2026 Misinformation</td>
-<td>Gap.</td>
-<td>No test checks whether a model's answer is true.</td>
-<td>False text from a tool can reach the model and be repeated to a reader. <a href="/docs/concepts/threat-model#a-hostile-or-compromised-mcp-server">Threat model</a>.</td>
-</tr>
-<tr>
-<td>LLM08:2026 Hidden Context Exposure</td>
-<td><a href="/docs/status#credential-echo">Withholding an answer that quotes a credential</a> (<code>experimental</code>). A tool definition that quotes a scanned credential is withheld from the tool list before it enters model context.</td>
-<td><code>adapters/mcp/withhold_manifest_test.go</code> · <code>TestADefinitionQuotingASecretIsNeverListed</code>.</td>
-<td>A hostile server can disguise a credential. System prompts, private instructions, and secrets supplied by other routes are outside this check. <a href="/docs/concepts/threat-model#a-hostile-or-compromised-mcp-server">Threat model</a>.</td>
-</tr>
-<tr>
-<td>LLM09:2026 Vector and Embedding Weaknesses</td>
-<td>Gap.</td>
-<td>No test checks vector-store access, embedding integrity, or isolation between users' search results.</td>
-<td>An allowed search can retrieve another user's records or a poisoned result. The gateway cannot inspect the server's retrieval process. <a href="/docs/concepts/threat-model#a-hostile-or-compromised-mcp-server">Threat model</a>.</td>
-</tr>
-<tr>
-<td>LLM10:2026 Improper Output Handling</td>
-<td><a href="/docs/status#mcp-gateway">Model Context Protocol (MCP) gateway</a> (<code>experimental</code>), for two arguments of one configured transfer tool. OWASP includes validation before model output reaches a backend function. In the test, the server receives <code>amount</code> capped from <code>5000</code> to <code>1000</code> and the <code>ssn</code> field is removed. <a href="https://genai.owasp.org/download/56857/?tmstv=1785822482#page=56">OWASP mitigation 1, p. 56</a> and <a href="/docs/reference/obligations">obligations</a>.</td>
-<td><code>internal/gateway/e2e/call_test.go</code> · <code>TestRewritingObligationReachesTheWire</code> checks the arguments received by the server. <code>internal/gateway/rewrite_test.go</code> · <code>TestRewriteRefusesWhatItCannotApply</code> checks malformed arguments, including a string in the numeric field.</td>
-<td>The test client supplies the arguments. Other fields pass through, and the receiving application controls how it uses them. Safe handling of generated SQL, shell commands, or browser content remains a gap. <a href="/docs/concepts/threat-model#a-hostile-or-compromised-mcp-server">Threat model</a>.</td>
-</tr>
-</tbody>
-</table>
-</div>
+<ul class="stack">
+<li><p class="rt">LLM01:2026 Prompt Injection</p><dl><dt>Exercised control</dt><dd><a href="/docs/status#mcp-gateway">Model Context Protocol (MCP) gateway</a> (<code>experimental</code>). A flow rule blocks outbound mail after the run reads untrusted content and confidential data. This limits one possible effect of an injection.</dd><dt>Test file and function</dt><dd><code>internal/<wbr/>gateway/<wbr/>e2e/<wbr/>flow_test.go</code> · <code>TestTheToxicFlowIsDeniedAcrossSessions</code>. <a href="/docs/guides/count-controlled-attempts#2-run-it">B37 mail cases</a>.</dd><dt>Known bypass and remaining gap</dt><dd>Injected instructions in a tool result can reach the model. Prompt-injection detection and actions outside the tracked flow remain gaps. <a href="/docs/concepts/threat-model#a-hostile-or-compromised-mcp-server">Threat model</a>.</dd></dl></li>
+<li><p class="rt">LLM02:2026 Sensitive Information Disclosure</p><dl><dt>Exercised control</dt><dd><a href="/docs/status#mcp-gateway">Model Context Protocol (MCP) gateway</a> (<code>experimental</code>). After reading untrusted content and then confidential data, the run cannot send mail through the tested external mail tool.</dd><dt>Test file and function</dt><dd><code>internal/<wbr/>gateway/<wbr/>e2e/<wbr/>flow_test.go</code> · <code>TestTheToxicFlowIsDeniedAcrossSessions</code>. <a href="/docs/guides/count-controlled-attempts#2-run-it">B37 case with order data in the mail</a>.</dd><dt>Known bypass and remaining gap</dt><dd>A direct connection can bypass the mail tool. The model can also disclose data in its own reply. <a href="/docs/concepts/threat-model#an-agent-that-is-wrong-or-steered">Threat model</a>.</dd></dl></li>
+<li><p class="rt">LLM03:2026 Excessive Agency</p><dl><dt>Exercised control</dt><dd><a href="/docs/status#approval-binding">Approval binding</a> (<code>implemented</code>). The transfer waits for approval. Once approved, the retried call can run only once.</dd><dt>Test file and function</dt><dd><code>internal/<wbr/>gateway/<wbr/>e2e/<wbr/>approval_test.go</code> · <code>TestPendingApprovalAndItsRetry</code>. <a href="/docs/guides/count-controlled-attempts#2-run-it">B37 changed-update case</a>.</dd><dt>Known bypass and remaining gap</dt><dd>An overly broad allow rule can admit a harmful call. The operator chooses which actions require approval and which other paths the agent can reach. <a href="/docs/concepts/threat-model#an-agent-that-is-wrong-or-steered">Threat model</a>.</dd></dl></li>
+<li><p class="rt">LLM04:2026 Supply Chain</p><dl><dt>Exercised control</dt><dd>Gap.</dd><dt>Test file and function</dt><dd>No test verifies the provenance of a model, training dataset, or model adapter.</dd><dt>Known bypass and remaining gap</dt><dd>Replacing a model artifact can change its behavior without changing a routed tool call. The model is outside the plane. <a href="/docs/concepts/threat-model#what-is-in-scope">Threat model</a>.</dd></dl></li>
+<li><p class="rt">LLM05:2026 Data and Model Poisoning</p><dl><dt>Exercised control</dt><dd>Gap.</dd><dt>Test file and function</dt><dd>No test checks training data or model weights for poisoning.</dd><dt>Known bypass and remaining gap</dt><dd>A poisoned model can give a harmful answer without calling a tool. The model and its training are outside the plane. <a href="/docs/concepts/threat-model#what-is-in-scope">Threat model</a>.</dd></dl></li>
+<li><p class="rt">LLM06:2026 Unbounded Consumption</p><dl><dt>Exercised control</dt><dd>Gap.</dd><dt>Test file and function</dt><dd>No test enforces a token, inference, or spending budget.</dd><dt>Known bypass and remaining gap</dt><dd>Repeated inference can incur cost without an MCP call. <a href="/docs/backlog">B42</a> covers usage and cost observations. A spending limit remains a gap.</dd></dl></li>
+<li><p class="rt">LLM07:2026 Misinformation</p><dl><dt>Exercised control</dt><dd>Gap.</dd><dt>Test file and function</dt><dd>No test checks whether a model's answer is true.</dd><dt>Known bypass and remaining gap</dt><dd>False text from a tool can reach the model and be repeated to a reader. <a href="/docs/concepts/threat-model#a-hostile-or-compromised-mcp-server">Threat model</a>.</dd></dl></li>
+<li><p class="rt">LLM08:2026 Hidden Context Exposure</p><dl><dt>Exercised control</dt><dd><a href="/docs/status#credential-echo">Withholding an answer that quotes a credential</a> (<code>experimental</code>). A tool definition that quotes a scanned credential is withheld from the tool list before it enters model context.</dd><dt>Test file and function</dt><dd><code>adapters/<wbr/>mcp/<wbr/>withhold_manifest_test.go</code> · <code>TestADefinitionQuotingASecretIsNeverListed</code>.</dd><dt>Known bypass and remaining gap</dt><dd>A hostile server can disguise a credential. System prompts, private instructions, and secrets supplied by other routes are outside this check. <a href="/docs/concepts/threat-model#a-hostile-or-compromised-mcp-server">Threat model</a>.</dd></dl></li>
+<li><p class="rt">LLM09:2026 Vector and Embedding Weaknesses</p><dl><dt>Exercised control</dt><dd>Gap.</dd><dt>Test file and function</dt><dd>No test checks vector-store access, embedding integrity, or isolation between users' search results.</dd><dt>Known bypass and remaining gap</dt><dd>An allowed search can retrieve another user's records or a poisoned result. The gateway cannot inspect the server's retrieval process. <a href="/docs/concepts/threat-model#a-hostile-or-compromised-mcp-server">Threat model</a>.</dd></dl></li>
+<li><p class="rt">LLM10:2026 Improper Output Handling</p><dl><dt>Exercised control</dt><dd><a href="/docs/status#mcp-gateway">Model Context Protocol (MCP) gateway</a> (<code>experimental</code>), for two arguments of one configured transfer tool. OWASP includes validation before model output reaches a backend function. In the test, the server receives <code>amount</code> capped from <code>5000</code> to <code>1000</code> and the <code>ssn</code> field is removed. <a href="https://genai.owasp.org/download/56857/?tmstv=1785822482#page=56">OWASP mitigation 1, p. 56</a> and <a href="/docs/reference/obligations">obligations</a>.</dd><dt>Test file and function</dt><dd><code>internal/<wbr/>gateway/<wbr/>e2e/<wbr/>call_test.go</code> · <code>TestRewritingObligationReachesTheWire</code> checks the arguments received by the server. <code>internal/<wbr/>gateway/<wbr/>rewrite_test.go</code> · <code>TestRewriteRefusesWhatItCannotApply</code> checks malformed arguments, including a string in the numeric field.</dd><dt>Known bypass and remaining gap</dt><dd>The test client supplies the arguments. Other fields pass through, and the receiving application controls how it uses them. Safe handling of generated SQL, shell commands, or browser content remains a gap. <a href="/docs/concepts/threat-model#a-hostile-or-compromised-mcp-server">Threat model</a>.</dd></dl></li>
+</ul>
 <h2 id="what-b37-measured">What B37 measured</h2>
 <p><a href="/docs/status#controlled-attempts">Controlled attempts counted at the victim</a> (<code>experimental</code>) checks what the demo's order and mail tools received. The results include legitimate updates held for approval. The fixture uses scripted calls and measures no model output. <a href="/docs/guides/count-controlled-attempts#2-run-it">B37 results</a> and <a href="/docs/adr/0086-controlled-attempts-are-counted-at-the-victim">counting method</a>.</p>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/reference/risks/owasp-llm-top-10.md">docs/reference/risks/owasp-llm-top-10.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.18.0, and <a href="https://github.com/guardana/control/tree/v0.18.0/docs">its documentation</a> is in its tag.</p>

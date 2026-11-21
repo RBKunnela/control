@@ -173,7 +173,7 @@ endorsed by the publisher of Claude Code.</p>
 </tr>
 <tr>
 <td>Profile and fixtures</td>
-<td><code>internal/hookbridge/profiles/claude-code/</code></td>
+<td><code>internal/<wbr/>hookbridge/<wbr/>profiles/<wbr/>claude-code/</code></td>
 </tr>
 </tbody>
 </table>
@@ -308,42 +308,11 @@ stands in the policy. For example:</p>
 </li>
 </ul>
 <h2 id="per-event">Per event</h2>
-<div class="tbl">
-<table>
-<thead>
-<tr>
-<th>Event</th>
-<th>Phase</th>
-<th>What the bridge reads</th>
-<th>Reply</th>
-<th>When the hook fails</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>PreToolUse</code></td>
-<td>admit</td>
-<td><code>hook_event_name</code>, <code>tool_name</code>, <code>session_id</code>, <code>tool_use_id</code>, and <code>tool_input</code> as the exact text the event wrote</td>
-<td>exit 0 and nothing on standard output when the plane answers <code>EXECUTE</code> of exactly that text; otherwise exit 2 and one line on standard error</td>
-<td>with <code>onFailure: &quot;block&quot;</code> the call is blocked; without it the call runs</td>
-</tr>
-<tr>
-<td><code>PostToolUse</code></td>
-<td>complete</td>
-<td>the same, and <code>tool_input</code> as the input that ran; <code>tool_response</code> is read past and kept nowhere</td>
-<td>exit 0 once the plane recorded the completion, otherwise the profile's problem status, 1; a refused event exits 2</td>
-<td>the call ran, and the plane may have recorded it; a handle left open is closed by the sweep as abandoned, outcome unknown</td>
-</tr>
-<tr>
-<td><code>PostToolUseFailure</code></td>
-<td>complete-failure</td>
-<td>the same, and <code>is_interrupt</code>: <code>false</code> reports a failure, <code>true</code> or absent reports an unknown outcome</td>
-<td>as <code>PostToolUse</code></td>
-<td>as <code>PostToolUse</code></td>
-</tr>
-</tbody>
-</table>
-</div>
+<ul class="stack">
+<li><p class="rt"><code>PreToolUse</code></p><dl><dt>Phase</dt><dd>admit</dd><dt>What the bridge reads</dt><dd><code>hook_event_name</code>, <code>tool_name</code>, <code>session_id</code>, <code>tool_use_id</code>, and <code>tool_input</code> as the exact text the event wrote</dd><dt>Reply</dt><dd>exit 0 and nothing on standard output when the plane answers <code>EXECUTE</code> of exactly that text; otherwise exit 2 and one line on standard error</dd><dt>When the hook fails</dt><dd>with <code>onFailure: &quot;block&quot;</code> the call is blocked; without it the call runs</dd></dl></li>
+<li><p class="rt"><code>PostToolUse</code></p><dl><dt>Phase</dt><dd>complete</dd><dt>What the bridge reads</dt><dd>the same, and <code>tool_input</code> as the input that ran; <code>tool_response</code> is read past and kept nowhere</dd><dt>Reply</dt><dd>exit 0 once the plane recorded the completion, otherwise the profile's problem status, 1; a refused event exits 2</dd><dt>When the hook fails</dt><dd>the call ran, and the plane may have recorded it; a handle left open is closed by the sweep as abandoned, outcome unknown</dd></dl></li>
+<li><p class="rt"><code>PostToolUseFailure</code></p><dl><dt>Phase</dt><dd>complete-failure</dd><dt>What the bridge reads</dt><dd>the same, and <code>is_interrupt</code>: <code>false</code> reports a failure, <code>true</code> or absent reports an unknown outcome</dd><dt>Reply</dt><dd>as <code>PostToolUse</code></dd><dt>When the hook fails</dt><dd>as <code>PostToolUse</code></dd></dl></li>
+</ul>
 <p>An event that is over 16 MiB, is not one JSON object of valid UTF-8, names a
 member twice, in the event or in any object of its <code>tool_input</code>, lacks the
 tool name, the call id or the session id, carries a <code>tool_input</code> that is not

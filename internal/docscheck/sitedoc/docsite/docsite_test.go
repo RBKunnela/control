@@ -184,7 +184,7 @@ func (refusingWriter) Write([]byte) (int, error) { return 0, errors.New("refused
 // without its box.
 func TestATableBoxThatCannotBeWrittenStops(t *testing.T) {
 	funcs := caught{}
-	extension.NewTableHTMLRenderer().RegisterFuncs(boxedTables{funcs})
+	extension.NewTableHTMLRenderer().RegisterFuncs(newBoxedTables(funcs))
 	table := funcs[east.KindTable]
 	if table == nil || funcs[east.KindTableCell] == nil {
 		t.Fatalf("the table functions were not passed on: %v", funcs)

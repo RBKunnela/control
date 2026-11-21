@@ -145,11 +145,11 @@
 <tbody>
 <tr>
 <td><a href="/docs/status#policy-matcher">Policy documents, signed bundles and the matcher</a> (<code>implemented</code>). A resource rule distinguishes a matching target ID, a different ID, and a missing ID. A missing ID leaves the match unknown.</td>
-<td><code>internal/policy/match/constraint_test.go</code> · <code>TestResourceConstraints</code>.</td>
+<td><code>internal/<wbr/>policy/<wbr/>match/<wbr/>constraint_test.go</code> · <code>TestResourceConstraints</code>.</td>
 </tr>
 <tr>
 <td><a href="/docs/status#mcp-gateway">Model Context Protocol (MCP) gateway</a> (<code>experimental</code>). In <code>ENFORCE</code>, a delete denied by policy never reaches the tool server.</td>
-<td><code>internal/gateway/e2e/call_test.go</code> · <code>TestDeniedCallNeverReachesTheUpstream</code>.</td>
+<td><code>internal/<wbr/>gateway/<wbr/>e2e/<wbr/>call_test.go</code> · <code>TestDeniedCallNeverReachesTheUpstream</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -170,11 +170,11 @@
 <tbody>
 <tr>
 <td><a href="/docs/status#run-supervision">Supervision of a run against its procedure</a> (<code>experimental</code>). An operator checks the recorded run tree and gets a finding when the child retries denied mail with a changed address.</td>
-<td><code>cmd/guardana-gateway/reaction_tree_unix_test.go</code> · <code>TestAChildsRetryIsSupervisedOverTheTreeAndStopsTheChild</code>.</td>
+<td><code>cmd/<wbr/>guardana-gateway/<wbr/>reaction_tree_unix_test.go</code> · <code>TestAChildsRetryIsSupervisedOverTheTreeAndStopsTheChild</code>.</td>
 </tr>
 <tr>
 <td><a href="/docs/status#run-stop">Stopping a run through a signed route</a> (<code>experimental</code>). When the operator applies the route configured for that finding and the stop takes effect, the gateway blocks the child's next covered call. The parent's call still runs.</td>
-<td><code>cmd/guardana-gateway/reaction_tree_unix_test.go</code> · <code>TestAChildsRetryIsSupervisedOverTheTreeAndStopsTheChild</code>.</td>
+<td><code>cmd/<wbr/>guardana-gateway/<wbr/>reaction_tree_unix_test.go</code> · <code>TestAChildsRetryIsSupervisedOverTheTreeAndStopsTheChild</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -194,7 +194,7 @@
 <tbody>
 <tr>
 <td><a href="/docs/status#coverage-map">Coverage map per declared path</a> (<code>experimental</code>). The report lists a logged connection to an undeclared host even when every declared path was observed.</td>
-<td><code>internal/coverage/egress_test.go</code> · <code>TestAnUndeclaredRowMakesTheExitOne</code>.</td>
+<td><code>internal/<wbr/>coverage/<wbr/>egress_test.go</code> · <code>TestAnUndeclaredRowMakesTheExitOne</code>.</td>
 </tr>
 </tbody>
 </table>

@@ -265,6 +265,13 @@ verify one.
 
 ### Documentation
 
+- The landing page and the documentation pages share one layout: the same
+  header, footer and container at every width, every landing section opening
+  with the same heading block on one column split, and one rhythm on a phone.
+  A documentation table whose cells are sentences now reads as a list, one
+  item per row with each cell under its column's name; a compact table stays
+  a table, its code breaks after a slash, and one still too wide scrolls
+  inside its box.
 - Risk references map the 2026 OWASP Top 10 lists for Agentic Applications
   and LLM Applications to project controls and tests
   ([risk references](docs/reference/risks/owasp-agentic-top-10.md)). For

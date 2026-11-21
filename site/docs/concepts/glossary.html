@@ -132,339 +132,72 @@
 <h1 id="glossary">Glossary</h1>
 <p>One name per concept. A page uses the name in the left column and no other
 for the same thing; the right column is where the code defines it.</p>
-<div class="tbl">
-<table>
-<thead>
-<tr>
-<th>Name</th>
-<th>Meaning</th>
-<th>Defined in</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>action digest</td>
-<td>the canonical digest of an envelope with its authorized arguments, <code>sha256:</code> and 64 lowercase hex digits; what a decision names unless it refused the envelope or its arguments, an approval binds to and the executed bytes are compared with</td>
-<td><code>canon.DigestV1</code> in <code>internal/canon/digest.go</code></td>
-</tr>
-<tr>
-<td>action envelope</td>
-<td>the structured description of one proposed action: who, on behalf of whom, what, on which resource, in which context, with which effect class; the input every decision is made from</td>
-<td><code>ActionEnvelope</code> in <code>api/proto/guardana/control/v1/action_envelope.proto</code>, validated by <code>pkg/contract</code></td>
-</tr>
-<tr>
-<td>approval binding</td>
-<td>the digest of an action digest under one policy bundle digest; what an approval is stored and compared against</td>
-<td><code>canon.ApprovalBinding</code>, <code>approval.Bind</code> in <code>internal/core/approval/</code></td>
-</tr>
-<tr>
-<td>binding</td>
-<td>a name a <code>0.2</code> procedure gives one resource type; the steps and allowed tools that list it in <code>binds</code> must keep to one resource of that type, or <code>RESOURCE_OUTSIDE_RUN</code> fires. Not an approval binding</td>
-<td><code>Binding</code> in <code>internal/supervise/procedure_v02.go</code>, <a href="/docs/reference/supervision">reference/supervision</a></td>
-</tr>
-<tr>
-<td>bundle</td>
-<td>a signed policy document with its reference, <code>bundle_id</code>, <code>version</code> and <code>digest</code>, and a serial inside the signed document; verified before it is trusted and installed as a snapshot</td>
-<td><code>PolicyBundle</code> in <code>api/proto/guardana/control/v1/bundle.proto</code>, <code>internal/policy/bundle/</code></td>
-</tr>
-<tr>
-<td>carry</td>
-<td><code>stops init --carry</code>: a new stop list begun from an old one, judged by the old route, holding each stop of the old list no lift ended, expired or not, and a covered line for every other finding it names; the old list stays locked until the new one is written; the one way a list moves to another route or format</td>
-<td><code>Carry</code> and <code>CarrySigned</code> in <code>internal/reaction/stopwrite/carry.go</code>, <a href="/docs/reference/reaction#the-stop-list">reference/reaction</a></td>
-</tr>
-<tr>
-<td>channel</td>
-<td>a way an agent's actions reach Control: through an enforcement point, which decides before the effect, or a sensor, which reports after it; MCP is the first, the OpenTelemetry GenAI trace importer the first sensor, and an egress proxy's access log the second</td>
-<td><a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a>; both importers <code>experimental</code>, other channels <code>planned</code></td>
-</tr>
-<tr>
-<td>children mode</td>
-<td>what a <code>0.2</code> procedure's <code>children</code> says of the runs opened under the supervised one: <code>inherit</code> judges a root run and its whole run tree, <code>separate</code> judges one run's own calls and lists its children</td>
-<td><code>Children</code> in <code>internal/supervise/procedure_v02.go</code>, <code>ChildrenMode</code> in <code>api/proto/guardana/control/finding/v1alpha1/report.proto</code></td>
-</tr>
-<tr>
-<td>coverage</td>
-<td>for each path an operator declared, whether it is enforced, decided but not enforced, observed with its source's trust, unknown or not covered; paths nobody declared are unknown too, and it is never a percentage</td>
-<td><code>internal/coverage/</code>, run by <code>guardana-control coverage</code>, <code>experimental</code></td>
-</tr>
-<tr>
-<td>decision</td>
-<td>what the kernel, or the enforcement point on its own behalf, concluded about one envelope: a verdict, its reason codes, the rules and obligations, the action digest and the bundle digest</td>
-<td><code>Decision</code> in <code>api/proto/guardana/control/v1/decision.proto</code>, made in <code>internal/core/decide.go</code></td>
-</tr>
-<tr>
-<td>effect class</td>
-<td>the kind of consequence an action has, <code>READ</code> or one of the material classes; what materiality, the fail-closed table and the contract's required fields turn on</td>
-<td><code>EffectClass</code> in <code>common.proto</code>, <code>contract.IsMaterial</code> in <code>pkg/contract/effect.go</code></td>
-</tr>
-<tr>
-<td>enforcement mode</td>
-<td>what the enforcement point does with a decision: <code>OBSERVE</code>, <code>APPROVE</code>, <code>ENFORCE</code> or <code>LOCKDOWN</code> in this build; never what is decided</td>
-<td><code>EnforcementMode</code> in <code>common.proto</code>, <code>internal/gateway/mode.go</code></td>
-</tr>
-<tr>
-<td>enforcement point</td>
-<td>the process that runs one pipeline with an adapter, a sink and a policy source, and whose own record a hold, a halt and a block it minted live in; <code>cmd/guardana-gateway</code> in this build</td>
-<td><code>cmd/guardana-gateway/main.go</code>, wiring <code>Pipeline</code> in <code>internal/gateway/pipeline.go</code></td>
-</tr>
-<tr>
-<td>evidence export</td>
-<td>a trail file's events written to standard output in the versioned format <code>guardana.control.evidence-export</code>: a header, one record per event, gap or duplicate, and a trailer that says whether the file's end was reached</td>
-<td><code>trailfile.Export</code> in <code>internal/trailfile/export.go</code>, run by <code>guardana-gateway trail export</code></td>
-</tr>
-<tr>
-<td>evidence trail</td>
-<td>the chain of events under one request id, from <code>ACTION_PROPOSED</code> to the event that closes it, linked by <code>prev_event_id</code>; a request in flight or held has a prefix of one</td>
-<td><code>evidence.Builder</code> in <code>internal/evidence/event.go</code>, validated by <code>internal/evidence/chain.go</code></td>
-</tr>
-<tr>
-<td>exception</td>
-<td>a <code>0.2</code> procedure's waiver of one rule for one step, or for <code>STEP_OUTSIDE_PROCEDURE</code> one tool on one upstream, taken on one condition: an approval granted, a step failed or a reason code; taking one raises <code>EXCEPTION_TAKEN</code>, never a stronger finding than the one it waived</td>
-<td><code>Exception</code> in <code>internal/supervise/procedure_v02.go</code>, applied in <code>internal/supervise/exceptions.go</code></td>
-</tr>
-<tr>
-<td>execution</td>
-<td>one run of an authorized call, named by the <code>execution_id</code> that <code>ACTION_STARTED</code> carries and the closing event repeats; a trail allows one</td>
-<td><code>Builder.Started</code> in <code>internal/evidence/event.go</code>, kept by <code>internal/gateway/trails.go</code></td>
-</tr>
-<tr>
-<td>export cursor</td>
-<td>where an evidence export stopped: the digest of the file's first line, an offset after a newline and the digest of the line that ends there; refused when the file's first line or the line ending at the offset differs. Not the exporter's cursor in the spool</td>
-<td><code>cursor</code> in <code>internal/lineexport/cursor.go</code></td>
-</tr>
-<tr>
-<td>external decision point</td>
-<td>the organization's own policy engine, asked over AuthZEN about a call whose decision turns on its answer; the answer is an input a <code>DENY</code> rule reads, so it can veto and never grant, and its silence blocks in every mode that enforces</td>
-<td><code>gateway.DecisionPoint</code> in <code>internal/gateway/decisionpoint.go</code>, the answer as <code>core.External</code> in <code>internal/core/external.go</code>, the client in <code>adapters/authzen/</code></td>
-</tr>
-<tr>
-<td>fail-open read</td>
-<td>a read the kernel lets run although the policy's availability left it undecided, under the operator's explicit setting and recorded as <code>FAIL_OPEN_READ_CONFIGURED</code>; never a material call</td>
-<td><code>Options.FailOpenRead</code> in <code>internal/core/kernel.go</code>, the table in <code>internal/core/failclosed.go</code></td>
-</tr>
-<tr>
-<td>finding</td>
-<td>what a detector concludes about a run, <code>CONFIRMED</code>, <code>SUSPECTED</code> or <code>INDETERMINATE</code>, citing the evidence and observations it rests on; it never grants authority and never changes a verdict</td>
-<td><code>Finding</code> in <code>finding.proto</code>, inside the <code>FindingRecord</code> that <code>guardana-control supervise</code> writes, <code>experimental</code></td>
-</tr>
-<tr>
-<td>findings log</td>
-<td>one directory's <code>findings.jsonl</code>, to which <code>supervise</code> appends a run's findings and its report under an exclusive lock; what <code>notify</code>, <code>react</code> and <code>findings export</code> read</td>
-<td><code>findinglog.Log</code> in <code>internal/findinglog/log.go</code></td>
-</tr>
-<tr>
-<td>freshness statement</td>
-<td>a signed claim, under a key apart from the bundle's, that one bundle id, serial and digest was current at its <code>issuedAt</code>; the only thing that confirms a snapshot, for the policy's staleness budget from that time</td>
-<td><code>policy.Statement</code> in <code>internal/policy/statement.go</code>, written by <code>guardana-control policy renew</code></td>
-</tr>
-<tr>
-<td>gap</td>
-<td>an export record for a line that is not one readable record of a major the build reads, or that reuses an id with other content; a whole export holding one exits 1</td>
-<td><code>gapRecord</code> in <code>internal/lineexport/records.go</code></td>
-</tr>
-<tr>
-<td>health socket</td>
-<td>the Unix socket <code>health.socket</code> names; the plane serves its whole health answer there, with the run ids and signers <code>/healthz</code> leaves out, to its own account and to <code>health.socket_uid</code>, and closes any other peer unanswered</td>
-<td><code>bindHealthSocket</code> in <code>cmd/guardana-gateway/health_socket.go</code></td>
-</tr>
-<tr>
-<td>import report</td>
-<td>the record an import appends after the observations it kept: the source, the receive time, the input's size and first line's digest, the counts, and the earliest and latest event times; what says when a source was last heard</td>
-<td><code>ImportReport</code> in <code>api/proto/guardana/control/observe/v1alpha1/observation.proto</code></td>
-</tr>
-<tr>
-<td>held request</td>
-<td>a request awaiting an approval that the enforcement point keeps in its own record, answered at once with a pending state and resumed by a retry that equals it</td>
-<td><code>heldRequest</code> in <code>internal/gateway/trails.go</code>, <code>Held</code> in <code>internal/gateway/approvals.go</code></td>
-</tr>
-<tr>
-<td>lift</td>
-<td>a signed line of the stop list that ends every stop of one run, or under <code>signed</code> of one scope and subject, up to and including a line it names; under <code>signed</code> a roster operator granted <code>operate</code> signs it, otherwise the holder of the route's lift key</td>
-<td><code>Lift</code> in <code>internal/reaction/lift.go</code>, <code>SignedLiftV3</code> in <code>internal/reaction/lift3.go</code>, <a href="/docs/reference/reaction#the-stop-list">reference/reaction</a></td>
-</tr>
-<tr>
-<td>manifest</td>
-<td>for the MCP gateway, what the upstreams list plus the operator's classification of each definition, pinned by fingerprint; where a tool's effect class, resource type and trust zone come from</td>
-<td><code>adapters/mcp/manifest.go</code></td>
-</tr>
-<tr>
-<td>notifier</td>
-<td>a port that delivers findings to a tool an operator watches, at least once, each keyed by finding id and verdict, a key a receiver drops repeats by; it holds no authority over a plane</td>
-<td><code>internal/notify/</code>, run by <code>guardana-control notify</code>, which hands alerts to a local program, <code>experimental</code>; other notifiers <code>planned</code></td>
-</tr>
-<tr>
-<td>obligation</td>
-<td>a condition on a call that proceeds, carried by an <code>ALLOW_WITH_OBLIGATIONS</code> or <code>REQUIRE_APPROVAL</code> rule; who applies each type, and what happens to one nobody applies, is on <a href="/docs/reference/obligations">the obligations reference</a></td>
-<td><code>Obligation</code> in <code>decision.proto</code>, the catalogue in <code>internal/policy/rules/</code>, <code>internal/gateway/apply.go</code></td>
-</tr>
-<tr>
-<td>observation</td>
-<td>what a sensor reports a source saw, with the source, its trust, the event's time if known and the basis of any correlation; testimony, never a decision or evidence of enforcement</td>
-<td><a href="/docs/adr/0040-observations-a-record-a-log-and-one-importer">ADR-0040</a>, <a href="/docs/reference/observations">reference/observations.md</a></td>
-</tr>
-<tr>
-<td>observation log</td>
-<td>one directory's <code>observations.jsonl</code>, appended under one writer's lock with each import's observations and its report, and read through the observation export</td>
-<td><code>internal/observelog/log.go</code></td>
-</tr>
-<tr>
-<td>pipeline</td>
-<td>the protocol-neutral enforcement pipeline an enforcement point runs: <code>Admit</code>, <code>Preview</code>, <code>Close</code> and <code>Abort</code>, the mode, the trail and the holds</td>
-<td><code>Pipeline</code> in <code>internal/gateway/pipeline.go</code></td>
-</tr>
-<tr>
-<td>plane</td>
-<td>one running enforcement point with what it serves from: one configuration, one listener, MCP or the enforcement API, its policy, its spool and its state directories; under the signed authority it is named by <code>plane_id</code> and serves one tenant</td>
-<td><code>plane</code> in <code>cmd/guardana-gateway/build.go</code>, <a href="/docs/guides/run-the-gateway">run the gateway</a></td>
-</tr>
-<tr>
-<td>port</td>
-<td>a decision about authority behind an interface, with a tested default kind, an unavailable answer that blocks, bounds and conformance cases; <code>scripts/ports.txt</code> lists the ports that exist, and a port's record states where it still falls short</td>
-<td><a href="/docs/adr/0066-each-decision-about-authority-is-a-port">ADR-0066</a>, <code>testdata/ports/</code></td>
-</tr>
-<tr>
-<td>principal</td>
-<td>the party an action is done for, with its tenant, type, id and authentication strength; on a listener it comes from the operator's configuration or the authenticator, never from a client's claim</td>
-<td><code>Principal</code> in <code>action_envelope.proto</code>, <code>identity</code> in <code>adapters/mcp/translate.go</code></td>
-</tr>
-<tr>
-<td>procedure</td>
-<td>the operator's JSON document of a run's steps, their order, the tools it may also call and each rule's severity and escalation; what <code>supervise</code> judges one opened run against, recorded by its digest</td>
-<td><code>Procedure</code>, <code>ReadProcedure</code> in <code>internal/supervise/procedure.go</code>, <a href="/docs/reference/supervision">reference/supervision</a></td>
-</tr>
-<tr>
-<td>quarantine</td>
-<td>the spool's file for records a collector refused for good, appended to and released only by an operator's <code>spool drain</code>, so the exporter's cursor passes them without dropping them</td>
-<td><code>Reader.Quarantine</code> in <code>internal/spool/quarantine.go</code></td>
-</tr>
-<tr>
-<td>reaction</td>
-<td>turning a finding the operator's signed route allows into a stop of the run it is about or, under <code>signed</code>, of that run's agent or principal, which the enforcement points apply to later calls, for a scope and an expiry; separate from the notifier</td>
-<td><a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a>, <a href="/docs/adr/0083-a-finding-may-stop-an-agent-or-a-principal">ADR-0083</a>, <code>internal/reaction/</code>, <a href="/docs/reference/reaction">reference/reaction</a>, <code>experimental</code> for one opened run, or its agent or principal, from a confirmed finding</td>
-</tr>
-<tr>
-<td>reason code</td>
-<td>the identifier of the kind of failure or match a decision carries, from the registry; never derived from error text, and never read to decide</td>
-<td><code>internal/policy/reasons/</code>, listed in <a href="/docs/reference/reason-codes">reference/reason-codes</a></td>
-</tr>
-<tr>
-<td>record</td>
-<td>one event as the spool writes it to disk, a header and one JSON line, checksummed; the unit the spool appends, reads, acknowledges and quarantines</td>
-<td><code>internal/spool/frame.go</code></td>
-</tr>
-<tr>
-<td>roster operator</td>
-<td>a key the trust roster names for a person, granted a tenant, a project and a level: <code>read</code>, <code>operate</code> or <code>admin</code>, each including the one before; <code>operate</code> approves, pauses, and signs a run record, a stop list header and a lift, <code>admin</code> also a route</td>
-<td><code>RoleOperator</code> and <code>Level</code> in <code>internal/trust/format.go</code>, the acts in <code>internal/operators/answer.go</code></td>
-</tr>
-<tr>
-<td>route</td>
-<td>the operator's signed document saying which confirmed findings may stop a run, and under <code>signed</code> its agent or principal: its tenant, under <code>signed</code> also its plane and project, and rules, each a procedure and a supervise rule; a plane reads it at start only</td>
-<td><code>Route</code> in <code>internal/reaction/route.go</code>, <a href="/docs/reference/reaction#the-route">reference/reaction</a></td>
-</tr>
-<tr>
-<td>run</td>
-<td>the calls whose events share a <code>run_id</code> and whose flow state is kept together: without <code>runs.dir</code>, those of the listener's principal and agent, kept in memory and started clean at each restart; with it, those presenting the token of a run an operator opened</td>
-<td><code>runKey</code> and <code>run</code> in <code>internal/gateway/flow.go</code>, <code>internal/runs/</code>, <a href="/docs/reference/runs">reference/runs</a></td>
-</tr>
-<tr>
-<td>run tree</td>
-<td>the runs a <code>0.2</code> report lists with the supervised run, each naming its parent: under <code>inherit</code> the root's whole tree, every member judged; under <code>separate</code> the run's children, not judged</td>
-<td><code>RunTreeMember</code> in <code>api/proto/guardana/control/finding/v1alpha1/report.proto</code></td>
-</tr>
-<tr>
-<td>run view</td>
-<td>the static HTML page <code>supervise --view</code> draws of one supervised run, its steps, findings and marked calls; it judges nothing itself</td>
-<td><code>runview.Page</code> in <code>internal/runview/view.go</code>, <a href="/docs/reference/run-view">reference/run-view</a></td>
-</tr>
-<tr>
-<td>sensor</td>
-<td>a port that sees an effect after it happened, or an indirect sign of it, and reports it as observations; it never decides; the OpenTelemetry GenAI trace importer and the egress access-log importer are two</td>
-<td><a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a>, <code>internal/ingest/otelgenai/</code>, <code>internal/ingest/egresslog/</code>, <code>experimental</code>; others <code>planned</code></td>
-</tr>
-<tr>
-<td>serial floor</td>
-<td>the newest serial a plane or a signer has accepted, kept on disk in a floor directory of one kind: a bundle's (<code>plane</code>, <code>signer</code>), a trust roster's (<code>authority</code>), a route's, a signed pause file's or a stop list's; a document below it, or at its serial with another digest, is refused, across restarts</td>
-<td><code>policy.Floor</code> in <code>internal/policy/floor.go</code>, the kinds in <code>internal/policystate/</code></td>
-</tr>
-<tr>
-<td>signed authority</td>
-<td><code>approvals.authority: signed</code>; a plane under it, a signed plane, takes an approval, a pause, a run and a stop list only as a roster operator signed it for the plane's tenant and project. What it refuses at start is on <a href="/docs/guides/set-up-signed-operators#which-account-owns-what">set up signed operators</a>, and the serial floors it keeps on <a href="/docs/concepts/signed-operations#what-is-not-signed">signed operations</a></td>
-<td><code>AuthoritySigned</code> in <code>internal/gatewayconfig/config.go</code>, <a href="/docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it">ADR-0073</a>, <a href="/docs/adr/0075-a-signed-plane-takes-a-pause-only-from-an-operators-signature">ADR-0075</a>, <a href="/docs/adr/0076-a-signed-plane-takes-a-run-only-from-an-operators-signature">ADR-0076</a>, <a href="/docs/adr/0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatures">ADR-0077</a></td>
-</tr>
-<tr>
-<td>signed run record</td>
-<td>a run record <code>3.0</code> in <code>runs.dir</code>'s <code>records/</code>, signed by a roster operator granted <code>operate</code> for the run's tenant and project and bound to that directory; the only record a signed plane counts; the plane copies each close it takes into <code>state/</code>, so the run's open record put back later is refused</td>
-<td><code>SignedRecordVersion</code> in <code>internal/runs/signed.go</code>, judged by <code>internal/runs/signedruns/</code>, <a href="/docs/reference/runs#a-signed-runs-directory">reference/runs</a></td>
-</tr>
-<tr>
-<td>snapshot</td>
-<td>one verified, compiled bundle, with the <code>issuedAt</code> of the statement that confirmed it or none; never changed after it is made, so a call is decided against exactly one</td>
-<td><code>policy.Snapshot</code> in <code>internal/policy/policy.go</code>, served by <code>policy.Holder</code></td>
-</tr>
-<tr>
-<td>source descriptor</td>
-<td>the operator's JSON statement about one source: its kind, trust, the members its kind owns, sampling and heartbeat; read under owner checks, never taken from the data</td>
-<td><code>ingest.ReadDescriptor</code> in <code>internal/ingest/ingest.go</code>, the kinds in <code>internal/observe/kinds.go</code></td>
-</tr>
-<tr>
-<td>spool</td>
-<td>the evidence sink that writes disk: an append-only, checksummed, bounded log an exporter drains and acknowledges</td>
-<td><code>spool.Spool</code> in <code>internal/spool/spool.go</code></td>
-</tr>
-<tr>
-<td>stop</td>
-<td>a line of the stop list by which one confirmed finding stops the later calls of its run, or under <code>signed</code> of that run's agent or principal, until it expires or a lift ends it; a plane refuses those calls with <code>RUN_STOPPED</code> or <code>AGENT_OR_PRINCIPAL_STOPPED</code></td>
-<td><code>Stop</code> in <code>internal/reaction/line.go</code>, <a href="/docs/reference/reaction#what-react-writes">reference/reaction</a></td>
-</tr>
-<tr>
-<td>stop list</td>
-<td><code>stops.jsonl</code> in the directory <code>reaction.stops</code> names: a header naming the route, then <code>stop</code>, <code>covered</code> and <code>lift</code> lines, appended and never rewritten, which <code>react</code> and the <code>stops</code> commands write under the list's lock; a plane reads it every poll interval and takes no lock</td>
-<td><code>internal/reaction/stoplist/</code>, <code>internal/reaction/stopwrite/</code>, <a href="/docs/reference/reaction#the-stop-list">reference/reaction</a></td>
-</tr>
-<tr>
-<td>stop list header</td>
-<td>the first line of a stop list <code>3.0</code>: an envelope over a <code>reaction-list-header/3.0</code> body a roster operator signs, naming the list, its serial, the plane's <code>plane_id</code>, tenant, project and stop list file, the route and, for a list carried from another, the previous header's digest; a lift names it and the stop list floor keeps it</td>
-<td><code>HeaderSigned</code> in <code>internal/reaction/header2.go</code>, <a href="/docs/reference/reaction-signed">reference/reaction-signed</a></td>
-</tr>
-<tr>
-<td>trail file</td>
-<td>a file of events, one per line in the protobuf JSON mapping, each event id once; what <code>trail</code> and <code>trail export</code> read</td>
-<td><code>trailfile.Writer</code> in <code>internal/trailfile/writer.go</code></td>
-</tr>
-<tr>
-<td>trail segments</td>
-<td>the directory the collector writes, bound to one tenant and project: sealed segments, each a trail file, a live one appends go to, and <code>segments.json</code> naming each, sealed or pruned; bounded in bytes, pruned only by an operator</td>
-<td><code>trailfile.Log</code> in <code>internal/trailfile/log.go</code> over <code>internal/segmentlog/</code></td>
-</tr>
-<tr>
-<td>trust</td>
-<td>how far an observation's source can be believed, from its descriptor: <code>TRUST_SELF_REPORTED</code> (the agent's own process), <code>TRUST_PLATFORM</code> (the platform it runs on) or <code>TRUST_INDEPENDENT</code> (something the agent cannot influence)</td>
-<td><code>Trust</code> in <code>api/proto/guardana/control/observe/v1alpha1/source.proto</code></td>
-</tr>
-<tr>
-<td>trust roster</td>
-<td>the signed file that names operator keys and the tenant, project and level each may act on, under a pinned root, for at most 7 days at a serial that only climbs; a plane reads one only under the signed authority, through <code>trust.*</code></td>
-<td><code>internal/trust/</code>, <a href="/docs/adr/0071-operators-are-named-by-a-signed-roster">ADR-0071</a></td>
-</tr>
-<tr>
-<td>unrecorded read</td>
-<td>a read that ran with a trail the sink did not take, under the explicit evidence setting; counted, never held and never closed</td>
-<td><code>Config.AllowReadsUnrecorded</code> in <code>internal/gateway/config.go</code></td>
-</tr>
-<tr>
-<td>verdict</td>
-<td>one of the five outcomes of a decision: <code>DENY</code>, <code>INDETERMINATE</code>, <code>REQUIRE_APPROVAL</code>, <code>ALLOW_WITH_OBLIGATIONS</code>, <code>ALLOW</code>; <code>INDETERMINATE</code> is never <code>ALLOW</code></td>
-<td><code>Verdict</code> in <code>common.proto</code>, <code>internal/core/decide.go</code></td>
-</tr>
-<tr>
-<td>verified time</td>
-<td>the latest <code>issuedAt</code> the plane verified, from a statement it confirmed or its floor's latest; a clock reading behind it decides nothing</td>
-<td><code>Snapshot.NotBefore</code> in <code>internal/policy/policy.go</code></td>
-</tr>
-</tbody>
-</table>
-</div>
+<ul class="stack">
+<li><p class="rt">action digest</p><dl><dt>Meaning</dt><dd>the canonical digest of an envelope with its authorized arguments, <code>sha256:</code> and 64 lowercase hex digits; what a decision names unless it refused the envelope or its arguments, an approval binds to and the executed bytes are compared with</dd><dt>Defined in</dt><dd><code>canon.DigestV1</code> in <code>internal/<wbr/>canon/<wbr/>digest.go</code></dd></dl></li>
+<li><p class="rt">action envelope</p><dl><dt>Meaning</dt><dd>the structured description of one proposed action: who, on behalf of whom, what, on which resource, in which context, with which effect class; the input every decision is made from</dd><dt>Defined in</dt><dd><code>ActionEnvelope</code> in <code>api/<wbr/>proto/<wbr/>guardana/<wbr/>control/<wbr/>v1/<wbr/>action_envelope.proto</code>, validated by <code>pkg/<wbr/>contract</code></dd></dl></li>
+<li><p class="rt">approval binding</p><dl><dt>Meaning</dt><dd>the digest of an action digest under one policy bundle digest; what an approval is stored and compared against</dd><dt>Defined in</dt><dd><code>canon.ApprovalBinding</code>, <code>approval.Bind</code> in <code>internal/<wbr/>core/<wbr/>approval/</code></dd></dl></li>
+<li><p class="rt">binding</p><dl><dt>Meaning</dt><dd>a name a <code>0.2</code> procedure gives one resource type; the steps and allowed tools that list it in <code>binds</code> must keep to one resource of that type, or <code>RESOURCE_OUTSIDE_RUN</code> fires. Not an approval binding</dd><dt>Defined in</dt><dd><code>Binding</code> in <code>internal/<wbr/>supervise/<wbr/>procedure_v02.go</code>, <a href="/docs/reference/supervision">reference/supervision</a></dd></dl></li>
+<li><p class="rt">bundle</p><dl><dt>Meaning</dt><dd>a signed policy document with its reference, <code>bundle_id</code>, <code>version</code> and <code>digest</code>, and a serial inside the signed document; verified before it is trusted and installed as a snapshot</dd><dt>Defined in</dt><dd><code>PolicyBundle</code> in <code>api/<wbr/>proto/<wbr/>guardana/<wbr/>control/<wbr/>v1/<wbr/>bundle.proto</code>, <code>internal/<wbr/>policy/<wbr/>bundle/</code></dd></dl></li>
+<li><p class="rt">carry</p><dl><dt>Meaning</dt><dd><code>stops init --carry</code>: a new stop list begun from an old one, judged by the old route, holding each stop of the old list no lift ended, expired or not, and a covered line for every other finding it names; the old list stays locked until the new one is written; the one way a list moves to another route or format</dd><dt>Defined in</dt><dd><code>Carry</code> and <code>CarrySigned</code> in <code>internal/<wbr/>reaction/<wbr/>stopwrite/<wbr/>carry.go</code>, <a href="/docs/reference/reaction#the-stop-list">reference/reaction</a></dd></dl></li>
+<li><p class="rt">channel</p><dl><dt>Meaning</dt><dd>a way an agent's actions reach Control: through an enforcement point, which decides before the effect, or a sensor, which reports after it; MCP is the first, the OpenTelemetry GenAI trace importer the first sensor, and an egress proxy's access log the second</dd><dt>Defined in</dt><dd><a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a>; both importers <code>experimental</code>, other channels <code>planned</code></dd></dl></li>
+<li><p class="rt">children mode</p><dl><dt>Meaning</dt><dd>what a <code>0.2</code> procedure's <code>children</code> says of the runs opened under the supervised one: <code>inherit</code> judges a root run and its whole run tree, <code>separate</code> judges one run's own calls and lists its children</dd><dt>Defined in</dt><dd><code>Children</code> in <code>internal/<wbr/>supervise/<wbr/>procedure_v02.go</code>, <code>ChildrenMode</code> in <code>api/<wbr/>proto/<wbr/>guardana/<wbr/>control/<wbr/>finding/<wbr/>v1alpha1/<wbr/>report.proto</code></dd></dl></li>
+<li><p class="rt">coverage</p><dl><dt>Meaning</dt><dd>for each path an operator declared, whether it is enforced, decided but not enforced, observed with its source's trust, unknown or not covered; paths nobody declared are unknown too, and it is never a percentage</dd><dt>Defined in</dt><dd><code>internal/<wbr/>coverage/</code>, run by <code>guardana-control coverage</code>, <code>experimental</code></dd></dl></li>
+<li><p class="rt">decision</p><dl><dt>Meaning</dt><dd>what the kernel, or the enforcement point on its own behalf, concluded about one envelope: a verdict, its reason codes, the rules and obligations, the action digest and the bundle digest</dd><dt>Defined in</dt><dd><code>Decision</code> in <code>api/<wbr/>proto/<wbr/>guardana/<wbr/>control/<wbr/>v1/<wbr/>decision.proto</code>, made in <code>internal/<wbr/>core/<wbr/>decide.go</code></dd></dl></li>
+<li><p class="rt">effect class</p><dl><dt>Meaning</dt><dd>the kind of consequence an action has, <code>READ</code> or one of the material classes; what materiality, the fail-closed table and the contract's required fields turn on</dd><dt>Defined in</dt><dd><code>EffectClass</code> in <code>common.proto</code>, <code>contract.IsMaterial</code> in <code>pkg/<wbr/>contract/<wbr/>effect.go</code></dd></dl></li>
+<li><p class="rt">enforcement mode</p><dl><dt>Meaning</dt><dd>what the enforcement point does with a decision: <code>OBSERVE</code>, <code>APPROVE</code>, <code>ENFORCE</code> or <code>LOCKDOWN</code> in this build; never what is decided</dd><dt>Defined in</dt><dd><code>EnforcementMode</code> in <code>common.proto</code>, <code>internal/<wbr/>gateway/<wbr/>mode.go</code></dd></dl></li>
+<li><p class="rt">enforcement point</p><dl><dt>Meaning</dt><dd>the process that runs one pipeline with an adapter, a sink and a policy source, and whose own record a hold, a halt and a block it minted live in; <code>cmd/<wbr/>guardana-gateway</code> in this build</dd><dt>Defined in</dt><dd><code>cmd/<wbr/>guardana-gateway/<wbr/>main.go</code>, wiring <code>Pipeline</code> in <code>internal/<wbr/>gateway/<wbr/>pipeline.go</code></dd></dl></li>
+<li><p class="rt">evidence export</p><dl><dt>Meaning</dt><dd>a trail file's events written to standard output in the versioned format <code>guardana.control.evidence-export</code>: a header, one record per event, gap or duplicate, and a trailer that says whether the file's end was reached</dd><dt>Defined in</dt><dd><code>trailfile.Export</code> in <code>internal/<wbr/>trailfile/<wbr/>export.go</code>, run by <code>guardana-gateway trail export</code></dd></dl></li>
+<li><p class="rt">evidence trail</p><dl><dt>Meaning</dt><dd>the chain of events under one request id, from <code>ACTION_PROPOSED</code> to the event that closes it, linked by <code>prev_event_id</code>; a request in flight or held has a prefix of one</dd><dt>Defined in</dt><dd><code>evidence.Builder</code> in <code>internal/<wbr/>evidence/<wbr/>event.go</code>, validated by <code>internal/<wbr/>evidence/<wbr/>chain.go</code></dd></dl></li>
+<li><p class="rt">exception</p><dl><dt>Meaning</dt><dd>a <code>0.2</code> procedure's waiver of one rule for one step, or for <code>STEP_OUTSIDE_PROCEDURE</code> one tool on one upstream, taken on one condition: an approval granted, a step failed or a reason code; taking one raises <code>EXCEPTION_TAKEN</code>, never a stronger finding than the one it waived</dd><dt>Defined in</dt><dd><code>Exception</code> in <code>internal/<wbr/>supervise/<wbr/>procedure_v02.go</code>, applied in <code>internal/<wbr/>supervise/<wbr/>exceptions.go</code></dd></dl></li>
+<li><p class="rt">execution</p><dl><dt>Meaning</dt><dd>one run of an authorized call, named by the <code>execution_id</code> that <code>ACTION_STARTED</code> carries and the closing event repeats; a trail allows one</dd><dt>Defined in</dt><dd><code>Builder.Started</code> in <code>internal/<wbr/>evidence/<wbr/>event.go</code>, kept by <code>internal/<wbr/>gateway/<wbr/>trails.go</code></dd></dl></li>
+<li><p class="rt">export cursor</p><dl><dt>Meaning</dt><dd>where an evidence export stopped: the digest of the file's first line, an offset after a newline and the digest of the line that ends there; refused when the file's first line or the line ending at the offset differs. Not the exporter's cursor in the spool</dd><dt>Defined in</dt><dd><code>cursor</code> in <code>internal/<wbr/>lineexport/<wbr/>cursor.go</code></dd></dl></li>
+<li><p class="rt">external decision point</p><dl><dt>Meaning</dt><dd>the organization's own policy engine, asked over AuthZEN about a call whose decision turns on its answer; the answer is an input a <code>DENY</code> rule reads, so it can veto and never grant, and its silence blocks in every mode that enforces</dd><dt>Defined in</dt><dd><code>gateway.DecisionPoint</code> in <code>internal/<wbr/>gateway/<wbr/>decisionpoint.go</code>, the answer as <code>core.External</code> in <code>internal/<wbr/>core/<wbr/>external.go</code>, the client in <code>adapters/<wbr/>authzen/</code></dd></dl></li>
+<li><p class="rt">fail-open read</p><dl><dt>Meaning</dt><dd>a read the kernel lets run although the policy's availability left it undecided, under the operator's explicit setting and recorded as <code>FAIL_OPEN_READ_CONFIGURED</code>; never a material call</dd><dt>Defined in</dt><dd><code>Options.FailOpenRead</code> in <code>internal/<wbr/>core/<wbr/>kernel.go</code>, the table in <code>internal/<wbr/>core/<wbr/>failclosed.go</code></dd></dl></li>
+<li><p class="rt">finding</p><dl><dt>Meaning</dt><dd>what a detector concludes about a run, <code>CONFIRMED</code>, <code>SUSPECTED</code> or <code>INDETERMINATE</code>, citing the evidence and observations it rests on; it never grants authority and never changes a verdict</dd><dt>Defined in</dt><dd><code>Finding</code> in <code>finding.proto</code>, inside the <code>FindingRecord</code> that <code>guardana-control supervise</code> writes, <code>experimental</code></dd></dl></li>
+<li><p class="rt">findings log</p><dl><dt>Meaning</dt><dd>one directory's <code>findings.jsonl</code>, to which <code>supervise</code> appends a run's findings and its report under an exclusive lock; what <code>notify</code>, <code>react</code> and <code>findings export</code> read</dd><dt>Defined in</dt><dd><code>findinglog.Log</code> in <code>internal/<wbr/>findinglog/<wbr/>log.go</code></dd></dl></li>
+<li><p class="rt">freshness statement</p><dl><dt>Meaning</dt><dd>a signed claim, under a key apart from the bundle's, that one bundle id, serial and digest was current at its <code>issuedAt</code>; the only thing that confirms a snapshot, for the policy's staleness budget from that time</dd><dt>Defined in</dt><dd><code>policy.Statement</code> in <code>internal/<wbr/>policy/<wbr/>statement.go</code>, written by <code>guardana-control policy renew</code></dd></dl></li>
+<li><p class="rt">gap</p><dl><dt>Meaning</dt><dd>an export record for a line that is not one readable record of a major the build reads, or that reuses an id with other content; a whole export holding one exits 1</dd><dt>Defined in</dt><dd><code>gapRecord</code> in <code>internal/<wbr/>lineexport/<wbr/>records.go</code></dd></dl></li>
+<li><p class="rt">health socket</p><dl><dt>Meaning</dt><dd>the Unix socket <code>health.socket</code> names; the plane serves its whole health answer there, with the run ids and signers <code>/<wbr/>healthz</code> leaves out, to its own account and to <code>health.socket_uid</code>, and closes any other peer unanswered</dd><dt>Defined in</dt><dd><code>bindHealthSocket</code> in <code>cmd/<wbr/>guardana-gateway/<wbr/>health_socket.go</code></dd></dl></li>
+<li><p class="rt">import report</p><dl><dt>Meaning</dt><dd>the record an import appends after the observations it kept: the source, the receive time, the input's size and first line's digest, the counts, and the earliest and latest event times; what says when a source was last heard</dd><dt>Defined in</dt><dd><code>ImportReport</code> in <code>api/<wbr/>proto/<wbr/>guardana/<wbr/>control/<wbr/>observe/<wbr/>v1alpha1/<wbr/>observation.proto</code></dd></dl></li>
+<li><p class="rt">held request</p><dl><dt>Meaning</dt><dd>a request awaiting an approval that the enforcement point keeps in its own record, answered at once with a pending state and resumed by a retry that equals it</dd><dt>Defined in</dt><dd><code>heldRequest</code> in <code>internal/<wbr/>gateway/<wbr/>trails.go</code>, <code>Held</code> in <code>internal/<wbr/>gateway/<wbr/>approvals.go</code></dd></dl></li>
+<li><p class="rt">lift</p><dl><dt>Meaning</dt><dd>a signed line of the stop list that ends every stop of one run, or under <code>signed</code> of one scope and subject, up to and including a line it names; under <code>signed</code> a roster operator granted <code>operate</code> signs it, otherwise the holder of the route's lift key</dd><dt>Defined in</dt><dd><code>Lift</code> in <code>internal/<wbr/>reaction/<wbr/>lift.go</code>, <code>SignedLiftV3</code> in <code>internal/<wbr/>reaction/<wbr/>lift3.go</code>, <a href="/docs/reference/reaction#the-stop-list">reference/reaction</a></dd></dl></li>
+<li><p class="rt">manifest</p><dl><dt>Meaning</dt><dd>for the MCP gateway, what the upstreams list plus the operator's classification of each definition, pinned by fingerprint; where a tool's effect class, resource type and trust zone come from</dd><dt>Defined in</dt><dd><code>adapters/<wbr/>mcp/<wbr/>manifest.go</code></dd></dl></li>
+<li><p class="rt">notifier</p><dl><dt>Meaning</dt><dd>a port that delivers findings to a tool an operator watches, at least once, each keyed by finding id and verdict, a key a receiver drops repeats by; it holds no authority over a plane</dd><dt>Defined in</dt><dd><code>internal/<wbr/>notify/</code>, run by <code>guardana-control notify</code>, which hands alerts to a local program, <code>experimental</code>; other notifiers <code>planned</code></dd></dl></li>
+<li><p class="rt">obligation</p><dl><dt>Meaning</dt><dd>a condition on a call that proceeds, carried by an <code>ALLOW_WITH_OBLIGATIONS</code> or <code>REQUIRE_APPROVAL</code> rule; who applies each type, and what happens to one nobody applies, is on <a href="/docs/reference/obligations">the obligations reference</a></dd><dt>Defined in</dt><dd><code>Obligation</code> in <code>decision.proto</code>, the catalogue in <code>internal/<wbr/>policy/<wbr/>rules/</code>, <code>internal/<wbr/>gateway/<wbr/>apply.go</code></dd></dl></li>
+<li><p class="rt">observation</p><dl><dt>Meaning</dt><dd>what a sensor reports a source saw, with the source, its trust, the event's time if known and the basis of any correlation; testimony, never a decision or evidence of enforcement</dd><dt>Defined in</dt><dd><a href="/docs/adr/0040-observations-a-record-a-log-and-one-importer">ADR-0040</a>, <a href="/docs/reference/observations">reference/observations.md</a></dd></dl></li>
+<li><p class="rt">observation log</p><dl><dt>Meaning</dt><dd>one directory's <code>observations.jsonl</code>, appended under one writer's lock with each import's observations and its report, and read through the observation export</dd><dt>Defined in</dt><dd><code>internal/<wbr/>observelog/<wbr/>log.go</code></dd></dl></li>
+<li><p class="rt">pipeline</p><dl><dt>Meaning</dt><dd>the protocol-neutral enforcement pipeline an enforcement point runs: <code>Admit</code>, <code>Preview</code>, <code>Close</code> and <code>Abort</code>, the mode, the trail and the holds</dd><dt>Defined in</dt><dd><code>Pipeline</code> in <code>internal/<wbr/>gateway/<wbr/>pipeline.go</code></dd></dl></li>
+<li><p class="rt">plane</p><dl><dt>Meaning</dt><dd>one running enforcement point with what it serves from: one configuration, one listener, MCP or the enforcement API, its policy, its spool and its state directories; under the signed authority it is named by <code>plane_id</code> and serves one tenant</dd><dt>Defined in</dt><dd><code>plane</code> in <code>cmd/<wbr/>guardana-gateway/<wbr/>build.go</code>, <a href="/docs/guides/run-the-gateway">run the gateway</a></dd></dl></li>
+<li><p class="rt">port</p><dl><dt>Meaning</dt><dd>a decision about authority behind an interface, with a tested default kind, an unavailable answer that blocks, bounds and conformance cases; <code>scripts/<wbr/>ports.txt</code> lists the ports that exist, and a port's record states where it still falls short</dd><dt>Defined in</dt><dd><a href="/docs/adr/0066-each-decision-about-authority-is-a-port">ADR-0066</a>, <code>testdata/<wbr/>ports/</code></dd></dl></li>
+<li><p class="rt">principal</p><dl><dt>Meaning</dt><dd>the party an action is done for, with its tenant, type, id and authentication strength; on a listener it comes from the operator's configuration or the authenticator, never from a client's claim</dd><dt>Defined in</dt><dd><code>Principal</code> in <code>action_envelope.proto</code>, <code>identity</code> in <code>adapters/<wbr/>mcp/<wbr/>translate.go</code></dd></dl></li>
+<li><p class="rt">procedure</p><dl><dt>Meaning</dt><dd>the operator's JSON document of a run's steps, their order, the tools it may also call and each rule's severity and escalation; what <code>supervise</code> judges one opened run against, recorded by its digest</dd><dt>Defined in</dt><dd><code>Procedure</code>, <code>ReadProcedure</code> in <code>internal/<wbr/>supervise/<wbr/>procedure.go</code>, <a href="/docs/reference/supervision">reference/supervision</a></dd></dl></li>
+<li><p class="rt">quarantine</p><dl><dt>Meaning</dt><dd>the spool's file for records a collector refused for good, appended to and released only by an operator's <code>spool drain</code>, so the exporter's cursor passes them without dropping them</dd><dt>Defined in</dt><dd><code>Reader.Quarantine</code> in <code>internal/<wbr/>spool/<wbr/>quarantine.go</code></dd></dl></li>
+<li><p class="rt">reaction</p><dl><dt>Meaning</dt><dd>turning a finding the operator's signed route allows into a stop of the run it is about or, under <code>signed</code>, of that run's agent or principal, which the enforcement points apply to later calls, for a scope and an expiry; separate from the notifier</dd><dt>Defined in</dt><dd><a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a>, <a href="/docs/adr/0083-a-finding-may-stop-an-agent-or-a-principal">ADR-0083</a>, <code>internal/<wbr/>reaction/</code>, <a href="/docs/reference/reaction">reference/reaction</a>, <code>experimental</code> for one opened run, or its agent or principal, from a confirmed finding</dd></dl></li>
+<li><p class="rt">reason code</p><dl><dt>Meaning</dt><dd>the identifier of the kind of failure or match a decision carries, from the registry; never derived from error text, and never read to decide</dd><dt>Defined in</dt><dd><code>internal/<wbr/>policy/<wbr/>reasons/</code>, listed in <a href="/docs/reference/reason-codes">reference/reason-codes</a></dd></dl></li>
+<li><p class="rt">record</p><dl><dt>Meaning</dt><dd>one event as the spool writes it to disk, a header and one JSON line, checksummed; the unit the spool appends, reads, acknowledges and quarantines</dd><dt>Defined in</dt><dd><code>internal/<wbr/>spool/<wbr/>frame.go</code></dd></dl></li>
+<li><p class="rt">roster operator</p><dl><dt>Meaning</dt><dd>a key the trust roster names for a person, granted a tenant, a project and a level: <code>read</code>, <code>operate</code> or <code>admin</code>, each including the one before; <code>operate</code> approves, pauses, and signs a run record, a stop list header and a lift, <code>admin</code> also a route</dd><dt>Defined in</dt><dd><code>RoleOperator</code> and <code>Level</code> in <code>internal/<wbr/>trust/<wbr/>format.go</code>, the acts in <code>internal/<wbr/>operators/<wbr/>answer.go</code></dd></dl></li>
+<li><p class="rt">route</p><dl><dt>Meaning</dt><dd>the operator's signed document saying which confirmed findings may stop a run, and under <code>signed</code> its agent or principal: its tenant, under <code>signed</code> also its plane and project, and rules, each a procedure and a supervise rule; a plane reads it at start only</dd><dt>Defined in</dt><dd><code>Route</code> in <code>internal/<wbr/>reaction/<wbr/>route.go</code>, <a href="/docs/reference/reaction#the-route">reference/reaction</a></dd></dl></li>
+<li><p class="rt">run</p><dl><dt>Meaning</dt><dd>the calls whose events share a <code>run_id</code> and whose flow state is kept together: without <code>runs.dir</code>, those of the listener's principal and agent, kept in memory and started clean at each restart; with it, those presenting the token of a run an operator opened</dd><dt>Defined in</dt><dd><code>runKey</code> and <code>run</code> in <code>internal/<wbr/>gateway/<wbr/>flow.go</code>, <code>internal/<wbr/>runs/</code>, <a href="/docs/reference/runs">reference/runs</a></dd></dl></li>
+<li><p class="rt">run tree</p><dl><dt>Meaning</dt><dd>the runs a <code>0.2</code> report lists with the supervised run, each naming its parent: under <code>inherit</code> the root's whole tree, every member judged; under <code>separate</code> the run's children, not judged</dd><dt>Defined in</dt><dd><code>RunTreeMember</code> in <code>api/<wbr/>proto/<wbr/>guardana/<wbr/>control/<wbr/>finding/<wbr/>v1alpha1/<wbr/>report.proto</code></dd></dl></li>
+<li><p class="rt">run view</p><dl><dt>Meaning</dt><dd>the static HTML page <code>supervise --view</code> draws of one supervised run, its steps, findings and marked calls; it judges nothing itself</dd><dt>Defined in</dt><dd><code>runview.Page</code> in <code>internal/<wbr/>runview/<wbr/>view.go</code>, <a href="/docs/reference/run-view">reference/run-view</a></dd></dl></li>
+<li><p class="rt">sensor</p><dl><dt>Meaning</dt><dd>a port that sees an effect after it happened, or an indirect sign of it, and reports it as observations; it never decides; the OpenTelemetry GenAI trace importer and the egress access-log importer are two</dd><dt>Defined in</dt><dd><a href="/docs/adr/0039-many-channels-into-one-core">ADR-0039</a>, <code>internal/<wbr/>ingest/<wbr/>otelgenai/</code>, <code>internal/<wbr/>ingest/<wbr/>egresslog/</code>, <code>experimental</code>; others <code>planned</code></dd></dl></li>
+<li><p class="rt">serial floor</p><dl><dt>Meaning</dt><dd>the newest serial a plane or a signer has accepted, kept on disk in a floor directory of one kind: a bundle's (<code>plane</code>, <code>signer</code>), a trust roster's (<code>authority</code>), a route's, a signed pause file's or a stop list's; a document below it, or at its serial with another digest, is refused, across restarts</dd><dt>Defined in</dt><dd><code>policy.Floor</code> in <code>internal/<wbr/>policy/<wbr/>floor.go</code>, the kinds in <code>internal/<wbr/>policystate/</code></dd></dl></li>
+<li><p class="rt">signed authority</p><dl><dt>Meaning</dt><dd><code>approvals.authority: signed</code>; a plane under it, a signed plane, takes an approval, a pause, a run and a stop list only as a roster operator signed it for the plane's tenant and project. What it refuses at start is on <a href="/docs/guides/set-up-signed-operators#which-account-owns-what">set up signed operators</a>, and the serial floors it keeps on <a href="/docs/concepts/signed-operations#what-is-not-signed">signed operations</a></dd><dt>Defined in</dt><dd><code>AuthoritySigned</code> in <code>internal/<wbr/>gatewayconfig/<wbr/>config.go</code>, <a href="/docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it">ADR-0073</a>, <a href="/docs/adr/0075-a-signed-plane-takes-a-pause-only-from-an-operators-signature">ADR-0075</a>, <a href="/docs/adr/0076-a-signed-plane-takes-a-run-only-from-an-operators-signature">ADR-0076</a>, <a href="/docs/adr/0077-a-signed-plane-takes-a-stop-list-only-from-operators-signatures">ADR-0077</a></dd></dl></li>
+<li><p class="rt">signed run record</p><dl><dt>Meaning</dt><dd>a run record <code>3.0</code> in <code>runs.dir</code>'s <code>records/</code>, signed by a roster operator granted <code>operate</code> for the run's tenant and project and bound to that directory; the only record a signed plane counts; the plane copies each close it takes into <code>state/</code>, so the run's open record put back later is refused</dd><dt>Defined in</dt><dd><code>SignedRecordVersion</code> in <code>internal/<wbr/>runs/<wbr/>signed.go</code>, judged by <code>internal/<wbr/>runs/<wbr/>signedruns/</code>, <a href="/docs/reference/runs#a-signed-runs-directory">reference/runs</a></dd></dl></li>
+<li><p class="rt">snapshot</p><dl><dt>Meaning</dt><dd>one verified, compiled bundle, with the <code>issuedAt</code> of the statement that confirmed it or none; never changed after it is made, so a call is decided against exactly one</dd><dt>Defined in</dt><dd><code>policy.Snapshot</code> in <code>internal/<wbr/>policy/<wbr/>policy.go</code>, served by <code>policy.Holder</code></dd></dl></li>
+<li><p class="rt">source descriptor</p><dl><dt>Meaning</dt><dd>the operator's JSON statement about one source: its kind, trust, the members its kind owns, sampling and heartbeat; read under owner checks, never taken from the data</dd><dt>Defined in</dt><dd><code>ingest.ReadDescriptor</code> in <code>internal/<wbr/>ingest/<wbr/>ingest.go</code>, the kinds in <code>internal/<wbr/>observe/<wbr/>kinds.go</code></dd></dl></li>
+<li><p class="rt">spool</p><dl><dt>Meaning</dt><dd>the evidence sink that writes disk: an append-only, checksummed, bounded log an exporter drains and acknowledges</dd><dt>Defined in</dt><dd><code>spool.Spool</code> in <code>internal/<wbr/>spool/<wbr/>spool.go</code></dd></dl></li>
+<li><p class="rt">stop</p><dl><dt>Meaning</dt><dd>a line of the stop list by which one confirmed finding stops the later calls of its run, or under <code>signed</code> of that run's agent or principal, until it expires or a lift ends it; a plane refuses those calls with <code>RUN_STOPPED</code> or <code>AGENT_OR_PRINCIPAL_STOPPED</code></dd><dt>Defined in</dt><dd><code>Stop</code> in <code>internal/<wbr/>reaction/<wbr/>line.go</code>, <a href="/docs/reference/reaction#what-react-writes">reference/reaction</a></dd></dl></li>
+<li><p class="rt">stop list</p><dl><dt>Meaning</dt><dd><code>stops.jsonl</code> in the directory <code>reaction.stops</code> names: a header naming the route, then <code>stop</code>, <code>covered</code> and <code>lift</code> lines, appended and never rewritten, which <code>react</code> and the <code>stops</code> commands write under the list's lock; a plane reads it every poll interval and takes no lock</dd><dt>Defined in</dt><dd><code>internal/<wbr/>reaction/<wbr/>stoplist/</code>, <code>internal/<wbr/>reaction/<wbr/>stopwrite/</code>, <a href="/docs/reference/reaction#the-stop-list">reference/reaction</a></dd></dl></li>
+<li><p class="rt">stop list header</p><dl><dt>Meaning</dt><dd>the first line of a stop list <code>3.0</code>: an envelope over a <code>reaction-list-header/<wbr/>3.0</code> body a roster operator signs, naming the list, its serial, the plane's <code>plane_id</code>, tenant, project and stop list file, the route and, for a list carried from another, the previous header's digest; a lift names it and the stop list floor keeps it</dd><dt>Defined in</dt><dd><code>HeaderSigned</code> in <code>internal/<wbr/>reaction/<wbr/>header2.go</code>, <a href="/docs/reference/reaction-signed">reference/reaction-signed</a></dd></dl></li>
+<li><p class="rt">trail file</p><dl><dt>Meaning</dt><dd>a file of events, one per line in the protobuf JSON mapping, each event id once; what <code>trail</code> and <code>trail export</code> read</dd><dt>Defined in</dt><dd><code>trailfile.Writer</code> in <code>internal/<wbr/>trailfile/<wbr/>writer.go</code></dd></dl></li>
+<li><p class="rt">trail segments</p><dl><dt>Meaning</dt><dd>the directory the collector writes, bound to one tenant and project: sealed segments, each a trail file, a live one appends go to, and <code>segments.json</code> naming each, sealed or pruned; bounded in bytes, pruned only by an operator</dd><dt>Defined in</dt><dd><code>trailfile.Log</code> in <code>internal/<wbr/>trailfile/<wbr/>log.go</code> over <code>internal/<wbr/>segmentlog/</code></dd></dl></li>
+<li><p class="rt">trust</p><dl><dt>Meaning</dt><dd>how far an observation's source can be believed, from its descriptor: <code>TRUST_SELF_REPORTED</code> (the agent's own process), <code>TRUST_PLATFORM</code> (the platform it runs on) or <code>TRUST_INDEPENDENT</code> (something the agent cannot influence)</dd><dt>Defined in</dt><dd><code>Trust</code> in <code>api/<wbr/>proto/<wbr/>guardana/<wbr/>control/<wbr/>observe/<wbr/>v1alpha1/<wbr/>source.proto</code></dd></dl></li>
+<li><p class="rt">trust roster</p><dl><dt>Meaning</dt><dd>the signed file that names operator keys and the tenant, project and level each may act on, under a pinned root, for at most 7 days at a serial that only climbs; a plane reads one only under the signed authority, through <code>trust.*</code></dd><dt>Defined in</dt><dd><code>internal/<wbr/>trust/</code>, <a href="/docs/adr/0071-operators-are-named-by-a-signed-roster">ADR-0071</a></dd></dl></li>
+<li><p class="rt">unrecorded read</p><dl><dt>Meaning</dt><dd>a read that ran with a trail the sink did not take, under the explicit evidence setting; counted, never held and never closed</dd><dt>Defined in</dt><dd><code>Config.AllowReadsUnrecorded</code> in <code>internal/<wbr/>gateway/<wbr/>config.go</code></dd></dl></li>
+<li><p class="rt">verdict</p><dl><dt>Meaning</dt><dd>one of the five outcomes of a decision: <code>DENY</code>, <code>INDETERMINATE</code>, <code>REQUIRE_APPROVAL</code>, <code>ALLOW_WITH_OBLIGATIONS</code>, <code>ALLOW</code>; <code>INDETERMINATE</code> is never <code>ALLOW</code></dd><dt>Defined in</dt><dd><code>Verdict</code> in <code>common.proto</code>, <code>internal/<wbr/>core/<wbr/>decide.go</code></dd></dl></li>
+<li><p class="rt">verified time</p><dl><dt>Meaning</dt><dd>the latest <code>issuedAt</code> the plane verified, from a statement it confirmed or its floor's latest; a clock reading behind it decides nothing</dd><dt>Defined in</dt><dd><code>Snapshot.NotBefore</code> in <code>internal/<wbr/>policy/<wbr/>policy.go</code></dd></dl></li>
+</ul>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/concepts/glossary.md">docs/concepts/glossary.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.18.0, and <a href="https://github.com/guardana/control/tree/v0.18.0/docs">its documentation</a> is in its tag.</p>
 </main>
 <nav class="side" aria-label="Documentation">

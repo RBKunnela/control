@@ -176,64 +176,17 @@ a slice every 29 seconds holds a handler throughout.</p>
 <p>An upstream is reached over Streamable HTTP (<code>upstreams[].endpoint</code>) or as a
 child process (<code>upstreams[].command</code>).</p>
 <h2 id="methods">Methods</h2>
-<div class="tbl">
-<table>
-<thead>
-<tr>
-<th>Method</th>
-<th>What the gateway does</th>
-<th>Decided</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>tools/list</code></td>
-<td>Answers from the manifest, without a <a href="/docs/concepts/mcp-gateway#an-answer-that-quotes-a-credential">withheld</a> definition, shaped for the principal, with <code>cacheScope: private</code> and the operator's <code>ttlMs</code></td>
-<td>under <code>annotate</code> or <code>hide</code>, one preview per classified tool one upstream serves; a cached list, one naming the bundle and halts in force; nothing recorded</td>
-</tr>
-<tr>
-<td><code>tools/call</code></td>
-<td>Admits an <code>ActionEnvelope</code>; if the mode lets it run, applies the plane's obligations, none under <code>OBSERVE</code>, sends the authorized bytes, compacted by the adapter, and closes the trail with those</td>
-<td>yes</td>
-</tr>
-<tr>
-<td><code>resources/read</code></td>
-<td>Translated as a <code>READ</code> of the URI. Routed only when one upstream is configured; with several it is <code>ACTION_UNCLASSIFIED</code>: nothing says which server holds the URI</td>
-<td>yes</td>
-</tr>
-<tr>
-<td><code>prompts/get</code></td>
-<td>Translated as a <code>READ</code> of the prompt, its arguments authorized as a canonical JSON object of strings. Routed as above</td>
-<td>yes</td>
-</tr>
-<tr>
-<td><code>resources/list</code>, <code>resources/templates/list</code>, <code>prompts/list</code></td>
-<td>Merged from every upstream, bounded, with the gateway's own <code>_meta</code> keys stripped and <code>cacheScope: private</code>; <code>-31103</code> when an item quotes a credential</td>
-<td>no: a listing names no action</td>
-</tr>
-<tr>
-<td>a batch</td>
-<td>On <code>stateful_http</code>, before <code>2025-06-18</code>: each member as if sent alone</td>
-<td>each call</td>
-</tr>
-<tr>
-<td><code>tools/call</code> with no <code>id</code></td>
-<td>Dropped by the library</td>
-<td>no</td>
-</tr>
-<tr>
-<td><code>notifications/cancelled</code></td>
-<td>After the send, the upstream's call is cancelled, never resent, and recorded unknown</td>
-<td>no</td>
-</tr>
-<tr>
-<td>everything else</td>
-<td>Handled by the library's own server, which registers nothing to forward</td>
-<td>no</td>
-</tr>
-</tbody>
-</table>
-</div>
+<ul class="stack">
+<li><p class="rt"><code>tools/<wbr/>list</code></p><dl><dt>What the gateway does</dt><dd>Answers from the manifest, without a <a href="/docs/concepts/mcp-gateway#an-answer-that-quotes-a-credential">withheld</a> definition, shaped for the principal, with <code>cacheScope: private</code> and the operator's <code>ttlMs</code></dd><dt>Decided</dt><dd>under <code>annotate</code> or <code>hide</code>, one preview per classified tool one upstream serves; a cached list, one naming the bundle and halts in force; nothing recorded</dd></dl></li>
+<li><p class="rt"><code>tools/<wbr/>call</code></p><dl><dt>What the gateway does</dt><dd>Admits an <code>ActionEnvelope</code>; if the mode lets it run, applies the plane's obligations, none under <code>OBSERVE</code>, sends the authorized bytes, compacted by the adapter, and closes the trail with those</dd><dt>Decided</dt><dd>yes</dd></dl></li>
+<li><p class="rt"><code>resources/<wbr/>read</code></p><dl><dt>What the gateway does</dt><dd>Translated as a <code>READ</code> of the URI. Routed only when one upstream is configured; with several it is <code>ACTION_UNCLASSIFIED</code>: nothing says which server holds the URI</dd><dt>Decided</dt><dd>yes</dd></dl></li>
+<li><p class="rt"><code>prompts/<wbr/>get</code></p><dl><dt>What the gateway does</dt><dd>Translated as a <code>READ</code> of the prompt, its arguments authorized as a canonical JSON object of strings. Routed as above</dd><dt>Decided</dt><dd>yes</dd></dl></li>
+<li><p class="rt"><code>resources/<wbr/>list</code>, <code>resources/<wbr/>templates/<wbr/>list</code>, <code>prompts/<wbr/>list</code></p><dl><dt>What the gateway does</dt><dd>Merged from every upstream, bounded, with the gateway's own <code>_meta</code> keys stripped and <code>cacheScope: private</code>; <code>-31103</code> when an item quotes a credential</dd><dt>Decided</dt><dd>no: a listing names no action</dd></dl></li>
+<li><p class="rt">a batch</p><dl><dt>What the gateway does</dt><dd>On <code>stateful_http</code>, before <code>2025-06-18</code>: each member as if sent alone</dd><dt>Decided</dt><dd>each call</dd></dl></li>
+<li><p class="rt"><code>tools/<wbr/>call</code> with no <code>id</code></p><dl><dt>What the gateway does</dt><dd>Dropped by the library</dd><dt>Decided</dt><dd>no</dd></dl></li>
+<li><p class="rt"><code>notifications/<wbr/>cancelled</code></p><dl><dt>What the gateway does</dt><dd>After the send, the upstream's call is cancelled, never resent, and recorded unknown</dd><dt>Decided</dt><dd>no</dd></dl></li>
+<li><p class="rt">everything else</p><dl><dt>What the gateway does</dt><dd>Handled by the library's own server, which registers nothing to forward</dd><dt>Decided</dt><dd>no</dd></dl></li>
+</ul>
 <h2 id="what-the-gateway-cannot-do">What the gateway cannot do</h2>
 <div class="tbl">
 <table>
@@ -253,7 +206,7 @@ child process (<code>upstreams[].command</code>).</p>
 <td><code>planned</code> (<a href="/docs/status">status.md</a>)</td>
 </tr>
 <tr>
-<td><code>notifications/tools/list_changed</code> toward the agent</td>
+<td><code>notifications/<wbr/>tools/<wbr/>list_changed</code> toward the agent</td>
 <td>The library emits it only for its own, empty registry, so the listener declares none; an agent refreshes when <code>list.ttl</code> runs out</td>
 </tr>
 <tr>
@@ -278,7 +231,7 @@ child process (<code>upstreams[].command</code>).</p>
 </tr>
 <tr>
 <td>What a run read outside the gateway</td>
-<td>Without <code>runs.dir</code>, a run is the listener's principal and starts clean at each restart; on stdio it lasts one connection. The user's prompt, tool descriptions, listed resources and prompts, and tools not behind the gateway are not tracked, and a call carries no data label, so a <code>flow</code> rule blocks every untrusted destination after untrusted input. A <code>resources/read</code> and a <code>prompts/get</code> carry no declared result, so each leaves its run untrusted and unknown from then on (ADR-0021)</td>
+<td>Without <code>runs.dir</code>, a run is the listener's principal and starts clean at each restart; on stdio it lasts one connection. The user's prompt, tool descriptions, listed resources and prompts, and tools not behind the gateway are not tracked, and a call carries no data label, so a <code>flow</code> rule blocks every untrusted destination after untrusted input. A <code>resources/<wbr/>read</code> and a <code>prompts/<wbr/>get</code> carry no declared result, so each leaves its run untrusted and unknown from then on (ADR-0021)</td>
 </tr>
 </tbody>
 </table>
@@ -352,7 +305,7 @@ error, outside the protocol's reserved range and the library's private code.</p>
 <tr>
 <td><code>-31103</code></td>
 <td>an answer was <a href="/docs/concepts/mcp-gateway#an-answer-that-quotes-a-credential">withheld</a></td>
-<td><code>&lt;ns&gt;/answer: withheld</code></td>
+<td><code>&lt;ns&gt;/<wbr/>answer: withheld</code></td>
 </tr>
 </tbody>
 </table>

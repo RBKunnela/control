@@ -136,126 +136,21 @@ it; the sections say what the trail holds. The <code>chaos_</code> tests
 of <code>cmd/guardana-gateway/</code> run the built binary in <code>ENFORCE</code> against
 listeners, files and a child process that really fail. Nothing here is a
 security boundary (<a href="/docs/status">status</a>).</p>
-<div class="tbl">
-<table>
-<thead>
-<tr>
-<th>Failure</th>
-<th>The call</th>
-<th>Reason code</th>
-<th>The agent gets</th>
-<th>Recovers by itself</th>
-<th>Test</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Collector gone, then back</td>
-<td>runs</td>
-<td>none</td>
-<td>the upstream's answer</td>
-<td>yes</td>
-<td><code>TestACollectorThatIsGoneBlocksNoCallAndGetsEveryRecordBack</code></td>
-</tr>
-<tr>
-<td>Spool full</td>
-<td>blocked before its effect</td>
-<td><code>EVIDENCE_UNAVAILABLE</code></td>
-<td>a tool result with <code>isError: true</code> and the code</td>
-<td>yes, once draining frees room; quarantined records count until <code>spool drain</code> empties it with the plane stopped</td>
-<td><code>TestAFullSpoolBlocksCallsUntilTheCollectorDrainsIt</code></td>
-</tr>
-<tr>
-<td>Decision point silent</td>
-<td>blocked</td>
-<td><code>PDP_TIMEOUT</code></td>
-<td><code>isError</code> and the code</td>
-<td>yes, each call asks again</td>
-<td><code>TestAnAskPastTheConfiguredTimeoutIsATimeout</code>, <code>TestEveryEffectClassUnderEveryAnswer</code></td>
-</tr>
-<tr>
-<td>Decision point wrong or gone</td>
-<td>blocked</td>
-<td><code>PDP_ANSWER_REFUSED</code>, <code>PDP_UNAVAILABLE</code></td>
-<td><code>isError</code> and the code</td>
-<td>yes, each call asks again</td>
-<td><code>TestAWrongOrAbsentDecisionPointBlocksOnARunningPlane</code></td>
-</tr>
-<tr>
-<td><code>stdio</code> upstream dies mid-call</td>
-<td>sent once, never retried</td>
-<td>none</td>
-<td>a JSON-RPC error</td>
-<td>no: restart the plane</td>
-<td><code>TestAStdioUpstreamThatDiesMidCallIsNeverASuccess</code></td>
-</tr>
-<tr>
-<td>HTTP upstream drops the connection mid-call</td>
-<td>sent once, never retried</td>
-<td>none</td>
-<td>a JSON-RPC error</td>
-<td>yes, the next call is sent</td>
-<td><code>TestAnHTTPUpstreamThatDropsTheCallIsNeverASuccess</code></td>
-</tr>
-<tr>
-<td>Pause file unreadable</td>
-<td>blocked</td>
-<td><code>PAUSE_STATE_UNAVAILABLE</code></td>
-<td><code>isError</code> and the code</td>
-<td>yes, at the first read of a whole file</td>
-<td><code>TestAPauseFileSpoiledWhileThePlaneRunsBlocksEveryCall</code></td>
-</tr>
-<tr>
-<td>Stop list unknown</td>
-<td>blocked</td>
-<td><code>STOP_STATE_UNAVAILABLE</code></td>
-<td><code>isError</code> and the code</td>
-<td>yes, at a whole read extending the accepted list; shrunk or rewritten, no</td>
-<td><code>TestAnUnknownStopStateBlocksEveryCall</code>, <code>TestHealthAnswersTheStopStateAnd503WhenTheListIsRewritten</code></td>
-</tr>
-<tr>
-<td>No freshness statement current</td>
-<td>blocked outside <code>OBSERVE</code>, a read too unless <code>policy.fail_open_read</code> opened it outside <code>LOCKDOWN</code></td>
-<td><code>POLICY_STALE</code></td>
-<td><code>isError</code> and the code</td>
-<td>yes, at the first poll taking a statement bound to the bundle</td>
-<td><code>TestAnUnconfirmedPlaneBlocksMaterialCalls</code>, <code>TestARenewalConfirmsAgain</code></td>
-</tr>
-<tr>
-<td>Bundle file torn, unsigned, older or another id's</td>
-<td>runs on the last good bundle until its statement expires, then blocked</td>
-<td>none, then <code>POLICY_STALE</code></td>
-<td>the upstream's answer, then <code>isError</code> and the code</td>
-<td>yes, once the file holds the served bundle or a newer one with its statement</td>
-<td><code>TestEveryRefusedReplacementMovesNothing</code></td>
-</tr>
-<tr>
-<td>Clock outside 1970 to 9999, or behind the verified time</td>
-<td>blocked outside <code>OBSERVE</code>, a read too, whatever <code>policy.fail_open_read</code> says; in <code>OBSERVE</code> under an opened run</td>
-<td><code>POLICY_STALE</code>; in <code>OBSERVE</code>, <code>EVIDENCE_UNAVAILABLE</code></td>
-<td><code>isError</code> and the code</td>
-<td>yes, once the clock passes the verified time and, after a step back, a newer statement arrives, or a restart follows <code>policy state reset</code>; outside 1970 to 9999, no</td>
-<td><code>TestAClockOutsideTheUsableRangeIsACauseInTheRequest</code>, <code>TestAClockBehindAVerifiedTimeIsACauseInTheRequest</code>, <code>TestAClockBehindTheFloorStopsAnUnconfirmedSnapshotsRead</code>, <code>TestARunUnderObserveBehindTheVerifiedTimeStartsNothing</code></td>
-</tr>
-<tr>
-<td>Floor directory or file missing or unreadable at start</td>
-<td>none: the plane does not start</td>
-<td>none</td>
-<td>no listener</td>
-<td>no: restore it, or make it again with <code>policy state init</code> or <code>reset</code></td>
-<td><code>TestAStartWithNoFloorIsRefused</code>, <code>TestAStartIsRefusedForWhatItCannotRead</code></td>
-</tr>
-<tr>
-<td>Plane killed with calls held</td>
-<td>never runs</td>
-<td><code>APPROVAL_NOT_RESUMED</code>, <code>APPROVAL_REJECTED</code>, <code>APPROVAL_EXPIRED</code> or <code>APPROVAL_STATE_UNKNOWN</code> on the closing record</td>
-<td><code>APPROVAL_PENDING</code>, before the kill</td>
-<td>at the next start, with a hold journal</td>
-<td><code>TestAnApproverOutsideThePlaneAnswersAndALostHoldIsClosed</code>, <code>TestTheLostHoldCodesTellTheFourAnswersApart</code></td>
-</tr>
-</tbody>
-</table>
-</div>
+<ul class="stack">
+<li><p class="rt">Collector gone, then back</p><dl><dt>The call</dt><dd>runs</dd><dt>Reason code</dt><dd>none</dd><dt>The agent gets</dt><dd>the upstream's answer</dd><dt>Recovers by itself</dt><dd>yes</dd><dt>Test</dt><dd><code>TestACollectorThatIsGoneBlocksNoCallAndGetsEveryRecordBack</code></dd></dl></li>
+<li><p class="rt">Spool full</p><dl><dt>The call</dt><dd>blocked before its effect</dd><dt>Reason code</dt><dd><code>EVIDENCE_UNAVAILABLE</code></dd><dt>The agent gets</dt><dd>a tool result with <code>isError: true</code> and the code</dd><dt>Recovers by itself</dt><dd>yes, once draining frees room; quarantined records count until <code>spool drain</code> empties it with the plane stopped</dd><dt>Test</dt><dd><code>TestAFullSpoolBlocksCallsUntilTheCollectorDrainsIt</code></dd></dl></li>
+<li><p class="rt">Decision point silent</p><dl><dt>The call</dt><dd>blocked</dd><dt>Reason code</dt><dd><code>PDP_TIMEOUT</code></dd><dt>The agent gets</dt><dd><code>isError</code> and the code</dd><dt>Recovers by itself</dt><dd>yes, each call asks again</dd><dt>Test</dt><dd><code>TestAnAskPastTheConfiguredTimeoutIsATimeout</code>, <code>TestEveryEffectClassUnderEveryAnswer</code></dd></dl></li>
+<li><p class="rt">Decision point wrong or gone</p><dl><dt>The call</dt><dd>blocked</dd><dt>Reason code</dt><dd><code>PDP_ANSWER_REFUSED</code>, <code>PDP_UNAVAILABLE</code></dd><dt>The agent gets</dt><dd><code>isError</code> and the code</dd><dt>Recovers by itself</dt><dd>yes, each call asks again</dd><dt>Test</dt><dd><code>TestAWrongOrAbsentDecisionPointBlocksOnARunningPlane</code></dd></dl></li>
+<li><p class="rt"><code>stdio</code> upstream dies mid-call</p><dl><dt>The call</dt><dd>sent once, never retried</dd><dt>Reason code</dt><dd>none</dd><dt>The agent gets</dt><dd>a JSON-RPC error</dd><dt>Recovers by itself</dt><dd>no: restart the plane</dd><dt>Test</dt><dd><code>TestAStdioUpstreamThatDiesMidCallIsNeverASuccess</code></dd></dl></li>
+<li><p class="rt">HTTP upstream drops the connection mid-call</p><dl><dt>The call</dt><dd>sent once, never retried</dd><dt>Reason code</dt><dd>none</dd><dt>The agent gets</dt><dd>a JSON-RPC error</dd><dt>Recovers by itself</dt><dd>yes, the next call is sent</dd><dt>Test</dt><dd><code>TestAnHTTPUpstreamThatDropsTheCallIsNeverASuccess</code></dd></dl></li>
+<li><p class="rt">Pause file unreadable</p><dl><dt>The call</dt><dd>blocked</dd><dt>Reason code</dt><dd><code>PAUSE_STATE_UNAVAILABLE</code></dd><dt>The agent gets</dt><dd><code>isError</code> and the code</dd><dt>Recovers by itself</dt><dd>yes, at the first read of a whole file</dd><dt>Test</dt><dd><code>TestAPauseFileSpoiledWhileThePlaneRunsBlocksEveryCall</code></dd></dl></li>
+<li><p class="rt">Stop list unknown</p><dl><dt>The call</dt><dd>blocked</dd><dt>Reason code</dt><dd><code>STOP_STATE_UNAVAILABLE</code></dd><dt>The agent gets</dt><dd><code>isError</code> and the code</dd><dt>Recovers by itself</dt><dd>yes, at a whole read extending the accepted list; shrunk or rewritten, no</dd><dt>Test</dt><dd><code>TestAnUnknownStopStateBlocksEveryCall</code>, <code>TestHealthAnswersTheStopStateAnd503WhenTheListIsRewritten</code></dd></dl></li>
+<li><p class="rt">No freshness statement current</p><dl><dt>The call</dt><dd>blocked outside <code>OBSERVE</code>, a read too unless <code>policy.fail_open_read</code> opened it outside <code>LOCKDOWN</code></dd><dt>Reason code</dt><dd><code>POLICY_STALE</code></dd><dt>The agent gets</dt><dd><code>isError</code> and the code</dd><dt>Recovers by itself</dt><dd>yes, at the first poll taking a statement bound to the bundle</dd><dt>Test</dt><dd><code>TestAnUnconfirmedPlaneBlocksMaterialCalls</code>, <code>TestARenewalConfirmsAgain</code></dd></dl></li>
+<li><p class="rt">Bundle file torn, unsigned, older or another id's</p><dl><dt>The call</dt><dd>runs on the last good bundle until its statement expires, then blocked</dd><dt>Reason code</dt><dd>none, then <code>POLICY_STALE</code></dd><dt>The agent gets</dt><dd>the upstream's answer, then <code>isError</code> and the code</dd><dt>Recovers by itself</dt><dd>yes, once the file holds the served bundle or a newer one with its statement</dd><dt>Test</dt><dd><code>TestEveryRefusedReplacementMovesNothing</code></dd></dl></li>
+<li><p class="rt">Clock outside 1970 to 9999, or behind the verified time</p><dl><dt>The call</dt><dd>blocked outside <code>OBSERVE</code>, a read too, whatever <code>policy.fail_open_read</code> says; in <code>OBSERVE</code> under an opened run</dd><dt>Reason code</dt><dd><code>POLICY_STALE</code>; in <code>OBSERVE</code>, <code>EVIDENCE_UNAVAILABLE</code></dd><dt>The agent gets</dt><dd><code>isError</code> and the code</dd><dt>Recovers by itself</dt><dd>yes, once the clock passes the verified time and, after a step back, a newer statement arrives, or a restart follows <code>policy state reset</code>; outside 1970 to 9999, no</dd><dt>Test</dt><dd><code>TestAClockOutsideTheUsableRangeIsACauseInTheRequest</code>, <code>TestAClockBehindAVerifiedTimeIsACauseInTheRequest</code>, <code>TestAClockBehindTheFloorStopsAnUnconfirmedSnapshotsRead</code>, <code>TestARunUnderObserveBehindTheVerifiedTimeStartsNothing</code></dd></dl></li>
+<li><p class="rt">Floor directory or file missing or unreadable at start</p><dl><dt>The call</dt><dd>none: the plane does not start</dd><dt>Reason code</dt><dd>none</dd><dt>The agent gets</dt><dd>no listener</dd><dt>Recovers by itself</dt><dd>no: restore it, or make it again with <code>policy state init</code> or <code>reset</code></dd><dt>Test</dt><dd><code>TestAStartWithNoFloorIsRefused</code>, <code>TestAStartIsRefusedForWhatItCannotRead</code></dd></dl></li>
+<li><p class="rt">Plane killed with calls held</p><dl><dt>The call</dt><dd>never runs</dd><dt>Reason code</dt><dd><code>APPROVAL_NOT_RESUMED</code>, <code>APPROVAL_REJECTED</code>, <code>APPROVAL_EXPIRED</code> or <code>APPROVAL_STATE_UNKNOWN</code> on the closing record</dd><dt>The agent gets</dt><dd><code>APPROVAL_PENDING</code>, before the kill</dd><dt>Recovers by itself</dt><dd>at the next start, with a hold journal</dd><dt>Test</dt><dd><code>TestAnApproverOutsideThePlaneAnswersAndALostHoldIsClosed</code>, <code>TestTheLostHoldCodesTellTheFourAnswersApart</code></dd></dl></li>
+</ul>
 <p><code>APPROVAL_NOT_RESUMED</code>, <code>APPROVAL_REJECTED</code> and <code>APPROVAL_EXPIRED</code> are
 <code>DENY</code>; every other code in the table, <code>APPROVAL_STATE_UNKNOWN</code> included, is
 <code>INDETERMINATE</code> (<a href="/docs/reference/reason-codes">reason codes</a>). A blocked <code>tools/call</code> is

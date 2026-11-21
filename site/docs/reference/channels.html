@@ -136,62 +136,13 @@ first column. Each detail is on its own page: what a record holds on
 <a href="/docs/concepts/privacy">privacy</a>, what each declared path got on
 <a href="/docs/reference/coverage">coverage</a>, and the MCP methods on
 <a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a>.</p>
-<div class="tbl">
-<table>
-<thead>
-<tr>
-<th>Channel</th>
-<th>Sees</th>
-<th>Keeps</th>
-<th>Decides</th>
-<th>Enforces</th>
-<th>Bypasses that remain</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><a href="/docs/status#mcp-gateway">MCP gateway</a></td>
-<td>the <code>tools/call</code>, <code>resources/read</code> and <code>prompts/get</code> a client sends through it, and each upstream's tool list</td>
-<td>per call, evidence events: the arguments' and the result's hashes, the resource id an override points to, a resource's URI or a prompt's name, and the decision; never the arguments or the result</td>
-<td>each call, from the signed policy, before the server sees it</td>
-<td>yes, inline: outside <code>OBSERVE</code> a blocked call or a held request never reaches the server, and an allowed one carries only the authorized bytes</td>
-<td>a client that reaches a server directly; the caller is the configured principal, not a login; the methods on <a href="/docs/reference/mcp-coverage#what-the-gateway-cannot-do">what the gateway cannot do</a></td>
-</tr>
-<tr>
-<td><a href="/docs/status#enforce-receiver">Enforcement API</a></td>
-<td>the calls a tool outside MCP admits, completes and aborts on the plane's Unix socket, built from its run token and the operator's <code>tools</code> table</td>
-<td>the same evidence events, and a side effect's confirmation the tool reports, at most 1024 bytes</td>
-<td>each admitted call, from the same policy</td>
-<td>no: the client enforces the answer, and nothing proves it obeyed</td>
-<td>a tool that never asks, or ignores the answer; <a href="/docs/reference/coverage">coverage</a> counts its tools decided, not enforced</td>
-</tr>
-<tr>
-<td><a href="/docs/status#hook-bridge">Hook bridge</a></td>
-<td>the tool calls a coding runtime's hooks report, through <code>guardana-control hook</code> and the enforcement API</td>
-<td>as the enforcement API; between admit and completion the bridge keeps the execution's handle in its state directory</td>
-<td>each call the hooks admit</td>
-<td>through the runtime: the bridge answers silence or a block status, so it can only take a call away</td>
-<td>what starts no hook, a process a shell command starts, and an agent that reaches the plane's directories from its own account: the <a href="/docs/reference/claude-code-hooks#gaps-and-bypasses">profile's gaps</a></td>
-</tr>
-<tr>
-<td><a href="/docs/status#observations">Egress access log</a></td>
-<td>the connections an egress proxy logged: time, host, port, method, status, byte counts, and the caller as the proxy wrote it</td>
-<td>those, in the observation log; nothing else of the line, such as a path, query, header or body</td>
-<td>nothing</td>
-<td>nothing: no plane decides egress</td>
-<td>traffic that does not cross the proxy; no connection names a run, and <code>supervise</code> refuses such a source; <code>TRUST_INDEPENDENT</code> is the operator's word on an unsigned descriptor</td>
-</tr>
-<tr>
-<td><a href="/docs/status#observations">Imported traces</a></td>
-<td>the spans the agent's runtime emitted under the OpenTelemetry GenAI conventions 1.41.0: tool, agent and model operations</td>
-<td>the span's end time, its trace, span and parent span ids, its status, the operation, the tool, agent or model name, the provider, the server address, the error type and the run attribute; never a prompt, an output or reasoning</td>
-<td>nothing</td>
-<td>nothing</td>
-<td>the agent's own process writes the spans, so what it leaves out is unseen, and the source may not declare <code>TRUST_INDEPENDENT</code></td>
-</tr>
-</tbody>
-</table>
-</div>
+<ul class="stack">
+<li><p class="rt"><a href="/docs/status#mcp-gateway">MCP gateway</a></p><dl><dt>Sees</dt><dd>the <code>tools/<wbr/>call</code>, <code>resources/<wbr/>read</code> and <code>prompts/<wbr/>get</code> a client sends through it, and each upstream's tool list</dd><dt>Keeps</dt><dd>per call, evidence events: the arguments' and the result's hashes, the resource id an override points to, a resource's URI or a prompt's name, and the decision; never the arguments or the result</dd><dt>Decides</dt><dd>each call, from the signed policy, before the server sees it</dd><dt>Enforces</dt><dd>yes, inline: outside <code>OBSERVE</code> a blocked call or a held request never reaches the server, and an allowed one carries only the authorized bytes</dd><dt>Bypasses that remain</dt><dd>a client that reaches a server directly; the caller is the configured principal, not a login; the methods on <a href="/docs/reference/mcp-coverage#what-the-gateway-cannot-do">what the gateway cannot do</a></dd></dl></li>
+<li><p class="rt"><a href="/docs/status#enforce-receiver">Enforcement API</a></p><dl><dt>Sees</dt><dd>the calls a tool outside MCP admits, completes and aborts on the plane's Unix socket, built from its run token and the operator's <code>tools</code> table</dd><dt>Keeps</dt><dd>the same evidence events, and a side effect's confirmation the tool reports, at most 1024 bytes</dd><dt>Decides</dt><dd>each admitted call, from the same policy</dd><dt>Enforces</dt><dd>no: the client enforces the answer, and nothing proves it obeyed</dd><dt>Bypasses that remain</dt><dd>a tool that never asks, or ignores the answer; <a href="/docs/reference/coverage">coverage</a> counts its tools decided, not enforced</dd></dl></li>
+<li><p class="rt"><a href="/docs/status#hook-bridge">Hook bridge</a></p><dl><dt>Sees</dt><dd>the tool calls a coding runtime's hooks report, through <code>guardana-control hook</code> and the enforcement API</dd><dt>Keeps</dt><dd>as the enforcement API; between admit and completion the bridge keeps the execution's handle in its state directory</dd><dt>Decides</dt><dd>each call the hooks admit</dd><dt>Enforces</dt><dd>through the runtime: the bridge answers silence or a block status, so it can only take a call away</dd><dt>Bypasses that remain</dt><dd>what starts no hook, a process a shell command starts, and an agent that reaches the plane's directories from its own account: the <a href="/docs/reference/claude-code-hooks#gaps-and-bypasses">profile's gaps</a></dd></dl></li>
+<li><p class="rt"><a href="/docs/status#observations">Egress access log</a></p><dl><dt>Sees</dt><dd>the connections an egress proxy logged: time, host, port, method, status, byte counts, and the caller as the proxy wrote it</dd><dt>Keeps</dt><dd>those, in the observation log; nothing else of the line, such as a path, query, header or body</dd><dt>Decides</dt><dd>nothing</dd><dt>Enforces</dt><dd>nothing: no plane decides egress</dd><dt>Bypasses that remain</dt><dd>traffic that does not cross the proxy; no connection names a run, and <code>supervise</code> refuses such a source; <code>TRUST_INDEPENDENT</code> is the operator's word on an unsigned descriptor</dd></dl></li>
+<li><p class="rt"><a href="/docs/status#observations">Imported traces</a></p><dl><dt>Sees</dt><dd>the spans the agent's runtime emitted under the OpenTelemetry GenAI conventions 1.41.0: tool, agent and model operations</dd><dt>Keeps</dt><dd>the span's end time, its trace, span and parent span ids, its status, the operation, the tool, agent or model name, the provider, the server address, the error type and the run attribute; never a prompt, an output or reasoning</dd><dt>Decides</dt><dd>nothing</dd><dt>Enforces</dt><dd>nothing</dd><dt>Bypasses that remain</dt><dd>the agent's own process writes the spans, so what it leaves out is unseen, and the source may not declare <code>TRUST_INDEPENDENT</code></dd></dl></li>
+</ul>
 <h2 id="notes">Notes</h2>
 <ul>
 <li>An observation is testimony. The plane never reads one, and nothing in it

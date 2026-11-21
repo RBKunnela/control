@@ -136,44 +136,12 @@ gateway cost, measured on one machine. How to run and publish them is in
 <h2 id="what-is-measured">What is measured</h2>
 <p>Three functions, all <code>implemented</code>, and the <code>experimental</code> gateway around
 them (<a href="/docs/status">status.md</a> is the inventory):</p>
-<div class="tbl">
-<table>
-<thead>
-<tr>
-<th>Benchmark</th>
-<th>Function</th>
-<th>Input</th>
-<th>Outside the number</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>BenchmarkValidateEnvelope</code></td>
-<td><code>contract.Validate</code></td>
-<td>An envelope already parsed</td>
-<td>The parse; <code>Decode</code> and <code>DecodeJSON</code> bound the bytes before parsing, so the codec cost and the contract's own checks are two costs and are not added together</td>
-</tr>
-<tr>
-<td><code>BenchmarkDigestV1</code></td>
-<td><code>canon.DigestV1</code></td>
-<td>The same envelope plus its authorized arguments: field extraction, the canonical JSON encoding of the action, one SHA-256 over the domain tag and those bytes</td>
-<td>Nothing; the digest is the whole call</td>
-</tr>
-<tr>
-<td><code>BenchmarkDecide</code></td>
-<td><code>core.Decide</code></td>
-<td>One READ against a loaded snapshot: admission, digest, delegation and tenant checks, freshness, the evaluation of every rule and the decision's fields</td>
-<td>Signing and loading the bundle; the clock is the real one, because the latency field is part of what a decision costs</td>
-</tr>
-<tr>
-<td><code>BenchmarkGatewayRoundTrip</code></td>
-<td>One MCP <code>tools/call</code></td>
-<td>Through the plane, and straight to the upstream as the baseline</td>
-<td>See <a href="#the-round-trip">the round trip</a></td>
-</tr>
-</tbody>
-</table>
-</div>
+<ul class="stack">
+<li><p class="rt"><code>BenchmarkValidateEnvelope</code></p><dl><dt>Function</dt><dd><code>contract.Validate</code></dd><dt>Input</dt><dd>An envelope already parsed</dd><dt>Outside the number</dt><dd>The parse; <code>Decode</code> and <code>DecodeJSON</code> bound the bytes before parsing, so the codec cost and the contract's own checks are two costs and are not added together</dd></dl></li>
+<li><p class="rt"><code>BenchmarkDigestV1</code></p><dl><dt>Function</dt><dd><code>canon.DigestV1</code></dd><dt>Input</dt><dd>The same envelope plus its authorized arguments: field extraction, the canonical JSON encoding of the action, one SHA-256 over the domain tag and those bytes</dd><dt>Outside the number</dt><dd>Nothing; the digest is the whole call</dd></dl></li>
+<li><p class="rt"><code>BenchmarkDecide</code></p><dl><dt>Function</dt><dd><code>core.Decide</code></dd><dt>Input</dt><dd>One READ against a loaded snapshot: admission, digest, delegation and tenant checks, freshness, the evaluation of every rule and the decision's fields</dd><dt>Outside the number</dt><dd>Signing and loading the bundle; the clock is the real one, because the latency field is part of what a decision costs</dd></dl></li>
+<li><p class="rt"><code>BenchmarkGatewayRoundTrip</code></p><dl><dt>Function</dt><dd>One MCP <code>tools/<wbr/>call</code></dd><dt>Input</dt><dd>Through the plane, and straight to the upstream as the baseline</dd><dt>Outside the number</dt><dd>See <a href="#the-round-trip">the round trip</a></dd></dl></li>
+</ul>
 <p><code>BenchmarkDecide</code> runs four documents, in <code>bench/policy_test.go</code>:</p>
 <div class="tbl">
 <table>
@@ -262,11 +230,11 @@ slow tail says nothing about the tail.</p>
 <td>An agent's client calls the upstream's one tool</td>
 </tr>
 <tr>
-<td><code>plane/fsync=every_record</code></td>
+<td><code>plane/<wbr/>fsync=every_record</code></td>
 <td>The same call through the plane, with the spool forcing each record to disk, the gateway's default</td>
 </tr>
 <tr>
-<td><code>plane/fsync=interval_100ms</code></td>
+<td><code>plane/<wbr/>fsync=interval_100ms</code></td>
 <td>The same, with the spool forcing records to disk on a 100 ms timer</td>
 </tr>
 </tbody>
@@ -347,7 +315,7 @@ the exporter's share of the machine together, not the pipeline alone.</p>
 <td>230</td>
 </tr>
 <tr>
-<td><code>plane/fsync=every_record</code></td>
+<td><code>plane/<wbr/>fsync=every_record</code></td>
 <td>15853.4</td>
 <td>16089.9</td>
 <td>16126.6</td>
@@ -357,7 +325,7 @@ the exporter's share of the machine together, not the pipeline alone.</p>
 <td>2304 to 2326</td>
 </tr>
 <tr>
-<td><code>plane/fsync=interval_100ms</code></td>
+<td><code>plane/<wbr/>fsync=interval_100ms</code></td>
 <td>545.5</td>
 <td>570.8</td>
 <td>593.5</td>
@@ -428,7 +396,7 @@ all five.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>BenchmarkValidateEnvelope/minimal</code></td>
+<td><code>BenchmarkValidateEnvelope/<wbr/>minimal</code></td>
 <td>1811</td>
 <td>1833</td>
 <td>1931</td>
@@ -436,7 +404,7 @@ all five.</p>
 <td>16</td>
 </tr>
 <tr>
-<td><code>BenchmarkValidateEnvelope/refund_prod</code></td>
+<td><code>BenchmarkValidateEnvelope/<wbr/>refund_prod</code></td>
 <td>8188</td>
 <td>8195</td>
 <td>8269</td>
@@ -444,7 +412,7 @@ all five.</p>
 <td>134</td>
 </tr>
 <tr>
-<td><code>BenchmarkValidateEnvelope/delegated</code></td>
+<td><code>BenchmarkValidateEnvelope/<wbr/>delegated</code></td>
 <td>6096</td>
 <td>6146</td>
 <td>6606</td>
@@ -452,7 +420,7 @@ all five.</p>
 <td>67</td>
 </tr>
 <tr>
-<td><code>BenchmarkValidateEnvelope/mutated_amount</code></td>
+<td><code>BenchmarkValidateEnvelope/<wbr/>mutated_amount</code></td>
 <td>8201</td>
 <td>8271</td>
 <td>8824</td>
@@ -460,7 +428,7 @@ all five.</p>
 <td>134</td>
 </tr>
 <tr>
-<td><code>BenchmarkDigestV1/minimal</code></td>
+<td><code>BenchmarkDigestV1/<wbr/>minimal</code></td>
 <td>7077</td>
 <td>7126</td>
 <td>7232</td>
@@ -468,7 +436,7 @@ all five.</p>
 <td>124</td>
 </tr>
 <tr>
-<td><code>BenchmarkDigestV1/refund_prod</code></td>
+<td><code>BenchmarkDigestV1/<wbr/>refund_prod</code></td>
 <td>16096</td>
 <td>16303</td>
 <td>17661</td>
@@ -476,7 +444,7 @@ all five.</p>
 <td>311</td>
 </tr>
 <tr>
-<td><code>BenchmarkDigestV1/delegated</code></td>
+<td><code>BenchmarkDigestV1/<wbr/>delegated</code></td>
 <td>12268</td>
 <td>12311</td>
 <td>12486</td>
@@ -484,7 +452,7 @@ all five.</p>
 <td>229</td>
 </tr>
 <tr>
-<td><code>BenchmarkDigestV1/mutated_amount</code></td>
+<td><code>BenchmarkDigestV1/<wbr/>mutated_amount</code></td>
 <td>16249</td>
 <td>16474</td>
 <td>16927</td>
@@ -527,7 +495,7 @@ repetition's.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>BenchmarkDecide/rules=10</code></td>
+<td><code>BenchmarkDecide/<wbr/>rules=10</code></td>
 <td>12160</td>
 <td>12195</td>
 <td>12423</td>
@@ -537,7 +505,7 @@ repetition's.</p>
 <td>165</td>
 </tr>
 <tr>
-<td><code>BenchmarkDecide/rules=100</code></td>
+<td><code>BenchmarkDecide/<wbr/>rules=100</code></td>
 <td>13824</td>
 <td>14012</td>
 <td>14381</td>
@@ -547,7 +515,7 @@ repetition's.</p>
 <td>168</td>
 </tr>
 <tr>
-<td><code>BenchmarkDecide/rules=1000</code></td>
+<td><code>BenchmarkDecide/<wbr/>rules=1000</code></td>
 <td>27129</td>
 <td>27315</td>
 <td>29181</td>
@@ -557,7 +525,7 @@ repetition's.</p>
 <td>171</td>
 </tr>
 <tr>
-<td><code>BenchmarkDecide/obligations=100</code></td>
+<td><code>BenchmarkDecide/<wbr/>obligations=100</code></td>
 <td>92844</td>
 <td>93693</td>
 <td>96346</td>

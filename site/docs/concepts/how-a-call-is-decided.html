@@ -359,34 +359,11 @@ fail-open reads on and the only causes are in the policy's availability.</p>
 </table>
 </div>
 <p>The two kinds of cause are what the table reads, never a reason code:</p>
-<div class="tbl">
-<table>
-<thead>
-<tr>
-<th>Cause</th>
-<th>Kind</th>
-<th>Why the table treats it so</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>a refusal, an argument that cannot be digested, a hash that does not match, a one-sided tenant on a material class, an unknown rule, a veto an external decision point left unanswered among them</td>
-<td>in the request</td>
-<td>the request itself is what could not be read; no setting relieves it</td>
-</tr>
-<tr>
-<td>a clock reading outside 1970 to 9999, or earlier than the verified time</td>
-<td>in the request</td>
-<td>the kernel has no time to judge a delegation or a bundle's age by; the setting covers a missing policy, not a missing clock</td>
-</tr>
-<tr>
-<td>no snapshot, a snapshot past its budget</td>
-<td>in the policy's availability</td>
-<td>the request is sound and the policy is what is missing; a read may run under the operator's explicit setting</td>
-</tr>
-</tbody>
-</table>
-</div>
+<ul class="stack">
+<li><p class="rt">a refusal, an argument that cannot be digested, a hash that does not match, a one-sided tenant on a material class, an unknown rule, a veto an external decision point left unanswered among them</p><dl><dt>Kind</dt><dd>in the request</dd><dt>Why the table treats it so</dt><dd>the request itself is what could not be read; no setting relieves it</dd></dl></li>
+<li><p class="rt">a clock reading outside 1970 to 9999, or earlier than the verified time</p><dl><dt>Kind</dt><dd>in the request</dd><dt>Why the table treats it so</dt><dd>the kernel has no time to judge a delegation or a bundle's age by; the setting covers a missing policy, not a missing clock</dd></dl></li>
+<li><p class="rt">no snapshot, a snapshot past its budget</p><dl><dt>Kind</dt><dd>in the policy's availability</dd><dt>Why the table treats it so</dt><dd>the request is sound and the policy is what is missing; a read may run under the operator's explicit setting</dd></dl></li>
+</ul>
 <p>&quot;The determinate verdict&quot; is what the rules that could be decided concluded
 with the unknown ones left out (<code>match.Result.Determinate</code>): a read runs under
 fail-open only when an <code>ALLOW</code> matched and nothing more restrictive did, because

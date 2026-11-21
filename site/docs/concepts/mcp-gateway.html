@@ -270,12 +270,12 @@ each definition. Nothing else classifies: a tool's own annotations are hints
 <tbody>
 <tr>
 <td><code>Upstream</code>, <code>Tool</code></td>
-<td>the upstream's <code>tools/list</code></td>
+<td>the upstream's <code>tools/<wbr/>list</code></td>
 <td>routing, and <code>action.name</code></td>
 </tr>
 <tr>
 <td><code>Fingerprint</code></td>
-<td>the whole definition through <code>internal/canon</code></td>
+<td>the whole definition through <code>internal/<wbr/>canon</code></td>
 <td>pinning the definition an override classified</td>
 </tr>
 <tr>
@@ -311,50 +311,13 @@ each definition. Nothing else classifies: a tool's own annotations are hints
 but <code>LOCKDOWN</code>, which builds it with fail-open reads off (ADR-0012). A mode changes what is done with the decision, and it never reaches
 an extension: the adapter translates, the sink writes, the policy holder serves a
 bundle, and none of them knows the mode.</p>
-<div class="tbl">
-<table>
-<thead>
-<tr>
-<th>Mode</th>
-<th>The decision</th>
-<th>The call</th>
-<th>Built</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>OBSERVE</code></td>
-<td>recorded</td>
-<td>runs, with the proposed bytes, unclassified included when one upstream lists it or only one is configured, unless one of the plane's own causes (<a href="/docs/concepts/enforcement-modes">enforcement modes</a>) blocks it or the call could not be translated</td>
-<td>yes</td>
-</tr>
-<tr>
-<td><code>APPROVE</code></td>
-<td>recorded</td>
-<td>an allowed material call is held for an approval</td>
-<td>yes; an approver answers under <code>approvals.authority</code> <code>directory</code> or <code>signed</code>, and the plane refuses to start in <code>APPROVE</code> under <code>memory</code></td>
-</tr>
-<tr>
-<td><code>ENFORCE</code></td>
-<td>recorded</td>
-<td>blocked, rewritten, held or run, as decided</td>
-<td>yes</td>
-</tr>
-<tr>
-<td><code>LOCKDOWN</code></td>
-<td>recorded, made for a material call without asking the decision point, with the plane's own <code>LOCKDOWN</code> decision on the block</td>
-<td>every material call blocked; a read enforced with fail-open reads off</td>
-<td>yes</td>
-</tr>
-<tr>
-<td><code>SHADOW</code>, <code>WARN</code></td>
-<td>—</td>
-<td>—</td>
-<td>refused at start</td>
-</tr>
-</tbody>
-</table>
-</div>
+<ul class="stack">
+<li><p class="rt"><code>OBSERVE</code></p><dl><dt>The decision</dt><dd>recorded</dd><dt>The call</dt><dd>runs, with the proposed bytes, unclassified included when one upstream lists it or only one is configured, unless one of the plane's own causes (<a href="/docs/concepts/enforcement-modes">enforcement modes</a>) blocks it or the call could not be translated</dd><dt>Built</dt><dd>yes</dd></dl></li>
+<li><p class="rt"><code>APPROVE</code></p><dl><dt>The decision</dt><dd>recorded</dd><dt>The call</dt><dd>an allowed material call is held for an approval</dd><dt>Built</dt><dd>yes; an approver answers under <code>approvals.authority</code> <code>directory</code> or <code>signed</code>, and the plane refuses to start in <code>APPROVE</code> under <code>memory</code></dd></dl></li>
+<li><p class="rt"><code>ENFORCE</code></p><dl><dt>The decision</dt><dd>recorded</dd><dt>The call</dt><dd>blocked, rewritten, held or run, as decided</dd><dt>Built</dt><dd>yes</dd></dl></li>
+<li><p class="rt"><code>LOCKDOWN</code></p><dl><dt>The decision</dt><dd>recorded, made for a material call without asking the decision point, with the plane's own <code>LOCKDOWN</code> decision on the block</dd><dt>The call</dt><dd>every material call blocked; a read enforced with fail-open reads off</dd><dt>Built</dt><dd>yes</dd></dl></li>
+<li><p class="rt"><code>SHADOW</code>, <code>WARN</code></p><dl><dt>The decision</dt><dd>—</dd><dt>The call</dt><dd>—</dd><dt>Built</dt><dd>refused at start</dd></dl></li>
+</ul>
 <p>A mode the build does not enforce, and a mode needing a capability the adapter
 does not declare, are refused when the plane is built, not when a call arrives.</p>
 <h2 id="when-the-decision-point-is-asked">When the decision point is asked</h2>
@@ -365,42 +328,14 @@ decides first without an answer, and asks only when the kernel reports that
 its decision turns on the answer and that decision is not already <code>DENY</code>,
 which no answer changes. It asks once and records the second decision, so a
 call no veto rule covers is never sent anywhere.</p>
-<div class="tbl">
-<table>
-<thead>
-<tr>
-<th>Path</th>
-<th>Asks</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>an admitted call</td>
-<td>once, when the answer can change the decision</td>
-</tr>
-<tr>
-<td>the same call after a rewriting obligation</td>
-<td>no: the first answer is reused, since the question carries no arguments</td>
-</tr>
-<tr>
-<td>the retry that resumes a held request</td>
-<td>afresh, so a decision point that now denies blocks the held request</td>
-</tr>
-<tr>
-<td><code>Preview</code>, which shapes a tool list</td>
-<td>never: a listing names no resource, and a governed tool is listed as decided per call</td>
-</tr>
-<tr>
-<td>a call the plane blocks whatever the answer: a pause, an unreadable pause state, a halt or <code>LOCKDOWN</code> on a material call, an unclassified call outside <code>OBSERVE</code></td>
-<td>never: <code>POLICY_DECIDED</code> carries no <code>PDP_</code> code, and a veto rule that reads the answer is undetermined</td>
-</tr>
-<tr>
-<td>a call whose decision turns on the answer and whose envelope names no resource id</td>
-<td>nothing is sent, and the decision carries <code>PDP_UNAVAILABLE</code></td>
-</tr>
-</tbody>
-</table>
-</div>
+<ul class="stack">
+<li><p class="rt">an admitted call</p><dl><dt>Asks</dt><dd>once, when the answer can change the decision</dd></dl></li>
+<li><p class="rt">the same call after a rewriting obligation</p><dl><dt>Asks</dt><dd>no: the first answer is reused, since the question carries no arguments</dd></dl></li>
+<li><p class="rt">the retry that resumes a held request</p><dl><dt>Asks</dt><dd>afresh, so a decision point that now denies blocks the held request</dd></dl></li>
+<li><p class="rt"><code>Preview</code>, which shapes a tool list</p><dl><dt>Asks</dt><dd>never: a listing names no resource, and a governed tool is listed as decided per call</dd></dl></li>
+<li><p class="rt">a call the plane blocks whatever the answer: a pause, an unreadable pause state, a halt or <code>LOCKDOWN</code> on a material call, an unclassified call outside <code>OBSERVE</code></p><dl><dt>Asks</dt><dd>never: <code>POLICY_DECIDED</code> carries no <code>PDP_</code> code, and a veto rule that reads the answer is undetermined</dd></dl></li>
+<li><p class="rt">a call whose decision turns on the answer and whose envelope names no resource id</p><dl><dt>Asks</dt><dd>nothing is sent, and the decision carries <code>PDP_UNAVAILABLE</code></dd></dl></li>
+</ul>
 <p>The question carries the call's principal, action, resource and destination,
 as mapping version 1 lists them, and never its arguments (invariant 9). The
 answer is read strictly where it could allow. An ask past <code>pdp.timeout</code> is
@@ -428,12 +363,12 @@ waiting on them; <code>decision_latency_us</code> stays the kernel's own time.</
 </thead>
 <tbody>
 <tr>
-<td><code>tools/call</code></td>
+<td><code>tools/<wbr/>call</code></td>
 <td>a tool result with <code>isError: true</code>, which the model reads</td>
 <td><code>reason_code: APPROVAL_PENDING</code>, <code>approval_id</code>, <code>action_digest</code>, <code>expires_at</code>, <code>retry_after</code>, in <code>_meta</code> under the plane's namespace, never as structured content</td>
 </tr>
 <tr>
-<td><code>resources/read</code>, <code>prompts/get</code></td>
+<td><code>resources/<wbr/>read</code>, <code>prompts/<wbr/>get</code></td>
 <td>JSON-RPC error <code>-31101</code>, because those results have no <code>isError</code></td>
 <td>the same structured data in the error's <code>data</code></td>
 </tr>
@@ -514,19 +449,19 @@ in every mode, before the closing record is written.</p>
 </thead>
 <tbody>
 <tr>
-<td>a <code>tools/call</code> success</td>
+<td>a <code>tools/<wbr/>call</code> success</td>
 <td>a result saying the call ran, its answer was withheld, and calling again repeats its effect; <code>isError</code> only when the tool declares an output schema, which no fixed answer meets</td>
 </tr>
 <tr>
-<td>a <code>tools/call</code> result with <code>isError</code></td>
+<td>a <code>tools/<wbr/>call</code> result with <code>isError</code></td>
 <td>an <code>isError</code> result saying the error was withheld</td>
 </tr>
 <tr>
 <td>a wire error</td>
-<td>its code, a fixed message, and <code>&lt;ns&gt;/answer: withheld</code> as data</td>
+<td>its code, a fixed message, and <code>&lt;ns&gt;/<wbr/>answer: withheld</code> as data</td>
 </tr>
 <tr>
-<td>a <code>resources/read</code> or <code>prompts/get</code> result, a forwarded list</td>
+<td>a <code>resources/<wbr/>read</code> or <code>prompts/<wbr/>get</code> result, a forwarded list</td>
 <td><code>-31103</code></td>
 </tr>
 <tr>
@@ -580,31 +515,31 @@ blocks whatever the answer is never sent to it (ADR-0019).</li>
 <tbody>
 <tr>
 <td>Listener, upstream client, manifest, translator, answers</td>
-<td><code>adapters/mcp/</code></td>
+<td><code>adapters/<wbr/>mcp/</code></td>
 </tr>
 <tr>
 <td>The pipeline: <code>Admit</code>, <code>Close</code>, <code>Abort</code>, <code>Preview</code>, the mode table, the approval store, the ask</td>
-<td><code>internal/gateway/</code></td>
+<td><code>internal/<wbr/>gateway/</code></td>
 </tr>
 <tr>
 <td>The client that asks a decision point over AuthZEN</td>
-<td><code>adapters/authzen/</code></td>
+<td><code>adapters/<wbr/>authzen/</code></td>
 </tr>
 <tr>
 <td>The kernel's decision</td>
-<td><code>internal/core/</code></td>
+<td><code>internal/<wbr/>core/</code></td>
 </tr>
 <tr>
 <td>The evidence records and their chain</td>
-<td><code>internal/evidence/</code></td>
+<td><code>internal/<wbr/>evidence/</code></td>
 </tr>
 <tr>
 <td>The spool on disk and the OTLP export</td>
-<td><code>internal/spool/</code>, <code>adapters/otel/</code></td>
+<td><code>internal/<wbr/>spool/</code>, <code>adapters/<wbr/>otel/</code></td>
 </tr>
 <tr>
 <td>The command that wires one plane</td>
-<td><code>cmd/guardana-gateway/</code></td>
+<td><code>cmd/<wbr/>guardana-gateway/</code></td>
 </tr>
 </tbody>
 </table>

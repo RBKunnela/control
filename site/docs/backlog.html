@@ -237,7 +237,7 @@ input is incomplete, never complete.</p>
 <td>B36</td>
 <td>Put the remaining decisions about authority behind ports</td>
 <td>none</td>
-<td>Each decision in <a href="/docs/adr/0066-each-decision-about-authority-is-a-port">ADR-0066</a> without a port gets one, its current behaviour as the default, with a closed kind selector, an unavailable state that blocks, bounds, and conformance cases with negative controls: the end user's identity, the policy language, the policy source, the signer, the signature algorithm (its own record first: the v1 bundle names Ed25519), the detector descriptor and the evidence export. <code>scripts/ports.txt</code> lists each. The policy language port evaluates a bounded, deterministic condition language with resource limits and explain output, in which a missing fact stays unknown and deny overrides allow; the language and its version are signed with the policy, and a dependency it needs has its record first</td>
+<td>Each decision in <a href="/docs/adr/0066-each-decision-about-authority-is-a-port">ADR-0066</a> without a port gets one, its current behaviour as the default, with a closed kind selector, an unavailable state that blocks, bounds, and conformance cases with negative controls: the end user's identity, the policy language, the policy source, the signer, the signature algorithm (its own record first: the v1 bundle names Ed25519), the detector descriptor and the evidence export. <code>scripts/<wbr/>ports.txt</code> lists each. The policy language port evaluates a bounded, deterministic condition language with resource limits and explain output, in which a missing fact stays unknown and deny overrides allow; the language and its version are signed with the policy, and a dependency it needs has its record first</td>
 </tr>
 <tr>
 <td>B40</td>
@@ -371,7 +371,7 @@ measured voids it, and each release candidate reruns the programme.</p>
 <td>B30</td>
 <td>Maintain a second digest implementation</td>
 <td>none</td>
-<td>A TypeScript implementation of <code>digest_v1</code>, the arguments hash and the approval binding passes every golden and refusal vector of <code>testdata/digest/</code> in CI, beside the Go one, and any result that differs from a vector's expected one fails the run. 1.0 bar: <code>own evidence</code></td>
+<td>A TypeScript implementation of <code>digest_v1</code>, the arguments hash and the approval binding passes every golden and refusal vector of <code>testdata/<wbr/>digest/</code> in CI, beside the Go one, and any result that differs from a vector's expected one fails the run. 1.0 bar: <code>own evidence</code></td>
 </tr>
 <tr>
 <td>B31</td>

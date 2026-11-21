@@ -1,14 +1,48 @@
-/* What every page wears, on the v2 tokens: the base, the header with its
-   theme switch, the buttons and the footer. */
+/* What every page wears, on the v2 tokens: the layout scale, the type scale,
+   the header with its theme switch, the buttons, links, code and the footer.
+
+   Breakpoints, the same on every page:
+     phone   max-width 600px   narrower gutter, one column everywhere
+     tablet  max-width 860px   every split collapses to one column; the compact rhythm
+     narrow  max-width 1020px  the primary navigation and the docs sidebar fold away
+     wide    min-width 1700px and 2100px  the whole page scales up
+   A component that needs its own width says why beside the rule. */
+:root{
+  --gutter:24px;
+  --sec-pad:128px;
+  --hd-gap:56px;
+  --split:minmax(0,1.15fr) minmax(0,1fr);
+  --split-gap:72px;
+  /* Where the split's second column starts, as a margin of a full-width block. */
+  --split-at:calc((100% - var(--split-gap)) * 1.15 / 2.15 + var(--split-gap));
+  --cols:repeat(4,minmax(0,1fr));
+  --col-gap:40px;
+  --zoom:1;
+  --fw-head:600;
+  --fs-d1:clamp(38px,5.6vw,70px);--lh-d1:1.02;--tr-d1:-.048em;
+  --fs-d2:clamp(28px,3.8vw,48px);--lh-d2:1.08;--tr-d2:-.035em;
+  --fs-d3:clamp(21px,2.2vw,28px);--lh-d3:1.18;--tr-d3:-.028em;
+  --fs-d4:18px;--lh-d4:1.35;--tr-d4:-.015em;
+  --fs-d5:16.5px;--tr-d5:-.01em;
+  --link-line:var(--accent);
+}
+@media(max-width:860px){:root{--sec-pad:88px;--hd-gap:40px;--cols:repeat(2,minmax(0,1fr));--col-gap:28px}}
+@media(max-width:600px){:root{--gutter:20px;--cols:minmax(0,1fr)}}
+@media(min-width:1700px){:root{--zoom:1.1}}
+@media(min-width:2100px){:root{--zoom:1.22}}
+
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow-x:hidden}
+body{margin:0;zoom:var(--zoom);background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow-x:hidden}
 h1,h2,h3,p,ul{margin:0;padding:0}
-a{color:inherit}
+a{color:inherit;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:var(--link-line)}
+a:hover{text-decoration-color:currentColor}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
 code{font-family:var(--mono)}
-.w{max-width:1200px;margin:0 auto;padding:0 24px}
-@media(max-width:600px){.w{padding:0 20px}}
+/* One chip for code inside running text; drawn code, terminals and labels reset it. */
+code{font-size:.88em;background:var(--bg2);border:1px solid var(--line);border-radius:5px;padding:.08em .32em}
+pre code{font-size:inherit;background:none;border:0;border-radius:0;padding:0}
+.w{max-width:1200px;margin:0 auto;padding:0 var(--gutter)}
 .skip{position:absolute;left:-999px;top:8px}
 .skip:focus{left:16px;z-index:50;background:var(--surface);color:var(--ink);padding:10px 14px;line-height:24px;border-radius:8px;box-shadow:var(--shadow)}
 
@@ -29,7 +63,7 @@ code{font-family:var(--mono)}
 #theme{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;margin:0}
 #theme:focus-visible+.tgl{outline:2px solid var(--accent);outline-offset:2px}
 @media(max-width:1020px){.links{display:none}}
-@media(max-width:480px){.top .w{gap:14px}.right .btn{display:none}}
+@media(max-width:600px){.top .w{gap:14px}.right .btn{display:none}}
 
 /* A control drawn smaller than a fingertip answers over 44 px. */
 .logo,.vlink,.links a,.tgl,.btn.sm,.more,.eyebrow{position:relative}
@@ -48,6 +82,6 @@ code{font-family:var(--mono)}
 .ft a{text-decoration:none}.ft a:hover{color:var(--ink)}
 .ft a:not(.logo){display:flex;align-items:center;min-height:44px;font-size:14px}
 .ft .fb p{margin-top:12px;max-width:32ch;font-size:14px}
-.ft .fb p a{display:inline;min-height:0;text-decoration:underline;text-underline-offset:3px}
-@media(max-width:720px){.ft .w{grid-template-columns:1fr 1fr}.ft .fb{grid-column:1/-1}}
+.ft .fb p a{display:inline;min-height:0;text-decoration:underline;text-decoration-color:var(--link-line)}
+@media(max-width:860px){.ft .w{grid-template-columns:1fr 1fr}.ft .fb{grid-column:1/-1}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}

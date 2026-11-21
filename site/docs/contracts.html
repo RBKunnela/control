@@ -1734,7 +1734,7 @@ given twice, a <code>null</code> and a value of another type are refused.</p>
 <tbody>
 <tr>
 <td><code>kind</code></td>
-<td><code>reaction-route/v1alpha1</code></td>
+<td><code>reaction-route/<wbr/>v1alpha1</code></td>
 </tr>
 <tr>
 <td><code>route_id</code></td>
@@ -1835,7 +1835,7 @@ of at most 4 KiB.</p>
 <tbody>
 <tr>
 <td><code>kind</code></td>
-<td><code>reaction-lift/v1alpha1</code></td>
+<td><code>reaction-lift/<wbr/>v1alpha1</code></td>
 </tr>
 <tr>
 <td><code>version</code></td>
@@ -1884,20 +1884,20 @@ its own, and one that names no <code>plane_id</code>
 <tbody>
 <tr>
 <td>Route</td>
-<td><code>application/vnd.agent-reaction-route.v1alpha2+json</code></td>
-<td><code>reaction-route/v1alpha3</code></td>
+<td><code>application/<wbr/>vnd.agent-reaction-route.v1alpha2+json</code></td>
+<td><code>reaction-route/<wbr/>v1alpha3</code></td>
 <td><code>route_id</code>, <code>serial</code>, <code>rules</code>, each rule as above with <code>scope</code> <code>run</code>, <code>agent</code> or <code>principal</code> and no route-wide <code>scope</code> or <code>lift_public_key</code></td>
 </tr>
 <tr>
 <td>Stop list header</td>
-<td><code>application/vnd.agent-stop-list-header+json</code></td>
-<td><code>reaction-list-header/3.0</code></td>
+<td><code>application/<wbr/>vnd.agent-stop-list-header+json</code></td>
+<td><code>reaction-list-header/<wbr/>3.0</code></td>
 <td><code>list_id</code>, <code>serial</code>, <code>route_id</code>, <code>route_serial</code>, <code>route_digest</code>, and <code>previous</code>, the digest of the header carried from, only in a carried list</td>
 </tr>
 <tr>
 <td>Lift</td>
-<td><code>application/vnd.agent-reaction-lift.v1alpha2+json</code></td>
-<td><code>reaction-lift/v1alpha3</code></td>
+<td><code>application/<wbr/>vnd.agent-reaction-lift.v1alpha2+json</code></td>
+<td><code>reaction-lift/<wbr/>v1alpha3</code></td>
 <td><code>list_head</code>, the digest of the header of the list it lifts in, <code>scope</code>, <code>subject</code>, <code>through_line</code></td>
 </tr>
 </tbody>
@@ -1988,71 +1988,71 @@ may write where they are read (<a href="/docs/status">status.md</a>). A test in
 <td>Trust roster</td>
 <td><code>trust.roster</code>, signed by the root key</td>
 <td>none: one roster serves every project and each grant names one; its id has to be <code>trust.roster_id</code></td>
-<td><code>internal/trust/file.go</code> <code>fileRoster.candidate</code></td>
-<td><code>internal/trust</code> <code>TestARestartNeverTakesARosterOfAnotherID</code></td>
+<td><code>internal/<wbr/>trust/<wbr/>file.go</code> <code>fileRoster.candidate</code></td>
+<td><code>internal/<wbr/>trust</code> <code>TestARestartNeverTakesARosterOfAnotherID</code></td>
 </tr>
 <tr>
 <td>Approval answer</td>
 <td>an operator's answer in <code>approvals.inbox_dir</code></td>
 <td>the authorizer is asked about the held call's tenant, <code>tenant_id</code>, and its project, and a grant matches both exactly</td>
-<td><code>internal/gateway/authority.go</code> <code>Pipeline.judgeEnvelope</code> <code>internal/operators/authorize.go</code> <code>rosterAuthorizer.Authorize</code></td>
-<td><code>internal/gateway</code> <code>TestBobsAnswerResumesNothingAndAlicesOnce</code> <code>internal/operators</code> <code>TestTwoOperatorsEachActOnlyWhereTheirGrantsReach</code></td>
+<td><code>internal/<wbr/>gateway/<wbr/>authority.go</code> <code>Pipeline.judgeEnvelope</code> <code>internal/<wbr/>operators/<wbr/>authorize.go</code> <code>rosterAuthorizer.Authorize</code></td>
+<td><code>internal/<wbr/>gateway</code> <code>TestBobsAnswerResumesNothingAndAlicesOnce</code> <code>internal/<wbr/>operators</code> <code>TestTwoOperatorsEachActOnlyWhereTheirGrantsReach</code></td>
 </tr>
 <tr>
 <td>Pause file</td>
 <td><code>pause.file</code> of version <code>4</code>; <code>3</code> is refused, naming <code>pause sign</code></td>
 <td>its tenant is <code>tenant_id</code>, and its project, <code>plane_id</code> and file the plane's</td>
-<td><code>internal/pause/signedpause/judge.go</code> <code>Authority.Judge</code> <code>Binding.Check</code></td>
-<td><code>internal/pause/signedpause</code> <code>TestNoOneButAPermittedOperatorPausesOrLifts</code> <code>TestTheJudgeRefusesADocumentOfAnotherBinding</code> <code>TestACopyBetweenTwoPlanesOfOneProjectIsRefused</code></td>
+<td><code>internal/<wbr/>pause/<wbr/>signedpause/<wbr/>judge.go</code> <code>Authority.Judge</code> <code>Binding.Check</code></td>
+<td><code>internal/<wbr/>pause/<wbr/>signedpause</code> <code>TestNoOneButAPermittedOperatorPausesOrLifts</code> <code>TestTheJudgeRefusesADocumentOfAnotherBinding</code> <code>TestACopyBetweenTwoPlanesOfOneProjectIsRefused</code></td>
 </tr>
 <tr>
 <td>Run record</td>
 <td>a <code>3.0</code> record in <code>records/</code> of <code>runs.dir</code></td>
 <td>its tenant is the listener's and its project the plane's</td>
-<td><code>internal/runs/signedruns/judge.go</code> <code>Authority.Judge</code></td>
-<td><code>internal/runs/signedruns</code> <code>TestBothJudgesTakeOnlyAnOperatorOfThePlanesProject</code></td>
+<td><code>internal/<wbr/>runs/<wbr/>signedruns/<wbr/>judge.go</code> <code>Authority.Judge</code></td>
+<td><code>internal/<wbr/>runs/<wbr/>signedruns</code> <code>TestBothJudgesTakeOnlyAnOperatorOfThePlanesProject</code></td>
 </tr>
 <tr>
 <td>Route</td>
 <td><code>reaction.route</code> of <code>v1alpha3</code>; <code>v1alpha2</code> is refused, naming <code>route sign</code></td>
 <td>its tenant is the listener's, and its project, <code>plane_id</code> and file the plane's</td>
-<td><code>internal/gatewayconfig/reaction.go</code> <code>Config.CheckRoute</code> <code>internal/reaction/signed.go</code> <code>vouchedWithin</code></td>
-<td><code>internal/gatewayconfig</code> <code>TestARouteIsOfTheListenersTenant</code> <code>TestARouteIsOfTheAuthoritysFormatAndThePlanesProject</code> <code>internal/reaction</code> <code>TestASignedRouteIsRefusedWithItsCause</code></td>
+<td><code>internal/<wbr/>gatewayconfig/<wbr/>reaction.go</code> <code>Config.CheckRoute</code> <code>internal/<wbr/>reaction/<wbr/>signed.go</code> <code>vouchedWithin</code></td>
+<td><code>internal/<wbr/>gatewayconfig</code> <code>TestARouteIsOfTheListenersTenant</code> <code>TestARouteIsOfTheAuthoritysFormatAndThePlanesProject</code> <code>internal/<wbr/>reaction</code> <code>TestASignedRouteIsRefusedWithItsCause</code></td>
 </tr>
 <tr>
 <td>Stop list header</td>
 <td>the <code>3.0</code> header of <code>reaction.stops</code>; <code>2.0</code> is refused, naming <code>stops init --carry</code></td>
 <td>its tenant and project are the route's, and its <code>plane_id</code> and file the plane's</td>
-<td><code>internal/reaction/header2.go</code> <code>judgeSignedHeader</code> <code>internal/reaction/signed.go</code> <code>vouchedWithin</code></td>
-<td><code>internal/reaction</code> <code>TestASignedListIsRefusedAndNeverReadAsNoStops</code> <code>TestEachSignedKindIsBoundToItsPlane</code></td>
+<td><code>internal/<wbr/>reaction/<wbr/>header2.go</code> <code>judgeSignedHeader</code> <code>internal/<wbr/>reaction/<wbr/>signed.go</code> <code>vouchedWithin</code></td>
+<td><code>internal/<wbr/>reaction</code> <code>TestASignedListIsRefusedAndNeverReadAsNoStops</code> <code>TestEachSignedKindIsBoundToItsPlane</code></td>
 </tr>
 <tr>
 <td>Stop and covered lines</td>
 <td>each line of that list</td>
 <td>a stop's project, and a covered line's tenant and project, are the route's</td>
-<td><code>internal/reaction/permits.go</code> <code>Route.Permits</code> <code>internal/reaction/judge.go</code> <code>judging.coveredLine</code></td>
-<td><code>internal/reaction</code> <code>TestASignedRoutePermitsOnlyAStopOfItsProjectAndScope</code> <code>TestASignedListIsRefusedAndNeverReadAsNoStops</code></td>
+<td><code>internal/<wbr/>reaction/<wbr/>permits.go</code> <code>Route.Permits</code> <code>internal/<wbr/>reaction/<wbr/>judge.go</code> <code>judging.coveredLine</code></td>
+<td><code>internal/<wbr/>reaction</code> <code>TestASignedRoutePermitsOnlyAStopOfItsProjectAndScope</code> <code>TestASignedListIsRefusedAndNeverReadAsNoStops</code></td>
 </tr>
 <tr>
 <td>Lift</td>
 <td>a <code>v1alpha3</code> lift line</td>
 <td>its tenant and project are the route's, and its <code>plane_id</code> and file the plane's</td>
-<td><code>internal/reaction/lift3.go</code> <code>verifySignedLiftLineV3</code></td>
-<td><code>internal/reaction</code> <code>TestASignedListIsRefusedAndNeverReadAsNoStops</code> <code>TestEachSignedKindIsBoundToItsPlane</code></td>
+<td><code>internal/<wbr/>reaction/<wbr/>lift3.go</code> <code>verifySignedLiftLineV3</code></td>
+<td><code>internal/<wbr/>reaction</code> <code>TestASignedListIsRefusedAndNeverReadAsNoStops</code> <code>TestEachSignedKindIsBoundToItsPlane</code></td>
 </tr>
 <tr>
 <td>Policy bundle and statement</td>
 <td><code>policy.bundle_file</code> and <code>policy.statement_file</code>, signed by the pinned policy and freshness keys</td>
 <td>none: a bundle names no tenant or project; its id has to be <code>policy.bundle_id</code></td>
-<td><code>internal/policy/holder.go</code> <code>Holder.loadPinned</code></td>
-<td><code>internal/policy</code> <code>TestInstallUnconfirmedHoldsToTheFloor</code></td>
+<td><code>internal/<wbr/>policy/<wbr/>holder.go</code> <code>Holder.loadPinned</code></td>
+<td><code>internal/<wbr/>policy</code> <code>TestInstallUnconfirmedHoldsToTheFloor</code></td>
 </tr>
 <tr>
 <td>Route under a route key</td>
 <td>outside <code>signed</code>, a <code>v1alpha1</code> route signed by <code>reaction.public_key</code>, and its lifts</td>
 <td>tenant only: the route's tenant is the listener's, and a stop's the route's; such a route names no project</td>
-<td><code>internal/gatewayconfig/reaction.go</code> <code>Config.CheckRoute</code> <code>internal/reaction/permits.go</code> <code>Route.Permits</code></td>
-<td><code>internal/gatewayconfig</code> <code>TestARouteIsOfTheListenersTenant</code> <code>internal/reaction</code> <code>TestJudgeHoldsEveryStopToTheRoute</code></td>
+<td><code>internal/<wbr/>gatewayconfig/<wbr/>reaction.go</code> <code>Config.CheckRoute</code> <code>internal/<wbr/>reaction/<wbr/>permits.go</code> <code>Route.Permits</code></td>
+<td><code>internal/<wbr/>gatewayconfig</code> <code>TestARouteIsOfTheListenersTenant</code> <code>internal/<wbr/>reaction</code> <code>TestJudgeHoldsEveryStopToTheRoute</code></td>
 </tr>
 </tbody>
 </table>
@@ -2093,17 +2093,17 @@ can move the socket's directory aside.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>/enforce/v1alpha1/admit</code></td>
+<td><code>/<wbr/>enforce/<wbr/>v1alpha1/<wbr/>admit</code></td>
 <td><code>AdmitRequest</code></td>
 <td><code>AdmitResponse</code></td>
 </tr>
 <tr>
-<td><code>/enforce/v1alpha1/complete</code></td>
+<td><code>/<wbr/>enforce/<wbr/>v1alpha1/<wbr/>complete</code></td>
 <td><code>CompleteRequest</code></td>
 <td><code>CompleteResponse</code></td>
 </tr>
 <tr>
-<td><code>/enforce/v1alpha1/abort</code></td>
+<td><code>/<wbr/>enforce/<wbr/>v1alpha1/<wbr/>abort</code></td>
 <td><code>AbortRequest</code></td>
 <td><code>AbortResponse</code></td>
 </tr>
