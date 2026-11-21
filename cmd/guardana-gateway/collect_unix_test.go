@@ -8,6 +8,7 @@ import (
 	"errors"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -22,7 +23,7 @@ func startUnixCollect(t *testing.T, socket, out string, boundTo ...string) *coll
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	c := &collecting{stdout: &syncBuffer{}, stderr: &syncBuffer{}, cancel: cancel, done: make(chan int, 1)}
-	args := collectArgs(t, "unix://"+socket, out)
+	args := collectArgs(t, (&url.URL{Scheme: "unix", Path: socket}).String(), out)
 	if len(boundTo) == 2 {
 		args[6], args[8] = boundTo[0], boundTo[1]
 	}
@@ -123,4 +124,58 @@ func postOverSocket(t *testing.T, socket, authorization string) int {
 	}
 	_ = resp.Body.Close()
 	return resp.StatusCode
+}
+
+// TestCollectListensWhereItsPrintedEndpointNames: a socket whose name holds
+// a #, a %, a ? or a space, given to --listen as collect prints it, escaped
+// as a URL, is bound at that name, and printed the same.
+func TestCollectListensWhereItsPrintedEndpointNames(t *testing.T) {
+	for _, name := range []string{"a#b.sock", "a%41.sock", "a?b.sock", "a b.sock"} {
+		socket := filepath.Join(filepath.Dir(shortSocketPath(t)), name)
+		listen := (&url.URL{Scheme: "unix", Path: socket}).String()
+		c := startUnixCollect(t, socket, filepath.Join(t.TempDir(), "trail"))
+		if info, err := os.Lstat(socket); err != nil || info.Mode().Type() != fs.ModeSocket {
+			t.Errorf("%q: --listen %s bound no socket there: %v", name, listen, err)
+		}
+		if c.url != listen {
+			t.Errorf("%q: --listen %s printed %s", name, listen, c.url)
+		}
+		c.stop(t)
+	}
+}
+
+// TestCollectRefusesAListenURLNamingMoreThanAPath: --listen naming a host,
+// a query, a fragment or an escape that does not parse is refused, and no
+// socket is bound.
+func TestCollectRefusesAListenURLNamingMoreThanAPath(t *testing.T) {
+	dir := filepath.Dir(shortSocketPath(t))
+	for _, listen := range []string{
+		"unix://localhost" + dir + "/s.sock",
+		"unix://" + dir + "/s.sock?x=1",
+		"unix://" + dir + "/s.sock#x",
+		"unix://" + dir + "/s%zz.sock",
+	} {
+		ln, err := collectListener(listen)
+		if err == nil {
+			_ = ln.Close()
+			t.Errorf("--listen %s was taken", listen)
+		}
+		if names := dirEntries(t, dir); len(names) != 0 {
+			t.Errorf("--listen %s left %v", listen, names)
+		}
+	}
+}
+
+// dirEntries is the names in dir.
+func dirEntries(t *testing.T, dir string) []string {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out []string
+	for _, e := range entries {
+		out = append(out, e.Name())
+	}
+	return out
 }

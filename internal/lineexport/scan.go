@@ -95,6 +95,8 @@ func (x *exporter) decide(l Line) (Verdict, int64, error) {
 	}
 	v := x.judge(l)
 	switch {
+	case v.Refuse != nil:
+		return Verdict{}, 0, fmt.Errorf("the line at offset %d: %w", l.Offset, v.Refuse)
 	case v.Type == Gap && v.Reason != "":
 		return Verdict{Type: Gap, Reason: v.Reason}, 0, nil
 	case v.noRecord():

@@ -1,20 +1,22 @@
 package main
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"testing"
 )
 
-// nextSegment is the committed export as the next segment of the same log
-// would be exported after cursor: another source in its header and every
-// cursor, asked after the state's cursor, its first record at offset 0.
-func nextSegment(t *testing.T, export, cursor string) string {
+// nextSegment is the committed export outage-1.jsonl as the next segment of
+// the same log would be exported after cursor: another source in its header
+// and every cursor, asked after the state's cursor, its first record at
+// offset 0.
+func nextSegment(t *testing.T, cursor string) string {
 	t.Helper()
-	in := ofAnotherFile(export)(t)
+	in := ofAnotherFile("outage-1.jsonl")(t)
 	query := `"query":{"limit":1000}`
 	if !strings.Contains(in, query) || !strings.Contains(in, `{"type":"event","offset":0,`) {
-		t.Fatalf("%s is not an export from its file's first line", export)
+		t.Fatal("outage-1.jsonl is not an export from its file's first line")
 	}
 	return strings.Replace(in, query, `"query":{"after":"`+cursor+`","limit":1000}`, 1)
 }
@@ -29,7 +31,7 @@ func TestAStateFollowsALogOntoItsNextSegment(t *testing.T) {
 		t.Fatalf("the first export: exit 2, %s", got.stderr)
 	}
 	cursor := trailerOf(t, "outage-1.jsonl")
-	if got := consume(t, dir, nextSegment(t, "outage-1.jsonl", cursor)); got.code == 2 {
+	if got := consume(t, dir, nextSegment(t, cursor)); got.code == 2 {
 		t.Fatalf("the next segment was refused: %s", got.stderr)
 	}
 	if s := stateOf(t, dir); !strings.Contains(s, `"source":"`+conflictSource+`"`) || strings.Contains(s, outageSource) {
@@ -40,7 +42,7 @@ func TestAStateFollowsALogOntoItsNextSegment(t *testing.T) {
 	if got := consume(t, dir, fixture(t, "outage-1.jsonl")); got.code == 2 {
 		t.Fatalf("the first export: exit 2, %s", got.stderr)
 	}
-	past := strings.Replace(nextSegment(t, "outage-1.jsonl", cursor), `{"type":"event","offset":0,`, `{"type":"event","offset":1,`, 1)
+	past := strings.Replace(nextSegment(t, cursor), `{"type":"event","offset":0,`, `{"type":"event","offset":1,`, 1)
 	if got := consume(t, dir, past); got.code != 2 || !strings.Contains(got.stderr, "another file") {
 		t.Errorf("another source not at its first line: exit %d, %s; want 2 naming another file", got.code, got.stderr)
 	}
@@ -104,7 +106,7 @@ func TestAResumedExportAfterPrunedSegmentsRaisesNoGap(t *testing.T) {
 	if got := consume(t, dir, first); !strings.Contains(alertLines(got.stderr), prunedAlertLine+"\n") {
 		t.Fatalf("the first export counting one segment pruned raised %q, want %s", alertLines(got.stderr), prunedAlertLine)
 	}
-	next := strings.Replace(nextSegment(t, "outage-1.jsonl", trailerOf(t, "outage-1.jsonl")), `"pruned_before":0,`, `"pruned_before":2,`, 1)
+	next := strings.Replace(nextSegment(t, trailerOf(t, "outage-1.jsonl")), `"pruned_before":0,`, `"pruned_before":2,`, 1)
 	if got := consume(t, dir, next); got.code == 2 || strings.Contains(got.stderr, `"note":"pruned"`) {
 		t.Errorf("the next segment after the state's cursor counting two pruned: exit %d, %s; want no pruned gap", got.code, got.stderr)
 	}
@@ -233,5 +235,71 @@ func TestATailGapOfTheNextSegmentAtTheOffsetOfOneLoggedBeforeACrashIsRaised(t *t
 	b := withTail(segmentAfter(t, a, c, len(c)))
 	if got := consume(t, dir, b); got.code != 1 || !strings.Contains(alertLines(got.stderr), `"offset":999999,"note":"partial_tail"`) {
 		t.Errorf("the next segment's tail gap at the same offset: exit %d, alerts %q, %s; want 1 and it raised", got.code, alertLines(got.stderr), got.stderr)
+	}
+}
+
+// tornLive is the export after cursor of a log's live segment that holds
+// only bytes no newline ends: its header names no source and its trailer no
+// next_cursor; with no writer holding the file the bytes are a partial tail.
+func tornLive(cursor string, held bool) string {
+	header := `{"type":"header","format":"` + exportFormat + `","version":"1.1","file":"live.jsonl","pruned_before":0,` +
+		`"query":{"after":"` + cursor + `","limit":1000}}` + "\n"
+	trailer := `{"type":"trailer","end_reached":true,"tail_bytes":15,"writer_held":%t,` +
+		`"counts":{"event":0,"gap":%d,"duplicate":0},"scanned_bytes":0,"dedup_scope":"export"}` + "\n"
+	if held {
+		return header + fmt.Sprintf(trailer, true, 0)
+	}
+	return header + `{"type":"gap","offset":0,"reason":"partial_tail"}` + "\n" + fmt.Sprintf(trailer, false, 1)
+}
+
+// TestAStateKeepsItsCursorOnALiveSegmentHoldingNoWholeLine: the live segment
+// after the state's sealed one, holding no whole line yet, is no other file
+// and no export cut short: the state keeps its cursor and source, is not
+// entered as the next segment while a writer holds those bytes, and takes
+// the segment once it holds a line.
+func TestAStateKeepsItsCursorOnALiveSegmentHoldingNoWholeLine(t *testing.T) {
+	cursor := trailerOf(t, "outage-1.jsonl")
+	for _, held := range []bool{true, false} {
+		dir := newState(t)
+		if got := consume(t, dir, fixture(t, "outage-1.jsonl")); got.code == 2 {
+			t.Fatalf("the first export: exit 2, %s", got.stderr)
+		}
+		before := stateOf(t, dir)
+		if got := consume(t, dir, tornLive(cursor, held)); got.code == 2 {
+			t.Errorf("held %t: the live segment holding no whole line was refused: %s", held, got.stderr)
+		}
+		s := stateOf(t, dir)
+		if !strings.Contains(s, `"cursor":"`+cursor+`"`) || !strings.Contains(s, `"source":"`+outageSource+`"`) {
+			t.Errorf("held %t: the state moved off its cursor and source:\n%s", held, s)
+		}
+		if held && s != before {
+			t.Errorf("held %t: the live segment holding no whole line changed the state:\n%s\nwant it as it was:\n%s", held, s, before)
+		}
+		if got := consume(t, dir, nextSegment(t, cursor)); got.code == 2 {
+			t.Errorf("held %t: the live segment once it holds a line was refused: %s", held, got.stderr)
+		}
+	}
+}
+
+// TestAnExportNamingNoSourceThatHoldsALineIsRefused: an export whose header
+// names no source holds no whole line, so one naming a next_cursor or
+// holding an event is refused, and the state is left as it was.
+func TestAnExportNamingNoSourceThatHoldsALineIsRefused(t *testing.T) {
+	cursor := trailerOf(t, "outage-1.jsonl")
+	dir := newState(t)
+	if got := consume(t, dir, fixture(t, "outage-1.jsonl")); got.code == 2 {
+		t.Fatalf("the first export: exit 2, %s", got.stderr)
+	}
+	before := stateOf(t, dir)
+	next := strings.Replace(tornLive(cursor, true), `{"type":"trailer",`, `{"type":"trailer","next_cursor":"`+someCursor+`",`, 1)
+	withEvent := nextSegment(t, cursor)
+	withEvent = regexp.MustCompile(`"source":"[0-9a-f]{64}",`).ReplaceAllString(withEvent, "")
+	for name, in := range map[string]string{"a next_cursor": next, "an event": withEvent} {
+		if got := consume(t, dir, in); got.code != 2 {
+			t.Errorf("an export naming no source and %s: exit %d, want 2", name, got.code)
+		}
+		if s := stateOf(t, dir); s != before {
+			t.Errorf("an export naming no source and %s changed the state:\n%s", name, s)
+		}
 	}
 }

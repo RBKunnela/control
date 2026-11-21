@@ -95,7 +95,8 @@ func TestCollectNeedsEveryFlagAndNothingElse(t *testing.T) {
 }
 
 // TestCollectRefusesADirectoryItCannotHold: a trail directory the group may
-// write is refused, and so is one another collect holds.
+// write is refused, so is one to be made in a parent the group may write,
+// and so is one another collect holds.
 func TestCollectRefusesADirectoryItCannotHold(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "shared")
 	if err := os.Mkdir(dir, 0o700); err != nil {
@@ -108,6 +109,27 @@ func TestCollectRefusesADirectoryItCannotHold(t *testing.T) {
 	status := run(context.Background(), collectArgs(t, "unix://"+exportSocket(t), dir), &stdout, &stderr)
 	if status != exitFail || !strings.Contains(stderr.String(), "only this account writes") {
 		t.Errorf("a group-writable directory answered %d with %q", status, stderr.String())
+	}
+
+	parent := filepath.Join(t.TempDir(), "shared")
+	if err := os.Mkdir(parent, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(parent, 0o770); err != nil { //nolint:gosec // G302: the group-writable parent collect must refuse
+		t.Fatal(err)
+	}
+	stdout.Reset()
+	stderr.Reset()
+	// A collect that took the directory serves until the context ends, and
+	// then exits 0, which is not the refusal wanted.
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	status = run(ctx, collectArgs(t, "unix://"+exportSocket(t), filepath.Join(parent, "plane")), &stdout, &stderr)
+	cancel()
+	if status != exitFail || !strings.Contains(stderr.String(), "only this account writes") {
+		t.Errorf("a trail directory in a group-writable parent answered %d with %q", status, stderr.String())
+	}
+	if _, err := os.Lstat(filepath.Join(parent, "plane")); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("the trail directory was made in the group-writable parent: %v", err)
 	}
 
 	out := filepath.Join(t.TempDir(), "trail")

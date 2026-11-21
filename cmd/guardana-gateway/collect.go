@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -50,7 +51,7 @@ type collectorConfig struct {
 }
 
 func declareCollect(flags *flag.FlagSet) commandFunc {
-	listen := flags.String("listen", "", "unix:///<path>, a socket created there that a plane reaches with "+
+	listen := flags.String("listen", "", "unix:///<path>, the path escaped as in a URL, a socket created there that a plane reaches with "+
 		"export.collector_uid set to this account")
 	dir := flags.String("dir", "", "the directory of trail segments to append what arrives to, created when absent")
 	tenant := flags.String("tenant", "", "the tenant the trail is bound to; an event of another is refused")
@@ -140,7 +141,7 @@ func collect(ctx context.Context, listen string, cfg collectorConfig, stdout, st
 	}
 	select {
 	case err := <-c.served:
-		return fail(stderr, "collect", errors.Join(err, c.trail.Close()))
+		return fail(stderr, "collect", c.serveFailed(err, collectShutdown))
 	case <-ctx.Done():
 	}
 	if err := c.stop(); err != nil {
@@ -150,11 +151,11 @@ func collect(ctx context.Context, listen string, cfg collectorConfig, stdout, st
 }
 
 // collector is a collect serving on a listener it was handed: the server,
-// the trail file it appends to, the URL a plane sends to, and what Serve
-// returned once it stops.
+// the trail file it appends to, the URL a plane sends to, its path escaped as
+// a plane's export.endpoint reads it, and what Serve returned once it stops.
 type collector struct {
 	srv   *http.Server
-	trail *trailfile.Log
+	trail io.Closer
 	url   string
 	// planeSetting is the key beside export.endpoint a plane needs to send
 	// here.
@@ -190,7 +191,7 @@ func startCollector(ln net.Listener, cfg collectorConfig, stderr io.Writer) (*co
 			ErrorLog:          slog.NewLogLogger(log.Handler(), slog.LevelWarn),
 		},
 		trail:        w,
-		url:          "unix://" + ln.Addr().String(),
+		url:          (&url.URL{Scheme: "unix", Path: ln.Addr().String()}).String(),
 		planeSetting: "export.collector_uid: " + strconv.Itoa(os.Geteuid()),
 		served:       make(chan error, 1),
 	}
@@ -199,13 +200,40 @@ func startCollector(ln net.Listener, cfg collectorConfig, stderr io.Writer) (*co
 }
 
 // stop waits for the requests in flight, each of which answers only after
-// the trail holds its records or refuses them, and closes the trail.
-func (c *collector) stop() error {
-	ctx, cancel := context.WithTimeout(context.Background(), collectShutdown)
+// the trail holds its records or refuses them, and closes the trail, for
+// collectShutdown in all.
+func (c *collector) stop() error { return c.stopWithin(collectShutdown) }
+
+// stopWithin is stop bounded by wait.
+func (c *collector) stopWithin(wait time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), wait)
 	defer cancel()
 	err := c.srv.Shutdown(ctx)
 	if err != nil {
 		err = fmt.Errorf("stopping: %w", err)
 	}
-	return errors.Join(err, c.trail.Close())
+	return errors.Join(err, c.closeTrail(ctx, wait))
+}
+
+// serveFailed closes the trail once the server stopped serving on its own,
+// served, bounded by wait as a stop is.
+func (c *collector) serveFailed(served error, wait time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), wait)
+	defer cancel()
+	return errors.Join(served, c.closeTrail(ctx, wait))
+}
+
+// closeTrail closes the trail until ctx, of wait, ends. An append waiting on
+// the disk holds the trail, so a close not done by then is reported and left
+// to the process's exit; the request it serves was not answered, and is sent
+// again.
+func (c *collector) closeTrail(ctx context.Context, wait time.Duration) error {
+	closed := make(chan error, 1)
+	go func() { closed <- c.trail.Close() }()
+	select {
+	case err := <-closed:
+		return err
+	case <-ctx.Done():
+		return fmt.Errorf("stopping: the trail was not closed within %s, as an append still waits on the disk", wait)
+	}
 }

@@ -84,6 +84,9 @@ type Verdict struct {
 	// are the same when their Content is, and a conflict otherwise.
 	ID      string
 	Content Digest
+	// Refuse is a line no writer of the file leaves and no record may carry:
+	// the export stops before it with this error, and writes no trailer.
+	Refuse error
 }
 
 // noRecord is a line passed by that no format type names.

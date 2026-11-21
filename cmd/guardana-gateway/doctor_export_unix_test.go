@@ -14,6 +14,7 @@ import (
 
 	"github.com/guardana/control/internal/core"
 	"github.com/guardana/control/internal/gateway"
+	"github.com/guardana/control/internal/gatewayconfig"
 )
 
 // TestDoctorNamesTheCollectorItExportsTo: an https endpoint's line names it
@@ -88,5 +89,27 @@ func TestAPlaneExportsToACollectorOnASocket(t *testing.T) {
 	}
 	if got := liveSegment(t, out); !bytes.Contains(got, []byte("ACTION_PROPOSED")) {
 		t.Errorf("the trail holds %q", got)
+	}
+}
+
+// TestCollectPrintsAnEndpointAPlaneReads: a socket whose name holds a #, a ?
+// and a %, which a URL reads as a fragment, a query and an escape, is printed
+// escaped, and the export.endpoint printed loads as a plane's naming that
+// socket.
+func TestCollectPrintsAnEndpointAPlaneReads(t *testing.T) {
+	socket := filepath.Join(filepath.Dir(shortSocketPath(t)), "l#d?%41.sock")
+	c := startUnixCollect(t, socket, filepath.Join(t.TempDir(), "trail"), "acme", "orders")
+	defer c.stop(t)
+	_, rest, _ := strings.Cut(c.stdout.String(), "export.endpoint: ")
+	endpoint, _, _ := strings.Cut(rest, ",")
+	tr := newTree(t)
+	setEnv(t, "export.endpoint", endpoint)
+	setEnv(t, "export.collector_uid", strconv.Itoa(os.Geteuid()))
+	cfg, err := gatewayconfig.Load(tr.config, os.Environ())
+	if err != nil {
+		t.Fatalf("the export.endpoint collect printed, %q, does not load: %v", endpoint, err)
+	}
+	if got, ok := gatewayconfig.UnixEndpoint(cfg.Export.Endpoint); !ok || got != socket {
+		t.Errorf("the printed export.endpoint %q names the socket %q, want %q", endpoint, got, socket)
 	}
 }

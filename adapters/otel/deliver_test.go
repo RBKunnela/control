@@ -173,6 +173,9 @@ func TestOnlyTheProtocolsAnswerAccepts(t *testing.T) {
 		"a count that is no count": {http.StatusOK, `{"partialSuccess":{"rejectedLogRecords":"many"}}`},
 		"a negative count":         {http.StatusOK, `{"partialSuccess":{"rejectedLogRecords":"-1"}}`},
 		"a cut object":             {http.StatusOK, `{"partialSuccess":`},
+		"vertical tabs around {}":  {http.StatusOK, "\v{}\v"},
+		"a vertical tab alone":     {http.StatusOK, "\v"},
+		"a no-break space before":  {http.StatusOK, "\u00a0{}"},
 		// Its first 64 KiB alone would read as an empty object.
 		"an answer past the bound": {http.StatusOK, "{}" + strings.Repeat(" ", 64<<10)},
 	} {
@@ -200,15 +203,16 @@ func TestOnlyTheProtocolsAnswerAccepts(t *testing.T) {
 		})
 	}
 	for name, good := range map[string]answer{
-		"an empty body":            {http.StatusOK, ""},
-		"an empty body on 202":     {http.StatusAccepted, ""},
-		"an empty object":          {http.StatusOK, " {} "},
-		"an empty partial success": {http.StatusOK, `{"partialSuccess":{}}`},
-		"a null partial success":   {http.StatusOK, `{"partialSuccess":null}`},
-		"nothing rejected":         {http.StatusOK, `{"partialSuccess":{"rejectedLogRecords":"0","errorMessage":""}}`},
-		"a null message":           {http.StatusOK, `{"partialSuccess":{"rejectedLogRecords":"0","errorMessage":null}}`},
-		"a surrogate pair":         {http.StatusOK, `{"partialSuccess":{"rejectedLogRecords":"0","errorMessage":"\\\ud83d\ude00\\u"}}`},
-		"an answer at the bound":   {http.StatusOK, "{}" + strings.Repeat(" ", 64<<10-2)},
+		"an empty body":             {http.StatusOK, ""},
+		"an empty body on 202":      {http.StatusAccepted, ""},
+		"an empty object":           {http.StatusOK, " {} "},
+		"JSON whitespace around {}": {http.StatusOK, "\t\r\n{} \n"},
+		"an empty partial success":  {http.StatusOK, `{"partialSuccess":{}}`},
+		"a null partial success":    {http.StatusOK, `{"partialSuccess":null}`},
+		"nothing rejected":          {http.StatusOK, `{"partialSuccess":{"rejectedLogRecords":"0","errorMessage":""}}`},
+		"a null message":            {http.StatusOK, `{"partialSuccess":{"rejectedLogRecords":"0","errorMessage":null}}`},
+		"a surrogate pair":          {http.StatusOK, `{"partialSuccess":{"rejectedLogRecords":"0","errorMessage":"\\\ud83d\ude00\\u"}}`},
+		"an answer at the bound":    {http.StatusOK, "{}" + strings.Repeat(" ", 64<<10-2)},
 	} {
 		t.Run(name, func(t *testing.T) {
 			c := newCollectorFunc(t, func(w http.ResponseWriter, _ *http.Request) {

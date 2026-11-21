@@ -21,8 +21,15 @@ type View struct {
 	live         stats
 }
 
+// inspected runs between Inspect's read of the manifest and its open of the
+// live file, where a writer may seal; a test seals there.
+var inspected = func() {}
+
 // Inspect reads the log in dir as it is: a manifest is required, and a live
-// segment is read to its last newline. Nothing is created, cut or removed.
+// segment is read to its last newline. The manifest is read again once the
+// live file was read, or found absent: one naming a segment the first read
+// did not means the live segment was sealed since, and the file read may be
+// the next one, so the view is ErrMoved. Nothing is created, cut or removed.
 func Inspect(dir string, maxLineBytes int) (*View, error) {
 	if maxLineBytes < 1 {
 		return nil, fmt.Errorf("%w: line bound %d", ErrConfig, maxLineBytes)
@@ -44,8 +51,12 @@ func Inspect(dir string, maxLineBytes int) (*View, error) {
 		return nil, err
 	}
 	v := &View{dir: dir, maxLineBytes: maxLineBytes, tenant: m.tenant, project: m.project, dropped: m.dropped, segs: m.segs}
+	inspected()
 	f, err := openRead(root, LiveName)
 	if errors.Is(err, fs.ErrNotExist) {
+		if err := v.stillLive(root); err != nil {
+			return nil, err
+		}
 		return v, nil
 	}
 	if err != nil {
@@ -54,6 +65,9 @@ func Inspect(dir string, maxLineBytes int) (*View, error) {
 	defer func() { _ = f.Close() }()
 	if v.live, err = scan(f, maxLineBytes, nil); err != nil {
 		return nil, fmt.Errorf("%s: %w", LiveName, err)
+	}
+	if err := v.stillLive(root); err != nil {
+		return nil, err
 	}
 	return v, nil
 }

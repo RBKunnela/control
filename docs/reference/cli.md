@@ -287,7 +287,7 @@ collect
   -dir string
     	the directory of trail segments to append what arrives to, created when absent
   -listen string
-    	unix:///<path>, a socket created there that a plane reaches with export.collector_uid set to this account
+    	unix:///<path>, the path escaped as in a URL, a socket created there that a plane reaches with export.collector_uid set to this account
   -max-bytes int
     	the bytes the segments not pruned may hold; past them every request is answered 503 until an operator prunes, and nothing is pruned automatically (default 1073741824)
   -project string

@@ -6,6 +6,8 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path/filepath"
+	"strconv"
 
 	"github.com/guardana/control/internal/files"
 )
@@ -22,31 +24,97 @@ const (
 // ownerWanted is the account the directory and its files belong to.
 var ownerWanted = func(fs.FileInfo) int { return os.Geteuid() }
 
-// openDir opens dir, creating it mode 0700 when absent, and refuses it unless
-// it is a directory of this account that neither the group nor others may
-// write. The checks read the opened directory, so the one judged is the one
-// every name is opened in.
-func openDir(dir string) (*os.Root, error) {
+// openDir opens dir in its parent, creating it mode 0700 when absent, and
+// refuses it unless the parent is one where no account but this one or root
+// can replace a name, and dir a directory, not a link, of this account that
+// the group and others cannot reach. dir is named by its absolute, cleaned
+// path, and opened through the parent judged, so a name holding a link and
+// ".." reaches no other directory. The parent is synced, so a directory made
+// here is still named in it after a crash.
+func openDir(dir string, sync func(*os.Root) error) (*os.Root, error) {
 	if dir == "" {
 		return nil, fmt.Errorf("%w: no directory", ErrConfig)
 	}
-	if err := os.Mkdir(dir, 0o700); err != nil && !errors.Is(err, fs.ErrExist) {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
 		return nil, err
 	}
-	// The trailing "." fails on anything but a directory rather than wait on
-	// a named pipe put at dir.
-	root, err := os.OpenRoot(dir + string(os.PathSeparator) + ".")
+	parent, err := openParent(filepath.Dir(abs))
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = parent.Close() }()
+	name := filepath.Base(abs)
+	if err := parent.Mkdir(name, 0o700); err != nil && !errors.Is(err, fs.ErrExist) {
+		return nil, err
+	}
+	if err := sync(parent); err != nil {
+		return nil, err
+	}
+	return openChild(parent, name, abs)
+}
+
+// openChild opens the directory name in parent, abs by its path, and judges
+// it. A root follows a link that stays inside it, so a link is refused by its
+// directory entry, and the directory opened has to be the one it named.
+func openChild(parent *os.Root, name, abs string) (*os.Root, error) {
+	before, err := parent.Lstat(name)
+	switch {
+	case err != nil:
+		return nil, err
+	case !before.IsDir():
+		return nil, fmt.Errorf("%w: %s is a link or not a directory", ErrDirectory, strconv.Quote(abs))
+	}
+	root, err := parent.OpenRoot(name)
 	if err != nil {
 		return nil, err
 	}
 	info, err := root.Stat(".")
-	if err == nil {
+	switch {
+	case err != nil:
+	case !os.SameFile(before, info):
+		err = fmt.Errorf("%w: another directory stood at %s when it was opened", ErrMoved, strconv.Quote(abs))
+	default:
 		err = judge(info, true)
 	}
 	if err != nil {
 		return nil, errors.Join(err, root.Close())
 	}
 	return root, nil
+}
+
+// openParent opens the directory parent and judges it.
+func openParent(parent string) (*os.Root, error) {
+	// The trailing "." fails on anything but a directory rather than wait on
+	// a named pipe put at parent.
+	root, err := os.OpenRoot(parent + string(os.PathSeparator) + ".")
+	if err != nil {
+		return nil, err
+	}
+	info, err := root.Stat(".")
+	if err == nil {
+		err = judgeParent(info, parent)
+	}
+	if err != nil {
+		return nil, errors.Join(err, root.Close())
+	}
+	return root, nil
+}
+
+// judgeParent refuses a parent directory in which another account than this
+// one or root could replace the log's directory: one another account owns,
+// or one the group or others may write that is not sticky, as only the owner
+// of a name in a sticky directory may remove or rename it.
+func judgeParent(info fs.FileInfo, parent string) error {
+	perm := info.Mode().Perm()
+	if perm&forbidden != 0 && info.Mode()&fs.ModeSticky == 0 {
+		return fmt.Errorf("%w: the parent %s: %w: mode %04o and not sticky", ErrDirectory, strconv.Quote(parent), files.ErrMode, perm)
+	}
+	owned := files.CheckOwnedBy(info, ownerWanted(info))
+	if owned != nil && files.CheckOwnedBy(info, 0) != nil {
+		return fmt.Errorf("%w: the parent %s: %w", ErrDirectory, strconv.Quote(parent), owned)
+	}
+	return nil
 }
 
 // judge refuses what a writer of this package does not leave: anything but a
@@ -117,12 +185,20 @@ func names(root *os.Root) ([]string, error) {
 	return out, errors.Join(err, d.Close())
 }
 
-// readManifest reads the manifest in root, or reports it absent.
+// readManifest reads the manifest in root, or reports it absent. A root
+// follows a link that stays inside the directory, so the manifest is judged
+// by its directory entry, and the descriptor has to be the file it named.
 func readManifest(root *os.Root) ([]byte, bool, error) {
-	f, err := root.OpenFile(ManifestName, os.O_RDONLY|openFlags, 0)
-	if errors.Is(err, fs.ErrNotExist) {
+	before, err := root.Lstat(ManifestName)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
 		return nil, false, nil
+	case err != nil:
+		return nil, false, err
+	case !before.Mode().IsRegular():
+		return nil, false, fmt.Errorf("%w: %s is not a regular file", ErrManifest, ManifestName)
 	}
+	f, err := root.OpenFile(ManifestName, os.O_RDONLY|openFlags, 0)
 	if err != nil {
 		return nil, false, err
 	}
@@ -131,8 +207,8 @@ func readManifest(root *os.Root) ([]byte, bool, error) {
 	switch {
 	case err != nil:
 		return nil, false, err
-	case !info.Mode().IsRegular():
-		return nil, false, fmt.Errorf("%w: %s is not a regular file", ErrManifest, ManifestName)
+	case !os.SameFile(before, info):
+		return nil, false, fmt.Errorf("%w: another file stood at %s when it was opened", ErrMoved, ManifestName)
 	}
 	raw, err := io.ReadAll(io.LimitReader(f, MaxManifestBytes+1))
 	if err != nil {

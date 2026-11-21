@@ -20,10 +20,10 @@ Both commands are `experimental`; [status.md](../status.md) is the inventory.
 ## Prerequisites
 
 - A plane you can run ([run-the-gateway.md](run-the-gateway.md)).
-- A parent directory that the account running `collect` owns and that neither
-  the group nor others may write; the trail directory is created in it mode
-  `0700`, and its files mode `0600`, since events carry tenant and principal
-  ids.
+- A parent directory owned by the account running `collect` or root, and not
+  writable by the group or others unless sticky; the trail directory, not a
+  symbolic link, is created in it mode `0700`, and its files mode `0600`,
+  since events carry tenant and principal ids.
 - A credential: 32 to 512 printable ASCII bytes with no space, in a file only
   this account may read.
 - The socket's directory, `/run/collector` below, already made: owned by
@@ -46,9 +46,9 @@ guardana-gateway collect --listen unix:///run/collector/logs.sock --dir trail/pl
 
 `--listen` takes a unix socket only: a TCP address was removed in 0.17
 ([ADR-0080](../adr/0080-evidence-leaves-a-plane-over-a-unix-socket-or-tls.md)).
-It prints where it listens, the directory and the plane's keys. It runs until Ctrl-C or `SIGTERM`, and waits up to
-ten seconds for the requests in flight. One collect holds a directory at a
-time; a second one is refused.
+It prints where it listens, as a URL, the directory and the plane's keys. It
+runs until Ctrl-C or `SIGTERM`, and waits up to ten seconds for the requests
+in flight. One collect holds a directory; a second is refused.
 
 The directory is bound to the tenant and the project it was first opened
 with; opening it for another is refused. A request without the credential is
@@ -68,9 +68,10 @@ At open, every segment is read and refused unless it holds what the manifest
 names it with; so is a name no collect leaves. A last line of `live.jsonl`
 with no newline is what a crash leaves, and is removed only when it can be
 the start of an evidence line. A seal or a prune a crash stopped part way is
-finished by the next collect or prune. Do not change the files while collect runs: a live segment removed,
-renamed, cut or extended under it makes it answer 503 until you start it
-again, and the plane keeps the records in its spool.
+finished by the next collect or prune. Do not change the files while collect
+runs: a live segment removed, renamed, cut or extended, or the line of a
+repeated record removed or changed in any segment, makes it answer 503 until
+you start it again.
 
 ### 3. Point the plane at it
 
@@ -111,9 +112,9 @@ the check proves each chain's shape and not its integrity: a record altered to k
 
 Each line is one request: its last event and the chain check's verdict, over
 every segment not pruned. `ok` is a trail whose action closed, `open` one
-still in flight, held for an approval, or whose closing record has not
-arrived. `failed` and `indeterminate` carry the reason, and either makes
-`trail` exit 1, as does nothing to read. Bytes after the last newline are a
+still in flight or held, or whose closing record has not arrived. `failed`
+and `indeterminate` carry the reason, and either makes `trail` exit 1, as
+does nothing to read. Bytes after the last newline are a
 line being written while a collect holds the directory, and damage, exit 1,
 when none does. `trail` reads at most 100,000 lines.
 
@@ -127,18 +128,19 @@ guardana-gateway prune --through 3 trail/plane
 `trail export trail/plane` reads one segment. Its `end_reached` is true only
 at the log's end; before it, export again after `next_cursor`, which leads into
 the next segment. A cursor of a pruned segment is refused as expired, exit 2.
-A segment's file named on its own, `trail export trail/plane/segment-00000002.jsonl`,
-directly or through a symbolic link, is refused, exit 2: export the directory, whose header counts the segments
+A segment's file named on its own, through a symbolic link or not, is
+refused, exit 2: export the directory, whose header counts the segments
 pruned before. `evidence-report -state` follows the log from segment to
 segment.
 
-`trail segments` prints the manifest: how many segments are sealed, pruned
-and dropped of the 10,000 it names at most, then each segment's state, lines,
-bytes, key and dates, and whether a collect holds it. `prune`
-removes the sealed segments up to the one named, after writing each one's
-tombstone, which keeps its lines, bytes and digests. Stop collect first: a
-held directory is refused, and so is a clock before the segment's seal.
-The live segment is never pruned.
+`trail segments` prints the manifest: the segments sealed, pruned and
+dropped, then each one's state, lines, bytes, key and dates, and whether a
+collect holds it. `prune` removes the sealed segments up to the one named,
+after writing each one's tombstone, which keeps its lines, bytes and digests.
+A file is unlinked only while its name names the one read, though POSIX
+leaves a moment between that check and the unlink. Stop collect first: a held
+directory is refused, and so is a clock before the segment's seal. The live
+segment is never pruned.
 
 ## What the collector promises
 
@@ -156,9 +158,8 @@ The live segment is never pruned.
 - **A request it cannot read is refused**, with 400, 413 when too large or 415
   for a media type or encoding it does not take. The plane splits a 400 or 413
   down to one record and quarantines it; a 415 it sends again. A body cut off
-  before its end, by a reset connection or a read timeout, is answered 503
-  and sent again; one that never arrives in time keeps the plane retrying
-  until its spool is full and material calls are blocked.
+  before its end is answered 503 and sent again; one that never arrives keeps
+  the plane retrying until its spool is full.
 
 ## Limits
 

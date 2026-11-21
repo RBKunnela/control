@@ -84,9 +84,10 @@ func (f *follower) take(x *export) {
 // enter clears what was pending in the state's file when x is the next
 // segment of its log, since the cursor is past all of it, and keeps what a
 // run stopped before saving raised in x's own or with no cursor to say where.
-// The open requests then began before x's first offset.
+// The open requests then began before x's first offset. An export naming no
+// source holds no line yet, so it is not entered.
 func (f *follower) enter(x *export) {
-	if f.s.source == "" || x.header.source == f.s.source {
+	if f.s.source == "" || x.header.source == "" || x.header.source == f.s.source {
 		return
 	}
 	for k, at := range f.pending {

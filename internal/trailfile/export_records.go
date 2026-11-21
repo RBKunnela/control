@@ -28,6 +28,8 @@ func (q Query) echo() queryRecord {
 type filter struct {
 	requests, runs, tenants, projects map[string]bool
 	kinds                             map[controlv1.EventKind]bool
+	// bound is the log's binding, which every event is of.
+	bound binding
 }
 
 func (f filter) match(ev *controlv1.Event) bool {

@@ -211,7 +211,7 @@ func (w *Writer) Append(ctx context.Context, events []*controlv1.Event) error {
 	if err := w.ready(ctx); err != nil {
 		return err
 	}
-	buf, added, err := w.ids.fresh(events, lines)
+	buf, added, _, err := w.ids.fresh(events, lines, w.size)
 	if err != nil {
 		return err
 	}

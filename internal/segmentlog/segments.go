@@ -3,6 +3,7 @@ package segmentlog
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"slices"
 	"sync"
@@ -84,7 +85,7 @@ func openWith(cfg Config, ops fsOps) (*segments, error) {
 	if !files.PermissionBits {
 		return nil, ErrNoPermissionBits
 	}
-	root, err := openDir(cfg.Dir)
+	root, err := openDir(cfg.Dir, ops.sync)
 	if err != nil {
 		return nil, err
 	}
@@ -272,23 +273,52 @@ func (l *segments) completeSeal(have *found) error {
 // verify reads a sealed segment whole and refuses it unless it holds what
 // the manifest names it with, handing each line to the visitor.
 func (l *segments) verify(s Segment, visit func([]byte) error) error {
-	st, err := l.scanFile(s.File, visit)
+	f, _, err := l.verified(s, visit)
 	if err != nil {
-		return fmt.Errorf("%s: %w", s.File, err)
+		return err
+	}
+	return f.Close()
+}
+
+// verified is verify returning the file it read, still open, and its
+// identity as opened. While the file is open its inode is not freed, so no
+// file put at its name since can carry its number.
+func (l *segments) verified(s Segment, visit func([]byte) error) (*os.File, fs.FileInfo, error) {
+	f, st, info, err := l.scanHeld(s.File, visit)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%s: %w", s.File, err)
 	}
 	if !st.matches(s) {
-		return fmt.Errorf("%w: %s does not hold what the manifest names it with", ErrManifest, s.File)
+		return nil, nil, errors.Join(
+			fmt.Errorf("%w: %s does not hold what the manifest names it with", ErrManifest, s.File), f.Close())
 	}
-	return nil
+	return f, info, nil
 }
 
 func (l *segments) scanFile(name string, visit func([]byte) error) (stats, error) {
+	f, st, _, err := l.scanHeld(name, visit)
+	if err != nil {
+		return st, err
+	}
+	return st, f.Close()
+}
+
+// scanHeld scans the file at name and returns it still open, with its
+// identity as opened; the caller closes it.
+func (l *segments) scanHeld(name string, visit func([]byte) error) (*os.File, stats, fs.FileInfo, error) {
 	f, err := openJudged(l.root, name, os.O_RDONLY)
 	if err != nil {
-		return stats{}, err
+		return nil, stats{}, nil, err
+	}
+	info, err := f.Stat()
+	if err != nil {
+		return nil, stats{}, nil, errors.Join(err, f.Close())
 	}
 	st, err := scan(f, l.cfg.MaxLineBytes, visit)
-	return st, errors.Join(err, f.Close())
+	if err != nil {
+		return nil, st, nil, errors.Join(err, f.Close())
+	}
+	return f, st, info, nil
 }
 
 // openLive opens a live segment the directory holds, through the consumer,

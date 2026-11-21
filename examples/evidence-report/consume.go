@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 )
 
@@ -109,13 +110,19 @@ func (f *follower) checkpoint(c *checkpoint) ([]byte, []byte, error) {
 // accepts refuses an export the state cannot take on from its cursor. An
 // export of another file than the state's is taken only as the next segment
 // of a log: one asked after the state's own cursor that starts at its file's
-// first line, which an export after a cursor in the same file never does.
+// first line, which an export after a cursor in the same file never does. An
+// export naming no source is of a file holding no whole line yet, such as a
+// log's live segment a writer has only begun: the state keeps its cursor and
+// source, and the file is exported again later.
 func (s *followState) accepts(x *export) error {
 	if err := x.whole(); err != nil {
 		return err
 	}
 	if x.header.after != s.cursor {
 		return fmt.Errorf("its query.after is %s, and the state's cursor %s", shownCursor(x.header.after), shownCursor(s.cursor))
+	}
+	if x.header.source == "" {
+		return x.holdsNoLine()
 	}
 	moved := s.movedOn(x)
 	if s.source != "" && x.header.source != s.source && !moved {
@@ -147,6 +154,16 @@ func (s *followState) movedOn(x *export) bool {
 	}
 	at, ok := x.firstOffset()
 	return ok && at == 0
+}
+
+// holdsNoLine refuses an export naming no source that holds what only a file
+// with a whole line gives: an event, a gap a newline ends, or a next_cursor.
+func (x *export) holdsNoLine() error {
+	ended := slices.ContainsFunc(x.gapRecords, func(g gapRecord) bool { return g.cursor != "" })
+	if len(x.events) > 0 || ended || x.trailer.nextCursor != "" {
+		return errors.New("its header names no source, and it holds a whole line")
+	}
+	return nil
 }
 
 // whole refuses an export a state cannot take whatever its cursor: one

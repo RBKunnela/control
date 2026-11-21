@@ -2,6 +2,7 @@ package trailfile
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -66,6 +67,10 @@ type Source struct {
 	// PrunedBefore is how many segments of the log before this one are gone,
 	// pruned or their tombstones dropped; a single file has none.
 	PrunedBefore int
+	// Tenant and Project, given for a segment of a log, are what the log is
+	// bound to: an event of another stops the export as ErrBinding, since
+	// the log refuses it at open.
+	Tenant, Project string
 }
 
 // Trailer is what an export's trailer says.
@@ -124,6 +129,7 @@ func export(src Source, q Query, after string, w io.Writer) (Trailer, error) {
 	if src.Size < 0 {
 		return Trailer{}, fmt.Errorf("%w: size %d", ErrLimit, src.Size)
 	}
+	f.bound = binding{tenant: src.Tenant, project: src.Project}
 	tr, err := lineexport.Export(exportFormat(), lineexport.Source{Name: src.Name, R: src.R, Size: src.Size, Held: src.Held,
 		Key: src.Key, More: src.More, PrunedBefore: src.PrunedBefore},
 		lineexport.Query{After: after, Limit: q.Limit, MaxBytes: q.MaxBytes, Echo: q.echo()}, f.judge, w)
@@ -159,16 +165,20 @@ func ExportFile(path string, q Query, w io.Writer) (Trailer, error) {
 }
 
 // judge says what record a line is: an event, a gap and why, or an event the
-// filters pass by. The line export finds conflicts and duplicates by the
-// event id, two lines the same only when every byte is.
+// filters pass by; an event of another tenant or project than the log's is
+// refused. The line export finds conflicts and duplicates by the event id,
+// two lines the same only when every byte is.
 func (f filter) judge(l lineexport.Line) lineexport.Verdict {
 	events, err := evidence.DecodeJSONL(bytes.NewReader(l.Bytes), 1)
-	if err != nil {
+	if err != nil || holdsNull(l.Bytes) {
 		return lineexport.Verdict{Type: lineexport.Gap, Reason: gapMalformed}
 	}
 	ev := events[0]
 	if evidence.CheckEventVersion(ev) != nil {
 		return lineexport.Verdict{Type: lineexport.Gap, Reason: gapVersion}
+	}
+	if f.bound.refusesEvent(ev) {
+		return lineexport.Verdict{Refuse: fmt.Errorf("%w: %w", ErrDamaged, ErrBinding)}
 	}
 	if bytes.IndexByte(l.Body(), '\r') >= 0 {
 		return lineexport.Verdict{Type: lineexport.Gap, Reason: gapCR}
@@ -176,4 +186,20 @@ func (f filter) judge(l lineexport.Line) lineexport.Verdict {
 	// A line repeating one exactly matches the filters as that one did, so a
 	// duplicate is written only of an event this export wrote.
 	return lineexport.Verdict{Type: "event", Pass: !f.match(ev), ID: ev.GetEventId(), Content: l.Sum}
+}
+
+// holdsNull reports whether a line the codec read holds a null, which the
+// codec reads as an absent member and never writes, and which a reader of the
+// export refuses in any record.
+func holdsNull(line []byte) bool {
+	dec := json.NewDecoder(bytes.NewReader(line))
+	for {
+		tok, err := dec.Token()
+		if err != nil {
+			return false
+		}
+		if tok == nil {
+			return true
+		}
+	}
 }

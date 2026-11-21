@@ -87,7 +87,7 @@ func (c Credential) admits(header http.Header) bool {
 // encoding that hands the events ReadRequest reads to sink, and answers:
 //
 //   - 401 for a request without cred, before anything else of it is read,
-//     which the exporter answers by sending it again, so a sender without
+//     closing the connection, which the exporter answers by sending it again, so a sender without
 //     the credential writes nothing; the first is logged, then a count at
 //     most once a minute;
 //   - 200 with an empty body once sink.Append returned nil, which is what
@@ -163,6 +163,9 @@ func (h *receiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !h.cred.admits(r.Header) {
 		h.refused.note(h.log)
 		w.Header().Set("WWW-Authenticate", "Bearer")
+		// An HTTP/1.1 server reads a small unread body before it answers, to
+		// keep the connection; one it closes it answers first.
+		w.Header().Set("Connection", "close")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -232,10 +235,17 @@ func (h *receiver) refuse(w http.ResponseWriter, status int, err error) {
 }
 
 // unsupported says why a request's headers name a body this receiver does not
-// read, or nothing when they name JSON in UTF-8 with no content coding.
+// read, or nothing when they name JSON in UTF-8 with no content coding. Every
+// Content-Encoding field is read, as a coding in any one applies, and a
+// second Content-Type field is refused, as the two name no one media type.
 func unsupported(header http.Header) string {
-	if coding := header.Get("Content-Encoding"); coding != "" && !strings.EqualFold(coding, "identity") {
-		return "the body carries a content coding"
+	for _, coding := range header.Values("Content-Encoding") {
+		if coding != "" && !strings.EqualFold(coding, "identity") {
+			return "the body carries a content coding"
+		}
+	}
+	if len(header.Values("Content-Type")) > 1 {
+		return "the request carries more than one content type"
 	}
 	media, params, err := mime.ParseMediaType(header.Get("Content-Type"))
 	switch {

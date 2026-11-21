@@ -141,10 +141,10 @@ Both commands are <code>experimental</code>; <a href="/docs/status">status.md</a
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
 <li>A plane you can run (<a href="/docs/guides/run-the-gateway">run-the-gateway.md</a>).</li>
-<li>A parent directory that the account running <code>collect</code> owns and that neither
-the group nor others may write; the trail directory is created in it mode
-<code>0700</code>, and its files mode <code>0600</code>, since events carry tenant and principal
-ids.</li>
+<li>A parent directory owned by the account running <code>collect</code> or root, and not
+writable by the group or others unless sticky; the trail directory, not a
+symbolic link, is created in it mode <code>0700</code>, and its files mode <code>0600</code>,
+since events carry tenant and principal ids.</li>
 <li>A credential: 32 to 512 printable ASCII bytes with no space, in a file only
 this account may read.</li>
 <li>The socket's directory, <code>/run/collector</code> below, already made: owned by
@@ -160,9 +160,9 @@ this account or root, and not writable by the group or others unless sticky.</li
 </code></pre>
 <p><code>--listen</code> takes a unix socket only: a TCP address was removed in 0.17
 (<a href="/docs/adr/0080-evidence-leaves-a-plane-over-a-unix-socket-or-tls">ADR-0080</a>).
-It prints where it listens, the directory and the plane's keys. It runs until Ctrl-C or <code>SIGTERM</code>, and waits up to
-ten seconds for the requests in flight. One collect holds a directory at a
-time; a second one is refused.</p>
+It prints where it listens, as a URL, the directory and the plane's keys. It
+runs until Ctrl-C or <code>SIGTERM</code>, and waits up to ten seconds for the requests
+in flight. One collect holds a directory; a second is refused.</p>
 <p>The directory is bound to the tenant and the project it was first opened
 with; opening it for another is refused. A request without the credential is
 answered 401 before its body is read. One carrying an event of another tenant
@@ -179,9 +179,10 @@ succeeds, and nothing is pruned to make room.</p>
 names it with; so is a name no collect leaves. A last line of <code>live.jsonl</code>
 with no newline is what a crash leaves, and is removed only when it can be
 the start of an evidence line. A seal or a prune a crash stopped part way is
-finished by the next collect or prune. Do not change the files while collect runs: a live segment removed,
-renamed, cut or extended under it makes it answer 503 until you start it
-again, and the plane keeps the records in its spool.</p>
+finished by the next collect or prune. Do not change the files while collect
+runs: a live segment removed, renamed, cut or extended, or the line of a
+repeated record removed or changed in any segment, makes it answer 503 until
+you start it again.</p>
 <h3 id="3-point-the-plane-at-it">3. Point the plane at it</h3>
 <p>In the plane's configuration:</p>
 <pre><code class="language-yaml">export:
@@ -208,9 +209,9 @@ the check proves each chain&#39;s shape and not its integrity: a record altered 
 </code></pre>
 <p>Each line is one request: its last event and the chain check's verdict, over
 every segment not pruned. <code>ok</code> is a trail whose action closed, <code>open</code> one
-still in flight, held for an approval, or whose closing record has not
-arrived. <code>failed</code> and <code>indeterminate</code> carry the reason, and either makes
-<code>trail</code> exit 1, as does nothing to read. Bytes after the last newline are a
+still in flight or held, or whose closing record has not arrived. <code>failed</code>
+and <code>indeterminate</code> carry the reason, and either makes <code>trail</code> exit 1, as
+does nothing to read. Bytes after the last newline are a
 line being written while a collect holds the directory, and damage, exit 1,
 when none does. <code>trail</code> reads at most 100,000 lines.</p>
 <h3 id="5-read-across-segments-and-prune">5. Read across segments, and prune</h3>
@@ -220,17 +221,18 @@ guardana-gateway prune --through 3 trail/plane
 <p><code>trail export trail/plane</code> reads one segment. Its <code>end_reached</code> is true only
 at the log's end; before it, export again after <code>next_cursor</code>, which leads into
 the next segment. A cursor of a pruned segment is refused as expired, exit 2.
-A segment's file named on its own, <code>trail export trail/plane/segment-00000002.jsonl</code>,
-directly or through a symbolic link, is refused, exit 2: export the directory, whose header counts the segments
+A segment's file named on its own, through a symbolic link or not, is
+refused, exit 2: export the directory, whose header counts the segments
 pruned before. <code>evidence-report -state</code> follows the log from segment to
 segment.</p>
-<p><code>trail segments</code> prints the manifest: how many segments are sealed, pruned
-and dropped of the 10,000 it names at most, then each segment's state, lines,
-bytes, key and dates, and whether a collect holds it. <code>prune</code>
-removes the sealed segments up to the one named, after writing each one's
-tombstone, which keeps its lines, bytes and digests. Stop collect first: a
-held directory is refused, and so is a clock before the segment's seal.
-The live segment is never pruned.</p>
+<p><code>trail segments</code> prints the manifest: the segments sealed, pruned and
+dropped, then each one's state, lines, bytes, key and dates, and whether a
+collect holds it. <code>prune</code> removes the sealed segments up to the one named,
+after writing each one's tombstone, which keeps its lines, bytes and digests.
+A file is unlinked only while its name names the one read, though POSIX
+leaves a moment between that check and the unlink. Stop collect first: a held
+directory is refused, and so is a clock before the segment's seal. The live
+segment is never pruned.</p>
 <h2 id="what-the-collector-promises">What the collector promises</h2>
 <ul>
 <li><strong>It answers only for what is on disk.</strong> Each request is appended and the
@@ -247,9 +249,8 @@ carrying two different lines.</li>
 <li><strong>A request it cannot read is refused</strong>, with 400, 413 when too large or 415
 for a media type or encoding it does not take. The plane splits a 400 or 413
 down to one record and quarantines it; a 415 it sends again. A body cut off
-before its end, by a reset connection or a read timeout, is answered 503
-and sent again; one that never arrives in time keeps the plane retrying
-until its spool is full and material calls are blocked.</li>
+before its end is answered 503 and sent again; one that never arrives keeps
+the plane retrying until its spool is full.</li>
 </ul>
 <h2 id="limits">Limits</h2>
 <ul>

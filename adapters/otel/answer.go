@@ -115,6 +115,10 @@ var (
 	}
 )
 
+// jsonSpace is the whitespace JSON allows around a value; bytes.TrimSpace
+// takes more, such as a vertical tab, which no JSON parser reads.
+const jsonSpace = " \t\r\n"
+
 // readAnswer reads an accepting answer: empty, or the JSON of
 // ExportLogsServiceResponse, whose only member is partialSuccess. It returns
 // the records the collector reports dropped, at most the batch's length, and
@@ -122,7 +126,7 @@ var (
 // member that appears twice, and so does this: encoding/json alone would keep
 // the last spelling and read a refusal as an acceptance.
 func readAnswer(text []byte, batch int) (int64, string) {
-	text = bytes.TrimSpace(text)
+	text = bytes.Trim(text, jsonSpace)
 	if len(text) == 0 {
 		return 0, ""
 	}

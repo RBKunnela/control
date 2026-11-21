@@ -1169,7 +1169,7 @@ A gap's `reason` is one of:
 
 | `reason` | The line |
 | --- | --- |
-| `malformed` | is not one `Event` under the codec's rules: not JSON, an unknown field, a blank line |
+| `malformed` | is not one `Event` under the codec's rules: not JSON, an unknown field, a blank line; or holds a `null`, which the codec reads as an absent member, never writes, and a reader of the export refuses in a record |
 | `too_long` | is longer than the codec's line bound, `evidence.MaxLineBytes` |
 | `unsupported_version` | is an event `evidence.CheckEventVersion` refuses |
 | `conflicting_event_id` | carries the event id of a line this export read before it, written or passed by the filters, with other content |
@@ -1225,11 +1225,16 @@ their cursors apart, and a segment keeps its key when it is sealed. The
 header's `file` is the segment's.
 
 - Without `--after` the export reads the first segment not pruned.
-- `end_reached` is `true` only at the end of the last segment that held a line
-  when the export began. At the end of an earlier one it is `false`, and the
-  export after its `next_cursor` reads the next segment from its first line. A
-  reader that follows `next_cursor` until `end_reached` reads every line of
-  every segment not pruned once.
+- `end_reached` is `true` only at the end of the last segment that held a line,
+  or bytes no newline ends, when the export began. At the end of an earlier one
+  it is `false`, and the export after its `next_cursor` reads the next segment
+  from its first line, or reports those bytes. A reader that follows
+  `next_cursor` until `end_reached` reads every line of every segment not
+  pruned once.
+- An event of another tenant or project than the one the log is bound to,
+  which no collector writes and the log refuses at open, stops the export
+  before its record, exit 2, with no trailer. `trail <dir>` and a scenario
+  reading the log refuse it too.
 - A cursor of a pruned segment is refused as expired, exit 2; one whose key no
   segment the manifest names has, as another file. A cursor at a sealed
   segment's end moves on only when its line digest is that of the segment's
@@ -1246,6 +1251,8 @@ header's `file` is the segment's.
 - `source` changes from one segment's export to the next. A reader that keeps
   one takes a new one only from an export after its own cursor whose first
   record is at offset 0, which an export after a cursor in one file never is.
+  An export naming no `source` is of a live segment holding no whole line
+  yet: a reader keeps its cursor and source, and exports again later.
 
 ### The query
 

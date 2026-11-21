@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"time"
@@ -35,16 +36,21 @@ type LogConfig struct {
 }
 
 // Log keeps the evidence a collector accepts in trail segments, bound to one
-// tenant and project. Every segment not pruned is indexed by event id, so an
-// event sent again after its segment was sealed is not written again.
+// tenant and project. Every segment not pruned is indexed by event id, with
+// where its line stands, so an event sent again after its segment was sealed
+// is not written again once its line is read back where the log wrote it.
 type Log struct {
-	mu  sync.Mutex
-	rl  segmentlog.RecordLog
+	mu sync.Mutex
+	rl segmentlog.RecordLog
+	// dir is the log's directory by its absolute, cleaned path, the one the
+	// segment log opened.
 	dir string
 	// dirInfo is the directory as the log opened it.
-	dirInfo         os.FileInfo
-	tenant, project string
-	ids             index
+	dirInfo os.FileInfo
+	bound   binding
+	// ids places each line at its offset in the segments not pruned, read in
+	// order, the live one last.
+	ids index
 	// stale is an index a prune left naming pruned lines; the next append
 	// reads the segments left again first.
 	stale bool
@@ -64,16 +70,24 @@ func OpenLog(cfg LogConfig) (*Log, error) {
 	if now == nil {
 		now = time.Now
 	}
-	l := &Log{dir: cfg.Dir, tenant: cfg.Tenant, project: cfg.Project, ids: index{}}
-	number := 0
+	if cfg.Dir == "" {
+		return nil, fmt.Errorf("%w: no directory", segmentlog.ErrConfig)
+	}
+	dir, err := filepath.Abs(cfg.Dir)
+	if err != nil {
+		return nil, err
+	}
+	l := &Log{dir: dir, bound: binding{tenant: cfg.Tenant, project: cfg.Project}, ids: index{}}
+	number, at := 0, int64(0)
 	rl, err := segmentlog.Open(segmentlog.Config{
-		Kind: segmentlog.KindSegments, Dir: cfg.Dir, Tenant: cfg.Tenant, Project: cfg.Project,
+		Kind: segmentlog.KindSegments, Dir: dir, Tenant: cfg.Tenant, Project: cfg.Project,
 		SegmentBytes: cfg.SegmentBytes, MaxBytes: cfg.MaxBytes, MaxLineBytes: evidence.MaxLineBytes, Now: now,
 		OpenLive: openLive,
 		Visit: func(line []byte) error {
 			number++
-			ev, err := l.ids.addLine(number, line)
-			if err == nil && !l.binds(ev) {
+			ev, err := l.ids.addLine(number, at, line)
+			at += int64(len(line))
+			if err == nil && l.bound.refusesEvent(ev) {
 				err = fmt.Errorf("%w: %w: line %d", ErrDamaged, ErrBinding, number)
 			}
 			return err
@@ -82,7 +96,7 @@ func OpenLog(cfg LogConfig) (*Log, error) {
 	if err != nil {
 		return nil, err
 	}
-	if l.dirInfo, err = os.Stat(cfg.Dir); err != nil {
+	if l.dirInfo, err = os.Stat(dir); err != nil {
 		return nil, errors.Join(err, rl.Close())
 	}
 	l.rl = rl
@@ -121,20 +135,18 @@ func liveChanged(err error) error {
 
 func (f liveFile) Close() error { return f.w.Close() }
 
-func (l *Log) binds(ev *controlv1.Event) bool {
-	return ev.GetTenantId() == l.tenant && ev.GetProjectId() == l.project
-}
-
 // Append writes events as evidence lines and returns nil once they are
 // synced. An event whose line the log holds, byte for byte, is taken and not
-// written again. The whole append is refused as ErrBinding when one event is
-// of another tenant or project, as ErrConflict when an event id the log or
-// the append holds arrives with another line, and as segmentlog.ErrBudget
-// when it would take the log past its byte bound, which is no refusal for
-// good: the sender sends it again.
+// written again once that line is read back where the log wrote it; a line
+// gone, cut or changed fails the log and refuses the append. The whole
+// append is refused as ErrBinding when one event is of another tenant
+// or project, as ErrConflict when an event id the log or the append holds
+// arrives with another line, and as segmentlog.ErrBudget when it would take
+// the log past its byte bound, which is no refusal for good: the sender
+// sends it again.
 func (l *Log) Append(ctx context.Context, events []*controlv1.Event) error {
 	for i, ev := range events {
-		if !l.binds(ev) {
+		if l.bound.refusesEvent(ev) {
 			return fmt.Errorf("%w: %w: event %d of the append", ErrBinding, otel.ErrSinkRefused, i)
 		}
 	}
@@ -153,9 +165,15 @@ func (l *Log) Append(ctx context.Context, events []*controlv1.Event) error {
 	if err := l.reindex(); err != nil {
 		return err
 	}
-	buf, added, err := l.ids.fresh(events, lines)
-	if err != nil || len(buf) == 0 {
+	buf, added, held, err := l.ids.fresh(events, lines, l.rl.Manifest().Retained)
+	if err != nil {
 		return err
+	}
+	if err := l.stillHeld(held); err != nil {
+		return err
+	}
+	if len(buf) == 0 {
+		return nil
 	}
 	if err := l.rl.Append(ctx, buf); err != nil {
 		return l.latch(err)
@@ -200,7 +218,9 @@ func (l *Log) reindex() error {
 	}
 	// The segments are read again by the log's path, so the directory there
 	// has to be the one the log holds, before and after the read. The log's
-	// own count of the bytes it holds leaves out anything written past it.
+	// own count of the bytes it holds leaves out anything written past it,
+	// and the offsets indexed count from the first segment not pruned, as
+	// Append's do.
 	err := l.sameDir()
 	if err == nil {
 		var r io.Reader

@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
+	"os"
 	"slices"
 	"time"
 )
@@ -133,7 +135,8 @@ func (l *segments) seal() error {
 // Prune prunes the sealed segments through the one numbered through. Each
 // one's tombstone is in the manifest before its file is unlinked. A prefix
 // already pruned, its tombstones dropped or not, is pruned again as nothing.
-// A clock before a seal it would prune is refused with nothing changed.
+// A clock before a seal it would prune, and a file that no longer holds what
+// the manifest names it with, are refused with nothing changed.
 func (l *segments) Prune(through int) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -146,25 +149,20 @@ func (l *segments) Prune(through int) error {
 			ErrPrune, through, last, last+1)
 	}
 	next := slices.Clone(l.segs)
-	var gone []string
 	at := l.now()
 	if err := sealedBy(next[:max(through-l.dropped, 0)], at); err != nil {
 		return err
 	}
-	for i := range next[:max(through-l.dropped, 0)] {
-		if next[i].State == StateSealed {
-			gone = append(gone, next[i].File)
-			next[i].State, next[i].PrunedAt, next[i].File = StatePruned, at, ""
-		}
+	gone, err := l.tombstone(next[:max(through-l.dropped, 0)], at)
+	if err != nil || len(gone) == 0 {
+		return err
 	}
-	if len(gone) == 0 {
-		return nil
-	}
+	defer closeRead(gone)
 	if err := l.writeManifest(l.dropped, next); err != nil {
 		return err
 	}
-	for _, name := range gone {
-		if err := l.ops.remove(l.root, name); err != nil {
+	for _, file := range gone {
+		if err := l.removeRead(file); err != nil {
 			return l.fail(err)
 		}
 	}
@@ -173,6 +171,58 @@ func (l *segments) Prune(through int) error {
 	}
 	l.segs = next
 	return nil
+}
+
+// readFile is a segment's file as a prune read it, held open until the
+// prune has unlinked its name or left it.
+type readFile struct {
+	name string
+	file *os.File
+	info fs.FileInfo
+}
+
+// tombstone names each sealed segment of segs pruned at at, once its file
+// is read again and holds what the manifest names it with, and returns the
+// files to unlink, still open.
+func (l *segments) tombstone(segs []Segment, at time.Time) ([]readFile, error) {
+	var gone []readFile
+	for i := range segs {
+		if segs[i].State != StateSealed {
+			continue
+		}
+		f, info, err := l.verified(segs[i], nil)
+		if err != nil {
+			closeRead(gone)
+			return nil, err
+		}
+		gone = append(gone, readFile{name: segs[i].File, file: f, info: info})
+		segs[i].State, segs[i].PrunedAt, segs[i].File = StatePruned, at, ""
+	}
+	return gone, nil
+}
+
+// closeRead closes the files a prune read. They were opened only to read,
+// so a close that fails loses nothing the prune wrote.
+func closeRead(files []readFile) {
+	for _, f := range files {
+		_ = f.file.Close()
+	}
+}
+
+// removeRead unlinks file's name only while it still names the file the
+// prune read. That file is held open, so no file put at the name since can
+// carry its inode number. Between this check and the unlink another file
+// can still be put at the name: no POSIX call unlinks a name only if it
+// names one file.
+func (l *segments) removeRead(file readFile) error {
+	now, err := l.root.Lstat(file.name)
+	switch {
+	case err != nil:
+		return err
+	case !os.SameFile(now, file.info):
+		return fmt.Errorf("%w: another file stands at %s since the prune read it, and is left", ErrMoved, file.name)
+	}
+	return l.ops.remove(l.root, file.name)
 }
 
 // sealedBy refuses a clock at before the seal of a sealed segment of segs:
