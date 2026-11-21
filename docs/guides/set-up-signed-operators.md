@@ -31,9 +31,10 @@ security boundary yet.
 write, the configuration, `trust.root_public_key`, `trust.roster`,
 `pause.file`, `reaction.route`, `reaction.stops` or the runs directory's
 `records/`, or any directory on their paths; one where any of those entries
-is missing or carries an access control list (on Linux and macOS); and one
-whose environment sets any of its keys. Root's files of mode `0644` in
-root's directories of mode `0755` pass.
+is missing or carries an access control list (on Linux and macOS); one
+whose environment sets any of its keys; and one whose `approvals.inbox_dir`
+its own account does not own. Root's files of mode `0644` in root's
+directories of mode `0755` pass.
 
 | Path | Owner and mode |
 | --- | --- |

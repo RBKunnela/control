@@ -194,23 +194,50 @@ func TestDevRefusesADemoThatSetsWhatDevOwns(t *testing.T) {
 	for _, kv := range append(ownedKeys, [2]string{"export.endpoint", "not a collector"}) {
 		t.Run(kv[0]+"="+kv[1], func(t *testing.T) {
 			t.Parallel()
-			line := fmt.Sprintf("%s: %q\n", kv[0], kv[1])
-			if group, leaf, nested := strings.Cut(kv[0], "."); nested {
-				line = fmt.Sprintf("%s:\n  %s: %q\n", group, leaf, kv[1])
-			}
-			d := writeDemo(t, "http://127.0.0.1:9/mcp", "5ms", line)
+			d := demoSetting(t, kv[0], kv[1])
 			err := checkDemo(devInputs{config: d.config}, filepath.Join(t.TempDir(), "state"))
 			if err == nil || !strings.HasPrefix(err.Error(), kv[0]+": "+d.config+" sets it, and dev owns it") {
 				t.Fatalf("checkDemo = %v, want the refusal naming %s", err, kv[0])
 			}
 		})
 	}
-	for _, extra := range []string{"", "list:\n  shaping: hide\n", "policy.max_stale: 1m\n"} {
+	for _, extra := range []string{"", "list:\n  shaping: hide\n"} {
 		d := writeDemo(t, "http://127.0.0.1:9/mcp", "5ms", extra)
 		if err := checkDemo(devInputs{config: d.config}, filepath.Join(t.TempDir(), "state")); err != nil {
 			t.Errorf("a demo adding %q: %v", extra, err)
 		}
 	}
+	d := demoSetting(t, "policy.max_stale", "1m")
+	if err := checkDemo(devInputs{config: d.config}, filepath.Join(t.TempDir(), "state")); err != nil {
+		t.Errorf("a demo setting policy.max_stale: %v", err)
+	}
+}
+
+// demoSetting is the demo with key set to value as a configuration writes it:
+// inside the block of key's group where the demo has one, since a block is
+// written once and a key holds no dot, and in a block of its own otherwise.
+func demoSetting(t *testing.T, key, value string) demo {
+	t.Helper()
+	group, leaf, nested := strings.Cut(key, ".")
+	if !nested {
+		return writeDemo(t, "http://127.0.0.1:9/mcp", "5ms", fmt.Sprintf("%s: %q\n", key, value))
+	}
+	d := writeDemo(t, "http://127.0.0.1:9/mcp", "5ms", "")
+	raw, err := os.ReadFile(d.config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	line := fmt.Sprintf("  %s: %q\n", leaf, value)
+	doc, header := string(raw), "\n"+group+":\n"
+	if strings.Contains(doc, header) {
+		doc = strings.Replace(doc, header, header+line, 1)
+	} else {
+		doc += group + ":\n" + line
+	}
+	if err := os.WriteFile(d.config, []byte(doc), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return d
 }
 
 // TestDevChecksADemoWithoutAStateAgainstNoKnownPath: with no --state the demo

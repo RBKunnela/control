@@ -69,6 +69,10 @@ directory, can therefore unlink any answer, a rejection among them; the
 sticky bit stops only the other operators. `directory` takes the claim filed under the
 hold's approval id, its approver id held to the claim rule.
 
+Amended in 0.19: the plane refuses an inbox its own account does not own, at
+the start, in doctor and at every read, and prunes no other. That owner could
+unlink any answer, a rejection among them, out of the plane's sight.
+
 **`approvals.authority: memory | directory | signed` replaces
 `approvals.provider` and has no default.** A configuration without it, or
 with the old key, is refused naming both. `directory` is what `provider:

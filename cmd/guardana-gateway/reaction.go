@@ -140,6 +140,11 @@ func readRouteKey(path string) (ed25519.PublicKey, error) {
 	if err != nil {
 		return nil, err
 	}
+	return keyOfLine(line)
+}
+
+// keyOfLine is the key a key file's one line spells.
+func keyOfLine(line []byte) (ed25519.PublicKey, error) {
 	if len(bytes.TrimSuffix(line, []byte("\n"))) != routeKeyLineBytes {
 		return nil, policykey.ErrPublicLine
 	}

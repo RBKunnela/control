@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"errors"
 	"fmt"
+	"io/fs"
 	"maps"
 	"path/filepath"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/approvals"
 	"github.com/guardana/control/internal/approvals/inbox"
+	ondisk "github.com/guardana/control/internal/files"
 	"github.com/guardana/control/internal/gateway"
 	"github.com/guardana/control/internal/gatewayconfig"
 	"github.com/guardana/control/internal/operators"
@@ -45,7 +47,11 @@ func (a *claimAuthority) Answers(ctx context.Context, approvalID string) gateway
 }
 
 func (a *claimAuthority) Status(context.Context) gateway.AuthorityStatus {
-	return gateway.AuthorityStatus{Kind: gateway.AuthorityDirectory, Health: gateway.AuthorityUsable}
+	s := gateway.AuthorityStatus{Kind: gateway.AuthorityDirectory}
+	if a.plane.Usable() {
+		s.Health = gateway.AuthorityUsable
+	}
+	return s
 }
 
 // inboxAuthority is the signed kind's inbox as its authority: the signed
@@ -95,29 +101,41 @@ var (
 // key the environment set, since that account sets its own environment when
 // it restarts (ADR-0073).
 func checkSignedStart(cfg *gatewayconfig.Config) error {
+	_, err := judgeSignedStart(cfg)
+	return err
+}
+
+// judgeSignedStart is checkSignedStart that also returns the trust root key
+// file as the check judged it, the one file the plane takes the root from.
+func judgeSignedStart(cfg *gatewayconfig.Config) (fs.FileInfo, error) {
 	if keys := environmentOverrides(cfg); len(keys) > 0 {
-		return fmt.Errorf("approvals.authority: signed, and the environment sets %s; the plane's own account sets its environment, so under signed every key is read from the configuration file alone (ADR-0073)",
+		return nil, fmt.Errorf("approvals.authority: signed, and the environment sets %s; the plane's own account sets its environment, so under signed every key is read from the configuration file alone (ADR-0073)",
 			strings.Join(keys, ", "))
 	}
+	var root fs.FileInfo
 	for _, f := range signedStartFiles(cfg) {
 		end, err := notPlaneWritable(f.path)
 		if err != nil {
-			return fmt.Errorf("%s: under the signed authority the plane's own account may not be able to change it: %w (ADR-0073)", f.key, err)
+			return nil, fmt.Errorf("%s: under the signed authority the plane's own account may not be able to change it: %w (ADR-0073)", f.key, err)
 		}
 		if f.read && !cfg.IsFileRead(end) {
-			return fmt.Errorf("%s: %s is not the file the plane read, so judging it says nothing of the configuration the plane runs (ADR-0073)", f.key, f.path)
+			return nil, fmt.Errorf("%s: %s is not the file the plane read, so judging it says nothing of the configuration the plane runs (ADR-0073)", f.key, f.path)
+		}
+		if f.root {
+			root = end
 		}
 	}
-	return nil
+	return root, nil
 }
 
 // signedFile is one path a signed start checks, under the key that names it.
 // read marks the configuration file, which has to be judged as the very file
 // Load read: one renamed over its path since says nothing of what the plane
-// runs.
+// runs. root marks the trust root key file, which the plane reads after the
+// check and only as the file the check judged.
 type signedFile struct {
-	key, path string
-	read      bool
+	key, path  string
+	read, root bool
 }
 
 // signedStartFiles is every path checkSignedStart holds out of the plane's
@@ -125,7 +143,7 @@ type signedFile struct {
 func signedStartFiles(cfg *gatewayconfig.Config) []signedFile {
 	checked := []signedFile{
 		{key: "the configuration file", path: cfg.File(), read: true},
-		{key: "trust.root_public_key", path: cfg.Resolve(cfg.Trust.RootPublicKey)},
+		{key: "trust.root_public_key", path: cfg.Resolve(cfg.Trust.RootPublicKey), root: true},
 		{key: "trust.roster", path: cfg.Resolve(cfg.Trust.Roster)},
 	}
 	if cfg.Pause.File != "" {
@@ -201,15 +219,9 @@ func otherKeys(cfg *gatewayconfig.Config) ([]ed25519.PublicKey, error) {
 // floor directory that lists several ids never lets a roster of another one
 // in, and the roster's first read is held to a timeout.
 func openSigned(ctx context.Context, cfg *gatewayconfig.Config, startCheck func(*gatewayconfig.Config) error) (*signedPorts, error) {
-	if startCheck == nil {
-		startCheck = checkSignedStart
-	}
-	if err := startCheck(cfg); err != nil {
-		return nil, err
-	}
-	root, err := readRouteKey(cfg.Resolve(cfg.Trust.RootPublicKey))
+	root, err := startRoot(cfg, startCheck)
 	if err != nil {
-		return nil, fmt.Errorf("trust.root_public_key: %w", err)
+		return nil, err
 	}
 	others, err := otherKeys(cfg)
 	if err != nil {
@@ -244,6 +256,36 @@ func openSigned(ctx context.Context, cfg *gatewayconfig.Config, startCheck func(
 	return &signedPorts{roster: roster, authn: authn, authz: authz}, nil
 }
 
+// startRoot makes the start checks and reads the trust root key. Under
+// checkSignedStart the key is read only from the file the check judged, so a
+// file renamed over its path after the check refuses the start; another start
+// check reads it by name.
+func startRoot(cfg *gatewayconfig.Config, startCheck func(*gatewayconfig.Config) error) (ed25519.PublicKey, error) {
+	path := cfg.Resolve(cfg.Trust.RootPublicKey)
+	read := readRouteKey
+	if startCheck == nil {
+		judged, err := judgeSignedStart(cfg)
+		if err != nil {
+			return nil, err
+		}
+		read = func(name string) (ed25519.PublicKey, error) {
+			line, err := ondisk.ReadRegularOf(name, maxRouteKeyFileBytes, judged)
+			defer clear(line)
+			if err != nil {
+				return nil, err
+			}
+			return keyOfLine(line)
+		}
+	} else if err := startCheck(cfg); err != nil {
+		return nil, err
+	}
+	root, err := read(path)
+	if err != nil {
+		return nil, fmt.Errorf("trust.root_public_key: %w", err)
+	}
+	return root, nil
+}
+
 // openAuthority opens what the configured authority answers from, after the
 // approvals directory a non-memory authority holds its records in is open.
 func (p *plane) openAuthority(ctx context.Context) error {
@@ -256,7 +298,7 @@ func (p *plane) openAuthority(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		in, err := inbox.OpenInbox(p.cfg.Resolve(p.cfg.Approvals.InboxDir))
+		in, err := inbox.OpenPlaneInbox(p.cfg.Resolve(p.cfg.Approvals.InboxDir))
 		if err != nil {
 			return fmt.Errorf("approvals.inbox_dir: %w", err)
 		}

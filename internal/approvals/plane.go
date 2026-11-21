@@ -42,6 +42,16 @@ func OpenPlane(dir string, opts ...Option) (*Plane, error) {
 	return &Plane{s: s}, nil
 }
 
+// Usable reports whether the store can be read now: open, and its directory
+// still the one opened, as every operation judges it before it reads.
+func (p *Plane) Usable() bool {
+	if err := p.begin(context.Background()); err != nil {
+		return false
+	}
+	p.s.mu.Unlock()
+	return true
+}
+
 // Close releases the directory's lock. A later call answers ErrClosed.
 func (p *Plane) Close() error {
 	if p == nil {

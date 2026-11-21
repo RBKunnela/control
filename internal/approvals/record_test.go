@@ -166,6 +166,9 @@ func TestEveryWayARecordCanLieIsItsOwnRefusal(t *testing.T) {
 			return reframe(t, replaceInBody(t, f, `{"schema_version"`, `{"request_id":"req-1","schema_version"`))
 		}, approvals.ErrMalformed},
 		{"a wrong-typed field", func(t testing.TB, f []byte) []byte { return withField(t, f, "request_id", `7`) }, approvals.ErrFieldType},
+		{"a null tenant", func(t testing.TB, f []byte) []byte { return withField(t, f, "tenant", `null`) }, approvals.ErrFieldType},
+		{"a null project", func(t testing.TB, f []byte) []byte { return withField(t, f, "project", `null`) }, approvals.ErrFieldType},
+		{"a null authority", func(t testing.TB, f []byte) []byte { return withField(t, f, "authority", `null`) }, approvals.ErrFieldType},
 		{"a schema version from a later major", func(t testing.TB, f []byte) []byte {
 			return withField(t, f, "schema_version", `"3.0"`)
 		}, approvals.ErrSchemaVersion},

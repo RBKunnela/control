@@ -312,3 +312,66 @@ func TestAForeignNameOrAFileAtTheLedgerNameRefusesTheLedger(t *testing.T) {
 		t.Errorf("a read-only journal's ledger: %v, want ErrReadOnly", err)
 	}
 }
+
+// TestAnInspectionPassesAMarkASweepRemovedAsItRead: InspectLedger takes no
+// lock, so a live plane's sweep may remove a mark between the listing and its
+// read. That mark is gone, not damaged, and the ledger still opens; a mark
+// changed in the same gap is still read and refused.
+func TestAnInspectionPassesAMarkASweepRemovedAsItRead(t *testing.T) {
+	for _, c := range []struct {
+		name    string
+		change  func(path string) error
+		marks   int
+		refused bool
+	}{
+		{"removed", os.Remove, 1, false},
+		{"written over", func(path string) error { return os.WriteFile(path, []byte("not a mark\n"), 0o600) }, 0, true},
+		{"a directory in its place", func(path string) error {
+			return errors.Join(os.Remove(path), os.Mkdir(path, 0o700))
+		}, 0, true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			dir, reader := twoMarksReadOnly(t)
+			changed := ""
+			var changeErr error
+			restore := holdjournal.SetBeforeInspectMark(func(name string) {
+				if changed == "" {
+					changed = name
+					changeErr = c.change(filepath.Join(dir, "ledger", name))
+				}
+			})
+			defer restore()
+			n, err := reader.InspectLedger()
+			switch {
+			case changed == "" || changeErr != nil:
+				t.Fatalf("the inspection changed no mark (%v); the test examines nothing", changeErr)
+			case c.refused && err == nil:
+				t.Errorf("a mark %s as it was read was passed: %d mark(s)", c.name, n)
+			case !c.refused && (err != nil || n != c.marks):
+				t.Errorf("InspectLedger with a mark %s as it was read = %d, %v; want %d, nil", c.name, n, err, c.marks)
+			}
+		})
+	}
+}
+
+// twoMarksReadOnly is a journal directory whose ledger holds two spent marks,
+// opened again read-only as doctor opens it.
+func twoMarksReadOnly(t *testing.T) (string, *holdjournal.Journal) {
+	t.Helper()
+	dir := newDir(t)
+	j, l := openLedger(t, dir)
+	for _, id := range []string{"one", "two"} {
+		if err := l.Spend(context.Background(), ledgerBinding, id, "a-"+id, "p", base()); err != nil {
+			t.Fatalf("Spend: %v", err)
+		}
+	}
+	if err := j.Close(); err != nil {
+		t.Fatal(err)
+	}
+	reader, err := holdjournal.OpenReadOnly(dir)
+	if err != nil {
+		t.Fatalf("OpenReadOnly: %v", err)
+	}
+	t.Cleanup(func() { _ = reader.Close() })
+	return dir, reader
+}

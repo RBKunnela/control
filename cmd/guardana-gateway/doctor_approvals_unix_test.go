@@ -9,8 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/guardana/control/internal/approvals"
+	"github.com/guardana/control/internal/core/approval"
 	"github.com/guardana/control/internal/holdjournal"
 )
 
@@ -66,6 +68,83 @@ func TestDoctorJudgesTheApprovalDirectoriesAsRunOpensThem(t *testing.T) {
 				}
 			})
 		})
+	}
+}
+
+// TestDoctorJudgesTheSpentLedgerAsRunOpensIt: a ledger beside the hold
+// journal that run refuses to open, by a damaged marker, a name it did not
+// write or a mark that will not decode, fails doctor, which names the
+// ledger; the intact ledger passes.
+func TestDoctorJudgesTheSpentLedgerAsRunOpensIt(t *testing.T) {
+	for _, c := range []struct {
+		name   string
+		damage func(t *testing.T, ledger string)
+		why    string
+	}{
+		{"a damaged marker", func(t *testing.T, ledger string) {
+			writeOver(t, filepath.Join(ledger, "ledger.meta"), "{\"schema_version\":\"1.0\",\"kind\":\"journal\"}\n")
+		}, `the ledger's marker names kind "journal"`},
+		{"a name the ledger did not write", func(t *testing.T, ledger string) {
+			writeOver(t, filepath.Join(ledger, "notes.txt"), "x\n")
+		}, `the ledger's "notes.txt"`},
+		{"a mark that will not decode", func(t *testing.T, ledger string) {
+			marks, err := filepath.Glob(filepath.Join(ledger, "*"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			n := 0
+			for _, m := range marks {
+				if filepath.Base(m) != "ledger.meta" {
+					writeOver(t, m, "not a mark\n")
+					n++
+				}
+			}
+			if n != 1 {
+				t.Fatalf("the ledger holds %d mark(s), want the one this test spent", n)
+			}
+		}, "the spent ledger, which run opens and sweeps: the ledger's \""},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			tr := newTree(t)
+			_, holds := tr.fileProvider(t)
+			spendOnce(t, holds)
+			if line := doctorLine(t, tr, "ok      approvals "); !strings.Contains(line, "the spent ledger holds 1 mark(s)") {
+				t.Fatalf("the intact ledger's line is %q, want it to count the one mark", line)
+			}
+			c.damage(t, filepath.Join(holds, "ledger"))
+			if _, j, err := openJournal(tr.load(t)); err == nil {
+				_ = j.Close()
+				t.Fatal("run opens the damaged ledger, so the case is not one run refuses")
+			}
+			expectDoctorRefuses(t, tr, "approvals.hold_journal_dir: ", c.why)
+		})
+	}
+}
+
+// spendOnce makes the journal in holds and its ledger, and spends one
+// approval in it, as a plane that resumed one hold leaves them.
+func spendOnce(t *testing.T, holds string) {
+	t.Helper()
+	j, err := holdjournal.Open(holds)
+	if err != nil {
+		t.Fatalf("opening the journal: %v", err)
+	}
+	l, err := j.Ledger()
+	if err != nil {
+		t.Fatalf("opening the ledger: %v", err)
+	}
+	if err := l.Spend(context.Background(), approval.Binding("binding-a"), "req-1", "appr-1", "alice", time.Now()); err != nil {
+		t.Fatalf("Spend: %v", err)
+	}
+	if err := j.Close(); err != nil {
+		t.Fatalf("closing the journal: %v", err)
+	}
+}
+
+func writeOver(t *testing.T, path, body string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
 	}
 }
 

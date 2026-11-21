@@ -178,8 +178,9 @@ func markCode(m Resolution) string {
 // nothing. An expiry is said where the authority's record, or the plane's
 // record of the hold with its clock, shows one. An authority that cannot be
 // read whole, a record the checks refuse, and no answer before the plane's
-// expiry leave the answer unknown: the plane records its own approval then,
-// because it records nothing it did not check.
+// expiry leave the answer unknown, unless under signed no answer was filed
+// and the hold's record stands, so nobody answered: the plane records its own
+// approval then, because it records nothing it did not check.
 func (p *Pipeline) lostHoldAnswer(ctx context.Context, entry HoldEntry, now time.Time) (*controlv1.Approval, controlv1.Verdict, string) {
 	ans := p.answerFor(ctx, heldFacts{ids: entry.IDs, approval: entry.Approval, expires: entry.Expires}, now)
 	switch {
@@ -191,8 +192,29 @@ func (p *Pipeline) lostHoldAnswer(ctx context.Context, entry HoldEntry, now time
 		// An authority drops what expired, so no answer is an expiry once the
 		// approval the plane minted has expired, and an unknown before.
 		return nil, verdictDeny, codeApprovalExpired
+	case p.cfg.AuthorityKind == AuthoritySigned && ans.unanswered && p.recordStands(ctx, entry, now):
+		// The inbox, read whole, holds no answer to a hold whose record an
+		// operator could read: nobody answered. Answers the checks left out
+		// say nothing the plane can stand behind, so they stay unknown.
+		return nil, verdictDeny, codeApprovalExpired
 	}
 	return nil, verdictIndeterminate, codeApprovalStateUnknown
+}
+
+// recordStands reports whether the plane's own record of a lost hold, the one
+// operators answer, is still filed under its request id and approval id. A
+// store that cannot be read stands for nothing.
+func (p *Pipeline) recordStands(ctx context.Context, entry HoldEntry, now time.Time) bool {
+	helds, err := p.cfg.Approvals.Find(ctx, entry.Binding, now)
+	if err != nil {
+		return false
+	}
+	for _, h := range helds {
+		if h.Approval.GetRequestId() == entry.Approval.GetRequestId() && h.Approval.GetApprovalId() == entry.Approval.GetApprovalId() {
+			return true
+		}
+	}
+	return false
 }
 
 // judgeLostAnswer is what the answer a about a lost hold says, once its ids

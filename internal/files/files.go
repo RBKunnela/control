@@ -42,6 +42,9 @@ const (
 	// ErrNoDirOpen is OpenDir on a platform that cannot open a directory
 	// without following a link.
 	ErrNoDirOpen Error = "files: this platform cannot open a directory without following a link"
+	// ErrNotJudged is a file ReadRegularOf opened that is not the one its
+	// caller judged.
+	ErrNotJudged Error = "files: not the file that was judged"
 )
 
 // tmpPrefix starts every temporary name this package makes. The random rest,
@@ -190,6 +193,25 @@ func read(path string, limit int64, forbidden fs.FileMode, owner int) ([]byte, e
 		return nil, err
 	}
 	return readOpened(f, limit, forbidden, owner)
+}
+
+// ReadRegularOf is ReadRegular, with no permission bits forbidden, of the very
+// file judged describes, as a check of path found it: a file renamed over
+// path since is refused with ErrNotJudged. The identity is read from the
+// opened descriptor, so the bytes returned are the judged file's.
+func ReadRegularOf(path string, limit int64, judged fs.FileInfo) ([]byte, error) {
+	f, err := os.OpenFile(path, os.O_RDONLY|nonBlocking, 0) //nolint:gosec // G304: the path is the caller's to name, and the descriptor is held to the file judged before any byte is read
+	if err != nil {
+		return nil, err
+	}
+	info, err := f.Stat()
+	if err == nil && !os.SameFile(info, judged) {
+		err = fmt.Errorf("%w: %s", ErrNotJudged, path)
+	}
+	if err != nil {
+		return nil, errors.Join(err, f.Close())
+	}
+	return readOpened(f, limit, 0, anyOwner)
 }
 
 // ReadRegularIn is ReadRegular of name in the directory root holds, with no

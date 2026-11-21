@@ -152,9 +152,10 @@ the plane's own account, which runs <code>guardana-gateway run</code> and is not
 write, the configuration, <code>trust.root_public_key</code>, <code>trust.roster</code>,
 <code>pause.file</code>, <code>reaction.route</code>, <code>reaction.stops</code> or the runs directory's
 <code>records/</code>, or any directory on their paths; one where any of those entries
-is missing or carries an access control list (on Linux and macOS); and one
-whose environment sets any of its keys. Root's files of mode <code>0644</code> in
-root's directories of mode <code>0755</code> pass.</p>
+is missing or carries an access control list (on Linux and macOS); one
+whose environment sets any of its keys; and one whose <code>approvals.inbox_dir</code>
+its own account does not own. Root's files of mode <code>0644</code> in root's
+directories of mode <code>0755</code> pass.</p>
 <div class="tbl">
 <table>
 <thead>

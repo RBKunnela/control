@@ -61,3 +61,39 @@ func withFindAuthority(cfg *gateway.Config, keep bindingKeeper) {
 	}
 	cfg.Authority = &findAuthority{store: cfg.Approvals, keep: keep, clock: cfg.Clock}
 }
+
+// answersHook is the directory kind's authority over the store a test wired,
+// which runs after once the authority has answered: the last read a resume
+// makes before it spends the approval. Its keeper is the harness's store,
+// named once the harness is built.
+type answersHook struct {
+	store gateway.ApprovalStore
+	clock func() time.Time
+	keep  bindingKeeper
+	after func()
+}
+
+func (a *answersHook) Answers(ctx context.Context, approvalID string) gateway.AnswerBatch {
+	if a.keep == nil {
+		return gateway.AnswerBatch{}
+	}
+	batch := (&findAuthority{store: a.store, keep: a.keep, clock: a.clock}).Answers(ctx, approvalID)
+	if run := a.after; run != nil {
+		a.after = nil
+		run()
+	}
+	return batch
+}
+
+func (a *answersHook) Status(context.Context) gateway.AuthorityStatus {
+	return gateway.AuthorityStatus{Kind: gateway.AuthorityDirectory, Health: gateway.AuthorityUsable}
+}
+
+// withAnswersHook wires hook as the authority over the store the edits
+// before it left; it goes last among a harness's edits.
+func withAnswersHook(hook **answersHook) func(*gateway.Config) {
+	return func(cfg *gateway.Config) {
+		*hook = &answersHook{store: cfg.Approvals, clock: cfg.Clock}
+		cfg.Authority, cfg.AuthorityKind = *hook, gateway.AuthorityDirectory
+	}
+}

@@ -350,6 +350,29 @@ func TestAHoldWhosePolicyIsStaleBeforeTheConsumeSpendsNothing(t *testing.T) {
 	}
 }
 
+// TestAPolicyStaleWhileTheAuthorityAnswersSpendsNothing: a bundle that goes
+// stale while the authority's answer is read, after the checks before it,
+// withholds the retry and leaves the approval unspent; once the bundle is
+// confirmed again, the hold resumes.
+func TestAPolicyStaleWhileTheAuthorityAnswersSpendsNothing(t *testing.T) {
+	var hook *answersHook
+	r := lapsingUnder(t, snapshot(t, approveRefunds), withAnswersHook(&hook))
+	hook.keep = r.harness.store
+	hook.after = func() { r.policy.set(snapshotAt(t, base().Add(-handOutBudget-time.Minute), approveRefunds)) }
+	expectWithheld(t, r.admit(retry(t, "req-2"), refundArgs()))
+	if n := r.spent(); n != 0 {
+		t.Fatalf("the withheld retry consumed %d approval(s), want none", n)
+	}
+	if r.p.Stats().Held != 1 {
+		t.Fatalf("Stats.Held = %d, want the hold standing", r.p.Stats().Held)
+	}
+	r.policy.set(snapshotAt(t, base().Add(2*time.Minute), approveRefunds))
+	expectRuns(t, r.admit(retry(t, "req-3"), refundArgs()))
+	if n := r.spent(); n != 1 {
+		t.Errorf("Spend was asked %d time(s), want once, by the retry that ran", n)
+	}
+}
+
 // TestAHoldWhoseBundleIsReplacedAfterTheConsumeRunsNothing: a bundle replaced
 // while the resume records its approval withholds the call on the held
 // trail, after APPROVAL_DECIDED; the approval is spent, and the next retry,

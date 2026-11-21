@@ -315,6 +315,35 @@ func TestAHeaderComesFromTheEnvironment(t *testing.T) {
 	}
 }
 
+// TestANestedBlockWrittenTwiceIsRefused: two blocks under one key are not
+// merged, even when no key inside them is set twice.
+func TestANestedBlockWrittenTwiceIsRefused(t *testing.T) {
+	const agent = "    framework: example\n"
+	doc := strings.Replace(document, agent, agent+"  principal:\n    type: service\n", 1)
+	if doc == document {
+		t.Fatal("the document holds no listener agent block to follow")
+	}
+	err := loadRecovering(t, writeDocument(t, doc))
+	if want := "listener.principal is written twice"; err == nil || !strings.Contains(err.Error(), want) {
+		t.Fatalf("the refusal is %v, want one saying %q", err, want)
+	}
+}
+
+// TestADottedKeyInsideABlockIsRefused: a key spelled with a dot inside a
+// block reopens, under another spelling, the block the dot names, so it is
+// refused as the top-level spelling is.
+func TestADottedKeyInsideABlockIsRefused(t *testing.T) {
+	const agent = "    framework: example\n"
+	doc := strings.Replace(document, agent, agent+"  principal.type: service\n", 1)
+	if doc == document {
+		t.Fatal("the document holds no listener agent block to follow")
+	}
+	err := loadRecovering(t, writeDocument(t, doc))
+	if want := `line 17: "principal.type": a key holds no "."`; err == nil || !strings.Contains(err.Error(), want) {
+		t.Fatalf("the refusal is %v, want one saying %q", err, want)
+	}
+}
+
 // TestEveryRefusalNamesWhatIsWrong is the table of configurations the loader
 // will not return. Each case is the smallest change to the document that
 // makes it wrong, and each message has to name the key, because an operator
@@ -327,8 +356,11 @@ func TestEveryRefusalNamesWhatIsWrong(t *testing.T) {
 		wants string
 	}{
 		{name: "a key nothing declares", add: "spool_dir: /tmp/x\n", wants: "is not a configuration key"},
-		{name: "a nested key nothing declares", add: "policy:\n  bundle_key: k\n", wants: "policy.bundle_key is not a configuration key"},
+		{name: "a nested key nothing declares", add: "pdp:\n  bundle_key: k\n", wants: "pdp.bundle_key is not a configuration key"},
 		{name: "a key set twice", add: "mode: ENFORCE\n", wants: "is set twice"},
+		{name: "a block written twice", add: "policy:\n  fail_open_read: true\n", wants: "line 42: policy is written twice; it was written at line 18"},
+		{name: "a dotted key under a block's name", add: "policy.fail_open_read: true\n", wants: `line 42: "policy.fail_open_read": a key holds no "."`},
+		{name: "a dotted key of a block not written", add: "pdp.timeout: 2s\n", wants: `line 42: "pdp.timeout": a key holds no "."`},
 		{name: "a mode this build does not name", env: [2]string{"mode", "AUDIT"}, wants: "not one of OBSERVE"},
 		{name: "a duration that is not one", env: [2]string{"approvals.ttl", "soon"}, wants: "not a duration"},
 		{name: "a byte count that is not one", env: [2]string{"evidence.max_bytes", "lots"}, wants: "not a byte count"},
@@ -416,6 +448,34 @@ func overrideEffect(effect string) string {
 	return strings.ReplaceAll(overrideOf("orders"), "effect: READ", "effect: "+effect)
 }
 
+// TestAnArgsItemTheReaderRefusesIsNotRepeated: an upstream's argument may
+// carry a pasted token, so a refusal of an args item, or of a value written on
+// the args key's own line, names where it is and withholds what it holds.
+func TestAnArgsItemTheReaderRefusesIsNotRepeated(t *testing.T) {
+	const secret = "sentinel-args-token"
+	for _, c := range []struct {
+		name, block, wants string
+	}{
+		{"an item", "    args:\n      - --token=" + secret + "&x\n", "upstreams.0.args.0: " + NotPrinted + ": anchors"},
+		{"a quoted item left open", "    args:\n      - \"--token=" + secret + "\n", "upstreams.0.args.0: " + NotPrinted + ": "},
+		{"a value on the key's line", "    args: --token=" + secret + "&x\n", "upstreams.0.args: " + NotPrinted + ": anchors"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			doc := strings.Replace(document, "    endpoint: http://127.0.0.1:1/mcp\n", "    command: /bin/echo\n"+c.block, 1)
+			if doc == document {
+				t.Fatal("the document holds no upstream endpoint to replace")
+			}
+			err := loadRecovering(t, writeDocument(t, doc))
+			if err == nil || !strings.Contains(err.Error(), c.wants) {
+				t.Fatalf("the refusal is %v, want one saying %q", err, c.wants)
+			}
+			if strings.Contains(err.Error(), secret) {
+				t.Errorf("the refusal repeats %q: %v", secret, err)
+			}
+		})
+	}
+}
+
 // TestASequenceIndexIsSpelledOnce: an index of the upstreams or of their
 // arguments that is negative, written a second way or past the items read is
 // refused, from the file and from the environment, and never crashes the
@@ -423,6 +483,14 @@ func overrideEffect(effect string) string {
 func TestASequenceIndexIsSpelledOnce(t *testing.T) {
 	withArgs := func(items string) string {
 		return strings.Replace(document, "    endpoint: http://127.0.0.1:1/mcp\n", "    command: /bin/echo\n    args:\n"+items, 1)
+	}
+	const sequence = "upstreams:\n  - name: orders\n    endpoint: http://127.0.0.1:1/mcp\n    environment: prod\n"
+	if !strings.Contains(document, sequence) {
+		t.Fatal("the document holds no upstreams sequence to index")
+	}
+	withEntry := func(index string) string {
+		return strings.Replace(document, sequence, "upstreams:\n  0:\n    name: orders\n    endpoint: http://127.0.0.1:1/mcp\n"+
+			"    environment: prod\n  "+index+":\n    name: billing\n", 1)
 	}
 	for _, c := range []struct {
 		name  string
@@ -434,9 +502,9 @@ func TestASequenceIndexIsSpelledOnce(t *testing.T) {
 		{name: "upstreams.0.args.00", doc: withArgs("      0: a\n      00: b\n"), wants: "args takes a sequence"},
 		{name: "upstreams.0.args.+0", doc: withArgs("      0: a\n      +0: b\n"), wants: "args takes a sequence"},
 		{name: "upstreams.0.args past the items", doc: withArgs("      1: a\n"), wants: "args takes a sequence"},
-		{name: "upstreams.00.name", doc: document + "upstreams:\n  00:\n    name: billing\n", wants: "upstreams.00.name is not a configuration key"},
-		{name: "upstreams.-1.name", doc: document + "upstreams:\n  -1:\n    name: billing\n", wants: "upstreams.-1.name is not a configuration key"},
-		{name: "upstreams.2.name", doc: document + "upstreams:\n  2:\n    name: billing\n", wants: "upstreams.2.name follows no entry 1"},
+		{name: "upstreams.00.name", doc: withEntry("00"), wants: "upstreams.00.name is not a configuration key"},
+		{name: "upstreams.-1.name", doc: withEntry("-1"), wants: "upstreams.-1.name is not a configuration key"},
+		{name: "upstreams.2.name", doc: withEntry("2"), wants: "upstreams.2.name follows no entry 1"},
 		{name: "UPSTREAMS_00_NAME", doc: document, env: "UPSTREAMS_00_NAME", wants: "names no upstreams entry"},
 		{name: "UPSTREAMS_-1_NAME", doc: document, env: "UPSTREAMS_-1_NAME", wants: "names no upstreams entry"},
 		{name: "UPSTREAMS_0_ARGS_00", doc: withArgs("      - a\n"), env: "UPSTREAMS_0_ARGS_00", wants: "names no upstreams entry"},

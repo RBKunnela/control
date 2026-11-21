@@ -216,4 +216,5 @@ either spells the name. A name the file or the environment spells twice is refus
 and so is a `_` in a header's name in the file, since no variable could replace it.
 A relative path resolves against the directory of the file. Every path, the file's
 own included, is read taking each `..` the path spells before following any
-symbolic link.
+symbolic link. The file writes a path as nested blocks: a key holding a `.`, a
+header's name among them, is refused, and so is a block written twice.

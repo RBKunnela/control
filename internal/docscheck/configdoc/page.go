@@ -248,7 +248,8 @@ func tail() string {
 		"and so is a `_` in a header's name in the file, since no variable could replace it.\n" +
 		"A relative path resolves against the directory of the file. Every path, the file's\n" +
 		"own included, is read taking each `..` the path spells before following any\n" +
-		"symbolic link.\n"
+		"symbolic link. The file writes a path as nested blocks: a key holding a `.`, a\n" +
+		"header's name among them, is refused, and so is a block written twice.\n"
 }
 
 func collectionRow(c gatewayconfig.Collection) (string, error) {

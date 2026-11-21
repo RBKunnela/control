@@ -64,11 +64,12 @@ func envName(name string) bool {
 // value. No key is exempt: the plane's account sets its own environment when
 // it restarts, so any key set there is one no placement of the configuration
 // protects. A Config that Load did not make holds nothing the environment
-// set.
+// set. A file sets a key at path:line; a variable's name, a key's or a header
+// token's, never holds a colon, though a header's may hold a hyphen.
 func EnvironmentOverrides(c *Config) []string {
 	var keys []string
 	for key, source := range c.source {
-		if strings.HasPrefix(source, brand.EnvPrefix) && envName(source) {
+		if strings.HasPrefix(source, brand.EnvPrefix) && !strings.Contains(source, ":") {
 			keys = append(keys, key)
 		}
 	}

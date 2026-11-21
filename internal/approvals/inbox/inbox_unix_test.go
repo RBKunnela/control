@@ -281,3 +281,66 @@ func TestAnUnlinkThePruneMayNotMakeIsCountedAndStopsNothing(t *testing.T) {
 		t.Errorf("a refused unlink: %+v, %v, counts %v", got, err, in.Counts())
 	}
 }
+
+// foreignSticky is a sticky directory every account may write that another
+// account owns, as an operator-owned inbox is to the plane: the system's
+// temporary directory, where the platform keeps one.
+func foreignSticky(t *testing.T) string {
+	t.Helper()
+	if os.Geteuid() == 0 {
+		t.Skip("the root account may unlink in any directory, so no directory here is another account's")
+	}
+	const dir = "/tmp"
+	info, err := os.Stat(dir)
+	if err != nil {
+		t.Skipf("no %s to stand for another account's sticky directory: %v", dir, err)
+	}
+	st, ok := info.Sys().(*syscall.Stat_t)
+	if !ok || int(st.Uid) == os.Geteuid() || info.Mode()&os.ModeSticky == 0 || info.Mode().Perm()&0o002 == 0 {
+		t.Skipf("%s is not a sticky directory another account owns: %v", dir, info.Mode())
+	}
+	return dir
+}
+
+// TestThePlaneTakesAnswersOnlyFromAnInboxItOwns: a sticky inbox another
+// account owns, whose owner may unlink any answer, is refused to the plane's
+// handle and still opened for an operator's; one the plane owns opens.
+func TestThePlaneTakesAnswersOnlyFromAnInboxItOwns(t *testing.T) {
+	own := inboxDir(t, 0o770|os.ModeSticky)
+	in, err := inbox.OpenPlaneInbox(own)
+	if err != nil {
+		t.Fatalf("the plane's own sticky inbox was refused: %v", err)
+	}
+	_ = in.Close()
+	foreign := foreignSticky(t)
+	if in, err := inbox.OpenPlaneInbox(foreign); !errors.Is(err, inbox.ErrInboxOwner) {
+		if err == nil {
+			_ = in.Close()
+		}
+		t.Errorf("the plane opened %s, another account's sticky inbox: %v; want ErrInboxOwner", foreign, err)
+	}
+	openInbox(t, foreign)
+}
+
+// TestThePruneRemovesNothingFromAnInboxItDoesNotOwn: a stale answer of no
+// live hold, which the kernel would let this account unlink from another
+// account's sticky directory, stays, and the prune says why.
+func TestThePruneRemovesNothingFromAnInboxItDoesNotOwn(t *testing.T) {
+	dir := foreignSticky(t)
+	now := time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
+	id := fmt.Sprintf("PRUNE%d", os.Getpid())
+	name := filepath.Join(dir, id+".alice.answer")
+	put(t, dir, id+".alice.answer", answerFile(t, id))
+	t.Cleanup(func() { _ = os.Remove(name) })
+	if err := os.Chtimes(name, now.Add(-time.Hour), now.Add(-time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	in := openInbox(t, dir)
+	got, err := in.Prune(context.Background(), now, 15*time.Minute, func(string) bool { return false })
+	if !errors.Is(err, inbox.ErrInboxOwner) || got != (inbox.Pruned{}) {
+		t.Errorf("a prune of another account's inbox: %+v, %v; want nothing removed and ErrInboxOwner", got, err)
+	}
+	if _, err := os.Lstat(name); err != nil {
+		t.Errorf("the prune unlinked %s from another account's inbox: %v", name, err)
+	}
+}

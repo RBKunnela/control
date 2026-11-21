@@ -65,7 +65,7 @@ is on [the MCP gateway](mcp-gateway.md) page.
 ## Who may approve
 
 **Under `directory`, write access to the approvals directory is the approval
-authority.** Whoever can write the records can answer a held request.
+authority.**
 `approver_id` on an answer is an unauthenticated claim, worth what the
 directory's permissions are worth, and nothing in the plane treats it as an
 identity. The directory is refused at open when another account owns it or a
@@ -76,8 +76,9 @@ approves**, by a signed `approval-answer/v1alpha1` in `approvals.inbox_dir`
 that names the hold member for member, signed by `approvals approve --key`;
 a claim for a signed hold is refused, and the console answers none. Any
 valid rejection wins; an answer
-the plane could not judge leaves the call `INDETERMINATE`. Only an inbox the plane
-owns is pruned
+the plane could not judge leaves the call `INDETERMINATE`. The plane reads
+and prunes only an inbox its own account owns: under the sticky bit the
+owner may remove any answer, a rejection among them
 ([ADR-0073](../adr/0073-an-approval-counts-only-as-the-plane-judges-it.md)).
 
 A writer of that directory chooses nothing else. A record carries no trail,
@@ -89,10 +90,10 @@ plane never reads back as truth.
 
 A hold does not survive a restart, and the window between a request and an
 answer is as long as a person takes, so a plane that dies holding a call
-is an ordinary event rather than a rare one. The plane therefore keeps its own
+is an ordinary event. The plane therefore keeps its own
 journal of its own holds, in its own directory, under its own lock, written by
 no other process: `approvals.hold_journal_dir`. It is as trusted as the
-evidence, and for the same reason — whoever can write it can already write the
+evidence — whoever can write it can already write the
 evidence.
 
 An entry is recorded after `APPROVAL_REQUESTED` is appended and before the

@@ -42,6 +42,58 @@ verify one.
   exports of one run could list requests differently and a finding citing
   more than ten could keep other references
   ([supervision](docs/reference/supervision.md)).
+- A signed start refuses a header a variable sets with its hyphens spelled
+  as they are, such as `GUARDANA_CONTROL_EXPORT_HEADERS_X-TENANT`, as it
+  refuses every other key the environment sets. Only a header spelled with
+  `_` was refused; the hyphenated one was applied and the start went on.
+- A retry checks the pause, the stops, the clock and the policy again after
+  the approval authority answers and before it spends the approval. A stop
+  published, or a policy gone stale, while the answer was read spent the
+  approval although the call was then blocked; the hold now stands for a
+  later retry.
+- A refusal of an upstream's `env` or `args` item the configuration reader
+  cannot read, such as `API_KEY=value&x` or `--token=value&x`, no longer
+  repeats the item, which can hold a pasted credential.
+- The configuration refuses a block written twice, such as two `policy:`
+  mappings, naming both lines. Two blocks whose keys differed were merged.
+- The configuration refuses a key holding a `.`, such as
+  `policy.fail_open_read: true`; a path is written as nested blocks. The
+  dotted spelling reopened a block already written.
+- `doctor` reads the spent ledger beside the hold journal as `run` opens and
+  sweeps it, and fails naming it where `run` would refuse it: a damaged
+  `ledger.meta`, a name the ledger did not write or a mark that will not
+  decode. It printed `ok` for the approvals and `run` then refused to start.
+  A mark a running plane removes while `doctor` reads the ledger is passed.
+- `/healthz` reports the `directory` approval authority `unavailable` once
+  its approvals directory is not the one the plane opened; it said `usable`
+  whatever became of it.
+- After a restart, a signed plane closes an unexpired lost hold that nobody
+  answered `APPROVAL_EXPIRED` while the hold's record stands, as the
+  directory kind does and [failure modes](docs/reference/failure-modes.md)
+  says. It closed it `APPROVAL_STATE_UNKNOWN`, which stays for a record that
+  is gone.
+- A signed answer that authenticates but whose body cannot be read as an
+  answer, such as a rejection with no `reason`, from an operator who may
+  approve the hold, or where that cannot be told, leaves the call
+  `INDETERMINATE` and the hold standing. It was left out, so a valid approval
+  beside it could run, though it may be the rejection that wins. From an
+  operator who may not approve the hold it is left out. A file named for the
+  approval that cannot be read as an answer at all still makes the batch
+  unavailable, since it may be the rejection
+  ([ADR-0073](docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it.md)).
+- A signed start reads the trust root key only from the file its check
+  judged, and refuses one renamed over the path in between. It opened the
+  key again by name after the check.
+- A signed plane refuses an `approvals.inbox_dir` its own account does not
+  own, at the start, in `doctor` and at every read, since that owner may
+  remove any operator's answer under the sticky bit, a rejection among them
+  ([approvals](docs/concepts/approvals-and-the-held-call.md)).
+- An inbox prune removes nothing from a directory this account does not
+  own, and says so. It unlinked there whatever stale answer the kernel let
+  it remove.
+- An approvals record whose `tenant`, `project` or any other member is
+  `null` is refused as a member of the wrong type. A `null` tenant or project
+  was read as empty.
 - An answer of the AuthZEN decision point whose body is not UTF-8 is refused
   with `PDP_ANSWER_REFUSED`, so the call is blocked. JSON text is UTF-8; such
   a body was read with replacement characters in its strings

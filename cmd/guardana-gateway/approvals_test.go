@@ -838,6 +838,32 @@ func TestHealthCountsWhatTheReconciliationSettled(t *testing.T) {
 	}
 }
 
+// TestHealthSaysADirectoryAuthorityWhoseStoreFailedIsUnavailable: the
+// directory kind is usable on the health page while its records directory is
+// the one the plane opened, and unavailable once another stands at its name.
+func TestHealthSaysADirectoryAuthorityWhoseStoreFailedIsUnavailable(t *testing.T) {
+	tr := newTree(t)
+	records, _ := tr.fileProvider(t)
+	p := tr.plane(t)
+	state := func() any {
+		_, body := ask(t, p, "/healthz")
+		authority, _ := approvalsAnswer(t, body)["authority"].(map[string]any)
+		return authority["state"]
+	}
+	if got := state(); got != "usable" {
+		t.Fatalf("approvals.authority.state is %v with the store intact, want usable", got)
+	}
+	if err := os.Rename(records, records+".moved"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(records, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if got := state(); got != "unavailable" {
+		t.Errorf("approvals.authority.state is %v after the records directory was replaced, want unavailable", got)
+	}
+}
+
 // approvalsAnswer is the approvals object of a health answer.
 func approvalsAnswer(t *testing.T, body map[string]any) map[string]any {
 	t.Helper()

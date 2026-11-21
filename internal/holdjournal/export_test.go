@@ -21,3 +21,14 @@ func SetDirSync(sync func(*os.File) error) (restore func()) {
 	dirSync = sync
 	return func() { dirSync = saved }
 }
+
+// SetBeforeInspectMark runs before each mark InspectLedger reads, with the
+// mark's name, until the returned function restores the plain read.
+func SetBeforeInspectMark(before func(name string)) (restore func()) {
+	saved := inspectMark
+	inspectMark = func(l *Ledger, name string) (LedgerEntry, error) {
+		before(name)
+		return saved(l, name)
+	}
+	return func() { inspectMark = saved }
+}

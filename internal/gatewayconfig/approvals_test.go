@@ -77,7 +77,7 @@ func TestTheAuthorityHasNoDefault(t *testing.T) {
 // key's own.
 func TestTheOldProviderKeyIsRefusedNamingItsReplacement(t *testing.T) {
 	for name, path := range map[string]func(t *testing.T) string{
-		"in the file": func(t *testing.T) string { return write(t, "\napprovals:\n  provider: file\n") },
+		"in the file": func(t *testing.T) string { return write(t, "\napprovals:\n  authority: memory\n  provider: file\n") },
 		"in the environment": func(t *testing.T) string {
 			path := write(t, "")
 			setEnv(t, "approvals.provider", "file")
@@ -96,7 +96,7 @@ func TestTheOldProviderKeyIsRefusedNamingItsReplacement(t *testing.T) {
 			}
 		})
 	}
-	_, err := Load(write(t, "\napprovals:\n  providers: file\n"), os.Environ())
+	_, err := Load(write(t, "\napprovals:\n  authority: memory\n  providers: file\n"), os.Environ())
 	if err == nil || !strings.Contains(err.Error(), "is not a configuration key") || strings.Contains(err.Error(), "approvals.authority") {
 		t.Errorf("a key that never existed: %v", err)
 	}

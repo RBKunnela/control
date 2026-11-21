@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/guardana/control/internal/approvals"
+	"github.com/guardana/control/internal/files"
 	"github.com/guardana/control/internal/policy"
 	"github.com/guardana/control/internal/policykey"
 )
@@ -53,6 +54,12 @@ const (
 // sticky, so any writer could remove or replace another's answer.
 const ErrInboxPermissions Error = "inbox: the inbox may be written by others and is not sticky"
 
+// ErrInboxOwner is an inbox another account owns, or whose owner the platform
+// does not name. Under the sticky bit a directory's owner may still unlink any
+// answer, a rejection among them, so the plane takes answers only from an
+// inbox it owns, and prunes no other.
+const ErrInboxOwner Error = "inbox: the inbox is not owned by this process's account"
+
 // Inbox is the directory operators file signed answers in, as the plane
 // reads it. Every file in it is untrusted: the plane authenticates each
 // answer itself. A name this package does not write, and a file whose body
@@ -67,6 +74,9 @@ const ErrInboxPermissions Error = "inbox: the inbox may be written by others and
 type Inbox struct {
 	root *os.Root
 	dir  string
+	// owned holds the directory to this process's account at every judge,
+	// as the plane's own handle does.
+	owned bool
 
 	mu     sync.Mutex
 	counts map[string]uint64
@@ -75,11 +85,22 @@ type Inbox struct {
 // OpenInbox opens dir and refuses one a group or the world may write that is
 // not sticky.
 func OpenInbox(dir string) (*Inbox, error) {
+	return openInbox(dir, false)
+}
+
+// OpenPlaneInbox is OpenInbox for the plane that reads the answers, which
+// also refuses, with ErrInboxOwner, a directory this process's account does
+// not own, then and at every read.
+func OpenPlaneInbox(dir string) (*Inbox, error) {
+	return openInbox(dir, true)
+}
+
+func openInbox(dir string, owned bool) (*Inbox, error) {
 	root, err := os.OpenRoot(dir + string(os.PathSeparator) + ".")
 	if err != nil {
 		return nil, fmt.Errorf("the inbox: %w", err)
 	}
-	in := &Inbox{root: root, dir: dir, counts: map[string]uint64{}}
+	in := &Inbox{root: root, dir: dir, owned: owned, counts: map[string]uint64{}}
 	if err := in.judge(); err != nil {
 		return nil, errors.Join(err, root.Close())
 	}
@@ -94,7 +115,8 @@ func (in *Inbox) Close() error {
 	return in.root.Close()
 }
 
-// judge refuses the directory when others may write it and it is not sticky.
+// judge refuses the directory when others may write it and it is not sticky,
+// and, for the plane's handle, when this process's account does not own it.
 func (in *Inbox) judge() error {
 	info, err := in.root.Stat(".")
 	if err != nil {
@@ -102,6 +124,16 @@ func (in *Inbox) judge() error {
 	}
 	if info.Mode().Perm()&writableByOthers != 0 && info.Mode()&fs.ModeSticky == 0 {
 		return fmt.Errorf("%w: mode %04o", ErrInboxPermissions, info.Mode().Perm())
+	}
+	if in.owned {
+		return checkOwned(info)
+	}
+	return nil
+}
+
+func checkOwned(info fs.FileInfo) error {
+	if err := files.CheckOwnedBy(info, os.Geteuid()); err != nil {
+		return fmt.Errorf("%w: %w", ErrInboxOwner, err)
 	}
 	return nil
 }
@@ -293,9 +325,10 @@ type Pruned struct {
 // and whose modification time is ttl or more before now: nothing reads such
 // a file again, and left in place it would fill the inbox's bound. A name
 // this package does not write is left alone. An unlink the directory does not
-// allow, such as another account's file under the sticky bit when the plane
-// does not own the directory, is counted in Refused and never stops the
-// prune. An error is a directory that could not be listed or judged.
+// allow is counted in Refused and never stops the prune. An inbox this
+// process's account does not own is refused whole with ErrInboxOwner and
+// nothing in it is removed, however it was opened. An error is a directory
+// that could not be listed or judged.
 func (in *Inbox) Prune(ctx context.Context, now time.Time, ttl time.Duration, live func(approvalID string) bool) (Pruned, error) {
 	var out Pruned
 	if in == nil || in.root == nil {
@@ -313,8 +346,21 @@ func (in *Inbox) Prune(ctx context.Context, now time.Time, ttl time.Duration, li
 	if err != nil {
 		return out, err
 	}
+	if err := ownedDir(d); err != nil {
+		return out, errors.Join(err, d.Close())
+	}
 	err = in.pruneEach(ctx, d, now.Add(-ttl), live, &out)
 	return out, errors.Join(err, d.Close())
+}
+
+// ownedDir refuses the directory d opened unless this process's account owns
+// it, judged from d itself, so the directory judged is the one pruned.
+func ownedDir(d *os.File) error {
+	info, err := d.Stat()
+	if err != nil {
+		return fmt.Errorf("the inbox: %w", err)
+	}
+	return checkOwned(info)
 }
 
 // pruneEach reads d a bound's worth of names at a time and prunes each.

@@ -189,6 +189,9 @@ file. The same owner, the plane's account included where it owns the
 directory, can therefore unlink any answer, a rejection among them; the
 sticky bit stops only the other operators. <code>directory</code> takes the claim filed under the
 hold's approval id, its approver id held to the claim rule.</p>
+<p>Amended in 0.19: the plane refuses an inbox its own account does not own, at
+the start, in doctor and at every read, and prunes no other. That owner could
+unlink any answer, a rejection among them, out of the plane's sight.</p>
 <p><strong><code>approvals.authority: memory | directory | signed</code> replaces
 <code>approvals.provider</code> and has no default.</strong> A configuration without it, or
 with the old key, is refused naming both. <code>directory</code> is what <code>provider: file</code> was. This amends ADR-0066 property 3 for this port: its kind is chosen

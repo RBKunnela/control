@@ -314,6 +314,23 @@ func TestAStopDuringTheApprovalLookupBlocksTheResume(t *testing.T) {
 	}
 }
 
+// TestAStopWhileTheAuthorityAnswersBlocksTheResume: a stop written while the
+// authority's answer is read, after the checks before it, blocks the retry
+// with the approval unspent and the hold standing.
+func TestAStopWhileTheAuthorityAnswersBlocksTheResume(t *testing.T) {
+	var hook *answersHook
+	h, src := heldUnderRunA(t, withAnswersHook(&hook))
+	hook.keep = h.store
+	hook.after = func() { src.set(stopped(t, "run-a")) }
+	expectPlaneBlock(t, h, h.admit(retry(t, "req-2"), refundArgs()), verdictDeny, codeRunStopped)
+	if h.spent() != 0 {
+		t.Errorf("the blocked retry consumed %d approval(s)", h.spent())
+	}
+	if h.p.Stats().Held != 1 {
+		t.Errorf("Stats.Held = %d, want the hold standing", h.p.Stats().Held)
+	}
+}
+
 // TestAStopDuringTheLookupOfANewRequestBlocksItsHold: a stop written while
 // the store looks up a request nothing holds yet blocks it on its own trail
 // instead of holding it.

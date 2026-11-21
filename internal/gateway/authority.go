@@ -140,6 +140,9 @@ type judged struct {
 	readable bool
 	approval *controlv1.Approval
 	proof    string
+	// unanswered is a signed batch that held no answer at all, which a
+	// reconciliation can tell from answers the checks left out.
+	unanswered bool
 }
 
 // answerFor asks the authority about h and judges what comes back by the
@@ -189,7 +192,8 @@ func claimed(h heldFacts, claims []*controlv1.Approval) judged {
 // tenant and project at the grant that approves; one that fails any step is
 // counted and left out, save a rejection decided outside the window, which
 // is authorized like any. A valid rejection wins over every approval. Where an
-// answer could not be judged for want of the roster or the authorizer, and no
+// answer could not be judged for want of the roster or the authorizer, or the
+// body of one from an operator who may answer the hold cannot be read, and no
 // valid rejection was found, the fold cannot say there is none, so it is
 // unreadable.
 func (p *Pipeline) judgeSigned(ctx context.Context, h heldFacts, signed []trust.Envelope, now time.Time) judged {
@@ -213,7 +217,7 @@ func (p *Pipeline) judgeSigned(ctx context.Context, h heldFacts, signed []trust.
 	case approve != nil:
 		return *approve
 	}
-	return judged{readable: true}
+	return judged{readable: true, unanswered: len(signed) == 0}
 }
 
 // judgeEnvelope takes one signed answer through the four steps in order and
@@ -232,8 +236,7 @@ func (p *Pipeline) judgeEnvelope(ctx context.Context, h heldFacts, env trust.Env
 	}
 	body, err := approvals.ReadAnswer(who.Body())
 	if err != nil {
-		p.counts.answerRefused(AnswerBody)
-		return nil, "", true
+		return nil, "", p.judgeUnreadable(ctx, who, h)
 	}
 	cause := compareWithHold(h, body, now)
 	skewed := cause == AnswerWindow && body.Decision == approvals.DecisionReject
@@ -241,17 +244,8 @@ func (p *Pipeline) judgeEnvelope(ctx context.Context, h heldFacts, env trust.Env
 		p.counts.answerRefused(cause)
 		return nil, "", true
 	}
-	perm := p.cfg.Authorizer.Authorize(ctx, who, operators.Request{
-		Act: operators.ActApprove, Tenant: h.ids.TenantID, Project: h.ids.ProjectID,
-	})
-	switch perm.State() {
-	case operators.PermPermitted:
-	case operators.PermDenied:
-		p.counts.answerRefused(AnswerUnauthorized)
-		return nil, "", true
-	default:
-		p.counts.answerRefused(AnswerAuthzUnavailable)
-		return nil, "", false
+	if permitted, known := p.authorizeAnswer(ctx, who, h); !permitted {
+		return nil, "", known
 	}
 	approver, err := approval.AuthenticatedApproverID(who.Issuer(), who.Subject())
 	if err != nil {
@@ -273,6 +267,35 @@ func (p *Pipeline) judgeEnvelope(ctx context.Context, h heldFacts, env trust.Env
 	}
 	a.ApproverId, a.Reason, a.DecidedAt = approver, body.Reason, timestampOf(body.DecidedAt)
 	return &judged{readable: true, approval: a, proof: approver + " " + envelopeDigest(env)}, body.Decision, true
+}
+
+// judgeUnreadable is whether an authenticated answer to h whose body cannot be
+// read is known to be left out. What it decides cannot be read, so from an
+// operator who may answer h it may be the rejection that wins: unknown.
+func (p *Pipeline) judgeUnreadable(ctx context.Context, who operators.Authentication, h heldFacts) bool {
+	permitted, known := p.authorizeAnswer(ctx, who, h)
+	if permitted {
+		p.counts.answerRefused(AnswerBody)
+	}
+	return known && !permitted
+}
+
+// authorizeAnswer asks whether who may answer the hold h, by the hold's own
+// tenant and project, and counts a refusal. known is false where nobody could
+// say.
+func (p *Pipeline) authorizeAnswer(ctx context.Context, who operators.Authentication, h heldFacts) (permitted, known bool) {
+	perm := p.cfg.Authorizer.Authorize(ctx, who, operators.Request{
+		Act: operators.ActApprove, Tenant: h.ids.TenantID, Project: h.ids.ProjectID,
+	})
+	switch perm.State() {
+	case operators.PermPermitted:
+		return true, true
+	case operators.PermDenied:
+		p.counts.answerRefused(AnswerUnauthorized)
+		return false, true
+	}
+	p.counts.answerRefused(AnswerAuthzUnavailable)
+	return false, false
 }
 
 func clamp(t, from, to time.Time) time.Time {

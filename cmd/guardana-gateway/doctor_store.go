@@ -94,14 +94,19 @@ func (d *examination) holdJournal(ctx context.Context) (string, string, string) 
 		return unusedJournal(journalDir, where, bounds, err)
 	}
 	listing, listErr := journal.List(ctx, d.cfg.Approvals.ReconcileMax)
+	marks, ledgerErr := journal.InspectLedger()
 	if closeErr := journal.Close(); closeErr != nil {
 		return verdictUnknown, "approvals", "the hold journal was read and did not close: " + closeErr.Error()
 	}
 	if listErr != nil {
 		return verdictUnknown, "approvals", "the hold journal opened and cannot be read: " + listErr.Error()
 	}
-	found := fmt.Sprintf("%s; a restart would close %d lost hold(s), %d entry(ies) were left mid-close and %d will not decode; %s",
-		where, len(listing.Held), listing.Interrupted, listing.Unreadable, bounds)
+	if ledgerErr != nil {
+		return verdictFail, "approvals", fmt.Sprintf("approvals.hold_journal_dir: the spent ledger, which run opens and sweeps: %v", ledgerErr)
+	}
+	found := fmt.Sprintf("%s; a restart would close %d lost hold(s), %d entry(ies) were left mid-close and %d will not decode; "+
+		"the spent ledger holds %d mark(s); %s",
+		where, len(listing.Held), listing.Interrupted, listing.Unreadable, marks, bounds)
 	if !listing.Complete {
 		return verdictUnknown, "approvals", found + "; the pass did not read every entry, so those counts are a floor and not a total"
 	}

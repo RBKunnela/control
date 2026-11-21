@@ -358,6 +358,13 @@ func checkMembers(body []byte, known ...string) error {
 	if err := members.Only(known...); err != nil {
 		return fmt.Errorf("%w: a member this build cannot name", ErrUnknownField)
 	}
+	// encoding/json reads null into a string as "", which would pass for a
+	// member left empty; no writer spells one as null.
+	for _, name := range known {
+		if raw, ok := members[name]; ok && bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+			return fmt.Errorf("%w: %q holds null", ErrFieldType, cause(name))
+		}
+	}
 	return nil
 }
 

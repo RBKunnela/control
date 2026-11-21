@@ -153,7 +153,7 @@ func (d *examination) authority(context.Context) (string, string, string) {
 	switch d.cfg.Approvals.Authority {
 	case gatewayconfig.AuthoritySigned:
 		dir := d.cfg.Resolve(d.cfg.Approvals.InboxDir)
-		in, err := inbox.OpenInbox(dir)
+		in, err := inbox.OpenPlaneInbox(dir)
 		if err != nil {
 			return verdictFail, doctorAuthority, "approvals.inbox_dir: " + err.Error()
 		}

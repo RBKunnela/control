@@ -7,6 +7,7 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"errors"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/guardana/control/internal/approvals/inbox"
 	"github.com/guardana/control/internal/canon"
 	"github.com/guardana/control/internal/gatewayconfig"
 	"github.com/guardana/control/internal/operators"
@@ -149,6 +151,117 @@ func buildSigned(t *testing.T, tr tree) (*plane, error) {
 		t.Cleanup(func() { _ = p.close() })
 	}
 	return p, err
+}
+
+// TestASignedStartReadsTheRootKeyItJudged: the trust root key the plane
+// takes is the file the start check judged. A copy renamed over the key's
+// path once the check has judged it refuses the start, though it holds the
+// same key; the key left in place starts.
+func TestASignedStartReadsTheRootKeyItJudged(t *testing.T) {
+	for _, swapped := range []bool{false, true} {
+		t.Run(fmt.Sprintf("swapped %v", swapped), func(t *testing.T) {
+			tr := signedPlaneTree(t, "roster-a", []ed25519.PublicKey{signedTestPublic("alice")}, "roster-a")
+			key := filepath.Join(tr.dir, "trust", "root.pub")
+			saved := notPlaneWritable
+			notPlaneWritable = func(path string) (fs.FileInfo, error) {
+				info := judgedEntry(path)
+				if swapped && path == key {
+					raw, err := os.ReadFile(key) //nolint:gosec // G304: the key this test wrote
+					if err != nil {
+						t.Fatal(err)
+					}
+					writeTestFile(t, key+".copy", raw)
+					if err := os.Rename(key+".copy", key); err != nil {
+						t.Fatal(err)
+					}
+				}
+				return info, nil
+			}
+			t.Cleanup(func() { notPlaneWritable = saved })
+			_, err := buildSigned(t, tr)
+			switch {
+			case !swapped && err != nil:
+				t.Fatalf("a start over the root key it judged was refused: %v", err)
+			case swapped && (err == nil || !strings.Contains(err.Error(), "trust.root_public_key: ")):
+				t.Errorf("a start over a root key renamed over its path after the check = %v; want trust.root_public_key refused", err)
+			}
+		})
+	}
+}
+
+// TestASignedStartRefusesAnInboxThePlaneDoesNotOwn: a sticky inbox another
+// account owns, whose owner may unlink any operator's answer, refuses the
+// start naming approvals.inbox_dir.
+func TestASignedStartRefusesAnInboxThePlaneDoesNotOwn(t *testing.T) {
+	tr := foreignInboxTree(t)
+	placedApart(t)
+	if _, err := buildSigned(t, tr); err == nil || !strings.Contains(err.Error(), "approvals.inbox_dir: "+inbox.ErrInboxOwner.Error()) {
+		t.Errorf("a start over another account's sticky inbox = %v; want approvals.inbox_dir refused as not the plane's", err)
+	}
+}
+
+// TestDoctorFailsAnInboxThePlaneDoesNotOwn: doctor judges the inbox as the
+// start does, so another account's sticky inbox fails its authority line.
+func TestDoctorFailsAnInboxThePlaneDoesNotOwn(t *testing.T) {
+	tr := foreignInboxTree(t)
+	verdict, key, found := (&examination{cfg: tr.load(t)}).authority(t.Context())
+	if verdict != verdictFail || key != doctorAuthority || !strings.Contains(found, "approvals.inbox_dir: "+inbox.ErrInboxOwner.Error()) {
+		t.Errorf("doctor's authority line over another account's sticky inbox = %s %s %q; want fail naming approvals.inbox_dir as not the plane's", verdict, key, found)
+	}
+}
+
+// foreignInboxTree is a signed plane tree whose inbox is a sticky directory
+// another account owns and that holds none of the tree: /tmp holds the test's
+// own directories where the temporary directory is under it, so /var/tmp
+// stands in there. The test skips where neither is one.
+func foreignInboxTree(t *testing.T) tree {
+	t.Helper()
+	if os.Geteuid() == 0 {
+		t.Skip("the root account owns the directory this case points at, so nothing here is another account's")
+	}
+	tr := signedPlaneTree(t, "roster-a", []ed25519.PublicKey{signedTestPublic("alice")}, "roster-a")
+	foreign := foreignStickyDir(t, tr.dir)
+	raw, err := os.ReadFile(tr.config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	moved := strings.Replace(string(raw), "  inbox_dir: inbox\n", "  inbox_dir: "+foreign+"\n", 1)
+	if moved == string(raw) {
+		t.Fatal("the signed configuration names no inbox to move")
+	}
+	writeTestFile(t, tr.config, []byte(moved))
+	return tr
+}
+
+// foreignStickyDir is the first of /tmp and /var/tmp that is a sticky
+// directory another account owns and does not hold treeDir: an inbox that
+// holds the tree's other directories is refused for sharing their path
+// before its owner is judged.
+func foreignStickyDir(t *testing.T, treeDir string) string {
+	t.Helper()
+	tree, err := filepath.EvalSymlinks(treeDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, dir := range []string{"/tmp", "/var/tmp"} {
+		info, err := os.Stat(dir)
+		if err != nil {
+			continue
+		}
+		if st, ok := info.Sys().(*syscall.Stat_t); !ok || int(st.Uid) == os.Geteuid() || info.Mode()&os.ModeSticky == 0 {
+			continue
+		}
+		resolved, err := filepath.EvalSymlinks(dir)
+		if err != nil {
+			continue
+		}
+		if rel, err := filepath.Rel(resolved, tree); err == nil && rel != ".." && !strings.HasPrefix(rel, "../") {
+			continue
+		}
+		return dir
+	}
+	t.Skip("neither /tmp nor /var/tmp is a sticky directory another account owns that holds none of this test's tree")
+	return ""
 }
 
 // TestASignedStartRefusesWhatThePlanesAccountCouldTurn: the configuration

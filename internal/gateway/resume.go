@@ -139,6 +139,11 @@ func (c *call) spentAlready(own *heldRequest, binding approval.Binding) (spent, 
 // spent it notes that in r; one that says the plane settled it leaves the hold
 // waiting; one that cannot be written blocks the call with nothing run.
 func (c *call) spend(own *heldRequest, binding approval.Binding, a *controlv1.Approval, proof string, r *resumption) (Disposition, bool) {
+	// The authority's read can outlast the checks made before it, so they are
+	// made again at the last reading before the approval is spent.
+	if c.refusedBeforeConsume(own) {
+		return c.freshBlock(), true
+	}
 	if verdict, code, refused := approvalFields(own.approval, a, own.expires, c.now, c.p.cfg.AuthorityKind); refused {
 		d := c.resumeBlocked(own, verdict, code, expiredEvent(own.approval))
 		if r.concluded == nil {

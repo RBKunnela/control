@@ -81,22 +81,14 @@ func (l *Ledger) init() error {
 	if err := l.judge(); err != nil {
 		return err
 	}
-	names, temps, err := l.list()
+	names, temps, unmarked, err := l.read()
 	if err != nil {
 		return err
 	}
-	marker, err := l.root.Lstat(ledgerMarkerFile)
-	switch {
-	case err == nil && marker.Mode().IsRegular():
-		if err := l.readMarker(); err != nil {
-			return err
-		}
-	case errors.Is(err, fs.ErrNotExist) && len(names) == 0:
+	if unmarked {
 		if err := l.writeMarker(); err != nil {
 			return err
 		}
-	default:
-		return fmt.Errorf("%w: the ledger holds no %s", ErrNotAJournal, ledgerMarkerFile)
 	}
 	for _, name := range temps {
 		if err := l.root.Remove(name); err != nil && !errors.Is(err, fs.ErrNotExist) {
@@ -106,6 +98,86 @@ func (l *Ledger) init() error {
 	l.entries = len(names)
 	return nil
 }
+
+// read lists the directory and reads its marker, writing nothing. A ledger
+// with no marker is one only while it holds no mark, and unmarked says init
+// still has to write one.
+func (l *Ledger) read() (names, temps []string, unmarked bool, err error) {
+	names, temps, err = l.list()
+	if err != nil {
+		return nil, nil, false, err
+	}
+	marker, err := l.root.Lstat(ledgerMarkerFile)
+	switch {
+	case err == nil && marker.Mode().IsRegular():
+		if err := l.readMarker(); err != nil {
+			return nil, nil, false, err
+		}
+		return names, temps, false, nil
+	case errors.Is(err, fs.ErrNotExist) && len(names) == 0:
+		return names, temps, true, nil
+	}
+	return nil, nil, false, fmt.Errorf("%w: the ledger holds no %s", ErrNotAJournal, ledgerMarkerFile)
+}
+
+// InspectLedger judges the ledger of a journal opened read-only as opening it
+// for writing would, and reads every mark as the sweep after that open does,
+// writing nothing: it refuses where that open or sweep would refuse, and
+// reports how many marks the ledger holds. A journal with no ledger directory
+// yet holds none, since that open makes one.
+func (j *Journal) InspectLedger() (int, error) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if err := j.usable(); err != nil {
+		return 0, err
+	}
+	info, err := j.root.Lstat(ledgerDir)
+	if errors.Is(err, fs.ErrNotExist) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("%w: the ledger: %w", ErrNotAJournal, err)
+	}
+	if err := checkDir(info); err != nil {
+		return 0, fmt.Errorf("the ledger: %w", err)
+	}
+	root, err := j.root.OpenRoot(ledgerDir)
+	if err != nil {
+		return 0, fmt.Errorf("%w: the ledger: %w", ErrNotAJournal, err)
+	}
+	l := &Ledger{j: j, dirFiles: dirFiles{root: root}, opened: info}
+	n, err := l.inspect()
+	return n, errors.Join(err, root.Close())
+}
+
+// inspect is InspectLedger past the open: the directory held to what was
+// opened, its listing and marker, and every mark read. It holds no lock, so a
+// mark a running plane's sweep removed after the listing is passed as gone.
+func (l *Ledger) inspect() (int, error) {
+	now, err := l.root.Stat(".")
+	if err != nil || !os.SameFile(l.opened, now) {
+		return 0, fmt.Errorf("%w: another directory stands at the ledger's name", ErrDirectoryChanged)
+	}
+	names, _, _, err := l.read()
+	if err != nil {
+		return 0, err
+	}
+	read := 0
+	for _, name := range names {
+		_, err := inspectMark(l, name)
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+		case err != nil:
+			return 0, err
+		default:
+			read++
+		}
+	}
+	return read, nil
+}
+
+// inspectMark is how inspect reads one mark.
+var inspectMark = (*Ledger).readMark
 
 // list reads the directory: the marks, sorted, and the temporary files. A
 // name this package did not write, or anything that is not a regular file,

@@ -103,9 +103,15 @@ func (p *parser) errorf(at int, format string, args ...any) error {
 }
 
 // mapping reads the keys at indent under prefix, and everything nested under
-// them.
+// them. A key that opens a block is written once: two blocks would be merged
+// with no key inside them set twice, which the loader alone cannot see.
 func (p *parser) mapping(indent int, prefix string) ([]entry, error) {
 	var out []entry
+	type written struct {
+		number int
+		block  bool
+	}
+	seen := map[string]written{}
 	for p.at < len(p.lines) {
 		cur := p.lines[p.at]
 		if cur.indent < indent {
@@ -122,6 +128,11 @@ func (p *parser) mapping(indent int, prefix string) ([]entry, error) {
 		if err := checkKey(key, shown(prefix, key)); err != nil {
 			return nil, p.errorf(p.at, "%v", err)
 		}
+		block := strings.TrimSpace(rest) == ""
+		if before, ok := seen[key]; ok && (block || before.block) {
+			return nil, p.errorf(p.at, "%s is written twice; it was written at line %d", prefix+key, before.number)
+		}
+		seen[key] = written{number: cur.number, block: block}
 		p.at++
 		nested, err := p.value(prefix+key, indent, strings.TrimSpace(rest), cur.number)
 		if err != nil {
@@ -210,6 +221,11 @@ func checkKey(key, shown string) error {
 	if strings.ContainsAny(key, "&*{}[]|>'\"") {
 		return fmt.Errorf("%s: anchors, tags, quoted keys and flow collections are not read here", shown)
 	}
+	if strings.Contains(key, ".") {
+		// A dotted key would reopen, under another spelling, a block that is
+		// written once.
+		return fmt.Errorf("%s: a key holds no \".\"; write a path as nested blocks", shown)
+	}
 	return nil
 }
 
@@ -267,12 +283,13 @@ func plain(raw string) (string, error) {
 	return raw, nil
 }
 
-// shown is a value as a refusal names it: under a header map or a credential
-// key not at all, under an address key only while it carries nothing that
-// could hold a credential, and quoted otherwise. A refused value is often
-// half-written YAML, so it is judged by the key it was meant for.
+// shown is a value as a refusal names it: under a header map, a credential
+// key or an upstream's env list not at all, under an address key only while
+// it carries nothing that could hold a credential, and quoted otherwise. A
+// refused value is often half-written YAML, so it is judged by the key it was
+// meant for; an env item may be a pasted NAME=value.
 func shown(path, raw string) string {
-	if strings.HasPrefix(path, HeadersPrefix) || strings.HasPrefix(path, PDPHeadersPrefix) {
+	if strings.HasPrefix(path, HeadersPrefix) || strings.HasPrefix(path, PDPHeadersPrefix) || processItem(path) {
 		return NotPrinted
 	}
 	credential, address := flagsOf(path)
@@ -285,6 +302,22 @@ func shown(path, raw string) string {
 		}
 	}
 	return quoteValue(raw)
+}
+
+// processItem reports whether path is an upstream's env or args list or an
+// item of one, either of which may carry a pasted credential.
+func processItem(path string) bool {
+	rest, ok := strings.CutPrefix(path, "upstreams.")
+	if !ok {
+		return false
+	}
+	_, name, ok := strings.Cut(rest, ".")
+	for _, list := range []string{"env", "args"} {
+		if ok && (name == list || strings.HasPrefix(name, list+".")) {
+			return true
+		}
+	}
+	return false
 }
 
 // flagsOf reports whether the key at path is a credential or an address; an
