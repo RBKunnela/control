@@ -1,0 +1,161 @@
+{
+  "apiVersion": "agent-policy/v1alpha1",
+  "bundle": {
+    "id": "orders",
+    "version": "2026-11-20.1",
+    "serial": 2,
+    "maxStaleSeconds": 300
+  },
+  "rules": [
+    {
+      "id": "reads",
+      "effect": "ALLOW",
+      "when": {
+        "action": {
+          "effect": [
+            "READ",
+            "WRITE"
+          ]
+        },
+        "resource": {
+          "type": [
+            "order",
+            "customer"
+          ]
+        }
+      }
+    },
+    {
+      "id": "no-deletes",
+      "effect": "DENY",
+      "when": {
+        "action": {
+          "effect": [
+            "DELETE"
+          ]
+        }
+      }
+    },
+    {
+      "id": "scratch-cleanup",
+      "effect": "ALLOW",
+      "when": {
+        "action": {
+          "effect": [
+            "DELETE"
+          ]
+        },
+        "resource": {
+          "type": [
+            "scratch"
+          ]
+        }
+      }
+    },
+    {
+      "id": "refunds-need-approval",
+      "effect": "REQUIRE_APPROVAL",
+      "obligations": [
+        {
+          "type": "second_approver"
+        }
+      ],
+      "when": {
+        "action": {
+          "name": [
+            "refund"
+          ],
+          "effect": [
+            "TRANSACT"
+          ]
+        }
+      }
+    },
+    {
+      "id": "no-confidential-out",
+      "effect": "DENY",
+      "when": {
+        "action": {
+          "name": [
+            "send_mail"
+          ]
+        },
+        "data": {
+          "sensitivityAtLeast": "INTERNAL"
+        },
+        "destination": {
+          "trustZone": [
+            "UNTRUSTED_EXTERNAL"
+          ]
+        }
+      }
+    },
+    {
+      "id": "no-toxic-mail",
+      "effect": "DENY",
+      "reason": "TOXIC_FLOW_SENSITIVE_TO_EXTERNAL",
+      "when": {
+        "action": {
+          "name": [
+            "send_mail"
+          ]
+        },
+        "flow": {
+          "toxicAtLeast": "INTERNAL"
+        }
+      }
+    },
+    {
+      "id": "mail",
+      "effect": "ALLOW",
+      "when": {
+        "action": {
+          "name": [
+            "send_mail"
+          ]
+        }
+      }
+    },
+    {
+      "id": "transfers",
+      "effect": "ALLOW",
+      "when": {
+        "action": {
+          "name": [
+            "transfer"
+          ]
+        }
+      }
+    },
+    {
+      "id": "transfers-vetoed",
+      "effect": "DENY",
+      "when": {
+        "action": {
+          "name": [
+            "transfer"
+          ]
+        },
+        "external": {
+          "denies": true
+        }
+      }
+    },
+    {
+      "id": "wires-in-prod",
+      "effect": "REQUIRE_APPROVAL",
+      "when": {
+        "action": {
+          "name": [
+            "wire"
+          ]
+        },
+        "resource": {
+          "environment": [
+            "prod"
+          ]
+        }
+      }
+    }
+  ]
+}

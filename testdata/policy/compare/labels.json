@@ -1,0 +1,30 @@
+{
+  "kind": "policy-case-labels/v1alpha1",
+  "labeller": "Orders security review",
+  "labels": [
+    {
+      "case": "case:broadened-effect.json",
+      "label": "legitimate"
+    },
+    {
+      "case": "case:broadened-resource.json",
+      "label": "legitimate"
+    },
+    {
+      "case": "request:r-read",
+      "label": "legitimate"
+    },
+    {
+      "case": "case:changed-definition.json",
+      "label": "attack"
+    },
+    {
+      "case": "case:rule-conflict.json",
+      "label": "attack"
+    },
+    {
+      "case": "case:absent-flow.json",
+      "label": "attack"
+    }
+  ]
+}

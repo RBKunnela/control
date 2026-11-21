@@ -36,6 +36,7 @@
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
 <li><a href="/docs/guides/check-a-security-testing-agent">Check a security-testing agent&#39;s calls against a scope you declare</a></li>
+<li><a href="/docs/guides/compare-a-candidate-policy">Compare a candidate policy</a></li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
 <li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a></li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
@@ -85,6 +86,7 @@
 <li><a href="/docs/reference/metrics">Metrics</a></li>
 <li><a href="/docs/reference/obligations">Obligations</a></li>
 <li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-compare">Policy compare</a></li>
 <li><a href="/docs/reference/policy-explain">Policy explain</a></li>
 <li><a href="/docs/reference/policy-format">Policy document format</a></li>
 <li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
@@ -172,6 +174,7 @@ not survive the next run.</p>
 <ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a>: Copy a stopped plane's floors, runs, pause file and stop list, and after a loss raise them back so no floor ends lower, every run is closed and no hold resumes.</li>
 <li><a href="/docs/guides/check-a-security-testing-agent">Check a security-testing agent's calls against a scope you declare</a>: Test the policy (implemented). Check MCP calls through the plane, stop the run after four denials and compare proxy logs with the host list (experimental).</li>
+<li><a href="/docs/guides/compare-a-candidate-policy">Compare a candidate policy</a>: Before signing a changed policy, decide your cases and a plane's evidence under both versions, and read what changes and what cannot be judged.</li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a>: Put the plane between an MCP client and a server you already use, classify the server's tools, hold its writes for approval, and end in a local report.</li>
 <li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a>: Run the demo's attempt manifest, read what its victims received, and write a manifest of your own.</li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a>: Serve the enforcement API, classify your tools by name, and have a client ask before each call and report how it ended, under one policy and trail.</li>
@@ -223,6 +226,7 @@ not survive the next run.</p>
 <li><a href="/docs/reference/metrics">Metrics</a>: Every metric a plane answers on /metrics, with its type, its label, the statistic it reads and what it counts.</li>
 <li><a href="/docs/reference/obligations">Obligations</a>: The catalogue of obligation types a policy rule may name, the parameters each takes, and what the tree does with one.</li>
 <li><a href="/docs/reference/observations">Observations</a>: The source descriptor and its kinds, what an import of OpenTelemetry GenAI spans keeps and drops, the observation log and its export.</li>
+<li><a href="/docs/reference/policy-compare">Policy compare</a>: What <code>policy compare</code> reads, how it decides each case under two policies, its report and labels file, its counts, bounds and exit statuses.</li>
 <li><a href="/docs/reference/policy-explain">Policy explain</a>: What <code>guardana-control policy explain</code> reads, every line it prints, which rule decided and which input a rule could not read, and its bounds.</li>
 <li><a href="/docs/reference/policy-format">Policy document format</a>: Every member of an agent-policy/v1alpha1 document, the values each admits, the bounds, and the members of a policy test case.</li>
 <li><a href="/docs/reference/reaction-signed">Signed reaction</a>: How a signed plane takes its route, stop list header and lifts from roster operators, holds them to a stop list floor, and which commands sign them.</li>
@@ -350,6 +354,7 @@ not survive the next run.</p>
 <li><a href="/docs/adr/0084-the-site-is-redrawn-in-one-system">ADR-0084: The site is redrawn: one system for the landing page and the docs, a light and a dark theme, llms.txt</a>: accepted</li>
 <li><a href="/docs/adr/0085-the-1-0-bar-is-met-by-own-evidence-and-what-needs-outside-people-stays-not-met">ADR-0085: The 1.0 bar is met by the project's own evidence, and what needs outside people stays not met</a>: accepted</li>
 <li><a href="/docs/adr/0086-controlled-attempts-are-counted-at-the-victim">ADR-0086: Controlled attempts are counted at the victim, by an executor of their own</a>: accepted</li>
+<li><a href="/docs/adr/0087-a-candidate-policy-is-compared-through-the-kernels-own-evaluation">ADR-0087: A candidate policy is compared through the kernel's own evaluation, and what a case cannot show stays unknown</a>: proposed</li>
 </ul>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/index.md">docs/index.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.18.0, and <a href="https://github.com/guardana/control/tree/v0.18.0/docs">its documentation</a> is in its tag.</p>
 </main>
@@ -362,6 +367,7 @@ not survive the next run.</p>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
 <li><a href="/docs/guides/check-a-security-testing-agent">Check a security-testing agent&#39;s calls against a scope you declare</a></li>
+<li><a href="/docs/guides/compare-a-candidate-policy">Compare a candidate policy</a></li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
 <li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a></li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
@@ -411,6 +417,7 @@ not survive the next run.</p>
 <li><a href="/docs/reference/metrics">Metrics</a></li>
 <li><a href="/docs/reference/obligations">Obligations</a></li>
 <li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-compare">Policy compare</a></li>
 <li><a href="/docs/reference/policy-explain">Policy explain</a></li>
 <li><a href="/docs/reference/policy-format">Policy document format</a></li>
 <li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>

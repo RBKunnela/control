@@ -31,6 +31,7 @@ import (
 	"github.com/guardana/control/internal/observelog"
 	"github.com/guardana/control/internal/pause"
 	"github.com/guardana/control/internal/policy/rules"
+	"github.com/guardana/control/internal/policycompare"
 	"github.com/guardana/control/internal/reaction"
 	"github.com/guardana/control/internal/recovery"
 	"github.com/guardana/control/internal/scenario"
@@ -291,6 +292,16 @@ func versionSpecs() map[string]versionSpec {
 		"Findings export": {
 			name:  func() string { return findinglog.ExportFormat },
 			cites: []versionCite{{"internal/findinglog/export.go#ExportVersion", writes}},
+		},
+		"Policy comparison report": {
+			cites: []versionCite{{"internal/policycompare/report.go#ReportKind", writes}},
+		},
+		"Policy case labels": {
+			cites: []versionCite{{"internal/policycompare/labels.go#LabelsKind", reads}},
+			refuses: func(v string) (bool, error) {
+				_, err := policycompare.ReadLabels([]byte(`{"kind":` + strconv.Quote(v) + `}`))
+				return errors.Is(err, policycompare.ErrLabelsKind), nil
+			},
 		},
 		"Reaction route": {
 			cites: []versionCite{

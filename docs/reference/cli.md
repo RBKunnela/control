@@ -17,7 +17,7 @@ without this page fails the gate.
 | --- | --- |
 | 0 | The command did what it was asked. |
 | 1 | A case or a check failed, or input refused by a command 2 does not name: stderr says why, one line each; `policy test`, `procedure test`, a scenario, `coverage` and `supervise` print what failed. So do an export with a gap and a failed `notify` delivery. |
-| 2 | A usage error (stderr carries the help below or names the flag or argument), a scenario that could not run, an export refused or cut short, an incomplete `observe import`, or a refused `coverage`, `supervise`, `notify` or `procedure` input. |
+| 2 | A usage error (stderr carries the help below or names the flag or argument), a scenario that could not run, an export refused or cut short, an incomplete `observe import`, or a refused `coverage`, `supervise`, `notify`, `procedure` or `policy compare` input. |
 
 Without arguments either binary prints its version and one status line on
 stdout and exits 0.
@@ -35,7 +35,8 @@ format character or bytes that are not UTF-8 is printed as a quoted Go string.
 
 ## guardana-control
 
-`policy lint`, `policy test` and `policy explain` ([policy-explain.md](policy-explain.md)) read a document without a plane, and
+`policy lint`, `test`, `explain` ([policy-explain.md](policy-explain.md)) and `compare`
+([policy-compare.md](policy-compare.md)) read documents without a plane, and
 `policy keygen` and `policy sign` make the key and the signed bundle a plane
 loads: [guides/write-and-test-a-policy.md](../guides/write-and-test-a-policy.md)
 is their page. The `approvals` commands read and answer an approvals
@@ -145,6 +146,8 @@ usage:
   guardana-control policy lint <file>
   guardana-control policy test <dir>
   guardana-control policy explain <case>
+  guardana-control policy compare --current <document> --candidate <document> [--cases <dir>]
+      [--evidence <export>] [--labels <file>] --report <file>
   guardana-control policy keygen --out <dir>
   guardana-control policy sign --key <file> --out <file> <document>
   guardana-control policy renew --key --bundle --bundle-public-key --floor --out

@@ -1,0 +1,183 @@
+{
+  "document": {
+    "apiVersion": "agent-policy/v1alpha1",
+    "bundle": {
+      "id": "orders",
+      "version": "2026-11-01.1",
+      "serial": 1,
+      "maxStaleSeconds": 3600
+    },
+    "rules": [
+      {
+        "id": "reads",
+        "effect": "ALLOW",
+        "when": {
+          "action": {
+            "effect": [
+              "READ"
+            ]
+          },
+          "resource": {
+            "type": [
+              "order"
+            ]
+          }
+        }
+      },
+      {
+        "id": "no-deletes",
+        "effect": "DENY",
+        "when": {
+          "action": {
+            "effect": [
+              "DELETE"
+            ]
+          }
+        }
+      },
+      {
+        "id": "refunds-need-approval",
+        "effect": "REQUIRE_APPROVAL",
+        "when": {
+          "action": {
+            "name": [
+              "refund"
+            ],
+            "effect": [
+              "TRANSACT"
+            ]
+          }
+        }
+      },
+      {
+        "id": "no-confidential-out",
+        "effect": "DENY",
+        "when": {
+          "action": {
+            "name": [
+              "send_mail"
+            ]
+          },
+          "data": {
+            "sensitivityAtLeast": "CONFIDENTIAL"
+          },
+          "destination": {
+            "trustZone": [
+              "UNTRUSTED_EXTERNAL"
+            ]
+          }
+        }
+      },
+      {
+        "id": "no-toxic-mail",
+        "effect": "DENY",
+        "reason": "TOXIC_FLOW_SENSITIVE_TO_EXTERNAL",
+        "when": {
+          "action": {
+            "name": [
+              "send_mail"
+            ]
+          },
+          "flow": {
+            "toxicAtLeast": "INTERNAL"
+          }
+        }
+      },
+      {
+        "id": "mail",
+        "effect": "ALLOW",
+        "when": {
+          "action": {
+            "name": [
+              "send_mail"
+            ]
+          }
+        }
+      },
+      {
+        "id": "transfers",
+        "effect": "ALLOW",
+        "when": {
+          "action": {
+            "name": [
+              "transfer"
+            ]
+          }
+        }
+      },
+      {
+        "id": "transfers-vetoed",
+        "effect": "DENY",
+        "when": {
+          "action": {
+            "name": [
+              "transfer"
+            ]
+          },
+          "external": {
+            "denies": true
+          }
+        }
+      },
+      {
+        "id": "wires-in-prod",
+        "effect": "REQUIRE_APPROVAL",
+        "when": {
+          "action": {
+            "name": [
+              "wire"
+            ]
+          },
+          "resource": {
+            "environment": [
+              "prod"
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "envelope": {
+    "schemaVersion": "1.0",
+    "requestId": "c-refund",
+    "projectId": "proj-1",
+    "tenantId": "tenant-1",
+    "environment": "prod",
+    "occurredAt": "2026-11-02T09:59:00Z",
+    "principal": {
+      "id": "user-1",
+      "tenantId": "tenant-1"
+    },
+    "agent": {
+      "id": "agent-1"
+    },
+    "action": {
+      "name": "refund",
+      "effect": "EFFECT_CLASS_TRANSACT",
+      "provider": "shop"
+    },
+    "resource": {
+      "type": "order",
+      "id": "order-1",
+      "tenantId": "tenant-1",
+      "environment": "prod"
+    },
+    "arguments": {
+      "canonicalHash": "sha256:6fdd0e8a870307187078a787323b1237e1ebb5d9d1998f9a5a937001920da409"
+    }
+  },
+  "authorized_args": "{}",
+  "flow": {
+    "untrusted": false,
+    "floor": "PUBLIC"
+  },
+  "options": {
+    "fail_open_read": false,
+    "max_stale_seconds": 600,
+    "applicable": [
+      "second_approver"
+    ]
+  },
+  "loaded_at": "2026-11-02T10:00:00Z",
+  "decided_at": "2026-11-02T10:00:00Z"
+}

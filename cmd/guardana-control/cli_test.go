@@ -159,6 +159,9 @@ var ownRefusal = map[string]func(missing string) []string{
 	},
 	"observe export": func(m string) []string { return []string{m} },
 	"coverage":       func(m string) []string { return []string{"--inventory", m} },
+	"policy compare": func(m string) []string {
+		return []string{"--current", m, "--candidate", m, "--cases", m, "--report", m + ".report"}
+	},
 	"procedure lint": func(m string) []string { return []string{m} },
 	"procedure test": func(m string) []string { return []string{m} },
 	"supervise": func(m string) []string {
@@ -196,7 +199,7 @@ var ownRefusal = map[string]func(missing string) []string{
 var refusalStatus = map[string]int{
 	"observe import": exitUsage, "observe export": exitUsage, "coverage": exitUsage, "supervise": exitUsage,
 	"notify": exitUsage, "findings export": exitUsage, "procedure lint": exitUsage, "procedure test": exitUsage,
-	"hook": exitUsage,
+	"hook": exitUsage, "policy compare": exitUsage,
 }
 
 // TestEveryListedCommandDispatches: the list the help prints is the list run

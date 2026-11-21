@@ -36,6 +36,7 @@
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
 <li><a href="/docs/guides/check-a-security-testing-agent">Check a security-testing agent&#39;s calls against a scope you declare</a></li>
+<li><a href="/docs/guides/compare-a-candidate-policy">Compare a candidate policy</a></li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
 <li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a></li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
@@ -85,6 +86,7 @@
 <li><a href="/docs/reference/metrics">Metrics</a></li>
 <li><a href="/docs/reference/obligations">Obligations</a></li>
 <li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-compare">Policy compare</a></li>
 <li><a href="/docs/reference/policy-explain">Policy explain</a></li>
 <li><a href="/docs/reference/policy-format">Policy document format</a></li>
 <li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
@@ -152,7 +154,7 @@ without this page fails the gate.</p>
 </tr>
 <tr>
 <td>2</td>
-<td>A usage error (stderr carries the help below or names the flag or argument), a scenario that could not run, an export refused or cut short, an incomplete <code>observe import</code>, or a refused <code>coverage</code>, <code>supervise</code>, <code>notify</code> or <code>procedure</code> input.</td>
+<td>A usage error (stderr carries the help below or names the flag or argument), a scenario that could not run, an export refused or cut short, an incomplete <code>observe import</code>, or a refused <code>coverage</code>, <code>supervise</code>, <code>notify</code>, <code>procedure</code> or <code>policy compare</code> input.</td>
 </tr>
 </tbody>
 </table>
@@ -170,7 +172,8 @@ keeping the rest, logs included.
 A message holding a control character, a line or paragraph separator, a
 format character or bytes that are not UTF-8 is printed as a quoted Go string.</p>
 <h2 id="guardana-control">guardana-control</h2>
-<p><code>policy lint</code>, <code>policy test</code> and <code>policy explain</code> (<a href="/docs/reference/policy-explain">policy-explain.md</a>) read a document without a plane, and
+<p><code>policy lint</code>, <code>test</code>, <code>explain</code> (<a href="/docs/reference/policy-explain">policy-explain.md</a>) and <code>compare</code>
+(<a href="/docs/reference/policy-compare">policy-compare.md</a>) read documents without a plane, and
 <code>policy keygen</code> and <code>policy sign</code> make the key and the signed bundle a plane
 loads: <a href="/docs/guides/write-and-test-a-policy">guides/write-and-test-a-policy.md</a>
 is their page. The <code>approvals</code> commands read and answer an approvals
@@ -262,6 +265,8 @@ profile's statuses, <a href="/docs/extending/runtime-profiles">extending/runtime
   guardana-control policy lint &lt;file&gt;
   guardana-control policy test &lt;dir&gt;
   guardana-control policy explain &lt;case&gt;
+  guardana-control policy compare --current &lt;document&gt; --candidate &lt;document&gt; [--cases &lt;dir&gt;]
+      [--evidence &lt;export&gt;] [--labels &lt;file&gt;] --report &lt;file&gt;
   guardana-control policy keygen --out &lt;dir&gt;
   guardana-control policy sign --key &lt;file&gt; --out &lt;file&gt; &lt;document&gt;
   guardana-control policy renew --key --bundle --bundle-public-key --floor --out
@@ -467,6 +472,7 @@ attempts
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
 <li><a href="/docs/guides/check-a-security-testing-agent">Check a security-testing agent&#39;s calls against a scope you declare</a></li>
+<li><a href="/docs/guides/compare-a-candidate-policy">Compare a candidate policy</a></li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
 <li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a></li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
@@ -516,6 +522,7 @@ attempts
 <li><a href="/docs/reference/metrics">Metrics</a></li>
 <li><a href="/docs/reference/obligations">Obligations</a></li>
 <li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-compare">Policy compare</a></li>
 <li><a href="/docs/reference/policy-explain">Policy explain</a></li>
 <li><a href="/docs/reference/policy-format">Policy document format</a></li>
 <li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>

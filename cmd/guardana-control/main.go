@@ -1,6 +1,6 @@
 // Command line entry point for the product. Without arguments it answers with
 // the version and the status line; the `policy` commands (lint, test,
-// explain, keygen, sign, renew and state), `state backup` and `state
+// explain, compare, keygen, sign, renew and state), `state backup` and `state
 // restore`, the `approvals` commands, the
 // `pause` commands, the `runs` commands, `observe`, `coverage`, the
 // `procedure` commands (lint and test), `supervise`, `notify`, `findings
@@ -121,6 +121,7 @@ var commands = []subcommand{
 	{"policy", "lint", "<file>", nil, func(args []string, _, stderr io.Writer) int { return lint(args[0], stderr) }, inspects},
 	{"policy", "test", "<dir>", nil, func(args []string, stdout, stderr io.Writer) int { return policyTest(args[0], stdout, stderr) }, inspects},
 	{"policy", "explain", "<case>", nil, func(args []string, stdout, stderr io.Writer) int { return policyExplain(args[0], stdout, stderr) }, inspects},
+	{"policy", "compare", policyCompareForm, policyCompareFlagSet, policyCompareCommand, writes},
 	{"policy", "keygen", keygenForm, keygenFlagSet, keygenCommand, writes},
 	{"policy", "sign", signForm, signFlagSet, signCommand, writes},
 	{"policy", "renew", renewForm, renewFlagSet, renewCommand, writes},

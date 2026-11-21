@@ -21,6 +21,17 @@ verify one.
   ([attempt format](docs/reference/attempt-format.md),
   [ADR-0086](docs/adr/0086-controlled-attempts-are-counted-at-the-victim.md)).
   The demo's manifest is `examples/vulnerable-mcp-agent/attempts/manifest.json`.
+- `guardana-control policy compare` (`experimental`) decides policy test
+  cases and an evidence export's requests under the current and a candidate
+  policy through the kernel's own evaluation, and writes a
+  `policy-comparison/v1alpha1` report of each case's change, every result
+  marked simulated. A case it cannot judge, for a missing fact, a decision on
+  another policy, a gap or a disagreement with the recorded decision, is
+  unknown with its reason and counted apart; a `policy-case-labels/v1alpha1`
+  file counts cases by label and change. It sends no call, consumes no
+  approval and activates no policy
+  ([policy compare](docs/reference/policy-compare.md),
+  [ADR-0087](docs/adr/0087-a-candidate-policy-is-compared-through-the-kernels-own-evaluation.md)).
 
 ### Fixed
 

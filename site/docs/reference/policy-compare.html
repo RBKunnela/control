@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Policy compare · Guardana Control</title>
+<meta name="description" content="What `policy compare` reads, how it decides each case under two policies, its report and labels file, its counts, bounds and exit statuses."/>
+<link rel="canonical" href="https://control.guardana.dev/docs/reference/policy-compare"/>
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)"/>
+<meta name="theme-color" content="#0A0A0A" media="(prefers-color-scheme: dark)"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="stylesheet" href="/assets/control/v2/tokens.css"/>
+<link rel="stylesheet" href="/assets/control/control.css"/>
+<link rel="stylesheet" href="/assets/control/docs.css"/>
+</head>
+<body class="doc">
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="w">
+  <a class="logo" href="/"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 4.5 5.6v6.1c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V5.6z"/><path d="M10.2 8.4v7.8M10.2 12.3h5.3"/></svg>Guardana Control</a>
+  <a class="vlink" href="https://github.com/guardana/control/releases/tag/v0.18.0"><span class="ver">v0.18.0</span></a>
+  <nav class="links" aria-label="Primary"><a href="/#how">How it works</a><a href="/#signed">Signed</a><a href="/#get">What you get</a><a href="/#start">Quickstart</a><a href="/#limits">Limits</a><a href="/docs/">Docs</a></nav>
+  <div class="right">
+    <input type="checkbox" id="theme" aria-label="Switch between light and dark"/><label class="tgl" for="theme" title="Switch theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg></label>
+    <a class="btn s sm" href="https://github.com/guardana/control">Star on GitHub</a>
+  </div>
+</div></header>
+<div class="w shell">
+<details class="mnav">
+<summary>Menu · <b>Policy compare</b></summary>
+<nav class="inner" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+<li><a href="/docs/get-started/try-the-rest-of-the-demo">Try the rest of the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
+<li><a href="/docs/guides/check-a-security-testing-agent">Check a security-testing agent&#39;s calls against a scope you declare</a></li>
+<li><a href="/docs/guides/compare-a-candidate-policy">Compare a candidate policy</a></li>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/set-up-signed-operators">Set up signed operators</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/agent-tool-call-controls">Which tools check AI agent tool calls against policy?</a></li>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/signed-operations">Signed operations</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+<li><a href="/docs/concepts/where-it-fits">Where it fits</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/attempt-format">Attempt format</a></li>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/channels">Channels</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/egress-access-log">Egress access log</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-compare" aria-current="page">Policy compare</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/risks/advisories">Advisories on agentic attacks</a></li>
+<li><a href="/docs/reference/risks/owasp-agentic-top-10">OWASP Top 10 for Agentic Applications</a></li>
+<li><a href="/docs/reference/risks/owasp-llm-top-10">OWASP Top 10 for LLM Applications</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</details>
+<main id="main" class="prose">
+<h1 id="policy-compare">Policy compare</h1>
+<pre><code>guardana-control policy compare --current &lt;document&gt; --candidate &lt;document&gt; [--cases &lt;dir&gt;]
+      [--evidence &lt;export&gt;] [--labels &lt;file&gt;] --report &lt;file&gt;
+</code></pre>
+<p>Decides each case under the policy in force and under a candidate, through
+the kernel's own evaluation, and writes a report of what changed. It is
+<code>experimental</code>
+(<a href="/docs/adr/0087-a-candidate-policy-is-compared-through-the-kernels-own-evaluation">ADR-0087</a>).
+Every result is simulated: the command sends no call, reads or consumes no
+approval, writes no policy, floor or statement and reaches no plane. Both
+documents are signed in memory with the fixed key <code>policy test</code> uses, without
+its obligation parameter check, as <code>policy explain</code> signs.</p>
+<h2 id="what-it-reads">What it reads</h2>
+<div class="tbl">
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Reads</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--current</code>, <code>--candidate</code></td>
+<td>A policy document (<a href="/docs/reference/policy-format#the-document">policy-format.md</a>).</td>
+</tr>
+<tr>
+<td><code>--cases</code></td>
+<td>A directory of <a href="/docs/reference/policy-format#a-test-case">test cases</a>, read as <code>policy test</code> reads one; <code>expect</code> is optional; its format is checked; it is not compared with any decision. Each case's <code>document</code> must have the current document's canonical digest, or the run is refused naming the file. A case's id is <code>case:</code> and its file name.</td>
+</tr>
+<tr>
+<td><code>--evidence</code></td>
+<td>An <a href="/docs/contracts#the-evidence-export">evidence export</a>, owned by this account and not writable by others. Each request it names is a case, <code>request:</code> and its id.</td>
+</tr>
+<tr>
+<td><code>--labels</code></td>
+<td>A labels file, below.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Each flag is given at most once, a repeated one is refused, and at least one
+of <code>--cases</code> and <code>--evidence</code> is given.</p>
+<h2 id="a-cases-times">A case's times</h2>
+<p>Each side loads its policy at the case's <code>loaded_at</code> and decides at its
+<code>decided_at</code>. Its staleness budget is the smaller of that policy's
+<code>maxStaleSeconds</code> and, for a case file, the case's
+<code>options.max_stale_seconds</code>; an evidence case has no operator budget, so the
+policy's own applies alone. A side stale at <code>decided_at</code> decides on its
+staleness, not its rules, so the case is unknown, <code>freshness_not_held</code>,
+whatever its source.</p>
+<h2 id="an-evidence-case">An evidence case</h2>
+<p>A request becomes a case with exactly one <code>ACTION_PROPOSED</code> and one
+<code>POLICY_DECIDED</code>, both with a <code>schema_version</code> on this build's major, both
+naming the request, the proposal first, and a decision recorded <code>FRESH</code>
+(<code>UNSPECIFIED</code> is not fresh). Its envelope is the proposal's, its arguments <code>{}</code> with
+their hash recomputed, since the evidence holds only a hash. It holds no flow
+and no external answer. It is loaded at the decision's <code>policy_loaded_at</code> and
+decided at its <code>decided_at</code>. The kernel runs no read open and applies every
+obligation type, and no operator budget narrows the author's.</p>
+<h2 id="unknown">Unknown</h2>
+<p>An unknown case has one reason, both sides' verdicts withheld, and is never
+counted unchanged. The reasons, in the order the report lists them:</p>
+<div class="tbl">
+<table>
+<thead>
+<tr>
+<th>Reason</th>
+<th>The case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>export_not_whole</code></td>
+<td>Lacks its proposal or decision, in an export that is not whole.</td>
+</tr>
+<tr>
+<td><code>incomplete_request</code></td>
+<td>Lacks one proposal or its decision, holds two proposals, names another request in its proposal or decision, holds its decision before its proposal, or a decision without both times or not recorded <code>FRESH</code>.</td>
+</tr>
+<tr>
+<td><code>version_not_read</code></td>
+<td>Its proposal or decision has a <code>schema_version</code> that is not <code>MAJOR.MINOR</code> on this build's major.</td>
+</tr>
+<tr>
+<td><code>several_decisions</code></td>
+<td>Holds more than one <code>POLICY_DECIDED</code>.</td>
+</tr>
+<tr>
+<td><code>historic_policy_missing</code></td>
+<td>Was decided on a policy whose digest is not <code>--current</code>'s.</td>
+</tr>
+<tr>
+<td><code>recorded_stale</code></td>
+<td>Was decided on a stale policy.</td>
+</tr>
+<tr>
+<td><code>not_evaluated</code></td>
+<td>On a side the policy did not load, the kernel refused the case's options or returned no decision, no rule was evaluated (the envelope or its arguments refused, or a clock reading the kernel judges nothing at, such as a <code>decided_at</code> before the load), or the kernel denied the call on its own whatever the rules decide: a delegation chain refused, or the principal's and the resource's tenants differ.</td>
+</tr>
+<tr>
+<td><code>external_answer_needed</code></td>
+<td>A rule on either side waits on the decision point's answer.</td>
+</tr>
+<tr>
+<td><code>missing_facts</code></td>
+<td>A rule on either side is undetermined for a field or a flow input the case lacks, or a material call names one tenant only, which the kernel cannot decide.</td>
+</tr>
+<tr>
+<td><code>freshness_not_held</code></td>
+<td>A side's policy is stale at the case's <code>decided_at</code>.</td>
+</tr>
+<tr>
+<td><code>obligation_applicability_unknown</code></td>
+<td>Evidence: a side names a non-advisory obligation type the recorded decision does not carry.</td>
+</tr>
+<tr>
+<td><code>disagrees_with_record</code></td>
+<td>Evidence: the current side's verdict or codes differ from the recorded ones.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="the-change">The change</h2>
+<p>The same verdict, action, codes and obligations, in order, is <code>unchanged</code>.
+Otherwise the actions are ordered <code>Execute</code>, <code>ExecuteWithObligations</code>,
+<code>AwaitApproval</code>, <code>Block</code>, and obligations order with them: only a
+non-advisory obligation binds, so <code>ExecuteWithObligations</code> whose obligations
+are all advisory ranks as <code>Execute</code>.</p>
+<div class="tbl">
+<table>
+<thead>
+<tr>
+<th>Change</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>stricter</code></td>
+<td>The after side is further along, or as far with a binding obligation more, and binds every obligation the before side bound. <code>Block</code> binds them all.</td>
+</tr>
+<tr>
+<td><code>looser</code></td>
+<td>The reverse: further back, or as far with a binding obligation dropped or made advisory, and the before side binds every obligation the after side binds.</td>
+</tr>
+<tr>
+<td><code>other</code></td>
+<td>Anything else: a change that moves both ways, such as <code>ExecuteWithObligations</code> with <code>emit_alert</code> to <code>AwaitApproval</code> without it, a parameter changed (a <code>cap_amount</code> raised is <code>other</code>, since the order does not read parameters), or only the verdict, codes or advisory obligations changed.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code>other</code> says nothing about direction: read each such row.</p>
+<h2 id="the-report">The report</h2>
+<p><code>--report</code> names a file that does not exist; the report is forced to disk
+under a temporary name beside it and linked there, mode <code>0600</code>. It is one
+JSON object:</p>
+<div class="tbl">
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Holds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kind</code></td>
+<td><code>policy-comparison/v1alpha1</code>.</td>
+</tr>
+<tr>
+<td><code>simulated</code></td>
+<td><code>true</code>.</td>
+</tr>
+<tr>
+<td><code>build</code></td>
+<td>This build's version.</td>
+</tr>
+<tr>
+<td><code>current</code>, <code>candidate</code></td>
+<td><code>id</code>, <code>version</code> and <code>digest</code> of each policy.</td>
+</tr>
+<tr>
+<td><code>provenance.cases</code></td>
+<td><code>dir</code> as given, <code>files</code>, and <code>digest</code>: SHA-256 over one line per file, in name order, of the file's SHA-256 in hex, two spaces and its name. <code>null</code> without <code>--cases</code>.</td>
+</tr>
+<tr>
+<td><code>provenance.evidence</code></td>
+<td><code>path</code>, <code>sha256</code>, <code>whole</code>, <code>not_whole</code> (why not, or empty) and <code>requests</code>. <code>null</code> without <code>--evidence</code>.</td>
+</tr>
+<tr>
+<td><code>provenance.labels</code></td>
+<td><code>path</code>, <code>sha256</code> and <code>labeller</code>. <code>null</code> without <code>--labels</code>.</td>
+</tr>
+<tr>
+<td><code>scope.evaluation</code></td>
+<td>How each case was decided.</td>
+</tr>
+<tr>
+<td><code>scope.not_seen</code></td>
+<td>What no case shows: live traffic, an evidence case's arguments and flow, a decision point's answer, approvals, the plane's own settings, and, from an export that is not whole, events after a gap that a request looking whole may have lost.</td>
+</tr>
+<tr>
+<td><code>scope.labeller_independence</code></td>
+<td><code>declared, not verified</code>, or <code>no labels</code>.</td>
+</tr>
+<tr>
+<td><code>counts</code></td>
+<td>Below.</td>
+</tr>
+<tr>
+<td><code>cases</code></td>
+<td>One row per case, case files first, in name order, then requests as the export first names them.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>A row holds <code>id</code>, <code>source</code> (<code>case</code> or <code>evidence</code>), <code>simulated</code> (<code>true</code>),
+<code>label</code> (<code>attack</code>, <code>legitimate</code> or <code>null</code>), <code>before</code> and <code>after</code>, <code>change</code>
+(the four above or <code>unknown</code>), <code>unknown_reason</code> and <code>unknown_detail</code> (<code>null</code>
+unless unknown). A side holds <code>evaluated</code>, then <code>verdict</code>, <code>action</code>, <code>codes</code>
+and <code>obligations</code> (each <code>type</code>, <code>params</code>, <code>advisory</code>), all <code>null</code> on an
+unknown case, and <code>missing_facts</code>: each input an undetermined rule lacked, in
+the wire spelling <a href="/docs/reference/policy-explain#a-rules-line">policy-explain.md</a> uses.</p>
+<h2 id="counts">Counts</h2>
+<div class="tbl">
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Counts</th>
+<th>Out of</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>read</code></td>
+<td>Every case.</td>
+<td></td>
+</tr>
+<tr>
+<td><code>by_source</code></td>
+<td><code>case</code> and <code>evidence</code>.</td>
+<td><code>read</code></td>
+</tr>
+<tr>
+<td><code>evaluated_both_sides</code></td>
+<td>Cases both policies decided.</td>
+<td><code>read</code></td>
+</tr>
+<tr>
+<td><code>unknown</code></td>
+<td>Unknown cases, and <code>by_reason</code>, every reason listed.</td>
+<td><code>read</code></td>
+</tr>
+<tr>
+<td><code>compared</code></td>
+<td>Cases not unknown.</td>
+<td><code>read</code></td>
+</tr>
+<tr>
+<td><code>change</code></td>
+<td><code>unchanged</code>, <code>stricter</code>, <code>looser</code>, <code>other</code>.</td>
+<td><code>compared</code></td>
+</tr>
+<tr>
+<td><code>by_label</code></td>
+<td>Per <code>attack</code>, <code>legitimate</code> and <code>unlabelled</code>: each change and <code>unknown</code>.</td>
+<td>that label's cases</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Each count carries its denominator as <code>of</code>. Standard output repeats the
+counts on one line each, after <code>report: &lt;path&gt;</code>.</p>
+<h2 id="the-labels-file">The labels file</h2>
+<div class="tbl">
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Holds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kind</code></td>
+<td><code>policy-case-labels/v1alpha1</code>, the first member, checked before any other.</td>
+</tr>
+<tr>
+<td><code>labeller</code></td>
+<td>Who labelled, 1 to 200 bytes with no control character.</td>
+</tr>
+<tr>
+<td><code>labels</code></td>
+<td>1 to 4096 entries of <code>case</code> (a case id of this run) and <code>label</code> (<code>attack</code> or <code>legitimate</code>), a case at most once.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Strict JSON: an unknown, missing, repeated or <code>null</code> member, bytes that are
+not UTF-8, and anything after the object are refused. A policy document names
+no author, so whether the labeller is not the author is declared, never
+checked.</p>
+<h2 id="bounds">Bounds</h2>
+<div class="tbl">
+<table>
+<thead>
+<tr>
+<th>Bound</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cases in a run, case files and requests together</td>
+<td>4096</td>
+</tr>
+<tr>
+<td>A case file, or a policy document</td>
+<td>2 MiB</td>
+</tr>
+<tr>
+<td>A labels file</td>
+<td>1 MiB</td>
+</tr>
+<tr>
+<td>An evidence export</td>
+<td>32 MiB</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="exit-status">Exit status</h2>
+<div class="tbl">
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>Every case was evaluated on both sides and none is unknown.</td>
+</tr>
+<tr>
+<td>1</td>
+<td>The report is written and holds an unknown case; or standard output failed after it was written.</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Usage, a refused document, case, export or labels file, or a report not written.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/reference/policy-compare.md">docs/reference/policy-compare.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.18.0, and <a href="https://github.com/guardana/control/tree/v0.18.0/docs">its documentation</a> is in its tag.</p>
+</main>
+<nav class="side" aria-label="Documentation">
+<ul class="home"><li><a href="/docs/">Overview</a></li></ul>
+<h2>Get started</h2><ul>
+<li><a href="/docs/get-started/try-the-demo">Try the demo</a></li>
+<li><a href="/docs/get-started/try-the-rest-of-the-demo">Try the rest of the demo</a></li>
+</ul>
+<h2>Guides</h2><ul>
+<li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
+<li><a href="/docs/guides/check-a-security-testing-agent">Check a security-testing agent&#39;s calls against a scope you declare</a></li>
+<li><a href="/docs/guides/compare-a-candidate-policy">Compare a candidate policy</a></li>
+<li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
+<li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a></li>
+<li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
+<li><a href="/docs/guides/keep-two-tasks-apart">Keep two tasks apart</a></li>
+<li><a href="/docs/guides/let-a-decision-point-veto">Let a decision point veto calls</a></li>
+<li><a href="/docs/guides/read-the-evidence-from-a-program">Read the evidence from a program</a></li>
+<li><a href="/docs/guides/run-in-a-container">Run the gateway in a container</a></li>
+<li><a href="/docs/guides/run-the-gateway">Run the gateway</a></li>
+<li><a href="/docs/guides/set-up-signed-operators">Set up signed operators</a></li>
+<li><a href="/docs/guides/supervise-and-stop-a-run">Supervise and stop a run</a></li>
+<li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
+<li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
+<li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
+<li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
+<li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
+</ul>
+<h2>Concepts</h2><ul>
+<li><a href="/docs/concepts/agent-tool-call-controls">Which tools check AI agent tool calls against policy?</a></li>
+<li><a href="/docs/concepts/approvals-and-the-held-call">Approvals and the held request</a></li>
+<li><a href="/docs/concepts/architecture">Architecture</a></li>
+<li><a href="/docs/concepts/control-and-supervision">Control and supervision</a></li>
+<li><a href="/docs/concepts/enforcement-modes">Enforcement modes</a></li>
+<li><a href="/docs/concepts/evidence-and-the-spool">Evidence and the spool</a></li>
+<li><a href="/docs/concepts/glossary">Glossary</a></li>
+<li><a href="/docs/concepts/how-a-call-is-decided">How a call is decided</a></li>
+<li><a href="/docs/concepts/mcp-gateway">The MCP gateway</a></li>
+<li><a href="/docs/concepts/observations-coverage-and-supervision">Observations, coverage, supervision and a stop</a></li>
+<li><a href="/docs/concepts/privacy">Privacy</a></li>
+<li><a href="/docs/concepts/signed-operations">Signed operations</a></li>
+<li><a href="/docs/concepts/threat-model">Threat model</a></li>
+<li><a href="/docs/concepts/where-it-fits">Where it fits</a></li>
+</ul>
+<h2>Reference</h2><ul>
+<li><a href="/docs/reference/attempt-format">Attempt format</a></li>
+<li><a href="/docs/reference/benchmarks">Benchmarks</a></li>
+<li><a href="/docs/reference/channels">Channels</a></li>
+<li><a href="/docs/reference/claude-code-hooks">Claude Code hooks</a></li>
+<li><a href="/docs/reference/cli">Command line</a></li>
+<li><a href="/docs/reference/configuration">Configuration</a></li>
+<li><a href="/docs/reference/console">The approvals page</a></li>
+<li><a href="/docs/reference/coverage">Coverage</a></li>
+<li><a href="/docs/reference/dev">Dev mode</a></li>
+<li><a href="/docs/reference/egress-access-log">Egress access log</a></li>
+<li><a href="/docs/reference/failure-modes">Failure modes</a></li>
+<li><a href="/docs/reference/mcp-coverage">MCP enforcement coverage</a></li>
+<li><a href="/docs/reference/metrics">Metrics</a></li>
+<li><a href="/docs/reference/obligations">Obligations</a></li>
+<li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-compare" aria-current="page">Policy compare</a></li>
+<li><a href="/docs/reference/policy-explain">Policy explain</a></li>
+<li><a href="/docs/reference/policy-format">Policy document format</a></li>
+<li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
+<li><a href="/docs/reference/reaction">Reaction</a></li>
+<li><a href="/docs/reference/reason-codes">Reason codes</a></li>
+<li><a href="/docs/reference/risks/advisories">Advisories on agentic attacks</a></li>
+<li><a href="/docs/reference/risks/owasp-agentic-top-10">OWASP Top 10 for Agentic Applications</a></li>
+<li><a href="/docs/reference/risks/owasp-llm-top-10">OWASP Top 10 for LLM Applications</a></li>
+<li><a href="/docs/reference/run-view">Run view</a></li>
+<li><a href="/docs/reference/runs">Runs</a></li>
+<li><a href="/docs/reference/scenario-format">Scenario format</a></li>
+<li><a href="/docs/reference/starter-packs">Starter policy packs</a></li>
+<li><a href="/docs/reference/supervision">Supervision</a></li>
+<li><a href="/docs/reference/versions">Format versions</a></li>
+<li><a href="/docs/reference/wire/action_envelope">action_envelope.proto</a></li>
+<li><a href="/docs/reference/wire/approval">approval.proto</a></li>
+<li><a href="/docs/reference/wire/bundle">bundle.proto</a></li>
+<li><a href="/docs/reference/wire/common">common.proto</a></li>
+<li><a href="/docs/reference/wire/decision">decision.proto</a></li>
+<li><a href="/docs/reference/wire/event">event.proto</a></li>
+<li><a href="/docs/reference/wire/finding">finding.proto</a></li>
+<li><a href="/docs/reference/wire/result">result.proto</a></li>
+</ul>
+<h2>Specification</h2><ul>
+<li><a href="/docs/contracts">Wire contracts</a></li>
+</ul>
+<h2>Extending</h2><ul>
+<li><a href="/docs/extending/adapters">Writing an adapter</a></li>
+<li><a href="/docs/extending/runtime-profiles">Adding a coding runtime&#39;s hooks</a></li>
+</ul>
+<h2>Project</h2><ul>
+<li><a href="/docs/adoption-and-incident-workflows">Adoption and incident workflows</a></li>
+<li><a href="/docs/backlog">Delivery backlog</a></li>
+<li><a href="/docs/changelog">Changelog</a></li>
+<li><a href="/docs/dependencies">Dependencies</a></li>
+<li><a href="/docs/roadmap">Roadmap</a></li>
+<li><a href="/docs/status">Implementation status</a></li>
+<li><a href="/docs/#decision-records">Decision records</a></li>
+</ul>
+</nav>
+</div>
+<footer class="ft"><div class="w">
+  <div class="fb"><a class="logo" href="/"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 4.5 5.6v6.1c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V5.6z"/><path d="M10.2 8.4v7.8M10.2 12.3h5.3"/></svg>Guardana Control</a><p>A control and supervision layer for AI agents. <a href="https://github.com/guardana/control/blob/main/LICENSE">Apache-2.0</a>.</p><p><a href="https://guardana.dev">Guardana</a> and Guardana Control are independent projects. See <a href="https://github.com/guardana/guardana">Guardana on GitHub</a>.</p></div>
+  <div><b>Product</b><a href="/#how">How it works</a><a href="/#get">What you get</a><a href="/#limits">Limits</a><a href="/docs/status">Status</a></div>
+  <div><b>Docs</b><a href="/docs/get-started/try-the-demo">Try the demo</a><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an MCP setup</a><a href="/docs/guides/write-and-test-a-policy">Write a policy</a><a href="/docs/concepts/threat-model">Threat model</a></div>
+  <div><b>Project</b><a href="https://github.com/guardana/control">GitHub</a><a href="https://github.com/guardana/control/releases">Releases</a><a href="/docs/roadmap">Roadmap</a><a href="https://github.com/guardana/control/blob/main/SECURITY.md">Security</a><a href="https://github.com/guardana/control/blob/main/TRADEMARKS.md">Trademarks</a></div>
+</div></footer>
+</body>
+</html>

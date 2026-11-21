@@ -36,6 +36,7 @@
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
 <li><a href="/docs/guides/check-a-security-testing-agent">Check a security-testing agent&#39;s calls against a scope you declare</a></li>
+<li><a href="/docs/guides/compare-a-candidate-policy">Compare a candidate policy</a></li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
 <li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a></li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
@@ -85,6 +86,7 @@
 <li><a href="/docs/reference/metrics">Metrics</a></li>
 <li><a href="/docs/reference/obligations">Obligations</a></li>
 <li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-compare">Policy compare</a></li>
 <li><a href="/docs/reference/policy-explain">Policy explain</a></li>
 <li><a href="/docs/reference/policy-format">Policy document format</a></li>
 <li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
@@ -277,8 +279,8 @@ already holds a package doc and a test holds nothing that decides.</li>
 <tr>
 <td>candidate-policy</td>
 <td>Candidate-policy comparison and simulation</td>
-<td><code>planned</code></td>
-<td>Comparing a candidate policy with the current one and simulating it; no diff or simulation command is built. <a href="#candidate-policy">details</a></td>
+<td><code>experimental</code></td>
+<td><code>policy compare</code> decides cases and a plane's evidence under the current and a candidate policy through the kernel, and reports each change, simulated, with unknowns counted. <a href="#candidate-policy">details</a></td>
 </tr>
 </tbody>
 </table>
@@ -795,10 +797,27 @@ closed and its chain forks, though nothing runs twice: restore is B14's,
 thing between it and another local account or a web page, and it cannot tell
 whether a plane reads its pause file; signed webhook callbacks are <code>planned</code>.</p>
 <h3 id="candidate-policy">candidate-policy</h3>
-<p><a href="/docs/backlog">backlog B27</a>,
-<a href="/docs/adoption-and-incident-workflows#b27-compare-and-simulate-a-candidate-policy">adoption requirements</a>;
-<code>policy explain</code> and <code>policy test</code> exist, but no diff or simulation command is
-built.</p>
+<p><code>internal/policycompare/</code>, <code>cmd/guardana-control/policy_compare*.go</code>, the
+corpus in <code>testdata/policy/compare/</code>,
+<a href="/docs/reference/policy-compare">reference/policy-compare.md</a>,
+<a href="/docs/guides/compare-a-candidate-policy">guides/compare-a-candidate-policy.md</a>,
+<a href="/docs/adr/0087-a-candidate-policy-is-compared-through-the-kernels-own-evaluation">ADR-0087</a>.
+<code>policy compare</code> signs both documents in memory, decides each case twice
+through <code>Kernel.Explain</code> and writes a <code>policy-comparison/v1alpha1</code> report,
+once, to a name that did not exist; it sends no call, consumes no approval and
+activates no policy. A case file must be written against the current document.
+An evidence request is decided with arguments <code>{}</code>, no flow and no decision
+point answer, so a rule reading flow or that answer leaves it unknown, and so
+does a decision on another policy or not recorded fresh, of another major, or
+a current side that disagrees with the recorded decision. A request a gap cut
+is unknown, and one that looks whole may have lost later events, which the
+report's scope says. Any case is unknown when no rule ran on a side, the kernel
+denied it on its own for a refused delegation or two tenants, or a side's
+policy is stale at its time. Limits: every result is simulated,
+never a call that ran; labels count by label and change, and a labeller's
+independence from the author is declared, never verified; the plane's own
+staleness budget, <code>fail_open_read</code> and applicable obligations are not in the
+evidence; shadow evaluation of live traffic and rollout are not built.</p>
 <h3 id="mcp-gateway">mcp-gateway</h3>
 <ul>
 <li><code>internal/gateway/</code> (the protocol-neutral pipeline: <code>Admit</code>, <code>Close</code>, <code>Abort</code>,
@@ -1565,6 +1584,7 @@ never withheld from the open build, whatever its status above.</p>
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
 <li><a href="/docs/guides/check-a-security-testing-agent">Check a security-testing agent&#39;s calls against a scope you declare</a></li>
+<li><a href="/docs/guides/compare-a-candidate-policy">Compare a candidate policy</a></li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
 <li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a></li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
@@ -1614,6 +1634,7 @@ never withheld from the open build, whatever its status above.</p>
 <li><a href="/docs/reference/metrics">Metrics</a></li>
 <li><a href="/docs/reference/obligations">Obligations</a></li>
 <li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-compare">Policy compare</a></li>
 <li><a href="/docs/reference/policy-explain">Policy explain</a></li>
 <li><a href="/docs/reference/policy-format">Policy document format</a></li>
 <li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>

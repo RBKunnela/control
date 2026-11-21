@@ -75,7 +75,7 @@ Nothing here is a security boundary. Do not deploy it as one.
 | external-pdp | External policy decision point (PDP) | `experimental` | An external decision point asked over AuthZEN can veto a call the policy allows, and never grants authority of its own. [details](#external-pdp) |
 | approval-binding | Approval binding | `implemented` | An approval binds to one exact action digest and one bundle digest, and the gateway spends it once, on the retry of that call. [details](#approval-binding) |
 | approval-authority | Approval authority and the lost hold | `experimental` | Who may answer a held call, through a records directory or operator signatures, by command or a local page; a hold journal closes a hold a restart lost. [details](#approval-authority) |
-| candidate-policy | Candidate-policy comparison and simulation | `planned` | Comparing a candidate policy with the current one and simulating it; no diff or simulation command is built. [details](#candidate-policy) |
+| candidate-policy | Candidate-policy comparison and simulation | `experimental` | `policy compare` decides cases and a plane's evidence under the current and a candidate policy through the kernel, and reports each change, simulated, with unknowns counted. [details](#candidate-policy) |
 
 ### Integrations
 
@@ -364,10 +364,27 @@ whether a plane reads its pause file; signed webhook callbacks are `planned`.
 
 ### candidate-policy
 
-[backlog B27](backlog.md),
-[adoption requirements](adoption-and-incident-workflows.md#b27-compare-and-simulate-a-candidate-policy);
-`policy explain` and `policy test` exist, but no diff or simulation command is
-built.
+`internal/policycompare/`, `cmd/guardana-control/policy_compare*.go`, the
+corpus in `testdata/policy/compare/`,
+[reference/policy-compare.md](reference/policy-compare.md),
+[guides/compare-a-candidate-policy.md](guides/compare-a-candidate-policy.md),
+[ADR-0087](adr/0087-a-candidate-policy-is-compared-through-the-kernels-own-evaluation.md).
+`policy compare` signs both documents in memory, decides each case twice
+through `Kernel.Explain` and writes a `policy-comparison/v1alpha1` report,
+once, to a name that did not exist; it sends no call, consumes no approval and
+activates no policy. A case file must be written against the current document.
+An evidence request is decided with arguments `{}`, no flow and no decision
+point answer, so a rule reading flow or that answer leaves it unknown, and so
+does a decision on another policy or not recorded fresh, of another major, or
+a current side that disagrees with the recorded decision. A request a gap cut
+is unknown, and one that looks whole may have lost later events, which the
+report's scope says. Any case is unknown when no rule ran on a side, the kernel
+denied it on its own for a refused delegation or two tenants, or a side's
+policy is stale at its time. Limits: every result is simulated,
+never a call that ran; labels count by label and change, and a labeller's
+independence from the author is declared, never verified; the plane's own
+staleness budget, `fail_open_read` and applicable obligations are not in the
+evidence; shadow evaluation of live traffic and rollout are not built.
 
 ### mcp-gateway
 

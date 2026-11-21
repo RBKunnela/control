@@ -60,6 +60,8 @@ version. [status.md](../status.md) is the inventory.
 | Stop list (`version`) | `1.0`, `3.0` | `1.0`, `2.0`, `3.0` | `experimental` | [contracts.md](../contracts.md#the-stop-list) |
 | Lift (`kind`, `version`) | `reaction-lift/v1alpha1`, `1.0`, `reaction-lift/v1alpha3` | `reaction-lift/v1alpha1`, `1.0`, `reaction-lift/v1alpha2`, `reaction-lift/v1alpha3` | `experimental` | [contracts.md](../contracts.md#the-lift) |
 | Health answer (`schema`) | `3` | — | `experimental` | [run the gateway](../guides/run-the-gateway.md#6-read-the-health) |
+| Policy comparison report (`kind`) | `policy-comparison/v1alpha1` | — | `experimental` | [policy-compare.md](policy-compare.md#the-report) |
+| Policy case labels (`kind`) | — | `policy-case-labels/v1alpha1` | `experimental` | [policy-compare.md](policy-compare.md#the-labels-file) |
 
 The gateway's configuration file and a `policy test` case carry no version.
 Each refuses a key it does not know, so a file that names a key a later

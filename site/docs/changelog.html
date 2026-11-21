@@ -36,6 +36,7 @@
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
 <li><a href="/docs/guides/check-a-security-testing-agent">Check a security-testing agent&#39;s calls against a scope you declare</a></li>
+<li><a href="/docs/guides/compare-a-candidate-policy">Compare a candidate policy</a></li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
 <li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a></li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
@@ -85,6 +86,7 @@
 <li><a href="/docs/reference/metrics">Metrics</a></li>
 <li><a href="/docs/reference/obligations">Obligations</a></li>
 <li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-compare">Policy compare</a></li>
 <li><a href="/docs/reference/policy-explain">Policy explain</a></li>
 <li><a href="/docs/reference/policy-format">Policy document format</a></li>
 <li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>
@@ -146,6 +148,17 @@ written line by line
 (<a href="/docs/reference/attempt-format">attempt format</a>,
 <a href="/docs/adr/0086-controlled-attempts-are-counted-at-the-victim">ADR-0086</a>).
 The demo's manifest is <code>examples/vulnerable-mcp-agent/attempts/manifest.json</code>.</li>
+<li><code>guardana-control policy compare</code> (<code>experimental</code>) decides policy test
+cases and an evidence export's requests under the current and a candidate
+policy through the kernel's own evaluation, and writes a
+<code>policy-comparison/v1alpha1</code> report of each case's change, every result
+marked simulated. A case it cannot judge, for a missing fact, a decision on
+another policy, a gap or a disagreement with the recorded decision, is
+unknown with its reason and counted apart; a <code>policy-case-labels/v1alpha1</code>
+file counts cases by label and change. It sends no call, consumes no
+approval and activates no policy
+(<a href="/docs/reference/policy-compare">policy compare</a>,
+<a href="/docs/adr/0087-a-candidate-policy-is-compared-through-the-kernels-own-evaluation">ADR-0087</a>).</li>
 </ul>
 <h3 id="fixed">Fixed</h3>
 <ul>
@@ -2885,6 +2898,7 @@ independence of this project from Guardana
 <h2>Guides</h2><ul>
 <li><a href="/docs/guides/back-up-and-restore-a-plane">Back up and restore a plane</a></li>
 <li><a href="/docs/guides/check-a-security-testing-agent">Check a security-testing agent&#39;s calls against a scope you declare</a></li>
+<li><a href="/docs/guides/compare-a-candidate-policy">Compare a candidate policy</a></li>
 <li><a href="/docs/guides/connect-an-existing-mcp-setup">Connect an existing MCP setup</a></li>
 <li><a href="/docs/guides/count-controlled-attempts">Count controlled attempts</a></li>
 <li><a href="/docs/guides/decide-a-tool-of-your-own">Decide a tool of your own</a></li>
@@ -2934,6 +2948,7 @@ independence of this project from Guardana
 <li><a href="/docs/reference/metrics">Metrics</a></li>
 <li><a href="/docs/reference/obligations">Obligations</a></li>
 <li><a href="/docs/reference/observations">Observations</a></li>
+<li><a href="/docs/reference/policy-compare">Policy compare</a></li>
 <li><a href="/docs/reference/policy-explain">Policy explain</a></li>
 <li><a href="/docs/reference/policy-format">Policy document format</a></li>
 <li><a href="/docs/reference/reaction-signed">Signed reaction</a></li>

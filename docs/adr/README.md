@@ -95,3 +95,4 @@ request with `Status: proposed`, and set it to `accepted` when it merges.
 | [0084](0084-the-site-is-redrawn-in-one-system.md) | The site is redrawn: one system for the landing page and the docs, a light and a dark theme, llms.txt |
 | [0085](0085-the-1-0-bar-is-met-by-own-evidence-and-what-needs-outside-people-stays-not-met.md) | The 1.0 bar is met by the project's own evidence, and what needs outside people stays not met |
 | [0086](0086-controlled-attempts-are-counted-at-the-victim.md) | Controlled attempts are counted at the victim, by an executor of their own |
+| [0087](0087-a-candidate-policy-is-compared-through-the-kernels-own-evaluation.md) | A candidate policy is compared through the kernel's own evaluation, and what a case cannot show stays unknown |
