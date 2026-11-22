@@ -152,6 +152,11 @@ undone, so the endpoint it prints names the same socket when given back,
 and a host, a query, a fragment or a <code>%</code> that escapes nothing is refused.
 A socket path holding <code>#</code>, <code>?</code>, <code>%</code> or a space is given escaped, as
 <code>collect</code> prints it.</li>
+<li><strong>Breaking:</strong> a <code>procedure test</code> cases document states <code>project</code> in <code>run</code>
+and in each run of <code>tree</code>; a document without it is refused with exit 2,
+naming the member. Add the project the run's record names. The format
+stays <code>0.1</code>, <code>experimental</code>
+(<a href="/docs/guides/test-a-procedure#2-write-a-case">test a procedure</a>).</li>
 </ul>
 <h3 id="added">Added</h3>
 <ul>
@@ -177,6 +182,19 @@ approval and activates no policy
 </ul>
 <h3 id="fixed">Fixed</h3>
 <ul>
+<li><code>policy test</code>, <code>policy explain</code> and <code>policy compare</code> refuse a case whose
+<code>authorized_args</code> is not valid UTF-8 or holds an unpaired surrogate escape
+such as <code>\ud800</code>, naming the member. The case reader put U+FFFD in place
+of such bytes, so the kernel decided other arguments than the case wrote,
+and a case could pass <code>ALLOW</code> for bytes the kernel refuses
+(<a href="/docs/reference/policy-format#a-test-case">policy format</a>).</li>
+<li>A <code>procedure test</code> case states the project its run's record names, as
+<code>project</code> in <code>run</code> and in each run of <code>tree</code>, and is judged as <code>supervise</code>
+judges that run: events or a run of another project fail the case as
+<code>refused:</code>, and its sources are of the run's project. The case took the
+project from its events, so a case passed with a finding that <code>supervise</code>
+would refuse to make for a run recorded under another project
+(<a href="/docs/guides/test-a-procedure#2-write-a-case">test a procedure</a>).</li>
 <li><code>supervise</code> lists a step's requests, and a finding cites and keeps its
 references, in the order of the plane's times of the proposals, a tie by
 request id. It used the order in which an export first held each request,

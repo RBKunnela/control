@@ -190,7 +190,7 @@ anything after the object, are refused.
 | --- | --- |
 | `document` | The policy document, inline, as `policy lint` reads it from a file. |
 | `envelope` | The `ActionEnvelope`, in Protobuf JSON. What the decoder refuses is handed to the kernel as its refusal, so a case can expect `INDETERMINATE` for a malformed envelope. |
-| `authorized_args` | The authorized arguments document as one string, `""` for none. When the envelope carries `arguments.canonicalHash`, the kernel compares it with the hash of this string. |
+| `authorized_args` | The authorized arguments as a string, `""` for none, checked against the envelope's `arguments.canonicalHash` if set. Invalid UTF-8 or a lone surrogate escape is refused. |
 | `flow` | `untrusted` (`true` or `false`) and `floor`, a `Sensitivity` name without its prefix: the state of the run the call belongs to. |
 | `options` | The kernel's configuration: `fail_open_read` (`true` or `false`), `max_stale_seconds` (an integer, above zero) and `applicable` (the catalogue's obligation types the enforcement point can apply). |
 | `loaded_at` | When the bundle was loaded, RFC 3339 with a zero offset, `Z` or `+00:00`. |

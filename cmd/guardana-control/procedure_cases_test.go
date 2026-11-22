@@ -180,10 +180,72 @@ func TestACaseItsInputRefusesFails(t *testing.T) {
 	failedCase(t, path, "a waiver taken", "refused: ", "another tenant")
 }
 
+// TestACaseIsJudgedUnderItsRunsRecordedProject: a case states the project
+// its run's record names, and is judged as supervise judges that run: events
+// or a tree member of another project are refused, and a source is held to
+// the recorded project even when no event of the run is read.
+func TestACaseIsJudgedUnderItsRunsRecordedProject(t *testing.T) {
+	runOf := func(c map[string]any) map[string]any { r, _ := c["run"].(map[string]any); return r }
+	path := editedCases(t, "cases-0.2.json", func(doc map[string]any) { runOf(caseOf(t, doc, 1))["project"] = "billing" })
+	failedCase(t, path, "a resource outside the run", "refused: ",
+		`an event of the run is of project "orders", the run's record of project "billing"`)
+
+	path = editedCases(t, "cases-0.2.json", func(doc map[string]any) {
+		tree, _ := caseOf(t, doc, 0)["tree"].([]any)
+		child, _ := tree[0].(map[string]any)
+		child["project"] = "billing"
+	})
+	failedCase(t, path, "a waiver taken", "refused: ", "another project")
+
+	path = editedCases(t, "cases-0.2.json", func(doc map[string]any) {
+		ev, _ := caseOf(t, doc, 2)["evidence"].([]any)
+		ev[0].(map[string]any)["events"] = []any{}
+	})
+	failedCase(t, path, "a denied refund retried with other arguments",
+		"missing finding DENIED_ACTION_RETRIED_ARGUMENTS CONFIRMED "+rootRun+" [r2 r3]")
+}
+
 // TestACasesDocumentItCannotReadIsRefused: exit 2, nothing on stdout and
 // one line naming what was refused, for a member the format does not have
 // at each level, a version it does not read, a missing expectation, no case,
 // a case named twice, and a procedure or an export it cannot read.
+// TestACasesDocumentSpellingAnIdItCannotCarryIsRefused: an id, a tenant or a
+// project that supervise compares byte for byte, spelled with an unpaired
+// surrogate escape the decoder reads as U+FFFD, is refused, naming the
+// member, rather than compared on other bytes than the document wrote.
+func TestACasesDocumentSpellingAnIdItCannotCarryIsRefused(t *testing.T) {
+	const mark = "member-to-respell"
+	for name, c := range map[string]struct {
+		edit func(doc map[string]any)
+		want string
+	}{
+		"a run's project": {func(d map[string]any) { caseOf(t, d, 0)["run"].(map[string]any)["project"] = mark }, "cases.1.run.project: want valid UTF-8"},
+		"a run's id":      {func(d map[string]any) { caseOf(t, d, 0)["run"].(map[string]any)["id"] = mark }, "cases.1.run.id: want valid UTF-8"},
+		"a tree member's parent": {func(d map[string]any) {
+			caseOf(t, d, 0)["tree"].([]any)[0].(map[string]any)["parent"] = mark
+		}, "cases.1.tree.1.parent: want valid UTF-8"},
+		"a finding's run":     {func(d map[string]any) { findingOf(t, d, 0)["run"] = mark }, "cases.1.expect.findings.1.run: want valid UTF-8"},
+		"a finding's request": {func(d map[string]any) { findingOf(t, d, 1)["requests"] = []any{mark} }, "cases.2.expect.findings.1.requests: want valid UTF-8"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			path := editedCases(t, "cases-0.2.json", c.edit)
+			body, err := os.ReadFile(filepath.Clean(path))
+			if err != nil {
+				t.Fatal(err)
+			}
+			respelled := bytes.Replace(body, []byte(`"`+mark+`"`), []byte(`"orders\ud800"`), 1)
+			if bytes.Equal(respelled, body) {
+				t.Fatalf("%s holds no %q to respell", path, mark)
+			}
+			writeFixture(t, path, string(respelled))
+			code, stdout, stderr := invoke(t, "procedure", "test", path)
+			if code != exitUsage || stdout != "" || !strings.Contains(stderr, c.want) {
+				t.Errorf("exit %d, stdout %q, stderr %q; want 2 and %q", code, stdout, stderr, c.want)
+			}
+		})
+	}
+}
+
 func TestACasesDocumentItCannotReadIsRefused(t *testing.T) {
 	for name, c := range map[string]struct {
 		file string
@@ -212,10 +274,15 @@ func TestACasesDocumentItCannotReadIsRefused(t *testing.T) {
 		"whole left out":         {"cases-0.2.json", func(d map[string]any) { delete(evidenceOf(t, d), "whole") }, "cases.1.evidence.1.whole: missing"},
 		"a path and events":      {"cases-0.2.json", func(d map[string]any) { evidenceOf(t, d)["path"] = "x.jsonl" }, "cases.1.evidence.1: a path or events, not both"},
 		"a closed run unstated":  {"cases-0.2.json", func(d map[string]any) { delete(caseOf(t, d, 0)["run"].(map[string]any), "closed") }, "cases.1.run.closed: missing"},
-		"a local last_heard":     {"cases-0.2.json", func(d map[string]any) { sourceOf(t, d, 2)["last_heard"] = "2026-10-05T11:00:00+01:00" }, "cases.3.sources.1.last_heard: want a UTC time"},
-		"a missing procedure":    {"cases-0.2.json", func(d map[string]any) { d["procedure"] = "none.json" }, "none.json"},
-		"a refused procedure":    {"cases-0.2.json", func(d map[string]any) { d["procedure"] = "cases-0.1.json" }, "procedure refused"},
-		"a missing export":       {"cases-0.1.json", func(d map[string]any) { evidenceOf(t, d)["path"] = "none.jsonl" }, "none.jsonl"},
+		"a project unstated":     {"cases-0.2.json", func(d map[string]any) { delete(caseOf(t, d, 0)["run"].(map[string]any), "project") }, "cases.1.run.project: missing"},
+		"an empty project":       {"cases-0.2.json", func(d map[string]any) { caseOf(t, d, 0)["run"].(map[string]any)["project"] = "" }, "cases.1.run.project: want a project"},
+		"a member's project unstated": {"cases-0.2.json", func(d map[string]any) {
+			delete(caseOf(t, d, 0)["tree"].([]any)[0].(map[string]any), "project")
+		}, "cases.1.tree.1.project: missing"},
+		"a local last_heard":  {"cases-0.2.json", func(d map[string]any) { sourceOf(t, d, 2)["last_heard"] = "2026-10-05T11:00:00+01:00" }, "cases.3.sources.1.last_heard: want a UTC time"},
+		"a missing procedure": {"cases-0.2.json", func(d map[string]any) { d["procedure"] = "none.json" }, "none.json"},
+		"a refused procedure": {"cases-0.2.json", func(d map[string]any) { d["procedure"] = "cases-0.1.json" }, "procedure refused"},
+		"a missing export":    {"cases-0.1.json", func(d map[string]any) { evidenceOf(t, d)["path"] = "none.jsonl" }, "none.jsonl"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			code, stdout, stderr := invoke(t, "procedure", "test", editedCases(t, c.file, c.edit))

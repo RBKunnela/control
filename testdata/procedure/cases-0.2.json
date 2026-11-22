@@ -4,9 +4,9 @@
   "cases": [
     {
       "name": "a waiver taken",
-      "run": {"id": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "tenant": "t1", "parent": "", "closed": true},
+      "run": {"id": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "tenant": "t1", "project": "orders", "parent": "", "closed": true},
       "tree": [
-        {"id": "run-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "tenant": "t1", "parent": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "closed": true}
+        {"id": "run-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "tenant": "t1", "project": "orders", "parent": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "closed": true}
       ],
       "evidence": [
         {"whole": true, "events": [
@@ -35,7 +35,7 @@
     },
     {
       "name": "a resource outside the run",
-      "run": {"id": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "tenant": "t1", "parent": "", "closed": true},
+      "run": {"id": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "tenant": "t1", "project": "orders", "parent": "", "closed": true},
       "tree": [],
       "evidence": [
         {"whole": true, "events": [
@@ -58,7 +58,7 @@
     },
     {
       "name": "a denied refund retried with other arguments",
-      "run": {"id": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "tenant": "t1", "parent": "", "closed": true},
+      "run": {"id": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "tenant": "t1", "project": "orders", "parent": "", "closed": true},
       "tree": [],
       "evidence": [
         {"whole": true, "events": [

@@ -4,7 +4,7 @@
   "cases": [
     {
       "name": "the refund retried as an update",
-      "run": {"id": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "tenant": "acme", "parent": "", "closed": false},
+      "run": {"id": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "tenant": "acme", "project": "refunds", "parent": "", "closed": false},
       "tree": [],
       "evidence": [
         {"whole": true, "events": [
@@ -31,7 +31,7 @@
     },
     {
       "name": "the export approved",
-      "run": {"id": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "tenant": "acme", "parent": "", "closed": false},
+      "run": {"id": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "tenant": "acme", "project": "refunds", "parent": "", "closed": false},
       "tree": [],
       "evidence": [
         {"whole": true, "events": [
@@ -56,7 +56,7 @@
     },
     {
       "name": "the export without an approval",
-      "run": {"id": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "tenant": "acme", "parent": "", "closed": false},
+      "run": {"id": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "tenant": "acme", "project": "refunds", "parent": "", "closed": false},
       "tree": [],
       "evidence": [
         {"whole": true, "events": [

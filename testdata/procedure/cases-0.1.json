@@ -4,7 +4,7 @@
   "cases": [
     {
       "name": "the procedure kept",
-      "run": {"id": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "tenant": "t1", "parent": "", "closed": true},
+      "run": {"id": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "tenant": "t1", "project": "orders", "parent": "", "closed": true},
       "tree": [],
       "evidence": [
         {"path": "conforming.export.jsonl"}
@@ -16,7 +16,7 @@
     },
     {
       "name": "a tool outside the procedure",
-      "run": {"id": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "tenant": "t1", "parent": "", "closed": true},
+      "run": {"id": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "tenant": "t1", "project": "orders", "parent": "", "closed": true},
       "tree": [],
       "evidence": [
         {"whole": true, "events": [
@@ -43,7 +43,7 @@
     },
     {
       "name": "a run still open",
-      "run": {"id": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "tenant": "t1", "parent": "", "closed": false},
+      "run": {"id": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "tenant": "t1", "project": "orders", "parent": "", "closed": false},
       "tree": [],
       "evidence": [
         {"whole": true, "events": [

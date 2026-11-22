@@ -621,7 +621,7 @@ anything after the object, are refused.</p>
 </tr>
 <tr>
 <td><code>authorized_args</code></td>
-<td>The authorized arguments document as one string, <code>&quot;&quot;</code> for none. When the envelope carries <code>arguments.canonicalHash</code>, the kernel compares it with the hash of this string.</td>
+<td>The authorized arguments as a string, <code>&quot;&quot;</code> for none, checked against the envelope's <code>arguments.canonicalHash</code> if set. Invalid UTF-8 or a lone surrogate escape is refused.</td>
 </tr>
 <tr>
 <td><code>flow</code></td>

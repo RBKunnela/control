@@ -332,3 +332,20 @@ func TestPolicyCompareKernelDenialExitsOne(t *testing.T) {
 		t.Errorf("exit %d, %q %q, want 1 and the case not evaluated", code, stdout, stderr)
 	}
 }
+
+// A case whose arguments a JSON string cannot carry byte for byte is refused
+// as policy test refuses it, never compared on the U+FFFD the decoder reads.
+func TestPolicyCompareRefusesArgumentsACaseCannotCarry(t *testing.T) {
+	dir := compareCasesDir(t, "read-order.json")
+	raw, err := os.ReadFile(filepath.Join(dir, "read-order.json")) //nolint:gosec // G304: the test's own copy
+	if err != nil {
+		t.Fatal(err)
+	}
+	bad := strings.Replace(string(raw), `"authorized_args": "{}",`, "\"authorized_args\": \"{\\\"note\\\":\\\"\xff\\\"}\",", 1)
+	if bad == string(raw) {
+		t.Fatal("the case states no arguments to change")
+	}
+	writeFixture(t, filepath.Join(dir, "read-order.json"), bad)
+	report := filepath.Join(t.TempDir(), "r.json")
+	refused(t, report, compareArgsFor(report, "--cases", dir), "read-order.json", "authorized_args")
+}

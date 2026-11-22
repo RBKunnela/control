@@ -85,16 +85,12 @@ func procedureTest(path string, stdout, stderr io.Writer) int {
 }
 
 // evaluateCase supervises in with each source under the run's tenant and the
-// project its events name: a case's source has no descriptor, so no identity
-// of its own.
+// project its record names: a case's source has no descriptor, so no
+// identity of its own.
 func evaluateCase(in supervise.Input) (*supervise.Result, error) {
-	project, err := supervise.RunProject(in)
-	if err != nil {
-		return nil, err
-	}
 	in.Sources = slices.Clone(in.Sources)
 	for i := range in.Sources {
-		in.Sources[i].Tenant, in.Sources[i].Project = in.Run.Tenant, project
+		in.Sources[i].Tenant, in.Sources[i].Project = in.Run.Tenant, in.Run.Project
 	}
 	return supervise.Evaluate(in)
 }

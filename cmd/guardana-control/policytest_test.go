@@ -366,3 +366,64 @@ func expectOf(line string) string {
 	}
 	return `{"verdict":"` + fields[0] + `","action":"` + fields[1] + `","reason_codes":[` + strings.Join(quoted, ",") + `]}`
 }
+
+// Arguments a JSON string cannot carry byte for byte are refused, by both
+// commands that read a case: the decoder would hand the kernel U+FFFD in their
+// place, and the kernel refuses the bytes the case wrote.
+func TestACaseIsRefusedArgumentsItCannotCarryExactly(t *testing.T) {
+	c, err := readCase([]byte(base().json()))
+	if err != nil {
+		t.Fatalf("readCase: %v", err)
+	}
+	c.authorizedArgs = []byte("{\"note\":\"\xff\"}")
+	if got, err := decide(c); err != nil || got.String() != "INDETERMINATE Block [INVALID_FIELD_VALUE]" {
+		t.Fatalf("the kernel on the written bytes: %v, %v", got, err)
+	}
+	for name, args := range map[string]string{
+		"an invalid UTF-8 byte":                  "\"{\\\"note\\\":\\\"\xff\\\"}\"",
+		"a lone high surrogate":                  `"{\"note\":\"\ud800\"}"`,
+		"a lone low surrogate":                   `"{\"note\":\"\udfff\"}"`,
+		"a high surrogate unpaired":              `"{\"note\":\"\ud800A\"}"`,
+		"a high surrogate before another escape": `"{\"note\":\"\ud800` + `\` + `u0041\"}"`,
+		"a low surrogate before another low":     `"{\"note\":\"\udc00` + `\` + `udc00\"}"`,
+		"two high surrogates":                    `"{\"note\":\"\ud800` + `\` + `ud800\"}"`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			p := base()
+			p.authorizedArgs = args
+			p.expect = `{"verdict":"ALLOW","action":"Execute","reason_codes":["RULE_ALLOW"]}`
+			code, lines := policyTestOf(t, map[string]string{"case.json": p.json()})
+			if code != 1 || len(lines) != 1 || !strings.HasPrefix(lines[0], "FAIL case.json: authorized_args: ") {
+				t.Errorf("policy test: exit %d, lines %q", code, lines)
+			}
+			path := filepath.Join(caseDir(t, map[string]string{"case.json": withoutExpect(p)}), "case.json")
+			code, stdout, stderr := invoke(t, "policy", "explain", path)
+			if code != 1 || stdout != "" || !strings.HasPrefix(oneStderrLine(t, stderr), brand.CLI+": policy explain: authorized_args: ") {
+				t.Errorf("policy explain: exit %d, stdout %q, stderr %q", code, stdout, stderr)
+			}
+		})
+	}
+}
+
+// What a JSON string carries exactly is still read, escapes resolved: a
+// surrogate pair, U+FFFD written as such, and a backslash before a "u".
+func TestACaseReadsArgumentsItCarriesExactly(t *testing.T) {
+	for name, tc := range map[string]struct{ args, want string }{
+		"a surrogate pair":       {`"{\"note\":\"\ud83d\ude00\"}"`, "{\"note\":\"\U0001F600\"}"},
+		"U+FFFD escaped":         {`"{\"note\":\"\ufffd\"}"`, "{\"note\":\"\uFFFD\"}"},
+		"U+FFFD as its bytes":    {"\"{\\\"note\\\":\\\"\xef\xbf\xbd\\\"}\"", "{\"note\":\"\uFFFD\"}"},
+		"a backslash before a u": {`"{\"note\":\"\\ud800\"}"`, `{"note":"\ud800"}`},
+	} {
+		t.Run(name, func(t *testing.T) {
+			p := base()
+			p.authorizedArgs = tc.args
+			c, err := readCase([]byte(p.json()))
+			if err != nil {
+				t.Fatalf("readCase: %v", err)
+			}
+			if string(c.authorizedArgs) != tc.want {
+				t.Errorf("authorized_args = %q, want %q", c.authorizedArgs, tc.want)
+			}
+		})
+	}
+}
