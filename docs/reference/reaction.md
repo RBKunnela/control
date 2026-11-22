@@ -94,16 +94,16 @@ and lifts counted and the list's use of its bounds.
 ## What react writes
 
 `react` verifies the route before reading a finding, refuses a list whose
-header names another route, reads the findings log and looks each finding's run up in the runs directory,
-which it never writes. It holds no key and never lifts. For each finding the
+header names another route, reads the findings log and looks each finding's run up in the runs directory
+it never writes. It holds no key and never lifts. For each finding the
 list does not name yet, it writes a `covered` line when the run has an active
 stop lasting at least as long as the new one, and a `stop` otherwise,
 as the list stands under its lock, if:
 
 - the finding is `DETERMINISTIC` and `CONFIRMED`; a suspected, indeterminate
   or model's finding stops nothing, and no setting changes that;
-- its run is an opened run of its tenant and project, open and unexpired, a
-  child included;
+- its run is an opened run of its tenant and project, open and unexpired
+  under the lock, a child included;
 - the route permits it: its tenant, procedure and rule are a rule's.
 
 A finding the list names in any line writes nothing again, so a lift holds:
@@ -111,7 +111,7 @@ what a run did while stopped is covered; only a finding not yet listed, of any a
 plus the rule's lifetime, never after the run's expiry rounded up to the second. `react` prints each line it wrote and one
 count line, and exits 0 when every finding the route allows is on the list,
 and 1 on any refusal, naming each finding it could not write. An interrupt, or
-a lock wait that runs out, ends the pass after the lines it wrote.
+a lock wait that runs out, ends the pass after its writes.
 Nothing runs it: the operator runs `supervise` and `react` while the run is
 open.
 

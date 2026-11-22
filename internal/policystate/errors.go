@@ -99,4 +99,7 @@ const (
 	// ErrRouteForked is a route at its floor's serial with another digest:
 	// two routes signed under one serial.
 	ErrRouteForked Error = "policystate: the route's serial is the floor's but its digest is another"
+	// ErrStagingTaken is a staging name where something stands that no
+	// build of a floor directory left: a build never removes it.
+	ErrStagingTaken Error = "policystate: the name a floor directory is built under holds what no build left there"
 )

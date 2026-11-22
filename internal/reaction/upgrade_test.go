@@ -117,6 +117,76 @@ func TestA20ListAndAV1alpha2LiftAreRefusedUnderAV1alpha3Route(t *testing.T) {
 	expectUpgrade(t, "a v1alpha2 lift's snapshot", reaction.Snapshot{}.NextContext(ctx, r, withLift, sNow, time.Second), "stops init --carry")
 }
 
+// TestA20ListPutInPlaceOfAnAcceptedOneNamesItsCarry: a plane that accepted
+// a 3.0 list reads a 2.0 list in its place. The refusal says what happened,
+// a list of another version where the accepted one stood, which is put back
+// or carried, and names stops init --carry, as at the first read.
+func TestA20ListPutInPlaceOfAnAcceptedOneNamesItsCarry(t *testing.T) {
+	ctx := context.Background()
+	r := vouchedRoute(t, newVoucher())
+	header, _ := signedHeaderLine(t, r, headerOpts{})
+	accepted := reaction.Snapshot{}.NextContext(ctx, r, joinLines(header), sNow, time.Second)
+	if accepted.State() == reaction.Unknown {
+		t.Fatalf("the 3.0 list: %q %s", accepted.Cause(), accepted.Detail())
+	}
+	next := accepted.NextContext(ctx, r, v2List(t, r), sNow, time.Second)
+	if next.State() != reaction.Unknown || next.Cause() != reaction.CauseHeader {
+		t.Errorf("a 2.0 list after a 3.0 one: %v %q, want unknown with %q", next.State(), next.Cause(), reaction.CauseHeader)
+	}
+	for _, want := range []string{"a 2.0 stop list in place of the accepted 3.0 one", "put the accepted list back", "stops init --carry"} {
+		if !strings.Contains(next.Detail(), want) || strings.HasSuffix(next.Detail(), "...") {
+			t.Errorf("a 2.0 list after a 3.0 one: the detail %q does not name %q whole", next.Detail(), want)
+		}
+	}
+	_, err := reaction.JudgeFrom(r, accepted.AcceptedList(), v2List(t, r), sNow, 0)
+	if !errors.Is(err, reaction.ErrListUpgrade) || !errors.Is(err, reaction.ErrListHeader) {
+		t.Errorf("JudgeFrom of a 2.0 list after a 3.0 one: %v, want %v and %v", err, reaction.ErrListHeader, reaction.ErrListUpgrade)
+	}
+	other, _ := signedHeaderLine(t, r, headerOpts{key: strangerKey()})
+	if _, err := reaction.JudgeFrom(r, accepted.AcceptedList(), joinLines(other), sNow, 0); !errors.Is(err, reaction.ErrListHeader) {
+		t.Errorf("JudgeFrom of another 3.0 header: %v, want %v", err, reaction.ErrListHeader)
+	}
+}
+
+// TestASignedLiftsBodyIsHeldToItsBoundWhereTheLiftIsJudged: a 3.0 lift
+// line's envelope carries a body of MaxSignedBytes, read and refused for the
+// member it should not hold, and one of a byte more, refused for its size
+// where the judge takes the lift, though the line itself parses.
+func TestASignedLiftsBodyIsHeldToItsBoundWhereTheLiftIsJudged(t *testing.T) {
+	r := vouchedRoute(t, newVoucher())
+	header, head := signedHeaderLine(t, r, headerOpts{})
+	l := reaction.SignedLiftV3{KeyID: keyIDOf(operatorKey()), PlaneID: sPlane, ListHead: head, Scope: reaction.ScopeRun, Subject: "run-1",
+		ThroughLine: 2, TenantID: sTenant, Project: sProject, File: sListFile}
+	body, err := l.Payload()
+	noErr(t, err)
+	padded := func(size int) []byte {
+		withPad := editedBody(t, body, map[string]any{"pad": ""})
+		return editedBody(t, withPad, map[string]any{"pad": strings.Repeat("x", size-len(withPad))})
+	}
+	for _, c := range []struct {
+		size        int
+		want, never error
+	}{
+		{reaction.MaxSignedBytes, reaction.ErrLiftMember, reaction.ErrSignedShape},
+		{reaction.MaxSignedBytes + 1, reaction.ErrSignedShape, reaction.ErrLiftMember},
+	} {
+		b := padded(c.size)
+		if len(b) != c.size {
+			t.Fatalf("the padded body is %d bytes, want %d", len(b), c.size)
+		}
+		line, err := reaction.LiftLine{Scope: reaction.ScopeRun, Subject: "run-1", ThroughLine: 2,
+			Envelope: operatorSigned(t, reaction.SignedLiftPayloadType, b)}.Marshal()
+		noErr(t, err)
+		if _, err := reaction.ParseLine(line); err != nil {
+			t.Fatalf("ParseLine of a lift line holding %d bytes: %v", c.size, err)
+		}
+		_, err = reaction.Judge(r, reaction.Prefix{}, joinLines(header, signedStop(t, sProject), line), sNow, 0)
+		if !errors.Is(err, reaction.ErrLiftUnsigned) || !errors.Is(err, c.want) || errors.Is(err, c.never) {
+			t.Errorf("a lift whose body is %d bytes: %v, want %v and not %v", c.size, err, c.want, c.never)
+		}
+	}
+}
+
 // TestNothingSignsAV1alpha2Route: route sign's readers refuse a v1alpha2
 // document, naming the kind and the member that replace it, and take the
 // same document as v1alpha3.

@@ -100,3 +100,22 @@ that fails named in the error, a second call held while a first forces its
 marker, before and after the carry, and a marker that is no regular file of
 the plane's; an unsigned layout; and a
 restore over `.seen`. `internal/recovery` restores a backup holding one.
+
+## Amendment: the walk carries the close it reads
+
+The walk reads the record of each ancestor below the root that the plane
+never admitted, and took one as a link whether it was open or closed. Where
+it reads that record closed, it now carries the close into `state/` and
+refuses the call as `closed`, naming the ancestor, with no `.seen` made. A
+first admission also reads the root's state before it makes the `.seen`,
+so a call refused for a lost root state leaves no marker.
+
+This makes the Limits paragraph above partly false: a child whose
+uncarried close sits on such an ancestor is refused at its first call. What
+still holds: the walk reads neither the root's record nor that of an
+ancestor with a `.seen`, so a child whose parent is the root or a run the
+plane admitted, closed but not yet carried, is admitted and marked, and
+keeps running once that close is carried, as ADR-0034 keeps for an
+admitted child. `internal/runs` tests a grandchild's first call under a
+closed parent the plane never admitted, and a first call beside a lost
+root state.

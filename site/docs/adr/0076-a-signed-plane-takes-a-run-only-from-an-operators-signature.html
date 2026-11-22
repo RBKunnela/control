@@ -234,6 +234,18 @@ and <code>supervise</code> and <code>react</code> over a record of a key the ros
 another directory;
 <code>cmd/guardana-gateway</code> tests the start refusals, the carry across a restart
 and doctor's counts.</p>
+<h2 id="amendment-a-start-reads-a-bounded-number-of-records">Amendment: a start reads a bounded number of records</h2>
+<p>A start reads at most 65,536 records of <code>records/</code> to carry their closes,
+and <code>doctor</code> reads no more. A signed plane whose <code>records/</code> holds more
+refuses to start, and <code>doctor</code> fails, naming the way out: a close past the
+bound would go uncarried, and the open record of that run, put back, would
+be taken. <code>guardana-control runs prune</code> archives the expired trees, which
+brings <code>records/</code> under the bound; a directory holding more runs that have
+not expired than the bound cannot start until enough of them expire.
+<strong>Breaking</strong> under <code>signed</code>, for a plane with more records than the bound;
+it used to log the cut and serve. <code>internal/runs</code> tests the refusal at the
+bound and the prune that ends it; <code>cmd/guardana-gateway</code> tests the start
+and doctor's line.</p>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/adr/0076-a-signed-plane-takes-a-run-only-from-an-operators-signature.md">docs/adr/0076-a-signed-plane-takes-a-run-only-from-an-operators-signature.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.18.0, and <a href="https://github.com/guardana/control/tree/v0.18.0/docs">its documentation</a> is in its tag.</p>
 </main>
 <nav class="side" aria-label="Documentation">

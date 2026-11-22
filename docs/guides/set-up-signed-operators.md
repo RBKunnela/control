@@ -29,8 +29,8 @@ security boundary yet.
 
 `run` and `doctor` refuse a signed plane whose own account owns, or may
 write, the configuration, `trust.root_public_key`, `trust.roster`,
-`pause.file`, `reaction.route`, `reaction.stops` or the runs directory's
-`records/`, or any directory on their paths; one where any of those entries
+`pause.file`, `reaction.route`, `reaction.stops`, the stop list in it or the
+runs directory's `records/`, or any directory on their paths; one where any of those entries
 is missing or carries an access control list (on Linux and macOS); one
 whose environment sets any of its keys; and one whose `approvals.inbox_dir`
 its own account does not own. Root's files of mode `0644` in root's

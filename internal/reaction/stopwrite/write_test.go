@@ -304,3 +304,33 @@ func TestAppendFindingNeverCutsALongerStopShort(t *testing.T) {
 		t.Error("run-1 is not stopped an hour on, after the short stop ended and while the long one holds")
 	}
 }
+
+// TestALiftThatEndsNoStopUnderTheLockIsRefused: two lifts of run-1 read from
+// one list, through its stop's line and through the line after it. The first
+// ends the stop; the second, which the judge alone takes since it names
+// another line, ends nothing under the lock and is refused, writing nothing.
+// A lift through the same line of run-2, whose stop stands, is written.
+func TestALiftThatEndsNoStopUnderTheLockIsRefused(t *testing.T) {
+	r := testRoute(t)
+	dir, h := initDir(t, r)
+	for i, run := range []string{"run-1", "run-2"} {
+		if n, err := stopwrite.AppendStop(bg, dir, r, stopOf(t, "f-"+run, run, clock0), clock0); err != nil || n != int64(i+2) {
+			t.Fatalf("the stop of %s = %d, %v", run, n, err)
+		}
+	}
+	first, second := liftOf(t, liftKey(), r, h.ListID, "run-1", 2), liftOf(t, liftKey(), r, h.ListID, "run-1", 3)
+	if n, err := stopwrite.AppendLift(bg, dir, r, first, clock0); err != nil || n != 4 {
+		t.Fatalf("the first lift = %d, %v; want line 4", n, err)
+	}
+	before := content(t, dir)
+	n, err := stopwrite.AppendLift(bg, dir, r, second, clock0)
+	if !errors.Is(err, stopwrite.ErrRefused) || !errors.Is(err, stopwrite.ErrNothingLifted) || n != 0 {
+		t.Fatalf("a lift of run-1 through line 3 after its stop was lifted = %d, %v; want ErrNothingLifted", n, err)
+	}
+	if !bytes.Equal(content(t, dir), before) {
+		t.Fatal("a lift that ends nothing changed the list")
+	}
+	if n, err := stopwrite.AppendLift(bg, dir, r, liftOf(t, liftKey(), r, h.ListID, "run-2", 3), clock0); err != nil || n != 5 {
+		t.Fatalf("the lift of run-2 through line 3 = %d, %v; want line 5", n, err)
+	}
+}

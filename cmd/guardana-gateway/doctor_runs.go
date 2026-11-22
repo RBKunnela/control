@@ -8,13 +8,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/guardana/control/internal/brand"
 	"github.com/guardana/control/internal/gatewayconfig"
 	"github.com/guardana/control/internal/runs"
 	"github.com/guardana/control/internal/runs/signedruns"
 )
-
-// doctorRunsBound is the most records doctor reads of a signed layout.
-const doctorRunsBound = 1 << 16
 
 // doctorPlaneOwned lets the checks read a records/, a signed route and a stop
 // list the plane's own account owns. Only a test sets it, where one account
@@ -68,7 +66,7 @@ func signedRunsLine(path string, s runs.Survey) string {
 		line += fmt.Sprintf("; %d count for nothing and refuse their calls (%s)", refused, strings.Join(causes, ", "))
 	}
 	if !s.Complete {
-		line += fmt.Sprintf("; only the first %d were read", doctorRunsBound)
+		line += fmt.Sprintf("; only the first %d were read", runsCarryBound)
 	}
 	return line
 }
@@ -80,12 +78,15 @@ func (d *examination) signedRuns(ctx context.Context) (string, string, string) {
 	if err != nil {
 		return verdictFail, "runs", fmt.Sprintf("runs.dir: %v; run refuses to start on it", err)
 	}
-	s, err := plane.Inspect(ctx, doctorRunsBound, time.Now())
+	s, err := plane.Inspect(ctx, runsCarryBound, time.Now())
 	if cerr := plane.Close(); err == nil {
 		err = cerr
 	}
 	if err != nil {
 		return verdictFail, "runs", fmt.Sprintf("runs.dir: %v", err)
+	}
+	if !s.Complete {
+		return verdictFail, "runs", signedRunsLine(path, s) + "; run refuses to start on it until " + brand.CLI + " runs prune archives its expired trees"
 	}
 	return verdictOK, "runs", signedRunsLine(path, s) + "; a record counts only once an operator granted operate signed it for this records/ (ADR-0076)"
 }

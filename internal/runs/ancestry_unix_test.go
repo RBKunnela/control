@@ -62,6 +62,28 @@ func TestAGrandchildOfACarriedChildCloseIsRefused(t *testing.T) {
 	requireParentClosed(t, err)
 }
 
+// TestAGrandchildsFirstCallTakesItsClosedParentsClose: the child closed
+// before any call of it or of the grandchild, the grandchild's first call
+// reads the child's closed record on its walk, carries that close and is
+// refused, and makes no .seen.
+func TestAGrandchildsFirstCallTakesItsClosedParentsClose(t *testing.T) {
+	dir, a := newSigned(t)
+	root, _ := openSignedRoot(t, a, "alice")
+	child, _ := openSignedChild(t, a, root.ID, opened)
+	grand, grandToken := openSignedChild(t, a, child.ID, opened)
+	closeSigned(t, a, child.ID, opened.Add(time.Minute))
+	p := signedPlane(t, dir, alicesJudge)
+	_, err := p.Resolve(t.Context(), grandToken, alice, opened.Add(2*time.Minute))
+	requireParentClosed(t, err)
+	if !strings.Contains(err.Error(), child.ID) {
+		t.Errorf("Resolve = %v, want it to name %s, whose closed record the walk read", err, child.ID)
+	}
+	if _, err := os.Lstat(filepath.Join(dir, "state", child.ID+".closed")); err != nil {
+		t.Errorf("the close the walk read was not carried: %v", err)
+	}
+	requireSeen(t, dir, grand.ID, false)
+}
+
 // TestAGrandchildOfAnOpenChildOfAClosedRootRuns: below a child the plane
 // admitted before its root's close, a grandchild keeps running, though it
 // was first called after the close.

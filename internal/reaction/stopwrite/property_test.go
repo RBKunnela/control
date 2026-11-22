@@ -18,10 +18,24 @@ type model struct {
 	lines    int64
 	findings map[string]bool
 	lifts    map[string]bool
+	// stops is the line of each stop of a run; through is the last line a
+	// lift of the run ended its stops through.
+	stops   map[string][]int64
+	through map[string]int64
 }
 
 func (m *model) name(finding string) {
 	m.findings[finding] = true
+}
+
+// ends reports whether a lift of run through line ends a stop no lift ended.
+func (m *model) ends(run string, line int64) bool {
+	for _, s := range m.stops[run] {
+		if s > m.through[run] && s <= line {
+			return true
+		}
+	}
+	return false
 }
 
 // propertyRun is one sequence of writes from one seed.
@@ -53,6 +67,7 @@ func (p *propertyRun) step() outcome {
 		n, err := stopwrite.AppendStop(bg, p.dir, p.r, stopOf(p.t, finding, run, clock0), clock0)
 		if ok {
 			p.m.name(finding)
+			p.m.stops[run] = append(p.m.stops[run], p.m.lines+1)
 		}
 		return outcome{ok, n, err, "stop " + finding + " of " + run}
 	case 1:
@@ -69,10 +84,11 @@ func (p *propertyRun) step() outcome {
 	case 2:
 		through := 1 + p.rng.Int64N(p.m.lines+1)
 		key := fmt.Sprintf("%s@%d", run, through)
-		ok := through <= p.m.lines && !p.m.lifts[key]
+		ok := through <= p.m.lines && !p.m.lifts[key] && p.m.ends(run, through)
 		n, err := stopwrite.AppendLift(bg, p.dir, p.r, liftOf(p.t, liftKey(), p.r, p.listID, run, through), clock0)
 		if ok {
 			p.m.lifts[key] = true
+			p.m.through[run] = max(p.m.through[run], through)
 		}
 		return outcome{ok, n, err, "lift " + key}
 	default:
@@ -146,7 +162,7 @@ func TestEveryLineTheWriterWritesThePlaneAccepts(t *testing.T) {
 			p := &propertyRun{
 				t: t, rng: rand.New(rand.NewPCG(seed, seed^0x5eed)), //nolint:gosec // G404: a reproducible sequence of writes, not a secret
 				r: r, dir: dir, listID: h.ListID, plane: planeOn(t, dir, r),
-				m: model{lines: 1, findings: map[string]bool{}, lifts: map[string]bool{}},
+				m: model{lines: 1, findings: map[string]bool{}, lifts: map[string]bool{}, stops: map[string][]int64{}, through: map[string]int64{}},
 			}
 			accepted := int64(0)
 			for i := range 80 {

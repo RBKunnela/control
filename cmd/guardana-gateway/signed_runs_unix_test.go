@@ -12,9 +12,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/guardana/control/internal/brand"
 	"github.com/guardana/control/internal/gateway"
 	"github.com/guardana/control/internal/policy/bundle"
 	"github.com/guardana/control/internal/policykey"
+	"github.com/guardana/control/internal/reaction"
 	"github.com/guardana/control/internal/runs"
 )
 
@@ -144,6 +146,95 @@ func TestASignedPlaneCarriesTheClosesItFindsAtItsStart(t *testing.T) {
 		if p, err = buildOneAccount(t, tr); err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+// closedPastTheBound opens two runs signed by alice, closes the one whose
+// record comes last in filename order, puts its open record back, and
+// lowers the bound to one record, so the start never reads the close. It
+// returns the put-back run's token.
+func closedPastTheBound(t *testing.T, tr tree, a *runs.Admin) string {
+	t.Helper()
+	first, firstToken := openSignedRun(t, tr, a, "alice")
+	second, secondToken := openSignedRun(t, tr, a, "alice")
+	late, token := first, firstToken
+	if second.ID > first.ID {
+		late, token = second, secondToken
+	}
+	path := filepath.Join(tr.dir, "runs", runs.RecordsDir, late.ID+".run.json")
+	open, err := os.ReadFile(path) //nolint:gosec // G304: a file under the test's own temp dir
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := a.CloseSigned(t.Context(), late.ID, time.Now(), runSigner("alice"), takesAny{}); err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, path, open)
+	saved := runsCarryBound
+	runsCarryBound = 1
+	t.Cleanup(func() { runsCarryBound = saved })
+	return token
+}
+
+// TestASignedStartThatCannotReadEveryRecordRefuses: records/ holds more
+// records than the start reads, so a close past the bound would go
+// uncarried and the open record put back after it would resolve; the start
+// refuses instead, naming runs.dir.
+func TestASignedStartThatCannotReadEveryRecordRefuses(t *testing.T) {
+	tr, a := signedRunsTree(t)
+	token := closedPastTheBound(t, tr, a)
+	p, err := buildOneAccount(t, tr)
+	if err == nil {
+		t.Fatalf("build over more records than the start reads = nil; the open record put back past the bound resolves: %v", resolveOn(t, p, token))
+	}
+	if !errors.Is(err, runs.ErrCarryBound) || !strings.Contains(err.Error(), "runs.dir") {
+		t.Fatalf("build over more records than the start reads = %v, want ErrCarryBound naming runs.dir", err)
+	}
+}
+
+// TestDoctorFailsASignedLayoutItCannotReadWhole: doctor reads no more
+// records than the start, and fails what the start refuses.
+func TestDoctorFailsASignedLayoutItCannotReadWhole(t *testing.T) {
+	tr, a := signedRunsTree(t)
+	closedPastTheBound(t, tr, a)
+	doctorPlaneOwned = true
+	t.Cleanup(func() { doctorPlaneOwned = false })
+	d := &examination{cfg: tr.load(t)}
+	verdict, _, line := d.runs(t.Context())
+	if verdict != verdictFail || !strings.Contains(line, "only the first 1 were read") || !strings.Contains(line, "run refuses to start on it") ||
+		!strings.Contains(line, brand.CLI+" runs prune") {
+		t.Fatalf("doctor's runs line over more records than it reads = %s, %q; want fail, naming the bound, the start and the way out", verdict, line)
+	}
+}
+
+// TestASignedStopOfAnotherProjectsRunIsUnheld: on a signed layout the judge
+// refuses a record of another project as of another scope; a stop of that
+// run matches no call of this plane, so it is unheld, never unread, beside
+// the stop of the plane's own run, which is held.
+func TestASignedStopOfAnotherProjectsRunIsUnheld(t *testing.T) {
+	tr, a := signedRunsTree(t)
+	own, _ := openSignedRun(t, tr, a, "alice")
+	cfg := tr.load(t)
+	who := listenerRunIdentity(cfg)
+	other, _, err := a.OpenSigned(t.Context(), runs.OpenRequest{Who: runs.Identity{
+		ProjectID: "billing", TenantID: who.TenantID, PrincipalType: who.PrincipalType, PrincipalID: who.PrincipalID, AgentID: who.AgentID,
+	}, TTL: time.Hour, Now: time.Now()}, runSigner("alice"), takesAny{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := buildOneAccount(t, tr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.runsDir.Lookup(t.Context(), other.ID); !errors.Is(err, runs.ErrOtherScope) {
+		t.Fatalf("Lookup of the other project's run = %v, want ErrOtherScope", err)
+	}
+	stopOfRun := func(line int64, id string) reaction.Entry {
+		return reaction.Entry{Line: line, Stop: reaction.Stop{Scope: reaction.ScopeRun, Subject: id, RunID: id, TenantID: who.TenantID}}
+	}
+	unheld, unread := unheldStops(p.runsDir, p.cfg, []reaction.Entry{stopOfRun(2, own.ID), stopOfRun(3, other.ID)})
+	if len(unheld) != 1 || unheld[0].RunID != other.ID || len(unread) != 0 {
+		t.Fatalf("unheld %+v, unread %+v; want the other project's run alone unheld and nothing unread", unheld, unread)
 	}
 }
 

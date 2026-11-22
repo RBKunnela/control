@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"path/filepath"
 	"slices"
 	"time"
 
@@ -450,82 +449,4 @@ func readBackup[V any](k floorKind[V], backup string) ([]string, map[string]*V, 
 		}
 	}
 	return ids, held, nil
-}
-
-// buildFloors makes live from the backup's floors under a temporary sibling
-// name, which a stopped build leaves for the next to remove, and renames it
-// into place, so the name holds either nothing or every floor.
-func buildFloors[V any](k floorKind[V], live string, ids []string, held map[string]*V, step Step) (Restored, error) {
-	var keep []string
-	for _, id := range ids {
-		if (held[id] != nil && k.hasSerial(*held[id])) || k.listEmpty {
-			keep = append(keep, id)
-		}
-	}
-	if len(keep) == 0 {
-		return Restored{}, nil
-	}
-	tmp := filepath.Join(filepath.Dir(live), "."+filepath.Base(live)+".restoring")
-	if err := step("build " + live); err != nil {
-		return Restored{}, err
-	}
-	d, err := freshDir(tmp)
-	if err != nil {
-		return Restored{}, err
-	}
-	written, err := fillFloors(k, d, keep, held)
-	if err = errors.Join(err, d.close()); err != nil {
-		return Restored{}, err
-	}
-	out := Restored{Built: true, Listed: keep, Written: written}
-	if err := step("rename " + live); err != nil {
-		return Restored{}, err
-	}
-	if err := os.Rename(tmp, live); err != nil {
-		return Restored{}, err
-	}
-	return out, syncParent(live)
-}
-
-// fillFloors writes into d, a directory just made, the marker listing keep
-// and the floor of every id of keep held holds a serial for.
-func fillFloors[V any](k floorKind[V], d *dir, keep []string, held map[string]*V) ([]string, error) {
-	if err := k.writeMarker(d, keep, true); err != nil {
-		return nil, err
-	}
-	var written []string
-	for _, id := range keep {
-		if held[id] == nil || !k.hasSerial(*held[id]) {
-			continue
-		}
-		next, _, err := k.restored(nil, *held[id])
-		if err == nil {
-			err = k.write(d, next)
-		}
-		if err != nil {
-			return written, err
-		}
-		written = append(written, id)
-	}
-	return written, nil
-}
-
-// freshDir removes what a stopped build left at tmp and makes it again,
-// empty and owner-only.
-func freshDir(tmp string) (*dir, error) {
-	if err := os.RemoveAll(tmp); err != nil {
-		return nil, err
-	}
-	if err := os.Mkdir(tmp, 0o700); err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrNotStateDir, err)
-	}
-	return openDir(tmp)
-}
-
-func syncParent(path string) error {
-	f, err := os.Open(filepath.Dir(path))
-	if err != nil {
-		return err
-	}
-	return errors.Join(f.Sync(), f.Close())
 }

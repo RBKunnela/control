@@ -154,13 +154,16 @@ func (p *plane) openRunsDir(tokenPath string) error {
 }
 
 // runsCarryBound is the most records a serving plane reads at its start to
-// carry the closes of.
-const runsCarryBound = 1 << 16
+// carry the closes of, and doctor reads to judge them. It is a variable so a
+// test reaches the bound without that many records.
+var runsCarryBound = 1 << 16
 
 // carryCloses writes into state/ the close of every closed record the plane
 // takes, at its start, so the open record put back after a close no call saw
 // is refused all the same. A record that does not count refuses only its own
-// calls, so it is logged and the start goes on.
+// calls, so it is logged and the start goes on; a layout holding more records
+// than the start reads refuses the start, since a close past the bound would
+// go uncarried.
 func (p *plane) carryCloses() error {
 	if !p.runsDir.Signed() {
 		return nil
@@ -174,12 +177,12 @@ func (p *plane) carryCloses() error {
 		refused += n
 	}
 	level := slog.LevelInfo
-	if refused > 0 || !s.Complete {
+	if refused > 0 {
 		level = slog.LevelWarn
 	}
 	p.logger.Log(context.Background(), level, "runs: signed records read at start",
 		"records", s.Records, "open", s.Open, "closed", s.Closed, "closes_carried", s.Carried,
-		"refused", refused, "complete", s.Complete)
+		"refused", refused)
 	return nil
 }
 

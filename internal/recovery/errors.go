@@ -37,6 +37,10 @@ const (
 	ErrNoLock Error = "recovery: this platform has no file lock to keep a plane out"
 	// ErrExists is a backup into a directory that exists.
 	ErrExists Error = "recovery: the backup directory exists"
+	// ErrStaging is a floor directory whose temporary name, the one a
+	// restore builds it under when it is lost, is where the configuration
+	// puts another class: the build would remove that class first.
+	ErrStaging Error = "recovery: a floor directory's temporary name is another configured path"
 	// ErrNotRegular is a file or directory of the state a backup copies that
 	// is neither: a link, a pipe, a device.
 	ErrNotRegular Error = "recovery: the state holds an entry that is neither a regular file nor a directory"

@@ -38,8 +38,10 @@ func (f *runsReadFlags) declareScope(flags *flag.FlagSet) {
 	flags.Var(&f.project, "project", "for a signed --runs: the plane's project, which every record read has to be of; given once")
 }
 
+// any reports whether a flag judges records, a route's roster among them: a
+// command whose route is signed reads only a signed runs directory.
 func (f runsReadFlags) any() bool {
-	return len(f.roster)+len(f.rootKey)+len(f.tenant)+len(f.project) != 0
+	return len(f.roster)+len(f.rootKey)+len(f.tenant)+len(f.project) != 0 || f.routeRoster != "" || f.routeRootKey != ""
 }
 
 // judge is the roster judge the flags make, refused unless each of the four

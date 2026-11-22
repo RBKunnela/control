@@ -14,13 +14,13 @@ func AppendStop(ctx context.Context, dir string, route reaction.Route, s reactio
 	if err := reaction.CheckCurrent(s); err != nil {
 		return 0, fmt.Errorf("%w: %w", ErrRefused, err)
 	}
-	return appendLine(ctx, dir, route, at(now), fixed(s.Marshal()))
+	return appendLine(ctx, dir, route, at(now), fixed(s.Marshal()), nil)
 }
 
 // AppendCovered appends c with no stop of its run behind it, which only a
 // test may write: the list's judge leaves that rule to AppendFinding.
 func AppendCovered(ctx context.Context, dir string, route reaction.Route, c reaction.Covered, now time.Time) (int64, error) {
-	return appendLine(ctx, dir, route, at(now), fixed(c.Marshal()))
+	return appendLine(ctx, dir, route, at(now), fixed(c.Marshal()), nil)
 }
 
 // SetJudged makes f run once the judge accepted an append and before it is
@@ -35,4 +35,18 @@ func SetJudged(f func()) func() {
 func SetCarrying(f func()) func() {
 	carrying = f
 	return func() { carrying = nil }
+}
+
+// SetCarryStop makes f run between a carry's two writes, an error stopping
+// the carry there, until the returned function puts the writer back.
+func SetCarryStop(f func() error) func() {
+	stopped = f
+	return func() { stopped = nil }
+}
+
+// SetAfterCreate makes f take what a signed carry's create of the new list
+// returned, until the returned function puts the writer back.
+func SetAfterCreate(f func(error) error) func() {
+	afterCreate = f
+	return func() { afterCreate = nil }
 }

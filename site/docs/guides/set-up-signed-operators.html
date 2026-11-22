@@ -150,8 +150,8 @@ the plane's own account, which runs <code>guardana-gateway run</code> and is not
 <h2 id="which-account-owns-what">Which account owns what</h2>
 <p><code>run</code> and <code>doctor</code> refuse a signed plane whose own account owns, or may
 write, the configuration, <code>trust.root_public_key</code>, <code>trust.roster</code>,
-<code>pause.file</code>, <code>reaction.route</code>, <code>reaction.stops</code> or the runs directory's
-<code>records/</code>, or any directory on their paths; one where any of those entries
+<code>pause.file</code>, <code>reaction.route</code>, <code>reaction.stops</code>, the stop list in it or the
+runs directory's <code>records/</code>, or any directory on their paths; one where any of those entries
 is missing or carries an access control list (on Linux and macOS); one
 whose environment sets any of its keys; and one whose <code>approvals.inbox_dir</code>
 its own account does not own. Root's files of mode <code>0644</code> in root's

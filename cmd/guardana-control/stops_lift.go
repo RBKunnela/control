@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"slices"
 	"time"
 
 	"github.com/guardana/control/internal/brand"
@@ -51,10 +50,9 @@ func (a stopsLiftArgs) usable(throughGiven bool) bool {
 }
 
 // endsAStop refuses a lift of target through line through that would end
-// none of list's stops: a stop of a run is never ended by a lift of its
-// agent, nor a stop of an agent by a lift of the run its finding was about.
+// none of list's stops, by the rule the writer and the judge hold it to.
 func endsAStop(list reaction.List, target reaction.Target, through int64) error {
-	if slices.ContainsFunc(list.Entries(), func(e reaction.Entry) bool { return e.Target() == target && e.Line <= through }) {
+	if list.Ends(target, through) {
 		return nil
 	}
 	return fmt.Errorf("%s %s has no stop through line %d for a lift to end", target.Scope, oneLine(target.Subject), through)

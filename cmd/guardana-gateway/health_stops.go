@@ -187,14 +187,15 @@ func unheldStops(dir *runs.Plane, cfg *gatewayconfig.Config, entries []reaction.
 
 // runHeld reports whether the runs directory holds a record of id under
 // project, and known is false when it cannot say: no directory, or a record
-// that does not read.
+// that does not read. A signed record of another tenant or project is held
+// by none of this plane's.
 func runHeld(dir *runs.Plane, project, id string) (held, known bool) {
 	if dir == nil {
 		return false, false
 	}
 	rec, err := dir.Lookup(context.Background(), id)
 	switch {
-	case errors.Is(err, runs.ErrNoRun):
+	case errors.Is(err, runs.ErrNoRun), errors.Is(err, runs.ErrOtherScope):
 		return false, true
 	case err != nil:
 		return false, false

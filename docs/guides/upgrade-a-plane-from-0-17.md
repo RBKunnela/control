@@ -99,9 +99,12 @@ route moved to the old path is refused. Keep `/srv/plane/route.json` and
 `/srv/plane/stops` for a roll back.
 
 Run `react` with the 0.18 binary as `ops`, with `--route
-/srv/plane/route-018.json` and `--stops /srv/plane/stops-018`. A 0.17 `react`
-left on the old route and directory keeps appending to a list the plane no
-longer reads.
+/srv/plane/route-018.json` and `--stops /srv/plane/stops-018`. Step 4 takes
+the write bits off the old list once every check passed and before it writes
+the new one, so a 0.17 `react` left on the old route and directory fails to
+write instead of appending to a list the plane no longer reads. Only the old
+list's owner may take them, so run step 4 as that account: under any other,
+it refuses before it writes anything.
 
 `stops init --carry` is the one command that reads a `reaction-route/v1alpha2`
 route and a `2.0` list. It judges every line through the roster, as a 0.17
@@ -148,6 +151,10 @@ you start 0.17:
   old list below it. Make a new floor with `stops floor init` in a new
   directory, name it in `reaction.stops_floor_dir`, and start a new list with
   `stops init --key`.
+
+Step 4 left the kept list `/srv/plane/stops/stops.jsonl` without its write
+bits. Before 0.17's `react` writes to it, give them back as its owner with
+`chmod u+w`, or that `react` fails on every stop.
 
 Then start 0.17, and run `react` with the 0.17 binary against the route and
 the new list; it stops again each run that a finding and the route still

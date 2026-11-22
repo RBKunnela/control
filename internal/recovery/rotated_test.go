@@ -88,10 +88,12 @@ func stoppedUnder(t *testing.T, p *plane, route reaction.Route) []string {
 
 // TestRestoreRefusesTheBackupsListUnderAReplacedRoute: once the route is
 // replaced, the backup's list names a route the plane no longer reads.
-// Whether the live list is lost or was carried into the new route, the
-// restore refuses before its first write.
+// Whether the live list is lost, was carried into the new route, or is the
+// old list left in place, which begins with the backup's, the restore
+// refuses before its first write.
 func TestRestoreRefusesTheBackupsListUnderAReplacedRoute(t *testing.T) {
 	for name, after := range map[string]func(t *testing.T, p *plane, newRoute reaction.Route){
+		"the old list left in place": func(*testing.T, *plane, reaction.Route) {},
 		"the list lost": func(t *testing.T, p *plane, _ reaction.Route) {
 			if err := os.Remove(p.path("stops/" + stoplist.FileName)); err != nil {
 				t.Fatal(err)

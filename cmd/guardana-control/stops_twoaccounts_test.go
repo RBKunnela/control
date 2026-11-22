@@ -32,8 +32,13 @@ func TestASignedStopListIsReadByAPlaneInTheWritersGroup(t *testing.T) {
 	plane, writer := twoAccounts(t)
 	tr := newSignedTree(t)
 	findings := ownerDir(t, filepath.Join(tr.dir, "findings"))
-	runsAt := runsDir(t)
-	run := openRun(t, runsAt, who, "1h").runID
+	runsAt := ownerDir(t, filepath.Join(tr.dir, "runs"))
+	opening := openArgs(runsAt, who, "1h", append([]string{"--key", tr.keys["alice"]}, tr.judge...)...)
+	openCode, openOut, openErr := invoke(t, opening...)
+	if openCode != exitOK {
+		t.Fatalf("runs open --key answered %d: %q", openCode, openErr)
+	}
+	run := parseOpened(t, openOut).runID
 	appendLog(t, findings, finding(1, run, outside, confirmed))
 	approvalsDir := handStopsToWriter(t, tr, plane, writer)
 	list := filepath.Join(tr.stops, stoplist.FileName)
@@ -44,7 +49,7 @@ func TestASignedStopListIsReadByAPlaneInTheWritersGroup(t *testing.T) {
 	}
 	expectOwned(t, list, writer.uid, 0o640)
 	pass := append([]string{"react", "--findings", findings, "--runs", runsAt, "--route", tr.route}, tr.judge...)
-	pass = append(pass, "--approvals", approvalsDir, "--stops", tr.stops)
+	pass = append(pass, "--approvals", approvalsDir, "--stops", tr.stops, "--tenant", who.TenantID, "--project", who.ProjectID)
 	if stdout, stderr, code := writer.as(t, "cli", pass); code != exitOK || !strings.Contains(stdout, "stops 1, covered 0") {
 		t.Fatalf("react as the writer answered %d: %q %q; want one stop", code, stdout, stderr)
 	}

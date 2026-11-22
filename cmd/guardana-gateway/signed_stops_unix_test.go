@@ -237,6 +237,19 @@ func TestASignedStartTakesOnlyAStopListAndRouteItsAccountCannotRewrite(t *testin
 	expectOneAccountStart(t, tr)
 }
 
+// TestASignedStartJudgesTheStopListItself: the stop list is judged as the
+// route file is, by the walk that refuses an entry the plane's account may
+// write, through its mode or an access control list, so a list the stops
+// directory's judgement passes is refused for itself.
+func TestASignedStartJudgesTheStopListItself(t *testing.T) {
+	tr := signedStopsTree(t)
+	placedApart(t, "/stops/"+stoplist.FileName)
+	if _, err := buildSigned(t, tr); err == nil || !strings.Contains(err.Error(), "reaction.stops") ||
+		!strings.Contains(err.Error(), "under the signed authority the plane's own account may not be able to change it") {
+		t.Fatalf("build over a stop list the plane's account may write = %v, want a refusal naming reaction.stops", err)
+	}
+}
+
 // TestASignedStartRefusesAListBelowItsFloorAndARouteNoAdminSigned: a floor
 // raised past the list's serial, and a route an operator without the admin
 // grant signed, each refuse the start.

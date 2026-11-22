@@ -66,6 +66,9 @@ func Restore(ctx context.Context, cfg *gatewayconfig.Config, dir string, now tim
 	defer func() { err = errors.Join(err, release()) }()
 	r := restorer{ctx: ctx, cfg: cfg, dir: verified, now: now, held: held}
 	r.out.PlaneNotChecked = m.Authority == gatewayconfig.AuthoritySigned && m.PlaneID == ""
+	if err := r.checkStaging(); err != nil {
+		return Report{}, err
+	}
 	for _, c := range classes {
 		if err := r.check(c); err != nil {
 			return Report{}, fmt.Errorf("%s: %w", c.key, err)
@@ -115,6 +118,33 @@ func (r *restorer) restorePaths(c class) (live, from string, err error) {
 }
 
 func (r *restorer) signed() bool { return r.cfg.Approvals.Authority == gatewayconfig.AuthoritySigned }
+
+// checkStaging refuses a floor class whose temporary build name is, or
+// holds, a path the configuration names, compared as gatewayconfig.Within
+// compares them.
+func (r *restorer) checkStaging() error {
+	named := r.cfg.NamedPaths()
+	for _, c := range classes {
+		if !c.floor() || !r.restores(c) {
+			continue
+		}
+		live, _, err := r.paths(c)
+		if err != nil {
+			return err
+		}
+		staging := policystate.StagingPath(live)
+		for _, other := range named {
+			within, err := gatewayconfig.Within(other.Path, staging)
+			if err != nil {
+				return fmt.Errorf("%w: %s is built under %s, which cannot be compared with %s: %w", ErrStaging, c.key, staging, other.Key, err)
+			}
+			if within {
+				return fmt.Errorf("%w: %s is built under %s, which %s names", ErrStaging, c.key, staging, other.Key)
+			}
+		}
+	}
+	return nil
+}
 
 // check refuses what restoring class c would refuse, and writes nothing.
 func (r *restorer) check(c class) error {

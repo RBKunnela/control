@@ -22,12 +22,16 @@ func listMode(t *testing.T, dir string) os.FileMode {
 
 // TestANewListsModeFollowsItsRoute: a list started or carried under a
 // v1alpha3 route, which a plane on another account serves, is 0640; one
-// started or carried under a v1alpha1 route is 0600.
+// started or carried under a v1alpha1 route is 0600. A signed carry leaves
+// the list it carried from 0440, and an unsigned one leaves it as it was.
 func TestANewListsModeFollowsItsRoute(t *testing.T) {
 	signed := emptyDir(t)
 	signedRoute := signedRouteIn(t, signed, 3)
 	if _, err := stopwrite.InitSigned(bg, signed, signedRoute, clock0, signer(), 1); err != nil {
 		t.Fatalf("InitSigned: %v", err)
+	}
+	if got := listMode(t, signed); got != 0o640 {
+		t.Errorf("InitSigned under a v1alpha3 route left the list %04o, want 0640", got)
 	}
 	carried := emptyDir(t)
 	if _, err := stopwrite.CarrySigned(bg, signed, signedRoute, carried, signedRouteIn(t, carried, 4), clock0, signer(), nil); err != nil {
@@ -43,9 +47,9 @@ func TestANewListsModeFollowsItsRoute(t *testing.T) {
 		dir  string
 		want os.FileMode
 	}{
-		{"InitSigned under a v1alpha3 route", signed, 0o640},
+		{"CarrySigned from a v1alpha3 route", signed, 0o440},
 		{"CarrySigned into a v1alpha3 route", carried, 0o640},
-		{"Init under a v1alpha1 route", keyed, 0o600},
+		{"Carry from a v1alpha1 route", keyed, 0o600},
 		{"Carry into a v1alpha1 route", restored, 0o600},
 	} {
 		if got := listMode(t, c.dir); got != c.want {

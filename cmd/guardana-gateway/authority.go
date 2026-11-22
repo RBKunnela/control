@@ -19,6 +19,7 @@ import (
 	"github.com/guardana/control/internal/gatewayconfig"
 	"github.com/guardana/control/internal/operators"
 	"github.com/guardana/control/internal/policykey"
+	"github.com/guardana/control/internal/reaction/stoplist"
 	"github.com/guardana/control/internal/runs"
 	"github.com/guardana/control/internal/trust"
 )
@@ -96,10 +97,10 @@ var (
 
 // checkSignedStart refuses a start under the signed kind that the plane's own
 // account could turn: a configuration file, a trust root key file, a roster
-// file, a pause file, a route file, a stops directory or the runs directory's
-// records/ it may write, or a directory on their path it may write, and any
-// key the environment set, since that account sets its own environment when
-// it restarts (ADR-0073).
+// file, a pause file, a route file, a stops directory, the stop list in it or
+// the runs directory's records/ it may write, or a directory on their path it
+// may write, and any key the environment set, since that account sets its own
+// environment when it restarts (ADR-0073).
 func checkSignedStart(cfg *gatewayconfig.Config) error {
 	_, err := judgeSignedStart(cfg)
 	return err
@@ -150,9 +151,11 @@ func signedStartFiles(cfg *gatewayconfig.Config) []signedFile {
 		checked = append(checked, signedFile{key: "pause.file", path: cfg.Resolve(cfg.Pause.File)})
 	}
 	if cfg.Reaction.Configured() {
+		stops := cfg.Resolve(cfg.Reaction.Stops)
 		checked = append(checked,
 			signedFile{key: "reaction.route", path: cfg.Resolve(cfg.Reaction.Route)},
-			signedFile{key: "reaction.stops", path: cfg.Resolve(cfg.Reaction.Stops)})
+			signedFile{key: "reaction.stops", path: stops},
+			signedFile{key: "reaction.stops", path: filepath.Join(stops, stoplist.FileName)})
 	}
 	if cfg.Runs.Dir != "" {
 		checked = append(checked, signedFile{key: "runs.dir", path: filepath.Join(cfg.Resolve(cfg.Runs.Dir), runs.RecordsDir)})

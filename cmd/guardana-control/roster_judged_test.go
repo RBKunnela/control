@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"encoding/json"
 	"os"
@@ -180,13 +181,53 @@ func TestReactUnderASignedRouteSaysWhichRosterItJudgedWith(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(findings, findinglog.FileName), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	runsAt := runsDir(t)
-	openRun(t, runsAt, who, "1h")
+	runsAt := tr.signedRuns(t, ownerDir(t, filepath.Join(tr.dir, "runs")))
 	code, stdout, stderr := invoke(t, "react", "--findings", findings, "--runs", runsAt, "--route", tr.route,
-		"--roster", tr.judge[1], "--root-key", tr.judge[3], "--approvals", filepath.Join(tr.dir, "approvals"), "--stops", tr.stops)
+		"--roster", tr.judge[1], "--root-key", tr.judge[3], "--approvals", filepath.Join(tr.dir, "approvals"), "--stops", tr.stops,
+		"--tenant", who.TenantID, "--project", who.ProjectID)
 	first, _, _ := strings.Cut(stderr, "\n")
 	if code != exitOK || !strings.Contains(stdout, "stops 0, covered 0") || !judgedOnce(stderr, reactName, judged, "") ||
 		!strings.Contains(first, judged) {
 		t.Fatalf("react under a signed route answered %d: %q %q; want %q first", code, stdout, stderr, judged)
+	}
+}
+
+// signedRuns makes dir a signed runs layout holding one run of who that
+// alice signed under the tree's roster, as runs open --key does, and
+// returns dir.
+func (tr signedTree) signedRuns(t *testing.T, dir string) string {
+	t.Helper()
+	extra := append([]string{"--key", tr.keys["alice"]}, tr.judge...)
+	if code, _, stderr := invoke(t, openArgs(dir, who, "1h", extra...)...); code != exitOK {
+		t.Fatalf("runs open --key: %d, %q", code, stderr)
+	}
+	return dir
+}
+
+// TestReactUnderASignedRouteRefusesAnUnsignedRunsDirectory: a v1alpha3
+// route is read under the signed authority, whose plane refuses an unsigned
+// runs directory, so react under it refuses one too, --tenant and --project
+// left out, rather than take a stop's subject from a record no operator
+// signed, and writes nothing.
+func TestReactUnderASignedRouteRefusesAnUnsignedRunsDirectory(t *testing.T) {
+	saved := reactPlaneAccount
+	reactPlaneAccount = func(string) error { return nil }
+	t.Cleanup(func() { reactPlaneAccount = saved })
+	tr := newSignedTree(t)
+	if code, _, stderr := tr.run(t, "stops init", "--key", tr.keys["alice"], tr.stops); code != exitOK {
+		t.Fatalf("stops init: %d, %q", code, stderr)
+	}
+	runsAt := runsDir(t)
+	run := openRun(t, runsAt, who, "1h").runID
+	findings := ownerDir(t, filepath.Join(tr.dir, "findings"))
+	appendLog(t, findings, finding(1, run, denial, confirmed))
+	before := listBytes(t, tr.stops)
+	code, stdout, stderr := invoke(t, "react", "--findings", findings, "--runs", runsAt, "--route", tr.route,
+		"--roster", tr.judge[1], "--root-key", tr.judge[3], "--approvals", filepath.Join(tr.dir, "approvals"), "--stops", tr.stops)
+	if code != exitFail || !strings.Contains(stderr, errUnsignedJudged.Error()) {
+		t.Fatalf("react under a signed route over an unsigned runs directory answered %d: %q %q; want it refused", code, stdout, stderr)
+	}
+	if !bytes.Equal(listBytes(t, tr.stops), before) {
+		t.Fatal("a refused react changed the list")
 	}
 }

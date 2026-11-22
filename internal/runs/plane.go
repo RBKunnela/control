@@ -219,6 +219,11 @@ func (p *Plane) admit(rec Record) error {
 	if rec.Parent == "" {
 		return nil
 	}
+	// A lock standing without its state is a call the pipeline refuses; a
+	// .seen made first would outlive that refusal.
+	if _, err := p.readState(rec.Root); err != nil {
+		return err
+	}
 	if err := p.st.createEmptyOrNone(rec.ID + seenSuffix); err != nil {
 		return fmt.Errorf("the first admission of %s: %w", rec.ID, err)
 	}

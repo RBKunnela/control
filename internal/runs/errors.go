@@ -3,6 +3,8 @@ package runs
 import (
 	"fmt"
 	"time"
+
+	"github.com/guardana/control/internal/brand"
 )
 
 // Error is a refusal by this package, matched with errors.Is. They are
@@ -97,6 +99,11 @@ const (
 	// closes state/ did not take as it may, since another it could not hold
 	// would be forgotten.
 	ErrUncarried Error = "runs: too many closes held unwritten"
+	// ErrCarryBound is a start that read fewer records than records/ holds:
+	// a close past the bound would go uncarried, and the run's open record
+	// put back after it would count.
+	ErrCarryBound Error = "runs: records/ holds more records than the start reads to carry their closes; " +
+		brand.CLI + " runs prune archives the expired trees"
 	// ErrPlaneOwned is a signed layout's records/, or a record in it, that
 	// the account of the plane reading it owns, and so could rewrite.
 	ErrPlaneOwned Error = "runs: under the signed authority the plane's own account owns the records"

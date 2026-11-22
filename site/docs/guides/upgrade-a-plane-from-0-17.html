@@ -212,9 +212,12 @@ guardana-control state backup gateway.yaml /backups/plane-2
 route names its own file and the new list's header names that route, so a
 route moved to the old path is refused. Keep <code>/srv/plane/route.json</code> and
 <code>/srv/plane/stops</code> for a roll back.</p>
-<p>Run <code>react</code> with the 0.18 binary as <code>ops</code>, with <code>--route /srv/plane/route-018.json</code> and <code>--stops /srv/plane/stops-018</code>. A 0.17 <code>react</code>
-left on the old route and directory keeps appending to a list the plane no
-longer reads.</p>
+<p>Run <code>react</code> with the 0.18 binary as <code>ops</code>, with <code>--route /srv/plane/route-018.json</code> and <code>--stops /srv/plane/stops-018</code>. Step 4 takes
+the write bits off the old list once every check passed and before it writes
+the new one, so a 0.17 <code>react</code> left on the old route and directory fails to
+write instead of appending to a list the plane no longer reads. Only the old
+list's owner may take them, so run step 4 as that account: under any other,
+it refuses before it writes anything.</p>
 <p><code>stops init --carry</code> is the one command that reads a <code>reaction-route/v1alpha2</code>
 route and a <code>2.0</code> list. It judges every line through the roster, as a 0.17
 plane did. Only the floor's owner may read a floor, so step 3 copies the
@@ -257,6 +260,9 @@ old list below it. Make a new floor with <code>stops floor init</code> in a new
 directory, name it in <code>reaction.stops_floor_dir</code>, and start a new list with
 <code>stops init --key</code>.</li>
 </ul>
+<p>Step 4 left the kept list <code>/srv/plane/stops/stops.jsonl</code> without its write
+bits. Before 0.17's <code>react</code> writes to it, give them back as its owner with
+<code>chmod u+w</code>, or that <code>react</code> fails on every stop.</p>
 <p>Then start 0.17, and run <code>react</code> with the 0.17 binary against the route and
 the new list; it stops again each run that a finding and the route still
 stop.</p>

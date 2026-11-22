@@ -150,3 +150,46 @@ func TestACarryOfAListCutBackIsRefusedAgainstTheFloor(t *testing.T) {
 		t.Fatalf("a carry of the cut list held to nothing: %+v, %v", got, err)
 	}
 }
+
+// TestAListCarriedFromTakesNoLineAfterTheCarry: a signed carry leaves the
+// old list to no writer. A stop appended to it after the carry would be one
+// a plane still serving it takes and raises its floor to, and that the
+// carried list, taken after a restart as the next serial naming the old
+// head, lacks; so the append is refused and the old list stays as the carry
+// read it.
+func TestAListCarriedFromTakesNoLineAfterTheCarry(t *testing.T) {
+	c := newChain(t)
+	if _, err := c.take(t, c.first); err != nil {
+		t.Fatal(err)
+	}
+	stored, err := policystate.ReadStops(c.floorDir, "t1", "A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	from, into := filepath.Join(c.base, "stops"), c.dir(t, "stops2")
+	fromRoute := c.routeFor(t, c.plane.RouteFile, from, reaction.VerifySignedCarrySource)
+	r := c.routeFor(t, c.plane.RouteFile, into, reaction.VerifySignedRoute)
+	hold := func(l reaction.List, content []byte) error { return signedstops.Hold(stored, l, content) }
+	if _, err := stopwrite.CarrySigned(t.Context(), from, fromRoute, into, r, now, alice(), hold); err != nil {
+		t.Fatalf("the carry: %v", err)
+	}
+	before := c.first.raw
+	old := c.routeFor(t, c.plane.RouteFile, from, reaction.VerifySignedRoute)
+	_, _, _, err = stopwrite.AppendFinding(t.Context(), from, old, func() time.Time { return now }, func(at time.Time) (reaction.Stop, error) {
+		return reaction.Stop{EntryID: reaction.EntryID("f1"), TenantID: "t1", ProjectID: "A", Scope: reaction.ScopeRun, Subject: "run-1", RunID: "run-1",
+			FindingID: "f1", ProcedureID: "refund", ProcedureVersion: "3",
+			ProcedureDigest: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+			RuleID:          "STEP_OUTSIDE_PROCEDURE", RuleVersion: "1", CreatedAt: at, ExpiresAt: at.Add(time.Hour)}, nil
+	})
+	if err == nil {
+		_, grown := c.take(t, mustJudge(t, from, old))
+		_, carried := c.take(t, mustJudge(t, into, r))
+		t.Fatalf("a stop appended to the old list after the carry = nil; the plane took it (%v), then the carried list without it (%v)", grown, carried)
+	}
+	if !errors.Is(err, stopwrite.ErrCarried) {
+		t.Fatalf("a stop appended to the old list after the carry = %v, want %v", err, stopwrite.ErrCarried)
+	}
+	if raw, err := stoplist.Read(from); err != nil || !bytes.Equal(raw, before) {
+		t.Fatalf("the old list after the refused append: %v; changed %v", err, !bytes.Equal(raw, before))
+	}
+}

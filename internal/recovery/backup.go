@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/guardana/control/internal/files"
@@ -53,6 +54,9 @@ func Backup(ctx context.Context, cfg *gatewayconfig.Config, dir string, now time
 		if errors.Is(err, fs.ErrExist) {
 			return Taken{}, fmt.Errorf("%w: %s", ErrExists, dir)
 		}
+		return Taken{}, err
+	}
+	if err := os.Chmod(dir, 0o700); err != nil { //nolint:gosec // G302: a directory, which its owner must search
 		return Taken{}, err
 	}
 	b := &backup{dir: dir}
@@ -135,9 +139,25 @@ func (b *backup) copyClass(c class, src string) (bool, error) {
 	})
 }
 
+// mkdir makes each directory of at, a slash path under the backup, mode 0700
+// whatever the umask.
 func (b *backup) mkdir(at string) error {
-	p := filepath.Join(b.dir, filepath.FromSlash(at))
-	return os.MkdirAll(p, 0o700)
+	p := b.dir
+	for _, part := range strings.Split(at, "/") {
+		if part == "" || part == "." {
+			continue
+		}
+		p = filepath.Join(p, part)
+		if err := os.Mkdir(p, 0o700); errors.Is(err, fs.ErrExist) {
+			continue
+		} else if err != nil {
+			return err
+		}
+		if err := os.Chmod(p, 0o700); err != nil { //nolint:gosec // G302: a directory, which its owner must search
+			return err
+		}
+	}
+	return nil
 }
 
 // copyFile copies the regular file src, as Lstat found it, to at in the
@@ -194,7 +214,10 @@ func writeNew(p string, raw []byte) error {
 	if err != nil {
 		return err
 	}
-	_, err = f.Write(raw)
+	err = f.Chmod(0o600)
+	if err == nil {
+		_, err = f.Write(raw)
+	}
 	return errors.Join(err, f.Sync(), f.Close())
 }
 

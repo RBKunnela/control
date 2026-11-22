@@ -51,7 +51,7 @@ floor's lock each time that part grows. A plane
 refuses a list below the floor's serial, one at that serial with another head,
 one above it whose `previous` is not the floor's head, and, as a broken chain,
 one at that serial shorter than the part the floor holds or beginning with
-other bytes. It refuses `reaction.route`, `reaction.stops` or the
+other bytes. It refuses `reaction.route`, `reaction.stops`, its list or the
 directory of either when its own account may write them, and a route file,
 stop list or their directory its own account owns; only `dev`, on one
 account, reads them. The stop writers' account owns the list and its
@@ -73,14 +73,15 @@ the list and its lifts on disk through the roster before it signs, and says
 on standard error what it signed. A carry judges every line of the old list
 as a plane does; with `--stops-floor`, the plane's floor directory, it also
 refuses an old list cut back below the part the plane accepted, and without
-it says that the floor was not read. Only the floor's owner reads it: on two
+it says the floor was not read. Only the floor's owner reads it: on two
 accounts root copies it for the operator
 ([upgrade a plane](../guides/upgrade-a-plane-from-0-17.md)). `--carry-route` may name a
 `v1alpha2` route and `--carry` its `2.0` list: a carry is the one reader of
-both, judges them by tenant, project and file, as 0.17 did, and writes a
+both, judges them by tenant, project and file, and writes a
 `3.0` list for the plane the new route names, at the next serial, naming the
 old head as `previous`; each carried stop takes scope `run` and its run as
-subject. The operator vouches that the old list is this plane's. Each
+subject. The old list is then read-only, and writers refuse it; its owner
+can undo that. The operator vouches that the old list is this plane's. Each
 command judges a route against the plane the route names. `react` takes `--approvals`, the plane's
 approvals directory, and will not run as the account that owns it; the
 directory is the caller's to name, so this guards against a mistake and does

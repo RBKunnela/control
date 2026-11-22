@@ -205,7 +205,7 @@ func (r *reactor) finding(fr *findingv1alpha1.FindingRecord) error {
 		r.skipped++
 		return nil
 	}
-	return r.write(fr, run)
+	return r.write(fr)
 }
 
 // now is the clock in whole seconds, which is what a line spells.
@@ -214,6 +214,12 @@ func (r *reactor) now() time.Time { return r.clock().UTC().Truncate(time.Second)
 // errNotStopping is a finding that no longer stops at the reading taken
 // under the lock, such as one whose run expired while the pass waited.
 var errNotStopping = errors.New("the finding does not stop at the clock read under the lock")
+
+// errUnbuilt is a stop the pass could not build under the lock: its run
+// could not be read again, or names no subject of its rule's scope. The
+// writer wraps whatever the stop's build returns as its own refusal, so this
+// mark is what keeps either from being counted as a refused write.
+var errUnbuilt = errors.New("the stop could not be built under the lock")
 
 // stopping is the stop fr would be at now, when Eligible takes it with run's
 // facts and the route permits it.
@@ -234,7 +240,13 @@ func (r *reactor) run(id string) (reaction.RunFacts, error) {
 	if facts, ok := r.runFacts[id]; ok {
 		return facts, nil
 	}
-	rec, err := r.lookup(r.ctx, id)
+	return r.lookupFacts(r.ctx, id)
+}
+
+// lookupFacts reads the facts of the run id names from the runs directory
+// and keeps them for the findings after.
+func (r *reactor) lookupFacts(ctx context.Context, id string) (reaction.RunFacts, error) {
+	rec, err := r.lookup(ctx, id)
 	switch {
 	case errors.Is(err, runs.ErrNoRun), errors.Is(err, runs.ErrRunID):
 		rec = runs.Record{}
@@ -270,18 +282,26 @@ func (r *reactor) claim(fr *findingv1alpha1.FindingRecord, run reaction.RunFacts
 // covered line for one with, the writer choosing under its lock over the
 // list as it stands, so a react running beside this one cannot give the
 // subject a second stop. The stop is the finding's claim at the clock read
-// under the lock. A write the list's bound or the judge refuses is named and
-// the pass goes on; any other refusal stops it.
-func (r *reactor) write(fr *findingv1alpha1.FindingRecord, run reaction.RunFacts) error {
+// under the lock, over the run as it stands then. A write the list's bound or
+// the judge refuses is named and the pass goes on; any other refusal stops
+// it.
+func (r *reactor) write(fr *findingv1alpha1.FindingRecord) error {
 	id, runID := fr.GetFinding().GetFindingId(), fr.GetFinding().GetRunId()
 	stopAt := func(now time.Time) (reaction.Stop, error) {
+		// The run is read again under the lock: an operator may have closed
+		// it while the pass waited. An interrupt ends the pass after the
+		// write it is in, so this read is not cut short by one.
+		run, err := r.lookupFacts(context.WithoutCancel(r.ctx), runID)
+		if err != nil {
+			return reaction.Stop{}, fmt.Errorf("%w: %w", errUnbuilt, err)
+		}
 		c, ok := r.stopping(fr, run, now)
 		if !ok {
 			return reaction.Stop{}, errNotStopping
 		}
 		subject, err := subjectOf(r.route, c.Scope, run)
 		if err != nil {
-			return reaction.Stop{}, err
+			return reaction.Stop{}, fmt.Errorf("%w: %w", errUnbuilt, err)
 		}
 		return reaction.Stop{EntryID: reaction.EntryID(id), TenantID: c.TenantID, ProjectID: c.ProjectID, Scope: c.Scope,
 			Subject: subject, RunID: runID, FindingID: id,
@@ -306,6 +326,8 @@ func (r *reactor) write(fr *findingv1alpha1.FindingRecord, run reaction.RunFacts
 		// Another writer named it after this pass read the list.
 		r.alreadyNamed++
 		return nil
+	case errors.Is(err, errUnbuilt):
+		return fmt.Errorf("finding %s run %s: %w", oneLine(id), oneLine(runID), err)
 	case errors.Is(err, stopwrite.ErrFull), errors.Is(err, stopwrite.ErrRefused):
 		if errors.Is(err, stopwrite.ErrFull) {
 			r.full = oneLine(err.Error())

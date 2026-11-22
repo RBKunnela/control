@@ -76,11 +76,28 @@ func CheckRestoreSigned(live, backup string) (err error) {
 		if errors.Is(err, fs.ErrNotExist) {
 			_, err = missingState(st, root, false)
 		}
+		if err == nil {
+			err = st.checkLock(root)
+		}
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// checkLock opens root's lock file, where one stands, as the join opens it,
+// so a lock the join would refuse is refused before the restore's first
+// write.
+func (d *dir) checkLock(root string) error {
+	if _, err := d.root.Lstat(root + lockSuffix); errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	lock, err := d.openRegular(root+lockSuffix, os.O_RDWR)
+	if err != nil {
+		return fmt.Errorf("the lock of %s: %w", root, err)
+	}
+	return lock.Close()
 }
 
 // joinSigned joins each of states into the state/ of live and returns how
@@ -239,7 +256,8 @@ func signedIDs(dir string) ([]string, error) {
 }
 
 // signedStates is every state dir's state/ holds, by root, and every run id
-// it holds a close of.
+// it holds a close of. A root whose lock file stands without its state lost
+// that state, and counts as lostState, as a plane reads it.
 func signedStates(dir string) (map[string]State, []string, error) {
 	st, err := openDir(filepath.Join(dir, StateDir), roleState, ownedByThisUser)
 	if err != nil {
@@ -254,10 +272,14 @@ func signedStates(dir string) (map[string]State, []string, error) {
 		return nil, nil, err
 	}
 	out := map[string]State{}
-	var closed []string
+	var closed, locked []string
 	for _, e := range entries {
 		if id, ok := strings.CutSuffix(e.Name(), closedSuffix); ok && checkRunID(id) == nil {
 			closed = append(closed, id)
+			continue
+		}
+		if root, ok := strings.CutSuffix(e.Name(), lockSuffix); ok && checkRunID(root) == nil {
+			locked = append(locked, root)
 			continue
 		}
 		root, ok := strings.CutSuffix(e.Name(), stateSuffix)
@@ -270,5 +292,16 @@ func signedStates(dir string) (map[string]State, []string, error) {
 		}
 		out[root] = s
 	}
+	lostBeside(out, locked)
 	return out, closed, nil
+}
+
+// lostBeside sets states to lostState for each root of locked it lacks: a
+// root whose lock file stands without its state.
+func lostBeside(states map[string]State, locked []string) {
+	for _, root := range locked {
+		if _, ok := states[root]; !ok {
+			states[root] = lostState
+		}
+	}
 }

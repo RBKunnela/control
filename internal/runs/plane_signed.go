@@ -252,7 +252,8 @@ type Survey struct {
 // A serving plane calls it at its start. A record that does not count is
 // counted and left: it refuses only the calls it would cover. A close it
 // cannot write, one the handle held among them, stops the read with an error
-// naming the run, which a serving plane does not start past.
+// naming the run, which a serving plane does not start past. A layout holding
+// more records than bound is ErrCarryBound once the first bound are carried.
 func (p *Plane) CarryCloses(ctx context.Context, bound int, now time.Time) (Survey, error) {
 	return p.survey(ctx, bound, now, true)
 }
@@ -280,11 +281,7 @@ func (p *Plane) survey(ctx context.Context, bound int, now time.Time, carry bool
 			return Survey{}, err
 		}
 	}
-	entries, err := p.d.readDir()
-	if err != nil {
-		return Survey{}, err
-	}
-	ids, err := p.d.scan(entries)
+	ids, err := p.d.recordIDs()
 	if err != nil {
 		return Survey{}, err
 	}
@@ -297,7 +294,19 @@ func (p *Plane) survey(ctx context.Context, bound int, now time.Time, carry bool
 			return out, err
 		}
 	}
+	if carry && !out.Complete {
+		return out, fmt.Errorf("%w: more than %d", ErrCarryBound, bound)
+	}
 	return out, nil
+}
+
+// recordIDs is the id of every record d holds.
+func (d *dir) recordIDs() ([]string, error) {
+	entries, err := d.readDir()
+	if err != nil {
+		return nil, err
+	}
+	return d.scan(entries)
 }
 
 // surveyOne judges the record of id and counts it into out, carrying its

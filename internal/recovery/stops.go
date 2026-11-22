@@ -38,15 +38,24 @@ type stopsPlan struct {
 // backup's copy: a live list that begins with the backup's, or whose lines
 // after its header begin with what a carry of the backup's writes, is kept;
 // with no live list the backup's is carried; any other live list is
-// ErrStopHistories. Short of a live list the backup's begins, the backup's is
-// judged against the route at once, so a list no carry would take is refused
-// before a restore's first write.
+// ErrStopHistories. The backup's is judged against the configured route
+// first, whatever the live list holds, so a list no carry would take, one
+// written under a route since replaced among them, is refused before a
+// restore's first write rather than kept for the plane to refuse at start.
 func (r *restorer) planStops(live, from string) (stopsPlan, error) {
 	backup, err := readListed(filepath.Join(from, stoplist.FileName), reaction.MaxListBytes)
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
 		return stopsPlan{keep: true, why: "the backup holds no list"}, nil
 	case err != nil:
+		return stopsPlan{}, fmt.Errorf("the backup's list: %w", err)
+	}
+	route, err := directoryRoute(r.cfg)
+	if err != nil {
+		return stopsPlan{}, err
+	}
+	carried, err := stopwrite.CarriedLines(route, backup, r.now)
+	if err != nil {
 		return stopsPlan{}, fmt.Errorf("the backup's list: %w", err)
 	}
 	cur, err := readListed(filepath.Join(live, stoplist.FileName), reaction.MaxListBytes)
@@ -56,14 +65,6 @@ func (r *restorer) planStops(live, from string) (stopsPlan, error) {
 		return stopsPlan{keep: true, why: "kept; it begins with the backup's list"}, nil
 	case err != nil && !missing:
 		return stopsPlan{}, err
-	}
-	route, rerr := directoryRoute(r.cfg)
-	if rerr != nil {
-		return stopsPlan{}, rerr
-	}
-	carried, err := stopwrite.CarriedLines(route, backup, r.now)
-	if err != nil {
-		return stopsPlan{}, fmt.Errorf("the backup's list: %w", err)
 	}
 	if missing {
 		return stopsPlan{route: route}, nil

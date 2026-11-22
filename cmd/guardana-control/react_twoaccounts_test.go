@@ -26,8 +26,7 @@ func TestReactUnderASignedRouteRunsAsTheOperatorBesideThePlane(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(findings, findinglog.FileName), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	runsAt := runsDir(t)
-	openRun(t, runsAt, who, "1h")
+	runsAt := tr.signedRuns(t, ownerDir(t, filepath.Join(tr.dir, "runs")))
 	giveTree(t, filepath.Dir(tr.dir), operator)
 	openToEveryAccount(t, tr.dir)
 	for _, f := range []string{tr.route, tr.judge[1], tr.judge[3]} {
@@ -49,7 +48,8 @@ func TestReactUnderASignedRouteRunsAsTheOperatorBesideThePlane(t *testing.T) {
 	plane.holding(t, approvalsDir)
 
 	args := []string{"react", "--findings", findings, "--runs", runsAt, "--route", tr.route,
-		"--roster", tr.judge[1], "--root-key", tr.judge[3], "--approvals", approvalsDir, "--stops", tr.stops}
+		"--roster", tr.judge[1], "--root-key", tr.judge[3], "--approvals", approvalsDir, "--stops", tr.stops,
+		"--tenant", who.TenantID, "--project", who.ProjectID}
 	stdout, stderr, code := operator.as(t, "cli", args)
 	if code != exitOK || !strings.Contains(stdout, "stops 0, covered 0") {
 		t.Errorf("react as the operator answered %d: %q %q; want a pass that stopped nothing", code, stdout, stderr)

@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/guardana/control/internal/policy"
@@ -34,6 +36,16 @@ type Carried struct {
 // before it writes the new one.
 var carrying func()
 
+// stopped, when a test sets it, runs between a signed carry's two writes, the
+// old list's mode and the new list; an error stops the carry there, as a
+// process killed between them would.
+var stopped func() error
+
+// afterCreate, when a test sets it, takes what a signed carry's create of the
+// new list returned and answers what the carry goes on with, as a create that
+// failed once its list stood in place would.
+var afterCreate func(error) error
+
 // Carry starts a stop list in dir, judged against route, from the list in
 // from, judged against fromRoute, which alone may name a rule version a later
 // one superseded (reaction.CheckCarrySource). The new list keeps every stop of
@@ -47,7 +59,7 @@ var carrying func()
 // CarrySigned, and the unsigned list Carry would write under another route is
 // refused by the judge every write passes.
 func Carry(ctx context.Context, from string, fromRoute reaction.Route, dir string, route reaction.Route, now time.Time) (Carried, error) {
-	return carry(ctx, from, fromRoute, dir, route, now, func(part) (reaction.Header, []byte, error) {
+	return carry(ctx, from, fromRoute, dir, route, now, false, func(part) (reaction.Header, []byte, error) {
 		h, err := newHeader(route)
 		if err != nil {
 			return reaction.Header{}, nil, err
@@ -70,7 +82,13 @@ func Carry(ctx context.Context, from string, fromRoute reaction.Route, dir strin
 // and its run as its subject. hold, when set, is what the part of the old
 // list carried is held to before anything is signed, with that part's bytes:
 // the plane's stop list floor, so a list cut back below what the plane
-// accepted is not carried.
+// accepted is not carried. Before the new list is written the old one loses
+// its write bits under the lock, and no writer here appends to it again
+// (ErrCarried): a stop a plane still serving it took after the carry would
+// be one the new list lacks, and its floor follows the new header whatever
+// the old list held. A write that leaves no new list gives the bits back; a
+// carry stopped between the two leaves the old list read-only, and a rerun
+// finishes it.
 func CarrySigned(ctx context.Context, from string, fromRoute reaction.Route, dir string, route reaction.Route, now time.Time, s Signer,
 	hold func(reaction.List, []byte) error) (Carried, error) {
 	switch fromRoute.Format() {
@@ -81,7 +99,7 @@ func CarrySigned(ctx context.Context, from string, fromRoute reaction.Route, dir
 	if route.Format() != reaction.FormatV1Alpha3 {
 		return Carried{}, fmt.Errorf("%w: a signed carry is into the list of a v1alpha3 route", ErrRefused)
 	}
-	return carry(ctx, from, fromRoute, dir, route, now, func(old part) (reaction.Header, []byte, error) {
+	return carry(ctx, from, fromRoute, dir, route, now, true, func(old part) (reaction.Header, []byte, error) {
 		if hold != nil {
 			if err := hold(old.list, old.accepted); err != nil {
 				return reaction.Header{}, nil, fmt.Errorf("%w: the list carried from: %w", ErrRefused, err)
@@ -99,7 +117,7 @@ func CarrySigned(ctx context.Context, from string, fromRoute reaction.Route, dir
 // list carried, and its line.
 type headerFor func(old part) (reaction.Header, []byte, error)
 
-func carry(ctx context.Context, from string, fromRoute reaction.Route, dir string, route reaction.Route, now time.Time, next headerFor) (Carried, error) {
+func carry(ctx context.Context, from string, fromRoute reaction.Route, dir string, route reaction.Route, now time.Time, retire bool, next headerFor) (Carried, error) {
 	var out Carried
 	err := locked(ctx, from, func(root *os.Root) error {
 		same, err := sameDir(root, dir)
@@ -130,13 +148,54 @@ func carry(ctx context.Context, from string, fromRoute reaction.Route, dir strin
 		if carrying != nil {
 			carrying()
 		}
-		lines := append([][]byte{header}, stops...)
-		return create(ctx, dir, route, now, append(lines, covered...))
+		lines := append(append([][]byte{header}, stops...), covered...)
+		if !retire {
+			return create(ctx, dir, route, now, lines)
+		}
+		return createRetiring(ctx, root, dir, route, now, lines)
 	})
 	if err != nil {
 		return Carried{}, err
 	}
 	return out, nil
+}
+
+// createRetiring is create of a new list from the old list root holds, which
+// loses its write bits first. A create that failed with no new list in place
+// gives them back; a process killed between the two leaves the old list
+// read-only, where no stop reaches a list nothing carries, and a rerun
+// finishes the carry.
+func createRetiring(ctx context.Context, root *os.Root, dir string, route reaction.Route, now time.Time, lines [][]byte) error {
+	was, err := retireList(root)
+	if err != nil {
+		return fmt.Errorf("the list carried from was not made read-only: %w", err)
+	}
+	if stopped != nil {
+		if err := stopped(); err != nil {
+			return err
+		}
+	}
+	err = create(ctx, dir, route, now, lines)
+	if afterCreate != nil {
+		err = afterCreate(err)
+	}
+	if err != nil && noListPlaced(dir, err) {
+		_, back := chmodList(root, func(fs.FileMode) fs.FileMode { return was })
+		return errors.Join(err, back)
+	}
+	return err
+}
+
+// noListPlaced reports whether create's failure err left no new list in dir:
+// a list that stood there before, or nothing at its name. A list left in
+// place by a create that failed after placing it is one a plane may take, so
+// the old list keeps no write bit beside it.
+func noListPlaced(dir string, err error) bool {
+	if errors.Is(err, ErrExists) {
+		return true
+	}
+	_, lerr := os.Lstat(filepath.Join(dir, stoplist.FileName))
+	return errors.Is(lerr, fs.ErrNotExist)
 }
 
 // CarriedLines is what Carry writes after the new list's header when it
@@ -270,6 +329,35 @@ func coveredLines(old []byte, kept map[string]bool, into reaction.RouteFormat) (
 		covered = append(covered, line)
 	}
 	return covered, nil
+}
+
+// retireList takes the write bits off the list in root, forces the change to
+// disk, and answers the mode the list had.
+func retireList(root *os.Root) (fs.FileMode, error) {
+	return chmodList(root, func(m fs.FileMode) fs.FileMode { return m &^ 0o222 })
+}
+
+// chmodList gives the list in root the mode to makes of its own, through the
+// file it checked is the list, forces the change to disk, and answers the
+// mode before.
+func chmodList(root *os.Root, to func(fs.FileMode) fs.FileMode) (fs.FileMode, error) {
+	named, err := stoplist.Named(root)
+	if err != nil {
+		return 0, err
+	}
+	f, err := root.OpenFile(stoplist.FileName, os.O_RDONLY|stoplist.OpenFlags, 0)
+	if err != nil {
+		return 0, err
+	}
+	was := named.Mode().Perm()
+	err = stoplist.CheckOpened(named, f)
+	if err == nil {
+		err = f.Chmod(to(was))
+	}
+	if err == nil {
+		err = f.Sync()
+	}
+	return was, errors.Join(err, f.Close())
 }
 
 // readList reads the list root holds, with every check a plane's read makes;

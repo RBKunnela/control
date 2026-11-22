@@ -116,3 +116,17 @@ and `supervise` and `react` over a record of a key the roster lacks or of
 another directory;
 `cmd/guardana-gateway` tests the start refusals, the carry across a restart
 and doctor's counts.
+
+## Amendment: a start reads a bounded number of records
+
+A start reads at most 65,536 records of `records/` to carry their closes,
+and `doctor` reads no more. A signed plane whose `records/` holds more
+refuses to start, and `doctor` fails, naming the way out: a close past the
+bound would go uncarried, and the open record of that run, put back, would
+be taken. `guardana-control runs prune` archives the expired trees, which
+brings `records/` under the bound; a directory holding more runs that have
+not expired than the bound cannot start until enough of them expire.
+**Breaking** under `signed`, for a plane with more records than the bound;
+it used to log the cut and serve. `internal/runs` tests the refusal at the
+bound and the prune that ends it; `cmd/guardana-gateway` tests the start
+and doctor's line.

@@ -56,6 +56,16 @@ var neverBackedUp = map[string]string{
 	"upstreams.N.command":        "a program",
 }
 
+// floor reports whether c is a floor directory, which a restore builds
+// under policystate.StagingPath where it is missing.
+func (c class) floor() bool {
+	switch c.name {
+	case ClassPlaneFloor, ClassRouteFloor, ClassAuthorityFloor, ClassPauseFloor, ClassStopsFloor:
+		return true
+	}
+	return false
+}
+
 func classNamed(name string) (class, bool) {
 	for _, c := range classes {
 		if c.name == name {

@@ -292,6 +292,54 @@ func TestRestoreSignedTakesALostStateAsTheWorst(t *testing.T) {
 	}
 }
 
+// TestRestoreSignedTakesABackupsLostStateAsTheWorst: the backup holds a
+// root's lock file and no state, which a plane refuses as a state removed;
+// the restore joins the worst into live's readable state rather than leave
+// it as it was.
+func TestRestoreSignedTakesABackupsLostStateAsTheWorst(t *testing.T) {
+	live, a := newSigned(t)
+	rec, _ := openSignedRoot(t, a, "alice")
+	setState(t, signedPlane(t, live, alicesJudge), rec.ID, runs.State{Untrusted: false, MaxRead: confidential})
+	backup := copyTree(t, live)
+	if err := os.Remove(filepath.Join(backup, "state", rec.ID+".state.json")); err != nil {
+		t.Fatal(err)
+	}
+	if err := runs.CheckRestoreSigned(live, backup); err != nil {
+		t.Fatalf("CheckRestoreSigned: %v", err)
+	}
+	if _, err := runs.RestoreSigned(t.Context(), live, backup, nil); err != nil {
+		t.Fatalf("RestoreSigned: %v", err)
+	}
+	s, err := signedPlane(t, live, alicesJudge).State(t.Context(), rec.ID)
+	if err != nil || s != (runs.State{Untrusted: true, MaxRead: unknown}) {
+		t.Fatalf("state = %+v, %v, want untrusted and unknown", s, err)
+	}
+}
+
+// TestCheckRestoreSignedRefusesALockTheJoinRefuses: a surviving root's lock
+// file the group may write is refused by the check, which runs before a
+// restore's first write, as the join under that lock would refuse it after
+// the closes were carried.
+func TestCheckRestoreSignedRefusesALockTheJoinRefuses(t *testing.T) {
+	live, a := newSigned(t)
+	rec, _ := openSignedRoot(t, a, "alice")
+	setState(t, signedPlane(t, live, alicesJudge), rec.ID, runs.State{Untrusted: false, MaxRead: confidential})
+	backup := copyTree(t, live)
+	lock := filepath.Join(live, "state", rec.ID+".lock")
+	if err := os.Chmod(lock, 0o660); err != nil { //nolint:gosec // G302: the mode under test
+		t.Fatal(err)
+	}
+	if err := runs.CheckRestoreSigned(live, backup); err == nil || !strings.Contains(err.Error(), rec.ID) {
+		t.Fatalf("CheckRestoreSigned over a lock file the group may write = %v; want a refusal naming %s", err, rec.ID)
+	}
+	if err := os.Chmod(lock, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := runs.CheckRestoreSigned(live, backup); err != nil {
+		t.Fatalf("CheckRestoreSigned over the lock file owner-only again: %v", err)
+	}
+}
+
 // TestRestoreSignedStartsARootLiveNeverHeldFromTheBackup: a root live holds
 // no record, state or lock file of is the backup's, not the worst.
 func TestRestoreSignedStartsARootLiveNeverHeldFromTheBackup(t *testing.T) {

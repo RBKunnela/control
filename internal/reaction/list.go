@@ -68,6 +68,19 @@ func (l List) Usage() Usage { return l.usage }
 // expired ones among them.
 func (l List) Entries() []Entry { return slices.Clone(l.entries) }
 
+// Ends reports whether a lift of target through line through would end a
+// stop of l.
+func (l List) Ends(target Target, through int64) bool {
+	return slices.ContainsFunc(l.entries, func(e Entry) bool { return endedBy(e, target, through) })
+}
+
+// endedBy reports whether a lift of target through line through ends e: a
+// stop of a run is never ended by a lift of its agent, nor a stop of an agent
+// by a lift of the run its finding was about.
+func endedBy(e Entry, target Target, through int64) bool {
+	return e.Target() == target && e.Line <= through
+}
+
 // Names reports whether a stop or covered line names findingID.
 func (l List) Names(findingID string) bool { return l.seen != nil && l.seen.findings[findingID] }
 

@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -47,12 +48,13 @@ func TestALockHeldPastTheWaitStopsThePassAfterItsLines(t *testing.T) {
 	log := tr.findingsDir(t, "log", finding(1, tr.open, denial, confirmed), finding(2, tr.second, denial, confirmed))
 	release := func() {}
 	defer func() { release() }()
-	lookups := 0
+	var looked []string
 	r, records := readyReactor(context.Background(), t, tr, log, now, func(plane lookupRun) lookupRun {
 		return func(ctx context.Context, id string) (runs.Record, error) {
-			if lookups++; lookups == 2 {
+			if id == tr.second && !slices.Contains(looked, id) {
 				release = holdStopsLock(t, tr.stops)
 			}
+			looked = append(looked, id)
 			return plane(ctx, id)
 		}
 	})
@@ -197,12 +199,13 @@ func TestAFullListIsNotLockedAgainForEachFinding(t *testing.T) {
 	log := tr.findingsDir(t, "log", finding(1, tr.open, denial, confirmed), finding(2, tr.second, denial, confirmed))
 	release := func() {}
 	defer func() { release() }()
-	lookups := 0
+	var looked []string
 	r, records := readyReactor(context.Background(), t, tr, log, now, func(plane lookupRun) lookupRun {
 		return func(ctx context.Context, id string) (runs.Record, error) {
-			if lookups++; lookups == 2 {
+			if id == tr.second && !slices.Contains(looked, id) {
 				release = holdStopsLock(t, tr.stops)
 			}
+			looked = append(looked, id)
 			return plane(ctx, id)
 		}
 	})
@@ -210,8 +213,8 @@ func TestAFullListIsNotLockedAgainForEachFinding(t *testing.T) {
 	if err := r.each(records); err != nil {
 		t.Fatalf("each = %v, want both findings named not written", err)
 	}
-	if r.stops != 0 || len(r.unwritten) != 2 || lookups != 2 {
-		t.Fatalf("%d stops, unwritten %q, %d lookups", r.stops, r.unwritten, lookups)
+	if r.stops != 0 || len(r.unwritten) != 2 || !slices.Equal(looked, []string{tr.open, tr.open, tr.second}) {
+		t.Fatalf("%d stops, unwritten %q, runs looked up %q", r.stops, r.unwritten, looked)
 	}
 	for i, f := range []struct{ id, run string }{{fid(1), tr.open}, {fid(2), tr.second}} {
 		if want := "not written: finding " + f.id + " run " + f.run + ": " + string(stopwrite.ErrFull); !strings.HasPrefix(r.unwritten[i], want) {
@@ -230,9 +233,13 @@ func TestEachWriteWaitsForTheLockOnItsOwn(t *testing.T) {
 	log := tr.findingsDir(t, "log", finding(1, tr.open, denial, confirmed), finding(2, tr.second, denial, confirmed))
 	released := make(chan struct{}, 2)
 	r, records := readyReactor(context.Background(), t, tr, log, now, func(plane lookupRun) lookupRun {
+		looked := map[string]bool{}
 		return func(ctx context.Context, id string) (runs.Record, error) {
-			release := holdStopsLock(t, tr.stops)
-			time.AfterFunc(held, func() { release(); released <- struct{}{} })
+			if !looked[id] {
+				looked[id] = true
+				release := holdStopsLock(t, tr.stops)
+				time.AfterFunc(held, func() { release(); released <- struct{}{} })
+			}
 			return plane(ctx, id)
 		}
 	})

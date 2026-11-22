@@ -34,6 +34,9 @@ func (j *judging) liftLine(n int64, l LiftLine) error {
 	return nil
 }
 
+// Target is the scope and subject whose stops l ends, as liftedTarget says.
+func (l LiftLine) Target() (Target, error) { return liftedTarget(l) }
+
 // liftedTarget is the scope and subject whose stops l ends: the run a 1.0
 // or 2.0 lift line names, and the scope and subject of a 3.0 one, which
 // names no run. A lift of a run ends no agent's or principal's stop, though

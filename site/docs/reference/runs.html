@@ -194,9 +194,9 @@ stderr and exits 1.</p>
 <p><code>runs prune --expired-before &lt;time&gt; --archive &lt;dir&gt; &lt;runs-dir&gt;</code> removes the
 trees whose every run expired before the RFC 3339 time, which may not be in
 the future, and prints <code>pruned &lt;root&gt;</code> for each. It first creates the archive,
-a new owner-only directory outside the runs directory that reads as a runs
-directory, and copies each tree's records and state into it, synced before
-anything of the tree is removed. A tree whose root is live is left alone,
+a new owner-only directory outside the runs directory, readable as one, and
+copies each tree's records and state into it, synced before the tree is
+removed. A tree whose root is live is left alone,
 whatever its children. One whose root expired is kept, named on stderr, and
 the command exits 1 when a run under it expires later, a plane holds its state
 lock, or a file of it cannot be read; a record that does not decode refuses the
@@ -227,11 +227,12 @@ records only. <code>supervise</code> and <code>react</code> take a record only a
 given its <code>--roster</code>, <code>--root-key</code>, <code>--tenant</code> and <code>--project</code>.</p>
 <p>A record that is unsigned, signed for another directory, of another tenant
 or project, or by a key the roster does not grant <code>operate</code> refuses its calls
-as <code>unreadable</code>. When the plane takes a closed record, at a call or when it
-starts, it writes the close into <code>state/</code>, and the open record put back
-after is refused as <code>closed</code>. So is a child it never admitted
+as <code>unreadable</code>. When the plane takes a closed record, at a call or start,
+it writes the close into <code>state/</code>, and the open record put back is refused
+as <code>closed</code>. So is a child it never admitted
 (<code>state/&lt;id&gt;.seen</code>) once an ancestor's close is carried
-(<a href="/docs/adr/0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close">ADR-0079</a>). <code>/healthz</code> counts under
+(<a href="/docs/adr/0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close">ADR-0079</a>).
+Starts refuse over 65,536 records until <code>runs prune</code> archives enough. <code>/healthz</code> counts under
 <code>runs.signed</code> the records judged, each refusal cause, the closes carried and
 <code>carry_failed</code>, held per plane; <code>doctor</code> counts records by state and signer.</p>
 <h2 id="what-a-plane-does-with-a-token">What a plane does with a token</h2>

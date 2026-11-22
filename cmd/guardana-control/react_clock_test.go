@@ -71,6 +71,28 @@ func TestAStopIsTimedOnceTheLockIsHeld(t *testing.T) {
 	}
 }
 
+// TestARunClosedDuringTheWaitIsNotStopping: a finding eligible before the
+// lock whose run an operator closed while the pass waited is counted as not
+// stopping, and nothing is written for it.
+func TestARunClosedDuringTheWaitIsNotStopping(t *testing.T) {
+	tr := newStopTree(t)
+	now := time.Now().UTC().Truncate(time.Second)
+	beforeStopsLock = func() {
+		if code, _, stderr := invoke(t, "runs", "close", tr.runs, tr.open); code != exitOK {
+			t.Errorf("runs close while react waits: %d, %q", code, stderr)
+		}
+	}
+	t.Cleanup(func() { beforeStopsLock = func() {} })
+	before := tr.listBytes(t)
+	log := tr.findingsDir(t, "log", finding(1, tr.open, denial, confirmed))
+	var out, errOut bytes.Buffer
+	code := react(context.Background(), tr.reactArgs(log), clockAt(now), &out, &errOut)
+	reacted(t, code, out.String(), errOut.String(), "stops 0, covered 0, already named 0, not stopping 1, not written 0")
+	if !bytes.Equal(tr.listBytes(t), before) {
+		t.Error("a finding whose run closed during the wait changed the list")
+	}
+}
+
 // TestARunThatExpiresDuringTheWaitIsNotStopping: a finding eligible before
 // the lock whose run has expired by the reading taken under it is counted as
 // not stopping, and nothing is written for it.

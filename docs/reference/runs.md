@@ -87,9 +87,9 @@ stderr and exits 1.
 `runs prune --expired-before <time> --archive <dir> <runs-dir>` removes the
 trees whose every run expired before the RFC 3339 time, which may not be in
 the future, and prints `pruned <root>` for each. It first creates the archive,
-a new owner-only directory outside the runs directory that reads as a runs
-directory, and copies each tree's records and state into it, synced before
-anything of the tree is removed. A tree whose root is live is left alone,
+a new owner-only directory outside the runs directory, readable as one, and
+copies each tree's records and state into it, synced before the tree is
+removed. A tree whose root is live is left alone,
 whatever its children. One whose root expired is kept, named on stderr, and
 the command exits 1 when a run under it expires later, a plane holds its state
 lock, or a file of it cannot be read; a record that does not decode refuses the
@@ -126,11 +126,12 @@ given its `--roster`, `--root-key`, `--tenant` and `--project`.
 
 A record that is unsigned, signed for another directory, of another tenant
 or project, or by a key the roster does not grant `operate` refuses its calls
-as `unreadable`. When the plane takes a closed record, at a call or when it
-starts, it writes the close into `state/`, and the open record put back
-after is refused as `closed`. So is a child it never admitted
+as `unreadable`. When the plane takes a closed record, at a call or start,
+it writes the close into `state/`, and the open record put back is refused
+as `closed`. So is a child it never admitted
 (`state/<id>.seen`) once an ancestor's close is carried
-([ADR-0079](../adr/0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close.md)). `/healthz` counts under
+([ADR-0079](../adr/0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close.md)).
+Starts refuse over 65,536 records until `runs prune` archives enough. `/healthz` counts under
 `runs.signed` the records judged, each refusal cause, the closes carried and
 `carry_failed`, held per plane; `doctor` counts records by state and signer.
 

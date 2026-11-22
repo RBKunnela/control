@@ -138,13 +138,13 @@ pause file and a stop list. <code>state backup</code> copies it; after a loss,
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
 <li>The plane stopped. Both commands take the spool's and the hold journal's
-locks for their whole run and refuse while a plane holds either. On a
-system without a file lock, Windows among them, both refuse.</li>
+locks for their whole run and refuse while a plane holds either, and on
+a system without a file lock, Windows among them.</li>
 <li>The plane's account and environment: the commands read the configuration
 as the plane does, and a restore writes only what that account owns.
 Under <code>signed</code> they refuse any key the environment sets.</li>
-<li><code>approvals.authority</code> set to <code>directory</code> or <code>signed</code>. Under <code>memory</code> there
-is nothing to restore; both commands refuse.</li>
+<li><code>approvals.authority</code> set to <code>directory</code> or <code>signed</code>. Under <code>memory</code> both
+refuse: there is nothing to restore.</li>
 </ul>
 <h2 id="steps">Steps</h2>
 <ol>
@@ -152,19 +152,19 @@ is nothing to restore; both commands refuse.</li>
 <p>Back up into a directory that does not exist yet:</p>
 <pre><code class="language-sh">guardana-control state backup plane.yaml /backups/plane-1
 </code></pre>
-<p>It prints <code>backed up &lt;n&gt; files into /backups/plane-1</code>, and one line for
-each configured path where nothing stood. The directory is made mode
-<code>0700</code>, each copy mode <code>0600</code>, and <code>backup.json</code> is written last: a
-directory without it is no backup.</p>
+<p>It prints <code>backed up &lt;n&gt; files into /backups/plane-1</code> and each
+configured path where nothing stood. The directory is <code>0700</code>, each copy
+<code>0600</code>; <code>backup.json</code> is written last, and a directory without it is no
+backup.</p>
 </li>
 <li>
 <p>After a loss, make the spool and the hold journal directories again,
 empty and owned by the plane's account, then restore:</p>
 <pre><code class="language-sh">guardana-control state restore plane.yaml /backups/plane-1
 </code></pre>
-<p>It prints what it did per configuration key, the residual below, and
-which signed files to put back. It checks every class before its first
-write, so a refusal leaves the plane's files as they were; a failure
+<p>It prints what it did per key, the residual below, and which signed
+files to put back. It checks every class before its first write, so a
+refusal leaves the files as they were; a failure
 after that prints what was done before it. Under <code>signed</code>, make the
 runs directory's <code>records/</code> and <code>state/</code> again first: without them the
 restore refuses.</p>
@@ -177,33 +177,33 @@ restore refuses.</p>
 </ol>
 <h2 id="what-a-backup-holds">What a backup holds</h2>
 <p><code>backup.json</code>, schema <code>0.2</code>, names the authority, tenant, project, under
-<code>signed</code> the <code>plane_id</code>, and time of the backup, and per file its class,
-configuration key, absolute source, path in the backup, SHA-256 and size.
-A restore refuses a backup of another tenant, project, authority or plane, a file
-whose source is not where the configuration puts it today, a size or hash
-that differs, a file the manifest does not list, and a major other than <code>0</code>.
+<code>signed</code> the <code>plane_id</code>, the backup's time, and per file its class, key,
+absolute source, path in the backup, SHA-256 and size. A restore refuses a
+backup of another tenant, project, authority or plane, a source not where
+the configuration puts it today, a size or hash that differs, an unlisted
+file, and a major other than <code>0</code>.
 A <code>0.1</code> manifest names no plane, so a signed restore says <code>plane not checked</code>.</p>
 <p>Copied, each under its class: <code>policy.state_dir</code>, <code>reaction.floor_dir</code>,
 <code>runs.dir</code>, <code>pause.file</code> and <code>reaction.stops</code>, and under <code>signed</code> also
 <code>trust.floor_dir</code>, <code>pause.floor_dir</code> and <code>reaction.stops_floor_dir</code>. Never copied: the spool, the hold journal and its ledger,
 the approvals store and inbox, the trail, the signer's floors, the bundle
 and its statement, the roster, the route and every key.</p>
-<p>The manifest is unsigned: its hashes catch corruption, not a rewrite of the
-backup and its manifest together, so keep the backup where only the plane's
-account and the operator write. A restore copies the files it verified
-into an owner-only <code>state-restore-*</code> directory under <code>$TMPDIR</code> and reads
-only that copy, which a killed restore leaves behind.</p>
+<p>The manifest is unsigned: its hashes catch corruption, not a backup
+rewritten with it, so keep the backup where only the plane's account and
+the operator write. A restore reads only its own copy of the
+verified files, in an owner-only <code>state-restore-*</code> directory under
+<code>$TMPDIR</code> that a killed restore leaves behind.</p>
 <h2 id="what-a-restore-does">What a restore does</h2>
 <ul>
-<li>Plane floor, per bundle id either side holds: the higher serial of the
-two, with its digest, stamped issued and latest at the restore time,
-rounded up to the whole second; a plane started within that second
-refuses until it passes. The bundle's own statement, issued before the
+<li>Plane floor, per bundle id either side holds: the higher serial, with its
+digest, stamped issued and latest at the restore time,
+rounded up to the second; a plane started within that second
+refuses until it passes. The bundle's statement, issued before the
 restore, confirms nothing; the next renewal does. Two digests at one
 serial, or a clock behind either floor, refuse before that id is written.
 An id neither side holds a serial for is listed with no file, so the
 start refuses until <code>policy state reset</code>.</li>
-<li>Route, roster and pause floors: the higher serial of the two. Stop list
+<li>Route, roster and pause floors: the higher serial. Stop list
 floor: the higher serial; at one serial and head, the longer accepted
 part when the live list or the backup's copy begins with both parts.
 Two heads at one serial, or two parts no list shows as one history,
@@ -224,14 +224,17 @@ judged against <code>reaction.route</code>, into a list of a new id holding ever
 stop no lift ended, where a lift made for the old list does not verify.
 Any other surviving list is two histories, and the restore refuses;
 moving it aside lets the restore carry the backup's and loses the stops
-added to it since. Under <code>signed</code> the list is an operator's file, and only
-its floor is raised.</li>
+added to it since. Under <code>signed</code> the list is an operator's file; only its
+floor is raised.</li>
 </ul>
 <p>A restore never writes the hold journal, its ledger or the approvals store:
 no hold resumes and no spent approval counts again.
-A missing floor directory is built under a temporary name and renamed into
-place; a restore stopped at any write and run again ends where an unbroken
-one does.</p>
+A missing floor directory is built as <code>.&lt;name&gt;.restoring</code> beside it, then
+renamed into place. A restore refuses where that name is or holds a
+configured path, through a link or in another case, and removes there only
+its own leftover. Rerun after a stop at any write, it ends where an
+unbroken one does; killed while building it, it may leave that directory
+for you to remove.</p>
 <h2 id="verify">Verify</h2>
 <p><code>doctor</code> reads each signed file against the raised floors. Put back the
 newest signed copy you hold; the plane takes it wherever the raised floor
@@ -245,10 +248,10 @@ back under a new floor, which takes the first list it reads:</p>
 <pre><code class="language-sh">mv &lt;reaction.stops_floor_dir&gt; &lt;aside&gt;
 guardana-control stops floor init --tenant &lt;t&gt; --project &lt;p&gt; &lt;reaction.stops_floor_dir&gt;
 </code></pre>
-<p>Under <code>directory</code> the backup holds no route, so once <code>reaction.route</code> was
-replaced, restore with the old route back in its place, then put the
-current one back and carry the list the restore wrote into a new directory
-that replaces <code>reaction.stops</code>:</p>
+<p>Under <code>directory</code> the backup holds no route. Once <code>reaction.route</code> was
+replaced, restore with the old route in its place, then put the current one
+back and carry the restored list into a new directory that replaces
+<code>reaction.stops</code>:</p>
 <pre><code class="language-sh">guardana-control stops init --carry &lt;reaction.stops&gt; --carry-route &lt;old route&gt; \
   --route &lt;current route&gt; --public-key &lt;route key&gt; &lt;new dir&gt;
 </code></pre>

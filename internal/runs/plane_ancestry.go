@@ -42,8 +42,7 @@ func (p *Plane) ancestorsStand(ctx context.Context, rec Record) error {
 		case err != nil:
 			return err
 		case closed:
-			p.counts.refused(ErrParentClosed)
-			return fmt.Errorf("%w: %s was closed before this run was first admitted", ErrParentClosed, id)
+			return p.parentClosed(id)
 		}
 		if id == rec.Root {
 			return nil
@@ -76,7 +75,8 @@ func (p *Plane) closeCarried(id string) (bool, error) {
 }
 
 // ancestor reads and judges the record of run id, an ancestor of a run of
-// root that is not root, and returns its parent.
+// root that is not root, and returns its parent. A closed one it took is
+// carried and refuses the walk: its close is now one state/ holds.
 func (p *Plane) ancestor(ctx context.Context, id, root string) (string, error) {
 	stored, err := p.d.readStored(id)
 	if err != nil {
@@ -89,7 +89,18 @@ func (p *Plane) ancestor(ctx context.Context, id, root string) (string, error) {
 	if rec := stored.Record; rec.Root != root || rec.Parent == "" {
 		return "", fmt.Errorf("%w: %s is not under %s", ErrTreeBroken, id, root)
 	}
+	if stored.Record.Closed() {
+		err := p.carry(id)
+		return "", errors.Join(p.parentClosed(id), err)
+	}
 	return stored.Record.Parent, nil
+}
+
+// parentClosed counts and refuses a first admission below the ancestor id
+// whose close is carried.
+func (p *Plane) parentClosed(id string) error {
+	p.counts.refused(ErrParentClosed)
+	return fmt.Errorf("%w: %s was closed before this run was first admitted", ErrParentClosed, id)
 }
 
 // marked reports whether state/ holds the empty marker name, refusing one

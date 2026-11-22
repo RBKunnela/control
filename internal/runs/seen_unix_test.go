@@ -73,6 +73,35 @@ func TestAFirstAdmissionThatFailsLeavesNoSeen(t *testing.T) {
 	}
 }
 
+// TestAFirstCallBesideALostRootStateLeavesNoSeen: the root's lock file
+// stands and its state is gone, which the plane refuses, so the child's
+// first call is refused before its .seen is made; with the state put back
+// and the parent's close carried, the child is one the plane never admitted.
+func TestAFirstCallBesideALostRootStateLeavesNoSeen(t *testing.T) {
+	dir, a := newSigned(t)
+	parent, parentToken := openSignedRoot(t, a, "alice")
+	child, childToken := openSignedChild(t, a, parent.ID, opened)
+	p := signedPlane(t, dir, alicesJudge)
+	at := opened.Add(time.Minute)
+	if _, err := p.Resolve(t.Context(), parentToken, alice, at); err != nil {
+		t.Fatalf("the parent's call, which starts the root's state: %v", err)
+	}
+	statePath := filepath.Join(dir, "state", parent.ID+".state.json")
+	state := readBytes(t, statePath)
+	if err := os.Remove(statePath); err != nil {
+		t.Fatal(err)
+	}
+	run, err := p.Resolve(t.Context(), childToken, alice, at)
+	if err == nil || causeOf(t, err) != runs.CauseUnreadable || !strings.Contains(err.Error(), parent.ID) {
+		t.Fatalf("the child's first call beside the lost state = %+v, %v; want unreadable naming %s", run, err, parent.ID)
+	}
+	requireSeen(t, dir, child.ID, false)
+	writeFile(t, statePath, state)
+	carryParentClose(t, a, p, parent, parentToken, at)
+	_, err = p.Resolve(t.Context(), childToken, alice, at.Add(time.Minute))
+	requireParentClosed(t, err)
+}
+
 // TestAFoundSeenSurvivesAFailingCall: a .seen an earlier call made is not a
 // later call's to remove. A call refused because its root's state cannot be
 // made keeps it, and the child keeps running after its parent's close is

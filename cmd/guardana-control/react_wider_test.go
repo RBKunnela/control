@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -204,5 +206,38 @@ func TestALiftOfAPrincipalNeverEndsAnAgentOfTheSameName(t *testing.T) {
 	if code, stdout, stderr := tr.run(t, "stops lift", "--key", tr.keys["alice"], "--agent", "agent-1", tr.stops); code != exitOK ||
 		!strings.Contains(stdout, "agent agent-1 through line 2") {
 		t.Errorf("a lift of agent agent-1: %d, %q, %q", code, stdout, stderr)
+	}
+}
+
+// TestAStopWhoseSubjectTheRunLacksStopsThePass: a finding under a rule of
+// agents whose run's record names no agent has no subject to stop. That is
+// no refusal of the list's bound or of its judge, so the pass stops there,
+// with nothing written, rather than name it unwritten and go on.
+func TestAStopWhoseSubjectTheRunLacksStopsThePass(t *testing.T) {
+	tr := newWiderTree(t)
+	now := time.Now().UTC().Truncate(time.Second)
+	route := tr.takenRoute(t)
+	list, _, err := judgedList(tr.stops, route, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lookup := func(_ context.Context, id string) (runs.Record, error) {
+		return runs.Record{ID: id, Who: runs.Identity{ProjectID: "orders", TenantID: "acme", PrincipalType: "user",
+			PrincipalID: "user-1"}, ExpiresAt: now.Add(time.Hour)}, nil
+	}
+	r := newReactor(context.Background(), route, list, lookup, tr.stops, clockAt(now))
+	var records []*findingv1alpha1.Record
+	for _, fr := range []*findingv1alpha1.FindingRecord{finding(1, "run-1", denial, confirmed), finding(2, "run-1", outside, confirmed)} {
+		records = append(records, &findingv1alpha1.Record{Record: &findingv1alpha1.Record_FindingRecord{FindingRecord: fr}})
+	}
+	before := listBytes(t, tr.stops)
+	if err := r.each(records); !errors.Is(err, reaction.ErrStopSubject) {
+		t.Fatalf("each = %v, want the pass stopped on the missing subject", err)
+	}
+	if r.stops != 0 || len(r.written) != 0 || len(r.unwritten) != 0 {
+		t.Errorf("%d stops, written %q, unwritten %q; want the pass stopped at the first finding", r.stops, r.written, r.unwritten)
+	}
+	if !bytes.Equal(listBytes(t, tr.stops), before) {
+		t.Error("a pass stopped on a missing subject changed the list")
 	}
 }

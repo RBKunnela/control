@@ -29,6 +29,16 @@ const (
 	// already, by another writer since its caller read the list; nothing is
 	// written.
 	ErrNamed Error = "stopwrite: the stop list names the finding already"
+	// ErrCarried is a write to a list its owner may not write, as a signed
+	// carry leaves the list it carried from: a line appended to it after the
+	// carry would be one a plane still serving it takes and the carried list
+	// lacks; nothing is written.
+	ErrCarried Error = "stopwrite: the stop list is read-only, as a carry leaves the list it carried from"
+	// ErrNothingLifted is a lift that ends no stop of its run, agent or
+	// principal through its line in the list as it stands under the lock,
+	// such as one read from the list before another lift ended that stop;
+	// nothing is written.
+	ErrNothingLifted Error = "stopwrite: the lift ends no stop the list holds"
 	// ErrFull is a write that would take the list past its bound of bytes or
 	// of lines, wrapping the judge's refusal; nothing is written.
 	ErrFull Error = "stopwrite: the write would take the stop list past its bounds"

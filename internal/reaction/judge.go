@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"hash"
 	"slices"
@@ -59,7 +60,8 @@ type judging struct {
 // tolerance of one poll interval. Bytes after the last newline are a line
 // being written and are left out. It refuses a route CheckStopping refuses,
 // however it was read; a list over MaxListBytes or MaxListLines; one whose
-// header line is not the accepted one's, that is
+// header line is not the accepted one's, by its version's refusal where that
+// is not the route's lists'; one that is
 // shorter than the accepted prefix or does not begin with it; a header that
 // is not line 1 alone or names another route; a line ParseLine refuses; a
 // finding id two lines name; a stop the route does not permit; a covered line
@@ -75,7 +77,7 @@ func Judge(route Route, accepted Prefix, content []byte, now time.Time, toleranc
 	}
 	sum, err := extends(accepted, complete)
 	if err != nil {
-		return List{}, err
+		return List{}, otherVersion(route, complete, err)
 	}
 	return walk(context.Background(), route, List{}, complete, lines, sum, now, tolerance)
 }
@@ -102,7 +104,7 @@ func JudgeFromContext(ctx context.Context, route Route, from List, content []byt
 	}
 	sum, err := extends(from.prefix, complete)
 	if err != nil {
-		return List{}, err
+		return List{}, otherVersion(route, complete, err)
 	}
 	if from.seen == nil {
 		if err := vouchAgain(ctx, route, nil); err != nil {
@@ -211,6 +213,39 @@ func extends(accepted Prefix, complete []byte) ([sha256.Size]byte, error) {
 	return sum, nil
 }
 
+// otherVersion is err, a refusal of complete's prefix, or, where it is a
+// changed header whose version is not route's lists', a refusal of line 1
+// that names both versions and what to do, so a list of another format put
+// in place of the accepted one says so at every read.
+func otherVersion(route Route, complete []byte, err error) error {
+	if !errors.Is(err, ErrListHeader) {
+		return err
+	}
+	l, perr := ParseLine(complete[:bytes.IndexByte(complete, '\n')])
+	want, verr := listVersion(route.format)
+	if perr != nil || verr != nil || l.Version == want {
+		return err
+	}
+	return &LineError{Line: 1, Err: versionSwap{got: l.Version, want: want}}
+}
+
+// versionSwap is a list of version got where the accepted list, of version
+// want, stood. Putting the accepted list back is always a way out; a carry
+// is one only from the version a carry takes.
+type versionSwap struct{ got, want string }
+
+func (e versionSwap) Error() string {
+	msg := fmt.Sprintf("reaction: a %s stop list in place of the accepted %s one is not served: put the accepted list back", e.got, e.want)
+	if errors.Is(e.refusal(), ErrListUpgrade) {
+		msg += ", or carry this one into " + e.want + " with stops init --carry"
+	}
+	return msg
+}
+
+func (e versionSwap) refusal() error { return versionRefusal(1, e.got, e.want) }
+
+func (e versionSwap) Unwrap() []error { return []error{ErrListHeader, e.refusal()} }
+
 // checkPrefix refuses complete unless it begins with accepted, and leaves h
 // having hashed the prefix.
 func checkPrefix(accepted Prefix, complete []byte, h hash.Hash) error {
@@ -262,7 +297,7 @@ func walk(ctx context.Context, route Route, from List, complete []byte, lines in
 		return l, nil
 	}
 	for _, e := range j.seen.stops {
-		if e.Line > j.seen.through[e.Target()] {
+		if !endedBy(e, e.Target(), j.seen.through[e.Target()]) {
 			l.entries = append(l.entries, e)
 		}
 	}
