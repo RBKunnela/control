@@ -256,6 +256,198 @@ func TestConcurrentRetriesOfALapsingApprovalRunAtMostOnce(t *testing.T) {
 	}
 }
 
+// TestARetryThatReadsTheLapseAfterAnotherSpentIsToldItWasUsed: a retry reads
+// the approval approved and waits on the authority while another retry spends
+// it and is blocked as the clock reaches the expiry. The first retry's last
+// reading before its own spend is past the expiry, but the ledger marks the
+// approval spent, so that retry is refused as already used on a trail of its
+// own, and nothing is spent or run again.
+func TestARetryThatReadsTheLapseAfterAnotherSpentIsToldItWasUsed(t *testing.T) {
+	var hook *answersHook
+	r := lapsingUnder(t, snapshot(t, approveRefunds), withAnswersHook(&hook))
+	hook.keep = r.harness.store
+	r.sink.hook(kindApprovalDecided, func() { r.clock.set(base().Add(lapseTTL)) })
+	answered, resume := make(chan struct{}), make(chan struct{})
+	hook.after = func() {
+		close(answered)
+		<-resume
+	}
+	late := make(chan gateway.Disposition, 1)
+	go func() { late <- r.admit(retry(t, "req-late"), refundArgs()) }()
+	<-answered
+	spender := r.admit(retry(t, "req-spender"), refundArgs())
+	close(resume)
+	d := <-late
+
+	if got := spender.Decision.GetReasonCodes(); spender.Action != core.Block || !slices.Equal(got, []string{codeApprovalExpired}) {
+		t.Fatalf("the retry that spent: Action = %d, codes %v; want a block naming only %s", spender.Action, got, codeApprovalExpired)
+	}
+	expectBlock(t, d, verdictDeny, codeApprovalAlreadyUsed, gateway.PDPType)
+	if got := d.Decision.GetReasonCodes(); !slices.Equal(got, []string{codeApprovalAlreadyUsed}) {
+		t.Errorf("the late retry names %v, want only %s", got, codeApprovalAlreadyUsed)
+	}
+	if got := d.Decision.GetRequestId(); got != "req-late" {
+		t.Errorf("the late retry's decision names request %q, want req-late", got)
+	}
+	expectKinds(t, kindsOf(r.trailOf("req-late")), []controlv1.EventKind{kindProposed, kindDecided, kindBlocked})
+	expectOneChain(t, r.harness, []controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested, kindApprovalDecided, kindBlocked})
+	s := r.p.Stats()
+	if s.Executed != 0 || s.Blocks[codeApprovalExpired] != 1 || s.Blocks[codeApprovalAlreadyUsed] != 1 || s.Blocks[codeEvidenceUnavailable] != 0 {
+		t.Errorf("Stats = %+v; want nothing run, one APPROVAL_EXPIRED and one APPROVAL_ALREADY_USED block", s)
+	}
+	if got := r.spent(); got != 1 {
+		t.Errorf("Spend was called %d time(s); want once, by the retry that spent", got)
+	}
+}
+
+// TestARetryThatLosesTheHoldAfterItsLedgerReadAnswersOnItsOwnTrail: a retry
+// refused at its last reading reads the ledger unspent, and the hold is taken
+// before its own take: by a retry that passed its checks earlier and spends
+// now, or by the sweep of an unrelated call. The retry reads the ledger again
+// and is blocked on a trail of its own, as already used when the taker spent,
+// and EVIDENCE_UNAVAILABLE otherwise or when that read fails.
+func TestARetryThatLosesTheHoldAfterItsLedgerReadAnswersOnItsOwnTrail(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		sweep   bool
+		reread  error
+		verdict controlv1.Verdict
+		code    string
+		held    []controlv1.EventKind
+		spends  int
+	}{
+		{"to a retry that spent", false, nil, verdictDeny, codeApprovalAlreadyUsed,
+			[]controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested, kindApprovalDecided, kindBlocked}, 1},
+		{"to a retry that spent, the ledger unreadable after the take", false, errLedger, verdictIndeterminate, codeEvidenceUnavailable,
+			[]controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested, kindApprovalDecided, kindBlocked}, 1},
+		{"to the sweep of an unrelated call", true, nil, verdictIndeterminate, codeEvidenceUnavailable,
+			[]controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested, kindApprovalExpired, kindBlocked}, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var hook *answersHook
+			r := lapsingUnder(t, snapshot(t, approveRefunds), withAnswersHook(&hook))
+			hook.keep = r.harness.store
+			release := parkLate(t, r, hook)
+			var taker func()
+			if tc.sweep {
+				taker = func() {
+					read := readEnvelope()
+					read.RequestId = "req-read"
+					r.admit(read, []byte(`{}`))
+				}
+			} else {
+				taker = spenderAtSpend(t, r)
+			}
+			r.clock.set(base().Add(lapseTTL))
+			r.ledger.mu.Lock()
+			r.ledger.afterLookup = func() {
+				taker()
+				r.ledger.mu.Lock()
+				r.ledger.lookupErr = tc.reread
+				r.ledger.mu.Unlock()
+			}
+			r.ledger.mu.Unlock()
+			expectLateBlock(t, r, release(), tc.verdict, tc.code)
+			expectOneChain(t, r.harness, tc.held)
+			if s := r.p.Stats(); s.Executed != 0 || s.Blocks[tc.code] != 1 || s.Blocks[codeApprovalExpired] != 1 {
+				t.Errorf("Stats = %+v; want nothing run, the hold closed as expired once and the late retry's block counted", s)
+			}
+			if got := r.spent(); got != tc.spends {
+				t.Errorf("Spend was called %d time(s); want %d", got, tc.spends)
+			}
+		})
+	}
+}
+
+// expectLateBlock asserts d blocks the late retry naming only code, under its
+// own request id and on a trail of its own.
+func expectLateBlock(t *testing.T, r *lapseRig, d gateway.Disposition, verdict controlv1.Verdict, code string) {
+	t.Helper()
+	expectBlock(t, d, verdict, code, gateway.PDPType)
+	if got := d.Decision.GetReasonCodes(); !slices.Equal(got, []string{code}) {
+		t.Errorf("the late retry names %v, want only %s", got, code)
+	}
+	if got := d.Decision.GetRequestId(); got != "req-late" {
+		t.Errorf("the late retry's decision names request %q, want req-late", got)
+	}
+	expectKinds(t, kindsOf(r.trailOf("req-late")), []controlv1.EventKind{kindProposed, kindDecided, kindBlocked})
+}
+
+// parkLate starts a retry under req-late that reads the approval approved and
+// waits there; release lets it go on and returns its answer.
+func parkLate(t *testing.T, r *lapseRig, hook *answersHook) (release func() gateway.Disposition) {
+	t.Helper()
+	answered, resume := make(chan struct{}), make(chan struct{})
+	hook.after = func() {
+		close(answered)
+		<-resume
+	}
+	late := make(chan gateway.Disposition, 1)
+	go func() { late <- r.admit(retry(t, "req-late"), refundArgs()) }()
+	<-answered
+	return func() gateway.Disposition {
+		close(resume)
+		return <-late
+	}
+}
+
+// spenderAtSpend starts a retry under req-spender that passes its checks and
+// waits at the ledger's spend; spend lets it spend, take the hold and finish,
+// and checks it was blocked as expired.
+func spenderAtSpend(t *testing.T, r *lapseRig) (spend func()) {
+	t.Helper()
+	atSpend, goSpend := make(chan struct{}), make(chan struct{})
+	r.ledger.mu.Lock()
+	r.ledger.beforeSpend = func() {
+		close(atSpend)
+		<-goSpend
+	}
+	r.ledger.mu.Unlock()
+	spender := make(chan gateway.Disposition, 1)
+	go func() { spender <- r.admit(retry(t, "req-spender"), refundArgs()) }()
+	<-atSpend
+	return func() {
+		close(goSpend)
+		d := <-spender
+		if got := d.Decision.GetReasonCodes(); d.Action != core.Block || !slices.Equal(got, []string{codeApprovalExpired}) {
+			t.Errorf("the retry that spent: Action = %d, codes %v; want a block naming only %s", d.Action, got, codeApprovalExpired)
+		}
+	}
+}
+
+// TestARefusedSpendTheLedgerCannotReadClosesNothing: an approved answer the
+// field checks refuse is closed only once the ledger says it is unspent. A
+// ledger that cannot be read blocks the retry on its own trail, spends
+// nothing and leaves the hold standing; read again, the next retry closes the
+// held trail on the refusal.
+func TestARefusedSpendTheLedgerCannotReadClosesNothing(t *testing.T) {
+	r := lapsing(t)
+	r.store.mu.Lock()
+	r.store.answer = func(a *controlv1.Approval) { a.ActionDigest = "sha256:" + digits }
+	r.store.mu.Unlock()
+	r.ledger.mu.Lock()
+	r.ledger.lookupErr = errLedger
+	r.ledger.mu.Unlock()
+
+	d := r.admit(retry(t, "req-2"), refundArgs())
+	expectBlock(t, d, verdictIndeterminate, codeEvidenceUnavailable, gateway.PDPType)
+	expectKinds(t, kindsOf(r.trailOf("req-2")), []controlv1.EventKind{kindProposed, kindDecided, kindBlocked})
+	expectOneChain(t, r.harness, []controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested})
+	if s := r.p.Stats(); s.Executed != 0 || s.Held != 1 || s.Blocks[codeApprovalDigestMismatch] != 0 {
+		t.Errorf("Stats = %+v; want nothing run or closed and the hold standing", s)
+	}
+
+	r.ledger.mu.Lock()
+	r.ledger.lookupErr = nil
+	r.ledger.mu.Unlock()
+	d = r.admit(retry(t, "req-3"), refundArgs())
+	expectBlock(t, d, verdictDeny, codeApprovalDigestMismatch, gateway.PDPType)
+	expectOneChain(t, r.harness, []controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested, kindApprovalExpired, kindBlocked})
+	if got := r.spent(); got != 0 {
+		t.Errorf("Spend was called %d time(s); want never", got)
+	}
+}
+
 // waiting reports whether d holds the retry: under a new approval of its own,
 // or on the held approval still pending as this retry read it.
 func waiting(d gateway.Disposition, heldApprovalID string, codes []string) bool {

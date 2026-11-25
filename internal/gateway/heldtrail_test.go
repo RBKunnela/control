@@ -357,9 +357,9 @@ func TestAHeldTrailClosedAtItsResumeFreesItsRequestID(t *testing.T) {
 }
 
 // TestAResumeTheSweepBeatIsNotClosedTwice: the sweep takes a hold while the
-// retry's lookup of its answer runs. The retry is answered as blocked and
-// writes and counts nothing on that trail, which carries the sweep's closing
-// once.
+// retry's lookup of its answer runs. The retry writes nothing on that trail,
+// which carries the sweep's closing once, and is blocked on a trail of its
+// own.
 func TestAResumeTheSweepBeatIsNotClosedTwice(t *testing.T) {
 	store := newFakeStore()
 	h := build(t, modeEnforce, snapshot(t, approveRefunds, allowWrites), overStore(store))
@@ -378,9 +378,13 @@ func TestAResumeTheSweepBeatIsNotClosedTwice(t *testing.T) {
 	}
 	d := h.admit(retry(t, "req-2"), refundArgs())
 	expectBlock(t, d, verdictIndeterminate, codeEvidenceUnavailable, gateway.PDPType)
+	if got := d.Decision.GetRequestId(); got != "req-2" {
+		t.Errorf("the retry's decision names request %q, want req-2", got)
+	}
 	expectOneChain(t, h, []controlv1.EventKind{kindProposed, kindDecided, kindApprovalRequested, kindApprovalExpired, kindBlocked})
-	if s := h.p.Stats(); s.Blocks[codeApprovalExpired] != 1 || len(s.Blocks) != 1 || s.HeldTrailsLeftOpen != 0 {
-		t.Errorf("Stats = %+v; want the sweep's APPROVAL_EXPIRED once and nothing else", s)
+	expectKinds(t, kindsOf(h.trailOf("req-2")), []controlv1.EventKind{kindProposed, kindDecided, kindBlocked})
+	if s := h.p.Stats(); s.Blocks[codeApprovalExpired] != 1 || s.Blocks[codeEvidenceUnavailable] != 1 || len(s.Blocks) != 2 || s.HeldTrailsLeftOpen != 0 {
+		t.Errorf("Stats = %+v; want the sweep's APPROVAL_EXPIRED once and the retry's own EVIDENCE_UNAVAILABLE block", s)
 	}
 }
 

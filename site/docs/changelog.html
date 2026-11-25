@@ -267,6 +267,23 @@ approval although the call was then blocked; the hold now stands for a
 later retry.</p>
 </li>
 <li>
+<p>A retry whose approved answer fails the checks made again at its last
+reading before the spend, such as one past the expiry, reads the ledger
+before it closes the held trail. If the ledger marks the approval spent,
+the retry is refused <code>APPROVAL_ALREADY_USED</code>. If the ledger cannot be read,
+the retry is blocked <code>EVIDENCE_UNAVAILABLE</code> and the hold stays open. The
+held trail used to be closed without a ledger read.</p>
+</li>
+<li>
+<p>When a retry finds that another call took the hold it was closing, either
+a retry that spent the approval or the expiry sweep, it is now blocked on a
+trail of its own, under its own request id, and the block is counted. The
+code is <code>APPROVAL_ALREADY_USED</code> if the ledger then marks the approval
+spent, and <code>EVIDENCE_UNAVAILABLE</code> otherwise. Such a retry used to get
+<code>EVIDENCE_UNAVAILABLE</code> under the held request's id, with no trail of its
+own and no block counted.</p>
+</li>
+<li>
 <p>A refusal of an upstream's <code>env</code> or <code>args</code> item the configuration reader
 cannot read, such as <code>API_KEY=value&amp;x</code> or <code>--token=value&amp;x</code>, no longer
 repeats the item, which can hold a pasted credential.</p>

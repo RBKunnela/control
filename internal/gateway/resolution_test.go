@@ -19,7 +19,8 @@ var errLedger = errors.New("ledger: unavailable")
 
 // fakeLedger is a memory ledger a test can break and watch: it counts what
 // the plane asked of it, runs beforeSpend before a spend and afterSpend once
-// it is written, and answers an error of its own from a call that names one.
+// it is written, afterLookup once after the next lookup, and answers an error
+// of its own from a call that names one.
 // failAfterSpend writes the mark and then answers an error, which is a ledger
 // that crashed after its write.
 type fakeLedger struct {
@@ -31,6 +32,7 @@ type fakeLedger struct {
 	proofs              []string
 	beforeSpend         func()
 	afterSpend          func()
+	afterLookup         func()
 	spendErr, settleErr error
 	lookupErr           error
 	failAfterSpend      bool
@@ -72,12 +74,17 @@ func (l *fakeLedger) Settle(ctx context.Context, b approval.Binding, req, appr s
 
 func (l *fakeLedger) Lookup(ctx context.Context, b approval.Binding, now time.Time) (map[string]gateway.Resolution, error) {
 	l.mu.Lock()
-	fail := l.lookupErr
+	fail, then := l.lookupErr, l.afterLookup
+	l.afterLookup = nil
 	l.mu.Unlock()
 	if fail != nil {
 		return nil, fail
 	}
-	return l.MemoryLedger.Lookup(ctx, b, now)
+	marks, err := l.MemoryLedger.Lookup(ctx, b, now)
+	if then != nil {
+		then()
+	}
+	return marks, err
 }
 
 // spentUnder is the binding the last spend named.
