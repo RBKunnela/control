@@ -170,12 +170,14 @@ func majorOf(version string) (uint64, bool) {
 	return major, ok
 }
 
-// versionOf reads a "major.minor" version as two numbers.
+// versionOf reads a "major.minor" version as two numbers. The major is
+// spelled as its number alone, as the contracts compare it: 01.0 is no
+// version of major 1.
 func versionOf(version string) (major, minor uint64, ok bool) {
 	a, b, ok := strings.Cut(version, ".")
 	major, errMajor := strconv.ParseUint(a, 10, 32)
 	minor, errMinor := strconv.ParseUint(b, 10, 32)
-	return major, minor, ok && errMajor == nil && errMinor == nil
+	return major, minor, ok && errMajor == nil && errMinor == nil && strconv.FormatUint(major, 10) == a
 }
 
 type trailerRecord struct {

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -92,7 +93,7 @@ func TestARetriedRefundIsStoppedUnderProcedure02(t *testing.T) {
 			t.Errorf("%s names run %s and cites requests %q, want run %s and %q", rule, f.GetFinding().GetRunId(), cited, first.id, want)
 		}
 	}
-	expectPage(t, view, s)
+	expectPage(t, view, s, rq)
 	expectExport(t, tr, s)
 
 	pl := livePlane{health: plane.after(t, "answering /healthz, /metrics and /brand on "), first: ra, second: newAgent(t, agents, second.token)}
@@ -117,8 +118,10 @@ func TestARetriedRefundIsStoppedUnderProcedure02(t *testing.T) {
 }
 
 // expectPage requires the view to be an owner-only page that runs no script,
-// says so in its policy, and names each finding.
-func expectPage(t *testing.T, path string, s supervision) {
+// says so in its policy, and draws what the guide says it shows: the four
+// calls each with its mark, each step with the number of its call, each
+// finding with the numbers of the calls it cites, and every rule's state.
+func expectPage(t *testing.T, path string, s supervision, rq retryRequests) {
 	t.Helper()
 	info, err := os.Stat(path)
 	if err != nil {
@@ -127,15 +130,76 @@ func expectPage(t *testing.T, path string, s supervision) {
 	if info.Mode().Perm() != 0o600 {
 		t.Errorf("the page has mode %v, want 0600", info.Mode().Perm())
 	}
-	page := strings.ToLower(readFile(t, path))
-	if strings.Contains(page, "<script") || !strings.Contains(page, `http-equiv="content-security-policy"`) {
+	page := readFile(t, path)
+	if lower := strings.ToLower(page); strings.Contains(lower, "<script") || !strings.Contains(lower, `http-equiv="content-security-policy"`) {
 		t.Errorf("the page holds a script or no content security policy:\n%s", page)
 	}
-	for _, f := range s.findings {
-		if id := f.GetFinding().GetFindingId(); !strings.Contains(page, id) {
-			t.Errorf("the page does not name finding %s", id)
+	number := expectCallRows(t, page, map[string]string{
+		rq.read: "enforced", rq.export: "exception or approval", rq.refund: "blocked", rq.update: "enforced",
+	})
+	for step, request := range map[string]string{"fetch-order": rq.read, "refund": rq.refund} {
+		row := regexp.MustCompile(`<tr class="step"><td><code>` + step + `</code></td>.*?<td>([^<]*)</td></tr>`).FindStringSubmatch(page)
+		if row == nil || row[1] != number[request] {
+			t.Errorf("step %s names calls %q, want %s, the number of request %s", step, row, number[request], request)
 		}
 	}
+	expectCitedCalls(t, page, s, number)
+	for rule, state := range retryRuleStates {
+		if !strings.Contains(page, "<tr><td><code>"+rule+"</code></td><td>"+state+"</td>") {
+			t.Errorf("the page does not give rule %s the state %s", rule, state)
+		}
+	}
+}
+
+// retryRuleStates is the state the supervision of the open retried run
+// gives each rule of the 0.2 procedure.
+var retryRuleStates = map[string]string{
+	"REPEATED_DENIAL": "checked", "STEP_OUTSIDE_PROCEDURE": "checked", "DEADLINE_EXCEEDED": "checked",
+	"REQUIRED_STEP_SKIPPED": "not_checked", "STEP_OUT_OF_ORDER": "not_checked", "CONTINUED_AFTER_FAILURE": "not_checked",
+	"RESOURCE_OUTSIDE_RUN": "checked", "DENIED_ACTION_RETRIED_ARGUMENTS": "checked", "DENIED_ACTION_RETRIED_RESOURCE": "checked",
+	"DENIED_ACTION_RETRIED_AROUND": "checked", "EXCEPTION_TAKEN": "checked",
+}
+
+// expectCitedCalls requires each finding of s to cite on the page the
+// numbers of the calls its refs name, each once.
+func expectCitedCalls(t *testing.T, page string, s supervision, number map[string]string) {
+	t.Helper()
+	for _, f := range s.findings {
+		var want []string
+		for _, r := range f.GetRefs() {
+			want = append(want, number[r.GetEvent().GetRequestId()])
+		}
+		slices.Sort(want)
+		want = slices.Compact(want)
+		item := regexp.MustCompile(`id <code>` + f.GetFinding().GetFindingId() + `</code>\. Calls cited: ([^.]*)\.</li>`).FindStringSubmatch(page)
+		var cited []string
+		if item != nil {
+			cited = strings.Split(item[1], ", ")
+			slices.Sort(cited)
+		}
+		if !slices.Equal(cited, want) {
+			t.Errorf("finding %s cites calls %q on the page, want %q", f.GetFinding().GetFindingId(), cited, want)
+		}
+	}
+}
+
+// expectCallRows requires the page to draw exactly the calls of marks, each
+// request with its mark, and returns each request's call number as the page
+// writes it.
+func expectCallRows(t *testing.T, page string, marks map[string]string) map[string]string {
+	t.Helper()
+	rows := regexp.MustCompile(`<tr class="call"><td class="n">(#\d+)</td><td class="mark">.*?<span class="mk-label">([^<]*)</span>.*?</td><td class="id"><code>([^<]*)</code>`).FindAllStringSubmatch(page, -1)
+	number := map[string]string{}
+	for _, row := range rows {
+		if want, ok := marks[row[3]]; !ok || row[2] != want {
+			t.Errorf("the page draws request %s as call %s marked %q, want %q", row[3], row[1], row[2], want)
+		}
+		number[row[3]] = row[1]
+	}
+	if len(rows) != len(marks) || len(number) != len(marks) {
+		t.Errorf("the page draws %d calls of %d requests, want each of the %d once", len(rows), len(number), len(marks))
+	}
+	return number
 }
 
 // exportTrailer is the members of an export's trailer this test reads.

@@ -172,3 +172,30 @@ func TestReadFileOfAnEmptyFileIsNoRecords(t *testing.T) {
 		t.Errorf("ReadFile = %v, %v; want no records and no error", got, err)
 	}
 }
+
+// TestReadFileTailCountsWhatNoReportCloses: the tail is every byte past the
+// last report, a whole finding and a torn line alike, held only while a
+// writer holds the log, and nothing for a log whose last write is closed.
+func TestReadFileTailCountsWhatNoReportCloses(t *testing.T) {
+	b := line(t, findingRecord(finding(idB, suspected, "outside")))
+	for name, tail := range map[string]string{
+		"nothing past the last report": "",
+		"a torn finding":               b[:50],
+		"a finding and no report":      b,
+		"a torn report":                b + line(t, writtenReport(1))[:60],
+	} {
+		for _, held := range []bool{false, true} {
+			dir, _ := logWithTail(t, tail)
+			if held {
+				holdLock(t, dir)
+			}
+			got, tl, err := ReadFileTail(filepath.Join(dir, FileName))
+			mustDo(t, err)
+			sameRecords(t, name, got[1:], findingRecord(finding(idA, confirmed, "repeated_denial")), writtenReport(1))
+			want := Tail{Bytes: int64(len(tail)), Held: held && tail != ""}
+			if tl != want {
+				t.Errorf("%s, held %v: tail %+v, want %+v", name, held, tl, want)
+			}
+		}
+	}
+}

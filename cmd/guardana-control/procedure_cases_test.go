@@ -138,6 +138,25 @@ func TestAFindingThatDiffersFailsAndSaysWhat(t *testing.T) {
 	}
 }
 
+// TestProcedureTestWhoseOutputFailsExitsOne: a run whose report cannot be
+// written exits 1 with one line saying so, whether its cases passed or
+// failed; 2 is for input refused before any case runs.
+func TestProcedureTestWhoseOutputFailsExitsOne(t *testing.T) {
+	for name, path := range map[string]string{
+		"a case failed": editedCases(t, "cases-0.2.json", func(doc map[string]any) { findingOf(t, doc, 1)["verdict"] = "SUSPECTED" }),
+		"every passed":  editedCases(t, "cases-0.2.json", func(map[string]any) {}),
+	} {
+		t.Run(name, func(t *testing.T) {
+			var stderr bytes.Buffer
+			code := run([]string{"procedure", "test", path}, failingWriter{}, &stderr)
+			line := oneStderrLine(t, stderr.String())
+			if code != exitFail || !strings.Contains(line, "writing to standard output: broken pipe") {
+				t.Errorf("exit %d, stderr %q; want 1 and the failed write named", code, line)
+			}
+		})
+	}
+}
+
 // TestAMissingOrAnUnexpectedFindingFails: a finding expected and not made
 // fails, and so does a finding made and not expected; an empty expectation
 // is a claim that no finding is made, never a pass by default.
@@ -271,6 +290,9 @@ func TestACasesDocumentItCannotReadIsRefused(t *testing.T) {
 		"no case":                {"cases-0.2.json", func(d map[string]any) { d["cases"] = []any{} }, "cases: no case"},
 		"a name twice":           {"cases-0.2.json", func(d map[string]any) { caseOf(t, d, 1)["name"] = "a waiver taken" }, "cases.2.name: given to two cases"},
 		"an unknown event key":   {"cases-0.2.json", func(d map[string]any) { firstEvent(t, d)["eventID"] = "x" }, "cases.1.evidence.1.events.1: "},
+		"an event of major 99":   {"cases-0.2.json", func(d map[string]any) { firstEvent(t, d)["schemaVersion"] = "99.0" }, "cases.1.evidence.1.events.1: event: schema_version: want major 1"},
+		"an event of major 01":   {"cases-0.2.json", func(d map[string]any) { firstEvent(t, d)["schemaVersion"] = "01.0" }, "cases.1.evidence.1.events.1: event: schema_version: want major 1"},
+		"an event unversioned":   {"cases-0.2.json", func(d map[string]any) { delete(firstEvent(t, d), "schemaVersion") }, "cases.1.evidence.1.events.1: event: schema_version: want major 1"},
 		"whole left out":         {"cases-0.2.json", func(d map[string]any) { delete(evidenceOf(t, d), "whole") }, "cases.1.evidence.1.whole: missing"},
 		"a path and events":      {"cases-0.2.json", func(d map[string]any) { evidenceOf(t, d)["path"] = "x.jsonl" }, "cases.1.evidence.1: a path or events, not both"},
 		"a closed run unstated":  {"cases-0.2.json", func(d map[string]any) { delete(caseOf(t, d, 0)["run"].(map[string]any), "closed") }, "cases.1.run.closed: missing"},

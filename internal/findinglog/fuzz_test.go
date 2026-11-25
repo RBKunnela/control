@@ -25,9 +25,12 @@ func FuzzReadLog(f *testing.F) {
 	f.Add([]byte("{}\n\r\n\n"))
 	f.Add([]byte(""))
 	f.Fuzz(func(t *testing.T, body []byte) {
-		got, err := readCommitted(bytes.NewReader(body), int64(len(body)))
+		got, committed, err := readCommitted(bytes.NewReader(body), int64(len(body)))
 		if err != nil {
 			return
+		}
+		if committed < 0 || committed > int64(len(body)) {
+			t.Fatalf("the committed writes end at %d of %d bytes", committed, len(body))
 		}
 		wholeWrites(t, got)
 		var again []byte
@@ -38,9 +41,9 @@ func FuzzReadLog(f *testing.F) {
 			}
 			again = append(again, l...)
 		}
-		back, err := readCommitted(bytes.NewReader(again), int64(len(again)))
-		if err != nil || len(back) != len(got) {
-			t.Fatalf("the rewritten log reads as %d records, %v; want %d", len(back), err, len(got))
+		back, end, err := readCommitted(bytes.NewReader(again), int64(len(again)))
+		if err != nil || len(back) != len(got) || end != int64(len(again)) {
+			t.Fatalf("the rewritten log reads as %d records ending at %d, %v; want %d ending at %d", len(back), end, err, len(got), len(again))
 		}
 		for i := range got {
 			if !proto.Equal(back[i], got[i]) {

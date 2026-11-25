@@ -51,12 +51,30 @@ func TestMain(m *testing.M) {
 // input carries: fail=<id> exits 3; hang=<id> starts a sleeping child,
 // records its pid in dir/grandchild and sleeps; linger=<id> does the same
 // but exits 0 at once, the child holding its standard error; detach=<id>
-// exits 0 at once, the child holding no output of its.
+// exits 0 at once, the child holding no output of its. Mode "env" first
+// writes its environment to dir/env, one variable a line, then delivers;
+// mode "closed" closes its standard input unread, creates dir/closed and
+// exits 0.
 func helper(mode, dir string, rules []string) int {
-	if mode == "sleep" {
+	switch mode {
+	case "sleep":
 		time.Sleep(time.Hour)
 		return 0
+	case "closed":
+		if os.Stdin.Close() != nil || os.WriteFile(filepath.Join(dir, "closed"), nil, 0o600) != nil {
+			return 9
+		}
+		return 0
+	case "env":
+		if os.WriteFile(filepath.Join(dir, "env"), []byte(strings.Join(os.Environ(), "\n")+"\n"), 0o600) != nil {
+			return 9
+		}
 	}
+	return deliverAs(dir, rules)
+}
+
+// deliverAs is the helper reading its line and obeying its rules.
+func deliverAs(dir string, rules []string) int {
 	in, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		return 9

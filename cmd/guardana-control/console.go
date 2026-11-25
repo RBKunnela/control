@@ -133,26 +133,32 @@ func servePage(ctx context.Context, c *consoleFlags, o console.Options, stdin io
 	}
 	served := make(chan error, 1)
 	go func() { served <- srv.Serve(ln) }()
-	var stdinDone <-chan struct{}
+	var stdinDone <-chan error
 	if c.untilStdinCloses {
 		stdinDone = watchStdin(stdin)
 	}
+	var stdinErr error
 	select {
 	case err := <-served:
 		return fail(stderr, consoleName, err)
 	case <-ctx.Done():
-	case <-stdinDone:
+	case stdinErr = <-stdinDone:
 	}
-	return stopPage(srv, served, stderr)
+	status := stopPage(srv, served, stderr)
+	if stdinErr != nil && status == exitOK {
+		return fail(stderr, consoleName, fmt.Errorf("reading standard input: %w", stdinErr))
+	}
+	return status
 }
 
-// watchStdin closes the returned channel when stdin ends. A read error ends
-// it too: a pipe that cannot be read can no longer say its writer is alive.
-func watchStdin(stdin io.Reader) <-chan struct{} {
-	done := make(chan struct{})
+// watchStdin sends on the returned channel when stdin ends: nil at its end,
+// or the read error. A read error ends it too, since a pipe that cannot be
+// read can no longer say its writer is alive, but it is not that end.
+func watchStdin(stdin io.Reader) <-chan error {
+	done := make(chan error, 1)
 	go func() {
-		_, _ = io.Copy(io.Discard, stdin)
-		close(done)
+		_, err := io.Copy(io.Discard, stdin)
+		done <- err
 	}()
 	return done
 }

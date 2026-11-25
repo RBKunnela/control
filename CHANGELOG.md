@@ -30,6 +30,14 @@ verify one.
   naming the member. Add the project the run's record names. The format
   stays `0.1`, `experimental`
   ([test a procedure](docs/guides/test-a-procedure.md#2-write-a-case)).
+- **Breaking:** `notify` runs the program with only `PATH`, `HOME`, `LANG`,
+  `LC_ALL`, `TMPDIR` and `USER` of its own environment, and with each
+  variable a new, repeatable `--env <name>` names; a name not set is refused
+  with exit 2 before any program runs, and no value is printed. The program
+  got the whole environment, a credential included. A program that reads a
+  token, a proxy or a certificate path from its environment no longer gets
+  it, and may still exit 0: name each variable it needs with `--env`
+  ([supervision](docs/reference/supervision.md#notify)).
 
 ### Added
 
@@ -352,6 +360,32 @@ verify one.
   [Claude Code hooks](docs/reference/claude-code-hooks.md) credits a decision
   to a sub-agent's `Write` only when the trail holds more decided writes of that file than the other
   calls that wrote it could account for.
+- `procedure test` refuses an inline event whose `schemaVersion` is of
+  another major or not `MAJOR.MINOR`, as the export reader refuses it; such
+  an event was judged as if this build could read it.
+- `procedure test` exits 1 when it cannot write its report, as the exit
+  status table says for a failed case; it exited 2, the status of input
+  refused before any case ran.
+- `notify` counts an alert whose line could not be written to the program,
+  its standard input closed first, as a failed delivery; it marked the alert
+  delivered when the program then exited 0.
+- `notify` exits 1 on an interrupt while the log held only delivered alerts
+  and informs, and when the log ends in a write no report closed and no
+  writer holds, naming its bytes; both exited 0.
+- `run` exits 1 when the spool failed to close a segment it retired before
+  the stop; the failure was logged and the run exited 0.
+- `spool drain` creates the drained file and syncs it through the directory
+  it judged, so a link in the path retargeted at the spool after the check
+  cannot put the file in the spool.
+- `run` returns the error of a listener that failed on its own while the
+  stop was under way; it was dropped, and the run could exit 0.
+- `dev` refuses a configuration that sets `health.socket`; it started the
+  plane with that socket, outside its state directory and off the loopback
+  listeners its page names.
+- `console --until-stdin-closes` exits 1 when its standard input fails to
+  read, naming the failure; it stopped as at the input's end and exited 0.
+- The evidence-report example refuses a version whose major has a leading
+  zero, `01.0`, as the contracts do; it read it as major 1.
 
 - `make quality`, as CI and `scripts/gate-commit.sh` start it, reads the
   `Makefile` by name, and the `Makefile` refuses a `GNUmakefile` or a

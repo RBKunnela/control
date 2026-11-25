@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -125,6 +126,31 @@ func TestAStdioPlaneWritesOnlyTheProtocolToStandardOutput(t *testing.T) {
 	if stray := strings.TrimSpace(sp.stray.String()); stray != "" {
 		t.Errorf("the plane wrote to its protocol stream lines that are not JSON-RPC:\n%s", stray)
 	}
+}
+
+// TestAStdioPlaneStoppedBySIGTERMExitsZero: a stop by signal, the agent
+// still connected, is a clean stop: the listener answering it with the
+// context's error is not a failure of the run.
+func TestAStdioPlaneStoppedBySIGTERMExitsZero(t *testing.T) {
+	rp := newRunsPlane(t, "stdio")
+	run := rp.open()
+	sp := rp.stdioAgent(writeToken(t, t.TempDir(), "run.token", run.token, 0o600))
+	expectRan(t, "a call", callTool(t, sp.cs, toolSendMail))
+	sp.once.Do(func() {
+		if err := sp.cmd.Process.Signal(syscall.SIGTERM); err != nil {
+			t.Fatal(err)
+		}
+		select {
+		case err := <-sp.done:
+			if err != nil {
+				t.Errorf("the plane stopped by SIGTERM: %v, want exit 0:\n%s", err, sp.stderr.String())
+			}
+		case <-time.After(15 * time.Second):
+			_ = sp.cmd.Process.Kill()
+			<-sp.done
+			t.Errorf("the stdio plane did not stop within 15s of SIGTERM:\n%s", sp.stderr.String())
+		}
+	})
 }
 
 // TestARunClosedUnderAStdioPlaneIsRefusedAtTheNextMessage: a stdio plane

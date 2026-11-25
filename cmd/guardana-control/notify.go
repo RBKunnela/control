@@ -19,16 +19,16 @@ import (
 const (
 	notifyName = "notify"
 	notifyForm = "--findings <dir> --state <dir> [--init] [--timeout <duration>]\n" +
-		"      -- <program> [<arg>]..."
+		"      [--env <name>]... -- <program> [<arg>]..."
 	notifyUsage = "takes --findings and --state once each, then -- and the program to deliver to"
 )
 
 const defaultNotifyTimeout = 30 * time.Second
 
 type notifyArgs struct {
-	findings, state valueList
-	init            bool
-	timeout         time.Duration
+	findings, state, env valueList
+	init                 bool
+	timeout              time.Duration
 }
 
 func notifyFlags(command string, out io.Writer) (*flag.FlagSet, *notifyArgs) {
@@ -38,6 +38,7 @@ func notifyFlags(command string, out io.Writer) (*flag.FlagSet, *notifyArgs) {
 	flags.Var(&a.state, "state", "the state `dir`, owner-only, that names what was delivered; given once")
 	flags.BoolVar(&a.init, "init", false, "start a state in a directory that holds none, delivering every alert again")
 	flags.DurationVar(&a.timeout, "timeout", defaultNotifyTimeout, "how long one delivery may run before its process group is killed")
+	flags.Var(&a.env, "env", "pass the variable `name` of this environment, which must be set, to the program; repeatable")
 	return flags, a
 }
 
@@ -47,9 +48,10 @@ func notifyFlagSet(command string, out io.Writer) *flag.FlagSet {
 }
 
 // notifyCommand delivers each alert of the findings log the state has not
-// marked to the program. It exits 0 when no delivery failed, 1 when one did
-// or the run stopped after a program ran, and 2, printing nothing, on a usage
-// error or a refusal before any program ran.
+// marked to the program. It exits 0 when no delivery failed, 1 when one did,
+// the log ends in a write no report closed and no writer holds, or the run
+// stopped after a program ran, and 2, printing nothing, on a usage error or a
+// refusal before any program ran.
 func notifyCommand(args []string, stdout, stderr io.Writer) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -74,7 +76,7 @@ func runNotify(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	if err != nil {
 		return fail(stderr, notifyName, err)
 	}
-	if sum.Failed != 0 {
+	if sum.Failed != 0 || sum.Unclosed != 0 {
 		return exitFail
 	}
 	return exitOK
@@ -96,7 +98,7 @@ func notifyOptions(args []string) (notify.Options, error) {
 	}
 	return notify.Options{
 		FindingsDir: a.findings[0], StateDir: a.state[0], Init: a.init,
-		Program: args[sep+1], Args: args[sep+2:], Timeout: a.timeout,
+		Program: args[sep+1], Args: args[sep+2:], Timeout: a.timeout, Env: a.env,
 	}, nil
 }
 
@@ -114,6 +116,9 @@ func notifyLines(sum notify.Summary) []string {
 	var out []string
 	for _, f := range sum.Failures {
 		out = append(out, "failed "+oneLine(f.Key)+": "+oneLine(f.Err.Error()))
+	}
+	if sum.Unclosed != 0 {
+		out = append(out, fmt.Sprintf("unclosed: %d bytes after the last write a report closed, and no writer holds the log", sum.Unclosed))
 	}
 	return append(out, fmt.Sprintf("%d delivered, %d already delivered, %d failed, %d inform left",
 		sum.Delivered, sum.AlreadyDelivered, sum.Failed, sum.Inform))

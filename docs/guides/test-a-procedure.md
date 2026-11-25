@@ -104,7 +104,9 @@ the format does not have is refused:
   way.
 - `evidence` holds exports, each either `{"path": "<export file>"}`, a file
   the gateway's trail export wrote, or `{"whole": <bool>, "events": [...]}`
-  with the events as that export writes them.
+  with the events as that export writes them; an event whose
+  `schemaVersion` is of another major, or not `MAJOR.MINOR`, is refused as
+  the export reader refuses it.
 - `sources`, if given, are sources of an agent runtime's spans: `source_id`,
   `heartbeat_seconds`, `last_heard` (left out for a source never heard) and
   `observations`. `sources_not_read` names sources given and not found.
@@ -141,10 +143,11 @@ FAIL a resource outside the run: finding RESOURCE_OUTSIDE_RUN SUSPECTED run-aaaa
 
 ## Verify
 
-`procedure test` exits 0 when every case passed and 1 when any failed. A
-cases document it cannot read, a version other than `0.1`, a procedure the
-reader refuses, an export it cannot read, no case, or two cases of one name
-exit 2 with one line on stderr and nothing run.
+`procedure test` exits 0 when every case passed and 1 when any failed, or
+when it cannot write its report. A cases document it cannot read, a version
+other than `0.1`, a procedure the reader refuses, an export or an inline
+event it cannot read, no case, or two cases of one name exit 2 with one line
+on stderr and nothing run.
 
 ## Roll back
 

@@ -157,6 +157,14 @@ and in each run of <code>tree</code>; a document without it is refused with exit
 naming the member. Add the project the run's record names. The format
 stays <code>0.1</code>, <code>experimental</code>
 (<a href="/docs/guides/test-a-procedure#2-write-a-case">test a procedure</a>).</li>
+<li><strong>Breaking:</strong> <code>notify</code> runs the program with only <code>PATH</code>, <code>HOME</code>, <code>LANG</code>,
+<code>LC_ALL</code>, <code>TMPDIR</code> and <code>USER</code> of its own environment, and with each
+variable a new, repeatable <code>--env &lt;name&gt;</code> names; a name not set is refused
+with exit 2 before any program runs, and no value is printed. The program
+got the whole environment, a credential included. A program that reads a
+token, a proxy or a certificate path from its environment no longer gets
+it, and may still exit 0: name each variable it needs with <code>--env</code>
+(<a href="/docs/reference/supervision#notify">supervision</a>).</li>
 </ul>
 <h3 id="added">Added</h3>
 <ul>
@@ -614,6 +622,52 @@ refused for its depth.</p>
 <a href="/docs/reference/claude-code-hooks">Claude Code hooks</a> credits a decision
 to a sub-agent's <code>Write</code> only when the trail holds more decided writes of that file than the other
 calls that wrote it could account for.</p>
+</li>
+<li>
+<p><code>procedure test</code> refuses an inline event whose <code>schemaVersion</code> is of
+another major or not <code>MAJOR.MINOR</code>, as the export reader refuses it; such
+an event was judged as if this build could read it.</p>
+</li>
+<li>
+<p><code>procedure test</code> exits 1 when it cannot write its report, as the exit
+status table says for a failed case; it exited 2, the status of input
+refused before any case ran.</p>
+</li>
+<li>
+<p><code>notify</code> counts an alert whose line could not be written to the program,
+its standard input closed first, as a failed delivery; it marked the alert
+delivered when the program then exited 0.</p>
+</li>
+<li>
+<p><code>notify</code> exits 1 on an interrupt while the log held only delivered alerts
+and informs, and when the log ends in a write no report closed and no
+writer holds, naming its bytes; both exited 0.</p>
+</li>
+<li>
+<p><code>run</code> exits 1 when the spool failed to close a segment it retired before
+the stop; the failure was logged and the run exited 0.</p>
+</li>
+<li>
+<p><code>spool drain</code> creates the drained file and syncs it through the directory
+it judged, so a link in the path retargeted at the spool after the check
+cannot put the file in the spool.</p>
+</li>
+<li>
+<p><code>run</code> returns the error of a listener that failed on its own while the
+stop was under way; it was dropped, and the run could exit 0.</p>
+</li>
+<li>
+<p><code>dev</code> refuses a configuration that sets <code>health.socket</code>; it started the
+plane with that socket, outside its state directory and off the loopback
+listeners its page names.</p>
+</li>
+<li>
+<p><code>console --until-stdin-closes</code> exits 1 when its standard input fails to
+read, naming the failure; it stopped as at the input's end and exited 0.</p>
+</li>
+<li>
+<p>The evidence-report example refuses a version whose major has a leading
+zero, <code>01.0</code>, as the contracts do; it read it as major 1.</p>
 </li>
 <li>
 <p><code>make quality</code>, as CI and <code>scripts/gate-commit.sh</code> start it, reads the

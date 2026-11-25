@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	findingv1alpha1 "github.com/guardana/control/api/gen/go/guardana/control/finding/v1alpha1"
@@ -27,9 +28,13 @@ type Options struct {
 	// it is ErrInitialised.
 	Init bool
 	// Program and Args are run without a shell, once per delivery, in this
-	// process's environment and working directory.
+	// process's working directory, with only PATH, HOME, LANG, LC_ALL, TMPDIR,
+	// USER and the variables Env names of its environment, each where set.
 	Program string
 	Args    []string
+	// Env names the variables of this process's environment the program
+	// also receives; each must be set here.
+	Env []string
 	// Timeout bounds one delivery; at it the program's group is killed.
 	Timeout time.Duration
 	// Stdout and Stderr take the program's output; a nil one discards it.
@@ -37,9 +42,12 @@ type Options struct {
 }
 
 // Summary counts what one run did with each finding record it read. A
-// caller exits 1 when Failed is not zero.
+// caller exits 1 when Failed or Unclosed is not zero.
 type Summary struct {
 	Delivered, AlreadyDelivered, Failed, Inform int
+	// Unclosed counts the bytes past the log's last write a report closed
+	// when no writer held the log: a write that will never be closed.
+	Unclosed int64
 	// Failures name each failed delivery by its key, in log order.
 	Failures []Failure
 }
@@ -107,6 +115,23 @@ func (o Options) check() error {
 	case o.Timeout <= 0:
 		return fmt.Errorf("%w: a timeout of %s", ErrOptions, o.Timeout)
 	}
+	for _, name := range o.Env {
+		if err := envName(name); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// envName refuses a name no variable can have, or one this process does not
+// set. A name holding '=' may hold a value, so that refusal does not quote it.
+func envName(name string) error {
+	if name == "" || strings.ContainsAny(name, "=\x00") {
+		return fmt.Errorf("%w: a variable to pass is named with no name, an '=' or a NUL", ErrOptions)
+	}
+	if _, ok := os.LookupEnv(name); !ok {
+		return fmt.Errorf("%w: the variable %q to pass is not set", ErrOptions, name)
+	}
 	return nil
 }
 
@@ -119,12 +144,22 @@ type deliveries struct {
 
 // all reads the log once through findinglog, which judges it and returns the
 // records its reports close, and once raw, for the bytes of each record's
-// line: the n records are the file's first n lines.
+// line: the n records are the file's first n lines. Bytes past the last
+// committed write that no writer holds are counted as Unclosed.
 func (d *deliveries) all(ctx context.Context) error {
-	path := filepath.Join(d.o.FindingsDir, findinglog.FileName)
-	records, err := findinglog.ReadFile(path)
-	if err != nil || len(records) == 0 {
+	if err := ctx.Err(); err != nil {
 		return err
+	}
+	path := filepath.Join(d.o.FindingsDir, findinglog.FileName)
+	records, tail, err := findinglog.ReadFileTail(path)
+	if err != nil {
+		return err
+	}
+	if !tail.Held {
+		d.sum.Unclosed = tail.Bytes
+	}
+	if len(records) == 0 {
+		return nil
 	}
 	f, err := d.s.ops.openLog(path)
 	if err != nil {
@@ -139,6 +174,9 @@ func (d *deliveries) all(ctx context.Context) error {
 // decided on it: a line that is not is a log changed since it was judged.
 func (d *deliveries) each(ctx context.Context, records []*findingv1alpha1.Record, lines *bufio.Reader) error {
 	for i, rec := range records {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		line, err := lines.ReadSlice('\n')
 		if err != nil {
 			return fmt.Errorf("%w: line %d of %d: %w", ErrChanged, i+1, len(records), err)

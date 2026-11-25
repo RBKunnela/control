@@ -45,6 +45,8 @@ Before it creates or binds anything, dev refuses, with status 1:
   loopback, a host name included: its own listeners, every
   `upstreams[].endpoint`, and `pdp.identifier`, `pdp.evaluation_endpoint`
   and `pdp.proxy`;
+- a `health.socket`: dev answers its health on the loopback address it
+  binds, and on no socket outside its state directory;
 - a `guardana-control` beside it that is missing or of another version;
 - a system temporary directory under which its collector's socket path would
   pass 103 bytes, naming `TMPDIR`.

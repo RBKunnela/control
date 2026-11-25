@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"regexp"
@@ -199,6 +200,21 @@ func TestConsolePrintsOneLineAndStopsWhenStdinCloses(t *testing.T) {
 		if strings.Contains(dirText(t, dir)+fileBytes(t, file), token) {
 			t.Error("a file the page wrote carries a token")
 		}
+	}
+}
+
+// TestConsoleStdinThatCannotBeReadStopsItWithOne: stdin failing to read
+// stops the page as its end does, but exits 1 naming the failure: a read
+// error is not the writer saying it is done.
+func TestConsoleStdinThatCannotBeReadStopsItWithOne(t *testing.T) {
+	dir, _ := newStore(t)
+	p := startPage(context.Background(), t, "--approvals", dir, "--approver-id", "page-approver", "--until-stdin-closes")
+	if err := p.stdin.CloseWithError(errors.New("stdin unreadable")); err != nil {
+		t.Fatal(err)
+	}
+	code := p.exited(t, 2*time.Second)
+	if line := oneStderrLine(t, p.stderr.String()); code != exitFail || !strings.Contains(line, "stdin unreadable") {
+		t.Errorf("exit %d, stderr %q; want 1 and the read failure named", code, line)
 	}
 }
 

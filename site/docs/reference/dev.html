@@ -163,6 +163,8 @@ key;</li>
 loopback, a host name included: its own listeners, every
 <code>upstreams[].endpoint</code>, and <code>pdp.identifier</code>, <code>pdp.evaluation_endpoint</code>
 and <code>pdp.proxy</code>;</li>
+<li>a <code>health.socket</code>: dev answers its health on the loopback address it
+binds, and on no socket outside its state directory;</li>
 <li>a <code>guardana-control</code> beside it that is missing or of another version;</li>
 <li>a system temporary directory under which its collector's socket path would
 pass 103 bytes, naming <code>TMPDIR</code>.</li>

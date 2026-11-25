@@ -232,7 +232,9 @@ func (s *Spool) usable() error {
 }
 
 // Close releases the log; a later operation answers ErrClosed. Under
-// FsyncInterval the records since the last tick are forced to disk first.
+// FsyncInterval the records since the last tick are forced to disk first. A
+// spool an I/O failure broke answers that failure here too, since the
+// segment it left may be the one no later close reaches.
 func (s *Spool) Close() error {
 	s.mu.Lock()
 	if !s.open || s.closed {
@@ -253,7 +255,7 @@ func (s *Spool) Close() error {
 		err = errors.Join(s.cur.file.Sync(), s.cur.file.Close())
 		s.cur = nil
 	}
-	return errors.Join(err, s.unlock())
+	return errors.Join(err, s.broken, s.unlock())
 }
 
 // Stats reports the log as it stands. A spool nobody opened, or one already

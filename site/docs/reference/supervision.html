@@ -145,7 +145,7 @@ no plane reads what they write
     [--view &lt;file&gt; [--view-all]]
     [--roster &lt;file&gt; --root-key &lt;file&gt; --tenant &lt;t&gt; --project &lt;p&gt;]
 guardana-control notify --findings &lt;dir&gt; --state &lt;dir&gt; [--init] [--timeout &lt;duration&gt;]
-    -- &lt;program&gt; [&lt;arg&gt;]...
+    [--env &lt;name&gt;]... -- &lt;program&gt; [&lt;arg&gt;]...
 </code></pre>
 <h2 id="the-procedure">The procedure</h2>
 <p>A strict JSON document of at most 64 KiB: an unknown or repeated member, a
@@ -381,19 +381,18 @@ is never read.</p>
 </div>
 <p>The reader refuses an unknown schema or a member its schema lacks.</p>
 <h2 id="notify">notify</h2>
-<p><code>notify</code> hands each <code>alert</code> record, in log order, one line on its
-standard input, to the program after <code>--</code>, without a shell, and kills its
-process group at the timeout (30 s by default) and again once the program
-exits. A delivery is keyed on the
-finding id and verdict and marked in the state only after the program exits
-0, so a crash delivers that record again: a receiver drops a key it has
-seen. The state is an owner-only directory, locked while in use; <code>--init</code>
-starts one and is refused over one. The next run retries a failed delivery,
-and only a new state repeats a delivered one. Exit 0 when nothing
-failed; 1 when a delivery failed, on an interrupt, or when the run stopped
-after a program had run (a mark not on disk, a log
-changed under it); 2, printing nothing, when the state or the log is refused
-before any program ran.</p>
+<p><code>notify</code> hands each <code>alert</code> record, in log order, one line on standard
+input, to the program after <code>--</code>, without a shell, with only <code>PATH</code>,
+<code>HOME</code>, <code>LANG</code>, <code>LC_ALL</code>, <code>TMPDIR</code> and <code>USER</code> of its environment; name any
+other it needs with <code>--env</code>, refused if unset. Its process group is killed
+at the timeout (default 30 s) and on exit. A delivery, keyed by finding id
+and verdict, is marked only once the program took its whole line and exited
+0, so a crash delivers it again; receivers drop seen keys. The owner-only
+state is locked in use; <code>--init</code> starts one, refused over one. A failed
+delivery is retried; a new state alone repeats a delivered one. Exit 0 when
+nothing failed; 1 when a delivery failed, on an interrupt, on an unclosed
+write no writer holds, or when the run stopped after a program ran; 2,
+printing nothing, on a state, log or <code>--env</code> refused before any program ran.</p>
 <h2 id="findings-export">findings export</h2>
 <pre><code>guardana-control findings export --findings &lt;dir&gt; [--after &lt;cursor&gt;] [--limit &lt;n&gt;]
     [--max-bytes &lt;n&gt;]

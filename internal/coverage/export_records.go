@@ -110,8 +110,8 @@ func (er *exportReader) readEvent(line []byte) error {
 	if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(raw, ev); err != nil {
 		return errors.New("event: not one Event")
 	}
-	if !versionOfMajor(ev.GetSchemaVersion(), eventMajor()) {
-		return fmt.Errorf("event: schema_version: want major %s", eventMajor())
+	if err := CheckEventVersion(ev); err != nil {
+		return err
 	}
 	er.x.Events++
 	if er.keep {
@@ -231,6 +231,16 @@ func (er *exportReader) readTrailer(line []byte) error {
 		return err
 	}
 	er.trailer = true
+	return nil
+}
+
+// CheckEventVersion refuses an event an export could not carry: one whose
+// schema_version is not MAJOR.MINOR in decimal of the major this build was
+// generated from.
+func CheckEventVersion(ev *controlv1.Event) error {
+	if !versionOfMajor(ev.GetSchemaVersion(), eventMajor()) {
+		return fmt.Errorf("event: schema_version: want major %s", eventMajor())
+	}
 	return nil
 }
 

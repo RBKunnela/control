@@ -256,6 +256,9 @@ func defaultOf(key string) string {
 // run as a command, and a decision point key left empty, name no address;
 // the collector is dev's own socket.
 func devAddresses(cfg *gatewayconfig.Config) error {
+	if cfg.Health.Socket != "" {
+		return errors.New("health.socket: a dev plane answers its health on the loopback address it binds, and on no socket")
+	}
 	for _, a := range [][2]string{
 		{"listener.address", cfg.Listener.Address},
 		{"health.address", cfg.Health.Address},

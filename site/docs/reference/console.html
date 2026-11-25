@@ -178,7 +178,8 @@ stderr.</p>
 its standard input ends, which lets the process that started it stop it by
 closing a pipe. A request still running a second into the stop is dropped.
 Either way it exits 0, or 1 when the page or the approvals store cannot be
-closed cleanly.</p>
+closed cleanly or its standard input failed to read: that stops the page
+too, since the pipe can no longer say its writer is alive.</p>
 <h2 id="what-it-refuses">What it refuses</h2>
 <ul>
 <li>A request under any host name but <code>127.0.0.1:&lt;port&gt;</code>, so a name that

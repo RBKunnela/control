@@ -26,8 +26,12 @@ func TestMain(m *testing.M) {
 }
 
 // notifyHelper appends its standard input to dir/received, writes a word to
-// each of its outputs, and exits 0 in mode "ok" and 1 in mode "fail".
+// each of its outputs, and exits 0 in mode "ok" and 1 in mode "fail". Mode
+// "env" first writes its environment to dir/env, one variable a line.
 func notifyHelper(mode, dir string) int {
+	if mode == "env" && os.WriteFile(filepath.Join(dir, "env"), []byte(strings.Join(os.Environ(), "\n")+"\n"), 0o600) != nil {
+		return 9
+	}
 	in, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		return 9

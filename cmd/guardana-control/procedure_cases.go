@@ -238,6 +238,11 @@ func (c *casesReader) export(raw json.RawMessage, where string) supervise.Export
 	for i, item := range c.list(m["events"], where+".events") {
 		ev := &controlv1.Event{}
 		c.message(item, at(where+".events", i), ev)
+		if c.err == nil {
+			if err := coverage.CheckEventVersion(ev); err != nil {
+				c.fail(at(where+".events", i), err)
+			}
+		}
 		x.Events = append(x.Events, ev)
 	}
 	return x

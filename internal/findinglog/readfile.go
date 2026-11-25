@@ -50,19 +50,62 @@ func ReadFile(path string) ([]*findingv1alpha1.Record, error) {
 	if info.Size() > MaxLogBytes {
 		return nil, fmt.Errorf("%w: %d bytes, limit %d", ErrTooLarge, info.Size(), MaxLogBytes)
 	}
-	return readCommitted(f, info.Size())
+	out, _, err := readCommitted(f, info.Size())
+	return out, err
+}
+
+// Tail is what a log held past its last committed write when it was read.
+type Tail struct {
+	// Bytes counts the lines no report closes and the bytes after the last
+	// newline.
+	Bytes int64
+	// Held says a writer held the log then, or the file's size changed
+	// while it was read, so the tail is a write still open; it is asked only
+	// when Bytes is not zero.
+	Held bool
+}
+
+// ReadFileTail is ReadFile, judging the file as it does, that also returns
+// the log's tail: a writer that holds the log is still writing it, and
+// without one the tail is a write no report will close.
+func ReadFileTail(path string) ([]*findingv1alpha1.Record, Tail, error) {
+	f, size, err := openToRead(path)
+	if err != nil {
+		return nil, Tail{}, err
+	}
+	defer func() { _ = f.Close() }()
+	out, committed, err := readCommitted(f, size)
+	if err != nil || committed == size {
+		return out, Tail{}, err
+	}
+	held, err := heldByWriter(f)
+	if err != nil {
+		return nil, Tail{}, err
+	}
+	if !held {
+		// A writer that committed and let go after the size was taken has
+		// changed the size: that tail was a write in progress.
+		now, err := f.Stat()
+		if err != nil {
+			return nil, Tail{}, err
+		}
+		held = now.Size() != size
+	}
+	return out, Tail{Bytes: size - committed, Held: held}, nil
 }
 
 // readCommitted reads the first size bytes of r as Open judges them and
-// returns the header and the records of every write a report closes.
-func readCommitted(r io.ReaderAt, size int64) ([]*findingv1alpha1.Record, error) {
+// returns the header and the records of every write a report closes, and
+// where the last of those writes ends.
+func readCommitted(r io.ReaderAt, size int64) ([]*findingv1alpha1.Record, int64, error) {
 	end, err := lastLineEnd(r, size)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	var out []*findingv1alpha1.Record
-	if _, _, err := scanLog(io.NewSectionReader(r, 0, end), func(write []*findingv1alpha1.Record) { out = append(out, write...) }); err != nil {
-		return nil, err
+	_, committed, err := scanLog(io.NewSectionReader(r, 0, end), func(write []*findingv1alpha1.Record) { out = append(out, write...) })
+	if err != nil {
+		return nil, 0, err
 	}
-	return out, nil
+	return out, committed, nil
 }

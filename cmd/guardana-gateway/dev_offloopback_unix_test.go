@@ -3,6 +3,9 @@
 package main
 
 import (
+	"errors"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -36,4 +39,28 @@ func TestDevRefusesAnUpstreamOrDecisionPointOffTheLoopback(t *testing.T) {
 			untouched(t, state)
 		})
 	}
+}
+
+// TestDevRefusesAHealthSocket: a demo naming health.socket, an owner-only
+// directory outside --state, is refused by that key before dev lays out or
+// binds anything, so no listener answers off the loopback and outside the
+// state directory.
+func TestDevRefusesAHealthSocket(t *testing.T) {
+	t.Parallel()
+	dir, err := os.MkdirTemp("", "hs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	socket := filepath.Join(dir, "h.sock")
+	d := writeDemo(t, newLiveUpstream(t).url, "5ms", "health:\n  socket: "+socket+"\n")
+	state := filepath.Join(t.TempDir(), "state")
+	code, stdout, stderr := runDevToEnd(t, 30*time.Second, "--config", d.config, "--policy", d.policy, "--state", state)
+	if _, err := os.Lstat(socket); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("dev bound the health socket %s: %v", socket, err)
+	}
+	if code != exitFail || stdout != "" || !strings.Contains(stderr, "dev: health.socket: ") {
+		t.Fatalf("exit %d, stdout %q, stderr %q; want 1 naming health.socket, and nothing printed", code, stdout, stderr)
+	}
+	untouched(t, state)
 }

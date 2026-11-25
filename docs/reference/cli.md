@@ -187,7 +187,7 @@ usage:
       [--view <file> [--view-all]]
       [--roster <file> --root-key <file> --tenant <t> --project <p>]
   guardana-control notify --findings <dir> --state <dir> [--init] [--timeout <duration>]
-      -- <program> [<arg>]...
+      [--env <name>]... -- <program> [<arg>]...
   guardana-control findings export --findings <dir> [--after <cursor>] [--limit <n>]
       [--max-bytes <n>]
   guardana-control route sign --key <file> --out <file> <route.json>

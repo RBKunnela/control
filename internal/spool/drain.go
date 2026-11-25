@@ -7,8 +7,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-
-	"github.com/guardana/control/internal/files"
 )
 
 // ErrDrainTarget is a drain whose file would land in the spool's own
@@ -37,12 +35,25 @@ type Drained struct {
 // quarantine: a record may be drained twice, and is never lost. The segments
 // are listed and left as they are.
 func Drain(dir, out string) (Drained, error) {
-	return drain(dir, out, nil)
+	return drain(dir, out, drainHooks{})
 }
 
-// drain is Drain with written called once out is on disk and before the
-// quarantine is truncated: an error from it stops the drain there.
-func drain(dir, out string, written func() error) (_ Drained, err error) {
+// drainHooks are called at two points of a drain: checked once out's
+// directory was judged and before out is created, and written once out is
+// on disk and before the quarantine is truncated. An error from either stops
+// the drain there.
+type drainHooks struct {
+	checked, written func() error
+}
+
+func (h drainHooks) call(hook func() error) error {
+	if hook == nil {
+		return nil
+	}
+	return hook()
+}
+
+func drain(dir, out string, hooks drainHooks) (_ Drained, err error) {
 	root, err := openSpoolDir(dir)
 	if err != nil {
 		return Drained{}, err
@@ -53,7 +64,12 @@ func drain(dir, out string, written func() error) (_ Drained, err error) {
 		return Drained{}, err
 	}
 	defer func() { err = errors.Join(err, unlock()) }()
-	if err := outsideOf(root, out); err != nil {
+	parent, name, err := outsideOf(root, out)
+	if err != nil {
+		return Drained{}, err
+	}
+	defer func() { err = errors.Join(err, parent.Close()) }()
+	if err := hooks.call(hooks.checked); err != nil {
 		return Drained{}, err
 	}
 	s := &Spool{opts: Options{Dir: dir, openFile: openOSFile, openRead: openOSRead, syncDir: syncDir}, root: root}
@@ -65,13 +81,11 @@ func drain(dir, out string, written func() error) (_ Drained, err error) {
 		return Drained{}, err
 	}
 	d := Drained{Records: s.quarantine.records, Bytes: s.quarantine.size, Torn: size - s.quarantine.size}
-	if err := s.writeDrained(out); err != nil {
+	if err := s.writeDrained(parent, name, out); err != nil {
 		return Drained{}, err
 	}
-	if written != nil {
-		if err := written(); err != nil {
-			return Drained{}, s.stillQuarantined(out, err)
-		}
+	if err := hooks.call(hooks.written); err != nil {
+		return Drained{}, s.stillQuarantined(out, err)
 	}
 	if size == 0 {
 		return d, nil
@@ -88,33 +102,43 @@ func (s *Spool) stillQuarantined(out string, err error) error {
 		s.quarantine.records, out, err)
 }
 
-// outsideOf refuses an out whose directory is the spool's.
-func outsideOf(root *os.Root, out string) error {
-	parent, err := os.Stat(filepath.Dir(out))
+// outsideOf opens out's directory, refusing the spool's, and returns it with
+// out's name in it. The drained file is created and synced through what it
+// returns, so a link in out's path changed after the check cannot move it.
+func outsideOf(root *os.Root, out string) (*os.Root, string, error) {
+	dir, name := filepath.Split(out)
+	if dir == "" {
+		dir = "."
+	}
+	parent, err := os.OpenRoot(dir)
 	if err != nil {
-		return fmt.Errorf("spool: the drained file's directory: %w", err)
+		return nil, "", fmt.Errorf("spool: the drained file's directory: %w", err)
+	}
+	there, err := parent.Stat(".")
+	if err != nil {
+		return nil, "", errors.Join(fmt.Errorf("spool: the drained file's directory: %w", err), parent.Close())
 	}
 	spoolDir, err := root.Stat(".")
 	if err != nil {
-		return fmt.Errorf("spool: %w", err)
+		return nil, "", errors.Join(fmt.Errorf("spool: %w", err), parent.Close())
 	}
-	if os.SameFile(parent, spoolDir) {
-		return fmt.Errorf("%w: %q", ErrDrainTarget, out)
+	if os.SameFile(there, spoolDir) {
+		return nil, "", errors.Join(fmt.Errorf("%w: %q", ErrDrainTarget, out), parent.Close())
 	}
-	return nil
+	return parent, name, nil
 }
 
-// writeDrained creates out and writes the quarantine's whole records to it,
-// forcing the file and its directory to disk. A file it could not finish is
-// removed.
-func (s *Spool) writeDrained(out string) (err error) {
-	f, err := os.OpenFile(out, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600) //nolint:gosec // G304: the operator names the file to create
+// writeDrained creates name in parent, the file out names, and writes the
+// quarantine's whole records to it, forcing the file and parent to disk. A
+// file it could not finish is removed.
+func (s *Spool) writeDrained(parent *os.Root, name, out string) (err error) {
+	f, err := parent.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		return fmt.Errorf("spool: the drained file: %w", err)
 	}
 	defer func() {
 		if err != nil {
-			err = errors.Join(err, os.Remove(out))
+			err = errors.Join(err, parent.Remove(name))
 		}
 	}()
 	err = f.Chmod(0o600)
@@ -122,9 +146,9 @@ func (s *Spool) writeDrained(out string) (err error) {
 		err = s.copyQuarantine(f)
 	}
 	if err = errors.Join(err, f.Sync(), f.Close()); err != nil {
-		return fmt.Errorf("spool: the drained file: %w", err)
+		return fmt.Errorf("spool: the drained file %q: %w", out, err)
 	}
-	return files.SyncDir(filepath.Dir(out))
+	return syncDir(parent)
 }
 
 // copyQuarantine writes the line of every whole record the quarantine holds.

@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os/exec"
@@ -124,9 +125,10 @@ func callScript(t *testing.T, mcp, tool, args string) answer {
 }
 
 // TestTheTutorialsCallsBehaveAsItSays: on one interactive plane, the read
-// runs, the update is held, an approval lets the same update resume on the
-// held request, the trail command finds both requests whole, and the
-// counters show two executions and one hold. The page is not driven here: the
+// runs, the refund is blocked with RULE_DENY, the update is held, an approval
+// lets the same update resume on the held request, the trail command finds
+// the three requests whole, and the counters show two executions, one hold
+// and one block. The page is not driven here: the
 // approval is signed with the approvals command the page names.
 func TestTheTutorialsCallsBehaveAsItSays(t *testing.T) {
 	d, v := startInteractiveDev(t)
@@ -134,6 +136,8 @@ func TestTheTutorialsCallsBehaveAsItSays(t *testing.T) {
 	if read.Result.IsError || len(read.Result.Content) != 1 || !strings.HasPrefix(read.Result.Content[0].Text, "order ord-1: ") {
 		t.Fatalf("the read answered %+v", read)
 	}
+	refund := callScript(t, v["mcp"], "refund", `{"id":"ord-1","amount":"500.00"}`)
+	requireBlocked(t, refund, "RULE_DENY")
 	update := `{"id":"ord-1","status":"cancelled"}`
 	held := callScript(t, v["mcp"], "update_order", update)
 	if held.meta("answer") != "pending" || held.meta("approval_id") == "" || held.meta("request_id") == "" {
@@ -145,22 +149,32 @@ func TestTheTutorialsCallsBehaveAsItSays(t *testing.T) {
 	if resumed.Result.IsError || resumed.meta("answer") != "" || resumed.meta("request_id") != held.meta("request_id") {
 		t.Fatalf("the retry answered %+v, want a result on request %s", resumed, held.meta("request_id"))
 	}
-	requireRecorded(t, gateway, v, read.meta("request_id"), held.meta("request_id"))
+	requireRecorded(t, gateway, v, read.meta("request_id"), refund.meta("request_id"), held.meta("request_id"))
 	d.interrupt(t)
 }
 
-// requireRecorded requires the trail command to name every request and the
-// counters to show two executions and one hold.
+// requireBlocked requires an answer blocked with code, on a request of
+// its own.
+func requireBlocked(t *testing.T, a answer, code string) {
+	t.Helper()
+	if a.meta("answer") != "blocked" || !a.Result.IsError || a.meta("request_id") == "" ||
+		len(a.Result.Content) != 1 || !strings.Contains(a.Result.Content[0].Text, code) {
+		t.Fatalf("the call answered %+v, want it blocked with %s", a, code)
+	}
+}
+
+// requireRecorded requires the trail command to find each request's trail
+// whole and the counters to show two executions, one hold and one block.
 func requireRecorded(t *testing.T, gateway string, v map[string]string, requests ...string) {
 	t.Helper()
-	trailOut := waitForTrail(t, gateway, v["trail"])
+	trailOut := waitForTrail(t, gateway, v["trail"], len(requests))
 	for _, id := range requests {
 		if !strings.Contains(trailOut, "request="+id+" ") {
 			t.Errorf("the trail command does not name request %s:\n%s", id, trailOut)
 		}
 	}
 	metrics := get(t, v["metrics"])
-	for _, want := range []string{"_pipeline_executed_total 2\n", "_pipeline_pending_total 1\n"} {
+	for _, want := range []string{"_pipeline_executed_total 2\n", "_pipeline_pending_total 1\n", `_pipeline_blocks_total{code="RULE_DENY"} 1` + "\n"} {
 		if !strings.Contains(metrics, want) {
 			t.Errorf("/metrics lacks %q:\n%s", want, metrics)
 		}
@@ -193,18 +207,18 @@ func (d *interactiveDev) interrupt(t *testing.T) {
 	}
 }
 
-// waitForTrail runs the trail command until it finds two whole trails, the
+// waitForTrail runs the trail command until it finds n whole trails, the
 // spool having shipped them, within ten seconds.
-func waitForTrail(t *testing.T, gateway, trail string) string {
+func waitForTrail(t *testing.T, gateway, trail string, n int) string {
 	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
 	for {
 		out, err := exec.Command(gateway, "trail", trail).CombinedOutput() //nolint:gosec // G204: the binary this test built
-		if err == nil && strings.Contains(string(out), "trails 2: ok 2,") {
+		if err == nil && strings.Contains(string(out), fmt.Sprintf("trails %d: ok %d,", n, n)) {
 			return string(out)
 		}
 		if time.Now().After(deadline) {
-			t.Fatalf("the trail command did not find two whole trails within 10s: %v\n%s", err, out)
+			t.Fatalf("the trail command did not find %d whole trails within 10s: %v\n%s", n, err, out)
 		}
 		time.Sleep(50 * time.Millisecond)
 	}

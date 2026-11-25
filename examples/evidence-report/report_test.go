@@ -96,6 +96,7 @@ func TestReport(t *testing.T) {
 			code: 1, stderr: "a type this reader does not know"},
 		{name: "an unknown major", in: newExport("2.0").event(r1...).whole(), code: 1, stderr: "major 2"},
 		{name: "a version that is not MAJOR.MINOR", in: newExport("1").event(r1...).whole(), code: 1, stderr: "MAJOR.MINOR"},
+		{name: "a major spelled with a leading zero", in: newExport("01.0").event(r1...).whole(), code: 1, stderr: "MAJOR.MINOR"},
 		{name: "another format", in: strings.Replace(newExport("1.0").event(r1...).whole(), exportFormat, "other.evidence-export", 1),
 			code: 1, stderr: "format"},
 		{name: "no header", in: strings.Join(newExport("1.0").event(r1...).lines[1:], "\n") + "\n", code: 1, stderr: "header"},
@@ -149,6 +150,10 @@ func eventCases(r1 []string) []reportCase {
 	backwards := newExport("1.0").event(r1...).raw(`{"type":"gap","offset":100,"cursor":"v1:` + exportSource + `:200:` + digest("\n") + `","reason":"malformed"}`)
 	return []reportCase{
 		{name: "an event of another major", in: newExport("1.0").event(r1[:3]...).event(strings.Replace(r1[3], `"1.0"`, `"2.0"`, 1)).whole(),
+			rows:   []string{"t\tp\tr1\trun-r1\tread_order\tALLOW\tRULE_ALLOW\t-\tno\t-\topen\tno event ends the action"},
+			totals: "totals: requests 1, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 1, unknown 0; gaps 0, duplicates 0, conflicting 0, refused 1" + endReached,
+			code:   1, stderr: "schema_version"},
+		{name: "an event whose major has a leading zero", in: newExport("1.0").event(r1[:3]...).event(strings.Replace(r1[3], `"1.0"`, `"01.0"`, 1)).whole(),
 			rows:   []string{"t\tp\tr1\trun-r1\tread_order\tALLOW\tRULE_ALLOW\t-\tno\t-\topen\tno event ends the action"},
 			totals: "totals: requests 1, completed 0, failed 0, uncertain 0, aborted 0, blocked 0, open 1, unknown 0; gaps 0, duplicates 0, conflicting 0, refused 1" + endReached,
 			code:   1, stderr: "schema_version"},

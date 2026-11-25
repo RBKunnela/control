@@ -184,7 +184,7 @@ func (p *plane) run(ctx context.Context, stdout io.Writer, listen listenFunc, dr
 		return err
 	}
 	var wg sync.WaitGroup
-	stopped := make(chan error, len(bound)+1)
+	stopped := make(chan error, len(bound)+2)
 	p.startReaders(ctx, exportCtx, &wg)
 	wg.Add(1)
 	go func() {
@@ -220,7 +220,21 @@ func (p *plane) run(ctx context.Context, stdout io.Writer, listen listenFunc, dr
 	p.drainSpool(drain)
 	stopExport()
 	wg.Wait()
-	return errors.Join(first, cut, p.lostClosings())
+	close(stopped)
+	return errors.Join(first, lateStops(stopped), cut, p.lostClosings())
+}
+
+// lateStops joins what the listeners sent on stopped after the first: a
+// listener that failed while the stop was under way is an error too.
+func lateStops(stopped <-chan error) error {
+	var late []error
+	for err := range stopped {
+		// The stdio listener answers the stop itself with the context's error.
+		if !errors.Is(err, context.Canceled) {
+			late = append(late, err)
+		}
+	}
+	return errors.Join(late...)
 }
 
 // serveEnforcing answers the enforcement API on the bound socket and runs its

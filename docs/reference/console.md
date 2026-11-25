@@ -66,7 +66,8 @@ It serves until interrupted. With `--until-stdin-closes` it also stops when
 its standard input ends, which lets the process that started it stop it by
 closing a pipe. A request still running a second into the stop is dropped.
 Either way it exits 0, or 1 when the page or the approvals store cannot be
-closed cleanly.
+closed cleanly or its standard input failed to read: that stops the page
+too, since the pipe can no longer say its writer is alive.
 
 ## What it refuses
 
