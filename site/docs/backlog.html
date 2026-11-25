@@ -50,6 +50,7 @@
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
 <li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-18">Upgrade a plane from 0.18</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -240,12 +241,6 @@ input is incomplete, never complete.</p>
 <td>Each decision in <a href="/docs/adr/0066-each-decision-about-authority-is-a-port">ADR-0066</a> without a port gets one, its current behaviour as the default, with a closed kind selector, an unavailable state that blocks, bounds, and conformance cases with negative controls: the end user's identity, the policy language, the policy source, the signer, the signature algorithm (its own record first: the v1 bundle names Ed25519), the detector descriptor and the evidence export. <code>scripts/<wbr/>ports.txt</code> lists each. The policy language port evaluates a bounded, deterministic condition language with resource limits and explain output, in which a missing fact stays unknown and deny overrides allow; the language and its version are signed with the policy, and a dependency it needs has its record first</td>
 </tr>
 <tr>
-<td>B40</td>
-<td>Map the controls to the published agentic and LLM risk lists</td>
-<td>none</td>
-<td>Each list is cited at a pinned edition. Per risk, the page names the control that addresses it and the test that exercises that control, the known bypasses and the gaps, and links B37's results where they apply. A risk with no exercised control is a gap, and no protection percentage is published</td>
-</tr>
-<tr>
 <td>B44</td>
 <td>Refuse calls outside a declared scope, and flag egress outside it</td>
 <td>B21 for the egress half</td>
@@ -264,8 +259,8 @@ input is incomplete, never complete.</p>
 the sensor contract B12 publishes needs a second kind of sensor, and B28
 needs both. The process sensor is B35. The egress sensor itself is built
 (<a href="/docs/status">status</a>); B21 adds attribution, so each connection stays
-unknown until then. B35 comes later. B25, B36, B37, B40 and B44 block
-nothing and go beside them. No task here, or later, adds a model that
+unknown until then. B35 comes later. B25, B36, B37 and B44 block nothing
+and go beside them. No task here, or later, adds a model that
 approves, takes justification text as authority, decides by pattern
 heuristics, or keeps a security control out of the open build
 (<a href="/docs/adr/0009-open-core-boundary">ADR-0009</a>).
@@ -274,7 +269,7 @@ of B11. A second coding runtime waits until adopters name one. Transport
 retries may not replay a material tool execution.
 Custom policy-provider work preserves ADR-0017's veto-only semantics.</p>
 <p>The <a href="/docs/adoption-and-incident-workflows">adoption and incident requirements</a>
-define B23 and B25–B27. They extend these milestones without changing their order;
+define B23, B25 and B26. They extend these milestones without changing their order;
 runtime adapters and any new data contracts need their own accepted records.</p>
 <p>The existing event wire format is reused where it suffices. A query response
 or delivery wrapper has its own version; do not quietly add unknown fields to
@@ -477,6 +472,7 @@ sessions and feedback, consistent with the no-phone-home decision.</p>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
 <li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-18">Upgrade a plane from 0.18</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>

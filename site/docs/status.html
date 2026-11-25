@@ -50,6 +50,7 @@
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
 <li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-18">Upgrade a plane from 0.18</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -154,7 +155,10 @@ can import runtime traces and an egress proxy's access log as observations,
 inspect coverage, and check one
 opened run against its procedure, draw it as a page, hand its findings to a
 program, and stop that run, or under <code>signed</code> its agent or principal, where
-a signed route allows it.</li>
+a signed route allows it. You can compare a candidate policy with the
+current one over test cases and a plane's recorded requests, every result
+simulated, and run scripted attempts against the demo's victims, counted
+at the victims.</li>
 <li>The limits: the gateway sees only the calls routed through it, the caller's
 identity comes from its configuration rather than a login, and the evidence
 trail is not tamper-evident. It is not a security boundary.</li>
@@ -670,7 +674,8 @@ the rules that matched and the inputs a rule lacked
 <a href="#policy-floor">rows below</a>).</p>
 <p>The same binary holds the <code>approvals</code> commands and the <code>console</code> page in the
 <a href="#approval-authority">approval authority row</a> below, and the page's loopback
-listener is its one server; <code>policy diff</code> is <code>planned</code>.</p>
+listener is its one server; <code>policy compare</code> is in the
+<a href="#candidate-policy">candidate-policy row</a>, <code>experimental</code>.</p>
 <h3 id="starter-packs">starter-packs</h3>
 <p><code>examples/starter-packs/</code>,
 <a href="/docs/reference/starter-packs">reference/starter-packs.md</a>. Each is a document and
@@ -686,7 +691,13 @@ key), <a href="/docs/adr/0018-keys-and-bundles-on-disk">ADR-0018</a>. <code>poli
 <code>policy sign</code> write them and the gateway parses <code>policy.public_key</code> through the
 same package.</p>
 <p>Unix-like systems only; the approvals store, the hold journal and the spool
-carry their own file code.</p>
+carry their own file code. <code>policy sign</code>, <code>route sign</code>, <code>operators roster sign</code>, <code>policy renew</code>, <code>supervise --view</code> and the signed pause writers replace
+an existing output only while it is the file they judged (inode, type, mode,
+size and times), under a lock of that file, by exchanging two names in one
+step (<code>internal/files/judged.go</code>); outside Linux and macOS, or on a file system
+that cannot exchange, they refuse to replace it. The lock binds this
+program's writers alone, and any account that can read the file can hold it
+until the write gives up.</p>
 <h3 id="policy-matcher">policy-matcher</h3>
 <p><code>internal/policy/rules/</code> parses <code>agent-policy/v1alpha1</code> strictly,
 <code>internal/policy/bundle/</code> signs and verifies bundle bytes (Ed25519 over the DSSE
@@ -709,7 +720,9 @@ operator's, and the gateway binary holds neither
 commands use it (<code>policy renew</code>, <code>policy state init</code> and <code>reset</code>), and so does
 every plane, through <code>policy.state_dir</code>. A floor protects only while its
 directory outlives the plane, and an account that can write the directory can
-lower it.</p>
+lower it. <code>Init</code> leaves a new floor directory <code>0700</code> under any umask that
+keeps the owner's read bit, and under one that takes it fails and leaves
+none.</p>
 <h3 id="policy-refresh">policy-refresh</h3>
 <p><code>internal/policywatch/</code>, wired by <code>cmd/guardana-gateway/planepolicy.go</code>,
 <a href="/docs/adr/0038-a-signed-freshness-statement-and-a-serial-floor">ADR-0038</a>. At
@@ -785,7 +798,8 @@ answered, and no file there reads as spent or given up. Under <code>directory</c
 <code>authn:</code> prefix is refused when it is written and when it is read
 (<a href="/docs/adr/0066-each-decision-about-authority-is-a-port">ADR-0066</a>); under
 <code>signed</code> an answer counts only signed by a roster operator granted the call's
-tenant and project, and the console, which holds no operator key, shows a signed
+tenant and project, from an inbox the plane's own account owns, refused
+otherwise at start and at every read, and the console, which holds no operator key, shows a signed
 hold and the command that signs it and answers nothing, and writes no pause
 under <code>signed</code> or into a signed pause file; a <code>dev</code> plane runs <code>signed</code> with an
 operator key in its own state directory, so its own account approves and pauses;
@@ -908,7 +922,10 @@ listed), <code>doctor</code> (the values too short to scan),
 <a href="/docs/adr/0042-an-answer-that-quotes-a-configured-credential-is-withheld">ADR-0042</a>,
 <a href="/docs/reference/mcp-coverage">reference/mcp-coverage.md</a>. Catches an echo, not an
 upstream that sets out to leak; an endpoint's path and a command's arguments are
-not scanned, and no setting exempts a value that appears in normal answers.</p>
+not scanned, and no setting exempts a value that appears in normal answers.
+A tool name, prompt name or resource URI that quotes such a credential is
+recorded as <code>withheld:sha256:</code> and its digest; the upstream still receives
+it.</p>
 <h3 id="enforce-client">enforce-client</h3>
 <p><code>internal/enforceclient/</code> (a Go client of <code>admit</code>, <code>complete</code> and <code>abort</code> over a
 Unix socket, and <code>Admit</code>, <code>Complete</code> and <code>Abort</code>, which hold every client rule,
@@ -949,7 +966,8 @@ never from what the client says about the call; single-use 128-bit handles
 that expire and are abandoned by a sweep; a bound on the executions one run
 holds open; a rewrite that moves the decided resource, and in every mode a
 call whose envelope the contract refuses for anything but an unnamed tool,
-aborted and answered <code>BLOCK</code>)</li>
+aborted and answered <code>BLOCK</code>; a <code>complete</code> whose <code>resultHash</code> is not
+<code>sha256:</code> and 64 lower-case hex digits, refused as malformed)</li>
 <li><code>internal/adapterkit/</code> and <code>internal/classify/</code> (shared with <code>adapters/mcp/</code>)</li>
 <li><code>testdata/enforce/receiver/</code> (the receiver cases, each with a negative
 control)</li>
@@ -1070,7 +1088,10 @@ file or every segment back with each trail's chain checked;
 <p>A trail is at least once, its check proves each chain's shape, not its
 integrity, and the token goes only to a socket peer of <code>export.collector_uid</code>,
 or over <code>https</code> to whoever holds a certificate the system trusts for the
-collector's name.</p>
+collector's name. <code>collect</code> and <code>prune</code> refuse a trail directory that is a
+link or whose parent another account than theirs or root may replace a name
+in, and <code>collect</code> answers a repeat of records it holds only once it has read
+each one's line back.</p>
 <h3 id="evidence-export">evidence-export</h3>
 <p><code>internal/trailfile/</code> (<code>Export</code>), <code>internal/lineexport/</code> (the cursor and the
 read side a JSON Lines export shares), <code>guardana-gateway trail export</code>,
@@ -1181,7 +1202,9 @@ carried
 (<a href="/docs/adr/0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close">ADR-0079</a>);
 a token acts as its run until it expires or is closed; a run closed after its
 call passed the listener still runs that call; <code>dev</code> and scenarios serve local
-runs only.</p>
+runs only. A signed plane refuses to start, and <code>doctor</code> fails, while
+<code>records/</code> holds more than the 65,536 records a start reads to carry their
+closes, until <code>runs prune</code> archives the expired trees.</p>
 <h3 id="run-supervision">run-supervision</h3>
 <ul>
 <li><code>internal/supervise/</code> (a guarded tree: procedure schemas <code>0.1</code> and <code>0.2</code>, the
@@ -1212,7 +1235,9 @@ root or a child (<a href="#run-stop">row below</a>). A finding resting on what a
 reported is suspected at most, and so is a deadline or a retry, which compares
 two events' times no event ties to one plane
 (<a href="/docs/adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected">ADR-0088</a>); a skipped step is never confirmed; the report
-names each source not read, never heard or silent.</p>
+names each source not read, never heard or silent. <code>notify</code> gives its program
+only <code>PATH</code>, <code>HOME</code>, <code>LANG</code>, <code>LC_ALL</code>, <code>TMPDIR</code>, <code>USER</code> and each variable
+<code>--env</code> names.</p>
 <h3 id="run-stop">run-stop</h3>
 <ul>
 <li><code>internal/reaction/</code> (the route, the three rules a route may name and the
@@ -1246,8 +1271,14 @@ start a new list across a restart, except under <code>signed</code>, where the s
 directory and the route are refused when that account may write them and every
 list chains to the floor and extends the part of it the plane accepted, a floor
 that account can still lower, after which a list the stop writers cut back is
-taken; <code>react</code>'s own lines are signed by no operator, and the checks read mode
-bits, not darwin access control lists.</p>
+taken; <code>react</code>'s own lines are signed by no operator, and the list reader
+reads mode bits, not access control lists, though a signed start also refuses
+an access control list on Linux and macOS. A signed carry takes the write bits
+off the list it carried from before it writes the new one, and <code>react</code> and
+<code>stops lift</code> refuse a list its owner may not write; <code>react</code> under a signed
+route reads only a signed runs directory. A carried stop of a rule no route
+may name any more stands only within what the new route grants
+(<a href="/docs/adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected">ADR-0088</a>).</p>
 <p>Under <code>signed</code> a route may stop the agent or principal of the finding's run
 instead, for <code>REPEATED_DENIAL</code> alone and for the rule's
 lifetime; matched against the listener's configured identity, such a stop
@@ -1287,8 +1318,10 @@ and <code>doctor</code> and <code>health.socket</code> report <code>trust</code>
 without the id; the plane refuses to start
 when its account may write the roster file, so that account cannot put an older
 roster in place; it still raises the roster's floor, so it can withhold a newer
-roster within the held one's lifetime; a <code>read</code> grant parses and grants nothing
-yet, which <code>doctor</code> says;
+roster within the held one's lifetime; <code>doctor</code> refuses, as a serving plane
+does, a roster at the floor's serial with another digest and one naming a
+pinned key, such as the policy key, as an operator; a <code>read</code> grant parses and
+grants nothing yet, which <code>doctor</code> says;
 <a href="/docs/contracts#signed-files-and-their-project-checks">contracts.md</a> lists each
 signed file a plane takes with its project check.</p>
 <h3 id="scenario-runs">scenario-runs</h3>
@@ -1614,6 +1647,7 @@ never withheld from the open build, whatever its status above.</p>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
 <li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-18">Upgrade a plane from 0.18</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>

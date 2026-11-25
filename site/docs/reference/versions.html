@@ -50,6 +50,7 @@
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
 <li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-18">Upgrade a plane from 0.18</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -459,6 +460,25 @@ schema <code>2</code> named <code>unheld_runs</code> and <code>unread_runs</code
 </ul>
 <p>A <code>1.0</code> list is not carried into <code>3.0</code>: start a new list, and <code>react</code> stops
 again the findings that still may stop a run.</p>
+<h2 id="what-019-changed">What 0.19 changed</h2>
+<p>No version above changed. 0.19 refuses some content 0.18 took
+(<a href="/docs/guides/upgrade-a-plane-from-0-18">upgrade a plane</a>):</p>
+<ul>
+<li>Route: no route may name <code>DEADLINE_EXCEEDED</code>,
+<code>DENIED_ACTION_RETRIED_ARGUMENTS</code> or <code>DENIED_ACTION_RETRIED_RESOURCE</code>, at
+<code>1</code> or <code>2</code>; <code>--carry-route</code> and <code>stops lift</code> take them at <code>1</code> alone. 0.18
+reads a route 0.19 signs.</li>
+<li>Stop list: a carry keeps a stop of those rules at <code>1</code> only within what the
+new route grants. 0.18 refuses such a line and will not start on that list.</li>
+<li>Finding records: those rules are at <code>2</code>, <code>SUSPECTED</code> at most, so the same
+evidence gives a new finding id. 0.18 reads them.</li>
+<li>Procedure test cases: <code>project</code> is required in <code>run</code> and each run of
+<code>tree</code>; 0.18 refuses it as a member it does not have.</li>
+<li>Enforcement API: a <code>complete</code>'s <code>resultHash</code> is <code>sha256:</code> and 64 lower-case
+hex digits, or absent; 0.18 took any text up to 1 KiB.</li>
+<li>Configuration file: a block written twice or a key holding a <code>.</code> is
+refused; 0.18 merged or read them.</li>
+</ul>
 <h2 id="reading-files-an-older-release-wrote">Reading files an older release wrote</h2>
 <ul>
 <li><strong>Wire messages, the evidence export, the runs directory's marker and
@@ -534,6 +554,7 @@ accepts a version the page does not name.</p>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
 <li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-18">Upgrade a plane from 0.18</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>

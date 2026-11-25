@@ -23,8 +23,8 @@ verify one.
 - **Breaking:** `collect` reads `--listen` as a URL: escapes in its path are
   undone, so the endpoint it prints names the same socket when given back,
   and a host, a query, a fragment or a `%` that escapes nothing is refused.
-  A socket path holding `#`, `?`, `%` or a space is given escaped, as
-  `collect` prints it.
+  A socket path holding `#`, `?` or `%` is given escaped, as `collect`
+  prints it.
 - **Breaking:** `policy sign`, `route sign`, `operators roster sign`,
   `policy renew`, `supervise --view`, the signed pause writers and the dev
   plane's statement replace an existing output by swapping two names in one

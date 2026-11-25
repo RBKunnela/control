@@ -1,15 +1,17 @@
 ---
 title: Adoption and incident workflows
-summary: Planned acceptance requirements for MCP setup, coding hooks, tool-definition review, policy simulation and incident review.
+summary: Planned acceptance requirements for MCP setup, coding hooks, tool-definition review and incident review, and the one policy comparison was built against.
 type: project
 covers: [adapters/**, cmd/**, internal/gateway/**, internal/gatewayconfig/**, internal/policy/**, internal/supervise/**, internal/findinglog/**, internal/coverage/**, examples/**]
 ---
 
 # Adoption and incident workflows
 
-Status: `planned`. These requirements define backlog B23 and B25–B27 and the
+Status: `planned`. These requirements define backlog B23, B25 and B26 and the
 bar for a further coding runtime's hooks; they do not describe commands or
-contracts available today. [status.md](status.md)
+contracts available today. B27 is built as `policy compare`
+([status](status.md#candidate-policy)); its section is the requirement it
+was built against. [status.md](status.md)
 is the implementation inventory, [the backlog](backlog.md) holds acceptance
 checks, and [ROADMAP.md](../ROADMAP.md) owns milestone order. The delivery
 decision is proposed in [ADR-0050](adr/0050-adoption-workflows-preserve-authority-and-evidence.md).
@@ -194,7 +196,7 @@ and a failed reaction that must not be displayed as a successful stop.
 
 ## Delivery and communication
 
-B23 belongs to first value. B25 and B27 belong to integrations; B26
+B23 belongs to first value. B25 belongs to integrations; B26
 belongs to a small team. Existing trust, API, identity and retention work
 remain prerequisites. No schedule or SLA is implied.
 

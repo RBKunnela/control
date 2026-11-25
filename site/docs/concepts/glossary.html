@@ -50,6 +50,7 @@
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
 <li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-18">Upgrade a plane from 0.18</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -197,6 +198,7 @@ for the same thing; the right column is where the code defines it.</p>
 <li><p class="rt">unrecorded read</p><dl><dt>Meaning</dt><dd>a read that ran with a trail the sink did not take, under the explicit evidence setting; counted, never held and never closed</dd><dt>Defined in</dt><dd><code>Config.AllowReadsUnrecorded</code> in <code>internal/<wbr/>gateway/<wbr/>config.go</code></dd></dl></li>
 <li><p class="rt">verdict</p><dl><dt>Meaning</dt><dd>one of the five outcomes of a decision: <code>DENY</code>, <code>INDETERMINATE</code>, <code>REQUIRE_APPROVAL</code>, <code>ALLOW_WITH_OBLIGATIONS</code>, <code>ALLOW</code>; <code>INDETERMINATE</code> is never <code>ALLOW</code></dd><dt>Defined in</dt><dd><code>Verdict</code> in <code>common.proto</code>, <code>internal/<wbr/>core/<wbr/>decide.go</code></dd></dl></li>
 <li><p class="rt">verified time</p><dl><dt>Meaning</dt><dd>the latest <code>issuedAt</code> the plane verified, from a statement it confirmed or its floor's latest; a clock reading behind it decides nothing</dd><dt>Defined in</dt><dd><code>Snapshot.NotBefore</code> in <code>internal/<wbr/>policy/<wbr/>policy.go</code></dd></dl></li>
+<li><p class="rt">victim</p><dl><dt>Meaning</dt><dd>a demo server, <code>orders</code> or <code>web</code>, that appends one line to its journal for each call it received; <code>attempts run</code> counts an attempt's effects there, never from the plane's verdicts</dd><dt>Defined in</dt><dd><code>journalDirVariable</code> in <code>examples/<wbr/>vulnerable-mcp-agent/<wbr/>main.go</code>, <code>internal/<wbr/>attempts/</code></dd></dl></li>
 </ul>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/concepts/glossary.md">docs/concepts/glossary.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.18.0, and <a href="https://github.com/guardana/control/tree/v0.18.0/docs">its documentation</a> is in its tag.</p>
 </main>
@@ -223,6 +225,7 @@ for the same thing; the right column is where the code defines it.</p>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
 <li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-18">Upgrade a plane from 0.18</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>

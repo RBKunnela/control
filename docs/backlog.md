@@ -46,7 +46,6 @@ input is incomplete, never complete.
 | B25 | Review changes to tool definitions | none | Compare an operator-reviewed manifest with a newly observed one, name changed fields and old/new fingerprints, and export a bounded report with source and observation time. Reuse the existing classification refusal. Description, schema, metadata, removed and ambiguous tools, and a silent or unavailable source have cases. Review never repins a definition or signs a policy; unchanged definitions do not attest unchanged server code |
 | B37 | Measure model-driven attempts and their cost to legitimate work | none | Attempts driven by a model run as a lab job outside CI, from an `attempt-manifest` that names the model and its settings, against the demo's victim, and write the same `attempt-report` with its counts, controls and scope. The scripted set is built ([status](status.md#controlled-attempts)); nothing in either enters the authorization path |
 | B36 | Put the remaining decisions about authority behind ports | none | Each decision in [ADR-0066](adr/0066-each-decision-about-authority-is-a-port.md) without a port gets one, its current behaviour as the default, with a closed kind selector, an unavailable state that blocks, bounds, and conformance cases with negative controls: the end user's identity, the policy language, the policy source, the signer, the signature algorithm (its own record first: the v1 bundle names Ed25519), the detector descriptor and the evidence export. `scripts/ports.txt` lists each. The policy language port evaluates a bounded, deterministic condition language with resource limits and explain output, in which a missing fact stays unknown and deny overrides allow; the language and its version are signed with the policy, and a dependency it needs has its record first |
-| B40 | Map the controls to the published agentic and LLM risk lists | none | Each list is cited at a pinned edition. Per risk, the page names the control that addresses it and the test that exercises that control, the known bypasses and the gaps, and links B37's results where they apply. A risk with no exercised control is a gap, and no protection percentage is published |
 | B44 | Refuse calls outside a declared scope, and flag egress outside it | B21 for the egress half | This is an authorization path: a record of its own first. A scope fixed and signed before a run starts names the hosts, networks, environments and effect classes the run may reach, and a configuration may require one for every run. The gateway reads the target destination and resource from the argument the tool's classification names. If the target cannot be read, the gateway refuses the call. It reads no other argument. A call outside the scope is blocked with its reason and recorded. If the egress sensor attributes a connection outside the scope to a run (B21), that is a confirmed finding, and a signed route can stop later calls in that run; the connection itself is not refused. An unattributed connection stays unknown. B37 adds an attempt that leaves the scope, checked at the victim with positive and negative controls. A run, a child run, a reconnect or a restart cannot widen or reset its scope. No model, and no reading of an argument's meaning beyond the named target, takes part in these decisions |
 | B11 | Ship one framework integration | none | One framework integration, chosen by the maintainer with the reasons published, is maintained here against the framework's independently maintained release, passes the client conformance cases of [ADR-0051](adr/0051-a-tool-outside-mcp-is-admitted-completed-and-aborted-through-an-enforcement-api.md) at a pinned version, and has its covered and bypassing tool paths published. 1.0 bar: `own evidence` for the integration qualified against that release. An adopter choosing the framework stays a target after 1.0, as adoption by outside teams does: 1.0 bar: `not met` for that choice while no adopter makes it |
 
@@ -54,8 +53,8 @@ The order is the table's ([ADR-0064](adr/0064-milestone-two-starts-with-an-indep
 the sensor contract B12 publishes needs a second kind of sensor, and B28
 needs both. The process sensor is B35. The egress sensor itself is built
 ([status](status.md)); B21 adds attribution, so each connection stays
-unknown until then. B35 comes later. B25, B36, B37, B40 and B44 block
-nothing and go beside them. No task here, or later, adds a model that
+unknown until then. B35 comes later. B25, B36, B37 and B44 block nothing
+and go beside them. No task here, or later, adds a model that
 approves, takes justification text as authority, decides by pattern
 heuristics, or keeps a security control out of the open build
 ([ADR-0009](adr/0009-open-core-boundary.md)).
@@ -65,7 +64,7 @@ retries may not replay a material tool execution.
 Custom policy-provider work preserves ADR-0017's veto-only semantics.
 
 The [adoption and incident requirements](adoption-and-incident-workflows.md)
-define B23 and B25–B27. They extend these milestones without changing their order;
+define B23, B25 and B26. They extend these milestones without changing their order;
 runtime adapters and any new data contracts need their own accepted records.
 
 The existing event wire format is reused where it suffices. A query response

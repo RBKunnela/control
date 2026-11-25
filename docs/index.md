@@ -71,6 +71,7 @@ Have a tool ask before it acts or a sensor report what happened, hold a client t
 - [Test a procedure](guides/test-a-procedure.md): Lint a procedure document, then prove what supervise finds with cases that state a run, its evidence and every expected finding.
 - [Troubleshoot a plane](guides/troubleshoot-a-plane.md): Why a call was refused in OBSERVE, why an approval did not let a call run, why health says degraded with HTTP 200, and why a signed plane will not start.
 - [Upgrade a plane from 0.17](guides/upgrade-a-plane-from-0-17.md): What every plane meets in 0.18, and how a signed plane signs its pause file, route and stop list again for its plane_id and carries its stops.
+- [Upgrade a plane from 0.18](guides/upgrade-a-plane-from-0-18.md): What a plane meets in 0.19, the route's deadline and retry rules first, and the steps a signed plane adds for its records, inbox and stop list.
 - [Watch a plane without a collector](guides/watch-a-plane-without-a-collector.md): Run the collector the gateway binary ships, point a plane at it with its credential, read each request's trail in the segments it writes, and prune them.
 - [Watch an egress proxy](guides/watch-an-egress-proxy.md): Have Envoy or Squid write their access log as JSON lines, import it as observations, and see in the coverage map the destinations the proxy logged.
 - [Write and test a policy](guides/write-and-test-a-policy.md): Write an agent-policy/v1alpha1 document, lint it, prove what it decides with cases, sign it into the bundle a plane loads, and vouch that the bundle is current.
@@ -144,7 +145,7 @@ Have a tool ask before it acts or a sensor report what happened, hold a client t
 
 ## Project
 
-- [Adoption and incident workflows](adoption-and-incident-workflows.md): Planned acceptance requirements for MCP setup, coding hooks, tool-definition review, policy simulation and incident review.
+- [Adoption and incident workflows](adoption-and-incident-workflows.md): Planned acceptance requirements for MCP setup, coding hooks, tool-definition review and incident review, and the one policy comparison was built against.
 - [Delivery backlog](backlog.md): Planned work ordered by user value, with dependencies and observable acceptance checks.
 - [Dependencies](dependencies.md): Every direct dependency and pinned tool of the module, why the standard library will not do, its licence and whether it sits in the request path.
 - [Implementation status](status.md): What exists in this repository today, component by component, the one inventory every other page points to.

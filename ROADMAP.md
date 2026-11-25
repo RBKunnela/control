@@ -44,8 +44,8 @@ silently widens authority.
 Attributing egress connections to runs (B21) and a process sensor
 independent of the agent (B35) come first. Then the port contracts and a
 TypeScript client (B12); continuous supervision (B28) builds on both. A
-framework integration (B11) follows, the maintainer's choice. B25, B27, B36,
-B37, B40 and B44 go alongside.
+framework integration (B11) follows, the maintainer's choice. B25, B36, B37
+and B44 go alongside.
 
 ## 3. A small team
 

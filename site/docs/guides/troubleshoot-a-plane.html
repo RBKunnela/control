@@ -50,6 +50,7 @@
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane" aria-current="page">Troubleshoot a plane</a></li>
 <li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-18">Upgrade a plane from 0.18</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -201,12 +202,16 @@ if the stop list is degraded, start a new one with <code>stops init --carry</cod
 restart (<a href="/docs/reference/reaction">reaction</a>).</p>
 <h2 id="a-signed-plane-will-not-start">A signed plane will not start</h2>
 <p><strong>Symptom.</strong> Under <code>approvals.authority: signed</code>, <code>run</code> exits naming a key and
-<code>under the signed authority the plane's own account may not be able to change it</code>, or naming the environment.</p>
+<code>under the signed authority the plane's own account may not be able to change it</code>, or naming the environment, <code>approvals.inbox_dir</code> or <code>records/</code>.</p>
 <p><strong>Cause.</strong> A signed plane refuses to start when its own account owns or may
 write the configuration, the roster, the root key, the pause file, the
 route, the stop list or the runs directory's <code>records/</code>, or a directory on
 their path; when any of those entries is missing or carries an access control
-list (on Linux and macOS); when it runs as root; and when the environment sets any of its keys. A
+list (on Linux and macOS); when it runs as root; when the environment sets any of its keys;
+when its own account does not own <code>approvals.inbox_dir</code>; and while <code>records/</code>
+holds more than 65,536 records. After an upgrade,
+<a href="/docs/guides/upgrade-a-plane-from-0-18">upgrade a plane from 0.18</a> lists what 0.19
+refuses that 0.18 took, a route naming a deadline or retry rule among them. A
 key a signed plane requires and does not find, such as <code>plane_id</code>,
 <code>approvals.inbox_dir</code>, a <code>trust</code> key or an <code>operators</code> kind, is refused with
 the configuration, which names the key. A roster it cannot take does not stop the start, but
@@ -243,6 +248,7 @@ lists the layout that passes.</p>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane" aria-current="page">Troubleshoot a plane</a></li>
 <li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-18">Upgrade a plane from 0.18</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>

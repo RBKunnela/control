@@ -50,6 +50,7 @@
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
 <li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-18">Upgrade a plane from 0.18</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -150,8 +151,8 @@ leads. Only the trail directory itself was checked
 <li><strong>Breaking:</strong> <code>collect</code> reads <code>--listen</code> as a URL: escapes in its path are
 undone, so the endpoint it prints names the same socket when given back,
 and a host, a query, a fragment or a <code>%</code> that escapes nothing is refused.
-A socket path holding <code>#</code>, <code>?</code>, <code>%</code> or a space is given escaped, as
-<code>collect</code> prints it.</li>
+A socket path holding <code>#</code>, <code>?</code> or <code>%</code> is given escaped, as <code>collect</code>
+prints it.</li>
 <li><strong>Breaking:</strong> <code>policy sign</code>, <code>route sign</code>, <code>operators roster sign</code>,
 <code>policy renew</code>, <code>supervise --view</code>, the signed pause writers and the dev
 plane's statement replace an existing output by swapping two names in one
@@ -3687,6 +3688,7 @@ independence of this project from Guardana
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
 <li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-18">Upgrade a plane from 0.18</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>

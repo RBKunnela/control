@@ -34,7 +34,10 @@ In short:
   inspect coverage, and check one
   opened run against its procedure, draw it as a page, hand its findings to a
   program, and stop that run, or under `signed` its agent or principal, where
-  a signed route allows it.
+  a signed route allows it. You can compare a candidate policy with the
+  current one over test cases and a plane's recorded requests, every result
+  simulated, and run scripted attempts against the demo's victims, counted
+  at the victims.
 - The limits: the gateway sees only the calls routed through it, the caller's
   identity comes from its configuration rather than a login, and the evidence
   trail is not tamper-evident. It is not a security boundary.
@@ -218,7 +221,8 @@ the rules that matched and the inputs a rule lacked
 
 The same binary holds the `approvals` commands and the `console` page in the
 [approval authority row](#approval-authority) below, and the page's loopback
-listener is its one server; `policy diff` is `planned`.
+listener is its one server; `policy compare` is in the
+[candidate-policy row](#candidate-policy), `experimental`.
 
 ### starter-packs
 
@@ -239,7 +243,14 @@ key), [ADR-0018](adr/0018-keys-and-bundles-on-disk.md). `policy keygen` and
 same package.
 
 Unix-like systems only; the approvals store, the hold journal and the spool
-carry their own file code.
+carry their own file code. `policy sign`, `route sign`, `operators roster
+sign`, `policy renew`, `supervise --view` and the signed pause writers replace
+an existing output only while it is the file they judged (inode, type, mode,
+size and times), under a lock of that file, by exchanging two names in one
+step (`internal/files/judged.go`); outside Linux and macOS, or on a file system
+that cannot exchange, they refuse to replace it. The lock binds this
+program's writers alone, and any account that can read the file can hold it
+until the write gives up.
 
 ### policy-matcher
 
@@ -266,7 +277,9 @@ operator's, and the gateway binary holds neither
 commands use it (`policy renew`, `policy state init` and `reset`), and so does
 every plane, through `policy.state_dir`. A floor protects only while its
 directory outlives the plane, and an account that can write the directory can
-lower it.
+lower it. `Init` leaves a new floor directory `0700` under any umask that
+keeps the owner's read bit, and under one that takes it fails and leaves
+none.
 
 ### policy-refresh
 
@@ -350,7 +363,8 @@ answered, and no file there reads as spent or given up. Under `directory` and
 `authn:` prefix is refused when it is written and when it is read
 ([ADR-0066](adr/0066-each-decision-about-authority-is-a-port.md)); under
 `signed` an answer counts only signed by a roster operator granted the call's
-tenant and project, and the console, which holds no operator key, shows a signed
+tenant and project, from an inbox the plane's own account owns, refused
+otherwise at start and at every read, and the console, which holds no operator key, shows a signed
 hold and the command that signs it and answers nothing, and writes no pause
 under `signed` or into a signed pause file; a `dev` plane runs `signed` with an
 operator key in its own state directory, so its own account approves and pauses;
@@ -479,6 +493,9 @@ listed), `doctor` (the values too short to scan),
 [reference/mcp-coverage.md](reference/mcp-coverage.md). Catches an echo, not an
 upstream that sets out to leak; an endpoint's path and a command's arguments are
 not scanned, and no setting exempts a value that appears in normal answers.
+A tool name, prompt name or resource URI that quotes such a credential is
+recorded as `withheld:sha256:` and its digest; the upstream still receives
+it.
 
 ### enforce-client
 
@@ -526,7 +543,8 @@ by trusted publishing, and its dry run to TestPyPI;
   that expire and are abandoned by a sweep; a bound on the executions one run
   holds open; a rewrite that moves the decided resource, and in every mode a
   call whose envelope the contract refuses for anything but an unnamed tool,
-  aborted and answered `BLOCK`)
+  aborted and answered `BLOCK`; a `complete` whose `resultHash` is not
+  `sha256:` and 64 lower-case hex digits, refused as malformed)
 - `internal/adapterkit/` and `internal/classify/` (shared with `adapters/mcp/`)
 - `testdata/enforce/receiver/` (the receiver cases, each with a negative
   control)
@@ -672,7 +690,10 @@ quarantines what a collector refuses, and drains one run at a time;
 A trail is at least once, its check proves each chain's shape, not its
 integrity, and the token goes only to a socket peer of `export.collector_uid`,
 or over `https` to whoever holds a certificate the system trusts for the
-collector's name.
+collector's name. `collect` and `prune` refuse a trail directory that is a
+link or whose parent another account than theirs or root may replace a name
+in, and `collect` answers a repeat of records it holds only once it has read
+each one's line back.
 
 ### evidence-export
 
@@ -795,7 +816,9 @@ carried
 ([ADR-0079](adr/0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close.md));
 a token acts as its run until it expires or is closed; a run closed after its
 call passed the listener still runs that call; `dev` and scenarios serve local
-runs only.
+runs only. A signed plane refuses to start, and `doctor` fails, while
+`records/` holds more than the 65,536 records a start reads to carry their
+closes, until `runs prune` archives the expired trees.
 
 ### run-supervision
 
@@ -827,7 +850,9 @@ root or a child ([row below](#run-stop)). A finding resting on what a runtime
 reported is suspected at most, and so is a deadline or a retry, which compares
 two events' times no event ties to one plane
 ([ADR-0088](adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected.md)); a skipped step is never confirmed; the report
-names each source not read, never heard or silent.
+names each source not read, never heard or silent. `notify` gives its program
+only `PATH`, `HOME`, `LANG`, `LC_ALL`, `TMPDIR`, `USER` and each variable
+`--env` names.
 
 ### run-stop
 
@@ -862,8 +887,14 @@ start a new list across a restart, except under `signed`, where the stops
 directory and the route are refused when that account may write them and every
 list chains to the floor and extends the part of it the plane accepted, a floor
 that account can still lower, after which a list the stop writers cut back is
-taken; `react`'s own lines are signed by no operator, and the checks read mode
-bits, not darwin access control lists.
+taken; `react`'s own lines are signed by no operator, and the list reader
+reads mode bits, not access control lists, though a signed start also refuses
+an access control list on Linux and macOS. A signed carry takes the write bits
+off the list it carried from before it writes the new one, and `react` and
+`stops lift` refuse a list its owner may not write; `react` under a signed
+route reads only a signed runs directory. A carried stop of a rule no route
+may name any more stands only within what the new route grants
+([ADR-0088](adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected.md)).
 
 Under `signed` a route may stop the agent or principal of the finding's run
 instead, for `REPEATED_DENIAL` alone and for the rule's
@@ -911,8 +942,10 @@ and `doctor` and `health.socket` report `trust`, naming that id,
 without the id; the plane refuses to start
 when its account may write the roster file, so that account cannot put an older
 roster in place; it still raises the roster's floor, so it can withhold a newer
-roster within the held one's lifetime; a `read` grant parses and grants nothing
-yet, which `doctor` says;
+roster within the held one's lifetime; `doctor` refuses, as a serving plane
+does, a roster at the floor's serial with another digest and one naming a
+pinned key, such as the policy key, as an operator; a `read` grant parses and
+grants nothing yet, which `doctor` says;
 [contracts.md](contracts.md#signed-files-and-their-project-checks) lists each
 signed file a plane takes with its project check.
 

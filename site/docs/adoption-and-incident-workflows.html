@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Adoption and incident workflows · Guardana Control</title>
-<meta name="description" content="Planned acceptance requirements for MCP setup, coding hooks, tool-definition review, policy simulation and incident review."/>
+<meta name="description" content="Planned acceptance requirements for MCP setup, coding hooks, tool-definition review and incident review, and the one policy comparison was built against."/>
 <link rel="canonical" href="https://control.guardana.dev/docs/adoption-and-incident-workflows"/>
 <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)"/>
 <meta name="theme-color" content="#0A0A0A" media="(prefers-color-scheme: dark)"/>
@@ -50,6 +50,7 @@
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
 <li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-18">Upgrade a plane from 0.18</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -130,9 +131,11 @@
 </details>
 <main id="main" class="prose">
 <h1 id="adoption-and-incident-workflows">Adoption and incident workflows</h1>
-<p>Status: <code>planned</code>. These requirements define backlog B23 and B25–B27 and the
+<p>Status: <code>planned</code>. These requirements define backlog B23, B25 and B26 and the
 bar for a further coding runtime's hooks; they do not describe commands or
-contracts available today. <a href="/docs/status">status.md</a>
+contracts available today. B27 is built as <code>policy compare</code>
+(<a href="/docs/status#candidate-policy">status</a>); its section is the requirement it
+was built against. <a href="/docs/status">status.md</a>
 is the implementation inventory, <a href="/docs/backlog">the backlog</a> holds acceptance
 checks, and <a href="/docs/roadmap">ROADMAP.md</a> owns milestone order. The delivery
 decision is proposed in <a href="/docs/adr/0050-adoption-workflows-preserve-authority-and-evidence">ADR-0050</a>.
@@ -315,7 +318,7 @@ duplicate delivery, later occurrences after closure, reopening, conflicting
 review revisions, cross-project access, lost inputs, hostile text, bounds
 and a failed reaction that must not be displayed as a successful stop.</p>
 <h2 id="delivery-and-communication">Delivery and communication</h2>
-<p>B23 belongs to first value. B25 and B27 belong to integrations; B26
+<p>B23 belongs to first value. B25 belongs to integrations; B26
 belongs to a small team. Existing trust, API, identity and retention work
 remain prerequisites. No schedule or SLA is implied.</p>
 <p>Describe a capability with its consequence, covered path, enforcing mode,
@@ -356,6 +359,7 @@ capture or a model to default authorization.</p>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
 <li><a href="/docs/guides/upgrade-a-plane-from-0-17">Upgrade a plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-18">Upgrade a plane from 0.18</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>

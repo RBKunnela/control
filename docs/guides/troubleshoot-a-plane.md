@@ -98,13 +98,17 @@ restart ([reaction](../reference/reaction.md)).
 
 **Symptom.** Under `approvals.authority: signed`, `run` exits naming a key and
 `under the signed authority the plane's own account may not be able to change
-it`, or naming the environment.
+it`, or naming the environment, `approvals.inbox_dir` or `records/`.
 
 **Cause.** A signed plane refuses to start when its own account owns or may
 write the configuration, the roster, the root key, the pause file, the
 route, the stop list or the runs directory's `records/`, or a directory on
 their path; when any of those entries is missing or carries an access control
-list (on Linux and macOS); when it runs as root; and when the environment sets any of its keys. A
+list (on Linux and macOS); when it runs as root; when the environment sets any of its keys;
+when its own account does not own `approvals.inbox_dir`; and while `records/`
+holds more than 65,536 records. After an upgrade,
+[upgrade a plane from 0.18](upgrade-a-plane-from-0-18.md) lists what 0.19
+refuses that 0.18 took, a route naming a deadline or retry rule among them. A
 key a signed plane requires and does not find, such as `plane_id`,
 `approvals.inbox_dir`, a `trust` key or an `operators` kind, is refused with
 the configuration, which names the key. A roster it cannot take does not stop the start, but

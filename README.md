@@ -32,6 +32,9 @@ Guardana Control puts your rules between an AI agent and its tools. Each call th
 - Check a recorded run against its procedure, and stop that run's later calls,
   or under signed authority its agent's or principal's, through a signed route
   (`experimental`).
+- Compare current and candidate policies on test cases and recorded evidence
+  with kernel evaluation. Changed decisions are marked simulated, unjudged
+  cases are counted apart, and no policy activates (`experimental`).
 - Read each decision with the policy version that made it, and see in the
   coverage map which paths nobody observed (`experimental`).
 
@@ -75,6 +78,7 @@ goes on with a pause, the counters and the demo's scenarios.
 guardana-gateway run --config <file>
 guardana-control policy test <dir>
 guardana-control policy sign --key <file> --out <file> <document>
+guardana-control policy compare --current <document> --candidate <document> --report <file>
 guardana-control supervise --procedure <file> --runs <dir> --run <run-id> --findings <dir>
 ```
 

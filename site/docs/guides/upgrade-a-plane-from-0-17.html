@@ -50,6 +50,7 @@
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
 <li><a href="/docs/guides/upgrade-a-plane-from-0-17" aria-current="page">Upgrade a plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-18">Upgrade a plane from 0.18</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>
@@ -137,6 +138,13 @@ the plane in the signed pause file, route, stop list and lifts, so it
 refuses the pause file, the route and the stop list 0.17 signed, each naming
 the command that replaces it, and raises no floor while it does
 (<a href="/docs/adr/0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant">ADR-0082</a>).</p>
+<p>A 0.17 plane need not run 0.18 on its way to 0.19: take these steps with the
+0.19 binaries, leaving <code>DEADLINE_EXCEEDED</code>,
+<code>DENIED_ACTION_RETRIED_ARGUMENTS</code> and <code>DENIED_ACTION_RETRIED_RESOURCE</code> out of
+the route step 2 signs, then <a href="/docs/guides/upgrade-a-plane-from-0-18">upgrade a plane from 0.18</a>
+before the plane starts: 0.19 will not start on a route naming those rules or
+a configuration block written twice. A signed plane has then taken its route
+step.</p>
 <h2 id="every-plane">Every plane</h2>
 <p>Under <code>directory</code> and <code>memory</code> the plane reads the files 0.17 wrote: replace
 both binaries and start it. Three things it answers differ.</p>
@@ -294,6 +302,7 @@ stop.</p>
 <li><a href="/docs/guides/test-a-procedure">Test a procedure</a></li>
 <li><a href="/docs/guides/troubleshoot-a-plane">Troubleshoot a plane</a></li>
 <li><a href="/docs/guides/upgrade-a-plane-from-0-17" aria-current="page">Upgrade a plane from 0.17</a></li>
+<li><a href="/docs/guides/upgrade-a-plane-from-0-18">Upgrade a plane from 0.18</a></li>
 <li><a href="/docs/guides/watch-a-plane-without-a-collector">Watch a plane without a collector</a></li>
 <li><a href="/docs/guides/watch-an-egress-proxy">Watch an egress proxy</a></li>
 <li><a href="/docs/guides/write-and-test-a-policy">Write and test a policy</a></li>

@@ -16,6 +16,14 @@ refuses the pause file, the route and the stop list 0.17 signed, each naming
 the command that replaces it, and raises no floor while it does
 ([ADR-0082](../adr/0082-a-signed-document-names-its-plane-and-a-signed-plane-serves-one-tenant.md)).
 
+A 0.17 plane need not run 0.18 on its way to 0.19: take these steps with the
+0.19 binaries, leaving `DEADLINE_EXCEEDED`,
+`DENIED_ACTION_RETRIED_ARGUMENTS` and `DENIED_ACTION_RETRIED_RESOURCE` out of
+the route step 2 signs, then [upgrade a plane from 0.18](upgrade-a-plane-from-0-18.md)
+before the plane starts: 0.19 will not start on a route naming those rules or
+a configuration block written twice. A signed plane has then taken its route
+step.
+
 ## Every plane
 
 Under `directory` and `memory` the plane reads the files 0.17 wrote: replace
