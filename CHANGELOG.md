@@ -25,6 +25,36 @@ verify one.
   and a host, a query, a fragment or a `%` that escapes nothing is refused.
   A socket path holding `#`, `?`, `%` or a space is given escaped, as
   `collect` prints it.
+- **Breaking:** `DEADLINE_EXCEEDED`, `DENIED_ACTION_RETRIED_ARGUMENTS` and
+  `DENIED_ACTION_RETRIED_RESOURCE` are rule version `2` and `SUSPECTED` at
+  most, and none of them may stop a run, an agent or a principal. Each
+  compares two events' times, and nothing in an event or an export names
+  the plane whose clock stamped it: two planes may send to one collector,
+  so a call on a fast clock could look later than a denial it preceded, or a
+  run longer than it was. `route sign`, `react` and a plane loading its route
+  refuse a route naming any of them, at either version, by name. The same
+  evidence now gives a finding with a new id, so a notifier delivers it as a
+  new record. To upgrade, remove those rules from the route, `route sign` it
+  again, and `stops init --carry <old list> --carry-route <old route>` under
+  the new route. A stop those rules wrote is kept, never lifted by the
+  upgrade, only where a rule of the new route still stops its procedure at
+  its scope, for no longer than that rule allows; no new one is written. A
+  carry that cannot keep a stop is refused, naming the stop and the
+  `stops lift` that ends it: run it on the old list with the old route,
+  which `stops lift` takes for that alone, then carry again. `stops lift`
+  takes no `reaction-route/v1alpha2` route, so a carry from a 0.17 list
+  names two other ways instead: give the new route the rule it names, at
+  the stop's scope and lasting at least the stop's span, sign it and carry
+  again, or, where the route already names that rule at another scope, give
+  that rule the stop's scope, since a route names a rule once; or start a new
+  list with `stops init` under a new stop list floor (`stops floor init`),
+  which keeps none of the old stops. A carry keeps each stop's tenant and
+  project, so a carry into a route of another names only a route of the
+  list's or a new list. `stops list`
+  shows each kept stop's rule; review those and lift any you do not keep. The
+  example's `0.2` route now stops on `RESOURCE_OUTSIDE_RUN`
+  ([ADR-0088](docs/adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected.md),
+  [reaction](docs/reference/reaction.md)).
 - **Breaking:** a `procedure test` cases document states `project` in `run`
   and in each run of `tree`; a document without it is refused with exit 2,
   naming the member. Add the project the run's record names. The format
@@ -157,6 +187,54 @@ verify one.
   with `EVIDENCE_UNAVAILABLE` also when its expiry has passed. Such an
   approval closed the hold as `APPROVAL_EXPIRED` before its version was
   read.
+- A request whose end was not read, waiting on no approval or of a closed
+  run, leaves `REPEATED_DENIAL`, `CONTINUED_AFTER_FAILURE` and the three
+  retry rules not checked, and `supervise` exits 1. Such a request is one an
+  export cut after its proposal, its approval request or before its failure,
+  and also, in a whole export, one of a closed run whose approval was never
+  answered: the plane ends a held request's trail only when the agent calls
+  again. A request waiting on its approval on an open run puts nothing in
+  doubt. Only a denied request with no block read did; any other was checked
+  with no finding, and a closed run could pass.
+- A `--source` whose descriptor does not say `SAMPLING_COMPLETE`, or one
+  silent, never heard or not read, leaves `STEP_OUTSIDE_PROCEDURE` and
+  `DENIED_ACTION_RETRIED_AROUND` not checked, findings kept. `supervise`
+  dropped the descriptor's sampling, so a sampled source that missed a call
+  left both checked.
+- A source whose observation log holds a write no import report closes,
+  such as an import cut short, leaves the same two rules not checked, and
+  `coverage` prints an `unclosed write` row and exits 1. The reader left the
+  write out and said nothing of it
+  ([supervision](docs/reference/supervision.md#the-verdict),
+  [coverage](docs/reference/coverage.md)).
+- A source's report of the denied tool after a denial is an `INDETERMINATE`
+  retry around it: no importer stamps a call's start, so the call may have
+  begun before the denial. It was a `SUSPECTED` retry.
+- An OpenTelemetry or egress log import whose source returns the full-buffer
+  error itself, rather than one wrapping it, now fails. It ended as a
+  complete import.
+- A proposal, decision, approval or result of a payload major `supervise`
+  does not read puts its request in doubt, and an approval of such a major
+  waives no finding. Such a payload was read under this major's rules
+  ([contracts](docs/contracts.md#schema-versioning)).
+- The findings log reader refuses a member spelled at its default, `0`,
+  `false`, `""`, `[]` or `{}`, which the writer leaves out, so an explicit
+  empty `sources_in_doubt` or a `0.2` member given as zero no longer passes
+  as a `0.1` record. The observation log reader does the same, so an empty
+  `refused_by` no longer passes as a `0.1` report
+  ([observations](docs/reference/observations.md#the-log)).
+- `supervise` refuses a run whose proposal names another tenant or project
+  than the event that carries it. A proposal of another project could raise
+  a confirmed finding under the collector's project.
+- The findings log reader and writer refuse a `CONFIRMED` finding that cites
+  an observation, which suggests at most.
+- A retry decided `REQUIRE_APPROVAL` whose approval request has not been read
+  is `INDETERMINATE`, as one waiting on its approval is. An export cut
+  between the decision and the request confirmed it, and could stop the run.
+- A reader refuses an export whose trailer counts bytes after the last
+  newline that no writer holds, with `end_reached` and no `partial_tail`
+  gap, so such an export no longer passes as whole
+  ([contracts](docs/contracts.md#the-evidence-export)).
 - **Breaking:** a signed plane refuses to start, and `doctor` fails, when
   `records/` holds more than the 65,536 records a start reads to carry their
   closes; `guardana-control runs prune` archives the expired trees to bring
@@ -222,7 +300,8 @@ verify one.
 - **Breaking:** a signed carry takes the write bits off the list it carried
   from before it writes the new list, giving them back when that write left
   no new list in place, and `react` and `stops lift` refuse a list its owner may not
-  write. Run the carry as the old list's owner: under another account it
+  write. A carry into a directory that already holds a list is refused before
+  the old list loses a bit. Run the carry as the old list's owner: under another account it
   refuses before it writes anything. A 0.17 `react` left on the old list
   fails to write; give the list its write bits back before 0.17 uses it
   after a roll back. A stop appended to the old list after the carry reached

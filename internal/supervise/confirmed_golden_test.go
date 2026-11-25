@@ -51,15 +51,16 @@ func confirmedCorpus(t *testing.T) map[string]supervise.Input {
 	}
 }
 
-// confirmedLines is each CONFIRMED finding of the corpus as its scenario, its
-// rule, its id and its deterministic wire bytes in hex.
+// confirmedLines is each CONFIRMED finding of the corpus, and each
+// DEADLINE_EXCEEDED, which no longer confirms, as its scenario, its rule, its
+// id and its deterministic wire bytes in hex.
 func confirmedLines(t *testing.T) string {
 	t.Helper()
 	var b strings.Builder
 	corpus := confirmedCorpus(t)
 	for _, name := range slices.Sorted(maps.Keys(corpus)) {
 		for _, f := range evaluate(t, corpus[name]).Findings {
-			if f.GetFinding().GetVerdict() != confirmed {
+			if f.GetFinding().GetVerdict() != confirmed && f.GetFinding().GetRuleId() != "DEADLINE_EXCEEDED" {
 				continue
 			}
 			raw, err := proto.MarshalOptions{Deterministic: true}.Marshal(f)
@@ -74,10 +75,10 @@ func confirmedLines(t *testing.T) string {
 }
 
 // TestA01CorpusKeepsItsConfirmedFindingsByteForByte: the corpus's CONFIRMED
-// findings are those the golden holds, byte for byte, and the golden holds
-// one of every rule that can confirm. The golden is what a 0.1 procedure
-// confirms, so only a rule's new version, which changes its finding ids,
-// rewrites its lines.
+// findings and its deadlines are those the golden holds, byte for byte, and
+// the golden holds a CONFIRMED finding of every rule that can confirm and a
+// SUSPECTED deadline. Only a rule's new version, which changes its finding
+// ids, rewrites its lines.
 func TestA01CorpusKeepsItsConfirmedFindingsByteForByte(t *testing.T) {
 	got := confirmedLines(t)
 	raw, err := os.ReadFile(confirmedGolden)
@@ -86,7 +87,7 @@ func TestA01CorpusKeepsItsConfirmedFindingsByteForByte(t *testing.T) {
 	}
 	for _, rule := range []string{"REPEATED_DENIAL", "STEP_OUTSIDE_PROCEDURE", "DEADLINE_EXCEEDED"} {
 		if !strings.Contains(string(raw), "\t"+rule+"\t") {
-			t.Fatalf("the golden holds no CONFIRMED %s", rule)
+			t.Fatalf("the golden holds no %s", rule)
 		}
 	}
 	if got != string(raw) {

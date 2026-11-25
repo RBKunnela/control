@@ -81,7 +81,7 @@
       "expect": {
         "rules": {"REPEATED_DENIAL": "CHECKED", "STEP_OUTSIDE_PROCEDURE": "CHECKED", "DEADLINE_EXCEEDED": "CHECKED", "REQUIRED_STEP_SKIPPED": "CHECKED", "STEP_OUT_OF_ORDER": "CHECKED", "CONTINUED_AFTER_FAILURE": "CHECKED", "RESOURCE_OUTSIDE_RUN": "CHECKED", "DENIED_ACTION_RETRIED_ARGUMENTS": "CHECKED", "DENIED_ACTION_RETRIED_RESOURCE": "CHECKED", "DENIED_ACTION_RETRIED_AROUND": "CHECKED", "EXCEPTION_TAKEN": "CHECKED"},
         "findings": [
-          {"rule": "DENIED_ACTION_RETRIED_ARGUMENTS", "verdict": "CONFIRMED", "run": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "requests": ["r2", "r3"]}
+          {"rule": "DENIED_ACTION_RETRIED_ARGUMENTS", "verdict": "SUSPECTED", "run": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "requests": ["r2", "r3"]}
         ]
       }
     }

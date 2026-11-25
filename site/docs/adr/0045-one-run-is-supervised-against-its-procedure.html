@@ -340,6 +340,12 @@ in v1; the layering rule covers six trees.</li>
 <code>REPEATED_DENIAL</code> confirmed and <code>STEP_OUTSIDE_PROCEDURE</code> suspected, and the
 second gone when the observation names another run.</li>
 </ul>
+<h2 id="amendment-a-deadline-is-suspected-at-most">Amendment: a deadline is suspected at most</h2>
+<p>Amended by <a href="/docs/adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected">ADR-0088</a>. &quot;A deadline across planes&quot; in the Decision means a deadline
+whose events came from two exports, the only line the code could draw. No
+event names its plane and one export can hold two planes' events, so
+<code>DEADLINE_EXCEEDED</code> is now version <code>2</code> and <code>SUSPECTED</code> at most however
+its events were exported, and it never stops a run.</p>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/adr/0045-one-run-is-supervised-against-its-procedure.md">docs/adr/0045-one-run-is-supervised-against-its-procedure.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.18.0, and <a href="https://github.com/guardana/control/tree/v0.18.0/docs">its documentation</a> is in its tag.</p>
 </main>
 <nav class="side" aria-label="Documentation">

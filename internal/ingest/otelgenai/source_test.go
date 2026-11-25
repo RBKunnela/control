@@ -60,3 +60,17 @@ func TestASourceFailureMatchingAFullBufferFailsTheImport(t *testing.T) {
 		t.Errorf("an import whose source failed with an error matching a full buffer: %v; want the failure", err)
 	}
 }
+
+// TestASourceFailingWithTheFullBufferSentinelFailsTheImport: a source whose
+// read fails with bufio.ErrBufferFull itself is a source that failed, not a
+// line longer than the reader's buffer.
+func TestASourceFailingWithTheFullBufferSentinelFailsTheImport(t *testing.T) {
+	in := readTestdata(t, "mixed_service.jsonl")
+	failed := io.MultiReader(bytes.NewReader(in), &failingOnce{err: bufio.ErrBufferFull})
+	if _, err := otelgenai.Import(failed, descriptor(t), descSHA, received); !errors.Is(err, bufio.ErrBufferFull) {
+		t.Errorf("an import whose source failed with bufio.ErrBufferFull: %v; want the failure", err)
+	}
+	if _, err := otelgenai.Import(bytes.NewReader(in), descriptor(t), descSHA, received); err != nil {
+		t.Errorf("the same lines ended by io.EOF: %v", err)
+	}
+}

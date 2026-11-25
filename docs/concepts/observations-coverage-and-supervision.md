@@ -86,7 +86,10 @@ denial or resource cannot get it stopped, and a finding that needs another
 run's call is suspected at most. There are two exceptions: a retry by a
 descendant of the denied run counts as its own, since it acts for that run,
 and each run's deadline is timed from the tree's first event, which may be
-another run's. Every other finding stays in the log, for `notify`,
+another run's. Neither is ever confirmed, since each compares two events'
+times that no event ties to one plane's clock
+([ADR-0088](../adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected.md)).
+Every other finding stays in the log, for `notify`,
 `findings export` and the run view.
 
 ## Where the parts meet

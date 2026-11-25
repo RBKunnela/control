@@ -29,7 +29,8 @@ const (
 type ruleRow struct {
 	id, version string
 	// canConfirm is false for a rule whose verdict rests on something not
-	// seen, or on a source's report alone.
+	// seen, on a source's report alone, or on the order or span of two
+	// events' times, which no event ties to one plane's clock.
 	canConfirm bool
 	mayStop    bool
 	// waivable is whether a 0.2 exception may name the rule.
@@ -42,13 +43,13 @@ var bothSchemas = []string{ProcedureSchema01, ProcedureSchema02}
 var ruleTable = [...]ruleRow{
 	{RuleRepeatedDenial, "2", true, true, false, bothSchemas},
 	{RuleStepOutsideProcedure, "1", true, true, true, bothSchemas},
-	{RuleDeadlineExceeded, "1", true, true, false, bothSchemas},
+	{RuleDeadlineExceeded, "2", false, false, false, bothSchemas},
 	{RuleRequiredStepSkipped, "1", false, false, true, bothSchemas},
 	{RuleStepOutOfOrder, "2", false, false, true, bothSchemas},
 	{RuleContinuedAfterFailure, "2", false, false, true, bothSchemas},
 	{RuleResourceOutsideRun, "1", true, true, false, []string{ProcedureSchema02}},
-	{RuleDeniedActionRetriedArguments, "1", true, true, false, []string{ProcedureSchema02}},
-	{RuleDeniedActionRetriedResource, "1", true, true, false, []string{ProcedureSchema02}},
+	{RuleDeniedActionRetriedArguments, "2", false, false, false, []string{ProcedureSchema02}},
+	{RuleDeniedActionRetriedResource, "2", false, false, false, []string{ProcedureSchema02}},
 	{RuleDeniedActionRetriedAround, "1", false, false, false, []string{ProcedureSchema02}},
 	{RuleExceptionTaken, "1", true, false, false, []string{ProcedureSchema02}},
 }

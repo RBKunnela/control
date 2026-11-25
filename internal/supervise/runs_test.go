@@ -164,8 +164,8 @@ func untimedBy(calls ...call) supervise.Export {
 
 // TestEachRunPastTheDeadlineGetsItsOwn: every run with an event past
 // deadline_seconds from the tree's first gets a finding citing that first
-// event and its own earliest past it, a tie between runs included; from two
-// exports each only suggests.
+// event and its own earliest past it, a tie between runs included, and each
+// only suggests, however its events were exported.
 func TestEachRunPastTheDeadlineGetsItsOwn(t *testing.T) {
 	lookup := call{req: "r1", tool: "get_order", upstream: "shop"}
 	docs := func(req, run string, at time.Duration) call {
@@ -177,15 +177,15 @@ func TestEachRunPastTheDeadlineGetsItsOwn(t *testing.T) {
 		cites   []string
 	}{
 		"a child's event crosses it": {[]supervise.Export{export(lookup, docs("c1", childRun, 700*time.Second))},
-			[]string{childC}, []string{"r1-e1 c1-e1"}},
+			[]string{childS}, []string{"r1-e1 c1-e1"}},
 		"the root's, then the child's": {[]supervise.Export{export(lookup, docs("r2", "", 650*time.Second), docs("c1", childRun, 700*time.Second))},
-			[]string{rootC, childC}, []string{"r1-e1 r2-e1", "r1-e1 c1-e1"}},
+			[]string{rootS, childS}, []string{"r1-e1 r2-e1", "r1-e1 c1-e1"}},
 		"a tie with another run": {[]supervise.Export{export(lookup, docs("r2", "", 700*time.Second), docs("c1", childRun, 700*time.Second))},
-			[]string{rootC, childC}, []string{"r1-e1 r2-e1", "r1-e1 c1-e1"}},
+			[]string{rootS, childS}, []string{"r1-e1 r2-e1", "r1-e1 c1-e1"}},
 		"a tie within one run": {[]supervise.Export{export(lookup, docs("r2", "", 700*time.Second), docs("r3", "", 700*time.Second))},
-			[]string{rootC}, []string{"r1-e1 r2-e1"}},
+			[]string{rootS}, []string{"r1-e1 r2-e1"}},
 		"the child's, then the root's much later": {[]supervise.Export{export(lookup, docs("c1", childRun, 601*time.Second),
-			docs("r2", "", 5000*time.Second))}, []string{rootC, childC}, []string{"r1-e1 r2-e1", "r1-e1 c1-e1"}},
+			docs("r2", "", 5000*time.Second))}, []string{rootS, childS}, []string{"r1-e1 r2-e1", "r1-e1 c1-e1"}},
 		"two exports": {[]supervise.Export{export(lookup), export(docs("c1", childRun, 700*time.Second))},
 			[]string{childS}, []string{"r1-e1 c1-e1"}},
 	} {

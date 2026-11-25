@@ -50,18 +50,18 @@ func (wideVoucher) Vouch(_ reaction.SignedKind, env reaction.Envelope) (reaction
 }
 
 // wideRoute is a v1alpha3 route of tenant over the refund procedure whose
-// STEP_OUTSIDE_PROCEDURE stops a run, REPEATED_DENIAL an agent and
-// DENIED_ACTION_RETRIED_ARGUMENTS a principal, each for an hour.
+// STEP_OUTSIDE_PROCEDURE stops a run, REPEATED_DENIAL an agent and, under
+// wideVersion's version for a principal, a principal, each for an hour.
 func wideRoute(t *testing.T, tenant string) reaction.Route {
 	t.Helper()
 	p := stopProcedure(t)
 	rule := func(id, version, scope string) string {
-		return `{"procedure_id":"` + p.ID() + `","version":"` + p.Version() + `","digest":"` + p.Digest() + `","rule_id":"` + id +
+		return `{"procedure_id":"` + p.ID() + `","version":"` + wideVersion(p, scope) + `","digest":"` + p.Digest() + `","rule_id":"` + id +
 			`","rule_version":"` + version + `","scope":"` + scope + `","expires_seconds":3600}`
 	}
 	doc := `{"kind":"reaction-route/v1alpha3","plane_id":"` + widePlane + `","route_id":"refunds","serial":1,"tenant_id":"` + tenant +
 		`","project_id":"` + wideProject + `","rules":[` + rule("STEP_OUTSIDE_PROCEDURE", "1", "run") + "," +
-		rule("REPEATED_DENIAL", "2", "agent") + "," + rule("DENIED_ACTION_RETRIED_ARGUMENTS", "1", "principal") + `]}`
+		rule("REPEATED_DENIAL", "2", "agent") + "," + rule("REPEATED_DENIAL", "2", "principal") + `]}`
 	body, err := reaction.SignedRouteBody([]byte(doc), wideKeyID(), wideRouteFile)
 	if err != nil {
 		t.Fatalf("SignedRouteBody: %v", err)
@@ -71,6 +71,16 @@ func wideRoute(t *testing.T, tenant string) reaction.Route {
 		t.Fatalf("VerifySignedRoute: %v", err)
 	}
 	return r
+}
+
+// wideVersion is the procedure version wideRoute's rule of scope names: a
+// route names a rule once per procedure, so the principal's rule is of a
+// second version.
+func wideVersion(p *supervise.Procedure, scope string) string {
+	if scope == reaction.ScopePrincipal {
+		return p.Version() + "-principal"
+	}
+	return p.Version()
 }
 
 func wideEnvelope(t *testing.T, payloadType string, body []byte) reaction.Envelope {
@@ -121,17 +131,14 @@ func (l *wideList) add(line []byte, err error) int64 {
 func (l *wideList) stop(scope, subject string) int64 {
 	l.t.Helper()
 	id, version := "STEP_OUTSIDE_PROCEDURE", "1"
-	switch scope {
-	case reaction.ScopeAgent:
+	if scope != reaction.ScopeRun {
 		id, version = "REPEATED_DENIAL", "2"
-	case reaction.ScopePrincipal:
-		id, version = "DENIED_ACTION_RETRIED_ARGUMENTS", "1"
 	}
 	finding := "finding-" + strconv.Itoa(len(l.lines))
 	created := base().Truncate(time.Second)
 	return l.add(reaction.Stop{
 		EntryID: reaction.EntryID(finding), TenantID: l.tenant, ProjectID: wideProject, Scope: scope, Subject: subject,
-		RunID: "run-a", FindingID: finding, ProcedureID: l.proc.ID(), ProcedureVersion: l.proc.Version(),
+		RunID: "run-a", FindingID: finding, ProcedureID: l.proc.ID(), ProcedureVersion: wideVersion(l.proc, scope),
 		ProcedureDigest: l.proc.Digest(), RuleID: id, RuleVersion: version, CreatedAt: created, ExpiresAt: created.Add(time.Hour),
 	}.Marshal())
 }

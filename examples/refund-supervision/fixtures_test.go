@@ -66,7 +66,7 @@ const liftPlaceholder = "LIFT_PUBLIC_KEY_FROM_KEYGEN"
 // in, is read by the reader route sign uses, names the plane's tenant, and
 // allows two rules, each the one a confirmed finding of the example raises
 // under the digest supervise gives its procedure: REPEATED_DENIAL of the 0.1
-// procedure and DENIED_ACTION_RETRIED_RESOURCE of the 0.2 one. A route under
+// procedure and RESOURCE_OUTSIDE_RUN of the 0.2 one. A route under
 // any other digest stops nothing.
 func TestTheRouteAllowsOnlyTheRulesThatStop(t *testing.T) {
 	t.Parallel()
@@ -80,7 +80,7 @@ func TestTheRouteAllowsOnlyTheRulesThatStop(t *testing.T) {
 		t.Fatalf("the route is refused: %v", err)
 	}
 	var want []reaction.Rule
-	for file, rule := range map[string]string{"refund.procedure.json": "REPEATED_DENIAL", procedure02: "DENIED_ACTION_RETRIED_RESOURCE"} {
+	for file, rule := range map[string]string{"refund.procedure.json": "REPEATED_DENIAL", procedure02: "RESOURCE_OUTSIDE_RUN"} {
 		p, err := supervise.ReadProcedure([]byte(readFile(t, file)))
 		if err != nil {
 			t.Fatalf("%s is refused: %v", file, err)

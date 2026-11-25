@@ -1204,16 +1204,20 @@ and <code>procedure test</code> in <code>cmd/guardana-control/</code></li>
 <li><a href="/docs/adr/0047-a-procedure-states-its-exceptions-resources-and-children">ADR-0047</a></li>
 <li><a href="/docs/adr/0048-one-run-drawn-as-a-page-and-findings-exported-with-a-cursor">ADR-0048</a></li>
 <li><a href="/docs/adr/0058-a-copy-an-import-never-read-is-doubt-for-the-runs-it-claimed">ADR-0058</a></li>
+<li><a href="/docs/adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected">ADR-0088</a></li>
 </ul>
 <p>It reads exports and logs when an operator runs it; nothing in a plane reads a
 finding, and <code>react</code> turns a confirmed one into a stop of the run it names, a
 root or a child (<a href="#run-stop">row below</a>). A finding resting on what a runtime
-reported is suspected at most; a skipped step is never confirmed; the report
+reported is suspected at most, and so is a deadline or a retry, which compares
+two events' times no event ties to one plane
+(<a href="/docs/adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected">ADR-0088</a>); a skipped step is never confirmed; the report
 names each source not read, never heard or silent.</p>
 <h3 id="run-stop">run-stop</h3>
 <ul>
-<li><code>internal/reaction/</code> (the route, the six rules a route may name and the
-three of them that may stop an agent or a principal, the stop list's grammar
+<li><code>internal/reaction/</code> (the route, the three rules a route may name and the
+one of them that may stop an agent or a principal, the rule versions only a
+carried list's stops still name, the stop list's grammar
 and judge, the snapshot a plane decides under and its matcher of a run, an
 agent and a principal)</li>
 <li><code>internal/reaction/stoplist/</code> (the reader a plane polls)</li>
@@ -1245,7 +1249,7 @@ that account can still lower, after which a list the stop writers cut back is
 taken; <code>react</code>'s own lines are signed by no operator, and the checks read mode
 bits, not darwin access control lists.</p>
 <p>Under <code>signed</code> a route may stop the agent or principal of the finding's run
-instead, for <code>REPEATED_DENIAL</code> and the two retry rules and for the rule's
+instead, for <code>REPEATED_DENIAL</code> alone and for the rule's
 lifetime; matched against the listener's configured identity, such a stop
 refuses every call of the plane <code>AGENT_OR_PRINCIPAL_STOPPED</code>, runless calls and
 later runs included, and only a lift of that agent or principal ends it. No

@@ -18,11 +18,22 @@ import (
 // list in dir is carried from.
 func v2RouteIn(t *testing.T, dir string, serial int) reaction.Route {
 	t.Helper()
+	return v2RouteWith(t, dir, serial, v2Rule(t, "STEP_OUTSIDE_PROCEDURE"))
+}
+
+// v2Rule is a v1alpha2 rule stopping a run of refund version "1" for an hour
+// under rule id at version "1".
+func v2Rule(t *testing.T, id string) map[string]any {
+	return map[string]any{"procedure_id": "refund", "version": "1", "digest": refundDigest(t),
+		"rule_id": id, "rule_version": "1", "scope": "run", "expires_seconds": 3600}
+}
+
+// v2RouteWith is v2RouteIn with rules.
+func v2RouteWith(t *testing.T, dir string, serial int, rules ...map[string]any) reaction.Route {
+	t.Helper()
 	raw, err := json.Marshal(map[string]any{
 		"kind": "reaction-route/v1alpha2", "alg": "ed25519", "keyId": operatorID(), "route_id": "refunds", "serial": serial,
-		"tenant_id": "acme", "project_id": "shop", "file": "/plane/route.json",
-		"rules": []any{map[string]any{"procedure_id": "refund", "version": "1", "digest": refundDigest(t),
-			"rule_id": "STEP_OUTSIDE_PROCEDURE", "rule_version": "1", "scope": "run", "expires_seconds": 3600}},
+		"tenant_id": "acme", "project_id": "shop", "file": "/plane/route.json", "rules": rules,
 	})
 	noErr(t, err)
 	body, err := canon.CanonicalizeJSON(raw)

@@ -152,6 +152,36 @@ undone, so the endpoint it prints names the same socket when given back,
 and a host, a query, a fragment or a <code>%</code> that escapes nothing is refused.
 A socket path holding <code>#</code>, <code>?</code>, <code>%</code> or a space is given escaped, as
 <code>collect</code> prints it.</li>
+<li><strong>Breaking:</strong> <code>DEADLINE_EXCEEDED</code>, <code>DENIED_ACTION_RETRIED_ARGUMENTS</code> and
+<code>DENIED_ACTION_RETRIED_RESOURCE</code> are rule version <code>2</code> and <code>SUSPECTED</code> at
+most, and none of them may stop a run, an agent or a principal. Each
+compares two events' times, and nothing in an event or an export names
+the plane whose clock stamped it: two planes may send to one collector,
+so a call on a fast clock could look later than a denial it preceded, or a
+run longer than it was. <code>route sign</code>, <code>react</code> and a plane loading its route
+refuse a route naming any of them, at either version, by name. The same
+evidence now gives a finding with a new id, so a notifier delivers it as a
+new record. To upgrade, remove those rules from the route, <code>route sign</code> it
+again, and <code>stops init --carry &lt;old list&gt; --carry-route &lt;old route&gt;</code> under
+the new route. A stop those rules wrote is kept, never lifted by the
+upgrade, only where a rule of the new route still stops its procedure at
+its scope, for no longer than that rule allows; no new one is written. A
+carry that cannot keep a stop is refused, naming the stop and the
+<code>stops lift</code> that ends it: run it on the old list with the old route,
+which <code>stops lift</code> takes for that alone, then carry again. <code>stops lift</code>
+takes no <code>reaction-route/v1alpha2</code> route, so a carry from a 0.17 list
+names two other ways instead: give the new route the rule it names, at
+the stop's scope and lasting at least the stop's span, sign it and carry
+again, or, where the route already names that rule at another scope, give
+that rule the stop's scope, since a route names a rule once; or start a new
+list with <code>stops init</code> under a new stop list floor (<code>stops floor init</code>),
+which keeps none of the old stops. A carry keeps each stop's tenant and
+project, so a carry into a route of another names only a route of the
+list's or a new list. <code>stops list</code>
+shows each kept stop's rule; review those and lift any you do not keep. The
+example's <code>0.2</code> route now stops on <code>RESOURCE_OUTSIDE_RUN</code>
+(<a href="/docs/adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected">ADR-0088</a>,
+<a href="/docs/reference/reaction">reaction</a>).</li>
 <li><strong>Breaking:</strong> a <code>procedure test</code> cases document states <code>project</code> in <code>run</code>
 and in each run of <code>tree</code>; a document without it is refused with exit 2,
 naming the member. Add the project the run's record names. The format
@@ -327,6 +357,76 @@ approval closed the hold as <code>APPROVAL_EXPIRED</code> before its version was
 read.</p>
 </li>
 <li>
+<p>A request whose end was not read, waiting on no approval or of a closed
+run, leaves <code>REPEATED_DENIAL</code>, <code>CONTINUED_AFTER_FAILURE</code> and the three
+retry rules not checked, and <code>supervise</code> exits 1. Such a request is one an
+export cut after its proposal, its approval request or before its failure,
+and also, in a whole export, one of a closed run whose approval was never
+answered: the plane ends a held request's trail only when the agent calls
+again. A request waiting on its approval on an open run puts nothing in
+doubt. Only a denied request with no block read did; any other was checked
+with no finding, and a closed run could pass.</p>
+</li>
+<li>
+<p>A <code>--source</code> whose descriptor does not say <code>SAMPLING_COMPLETE</code>, or one
+silent, never heard or not read, leaves <code>STEP_OUTSIDE_PROCEDURE</code> and
+<code>DENIED_ACTION_RETRIED_AROUND</code> not checked, findings kept. <code>supervise</code>
+dropped the descriptor's sampling, so a sampled source that missed a call
+left both checked.</p>
+</li>
+<li>
+<p>A source whose observation log holds a write no import report closes,
+such as an import cut short, leaves the same two rules not checked, and
+<code>coverage</code> prints an <code>unclosed write</code> row and exits 1. The reader left the
+write out and said nothing of it
+(<a href="/docs/reference/supervision#the-verdict">supervision</a>,
+<a href="/docs/reference/coverage">coverage</a>).</p>
+</li>
+<li>
+<p>A source's report of the denied tool after a denial is an <code>INDETERMINATE</code>
+retry around it: no importer stamps a call's start, so the call may have
+begun before the denial. It was a <code>SUSPECTED</code> retry.</p>
+</li>
+<li>
+<p>An OpenTelemetry or egress log import whose source returns the full-buffer
+error itself, rather than one wrapping it, now fails. It ended as a
+complete import.</p>
+</li>
+<li>
+<p>A proposal, decision, approval or result of a payload major <code>supervise</code>
+does not read puts its request in doubt, and an approval of such a major
+waives no finding. Such a payload was read under this major's rules
+(<a href="/docs/contracts#schema-versioning">contracts</a>).</p>
+</li>
+<li>
+<p>The findings log reader refuses a member spelled at its default, <code>0</code>,
+<code>false</code>, <code>&quot;&quot;</code>, <code>[]</code> or <code>{}</code>, which the writer leaves out, so an explicit
+empty <code>sources_in_doubt</code> or a <code>0.2</code> member given as zero no longer passes
+as a <code>0.1</code> record. The observation log reader does the same, so an empty
+<code>refused_by</code> no longer passes as a <code>0.1</code> report
+(<a href="/docs/reference/observations#the-log">observations</a>).</p>
+</li>
+<li>
+<p><code>supervise</code> refuses a run whose proposal names another tenant or project
+than the event that carries it. A proposal of another project could raise
+a confirmed finding under the collector's project.</p>
+</li>
+<li>
+<p>The findings log reader and writer refuse a <code>CONFIRMED</code> finding that cites
+an observation, which suggests at most.</p>
+</li>
+<li>
+<p>A retry decided <code>REQUIRE_APPROVAL</code> whose approval request has not been read
+is <code>INDETERMINATE</code>, as one waiting on its approval is. An export cut
+between the decision and the request confirmed it, and could stop the run.</p>
+</li>
+<li>
+<p>A reader refuses an export whose trailer counts bytes after the last
+newline that no writer holds, with <code>end_reached</code> and no <code>partial_tail</code>
+gap, so such an export no longer passes as whole
+(<a href="/docs/contracts#the-evidence-export">contracts</a>).</p>
+</li>
+<li>
 <p><strong>Breaking:</strong> a signed plane refuses to start, and <code>doctor</code> fails, when
 <code>records/</code> holds more than the 65,536 records a start reads to carry their
 closes; <code>guardana-control runs prune</code> archives the expired trees to bring
@@ -418,7 +518,8 @@ there was lost.</p>
 <p><strong>Breaking:</strong> a signed carry takes the write bits off the list it carried
 from before it writes the new list, giving them back when that write left
 no new list in place, and <code>react</code> and <code>stops lift</code> refuse a list its owner may not
-write. Run the carry as the old list's owner: under another account it
+write. A carry into a directory that already holds a list is refused before
+the old list loses a bit. Run the carry as the old list's owner: under another account it
 refuses before it writes anything. A 0.17 <code>react</code> left on the old list
 fails to write; give the list its write bits back before 0.17 uses it
 after a roll back. A stop appended to the old list after the carry reached

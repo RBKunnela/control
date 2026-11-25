@@ -100,7 +100,7 @@ func stopsLiftCommand(args []string, stdout, stderr io.Writer) int {
 // route, the key, which must be the route's lift key, the list, a lift that
 // would end no stop, then the lift as the plane's judge reads it.
 func stopsLift(a stopsLiftArgs, dir string, now time.Time, stdout, stderr io.Writer) int {
-	route, err := a.verified(dir, &rosterNote{w: stderr, command: stopsLiftName})
+	route, err := a.liftable(dir, &rosterNote{w: stderr, command: stopsLiftName})
 	if err != nil {
 		return fail(stderr, stopsLiftName, err)
 	}
@@ -112,7 +112,7 @@ func stopsLift(a stopsLiftArgs, dir string, now time.Time, stdout, stderr io.Wri
 	if pub, _ := key.Public().(ed25519.PublicKey); !bytes.Equal(pub, route.LiftKey()) {
 		return fail(stderr, stopsLiftName, errors.New("--key: its public half is not the route's lift_public_key"))
 	}
-	list, _, err := judgedList(dir, route, now)
+	list, _, err := liftableList(dir, route, now)
 	if err != nil {
 		return fail(stderr, stopsLiftName, err)
 	}
@@ -147,11 +147,11 @@ func stopsLift(a stopsLiftArgs, dir string, now time.Time, stdout, stderr io.Wri
 // list's head, so it never verifies against another list. It says on
 // standard error what it signed.
 func stopsLiftSigned(a stopsLiftArgs, dir string, now time.Time, stdout, stderr io.Writer) int {
-	route, err := a.verified(dir, &rosterNote{w: stderr, command: stopsLiftName})
+	route, err := a.liftable(dir, &rosterNote{w: stderr, command: stopsLiftName})
 	if err != nil {
 		return fail(stderr, stopsLiftName, err)
 	}
-	list, _, err := judgedList(dir, route, now)
+	list, _, err := liftableList(dir, route, now)
 	if err != nil {
 		return fail(stderr, stopsLiftName, err)
 	}

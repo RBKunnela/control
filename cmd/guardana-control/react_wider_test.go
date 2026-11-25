@@ -16,15 +16,15 @@ import (
 	"github.com/guardana/control/internal/runs"
 )
 
-// widerRouteDoc is signedRouteDoc whose REPEATED_DENIAL stops the agent and
-// DENIED_ACTION_RETRIED_ARGUMENTS the principal for ten minutes, and whose
-// STEP_OUTSIDE_PROCEDURE stops the run.
+// widerRouteDoc is signedRouteDoc whose REPEATED_DENIAL stops the agent for
+// ten minutes, and under the procedure's version "2" the principal, and
+// whose STEP_OUTSIDE_PROCEDURE stops the run.
 const widerRouteDoc = `{"kind":"reaction-route/v1alpha3","plane_id":"plane-a","route_id":"refund-stops","serial":1,` +
 	`"tenant_id":"acme","project_id":"orders","rules":[` +
 	`{"procedure_id":"refund","version":"1","digest":"` + stopProcDigest + `",` +
 	`"rule_id":"REPEATED_DENIAL","rule_version":"2","scope":"agent","expires_seconds":600},` +
-	`{"procedure_id":"refund","version":"1","digest":"` + stopProcDigest + `",` +
-	`"rule_id":"DENIED_ACTION_RETRIED_ARGUMENTS","rule_version":"1","scope":"principal","expires_seconds":600},` +
+	`{"procedure_id":"refund","version":"2","digest":"` + stopProcDigest + `",` +
+	`"rule_id":"REPEATED_DENIAL","rule_version":"2","scope":"principal","expires_seconds":600},` +
 	`{"procedure_id":"refund","version":"1","digest":"` + stopProcDigest + `",` +
 	`"rule_id":"STEP_OUTSIDE_PROCEDURE","rule_version":"1","scope":"run"}]}`
 
@@ -169,15 +169,16 @@ func TestAKeyedRouteLiftsRunsAlone(t *testing.T) {
 	}
 }
 
-// TestReactStopsThePrincipalOfTheJudgedRun: a confirmed
-// DENIED_ACTION_RETRIED_ARGUMENTS under a rule of principals stops the
-// principal the run's record names, not its agent.
+// TestReactStopsThePrincipalOfTheJudgedRun: a confirmed REPEATED_DENIAL
+// under a rule of principals stops the principal the run's record names, not
+// its agent.
 func TestReactStopsThePrincipalOfTheJudgedRun(t *testing.T) {
 	tr := newWiderTree(t)
 	now := time.Now().UTC().Truncate(time.Second)
-	written := tr.reactOver(t, now, map[string]time.Time{"run-1": now.Add(time.Hour)},
-		finding(1, "run-1", "DENIED_ACTION_RETRIED_ARGUMENTS", confirmed))
-	want := "stop line 2 principal user-1 run run-1 finding " + fid(1) + " rule DENIED_ACTION_RETRIED_ARGUMENTS expires_at " +
+	f := finding(1, "run-1", denial, confirmed)
+	f.Procedure.Version = "2"
+	written := tr.reactOver(t, now, map[string]time.Time{"run-1": now.Add(time.Hour)}, f)
+	want := "stop line 2 principal user-1 run run-1 finding " + fid(1) + " rule REPEATED_DENIAL expires_at " +
 		policy.FormatIssuedAt(now.Add(10*time.Minute))
 	if len(written) != 1 || written[0] != want {
 		t.Fatalf("react wrote %q, want %q", written, want)

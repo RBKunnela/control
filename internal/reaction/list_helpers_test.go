@@ -49,12 +49,12 @@ func refundDigest(t testing.TB) string {
 }
 
 // listRouteDoc is a route for the refund procedure: STEP_OUTSIDE_PROCEDURE
-// stops for at most an hour, DEADLINE_EXCEEDED as long as its run.
+// stops for at most an hour, RESOURCE_OUTSIDE_RUN as long as its run.
 func listRouteDoc(digest string) string {
 	return withLift(`{"kind":"reaction-route/v1alpha1","route_id":"refunds","serial":3,"tenant_id":"acme","scope":"run",` +
 		`"lift_public_key":"LIFTKEY","rules":[` +
 		`{"procedure_id":"refund","version":"1","digest":"` + digest + `","rule_id":"STEP_OUTSIDE_PROCEDURE","rule_version":"1","expires_seconds":3600},` +
-		`{"procedure_id":"refund","version":"1","digest":"` + digest + `","rule_id":"DEADLINE_EXCEEDED","rule_version":"1"}]}`)
+		`{"procedure_id":"refund","version":"1","digest":"` + digest + `","rule_id":"RESOURCE_OUTSIDE_RUN","rule_version":"1"}]}`)
 }
 
 // listRoute is the route stop lists are judged against.

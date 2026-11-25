@@ -56,8 +56,9 @@ func MarshalLine(r *observev1.Record) ([]byte, error) {
 }
 
 // UnmarshalLine reads one log line, with or without its newline. It refuses
-// an unknown, duplicate or null member, a line holding no record or two, a
-// version outside the table, and any record MarshalLine would refuse.
+// an unknown, duplicate or null member, a member spelled at its default, a
+// line holding no record or two, a version outside the table, and any record
+// MarshalLine would refuse.
 func UnmarshalLine(line []byte) (*observev1.Record, error) {
 	if n := len(bytes.TrimSuffix(line, []byte("\n"))); n > MaxLineBytes {
 		return nil, fmt.Errorf("%w: %d bytes, limit %d", ErrLineTooLong, n, MaxLineBytes)
@@ -67,6 +68,9 @@ func UnmarshalLine(line []byte) (*observev1.Record, error) {
 	}
 	r := &observev1.Record{}
 	if err := unmarshalStrict(line, r); err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrLine, err)
+	}
+	if err := checkSpelledSet(line, r.ProtoReflect()); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrLine, err)
 	}
 	if err := checkRecord(r); err != nil {

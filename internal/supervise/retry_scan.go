@@ -5,7 +5,6 @@ import (
 	"maps"
 	"slices"
 	"sort"
-	"strconv"
 
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 )
@@ -85,11 +84,10 @@ func (s *seq) each(lo, hi int, k string, d *request, most int, visit func(*reque
 }
 
 // lane is one run's calls of a group that any denial weighs alike: of one
-// trail, one class of what the form reads, held by one set of exports. Those
-// with a time are in time order, those without in the order read.
+// trail and one class of what the form reads. Those with a time are in time
+// order, those without in the order read.
 type lane struct {
 	trail, attr int
-	exports     []int
 	timed       *seq
 	untimed     *seq
 }
@@ -105,39 +103,28 @@ func (e *evaluation) newRetryGroup(calls []*request, f *retryForm, pos map[*cont
 	type laneKey struct {
 		run         string
 		trail, attr int
-		exports     string
 	}
 	members := map[laneKey][]*request{}
-	exports := map[laneKey][]int{}
 	for _, rq := range calls {
 		trail, ok := rq.trail()
 		if !ok {
 			continue
 		}
-		xs := e.exportsOf(rq.proposal)
-		k := laneKey{run: rq.proposal.GetRunId(), trail: trail, attr: f.attr(rq), exports: exportsKey(xs)}
-		members[k], exports[k] = append(members[k], rq), xs
+		k := laneKey{run: rq.proposal.GetRunId(), trail: trail, attr: f.attr(rq)}
+		members[k] = append(members[k], rq)
 	}
 	g := &retryGroup{lanes: map[string][]*lane{}}
 	for _, k := range slices.SortedFunc(maps.Keys(members), func(a, b laneKey) int {
-		return cmp.Or(cmp.Compare(a.run, b.run), cmp.Compare(a.trail, b.trail), cmp.Compare(a.attr, b.attr), cmp.Compare(a.exports, b.exports))
+		return cmp.Or(cmp.Compare(a.run, b.run), cmp.Compare(a.trail, b.trail), cmp.Compare(a.attr, b.attr))
 	}) {
 		if len(g.lanes[k.run]) == 0 {
 			g.runs = append(g.runs, k.run)
 		}
-		l := &lane{trail: k.trail, attr: k.attr, exports: exports[k]}
+		l := &lane{trail: k.trail, attr: k.attr}
 		l.timed, l.untimed = splitByTime(members[k], pos, f.key)
 		g.lanes[k.run] = append(g.lanes[k.run], l)
 	}
 	return g
-}
-
-func exportsKey(xs []int) string {
-	var b []byte
-	for _, x := range xs {
-		b = strconv.AppendInt(append(b, ','), int64(x), 10)
-	}
-	return string(b)
 }
 
 // splitByTime orders calls with a valid proposal time by it, and keeps the
@@ -187,10 +174,10 @@ type part struct {
 // times allow, none above v. The plane may land a later batch of an export
 // before an earlier one, so an export's sequence orders nothing; the plane's
 // times do. A call proposed before the denial was decided is no retry, one at
-// that instant or with no time is untold, and a later one is confirmed when
-// one export holds both, so one plane's clock set the two, and suggested when
-// clocks that may differ did.
-func (l *lane) parts(d *request, k string, v controlv1.FindingVerdict, decidedIn []int, pos map[*controlv1.Event]int, out []part) []part {
+// that instant or with no time is untold, and a later one weighs at v; the
+// rule's row keeps that from confirming, since the two may have been timed by
+// two planes' clocks.
+func (l *lane) parts(d *request, k string, v controlv1.FindingVerdict, pos map[*controlv1.Event]int, out []part) []part {
 	self := func(s *seq) int {
 		if k != "" {
 			return -1
@@ -205,35 +192,9 @@ func (l *lane) parts(d *request, k string, v controlv1.FindingVerdict, decidedIn
 	if !t.IsValid() {
 		return append(out, untold, part{v: indeterminate, s: l.timed, hi: len(l.timed.calls), self: self(l.timed)})
 	}
-	most := suspected
-	if shareOne(l.exports, decidedIn) {
-		most = confirmed
-	}
 	lo := l.timed.search(ord{t.GetSeconds(), int64(t.GetNanos()), -1})
 	hi := l.timed.search(ord{t.GetSeconds(), int64(t.GetNanos()) + 1, -1})
 	timedSelf := self(l.timed)
 	return append(out, untold, part{v: indeterminate, s: l.timed, lo: lo, hi: hi, self: timedSelf},
-		part{v: weaker(most, v), s: l.timed, lo: hi, hi: len(l.timed.calls), self: timedSelf})
-}
-
-// ownScope reports whether a call by run acts as the denied run, deniedRun:
-// it is that run or one of its descendants. Any other run's retry needs
-// another run's denial, so it suggests at most.
-func (e *evaluation) ownScope(deniedRun, run string) bool {
-	key := [2]string{deniedRun, run}
-	if own, ok := e.scopes[key]; ok {
-		return own
-	}
-	if e.parents == nil {
-		e.parents = map[string]string{}
-		for _, r := range treeOf(e.in) {
-			e.parents[r.ID] = r.Parent
-		}
-	}
-	own := false
-	for at := run; at != "" && !own; at = e.parents[at] {
-		own = at == deniedRun
-	}
-	e.scopes[key] = own
-	return own
+		part{v: v, s: l.timed, lo: hi, hi: len(l.timed.calls), self: timedSelf})
 }

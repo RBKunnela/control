@@ -138,6 +138,7 @@ func TestReactWritesNothingForAFindingThatMayNotStop(t *testing.T) {
 			f.Procedure.Version = "2"
 		}), now},
 		{"a rule the route does not list", finding(1, tr.open, "DEADLINE_EXCEEDED", confirmed), now},
+		{"a retry confirmed before it could no longer stop", finding(1, tr.open, "DENIED_ACTION_RETRIED_ARGUMENTS", confirmed), now},
 		{"a rule version the route does not list", with(finding(1, tr.open, denial, confirmed), func(f *findingv1alpha1.FindingRecord) {
 			f.Finding.RuleVersion = "1"
 		}), now},

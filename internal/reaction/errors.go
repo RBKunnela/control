@@ -82,6 +82,10 @@ const (
 // append.
 const ErrStopSuperseded Error = "reaction: the stop names a rule version a later one superseded"
 
+// ErrStopRetired is CheckCurrent's refusal of a stop a writer would append
+// that names a rule version no route may name any more.
+const ErrStopRetired Error = "reaction: the stop names a rule version that may no longer stop a run"
+
 // Eligible's refusals of a finding.
 const (
 	ErrFindingSource  Error = "reaction: the finding's source is not DETERMINISTIC"

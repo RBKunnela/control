@@ -14,13 +14,13 @@ func AppendStop(ctx context.Context, dir string, route reaction.Route, s reactio
 	if err := reaction.CheckCurrent(s); err != nil {
 		return 0, fmt.Errorf("%w: %w", ErrRefused, err)
 	}
-	return appendLine(ctx, dir, route, at(now), fixed(s.Marshal()), nil)
+	return appendLine(ctx, dir, route, at(now), fixed(s.Marshal()), false, nil)
 }
 
 // AppendCovered appends c with no stop of its run behind it, which only a
 // test may write: the list's judge leaves that rule to AppendFinding.
 func AppendCovered(ctx context.Context, dir string, route reaction.Route, c reaction.Covered, now time.Time) (int64, error) {
-	return appendLine(ctx, dir, route, at(now), fixed(c.Marshal()), nil)
+	return appendLine(ctx, dir, route, at(now), fixed(c.Marshal()), false, nil)
 }
 
 // SetJudged makes f run once the judge accepted an append and before it is
@@ -35,6 +35,13 @@ func SetJudged(f func()) func() {
 func SetCarrying(f func()) func() {
 	carrying = f
 	return func() { carrying = nil }
+}
+
+// SignedHeaderLine is the line of a 3.0 header under route signed by s at
+// serial, which the tests use to start a list under a route no writer takes.
+func SignedHeaderLine(route reaction.Route, s Signer, serial int64) ([]byte, error) {
+	_, line, err := signedHeader(route, s, serial, "")
+	return line, err
 }
 
 // SetCarryStop makes f run between a carry's two writes, an error stopping

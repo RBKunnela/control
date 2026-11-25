@@ -14,7 +14,7 @@ var neverConfirmed = []string{"CONTINUED_AFTER_FAILURE", "REQUIRED_STEP_SKIPPED"
 
 func TestOnlyTheRulesThatRestOnWhatWasSeenCanConfirm(t *testing.T) {
 	want := map[string]bool{
-		"REPEATED_DENIAL": true, "STEP_OUTSIDE_PROCEDURE": true, "DEADLINE_EXCEEDED": true,
+		"REPEATED_DENIAL": true, "STEP_OUTSIDE_PROCEDURE": true, "DEADLINE_EXCEEDED": false,
 		"REQUIRED_STEP_SKIPPED": false, "STEP_OUT_OF_ORDER": false, "CONTINUED_AFTER_FAILURE": false,
 		"": false, "repeated_denial": false, "REPEATED_DENIAL ": false,
 	}

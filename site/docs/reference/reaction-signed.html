@@ -169,10 +169,9 @@ each <a href="/docs/reference/reaction">reaction</a> document, and no route or l
 <p>Each body is canonical JSON naming its <code>alg</code>, its <code>keyId</code>, <code>plane_id</code>, the
 tenant, the project and <code>file</code>: the absolute, cleaned path of the route file
 or of the stop list, every link on the way to its directory resolved. A
-plane refuses a body that names another <code>plane_id</code> or none, so a copy of a
-signed document to another plane of the same tenant and project is refused
-there for its <code>plane_id</code> even where the paths are alike, and for its <code>file</code>
-where they differ. The route names a <code>project_id</code> and a <code>scope</code> on each
+plane refuses a body that names another <code>plane_id</code> or none, so a copy to
+another plane of the same tenant and project is refused for its <code>plane_id</code>,
+whatever the paths, and for its <code>file</code> where they differ. The route names a <code>project_id</code> and a <code>scope</code> on each
 rule, and every stop and covered line of a <code>3.0</code> list names the project, the
 <code>scope</code> and the <code>subject</code>. Under scope <code>run</code> the subject is the line's
 <code>run_id</code>; under <code>agent</code> or <code>principal</code>, below, it is the agent or principal
@@ -225,20 +224,20 @@ subject. The old list is then read-only, and writers refuse it; its owner
 can undo that. The operator vouches that the old list is this plane's. Each
 command judges a route against the plane the route names. <code>react</code> takes <code>--approvals</code>, the plane's
 approvals directory, and will not run as the account that owns it; the
-directory is the caller's to name, so this guards against a mistake and does
-not keep the plane's account out. The console writes no stop and no lift at
-any setting.</p>
+caller names the directory, so this guards against a mistake, not the plane's
+account. The console writes no stop and no lift.</p>
 <p><code>--serial</code> matters only while the floor holds no serial: once it holds one, a
 new list is taken only as a carry naming the floor's head. When the old list
 cannot be carried, the plane's account makes a new floor with <code>stops floor init</code> in a new directory and names it in <code>reaction.stops_floor_dir</code>, an
 operator starts a new list with <code>stops init --key</code>, and <code>react</code> stops again
-what may still stop. A new floor takes any list, so this is the step that
+what may still stop. A new floor takes any list: this step
 lowers it.</p>
 <h2 id="a-stop-of-an-agent-or-a-principal">A stop of an agent or a principal</h2>
 <p>A route rule may carry scope <code>agent</code> or <code>principal</code> for <code>REPEATED_DENIAL</code>
-version <code>2</code>, <code>DENIED_ACTION_RETRIED_ARGUMENTS</code> version <code>1</code> and
-<code>DENIED_ACTION_RETRIED_RESOURCE</code> version <code>1</code>, the rules about what the actor
-did, and only with <code>expires_seconds</code>. Every reader of a route refuses either
+version <code>2</code> alone, the rule about what the actor did that may stop, and only
+with <code>expires_seconds</code>; the retry rules at <code>1</code> only in <code>--carry-route</code>, a
+carry keeping their stops only within what the new route grants
+(<a href="/docs/adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected">ADR-0088</a>). Every reader of a route refuses either
 scope on any other rule, and either scope without a lifetime
 (<a href="/docs/adr/0083-a-finding-may-stop-an-agent-or-a-principal">ADR-0083</a>).</p>
 <p><code>react</code> takes the subject from the judged run's record, its <code>agent_id</code> or

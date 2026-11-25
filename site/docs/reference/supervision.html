@@ -130,7 +130,7 @@
 </details>
 <main id="main" class="prose">
 <h1 id="supervision">Supervision</h1>
-<p><code>guardana-control supervise</code> checks a run an operator opened against its
+<p><code>guardana-control supervise</code> checks an opened run against its
 procedure, from plane evidence and runtime reports, and
 appends findings to a log.
 <code>guardana-control notify</code> hands each alert in that log to a program of the
@@ -216,11 +216,9 @@ Observations count when their correlation is claimed, with such a run id,
 tenant and project; a 33rd <code>--source</code>, one of another tenant or project, or
 of a kind naming no run (<a href="/docs/reference/observations#the-source-descriptor">observations</a>), is
 refused. Only a tool call is a step. An observation joined to a plane event
-by trace and span id is that call; a join cut short leaves
-<code>STEP_OUTSIDE_PROCEDURE</code> and <code>DENIED_ACTION_RETRIED_AROUND</code> not checked,
-findings kept. Everything else is counted and left out.</p>
-<p>The procedure, descriptors and evidence exports must be regular
-files of this account that only it can write: a <code>CONFIRMED</code> finding rests on
+by trace and span id is that call. Everything else is counted and left out.</p>
+<p>The procedure, descriptors and exports must be regular files only this
+account can write: a <code>CONFIRMED</code> finding rests on
 the export being the plane's.</p>
 <h2 id="the-rules">The rules</h2>
 <div class="tbl">
@@ -270,7 +268,7 @@ the export being the plane's.</p>
 </tr>
 <tr>
 <td><code>DENIED_ACTION_RETRIED_AROUND</code></td>
-<td>a source reports the denied tool after the denial, joined to no plane call; not checked with no <code>--source</code> or one unread or unheard</td>
+<td>a source reports the denied tool after the denial, joined to no plane call; <code>INDETERMINATE</code>, no importer stamping a call's start; not checked with no <code>--source</code></td>
 </tr>
 <tr>
 <td><code>EXCEPTION_TAKEN</code></td>
@@ -283,28 +281,30 @@ the export being the plane's.</p>
 has no time, or between two of one instant. A retry continues nothing, though
 each denial of it counts toward <code>REPEATED_DENIAL</code>; an approved call, no
 retry, belongs to the step it held. Plane calls order by the plane's times, never by place in
-an export; a retry confirms only when one export holds both.</p>
+an export. No event names its plane, so the deadline and the retries are
+<code>SUSPECTED</code> at most (<a href="/docs/adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected">ADR-0088</a>).</p>
 <h2 id="the-verdict">The verdict</h2>
 <p>The weakest of what a finding rests on. Plane events in an unbroken chain can
 make it <code>CONFIRMED</code>; an observation makes it <code>SUSPECTED</code>; a record in doubt,
-<code>INDETERMINATE</code>. So are a silent source's observations. A request with
+<code>INDETERMINATE</code>, as are a silent source's observations. A request with
 conflicting copies, a broken chain or events of two runs leaves no rule
-checked; an observation
-with two contents, or a judged run its source doubts, until the log is rotated
-(<a href="/docs/reference/observations#the-log">observations</a>), leaves <code>STEP_OUTSIDE_PROCEDURE</code>
-and <code>DENIED_ACTION_RETRIED_AROUND</code> not checked.
+checked; an unended request, unless held on an open run, none on how a call ends; an observation
+with two contents, a judged run its source doubts until the log is rotated
+(<a href="/docs/reference/observations#the-log">observations</a>), a join cut short, a source
+sampled, silent, unheard or unread, or an unclosed write leaves
+<code>STEP_OUTSIDE_PROCEDURE</code> and <code>DENIED_ACTION_RETRIED_AROUND</code> not checked,
+findings kept.
 The step rules rest on something not seen:
 <code>SUSPECTED</code> at most, <code>INDETERMINATE</code> while a <code>--source</code> is absent, never
 heard or silent, and checked only on a closed run whose exports are whole.
-Under <code>0.2</code> a finding confirms on its run's own events alone, save the
-deadline and a retry by a descendant of the denied run; one that needs
-another run's events is <code>SUSPECTED</code> at most.</p>
+Under <code>0.2</code> a finding confirms on its own run's events; one needing
+another run's is <code>SUSPECTED</code> at most.</p>
 <h2 id="output-and-exit-status">Output and exit status</h2>
 <p>After the run's line come, under <code>0.2</code>, its children mode and a <code>tree:</code> line
 per run; a line per step, its requests apart from the observations no plane
 call joins; per finding, with its run under <code>0.2</code> and the references it left
 out; per rule; and <code>not checked: source &lt;path&gt; absent</code>, <code>&lt;id&gt; never heard</code>
-or <code>&lt;id&gt; silent</code> for each <code>--source</code> not judged against.</p>
+or <code>&lt;id&gt; silent</code> for each <code>--source</code> not judged.</p>
 <div class="tbl">
 <table>
 <thead>
@@ -329,15 +329,14 @@ or <code>&lt;id&gt; silent</code> for each <code>--source</code> not judged agai
 </tbody>
 </table>
 </div>
-<p>The log is opened, and <code>findings.jsonl</code> created, only once every input is
-accepted. A failure after the write commits exits 2 and keeps it.</p>
+<p>The log opens only after every input is accepted. A failure after the write commits exits 2 and keeps it.</p>
 <h2 id="the-finding-record-and-its-log">The finding record and its log</h2>
 <p><code>guardana.control.finding.v1alpha1</code>, outside the v1 promise. A
 <code>FindingRecord</code> holds the tenant, project, procedure (id, version, digest),
 escalation, references to plane events and observations and a v1
-finding with its id, rule, severity, verdict and run. Its id is
-<code>fnd-</code> and 32 hex digits, a function of the run, the procedure, the rule and
-its version, and what it is about, so a rerun finds the same ids. The log,
+finding with its id, rule, severity, verdict and run. Its id,
+<code>fnd-</code> and 32 hex digits, is a function of the run, the procedure, the rule,
+its version and what it is about, so a rerun finds the same ids. The log,
 <code>findings.jsonl</code>, is JSON Lines in an owner-only directory. The command writes only when it read an event
 of the run, ending its write with a <code>SuperviseReport</code>; a write without one
 is never read.</p>
@@ -374,12 +373,13 @@ is never read.</p>
 </tr>
 <tr>
 <td><code>LogHeader</code></td>
-<td>a new log's first line: <code>log_id</code>, <code>log-</code> and 32 hex digits of 128 random bits</td>
+<td>a new log's first line: <code>log_id</code>, <code>log-</code> and 32 random hex digits</td>
 </tr>
 </tbody>
 </table>
 </div>
-<p>The reader refuses an unknown schema or a member its schema lacks.</p>
+<p>The reader refuses an unknown schema, a member its schema lacks or one at
+its default.</p>
 <h2 id="notify">notify</h2>
 <p><code>notify</code> hands each <code>alert</code> record, in log order, one line on standard
 input, to the program after <code>--</code>, without a shell, with only <code>PATH</code>,

@@ -132,12 +132,17 @@ func (r *read) eventOutside(ev *controlv1.Event) string {
 // finding and a report name one project, so a run recorded in two is refused
 // rather than judged as one, and so is an event that names none, which would
 // otherwise take whichever project another event names. An event of another
-// project than the run's record is refused, as a source of another tenant is.
+// project than the run's record is refused, as a source of another tenant is,
+// and so is a proposal whose call names another tenant or project than its
+// event: the run's identity is the event's, its tool the call's.
 func (r *read) takeProject() error {
 	for _, ev := range r.events {
+		env := ev.GetProposed()
 		switch p := ev.GetProjectId(); {
 		case p == "":
 			return ErrInput.with("an event of the run names no project")
+		case env != nil && (env.GetProjectId() != p || env.GetTenantId() != ev.GetTenantId()):
+			return ErrInput.with("a proposal of the run names another tenant or project than its event")
 		case r.recorded != "" && p != r.recorded:
 			return ErrInput.with(fmt.Sprintf("an event of the run is of project %s, the run's record of project %s",
 				strconv.Quote(p), strconv.Quote(r.recorded)))

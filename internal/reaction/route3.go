@@ -95,13 +95,16 @@ func subjectBound(scope string) int {
 }
 
 // checkRuleScope refuses a rule of an agent or a principal unless
-// MayStopWider names its rule and it names a lifetime: such a stop outlives
-// the run whose finding made it, so nothing else would end it.
+// MayStopWider names its rule, or it is a retired version a route could let
+// stop one, and it names a lifetime: such a stop outlives the run whose
+// finding made it, so nothing else would end it. CheckStopping refuses a
+// retired version whatever its scope.
 func checkRuleScope(r Rule) error {
+	retiredWider, _ := retired(r.RuleID, r.RuleVersion)
 	switch {
 	case !wider(r.Scope):
 		return nil
-	case !MayStopWider(r.RuleID, r.RuleVersion):
+	case !MayStopWider(r.RuleID, r.RuleVersion) && !retiredWider:
 		return fmt.Errorf("%w: rule_id %q rule_version %q may not stop an %s", ErrRouteScope, r.RuleID, r.RuleVersion, r.Scope)
 	case r.Lifetime == 0:
 		return fmt.Errorf("%w: a rule of scope %s names no %s", ErrRouteLifetime, r.Scope, memberExpires)

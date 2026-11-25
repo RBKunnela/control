@@ -11,12 +11,12 @@ import (
 
 // widerRouteDoc is a v1alpha3 route of plane-a with one rule of each scope:
 // STEP_OUTSIDE_PROCEDURE stops a run for an hour, REPEATED_DENIAL an agent
-// and DENIED_ACTION_RETRIED_ARGUMENTS a principal, each for two hours.
+// and, under the procedure's next version, a principal, each for two hours.
 const widerRouteDoc = `{"kind":"reaction-route/v1alpha3","plane_id":"plane-a","route_id":"refunds","serial":7,"tenant_id":"acme",
  "project_id":"shop","rules":[
  {"procedure_id":"refund","version":"3","digest":"` + procDigest + `","rule_id":"STEP_OUTSIDE_PROCEDURE","rule_version":"1","scope":"run","expires_seconds":3600},
  {"procedure_id":"refund","version":"3","digest":"` + procDigest + `","rule_id":"REPEATED_DENIAL","rule_version":"2","scope":"agent","expires_seconds":7200},
- {"procedure_id":"refund","version":"3","digest":"` + procDigest + `","rule_id":"DENIED_ACTION_RETRIED_ARGUMENTS","rule_version":"1","scope":"principal","expires_seconds":7200}]}`
+ {"procedure_id":"refund","version":"4","digest":"` + procDigest + `","rule_id":"REPEATED_DENIAL","rule_version":"2","scope":"principal","expires_seconds":7200}]}`
 
 // widerRoute is widerRouteDoc signed for plane-a and taken by the fake voucher.
 func widerRoute(t testing.TB) reaction.Route {
@@ -33,25 +33,25 @@ func widerRoute(t testing.TB) reaction.Route {
 	return r
 }
 
-// ruleOf is the rule id and version, and the lifetime, of a stop of scope
-// under widerRouteDoc.
-func ruleOf(scope string) (id, version string, life time.Duration) {
+// ruleOf is the procedure version, the rule id and version, and the
+// lifetime, of a stop of scope under widerRouteDoc.
+func ruleOf(scope string) (procedure, id, version string, life time.Duration) {
 	switch scope {
 	case reaction.ScopeAgent:
-		return "REPEATED_DENIAL", "2", 2 * time.Hour
+		return "3", "REPEATED_DENIAL", "2", 2 * time.Hour
 	case reaction.ScopePrincipal:
-		return "DENIED_ACTION_RETRIED_ARGUMENTS", "1", 2 * time.Hour
+		return "4", "REPEATED_DENIAL", "2", 2 * time.Hour
 	}
-	return "STEP_OUTSIDE_PROCEDURE", "1", time.Hour
+	return "3", "STEP_OUTSIDE_PROCEDURE", "1", time.Hour
 }
 
 // wideStop is a 3.0 stop of scope and subject for finding about run-1.
 func wideStop(t testing.TB, finding, scope, subject string) []byte {
 	t.Helper()
-	id, version, life := ruleOf(scope)
+	procedure, id, version, life := ruleOf(scope)
 	line, err := reaction.Stop{
 		EntryID: reaction.EntryID(finding), TenantID: sTenant, ProjectID: sProject, Scope: scope, Subject: subject,
-		RunID: "run-1", FindingID: finding, ProcedureID: "refund", ProcedureVersion: "3", ProcedureDigest: procDigest,
+		RunID: "run-1", FindingID: finding, ProcedureID: "refund", ProcedureVersion: procedure, ProcedureDigest: procDigest,
 		RuleID: id, RuleVersion: version, CreatedAt: sCreated, ExpiresAt: sCreated.Add(life),
 	}.Marshal()
 	if err != nil {
@@ -78,18 +78,20 @@ func wideLift(t testing.TB, head, scope, subject string, through int64) []byte {
 }
 
 // TestOnlyTheActorRulesMayStopAnAgentOrAPrincipal: a v1alpha3 rule of scope
-// agent or principal is read for REPEATED_DENIAL, DENIED_ACTION_RETRIED_ARGUMENTS
-// and DENIED_ACTION_RETRIED_RESOURCE with a lifetime; for any other rule it is
-// ErrRouteScope, and without expires_seconds ErrRouteLifetime.
+// agent or principal is read for REPEATED_DENIAL with a lifetime; for any
+// other rule it is ErrRouteScope, and without expires_seconds
+// ErrRouteLifetime. The retired versions of the two retry rules are read, as
+// a carry's source names them, and CheckStopping refuses them.
 func TestOnlyTheActorRulesMayStopAnAgentOrAPrincipal(t *testing.T) {
 	if ruledDoc("X", "1", "agent") == ruledDoc("STEP_OUTSIDE_PROCEDURE", "1", "run") {
 		t.Fatal("the route document names no rule to edit")
 	}
 	for _, scope := range []string{reaction.ScopeAgent, reaction.ScopePrincipal} {
-		for _, rule := range [][2]string{{"REPEATED_DENIAL", "2"}, {"DENIED_ACTION_RETRIED_ARGUMENTS", "1"}, {"DENIED_ACTION_RETRIED_RESOURCE", "1"}} {
-			expectActorRule(t, rule[0], rule[1], scope)
-		}
-		for _, rule := range [][2]string{{"STEP_OUTSIDE_PROCEDURE", "1"}, {"DEADLINE_EXCEEDED", "1"}, {"RESOURCE_OUTSIDE_RUN", "1"}} {
+		expectActorRule(t, "REPEATED_DENIAL", "2", scope)
+		expectRetiredActorRule(t, "DENIED_ACTION_RETRIED_ARGUMENTS", scope)
+		expectRetiredActorRule(t, "DENIED_ACTION_RETRIED_RESOURCE", scope)
+		for _, rule := range [][2]string{{"STEP_OUTSIDE_PROCEDURE", "1"}, {"DEADLINE_EXCEEDED", "1"}, {"DEADLINE_EXCEEDED", "2"},
+			{"RESOURCE_OUTSIDE_RUN", "1"}, {"DENIED_ACTION_RETRIED_ARGUMENTS", "2"}, {"DENIED_ACTION_RETRIED_RESOURCE", "2"}} {
 			if _, err := reaction.ParseRouteDocument([]byte(ruledDoc(rule[0], rule[1], scope))); !errors.Is(err, reaction.ErrRouteScope) {
 				t.Errorf("%s of scope %s: %v, want %v", rule[0], scope, err, reaction.ErrRouteScope)
 			}
@@ -102,8 +104,9 @@ func TestOnlyTheActorRulesMayStopAnAgentOrAPrincipal(t *testing.T) {
 		}
 	}
 	if !reaction.MayStopWider("REPEATED_DENIAL", "2") || reaction.MayStopWider("REPEATED_DENIAL", "1") ||
-		reaction.MayStopWider("STEP_OUTSIDE_PROCEDURE", "1") {
-		t.Error("MayStopWider takes another rule than the current versions of the three actor rules")
+		reaction.MayStopWider("STEP_OUTSIDE_PROCEDURE", "1") || reaction.MayStopWider("DENIED_ACTION_RETRIED_ARGUMENTS", "1") ||
+		reaction.MayStopWider("DENIED_ACTION_RETRIED_RESOURCE", "1") {
+		t.Error("MayStopWider takes another rule than the current version of REPEATED_DENIAL")
 	}
 }
 
@@ -113,6 +116,20 @@ func ruledDoc(id, version, scope string) string {
 	doc := strings.NewReplacer("PLANE", sPlane, "PROJECT", sProject).Replace(signedRouteDoc)
 	return strings.NewReplacer(`"rule_id":"STEP_OUTSIDE_PROCEDURE","rule_version":"1","scope":"run"`,
 		`"rule_id":"`+id+`","rule_version":"`+version+`","scope":"`+scope+`"`).Replace(doc)
+}
+
+// expectRetiredActorRule fails unless rule id at version "1" of scope is read,
+// as a carry's source names it, and CheckStopping refuses it naming the rule.
+func expectRetiredActorRule(t *testing.T, id, scope string) {
+	t.Helper()
+	r, err := reaction.ParseRouteDocument([]byte(ruledDoc(id, "1", scope)))
+	if err != nil {
+		t.Errorf("%s 1 of scope %s: %v", id, scope, err)
+		return
+	}
+	if err := reaction.CheckStopping(r); !errors.Is(err, reaction.ErrRouteRuleStops) || !strings.Contains(err.Error(), id) {
+		t.Errorf("CheckStopping of %s 1 of scope %s: %v, want %v naming it", id, scope, err, reaction.ErrRouteRuleStops)
+	}
 }
 
 // expectActorRule fails unless rule id at version of scope is read with its

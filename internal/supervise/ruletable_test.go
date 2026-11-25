@@ -57,11 +57,8 @@ func TestEveryRuleIsAtItsVersion(t *testing.T) {
 	}
 }
 
-func TestOnlyTheSixTheRecordListsMayStop(t *testing.T) {
-	want := map[string]bool{
-		"REPEATED_DENIAL": true, "STEP_OUTSIDE_PROCEDURE": true, "DEADLINE_EXCEEDED": true,
-		"RESOURCE_OUTSIDE_RUN": true, "DENIED_ACTION_RETRIED_ARGUMENTS": true, "DENIED_ACTION_RETRIED_RESOURCE": true,
-	}
+func TestOnlyTheThreeTheRecordListsMayStop(t *testing.T) {
+	want := map[string]bool{"REPEATED_DENIAL": true, "STEP_OUTSIDE_PROCEDURE": true, "RESOURCE_OUTSIDE_RUN": true}
 	for _, id := range append(slices.Clone(schema02Rules), "", "repeated_denial", "STOP_EVERYTHING") {
 		if got := supervise.MayStop(id); got != want[id] {
 			t.Errorf("MayStop(%q) = %v, want %v", id, got, want[id])
@@ -71,8 +68,8 @@ func TestOnlyTheSixTheRecordListsMayStop(t *testing.T) {
 
 func TestTheNewRulesConfirmAsTheRecordSays(t *testing.T) {
 	for id, want := range map[string]bool{
-		"RESOURCE_OUTSIDE_RUN": true, "DENIED_ACTION_RETRIED_ARGUMENTS": true,
-		"DENIED_ACTION_RETRIED_RESOURCE": true, "DENIED_ACTION_RETRIED_AROUND": false, "EXCEPTION_TAKEN": true,
+		"RESOURCE_OUTSIDE_RUN": true, "DENIED_ACTION_RETRIED_ARGUMENTS": false,
+		"DENIED_ACTION_RETRIED_RESOURCE": false, "DENIED_ACTION_RETRIED_AROUND": false, "EXCEPTION_TAKEN": true,
 	} {
 		if got := supervise.CanConfirm(id); got != want {
 			t.Errorf("CanConfirm(%q) = %v, want %v", id, got, want)

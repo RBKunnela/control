@@ -96,3 +96,4 @@ request with `Status: proposed`, and set it to `accepted` when it merges.
 | [0085](0085-the-1-0-bar-is-met-by-own-evidence-and-what-needs-outside-people-stays-not-met.md) | The 1.0 bar is met by the project's own evidence, and what needs outside people stays not met |
 | [0086](0086-controlled-attempts-are-counted-at-the-victim.md) | Controlled attempts are counted at the victim, by an executor of their own |
 | [0087](0087-a-candidate-policy-is-compared-through-the-kernels-own-evaluation.md) | A candidate policy is compared through the kernel's own evaluation, and what a case cannot show stays unknown |
+| [0088](0088-a-verdict-that-compares-two-events-times-is-at-most-suspected.md) | A verdict that compares two events' times is at most suspected |

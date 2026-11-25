@@ -33,6 +33,10 @@ func (e *evaluation) states02(out map[string]ruleState, base ruleState) {
 	out[RuleExceptionTaken] = e.takenState(out, base)
 }
 
+// silentWhy is why a rule that reads a source's reports is not checked while
+// a source is silent, never heard or not read.
+const silentWhy = "a source is silent, never heard or not read"
+
 // uncheckable02 marks those of rules02 that have nothing to compare.
 func (e *evaluation) uncheckable02(out map[string]ruleState) {
 	if !e.anyHeld() {
@@ -43,6 +47,6 @@ func (e *evaluation) uncheckable02(out map[string]ruleState) {
 		out[RuleDeniedActionRetriedAround] = notChecked("no observation source was read")
 	case e.anySilent:
 		// A report that did not arrive is a retry around no one saw.
-		out[RuleDeniedActionRetriedAround] = notChecked("a source is silent, never heard or not read")
+		out[RuleDeniedActionRetriedAround] = notChecked(silentWhy)
 	}
 }

@@ -9,10 +9,11 @@ import (
 	"github.com/guardana/control/internal/supervise"
 )
 
-// TestARetryConfirmsOnlyInTheDeniedRunsScope: a retry by the denied run or
-// one of its descendants confirms; one by its parent or a sibling needs
-// another run's denial and only suggests, whichever form it takes.
-func TestARetryConfirmsOnlyInTheDeniedRunsScope(t *testing.T) {
+// TestARetryAnywhereInTheTreeSuggests: a retry by the denied run, one of its
+// descendants, its parent or a sibling suggests, whichever form it takes;
+// none confirms, since nothing in an event names the plane whose clock timed
+// it.
+func TestARetryAnywhereInTheTreeSuggests(t *testing.T) {
 	otherOrder := act{call: call{req: "r9", tool: "issue_refund", upstream: "pay", at: 30 * time.Second},
 		res: orderNo("77"), hash: hashOf('c'), effect: transact}
 	for name, c := range map[string]struct {
@@ -21,9 +22,9 @@ func TestARetryConfirmsOnlyInTheDeniedRunsScope(t *testing.T) {
 		rule string
 		want string
 	}{
-		"the root's denial, its child's retry":       {family(), acts(denial(), again().in(childRun)), ruleArgs, childRun + " FINDING_VERDICT_CONFIRMED"},
-		"the root's denial, its grandchild's retry":  {family(), acts(denial(), again().in(grandchildRun)), ruleArgs, grandchildRun + " FINDING_VERDICT_CONFIRMED"},
-		"the child's denial, its own retry":          {family(), acts(denial().in(childRun), again().in(childRun)), ruleArgs, childC},
+		"the root's denial, its child's retry":       {family(), acts(denial(), again().in(childRun)), ruleArgs, childS},
+		"the root's denial, its grandchild's retry":  {family(), acts(denial(), again().in(grandchildRun)), ruleArgs, grandchildRun + " FINDING_VERDICT_SUSPECTED"},
+		"the child's denial, its own retry":          {family(), acts(denial().in(childRun), again().in(childRun)), ruleArgs, childS},
 		"the child's denial, the root's other order": {siblings(), acts(denial().in(childRun), otherOrder), ruleArgs, rootS},
 		"the child's denial, the root's retry":       {family(), acts(denial().in(childRun), manual()), ruleRes, rootS},
 		"the grandchild's denial, its parent's retry": {family(), acts(denial().in(grandchildRun), again().in(childRun)), ruleArgs,

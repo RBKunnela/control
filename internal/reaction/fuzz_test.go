@@ -24,7 +24,7 @@ func FuzzParseRoute(f *testing.F) {
 	f.Add([]byte(routeWith("r", "t", []string{ruleJSON("p"), ruleJSON("q")})))
 	f.Add([]byte(strings.Replace(doc, `"serial": 7`, `"serial": 9007199254740991`, 1)))
 	f.Add([]byte(strings.Replace(doc, `"serial": 7,`, `"serial": 7, "serial": 8,`, 1)))
-	f.Add([]byte(strings.Replace(doc, `"DEADLINE_EXCEEDED"`, `"STEP_OUTSIDE_PROCEDURE"`, 1)))
+	f.Add([]byte(strings.Replace(doc, `"RESOURCE_OUTSIDE_RUN"`, `"STEP_OUTSIDE_PROCEDURE"`, 1)))
 	f.Add([]byte(strings.Replace(doc, `"scope": "run"`, `"scope": "agent"`, 1)))
 	f.Add([]byte(strings.Replace(doc, `3600`, `2592001`, 1)))
 	f.Add([]byte(strings.Replace(doc, `"refunds"`, `"ref\ud800unds"`, 1)))

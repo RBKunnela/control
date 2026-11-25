@@ -266,19 +266,20 @@ func late() []call {
 	}
 }
 
-func TestADeadlineIsConfirmedOnOneExportAndSuspectedAcrossMore(t *testing.T) {
+// TestADeadlineIsSuspectedHoweverItsEventsAreExported: the first and the last
+// event may be two planes' clocks, whether one export holds both or two do.
+func TestADeadlineIsSuspectedHoweverItsEventsAreExported(t *testing.T) {
 	at702 := procWith(t, `"deadline_seconds":600`, `"deadline_seconds":702`)
-	deadlineID := handID(tenant, proj, runID, "refund", "1", "DEADLINE_EXCEEDED", "1")
-	sameFindings(t, closedRun(t, at702, export(late()...)).Findings,
-		want(at702, "DEADLINE_EXCEEDED", low, inform, confirmed, deadlineID, evRef("r1-e1", "r1"), evRef("r4-e4", "r4")))
-	sameFindings(t, closedRun(t, at702, export(late()[:2]...), export(late()[2])).Findings,
-		want(at702, "DEADLINE_EXCEEDED", low, inform, suspected, deadlineID, evRef("r1-e1", "r1"), evRef("r4-e4", "r4")))
-	// A second export that holds the endpoints again, or only an event between
-	// them, leaves both on the one clock that dated them.
-	for name, more := range map[string]supervise.Export{"the same export twice": export(late()...), "an export of the middle call": export(late()[1])} {
+	deadlineID := handID(tenant, proj, runID, "refund", "1", "DEADLINE_EXCEEDED", "2")
+	for name, x := range map[string][]supervise.Export{
+		"one export":                   {export(late()...)},
+		"two exports":                  {export(late()[:2]...), export(late()[2])},
+		"the same export twice":        {export(late()...), export(late()...)},
+		"an export of the middle call": {export(late()...), export(late()[1])},
+	} {
 		t.Run(name, func(t *testing.T) {
-			sameFindings(t, closedRun(t, at702, export(late()...), more).Findings,
-				want(at702, "DEADLINE_EXCEEDED", low, inform, confirmed, deadlineID, evRef("r1-e1", "r1"), evRef("r4-e4", "r4")))
+			sameFindings(t, closedRun(t, at702, x...).Findings,
+				want(at702, "DEADLINE_EXCEEDED", low, inform, suspected, deadlineID, evRef("r1-e1", "r1"), evRef("r4-e4", "r4")))
 		})
 	}
 

@@ -157,13 +157,13 @@ digest: 3bdccd18fb0503f6168a59a8bae712b9b37be7e4435f796b111be409f7d59dd6
 children: inherit
 rule: REPEATED_DENIAL version 2, may stop
 rule: STEP_OUTSIDE_PROCEDURE version 1, may stop
-rule: DEADLINE_EXCEEDED version 1, may stop
+rule: DEADLINE_EXCEEDED version 2, never stops
 rule: REQUIRED_STEP_SKIPPED version 1, never stops
 rule: STEP_OUT_OF_ORDER version 2, never stops
 rule: CONTINUED_AFTER_FAILURE version 2, never stops
 rule: RESOURCE_OUTSIDE_RUN version 1, may stop
-rule: DENIED_ACTION_RETRIED_ARGUMENTS version 1, may stop
-rule: DENIED_ACTION_RETRIED_RESOURCE version 1, may stop
+rule: DENIED_ACTION_RETRIED_ARGUMENTS version 2, never stops
+rule: DENIED_ACTION_RETRIED_RESOURCE version 2, never stops
 rule: DENIED_ACTION_RETRIED_AROUND version 1, never stops
 rule: EXCEPTION_TAKEN version 1, never stops
 </code></pre>
@@ -218,7 +218,8 @@ with the events as that export writes them; an event whose
 the export reader refuses it.</li>
 <li><code>sources</code>, if given, are sources of an agent runtime's spans: <code>source_id</code>,
 <code>heartbeat_seconds</code>, <code>last_heard</code> (left out for a source never heard) and
-<code>observations</code>. <code>sources_not_read</code> names sources given and not found.</li>
+<code>observations</code>, each read as a source that reports every call. <code>sources_not_read</code>
+names sources given and not found.</li>
 <li>Every time comes from the events and the sources, written in UTC with <code>Z</code>.</li>
 </ul>
 <p><code>expect</code> states the state of every rule the report lists (<code>CHECKED</code>,
@@ -232,7 +233,7 @@ reason, so a source that went unheard fails a case that does not list it.</p>
 <pre><code>$ go run ./cmd/guardana-control procedure test testdata/procedure/cases-0.2.json
 ok   a waiver taken: EXCEPTION_TAKEN CONFIRMED
 ok   a resource outside the run: RESOURCE_OUTSIDE_RUN CONFIRMED
-ok   a denied refund retried with other arguments: DENIED_ACTION_RETRIED_ARGUMENTS CONFIRMED
+ok   a denied refund retried with other arguments: DENIED_ACTION_RETRIED_ARGUMENTS SUSPECTED
 procedure refund version 2: 3 cases, 3 passed, 0 failed
 </code></pre>
 <p>A case passes only when every rule's state, the whole set of findings and

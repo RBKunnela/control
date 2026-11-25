@@ -136,6 +136,9 @@ func (c call) kinds() ([]controlv1.EventKind, *controlv1.Decision, *controlv1.De
 			decision(p, c.req, controlv1.Verdict_VERDICT_DENY, "APPROVAL_EXPIRED")
 	case "held":
 		return []controlv1.EventKind{proposed, decided, requested}, approval, nil
+	case "unasked":
+		return []controlv1.EventKind{proposed, decided, blocked}, approval,
+			decision(p, c.req, controlv1.Verdict_VERDICT_DENY, "APPROVAL_STATE_UNKNOWN")
 	}
 	return []controlv1.EventKind{proposed, decided, started, completed}, allow, nil
 }
@@ -226,10 +229,11 @@ func (o ob) obs() *observev1.Observation {
 // observations name a run.
 const otelKind = "otel-genai-traces"
 
-// source is s1 of t1 and p1, of kind otelKind, heard an hour after t0 with a
-// heartbeat of 300 s.
+// source is s1 of t1 and p1, of kind otelKind, sampling every call, heard an
+// hour after t0 with a heartbeat of 300 s.
 func source(obs ...ob) supervise.Source {
-	s := supervise.Source{SourceID: "s1", Kind: otelKind, Tenant: tenant, Project: proj, HeartbeatSeconds: 300, LastHeard: t0.Add(time.Hour), Heard: true}
+	s := supervise.Source{SourceID: "s1", Kind: otelKind, Tenant: tenant, Project: proj, HeartbeatSeconds: 300,
+		Sampling: observev1.Sampling_SAMPLING_COMPLETE, LastHeard: t0.Add(time.Hour), Heard: true}
 	for _, o := range obs {
 		s.Observations = append(s.Observations, o.obs())
 	}
@@ -264,9 +268,9 @@ func obsRef(src, id string) *findingv1alpha1.Reference {
 // ruleVersions is each rule's version, spelled here rather than read from the
 // package's table.
 var ruleVersions = map[string]string{
-	"REPEATED_DENIAL": "2", "STEP_OUTSIDE_PROCEDURE": "1", "DEADLINE_EXCEEDED": "1",
+	"REPEATED_DENIAL": "2", "STEP_OUTSIDE_PROCEDURE": "1", "DEADLINE_EXCEEDED": "2",
 	"REQUIRED_STEP_SKIPPED": "1", "STEP_OUT_OF_ORDER": "2", "CONTINUED_AFTER_FAILURE": "2",
-	"RESOURCE_OUTSIDE_RUN": "1", "DENIED_ACTION_RETRIED_ARGUMENTS": "1", "DENIED_ACTION_RETRIED_RESOURCE": "1",
+	"RESOURCE_OUTSIDE_RUN": "1", "DENIED_ACTION_RETRIED_ARGUMENTS": "2", "DENIED_ACTION_RETRIED_RESOURCE": "2",
 	"DENIED_ACTION_RETRIED_AROUND": "1", "EXCEPTION_TAKEN": "1",
 }
 

@@ -238,3 +238,4 @@ Have a tool ask before it acts or a sensor report what happened, hold a client t
 - [ADR-0085: The 1.0 bar is met by the project's own evidence, and what needs outside people stays not met](adr/0085-the-1-0-bar-is-met-by-own-evidence-and-what-needs-outside-people-stays-not-met.md): accepted
 - [ADR-0086: Controlled attempts are counted at the victim, by an executor of their own](adr/0086-controlled-attempts-are-counted-at-the-victim.md): accepted
 - [ADR-0087: A candidate policy is compared through the kernel's own evaluation, and what a case cannot show stays unknown](adr/0087-a-candidate-policy-is-compared-through-the-kernels-own-evaluation.md): proposed
+- [ADR-0088: A verdict that compares two events' times is at most suspected](adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected.md): proposed

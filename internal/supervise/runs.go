@@ -178,7 +178,7 @@ func (e *evaluation) deadlineByRun(limit time.Duration) []draft {
 	}
 	out := make([]draft, 0, len(past))
 	for _, run := range slices.Sorted(maps.Keys(past)) {
-		d := draft{rule: RuleDeadlineExceeded, cap: e.spanCap(e.first, past[run])}
+		d := draft{rule: RuleDeadlineExceeded, cap: confirmed}
 		for _, ev := range []*controlv1.Event{e.first, past[run]} {
 			d.refs = append(d.refs, e.byRequest[ev.GetRequestId()].ref(ev))
 		}

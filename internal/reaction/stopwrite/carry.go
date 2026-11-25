@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math"
 	"os"
 	"path/filepath"
 	"time"
@@ -149,10 +150,10 @@ func carry(ctx context.Context, from string, fromRoute reaction.Route, dir strin
 			carrying()
 		}
 		lines := append(append([][]byte{header}, stops...), covered...)
-		if !retire {
-			return create(ctx, dir, route, now, lines)
+		if err := writeCarried(ctx, root, dir, route, now, lines, retire); err != nil {
+			return liftFirst(err, part.list.Entries(), fromRoute.Format(), route)
 		}
-		return createRetiring(ctx, root, dir, route, now, lines)
+		return nil
 	})
 	if err != nil {
 		return Carried{}, err
@@ -160,12 +161,114 @@ func carry(ctx context.Context, from string, fromRoute reaction.Route, dir strin
 	return out, nil
 }
 
+// writeCarried is create of the new list, retiring the old list root holds
+// first when retire is set.
+func writeCarried(ctx context.Context, root *os.Root, dir string, route reaction.Route, now time.Time, lines [][]byte, retire bool) error {
+	if retire {
+		return createRetiring(ctx, root, dir, route, now, lines)
+	}
+	return create(ctx, dir, route, now, lines)
+}
+
+// liftFirst is err, the new list's refusal, naming the stop it refused when
+// that is a stop the carry brought from entries, and what ends the refusal
+// (remedy): an upgrade lifts no stop, so the operator does.
+func liftFirst(err error, entries []reaction.Entry, from reaction.RouteFormat, route reaction.Route) error {
+	var at *reaction.LineError
+	if !errors.As(err, &at) || !errors.Is(err, reaction.ErrStopRefused) || at.Line < 2 || at.Line-2 >= int64(len(entries)) {
+		return err
+	}
+	e := entries[at.Line-2]
+	target := e.Target()
+	return fmt.Errorf("%w: it is the stop of %s %q at line %d of the list carried from, for finding %q under rule %s %s, "+
+		"which the new route does not grant; %s",
+		err, target.Scope, target.Subject, e.Line, e.FindingID, e.RuleID, e.RuleVersion, remedy(err, e, from, route))
+}
+
+// remedy is what ends err, route's refusal of e, a stop carried from a list
+// under a route of format from. A carry keeps a stop's tenant and project,
+// so only a route of those or a new list does when they differ. Otherwise the
+// stop is lifted on the old list under its route, but no lift is written
+// under a v1alpha2 route: for its list the route takes a rule that keeps the
+// stop, the rule it holds at another scope moved to the stop's when it names
+// one, since a route names a rule once.
+func remedy(err error, e reaction.Entry, from reaction.RouteFormat, route reaction.Route) string {
+	target := e.Target()
+	fresh := "start a new list with stops init"
+	if from != reaction.FormatV1Alpha1 {
+		fresh += " under a new stop list floor (stops floor init)"
+	}
+	fresh += ", which keeps none of the old list's stops"
+	switch {
+	case errors.Is(err, reaction.ErrClaimTenant) || errors.Is(err, reaction.ErrClaimProject):
+		return "a carry keeps each stop's tenant and project, and the new route's differ: " +
+			"carry under a route of the list's tenant and project, or " + fresh
+	case from != reaction.FormatV1Alpha2Carry:
+		return fmt.Sprintf("end it there with stops lift --%s %q under the route it was written under, then carry again",
+			target.Scope, target.Subject)
+	}
+	span := int64(math.Ceil(e.ExpiresAt.Sub(e.CreatedAt).Seconds()))
+	version := currentVersion(e.RuleID, e.RuleVersion)
+	if held, ok := heldAtAnotherScope(err, e, version, route); ok {
+		return fmt.Sprintf("stops lift takes no reaction-route/v1alpha2 route, and the new route names rule %s %s of procedure %q version %q "+
+			"at scope %s, and a route names a rule once: give it scope %s, so it stops no agent or principal, with expires_seconds "+
+			"of at least %d, sign it and carry again, or %s",
+			held.RuleID, held.RuleVersion, held.ProcedureID, held.ProcedureVersion, held.Scope, target.Scope, span, fresh)
+	}
+	keeps := "rule " + e.RuleID + " " + version + " of"
+	if reaction.Retired(e.RuleID, e.RuleVersion) {
+		keeps = "a rule of"
+	}
+	return fmt.Sprintf("stops lift takes no reaction-route/v1alpha2 route, so either give the new route %s procedure %q version %q "+
+		"at scope %s with expires_seconds of at least %d, sign it and carry again, or %s",
+		keeps, e.ProcedureID, e.ProcedureVersion, target.Scope, span, fresh)
+}
+
+// currentVersion is the version of rule id a route names for a stop of it at
+// version: the one that replaced a superseded version, or version itself.
+func currentVersion(id, version string) string {
+	if !reaction.Superseded(id, version) {
+		return version
+	}
+	for _, r := range reaction.StoppingRules() {
+		if r.ID == id {
+			return r.Version
+		}
+	}
+	return version
+}
+
+// heldAtAnotherScope is route's rule of e's procedure and rule, at version,
+// when err refuses e for its scope. No route names a retired version, so a
+// retired stop finds none.
+func heldAtAnotherScope(err error, e reaction.Entry, version string, route reaction.Route) (reaction.Rule, bool) {
+	if !errors.Is(err, reaction.ErrClaimScope) {
+		return reaction.Rule{}, false
+	}
+	for _, r := range route.Rules() {
+		if r.ProcedureID == e.ProcedureID && r.ProcedureVersion == e.ProcedureVersion && r.ProcedureDigest == e.ProcedureDigest &&
+			r.RuleID == e.RuleID && r.RuleVersion == version {
+			return r, true
+		}
+	}
+	return reaction.Rule{}, false
+}
+
 // createRetiring is create of a new list from the old list root holds, which
-// loses its write bits first. A create that failed with no new list in place
+// loses its write bits first; a dir that already holds a list is ErrExists
+// before the old list loses any. A create that failed with no new list in place
 // gives them back; a process killed between the two leaves the old list
 // read-only, where no stop reaches a list nothing carries, and a rerun
 // finishes the carry.
 func createRetiring(ctx context.Context, root *os.Root, dir string, route reaction.Route, now time.Time, lines [][]byte) error {
+	// create judges the lines before it finds a list already in dir, and a
+	// refusal then could not tell that list from one create placed.
+	if _, err := os.Lstat(filepath.Join(dir, stoplist.FileName)); !errors.Is(err, fs.ErrNotExist) {
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("%w: %s", ErrExists, dir)
+	}
 	was, err := retireList(root)
 	if err != nil {
 		return fmt.Errorf("the list carried from was not made read-only: %w", err)

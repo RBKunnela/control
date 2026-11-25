@@ -26,11 +26,11 @@ import (
 
 // treeProcedure is the runs fixture's two tools as a 0.2 procedure that
 // judges a root with its whole tree: no step required, no binding and no
-// exception.
+// exception, and a run denied twice.
 const treeProcedure = `{"schema_version":"0.2","procedure_id":"tickets","version":"1","bindings":{},` +
 	`"steps":[{"id":"read","tool":"read_ticket","upstream":"orders","observed_as":[],"required":false,"binds":[]},` +
 	`{"id":"mail","tool":"send_mail","upstream":"orders","observed_as":[],"required":false,"binds":[]}],` +
-	`"order":{},"allow":[],"exceptions":[],"children":"inherit","max_denials":4,"rules":{` +
+	`"order":{},"allow":[],"exceptions":[],"children":"inherit","max_denials":2,"rules":{` +
 	`"REPEATED_DENIAL":{"severity":"high","escalation":"alert"},` +
 	`"STEP_OUTSIDE_PROCEDURE":{"severity":"medium","escalation":"alert"},` +
 	`"DEADLINE_EXCEEDED":{"severity":"low","escalation":"inform"},` +
@@ -43,21 +43,25 @@ const treeProcedure = `{"schema_version":"0.2","procedure_id":"tickets","version
 	`"DENIED_ACTION_RETRIED_AROUND":{"severity":"low","escalation":"inform"},` +
 	`"EXCEPTION_TAKEN":{"severity":"info","escalation":"inform"}}}`
 
-const ruleRetriedArguments = "DENIED_ACTION_RETRIED_ARGUMENTS"
+// The rule the route stops on, and its version.
+const (
+	ruleStop        = "REPEATED_DENIAL"
+	ruleStopVersion = "2"
+)
 
 // TestAChildsRetryIsSupervisedOverTheTreeAndStopsTheChild runs the built
 // plane with a root and a child opened under it. The child reads a ticket,
-// is denied mail to a stranger and retries to another address; the trail
-// the plane shipped is exported, supervised from the root under inherit and
-// handed to react with a route naming the retry rule. The child's next call
-// is then refused RUN_STOPPED while the root's still runs.
+// is denied mail to a stranger and retries to another address, denied again;
+// the trail the plane shipped is exported, supervised from the root under
+// inherit and handed to react with a route naming the denials rule. The
+// child's next call is then refused RUN_STOPPED while the root's still runs.
 func TestAChildsRetryIsSupervisedOverTheTreeAndStopsTheChild(t *testing.T) {
 	rp := newRunsPlane(t, "stateless_http")
 	proc, err := supervise.ReadProcedure([]byte(treeProcedure))
 	if err != nil {
 		t.Fatal(err)
 	}
-	rp.withRouteDocument(routeOfRule(t, proc, ruleRetriedArguments))
+	rp.withRouteDocument(routeOfRule(t, proc, ruleStop, ruleStopVersion))
 	sp := rp.start()
 	root := rp.open()
 	child := rp.open("--parent", root.id, "--ttl", "30m")
@@ -72,7 +76,7 @@ func TestAChildsRetryIsSupervisedOverTheTreeAndStopsTheChild(t *testing.T) {
 	out, err := runBinary(rp.control, "react", "--findings", filepath.Join(rp.dir, "findings"), "--runs", rp.runs,
 		"--route", filepath.Join(rp.dir, "route.json"), "--public-key", filepath.Join(rp.dir, "route.pub"),
 		"--stops", filepath.Join(rp.dir, "stops"))
-	if err != nil || !strings.HasPrefix(out, "stop line 2 run "+child.id+" finding "+finding+" rule "+ruleRetriedArguments+" ") {
+	if err != nil || !strings.HasPrefix(out, "stop line 2 run "+child.id+" finding "+finding+" rule "+ruleStop+" ") {
 		t.Fatalf("react: %v\n%s", err, out)
 	}
 
@@ -91,11 +95,11 @@ func TestAChildsRetryIsSupervisedOverTheTreeAndStopsTheChild(t *testing.T) {
 }
 
 // routeOfRule is a route of the listener's tenant at serial 1 whose one rule
-// is rule of p, at rule version "1".
-func routeOfRule(t *testing.T, p *supervise.Procedure, rule string) string {
+// is rule of p, at version.
+func routeOfRule(t *testing.T, p *supervise.Procedure, rule, version string) string {
 	t.Helper()
 	fixture := `"procedure_id":"refund","version":"3","digest":"` + fixtureProcedure + `"`
-	doc := routeDocumentOf(runsTenant, 1, rule, "1")
+	doc := routeDocumentOf(runsTenant, 1, rule, version)
 	if !strings.Contains(doc, fixture) {
 		t.Fatalf("the fixture's route names no %s", fixture)
 	}
@@ -180,16 +184,17 @@ func (rp *runsPlane) exportTrail() string {
 	return export
 }
 
-// retriedLine is the line supervise prints for a confirmed retry finding of
-// run, with the finding's id as its group.
-func retriedLine(run string) *regexp.Regexp {
-	return regexp.MustCompile(`(?m)^finding ` + ruleRetriedArguments + ` confirmed alert (fnd-[0-9a-f]{32}) run ` +
+// stopLine is the line supervise prints for a confirmed finding of ruleStop
+// naming run, with the finding's id as its group.
+func stopLine(run string) *regexp.Regexp {
+	return regexp.MustCompile(`(?m)^finding ` + ruleStop + ` confirmed alert (fnd-[0-9a-f]{32}) run ` +
 		regexp.QuoteMeta(run) + ` `)
 }
 
 // superviseTree runs the built supervise over the export from root under
-// treeProcedure, which must judge the tree and find the child's retry and
-// nothing else confirmed, and returns that finding's id.
+// treeProcedure, which must judge the tree, find the child's denials and
+// nothing else confirmed, and suspect the child's retry of its denied mail
+// with another address; it returns the denials' finding id.
 func (rp *runsPlane) superviseTree(root, child, export string) string {
 	rp.t.Helper()
 	procedure, findings := filepath.Join(rp.dir, "procedure.json"), filepath.Join(rp.dir, "findings")
@@ -205,14 +210,19 @@ func (rp *runsPlane) superviseTree(root, child, export string) string {
 		rp.t.Fatalf("supervise exited %v, want 1 for a finding:\n%s", err, out)
 	}
 	for _, want := range []string{"children: inherit, every run of the tree judged\n", "tree: " + root + "\n",
-		"tree: " + child + " under " + root + "\n", "rule " + ruleRetriedArguments + " checked\n"} {
+		"tree: " + child + " under " + root + "\n", "rule " + ruleStop + " checked\n"} {
 		if !strings.Contains(out, want) {
 			rp.t.Errorf("supervise printed no %q:\n%s", want, out)
 		}
 	}
-	match := retriedLine(child).FindStringSubmatch(out)
+	retry := regexp.MustCompile(`(?m)^finding DENIED_ACTION_RETRIED_ARGUMENTS suspected alert fnd-[0-9a-f]{32} run ` +
+		regexp.QuoteMeta(child) + ` `)
+	if !retry.MatchString(out) {
+		rp.t.Errorf("supervise printed no suspected retry of the child's mail:\n%s", out)
+	}
+	match := stopLine(child).FindStringSubmatch(out)
 	if match == nil || strings.Count(out, " confirmed ") != 1 {
-		rp.t.Fatalf("supervise printed no one confirmed retry naming the child:\n%s", out)
+		rp.t.Fatalf("supervise printed no one confirmed finding of %s naming the child:\n%s", ruleStop, out)
 	}
 	return match[1]
 }

@@ -1191,7 +1191,9 @@ them, `writer_held` is `true`, and the next export reads them once they end.
 Whether a writer holds the file is asked only when such bytes exist. When none
 holds it they are a `partial_tail` gap. A gap takes a record like any other, so
 an export whose limit leaves no room for it ends with `end_reached` false and
-the next export writes it.
+the next export writes it. A reader refuses an export whose trailer counts
+such bytes with `end_reached` true, `writer_held` false and no
+`partial_tail` gap.
 
 `end_reached` is `true` when every whole line was read and the bytes after the
 last newline were reported.
@@ -1432,7 +1434,12 @@ line 1 alone or names another route; a finding id two lines name; a stop the
 route does not permit, whose tenant is not the route's, whose procedure and
 rule are no rule of it, or whose expiry passes the rule's lifetime; a stop
 that names a superseded version of a rule the route names at its current
-version is judged as that rule, which only a carried list holds; a covered
+version is judged as that rule, and one that names `DEADLINE_EXCEEDED`,
+`DENIED_ACTION_RETRIED_ARGUMENTS` or `DENIED_ACTION_RETRIED_RESOURCE` at `1`,
+which no route may name any more, stands only if a rule of the route names
+its procedure at its scope, an agent or a principal only for a retry rule,
+and its span is within that rule's lifetime; only a carried list holds
+either; a covered
 line of another tenant; a `created_at` later than the reader's clock and its
 tolerance; and a lift that names a line at or after its own, names a run and
 line an earlier lift named, does not verify under the route's lift key, or
@@ -1486,9 +1493,10 @@ A list under a `v1alpha3` route is version `3.0`: its header line is
 line add `project_id`, `scope` and `subject`, and a `lift` line names `scope`
 and `subject` in place of `run_id` and holds a `v1alpha3` lift. Under scope
 `run` the subject is the line's `run_id`. Scope `agent` or `principal` is
-taken on a rule only for `REPEATED_DENIAL` `2`,
-`DENIED_ACTION_RETRIED_ARGUMENTS` `1` and `DENIED_ACTION_RETRIED_RESOURCE`
-`1`, each with `expires_seconds`; on a line its subject is the agent or the
+taken on a rule only for `REPEATED_DENIAL` `2`, with `expires_seconds`, and
+in the route a list is carried from for `DENIED_ACTION_RETRIED_ARGUMENTS` `1`
+and `DENIED_ACTION_RETRIED_RESOURCE` `1`, which may stop nothing new
+([ADR-0088](adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected.md)); on a line its subject is the agent or the
 principal, at most 256 bytes, and `run_id` is the finding's run
 ([ADR-0083](adr/0083-a-finding-may-stop-an-agent-or-a-principal.md)). A
 header's digest is `sha256:` and the lowercase hex SHA-256 of its signed

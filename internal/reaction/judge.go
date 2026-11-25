@@ -143,6 +143,24 @@ func JudgeCarrySource(route Route, content []byte, now time.Time) (List, error) 
 	return walk(context.Background(), route, List{}, complete, lines, sum, now, 0)
 }
 
+// JudgeForLift is Judge from the zero Prefix with no tolerance past now, of
+// a list a lift is to be appended to, against the route the list was written
+// under, held to CheckCarrySource in place of CheckStopping: a lift only ends
+// a stop, so an operator can end one on a list whose route names a rule
+// version that may no longer stop a run. Nothing but a lift's writer calls
+// it.
+func JudgeForLift(route Route, content []byte, now time.Time) (List, error) {
+	complete, lines, err := judgeable(route, CheckCarrySource, false, content, now, 0)
+	if err != nil {
+		return List{}, err
+	}
+	sum, err := extends(Prefix{}, complete)
+	if err != nil {
+		return List{}, err
+	}
+	return walk(context.Background(), route, List{}, complete, lines, sum, now, 0)
+}
+
 // judgeable is content's complete lines and their count, refused when route,
 // its rules, clock or tolerance cannot judge it or it is over a bound. A
 // v1alpha2 route judges a list only as the source of a carry: anywhere else

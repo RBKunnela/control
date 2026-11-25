@@ -819,17 +819,21 @@ runs only.
 - [ADR-0047](adr/0047-a-procedure-states-its-exceptions-resources-and-children.md)
 - [ADR-0048](adr/0048-one-run-drawn-as-a-page-and-findings-exported-with-a-cursor.md)
 - [ADR-0058](adr/0058-a-copy-an-import-never-read-is-doubt-for-the-runs-it-claimed.md)
+- [ADR-0088](adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected.md)
 
 It reads exports and logs when an operator runs it; nothing in a plane reads a
 finding, and `react` turns a confirmed one into a stop of the run it names, a
 root or a child ([row below](#run-stop)). A finding resting on what a runtime
-reported is suspected at most; a skipped step is never confirmed; the report
+reported is suspected at most, and so is a deadline or a retry, which compares
+two events' times no event ties to one plane
+([ADR-0088](adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected.md)); a skipped step is never confirmed; the report
 names each source not read, never heard or silent.
 
 ### run-stop
 
-- `internal/reaction/` (the route, the six rules a route may name and the
-  three of them that may stop an agent or a principal, the stop list's grammar
+- `internal/reaction/` (the route, the three rules a route may name and the
+  one of them that may stop an agent or a principal, the rule versions only a
+  carried list's stops still name, the stop list's grammar
   and judge, the snapshot a plane decides under and its matcher of a run, an
   agent and a principal)
 - `internal/reaction/stoplist/` (the reader a plane polls)
@@ -862,7 +866,7 @@ taken; `react`'s own lines are signed by no operator, and the checks read mode
 bits, not darwin access control lists.
 
 Under `signed` a route may stop the agent or principal of the finding's run
-instead, for `REPEATED_DENIAL` and the two retry rules and for the rule's
+instead, for `REPEATED_DENIAL` alone and for the rule's
 lifetime; matched against the listener's configured identity, such a stop
 refuses every call of the plane `AGENT_OR_PRINCIPAL_STOPPED`, runless calls and
 later runs included, and only a lift of that agent or principal ends it. No

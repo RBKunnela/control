@@ -13,18 +13,23 @@ import (
 // TestASignedCarryStoppedBetweenItsWritesIsFinishedByARerun: a signed carry
 // stopped between taking the write bits off the old list and writing the new
 // one leaves the old list read-only, so no stop reaches a list nothing
-// carries, and a rerun finishes the carry.
+// carries, and a rerun finishes the carry; no stop or lift is appended to the
+// old list after it.
 func TestASignedCarryStoppedBetweenItsWritesIsFinishedByARerun(t *testing.T) {
 	from := emptyDir(t)
 	fromRoute := signedRouteIn(t, from, 3)
-	if _, err := stopwrite.InitSigned(bg, from, fromRoute, clock0, signer(), 1); err != nil {
+	h, err := stopwrite.InitSigned(bg, from, fromRoute, clock0, signer(), 1)
+	if err != nil {
 		t.Fatalf("InitSigned: %v", err)
+	}
+	if _, err := stopwrite.AppendStop(bg, from, fromRoute, signedStop(t, "f-1", "run-1", "shop", clock0), clock0); err != nil {
+		t.Fatalf("AppendStop: %v", err)
 	}
 	into := emptyDir(t)
 	route := signedRouteIn(t, into, 4)
 	killed := errors.New("the carry stopped between its writes")
 	undo := stopwrite.SetCarryStop(func() error { return killed })
-	_, err := stopwrite.CarrySigned(bg, from, fromRoute, into, route, clock0, signer(), nil)
+	_, err = stopwrite.CarrySigned(bg, from, fromRoute, into, route, clock0, signer(), nil)
 	undo()
 	if !errors.Is(err, killed) {
 		t.Fatalf("CarrySigned with a stop between its writes = %v, want the stop", err)
@@ -46,6 +51,9 @@ func TestASignedCarryStoppedBetweenItsWritesIsFinishedByARerun(t *testing.T) {
 	}
 	if _, err := stopwrite.AppendStop(bg, from, fromRoute, signedStop(t, "f-late", "run-9", "shop", clock0), clock0); !errors.Is(err, stopwrite.ErrCarried) {
 		t.Errorf("a stop appended to the old list after the rerun = %v, want ErrCarried", err)
+	}
+	if _, err := stopwrite.AppendLift(bg, from, fromRoute, operatorLift(t, from, h), clock0); !errors.Is(err, stopwrite.ErrCarried) {
+		t.Errorf("a lift of the carried stop appended to the old list after the rerun = %v, want ErrCarried", err)
 	}
 }
 

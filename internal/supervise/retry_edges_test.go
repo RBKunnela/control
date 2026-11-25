@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	observev1 "github.com/guardana/control/api/gen/go/guardana/control/observe/v1alpha1"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/supervise"
 	"google.golang.org/protobuf/proto"
@@ -38,7 +39,7 @@ func TestWhatAnApprovalLeavesOfARetry(t *testing.T) {
 		exports []supervise.Export
 		want    string
 	}{
-		"rejected":                {[]supervise.Export{acts(denial(), rejected)}, "FINDING_VERDICT_CONFIRMED"},
+		"rejected":                {[]supervise.Export{acts(denial(), rejected)}, "FINDING_VERDICT_SUSPECTED"},
 		"approved, in doubt":      {[]supervise.Export{acts(denial(), approved), conflicting(approved)}, "FINDING_VERDICT_INDETERMINATE"},
 		"lapsed and not closed":   {[]supervise.Export{acts(denial()), {Whole: true, Events: expired.events()[:4]}}, "FINDING_VERDICT_SUSPECTED"},
 		"asked again":             {[]supervise.Export{acts(denial()), {Whole: true, Events: askedAgain(again())}}, "FINDING_VERDICT_INDETERMINATE"},
@@ -61,7 +62,7 @@ func ranLater() act {
 }
 
 // TestOnlyACopyPutsAnEventInAnExport: exports that list a denial and a
-// retry both ways still hold both, and the plane's times confirm the retry;
+// retry both ways still hold both, and the plane's times suggest the retry;
 // an event of other content under the retry's id puts nothing beside the
 // denial, and leaves the retry in doubt.
 func TestOnlyACopyPutsAnEventInAnExport(t *testing.T) {
@@ -71,7 +72,7 @@ func TestOnlyACopyPutsAnEventInAnExport(t *testing.T) {
 		exports []supervise.Export
 		want    string
 	}{
-		"both ways": {[]supervise.Export{acts(denial(), again()), acts(again(), denial())}, "FINDING_VERDICT_CONFIRMED"},
+		"both ways": {[]supervise.Export{acts(denial(), again()), acts(again(), denial())}, "FINDING_VERDICT_SUSPECTED"},
 		"a conflicting copy before the denial": {[]supervise.Export{acts(denial()), acts(again()),
 			{Whole: true, Events: slices.Concat(forged[:1], denial().events())}}, "FINDING_VERDICT_INDETERMINATE"},
 	} {
@@ -132,22 +133,22 @@ func TestADenialIsNoRetryOfItself(t *testing.T) {
 	}
 }
 
-// TestTheStrongestRetryDecidesTheFinding: a retry one export orders after the
-// denial confirms beside one only a later time suggests, and a retry in
+// TestTheStrongestRetryDecidesTheFinding: a retry one export holds beside
+// the denial suggests no more than one another export holds, and a retry in
 // doubt, or a report in doubt, cannot weaken a told one; each finding cites
 // what carries its verdict.
 func TestTheStrongestRetryDecidesTheFinding(t *testing.T) {
-	doubtedReport := source(ob{id: "obs-1", name: "issue_refund", at: 20 * time.Second},
+	doubtedReport := source(ob{id: "obs-1", name: "issue_refund", at: 20 * time.Second, stage: observev1.Stage_STAGE_STARTED},
 		ob{id: "obs-2", name: "issue_refund", at: 25 * time.Second}, ob{id: "obs-2", name: "issue_refund", at: 26 * time.Second})
 	for name, c := range map[string]struct {
 		exports              []supervise.Export
 		src                  supervise.Source
 		rule, verdict, cites string
 	}{
-		"told beside suggested": {[]supervise.Export{acts(denial(), again()), acts(ranLater())}, source(),
-			ruleArgs, "FINDING_VERDICT_CONFIRMED", "d1-e2 r1-e1"},
+		"one export beside another": {[]supervise.Export{acts(denial(), again()), acts(ranLater())}, source(),
+			ruleArgs, "FINDING_VERDICT_SUSPECTED", "d1-e2 r1-e1 r2-e1"},
 		"told beside in doubt": {[]supervise.Export{acts(denial(), again(), ranLater()), conflicting(ranLater())}, source(),
-			ruleArgs, "FINDING_VERDICT_CONFIRMED", "d1-e2 r1-e1"},
+			ruleArgs, "FINDING_VERDICT_SUSPECTED", "d1-e2 r1-e1"},
 		"a report beside one in doubt": {[]supervise.Export{acts(denial())}, doubtedReport,
 			ruleAround, "FINDING_VERDICT_SUSPECTED", "d1-e2 obs-1"},
 	} {

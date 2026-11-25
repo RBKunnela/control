@@ -334,6 +334,12 @@ mappings.</p>
 <td>B12, B13, B14, B21, B35</td>
 <td>An operator-configured service follows versioned evidence and observation exports with durable cursors, checks procedures and delivers findings through bounded queues. Source silence, export gaps, sampling, lag and unreadable inputs remain visible and never look like completed work. Restart and replay do not duplicate an authority-bearing reaction. Every stop uses the existing confirmed-finding bar and a signed, scoped, expiring route; unknown or observation-only findings cannot stop a run. Tests exercise concurrent runs, source outage, partial exports, expired authority, replay and notifier failure. A notifier failure cannot grant authority or change a verdict; no reaction cancels an effect already running</td>
 </tr>
+<tr>
+<td>B45</td>
+<td>Name each event's plane, so a time comparison can confirm</td>
+<td>none</td>
+<td>Under a later version of the evidence contract, each event and export line names the plane that stamped it, bound so that an export cannot claim another plane's events. A deadline or a retry whose two events one plane stamped may then be <code>CONFIRMED</code> and may stop again, under a new rule version and its own record; events of two planes, or of a plane not named, stay <code>SUSPECTED</code> at most (<a href="/docs/adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected">ADR-0088</a>)</td>
+</tr>
 </tbody>
 </table>
 </div>

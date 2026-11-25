@@ -93,7 +93,7 @@ credential, and replace `COLLECTOR_CREDENTIAL_FROM_FILE` with the content of
 ### 3. Sign the route and start the stop list
 
 The route names the findings that may stop a run: `REPEATED_DENIAL` under
-the `0.1` procedure and `DENIED_ACTION_RETRIED_RESOURCE` under `0.2`, each
+the `0.1` procedure and `RESOURCE_OUTSIDE_RUN` under `0.2`, each
 bound to its procedure's digest. `plane.yaml` names the route, so the plane
 refuses to start until it exists. In `route.json`, replace
 `LIFT_PUBLIC_KEY_FROM_KEYGEN` with the `public_key` keygen printed for
@@ -226,7 +226,7 @@ $ guardana-control supervise --procedure refund-0.2.procedure.json --runs state/
 run run-9d9ad942e8427a0e36f6abd3fa8ced08 tenant acme project refunds procedure refund version 2
 …
 finding RESOURCE_OUTSIDE_RUN confirmed alert fnd-61fa48842c3a3a5c790cf3226fa121d6 …
-finding DENIED_ACTION_RETRIED_RESOURCE confirmed alert fnd-56e33295fb4e204153fa79d1ea12bd3e …
+finding DENIED_ACTION_RETRIED_RESOURCE suspected alert fnd-56e33295fb4e204153fa79d1ea12bd3e …
 finding EXCEPTION_TAKEN confirmed inform fnd-36927c0a79d5afba83b765f2dc206201 …
 …
 rule REQUIRED_STEP_SKIPPED not checked: the run is open
@@ -239,7 +239,8 @@ findings log: 3 written, 0 already held
 It exits 1 because it made findings, which is what this run should produce.
 `RESOURCE_OUTSIDE_RUN`: the calls bound to one order reached two, `ord-1` and
 `ord-2`. `DENIED_ACTION_RETRIED_RESOURCE`: once the refund of `ord-2` was
-denied, another tool updated that order. `EXCEPTION_TAKEN`: the approved
+denied, another tool updated that order; suspected, never confirmed and so
+never a stop, since nothing in an event names the plane whose clock timed it. `EXCEPTION_TAKEN`: the approved
 export is an exception the procedure allows, reported for information. The
 rules about what is missing wait for the run to close.
 
@@ -269,7 +270,7 @@ lasts as long ([reaction](../reference/reaction.md) has every rule):
 ```
 $ guardana-control react --findings findings --runs state/runs --stops state/stops \
     --route state/route.signed.json --public-key state/route.pub
-stop line 2 run run-9d9ad942e8427a0e36f6abd3fa8ced08 finding fnd-56e33295fb4e204153fa79d1ea12bd3e rule DENIED_ACTION_RETRIED_RESOURCE expires_at 2026-10-08T04:59:58Z
+stop line 2 run run-9d9ad942e8427a0e36f6abd3fa8ced08 finding fnd-61fa48842c3a3a5c790cf3226fa121d6 rule RESOURCE_OUTSIDE_RUN expires_at 2026-10-08T04:59:58Z
 stops 1, covered 0, already named 0, not stopping 2, not written 0
 ```
 
@@ -297,7 +298,7 @@ Each of the example's test cases describes a run and every finding
 
 ```
 $ guardana-control procedure test refund-0.2.cases.json
-ok   the refund retried as an update: RESOURCE_OUTSIDE_RUN CONFIRMED, DENIED_ACTION_RETRIED_RESOURCE CONFIRMED
+ok   the refund retried as an update: RESOURCE_OUTSIDE_RUN CONFIRMED, DENIED_ACTION_RETRIED_RESOURCE SUSPECTED
 ok   the export approved: EXCEPTION_TAKEN CONFIRMED
 ok   the export without an approval: STEP_OUTSIDE_PROCEDURE CONFIRMED
 procedure refund version 2: 3 cases, 3 passed, 0 failed
@@ -355,7 +356,7 @@ map have their own pages: [observations.md](../reference/observations.md) and
 [supervision.md](../reference/supervision.md).
 
 Under `signed` a route may stop the run's agent or principal in place of the
-run, for `REPEATED_DENIAL` and the two retry rules, for the rule's lifetime.
+run, for `REPEATED_DENIAL` alone, for the rule's lifetime.
 Every opened run of a plane carries the listener's identity, so on one plane
 such a stop stops the plane: every run, later runs and calls with no run are
 refused `AGENT_OR_PRINCIPAL_STOPPED`, and `stops lift --agent` or

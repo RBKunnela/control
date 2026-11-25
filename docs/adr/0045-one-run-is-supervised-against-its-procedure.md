@@ -210,3 +210,11 @@ complete as the inputs, and the report says what was not checked.
 - The refund example, on a live plane with an opened run: exactly
   `REPEATED_DENIAL` confirmed and `STEP_OUTSIDE_PROCEDURE` suspected, and the
   second gone when the observation names another run.
+
+## Amendment: a deadline is suspected at most
+
+Amended by [ADR-0088](0088-a-verdict-that-compares-two-events-times-is-at-most-suspected.md). "A deadline across planes" in the Decision means a deadline
+whose events came from two exports, the only line the code could draw. No
+event names its plane and one export can hold two planes' events, so
+`DEADLINE_EXCEEDED` is now version `2` and `SUSPECTED` at most however
+its events were exported, and it never stops a run.

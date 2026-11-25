@@ -132,3 +132,42 @@ func TestSuperviseSaysWhatAFindingLeftOut(t *testing.T) {
 		t.Fatalf("stderr %q, the finding's line %q in\n%s", stderr, line, stdout)
 	}
 }
+
+// TestAClosedRunWhoseCallsEndIsUnreadIsNoPass: a run closed after a call was
+// allowed, or asked for its approval, but before its end was read may hide a
+// failure the next call continued past, so the rule that reads ends is not
+// checked and supervise exits 1; the same run with every end read exits 0.
+// On the run still open, the call waiting on its approval puts nothing in
+// doubt: REPEATED_DENIAL is checked, and the exit is 1 only for the rules an
+// open run leaves unchecked.
+func TestAClosedRunWhoseCallsEndIsUnreadIsNoPass(t *testing.T) {
+	for name, c := range map[string]struct {
+		cut        int
+		held, open bool
+		code       int
+		line       string
+	}{
+		"every end read":        {0, false, false, exitOK, "rule CONTINUED_AFTER_FAILURE checked\n"},
+		"a lookup's end unread": {2, false, false, exitFail, `rule CONTINUED_AFTER_FAILURE not checked: request "r1" is in doubt: its end was not read` + "\n"},
+		"a lookup left at its approval request": {0, true, false, exitFail,
+			`rule CONTINUED_AFTER_FAILURE not checked: request "r1" is in doubt: its end was not read` + "\n"},
+		"an open run's lookup waiting on its approval": {0, true, true, exitFail,
+			"rule REPEATED_DENIAL checked\n" + "rule STEP_OUTSIDE_PROCEDURE checked\n" + "rule DEADLINE_EXCEEDED checked\n" +
+				"rule REQUIRED_STEP_SKIPPED not checked: the run is open\n" + "rule STEP_OUT_OF_ORDER not checked: the run is open\n" +
+				"rule CONTINUED_AFTER_FAILURE not checked: the run is open\n"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			tr := newSupTree(t)
+			calls := conformingCalls()
+			calls[0].cut, calls[0].held = c.cut, c.held
+			x := tr.export(t, tr.run, supBase, calls...)
+			if !c.open {
+				tr.closeRun(t, tr.run)
+			}
+			code, stdout, stderr := invoke(t, tr.args("--evidence", x)...)
+			if code != c.code || stderr != "" || !strings.Contains(stdout, c.line) {
+				t.Errorf("exit %d, stderr %q, stdout\n%s\nwant %d and %q", code, stderr, stdout, c.code, c.line)
+			}
+		})
+	}
+}

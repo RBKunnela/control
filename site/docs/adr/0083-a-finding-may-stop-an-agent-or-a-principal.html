@@ -217,6 +217,14 @@ runs on one plane under agent, principal and run stops and their lifts, the
 listing under a stop, and the subject taken from the listener alone;
 <code>internal/supervise</code> tests that code 48 is no denial; <code>cmd/guardana-control</code>
 tests <code>react</code> and <code>stops lift</code>.</p>
+<h2 id="amendment-only-repeated-denials-stop-an-agent-or-a-principal">Amendment: only repeated denials stop an agent or a principal</h2>
+<p>Amended by <a href="/docs/adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected">ADR-0088</a>. <code>DENIED_ACTION_RETRIED_ARGUMENTS</code> and
+<code>DENIED_ACTION_RETRIED_RESOURCE</code> version <code>1</code> may no longer stop anything:
+their verdict ordered two events' times that may come from two clocks.
+<code>REPEATED_DENIAL</code> version <code>2</code> is the one rule a route may give scope
+<code>agent</code> or <code>principal</code>. An agent or principal stop already written under
+a retry rule's version <code>1</code> is kept by a carry, within the stop lifetime
+bound, and lifted by its operator.</p>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/adr/0083-a-finding-may-stop-an-agent-or-a-principal.md">docs/adr/0083-a-finding-may-stop-an-agent-or-a-principal.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.18.0, and <a href="https://github.com/guardana/control/tree/v0.18.0/docs">its documentation</a> is in its tag.</p>
 </main>
 <nav class="side" aria-label="Documentation">

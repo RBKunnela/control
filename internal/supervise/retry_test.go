@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	observev1 "github.com/guardana/control/api/gen/go/guardana/control/observe/v1alpha1"
 	controlv1 "github.com/guardana/control/api/gen/go/guardana/control/v1"
 	"github.com/guardana/control/internal/supervise"
 )
@@ -61,15 +62,15 @@ func retries(res *supervise.Result) map[string][]string {
 // the same resource and a source's report of the denied tool each raise
 // their own rule and neither other, anchored on the denial and the run.
 func TestEachRetryFormFiresOnItsOwnInputOnly(t *testing.T) {
-	reported := source(ob{id: "obs-1", name: "issue_refund", at: 20 * time.Second})
+	reported := source(ob{id: "obs-1", name: "issue_refund", at: 20 * time.Second, stage: observev1.Stage_STAGE_STARTED})
 	for name, c := range map[string]struct {
 		x           supervise.Export
 		src         supervise.Source
 		rule, cites string
 		verdict     string
 	}{
-		"other arguments":     {acts(denial(), again()), source(), ruleArgs, "d1-e2 r1-e1", "FINDING_VERDICT_CONFIRMED"},
-		"another tool":        {acts(denial(), manual()), source(), ruleRes, "d1-e2 m1-e1", "FINDING_VERDICT_CONFIRMED"},
+		"other arguments":     {acts(denial(), again()), source(), ruleArgs, "d1-e2 r1-e1", "FINDING_VERDICT_SUSPECTED"},
+		"another tool":        {acts(denial(), manual()), source(), ruleRes, "d1-e2 m1-e1", "FINDING_VERDICT_SUSPECTED"},
 		"a report around one": {acts(denial()), reported, ruleAround, "d1-e2 obs-1", "FINDING_VERDICT_SUSPECTED"},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -141,9 +142,11 @@ func TestWhatIsNoRetry(t *testing.T) {
 
 // TestARetryHeldForApprovalIsIndeterminate: a retry still waiting on an
 // approval may yet be approved; a later retry that ran keeps the finding
-// confirmed and is what it cites.
+// suggested and is what it cites. One the plane blocked before it asked for
+// the approval waits on nothing.
 func TestARetryHeldForApprovalIsIndeterminate(t *testing.T) {
 	held := again().ending("held")
+	unasked := again().ending("unasked")
 	ran := again()
 	ran.req, ran.at, ran.hash = "r2", 30*time.Second, hashOf('c')
 	for name, c := range map[string]struct {
@@ -151,7 +154,8 @@ func TestARetryHeldForApprovalIsIndeterminate(t *testing.T) {
 		want, cites string
 	}{
 		"held alone":         {acts(denial(), held), "FINDING_VERDICT_INDETERMINATE", "d1-e2 r1-e1"},
-		"held, then one ran": {acts(denial(), held, ran), "FINDING_VERDICT_CONFIRMED", "d1-e2 r2-e1"},
+		"held, then one ran": {acts(denial(), held, ran), "FINDING_VERDICT_SUSPECTED", "d1-e2 r2-e1"},
+		"blocked unasked":    {acts(denial(), unasked), "FINDING_VERDICT_SUSPECTED", "d1-e2 r1-e1"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			res := retrySupervise(t, source(), c.x)
@@ -165,11 +169,12 @@ func TestARetryHeldForApprovalIsIndeterminate(t *testing.T) {
 
 // TestAfterIsThePlanesTimeWithinTheExportBothCameFrom: a later batch of an
 // export may land before an earlier one, so its sequence orders nothing.
-// Within one export the plane's times order the two and confirm; a retry
-// listed before the denial but proposed after its decision is one, and one
-// listed after it but proposed before is none; the same time or none is
-// untold. Across exports a later time only suggests, and a redundant export
-// changes nothing.
+// The plane's times order the two: a retry listed before the denial but
+// proposed after its decision is one, and one listed after it but proposed
+// before is none; the same time or none is untold. Two planes may send to one
+// collector and nothing in an event names its plane, so a later time only
+// suggests, within one export or across, and a redundant export changes
+// nothing.
 func TestAfterIsThePlanesTimeWithinTheExportBothCameFrom(t *testing.T) {
 	earlyTime := again()
 	earlyTime.at = time.Second
@@ -189,13 +194,13 @@ func TestAfterIsThePlanesTimeWithinTheExportBothCameFrom(t *testing.T) {
 		want    []string
 	}{
 		"one export, listed after, proposed before": {[]supervise.Export{acts(denial(), earlyTime)}, nil},
-		"one export, listed before, proposed after": {[]supervise.Export{{Whole: true, Events: listedFirst}}, []string{runID + " FINDING_VERDICT_CONFIRMED"}},
+		"one export, listed before, proposed after": {[]supervise.Export{{Whole: true, Events: listedFirst}}, []string{runID + " FINDING_VERDICT_SUSPECTED"}},
 		"one export, the decision time":             {[]supervise.Export{acts(denial(), atDecision)}, []string{runID + " FINDING_VERDICT_INDETERMINATE"}},
 		"one export, no time":                       {[]supervise.Export{untimedWithin}, []string{runID + " FINDING_VERDICT_INDETERMINATE"}},
 		"two exports":                               {[]supervise.Export{acts(denial()), acts(again())}, []string{runID + " FINDING_VERDICT_SUSPECTED"}},
 		"a redundant copy of the denial":            {[]supervise.Export{acts(denial()), acts(again()), acts(denial())}, []string{runID + " FINDING_VERDICT_SUSPECTED"}},
 		"a redundant copy of the retry":             {[]supervise.Export{acts(denial()), acts(again()), acts(again())}, []string{runID + " FINDING_VERDICT_SUSPECTED"}},
-		"an export holding both":                    {[]supervise.Export{acts(denial()), acts(again()), acts(denial(), again())}, []string{runID + " FINDING_VERDICT_CONFIRMED"}},
+		"an export holding both":                    {[]supervise.Export{acts(denial()), acts(again()), acts(denial(), again())}, []string{runID + " FINDING_VERDICT_SUSPECTED"}},
 		"two exports, an earlier time":              {[]supervise.Export{acts(denial()), acts(earlyTime)}, nil},
 		"two exports, the decision time":            {[]supervise.Export{acts(denial()), acts(atDecision)}, []string{runID + " FINDING_VERDICT_INDETERMINATE"}},
 		"two exports, no time":                      {[]supervise.Export{acts(denial()), untimed}, []string{runID + " FINDING_VERDICT_INDETERMINATE"}},
@@ -273,11 +278,11 @@ func TestAReadCountsAfterTheDenialOfARead(t *testing.T) {
 		want            string
 	}{
 		{transact, read, ""},
-		{read, read, "FINDING_VERDICT_CONFIRMED"},
-		{read, transact, "FINDING_VERDICT_CONFIRMED"},
-		{transact, write, "FINDING_VERDICT_CONFIRMED"},
-		{unclassified, write, "FINDING_VERDICT_CONFIRMED"},
-		{read, unclassified, "FINDING_VERDICT_CONFIRMED"},
+		{read, read, "FINDING_VERDICT_SUSPECTED"},
+		{read, transact, "FINDING_VERDICT_SUSPECTED"},
+		{transact, write, "FINDING_VERDICT_SUSPECTED"},
+		{unclassified, write, "FINDING_VERDICT_SUSPECTED"},
+		{read, unclassified, "FINDING_VERDICT_SUSPECTED"},
 		{unclassified, read, "FINDING_VERDICT_INDETERMINATE"},
 		{transact, unclassified, "FINDING_VERDICT_INDETERMINATE"},
 		{transact, controlv1.EffectClass(99), "FINDING_VERDICT_INDETERMINATE"},
@@ -330,7 +335,7 @@ func TestTheRetryRulesSayWhatTheyChecked(t *testing.T) {
 	if got := rules(unsourced)[ruleAround]; got != "RULE_STATE_NOT_CHECKED:no observation source was read" {
 		t.Errorf("with no source %s is %s", ruleAround, got)
 	}
-	if got := strings.Join(verdicts(unsourced, ruleArgs), ","); got != runID+" FINDING_VERDICT_CONFIRMED" {
+	if got := strings.Join(verdicts(unsourced, ruleArgs), ","); got != runID+" FINDING_VERDICT_SUSPECTED" {
 		t.Errorf("with no source %s fires %q", ruleArgs, got)
 	}
 	report := ob{id: "obs-1", name: "issue_refund", at: 30 * time.Second}

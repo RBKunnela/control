@@ -102,6 +102,8 @@ func readSupervisedSource(descriptor, logDir string) (supervise.Source, bool, er
 		Tenant:           src.Descriptor.GetTenantId(),
 		Project:          src.Descriptor.GetProjectId(),
 		HeartbeatSeconds: src.Descriptor.GetHeartbeatSeconds(),
+		Sampling:         src.Descriptor.GetSampling(),
+		Unclosed:         src.Unclosed,
 	}
 	out.LastHeard, out.Heard = observe.LastHeard(src.Descriptor, src.Records)
 	out.EveryRunDoubted, out.DoubtedRuns = observe.DoubtedRuns(src.Descriptor, src.Records)

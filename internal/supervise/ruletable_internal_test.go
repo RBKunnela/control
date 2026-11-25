@@ -26,10 +26,7 @@ func TestTheTableIsWhole(t *testing.T) {
 			}
 		}
 	}
-	want := []string{
-		"DEADLINE_EXCEEDED", "DENIED_ACTION_RETRIED_ARGUMENTS", "DENIED_ACTION_RETRIED_RESOURCE",
-		"REPEATED_DENIAL", "RESOURCE_OUTSIDE_RUN", "STEP_OUTSIDE_PROCEDURE",
-	}
+	want := []string{"REPEATED_DENIAL", "RESOURCE_OUTSIDE_RUN", "STEP_OUTSIDE_PROCEDURE"}
 	if got := slices.Sorted(maps.Keys(stops)); !slices.Equal(got, want) {
 		t.Fatalf("may stop: %q, want %q", got, want)
 	}

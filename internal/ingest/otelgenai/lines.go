@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"hash"
 	"io"
 )
@@ -24,7 +25,19 @@ type lines struct {
 }
 
 func newLines(r io.Reader) *lines {
-	return &lines{br: bufio.NewReaderSize(r, 64<<10), first: sha256.New()}
+	return &lines{br: bufio.NewReaderSize(sourceReader{r}, 64<<10), first: sha256.New()}
+}
+
+// sourceReader wraps each error of the input but io.EOF, so one that is
+// bufio.ErrBufferFull itself is not read as a line longer than the buffer.
+type sourceReader struct{ r io.Reader }
+
+func (s sourceReader) Read(p []byte) (int, error) {
+	n, err := s.r.Read(p)
+	if err != nil && err != io.EOF { //nolint:errorlint // identity: only io.EOF itself ends the input
+		err = fmt.Errorf("reading the input: %w", err)
+	}
+	return n, err
 }
 
 // next returns the next line without its newline. tooLong reports a line

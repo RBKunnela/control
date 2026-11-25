@@ -116,7 +116,10 @@ the floor. The old documents name no plane, so the operator also vouches that
 the list is this plane's. The new `3.0` header takes the next serial and names
 the old head as `previous`, which the stop list floor needs to take it. Each
 stop no lift ended is carried with scope `run` and its run as subject; a
-lifted run's findings are carried as covered.
+lifted run's findings are carried as covered. A stop the new route does not
+grant refuses the carry, naming it; `stops lift` takes no `v1alpha2` route,
+so change the route document as the refusal says, sign it again and rerun
+step 4.
 
 ### Verify
 

@@ -41,6 +41,9 @@ func (e *evaluation) aroundGroups() map[[2]string]*aroundGroup {
 		}
 		for _, o := range byName[name] {
 			c, t := rank(e.obsVerdict(o)), o.GetEventTime()
+			if !begun(o) {
+				c = rank(indeterminate)
+			}
 			r := reported{o: o, at: g.n, ord: ord{0, 0, int64(g.n)}}
 			if t.IsValid() {
 				r.ord = ord{t.GetSeconds(), int64(t.GetNanos()), int64(g.n)}
@@ -59,6 +62,14 @@ func (e *evaluation) aroundGroups() map[[2]string]*aroundGroup {
 	return out
 }
 
+// begun reports a report whose time is when its call began. Any other is
+// timed when the call ended, or at a stage not known, so a time after a
+// denial does not say the call began after it.
+func begun(o *observev1.Observation) bool {
+	s := o.GetStage()
+	return s == observev1.Stage_STAGE_PROPOSED || s == observev1.Stage_STAGE_STARTED
+}
+
 // aroundPart is reports a denial weighs at one verdict.
 type aroundPart struct {
 	v  controlv1.FindingVerdict
@@ -67,7 +78,7 @@ type aroundPart struct {
 
 // parts is g's reports a denial decided at t weighs: a later time suggests,
 // the same time or none is untold, an earlier one is no retry. A report in
-// doubt is untold whatever its time.
+// doubt, or timed at its call's end, is untold at that time or later.
 func (g *aroundGroup) parts(t *timestamppb.Timestamp) []aroundPart {
 	out := []aroundPart{{indeterminate, g.untimed[0]}, {indeterminate, g.untimed[1]}}
 	if !t.IsValid() {
@@ -87,7 +98,8 @@ func (g *aroundGroup) parts(t *timestamppb.Timestamp) []aroundPart {
 // retriedAround fires for a source's report of the denied tool, under a name
 // its entry lists, that no plane call joins and whose time is after the
 // denial was decided. A source's clock is not the plane's, so it suggests at
-// most; the finding names the denial's run, since a report's claimed run is
+// most, and only a report of when its call began says it began after the
+// denial; the finding names the denial's run, since a report's claimed run is
 // never named.
 func (e *evaluation) retriedAround() []draft {
 	x := e.retryIx()

@@ -189,7 +189,19 @@ func checkFinding(r *findingv1alpha1.FindingRecord) error {
 	case !known(int32(f.GetSeverity()), controlv1.FindingSeverity_name):
 		return fieldError("finding.severity: not set")
 	}
-	return checkSaidOnce(f)
+	if err := checkSaidOnce(f); err != nil {
+		return err
+	}
+	return checkVerdictBasis(f, r.GetRefs())
+}
+
+// checkVerdictBasis refuses a confirmed finding that cites an observation,
+// which suggests at most.
+func checkVerdictBasis(f *controlv1.Finding, refs []*findingv1alpha1.Reference) error {
+	if f.GetVerdict() == controlv1.FindingVerdict_FINDING_VERDICT_CONFIRMED && citesObservation(refs) {
+		return fieldError("finding.verdict: confirmed on an observation, which suggests at most")
+	}
+	return nil
 }
 
 // findingAdded is the first member of a finding record that "0.1" does
@@ -216,6 +228,16 @@ func checkSaidOnce(f *controlv1.Finding) error {
 		return fieldError("finding.framework_mappings: set")
 	}
 	return nil
+}
+
+// citesObservation reports whether any of refs is an observation's.
+func citesObservation(refs []*findingv1alpha1.Reference) bool {
+	for _, ref := range refs {
+		if ref.GetObservation() != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // eventRuns counts the record's event references that name their run and

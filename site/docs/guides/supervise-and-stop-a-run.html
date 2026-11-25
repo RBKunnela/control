@@ -197,7 +197,7 @@ credential, and replace <code>COLLECTOR_CREDENTIAL_FROM_FILE</code> with the con
 </code></pre>
 <h3 id="3-sign-the-route-and-start-the-stop-list">3. Sign the route and start the stop list</h3>
 <p>The route names the findings that may stop a run: <code>REPEATED_DENIAL</code> under
-the <code>0.1</code> procedure and <code>DENIED_ACTION_RETRIED_RESOURCE</code> under <code>0.2</code>, each
+the <code>0.1</code> procedure and <code>RESOURCE_OUTSIDE_RUN</code> under <code>0.2</code>, each
 bound to its procedure's digest. <code>plane.yaml</code> names the route, so the plane
 refuses to start until it exists. In <code>route.json</code>, replace
 <code>LIFT_PUBLIC_KEY_FROM_KEYGEN</code> with the <code>public_key</code> keygen printed for
@@ -293,7 +293,7 @@ $ guardana-control supervise --procedure refund-0.2.procedure.json --runs state/
 run run-9d9ad942e8427a0e36f6abd3fa8ced08 tenant acme project refunds procedure refund version 2
 …
 finding RESOURCE_OUTSIDE_RUN confirmed alert fnd-61fa48842c3a3a5c790cf3226fa121d6 …
-finding DENIED_ACTION_RETRIED_RESOURCE confirmed alert fnd-56e33295fb4e204153fa79d1ea12bd3e …
+finding DENIED_ACTION_RETRIED_RESOURCE suspected alert fnd-56e33295fb4e204153fa79d1ea12bd3e …
 finding EXCEPTION_TAKEN confirmed inform fnd-36927c0a79d5afba83b765f2dc206201 …
 …
 rule REQUIRED_STEP_SKIPPED not checked: the run is open
@@ -305,7 +305,8 @@ findings log: 3 written, 0 already held
 <p>It exits 1 because it made findings, which is what this run should produce.
 <code>RESOURCE_OUTSIDE_RUN</code>: the calls bound to one order reached two, <code>ord-1</code> and
 <code>ord-2</code>. <code>DENIED_ACTION_RETRIED_RESOURCE</code>: once the refund of <code>ord-2</code> was
-denied, another tool updated that order. <code>EXCEPTION_TAKEN</code>: the approved
+denied, another tool updated that order; suspected, never confirmed and so
+never a stop, since nothing in an event names the plane whose clock timed it. <code>EXCEPTION_TAKEN</code>: the approved
 export is an exception the procedure allows, reported for information. The
 rules about what is missing wait for the run to close.</p>
 <p>Open <code>run.html</code> in a browser; it runs no script. It shows the expected steps
@@ -327,7 +328,7 @@ run is open and unexpired, or a covered line when a stop of that run already
 lasts as long (<a href="/docs/reference/reaction">reaction</a> has every rule):</p>
 <pre><code>$ guardana-control react --findings findings --runs state/runs --stops state/stops \
     --route state/route.signed.json --public-key state/route.pub
-stop line 2 run run-9d9ad942e8427a0e36f6abd3fa8ced08 finding fnd-56e33295fb4e204153fa79d1ea12bd3e rule DENIED_ACTION_RETRIED_RESOURCE expires_at 2026-10-08T04:59:58Z
+stop line 2 run run-9d9ad942e8427a0e36f6abd3fa8ced08 finding fnd-61fa48842c3a3a5c790cf3226fa121d6 rule RESOURCE_OUTSIDE_RUN expires_at 2026-10-08T04:59:58Z
 stops 1, covered 0, already named 0, not stopping 2, not written 0
 </code></pre>
 <p>The plane reads the list every second:</p>
@@ -345,7 +346,7 @@ data: {…&#34;text&#34;:&#34;order ord-1: 2 items, paid, ships to Jane Roe, 1 M
 <p>Each of the example's test cases describes a run and every finding
 <code>supervise</code> must report on it (<a href="/docs/guides/test-a-procedure">test-a-procedure.md</a>):</p>
 <pre><code>$ guardana-control procedure test refund-0.2.cases.json
-ok   the refund retried as an update: RESOURCE_OUTSIDE_RUN CONFIRMED, DENIED_ACTION_RETRIED_RESOURCE CONFIRMED
+ok   the refund retried as an update: RESOURCE_OUTSIDE_RUN CONFIRMED, DENIED_ACTION_RETRIED_RESOURCE SUSPECTED
 ok   the export approved: EXCEPTION_TAKEN CONFIRMED
 ok   the export without an approval: STEP_OUTSIDE_PROCEDURE CONFIRMED
 procedure refund version 2: 3 cases, 3 passed, 0 failed
@@ -387,7 +388,7 @@ map have their own pages: <a href="/docs/reference/observations">observations.md
 <code>0.1</code> run; <code>notify</code> and child runs are in
 <a href="/docs/reference/supervision">supervision.md</a>.</p>
 <p>Under <code>signed</code> a route may stop the run's agent or principal in place of the
-run, for <code>REPEATED_DENIAL</code> and the two retry rules, for the rule's lifetime.
+run, for <code>REPEATED_DENIAL</code> alone, for the rule's lifetime.
 Every opened run of a plane carries the listener's identity, so on one plane
 such a stop stops the plane: every run, later runs and calls with no run are
 refused <code>AGENT_OR_PRINCIPAL_STOPPED</code>, and <code>stops lift --agent</code> or

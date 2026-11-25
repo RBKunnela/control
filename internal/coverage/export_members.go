@@ -132,7 +132,8 @@ func (er *exportReader) readGapCursor(gap members, reason string) error {
 
 // readTrailerMembers checks what the trailer says besides its end and its
 // counts: a next cursor exactly when the header names a source, and the bytes
-// after the last newline, which a partial tail gap says no writer holds.
+// after the last newline, which a partial tail gap says no writer holds and
+// an export that reached the end reports as that gap.
 func (er *exportReader) readTrailerMembers(tr members) error {
 	if _, next := tr["next_cursor"]; next != er.source {
 		return errors.New("next_cursor: present exactly when the header names a source")
@@ -155,8 +156,17 @@ func (er *exportReader) readTrailerMembers(tr members) error {
 	if err != nil {
 		return err
 	}
-	if er.tail && (tail == 0 || held) {
+	return er.checkTail(tail, held)
+}
+
+// checkTail holds the trailer's tail_bytes and writer_held to the partial
+// tail gap the export did or did not carry.
+func (er *exportReader) checkTail(tail uint64, held bool) error {
+	switch {
+	case er.tail && (tail == 0 || held):
 		return errors.New("tail_bytes, writer_held: a partial tail gap needs bytes after the last newline no writer holds")
+	case !er.tail && tail > 0 && !held && er.endReached:
+		return errors.New("tail_bytes, writer_held: bytes after the last newline no writer holds need a partial tail gap before the end")
 	}
 	return nil
 }

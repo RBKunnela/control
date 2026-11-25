@@ -1470,7 +1470,9 @@ them, <code>writer_held</code> is <code>true</code>, and the next export reads t
 Whether a writer holds the file is asked only when such bytes exist. When none
 holds it they are a <code>partial_tail</code> gap. A gap takes a record like any other, so
 an export whose limit leaves no room for it ends with <code>end_reached</code> false and
-the next export writes it.</p>
+the next export writes it. A reader refuses an export whose trailer counts
+such bytes with <code>end_reached</code> true, <code>writer_held</code> false and no
+<code>partial_tail</code> gap.</p>
 <p><code>end_reached</code> is <code>true</code> when every whole line was read and the bytes after the
 last newline were reported.</p>
 <h3 id="the-cursor">The cursor</h3>
@@ -1813,7 +1815,12 @@ line 1 alone or names another route; a finding id two lines name; a stop the
 route does not permit, whose tenant is not the route's, whose procedure and
 rule are no rule of it, or whose expiry passes the rule's lifetime; a stop
 that names a superseded version of a rule the route names at its current
-version is judged as that rule, which only a carried list holds; a covered
+version is judged as that rule, and one that names <code>DEADLINE_EXCEEDED</code>,
+<code>DENIED_ACTION_RETRIED_ARGUMENTS</code> or <code>DENIED_ACTION_RETRIED_RESOURCE</code> at <code>1</code>,
+which no route may name any more, stands only if a rule of the route names
+its procedure at its scope, an agent or a principal only for a retry rule,
+and its span is within that rule's lifetime; only a carried list holds
+either; a covered
 line of another tenant; a <code>created_at</code> later than the reader's clock and its
 tolerance; and a lift that names a line at or after its own, names a run and
 line an earlier lift named, does not verify under the route's lift key, or
@@ -1914,9 +1921,10 @@ plane refuses each, naming <code>route sign</code> or <code>stops init --carry</
 line add <code>project_id</code>, <code>scope</code> and <code>subject</code>, and a <code>lift</code> line names <code>scope</code>
 and <code>subject</code> in place of <code>run_id</code> and holds a <code>v1alpha3</code> lift. Under scope
 <code>run</code> the subject is the line's <code>run_id</code>. Scope <code>agent</code> or <code>principal</code> is
-taken on a rule only for <code>REPEATED_DENIAL</code> <code>2</code>,
-<code>DENIED_ACTION_RETRIED_ARGUMENTS</code> <code>1</code> and <code>DENIED_ACTION_RETRIED_RESOURCE</code>
-<code>1</code>, each with <code>expires_seconds</code>; on a line its subject is the agent or the
+taken on a rule only for <code>REPEATED_DENIAL</code> <code>2</code>, with <code>expires_seconds</code>, and
+in the route a list is carried from for <code>DENIED_ACTION_RETRIED_ARGUMENTS</code> <code>1</code>
+and <code>DENIED_ACTION_RETRIED_RESOURCE</code> <code>1</code>, which may stop nothing new
+(<a href="/docs/adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected">ADR-0088</a>); on a line its subject is the agent or the
 principal, at most 256 bytes, and <code>run_id</code> is the finding's run
 (<a href="/docs/adr/0083-a-finding-may-stop-an-agent-or-a-principal">ADR-0083</a>). A
 header's digest is <code>sha256:</code> and the lowercase hex SHA-256 of its signed

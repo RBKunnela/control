@@ -65,7 +65,7 @@ func liftKey() ed25519.PrivateKey  { return seededKey(0x4c) }
 func otherKey() ed25519.PrivateKey { return seededKey(0x4f) }
 
 // routeOf is a route of tenant acme and serial with STEP_OUTSIDE_PROCEDURE
-// stopping for at most an hour, and DEADLINE_EXCEEDED too when both is set.
+// stopping for at most an hour, and RESOURCE_OUTSIDE_RUN too when both is set.
 func routeOf(t testing.TB, serial int, both bool) reaction.Route {
 	t.Helper()
 	return routeFor(t, serial, "acme", both)
@@ -80,7 +80,7 @@ func routeFor(t testing.TB, serial int, tenant string, both bool) reaction.Route
 	}
 	rules := rule("STEP_OUTSIDE_PROCEDURE", `,"expires_seconds":3600`)
 	if both {
-		rules += "," + rule("DEADLINE_EXCEEDED", "")
+		rules += "," + rule("RESOURCE_OUTSIDE_RUN", "")
 	}
 	doc := `{"kind":"reaction-route/v1alpha1","route_id":"refunds","serial":` + strconv.Itoa(serial) +
 		`,"tenant_id":"` + tenant + `","scope":"run","lift_public_key":"` + pub + `","rules":[` + rules + `]}`

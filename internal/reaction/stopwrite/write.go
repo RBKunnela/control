@@ -59,8 +59,10 @@ func Init(ctx context.Context, dir string, route reaction.Route, now time.Time) 
 // holds no key: a lift the route's lift key did not sign is refused. So is,
 // with ErrNothingLifted, one that ends no stop of the list as it stands under
 // the lock, such as one another lift ended after its signer read the list.
+// Route may name a rule version that may no longer stop a run, as the route a
+// list is carried from may (reaction.JudgeForLift): a lift only ends a stop.
 func AppendLift(ctx context.Context, dir string, route reaction.Route, l reaction.LiftLine, now time.Time) (int64, error) {
-	return appendLine(ctx, dir, route, at(now), fixed(l.Marshal()), func(before, _ reaction.List) error { return endsAStop(before, l) })
+	return appendLine(ctx, dir, route, at(now), fixed(l.Marshal()), true, func(before, _ reaction.List) error { return endsAStop(before, l) })
 }
 
 // endsAStop refuses a lift l that ends no stop of the list before it.
@@ -119,7 +121,7 @@ func AppendFinding(ctx context.Context, dir string, route reaction.Route, clock 
 				Scope: s.Scope, Subject: s.Subject, CreatedAt: s.CreatedAt}.Marshal()
 		}
 		return s.Marshal()
-	}, nil)
+	}, false, nil)
 	if err != nil {
 		return 0, reaction.Stop{}, false, err
 	}
@@ -149,9 +151,14 @@ func at(now time.Time) func() time.Time { return func() time.Time { return now }
 // reading; only a list the judge accepts is written. Bytes after the last
 // newline are a line a writer did not finish, and are cut before the append.
 // check, where given, then refuses what the judge accepted. A refused write
-// changes nothing.
-func appendLine(ctx context.Context, dir string, route reaction.Route, clock func() time.Time, build lineFor, check judgedCheck) (int64, error) {
-	if err := stopping(route); err != nil {
+// changes nothing. A lift's write holds route to the rules of the route a
+// list is carried from, and every other write to those that may stop a run.
+func appendLine(ctx context.Context, dir string, route reaction.Route, clock func() time.Time, build lineFor, lift bool, check judgedCheck) (int64, error) {
+	routeCheck := stopping
+	if lift {
+		routeCheck = carrySource
+	}
+	if err := routeCheck(route); err != nil {
 		return 0, err
 	}
 	var n int64
@@ -167,7 +174,7 @@ func appendLine(ctx context.Context, dir string, route reaction.Route, clock fun
 		if err != nil {
 			return err
 		}
-		n, err = appendTo(f, named, route, clock(), build, check)
+		n, err = appendTo(f, named, route, clock(), build, lift, check)
 		return errors.Join(err, f.Close())
 	})
 	if err != nil {
@@ -176,7 +183,7 @@ func appendLine(ctx context.Context, dir string, route reaction.Route, clock fun
 	return n, nil
 }
 
-func appendTo(f *os.File, named fs.FileInfo, route reaction.Route, now time.Time, build lineFor, check judgedCheck) (int64, error) {
+func appendTo(f *os.File, named fs.FileInfo, route reaction.Route, now time.Time, build lineFor, lift bool, check judgedCheck) (int64, error) {
 	if err := stoplist.CheckOpened(named, f); err != nil {
 		return 0, err
 	}
@@ -190,7 +197,7 @@ func appendTo(f *os.File, named fs.FileInfo, route reaction.Route, now time.Time
 		return 0, fmt.Errorf("%w: %w: limit %d", ErrFull, stoplist.ErrTooLarge, reaction.MaxListBytes)
 	}
 	complete := content[:bytes.LastIndexByte(content, '\n')+1]
-	next, list, err := withLine(route, complete, now, build, check)
+	next, list, err := withLine(route, complete, now, build, lift, check)
 	if err != nil {
 		return 0, err
 	}
@@ -214,8 +221,9 @@ func appendTo(f *os.File, named fs.FileInfo, route reaction.Route, now time.Time
 // withLine is complete with the line build makes after it, and the list the
 // judge accepted it as: complete is judged, the line built from it, the two
 // judged again and held to check where given.
-func withLine(route reaction.Route, complete []byte, now time.Time, build lineFor, check judgedCheck) ([]byte, reaction.List, error) {
-	before, err := reaction.Judge(route, reaction.Prefix{}, complete, now, 0)
+func withLine(route reaction.Route, complete []byte, now time.Time, build lineFor, lift bool, check judgedCheck) ([]byte, reaction.List, error) {
+	judge, judgeNext := judgesFor(route, now, lift)
+	before, err := judge(complete)
 	if err != nil {
 		return nil, reaction.List{}, refusal(err)
 	}
@@ -224,7 +232,7 @@ func withLine(route reaction.Route, complete []byte, now time.Time, build lineFo
 		return nil, reaction.List{}, fmt.Errorf("%w: %w", ErrRefused, err)
 	}
 	next := append(append(bytes.Clone(complete), line...), '\n')
-	list, err := reaction.JudgeFrom(route, before, next, now, 0)
+	list, err := judgeNext(before, next)
 	if err != nil {
 		return nil, reaction.List{}, refusal(err)
 	}
@@ -234,6 +242,23 @@ func withLine(route reaction.Route, complete []byte, now time.Time, build lineFo
 		}
 	}
 	return next, list, nil
+}
+
+// judgesFor is how a write judges the list before its line and with it: a
+// lift's write through JudgeForLift, every other through Judge and JudgeFrom.
+func judgesFor(route reaction.Route, now time.Time, lift bool) (
+	judge func([]byte) (reaction.List, error), judgeNext func(reaction.List, []byte) (reaction.List, error),
+) {
+	if lift {
+		judge = func(content []byte) (reaction.List, error) { return reaction.JudgeForLift(route, content, now) }
+		return judge, func(_ reaction.List, next []byte) (reaction.List, error) { return judge(next) }
+	}
+	judge = func(content []byte) (reaction.List, error) {
+		return reaction.Judge(route, reaction.Prefix{}, content, now, 0)
+	}
+	return judge, func(before reaction.List, next []byte) (reaction.List, error) {
+		return reaction.JudgeFrom(route, before, next, now, 0)
+	}
 }
 
 // create writes lines as a new list in dir, under the lock, once the judge
@@ -270,6 +295,15 @@ func modeFor(route reaction.Route) fs.FileMode {
 // rather than trust that the caller verified it.
 func stopping(route reaction.Route) error {
 	if err := reaction.CheckStopping(route); err != nil {
+		return fmt.Errorf("%w: %w", ErrRefused, err)
+	}
+	return nil
+}
+
+// carrySource refuses a route naming a rule that may not stop a run and was
+// never superseded or retired.
+func carrySource(route reaction.Route) error {
+	if err := reaction.CheckCarrySource(route); err != nil {
 		return fmt.Errorf("%w: %w", ErrRefused, err)
 	}
 	return nil

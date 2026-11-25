@@ -217,7 +217,7 @@ func doubtedIn(t *testing.T, s1, s2 supervise.Source) map[string]string {
 }
 
 func doubting(every bool, runs ...string) supervise.Source {
-	return supervise.Source{Kind: otelKind, Tenant: tenant, Project: proj, EveryRunDoubted: every, DoubtedRuns: runs}
+	return supervise.Source{Kind: otelKind, Sampling: observev1.Sampling_SAMPLING_COMPLETE, Tenant: tenant, Project: proj, EveryRunDoubted: every, DoubtedRuns: runs}
 }
 
 // TestARefusedCopyOfARunJudgedLeavesTheRulesThatReadReportsNotChecked: a
@@ -363,8 +363,8 @@ func TestADoubtCitesTheObservationsOfItsOwnRun(t *testing.T) {
 
 // TestEveryCauseThatCutsARuleIsNamed: a rule that reads reports and is cut
 // for more than one cause names each, the reason it was already not checked
-// first, then the request, observation and source in doubt and a walk cut
-// short, joined by "; ".
+// first, then a silent source, the request, observation and source in doubt
+// and a walk cut short, joined by "; ", each once.
 func TestEveryCauseThatCutsARuleIsNamed(t *testing.T) {
 	const walk = "a span walk ran out of steps, so a source's report may be a plane call"
 	src := chain(supervise.MaxWalkSteps+1, ob{id: "obs-top", name: "search_docs"}, observev1.SubjectKind_SUBJECT_KIND_AGENT, "mcp_call")
@@ -387,7 +387,7 @@ func TestEveryCauseThatCutsARuleIsNamed(t *testing.T) {
 	}
 	for rule, want := range map[string]string{
 		"DENIED_ACTION_RETRIED_AROUND": `RULE_STATE_NOT_CHECKED:a source is silent, never heard or not read; source "s2"` + refusedTail,
-		"STEP_OUTSIDE_PROCEDURE":       `RULE_STATE_NOT_CHECKED:source "s2"` + refusedTail,
+		"STEP_OUTSIDE_PROCEDURE":       `RULE_STATE_NOT_CHECKED:a source is silent, never heard or not read; source "s2"` + refusedTail,
 	} {
 		if got := rules(res)[rule]; got != want {
 			t.Errorf("a silent source and a source in doubt: %s %s, want %s", rule, got, want)

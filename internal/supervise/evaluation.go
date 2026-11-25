@@ -58,6 +58,9 @@ type evaluation struct {
 	anySilent   bool
 	neverHeard  []string
 	lapsed      []string
+	// sampled are the sources that may drop a call, and unclosed those whose
+	// log holds a write not read: either may not have reported a call.
+	sampled, unclosed []string
 	// refused is what each source's imports refused, and refusedJudged the
 	// sources a copy of which may be a call of a run judged.
 	refused       map[string]refusals
@@ -69,9 +72,6 @@ type evaluation struct {
 	retry  *retryIndex
 	places map[string][]place
 	bound  map[string][]*request
-	// parents is each run's parent in the tree, and scopes ownScope's answers.
-	parents map[string]string
-	scopes  map[[2]string]bool
 	// waived is what each exception took away, filled as the rules it waives
 	// are applied.
 	waived map[waiverKey]*waiver
@@ -93,8 +93,7 @@ type first struct {
 func newEvaluation(in Input, rd *read) *evaluation {
 	e := &evaluation{in: in, p: in.Procedure, ix: indexOf(in.Procedure), rd: rd,
 		byRequest: map[string]*request{}, ofStep: map[int][]*instance{}, stepIndex: map[string]int{},
-		joinDoubt: map[string]bool{}, reported: map[int][]string{}, firsts: map[int]first{}, waived: map[waiverKey]*waiver{},
-		scopes: map[[2]string]bool{}}
+		joinDoubt: map[string]bool{}, reported: map[int][]string{}, firsts: map[int]first{}, waived: map[waiverKey]*waiver{}}
 	for i, s := range e.p.steps {
 		e.stepIndex[s.ID] = i
 	}
@@ -156,6 +155,12 @@ func (e *evaluation) hearSources() {
 		}
 		e.silent[s.SourceID] = silent
 		e.anySilent = e.anySilent || silent
+		if observe.SamplingOf(s.Sampling) != observev1.Sampling_SAMPLING_COMPLETE {
+			e.sampled = append(e.sampled, s.SourceID)
+		}
+		if s.Unclosed {
+			e.unclosed = append(e.unclosed, s.SourceID)
+		}
 		r := refusals{every: s.EveryRunDoubted, runs: map[string]bool{}}
 		for _, run := range s.DoubtedRuns {
 			r.runs[run] = true

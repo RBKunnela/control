@@ -293,22 +293,22 @@ func readSource(descriptor, logDir string) (coverage.Source, bool, error) {
 	if err != nil {
 		return coverage.Source{}, false, refusedInput("source", descriptor, err)
 	}
-	records, err := readSourceLog(logDir)
+	log, err := readSourceLog(logDir)
 	if err != nil {
 		return coverage.Source{}, false, err
 	}
-	return coverage.Source{Descriptor: desc, Records: records}, true, nil
+	return coverage.Source{Descriptor: desc, Records: log.Records, Unclosed: log.Unclosed}, true, nil
 }
 
-func readSourceLog(logDir string) ([]*observev1.Record, error) {
+func readSourceLog(logDir string) (observelog.Committed, error) {
 	if err := ondisk.CheckDir(logDir, 0); err != nil {
-		return nil, refusedInput("log", logDir, err)
+		return observelog.Committed{}, refusedInput("log", logDir, err)
 	}
-	records, err := observelog.ReadFile(filepath.Join(logDir, observelog.FileName))
+	log, err := observelog.ReadCommitted(filepath.Join(logDir, observelog.FileName))
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return nil, refusedInput("log", logDir, err)
+		return observelog.Committed{}, refusedInput("log", logDir, err)
 	}
-	return records, nil
+	return log, nil
 }
 
 // absentSource refuses a removed descriptor whose log holds an egress
@@ -319,11 +319,11 @@ func absentSource(descriptor, logDir string) error {
 	if _, err := os.Lstat(logDir); errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
-	records, err := readSourceLog(logDir)
+	log, err := readSourceLog(logDir)
 	if err != nil {
 		return err
 	}
-	for _, r := range records {
+	for _, r := range log.Records {
 		if _, egress := egressRecordKey(r); egress {
 			return refusedInput("source", descriptor, fmt.Errorf("absent, and its log holds records of kind %q, "+
 				"whose hosts and refused lines the map would not show; restore its descriptor, or leave out the --source and its --log",

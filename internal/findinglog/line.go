@@ -74,6 +74,9 @@ func unmarshalLine(line []byte) (*findingv1alpha1.Record, error) {
 	if err := unmarshalStrict(line, r); err != nil {
 		return nil, err
 	}
+	if err := checkSpelledSet(line, r.ProtoReflect()); err != nil {
+		return nil, err
+	}
 	if err := checkRecord(r); err != nil {
 		return nil, err
 	}
@@ -100,6 +103,50 @@ func unmarshalStrict(b []byte, m proto.Message) error {
 			return fmt.Errorf("%w (offset %d)", errNull, dec.InputOffset())
 		}
 	}
+}
+
+// checkSpelledSet refuses a member b spells that m, decoded from it, does
+// not hold: one at its default, which the writer never spells, and which
+// would let a record carry a member of a later schema while it reads as one
+// that lacks it. A map's entries are written whatever their value, and a
+// member spelled as a string, such as a timestamp, holds no members.
+func checkSpelledSet(b []byte, m protoreflect.Message) error {
+	var members map[string]json.RawMessage
+	if err := json.Unmarshal(b, &members); err != nil {
+		return err
+	}
+	fields := m.Descriptor().Fields()
+	for name, raw := range members {
+		if fd := fields.ByJSONName(name); fd != nil {
+			if err := checkSpelledMember(raw, m, fd); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// checkSpelledMember holds raw, the spelling of m's member fd, to
+// checkSpelledSet's rule, and the messages it holds with it.
+func checkSpelledMember(raw json.RawMessage, m protoreflect.Message, fd protoreflect.FieldDescriptor) error {
+	switch {
+	case !m.Has(fd):
+		return fieldError(fd.JSONName() + ": spelled at its default, which the writer leaves out")
+	case fd.IsList() && fd.Message() != nil:
+		var items []json.RawMessage
+		if err := json.Unmarshal(raw, &items); err != nil {
+			return err
+		}
+		list := m.Get(fd).List()
+		for i := 0; i < len(items) && i < list.Len(); i++ {
+			if err := checkSpelledSet(items[i], list.Get(i).Message()); err != nil {
+				return err
+			}
+		}
+	case fd.Message() != nil && !fd.IsMap() && bytes.HasPrefix(raw, []byte("{")):
+		return checkSpelledSet(raw, m.Get(fd).Message())
+	}
+	return nil
 }
 
 // hasUnknownFields reports whether any message in the tree carries a field

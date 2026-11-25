@@ -46,11 +46,12 @@ func (ra *refundAgent) retryWork(t *testing.T, tr tree) retryRequests {
 
 // TestARetriedRefundIsStoppedUnderProcedure02 runs the retried refund on a
 // live plane and supervises the open run against the 0.2 procedure: the
-// denied refund written as an update of the same order is a confirmed retry,
+// denied refund written as an update of the same order is a suggested retry,
 // the orders the binding saw are more than one, and the approved export the
 // procedure does not name is an exception taken, not a step outside it. The
-// view is drawn and the findings exported. react stops the run on the retry
-// alone, and the second run's call runs. The example's own cases pass.
+// view is drawn and the findings exported. react stops the run on the orders
+// the binding saw, and the second run's call runs. The example's own cases
+// pass.
 func TestARetriedRefundIsStoppedUnderProcedure02(t *testing.T) {
 	tr := newTree(t)
 	collector := tr.collect(t)
@@ -66,7 +67,7 @@ func TestARetriedRefundIsStoppedUnderProcedure02(t *testing.T) {
 
 	view := filepath.Join(tr.root, "run.html")
 	s := tr.superviseUnder(t, procedure02, "retried", first.id, ra, func(span) string { return first.id }, "--view", view)
-	s.expect(t, 1, "DENIED_ACTION_RETRIED_RESOURCE FINDING_VERDICT_CONFIRMED ESCALATION_ALERT",
+	s.expect(t, 1, "DENIED_ACTION_RETRIED_RESOURCE FINDING_VERDICT_SUSPECTED ESCALATION_ALERT",
 		"EXCEPTION_TAKEN FINDING_VERDICT_CONFIRMED ESCALATION_INFORM",
 		"RESOURCE_OUTSIDE_RUN FINDING_VERDICT_CONFIRMED ESCALATION_ALERT")
 	s.printed(t, "observations: 4 taken", "children: inherit, every run of the tree judged", "tree: "+first.id,
@@ -97,7 +98,7 @@ func TestARetriedRefundIsStoppedUnderProcedure02(t *testing.T) {
 	expectExport(t, tr, s)
 
 	pl := livePlane{health: plane.after(t, "answering /healthz, /metrics and /brand on "), first: ra, second: newAgent(t, agents, second.token)}
-	refused := tr.stop(t, pl, first, s, "DENIED_ACTION_RETRIED_RESOURCE", 2)
+	refused := tr.stop(t, pl, first, s, "RESOURCE_OUTSIDE_RUN", 2)
 	tr.waitForTrails(t, 6)
 	plane.interrupt(t)
 	collector.interrupt(t)
@@ -109,7 +110,7 @@ func TestARetriedRefundIsStoppedUnderProcedure02(t *testing.T) {
 	}
 	tr.expectStoppedTrail(t, refused, first.id)
 
-	if out := must(t, tr.dir, tr.control, "procedure", "test", casesFile); out != "ok   the refund retried as an update: RESOURCE_OUTSIDE_RUN CONFIRMED, DENIED_ACTION_RETRIED_RESOURCE CONFIRMED\n"+
+	if out := must(t, tr.dir, tr.control, "procedure", "test", casesFile); out != "ok   the refund retried as an update: RESOURCE_OUTSIDE_RUN CONFIRMED, DENIED_ACTION_RETRIED_RESOURCE SUSPECTED\n"+
 		"ok   the export approved: EXCEPTION_TAKEN CONFIRMED\n"+
 		"ok   the export without an approval: STEP_OUTSIDE_PROCEDURE CONFIRMED\n"+
 		"procedure refund version 2: 3 cases, 3 passed, 0 failed\n" {

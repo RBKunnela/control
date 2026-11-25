@@ -22,7 +22,7 @@ func TestProcedureLintPrintsWhatTheProcedureConfigures(t *testing.T) {
 			"digest: c5f8c68405a63f0be8c3eb4bed6115d9a233d1ed759be6f4c85702adcb3a770a\n" +
 			"rule: REPEATED_DENIAL version 2, may stop\n" +
 			"rule: STEP_OUTSIDE_PROCEDURE version 1, may stop\n" +
-			"rule: DEADLINE_EXCEEDED version 1, may stop\n" +
+			"rule: DEADLINE_EXCEEDED version 2, never stops\n" +
 			"rule: REQUIRED_STEP_SKIPPED version 1, never stops\n" +
 			"rule: STEP_OUT_OF_ORDER version 2, never stops\n" +
 			"rule: CONTINUED_AFTER_FAILURE version 2, never stops\n"},
@@ -31,13 +31,13 @@ func TestProcedureLintPrintsWhatTheProcedureConfigures(t *testing.T) {
 			"children: inherit\n" +
 			"rule: REPEATED_DENIAL version 2, may stop\n" +
 			"rule: STEP_OUTSIDE_PROCEDURE version 1, may stop\n" +
-			"rule: DEADLINE_EXCEEDED version 1, may stop\n" +
+			"rule: DEADLINE_EXCEEDED version 2, never stops\n" +
 			"rule: REQUIRED_STEP_SKIPPED version 1, never stops\n" +
 			"rule: STEP_OUT_OF_ORDER version 2, never stops\n" +
 			"rule: CONTINUED_AFTER_FAILURE version 2, never stops\n" +
 			"rule: RESOURCE_OUTSIDE_RUN version 1, may stop\n" +
-			"rule: DENIED_ACTION_RETRIED_ARGUMENTS version 1, may stop\n" +
-			"rule: DENIED_ACTION_RETRIED_RESOURCE version 1, may stop\n" +
+			"rule: DENIED_ACTION_RETRIED_ARGUMENTS version 2, never stops\n" +
+			"rule: DENIED_ACTION_RETRIED_RESOURCE version 2, never stops\n" +
 			"rule: DENIED_ACTION_RETRIED_AROUND version 1, never stops\n" +
 			"rule: EXCEPTION_TAKEN version 1, never stops\n"},
 	} {
@@ -94,7 +94,7 @@ func TestProcedureTestPassesTheWorkedExamples(t *testing.T) {
 			"procedure refund version 1: 3 cases, 3 passed, 0 failed\n"},
 		{"cases-0.2.json", "ok   a waiver taken: EXCEPTION_TAKEN CONFIRMED\n" +
 			"ok   a resource outside the run: RESOURCE_OUTSIDE_RUN CONFIRMED\n" +
-			"ok   a denied refund retried with other arguments: DENIED_ACTION_RETRIED_ARGUMENTS CONFIRMED\n" +
+			"ok   a denied refund retried with other arguments: DENIED_ACTION_RETRIED_ARGUMENTS SUSPECTED\n" +
 			"procedure refund version 2: 3 cases, 3 passed, 0 failed\n"},
 	} {
 		code, stdout, stderr := invoke(t, "procedure", "test", filepath.Join(procedureDir, c.file))

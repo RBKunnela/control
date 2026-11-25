@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	observev1 "github.com/guardana/control/api/gen/go/guardana/control/observe/v1alpha1"
 	"github.com/guardana/control/internal/supervise"
 )
 
@@ -66,7 +67,7 @@ func TestASourceNamedButNotReadPutsAnAbsenceInDoubt(t *testing.T) {
 // heard after the event, was live as of it.
 func TestASourceIsSilentOnlyPastItsHeartbeat(t *testing.T) {
 	heard := func(id string, at time.Duration, ok bool) supervise.Source {
-		return supervise.Source{SourceID: id, Kind: otelKind, Tenant: tenant, Project: proj, HeartbeatSeconds: 300, LastHeard: t0.Add(at), Heard: ok}
+		return supervise.Source{SourceID: id, Kind: otelKind, Sampling: observev1.Sampling_SAMPLING_COMPLETE, Tenant: tenant, Project: proj, HeartbeatSeconds: 300, LastHeard: t0.Add(at), Heard: ok}
 	}
 	never := heard("s3", time.Hour, false)
 	never.HeartbeatSeconds = 60

@@ -394,6 +394,14 @@ linear time; a doubtful reference past the bound keeps the finding
 <li>A 0.9 reader refuses a <code>&quot;0.2&quot;</code> record by name; <code>buf breaking</code> passes on
 <code>finding/v1alpha1</code> and holds v1.</li>
 </ul>
+<h2 id="amendment-a-retry-is-suspected-at-most">Amendment: a retry is suspected at most</h2>
+<p>Amended by <a href="/docs/adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected">ADR-0088</a>. The Decision's &quot;A later time there is <code>CONFIRMED</code>&quot; no longer
+holds: one export can hold two planes' clocks. <code>DENIED_ACTION_RETRIED_ARGUMENTS</code>
+and <code>DENIED_ACTION_RETRIED_RESOURCE</code> are now version <code>2</code>, <code>SUSPECTED</code> at
+most whatever export their events came from, and neither stops a run; the
+line &quot;whether <code>_ARGUMENTS</code> stops a run is the route's choice&quot; is withdrawn,
+since no route may name either. A stop already written under version <code>1</code> is
+kept by a carry and lifted by its operator.</p>
 <p class="src">Rendered from <a href="https://github.com/guardana/control/blob/main/docs/adr/0047-a-procedure-states-its-exceptions-resources-and-children.md">docs/adr/0047-a-procedure-states-its-exceptions-resources-and-children.md</a> on <code>main</code>. It describes the tree as it is now; a release's notes say what a tag holds. The latest release is v0.18.0, and <a href="https://github.com/guardana/control/tree/v0.18.0/docs">its documentation</a> is in its tag.</p>
 </main>
 <nav class="side" aria-label="Documentation">

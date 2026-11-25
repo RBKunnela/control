@@ -50,12 +50,12 @@ The route says which findings may stop a run: its tenant, and rules, each a
 procedure by id, version and digest and a supervise rule, with an optional
 lifetime for the stops it allows. Without one a stop lasts as long as its run.
 `route sign` signs it with its own key and writes it mode `0644`,
-replacing only an earlier signed route. It refuses any rule but the six whose finding
+replacing only an earlier signed route. It refuses any rule but the three whose finding
 may stop a run, each at its version: `REPEATED_DENIAL` at `2`, and
-`STEP_OUTSIDE_PROCEDURE`, `DEADLINE_EXCEEDED`, `RESOURCE_OUTSIDE_RUN`,
-`DENIED_ACTION_RETRIED_ARGUMENTS` and `DENIED_ACTION_RETRIED_RESOURCE` at `1`.
+`STEP_OUTSIDE_PROCEDURE` and `RESOURCE_OUTSIDE_RUN` at `1`
+([ADR-0088](../adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected.md)).
 Every reader of a signed route refuses one naming another, but
-`--carry-route`. The route also names the lift key, whose holder alone can
+`--carry-route` and `stops lift`. The route also names the lift key, whose holder alone can
 lift a stop; it need not be on the plane's machine.
 
 The route floor keeps, per route id, the highest serial a plane took and its
@@ -63,15 +63,14 @@ digest, in a directory of its own that `policy state init --kind route` makes.
 At start a plane refuses a missing floor, a route below the floor's serial,
 and a route at that serial with another digest. It raises the floor once the
 list's first read is served, before it listens, and never makes one. A plane reads the route at start only: a stale route can
-only stop too much, never grant. Changing it, a rule's new version included,
-takes a carried list and a restart.
+only stop too much. Changing it takes a carried list and a restart.
 
 ## The stop list
 
 `stops.jsonl` in an owner-only directory: a header naming the route, then
 `stop`, `covered` and `lift` lines, appended and never rewritten, at most
 4 MiB and 20 000 lines. Only the `stops` commands and `react` write it, each
-line under the list's lock, waiting up to ten seconds for another writer; a
+line under the list's lock, waiting up to ten seconds; a
 plane takes no lock. A writer cuts a torn last line before it appends, and refuses a write past the bound rather than cut an unread
 line.
 
@@ -79,8 +78,9 @@ line.
 `--carry` it copies the old list's unlifted stops, expired or not, and names every other finding of it as covered, judging the
 old list by `--carry-route` under the same route key and holding its lock
 until the new list is written, so the new list only adds. Only
-`--carry-route` may name a superseded version, `REPEATED_DENIAL` `1`: its stops
-keep it, judged as `2`, and no writer appends one. A version `2` finding
+`--carry-route` may name `REPEATED_DENIAL` `1`, its stops judged as `2`, or the
+deadline or a retry rule at `1`, its stops kept only within what the route
+grants now, else the carry names the `stops lift` to run first. No writer appends either. A version `2` finding
 stops a lifted run again. A list a plane
 refuses at one line is carried up to that line, and `stops init` says what it
 left out, unless a stop or covered line follows it or the line is dated past
@@ -97,8 +97,7 @@ and lifts counted and the list's use of its bounds.
 header names another route, reads the findings log and looks each finding's run up in the runs directory
 it never writes. It holds no key and never lifts. For each finding the
 list does not name yet, it writes a `covered` line when the run has an active
-stop lasting at least as long as the new one, and a `stop` otherwise,
-as the list stands under its lock, if:
+stop lasting at least as long as the new one, and a `stop` otherwise, if:
 
 - the finding is `DETERMINISTIC` and `CONFIRMED`; a suspected, indeterminate
   or model's finding stops nothing, and no setting changes that;
@@ -112,8 +111,7 @@ plus the rule's lifetime, never after the run's expiry rounded up to the second.
 count line, and exits 0 when every finding the route allows is on the list,
 and 1 on any refusal, naming each finding it could not write. An interrupt, or
 a lock wait that runs out, ends the pass after its writes.
-Nothing runs it: the operator runs `supervise` and `react` while the run is
-open.
+The operator runs `supervise` and `react` while the run is open.
 
 ## What a plane checks
 
@@ -124,8 +122,7 @@ At start, a plane with `reaction.route` refuses to serve unless all four of
 are four keys, compared as points up to their sign; the floor takes the route;
 and the first read of the list finds a state it can serve.
 
-It reads the list every `reaction.poll_interval` into a snapshot, like the
-pause file. A read must extend the bytes it accepted before, with the
+It reads the list every `reaction.poll_interval` into a snapshot. A read must extend the bytes it accepted before, with the
 same header; a list that is missing, a link, owned by another account,
 writable by the group or others, too large, refused by the judge, shrunk or
 rewritten, and a snapshot older than three intervals, are an unknown state.

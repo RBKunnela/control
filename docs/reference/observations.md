@@ -123,8 +123,8 @@ takes one kind per source.
 
 A record carrying a connection, `refused_by`, `callers_dropped` or a kind is
 `0.3`, a report carrying a doubt member `0.2`, any other `0.1`; the reader
-refuses a version its members do not call for. A reader
-whose table lacks a version, as 0.14's lacks `0.3`, refuses each such line.
+refuses a version it lacks or its members do not call for, and a member at
+its default, which the writer leaves out.
 
 A doubt has no time bound, and a doubt of every run reaches every later run
 of the source. Only rotating the log ends it: with no import running, move

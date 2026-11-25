@@ -97,3 +97,13 @@ runs on one plane under agent, principal and run stops and their lifts, the
 listing under a stop, and the subject taken from the listener alone;
 `internal/supervise` tests that code 48 is no denial; `cmd/guardana-control`
 tests `react` and `stops lift`.
+
+## Amendment: only repeated denials stop an agent or a principal
+
+Amended by [ADR-0088](0088-a-verdict-that-compares-two-events-times-is-at-most-suspected.md). `DENIED_ACTION_RETRIED_ARGUMENTS` and
+`DENIED_ACTION_RETRIED_RESOURCE` version `1` may no longer stop anything:
+their verdict ordered two events' times that may come from two clocks.
+`REPEATED_DENIAL` version `2` is the one rule a route may give scope
+`agent` or `principal`. An agent or principal stop already written under
+a retry rule's version `1` is kept by a carry, within the stop lifetime
+bound, and lifted by its operator.

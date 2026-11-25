@@ -149,7 +149,7 @@ Rows are sorted by the host's bytes, at most 256 (`MaxUndeclared` in
 `internal/coverage/undeclared.go`); one line counts the hosts past that. An
 agent chooses the hosts it reaches, so it can push one past the cut by
 reaching 256 that sort before it; the cut still makes the exit 1. The line
-names no digest of the hosts cut, since a digest names none of them; the log
+names no digest of the hosts cut; the log
 holds every one, and `observe export` lists them.
 
 A line the importer refused is a connection whose host nobody read. Each
@@ -178,5 +178,5 @@ bits only, not an access control list or the file's owner
 | Exit | When |
 | --- | --- |
 | 0 | every declared path is at least observed, and no call around the plane or cut walk was found; a join not checked for another reason, such as no export, is the operator's to close |
-| 1 | a path is unknown or not covered; a call around the plane or a cut walk was found, since an agent chooses its spans and can cut a walk on purpose; an egress source reached a host no path declares, its row printed or cut; an egress import refused a line; an egress source is not live; or writing the map failed |
+| 1 | a path is unknown or not covered; a call around the plane or a cut walk was found, as an agent chooses its spans; an egress source reached a host no path declares, its row printed or cut; an egress import refused a line; an egress source is not live; a source's log holds a write no import report closes; or writing the map failed |
 | 2 | an input was refused; nothing is printed on standard output |

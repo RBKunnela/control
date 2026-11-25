@@ -15,14 +15,14 @@ import (
 )
 
 // wideStopsTree is a signed stops tree whose route also stops an agent on
-// REPEATED_DENIAL and a principal on DENIED_ACTION_RETRIED_ARGUMENTS, with a
+// REPEATED_DENIAL and, under the procedure's next version, a principal, with a
 // stop of the listener's agent and of its principal, which the plane holds,
 // and a stop of agent-9 and of principal admin-1, which it does not serve.
 // It returns the tree and the entry ids of the two it does not hold.
 func wideStopsTree(t *testing.T) (tree, []string) {
 	t.Helper()
-	tr, route := signedStopsTreeWith(t, widerRule{"REPEATED_DENIAL", "2", "agent"},
-		widerRule{"DENIED_ACTION_RETRIED_ARGUMENTS", "1", "principal"})
+	tr, route := signedStopsTreeWith(t, widerRule{"REPEATED_DENIAL", "2", "agent", ""},
+		widerRule{"REPEATED_DENIAL", "2", "principal", "4"})
 	var unheld []string
 	for i, c := range []struct {
 		scope, subject string
@@ -32,15 +32,15 @@ func wideStopsTree(t *testing.T) (tree, []string) {
 		{reaction.ScopePrincipal, "agent-runner", true}, {reaction.ScopePrincipal, "admin-1", false},
 	} {
 		finding := "finding-" + string(rune('1'+i))
-		rule, version := "REPEATED_DENIAL", "2"
+		procedure := "3"
 		if c.scope == reaction.ScopePrincipal {
-			rule, version = "DENIED_ACTION_RETRIED_ARGUMENTS", "1"
+			procedure = "4"
 		}
 		stopAt := func(now time.Time) (reaction.Stop, error) {
 			created := now.UTC().Truncate(time.Second)
 			return reaction.Stop{EntryID: reaction.EntryID(finding), TenantID: "acme", ProjectID: "orders", Scope: c.scope,
-				Subject: c.subject, RunID: "run-1", FindingID: finding, ProcedureID: "refund", ProcedureVersion: "3",
-				ProcedureDigest: fixtureProcedure, RuleID: rule, RuleVersion: version, CreatedAt: created,
+				Subject: c.subject, RunID: "run-1", FindingID: finding, ProcedureID: "refund", ProcedureVersion: procedure,
+				ProcedureDigest: fixtureProcedure, RuleID: "REPEATED_DENIAL", RuleVersion: "2", CreatedAt: created,
 				ExpiresAt: created.Add(time.Hour)}, nil
 		}
 		if _, _, covered, err := stopwrite.AppendFinding(context.Background(), filepath.Join(tr.dir, "stops"), route, time.Now, stopAt); err != nil || covered {
@@ -93,7 +93,7 @@ func TestDoctorNamesTheWiderRulesAndTheStopsTheListenerDoesNotServe(t *testing.T
 	_, out, _, _ := doctorRun(t, tr, "reaction")
 	for _, want := range []string{
 		"rule REPEATED_DENIAL 2 of procedure refund 3 stops the agent for 1h0m0s",
-		"rule DENIED_ACTION_RETRIED_ARGUMENTS 1 of procedure refund 3 stops the principal for 1h0m0s",
+		"rule REPEATED_DENIAL 2 of procedure refund 4 stops the principal for 1h0m0s",
 		"of agent agent-9, found on run run-1, for finding",
 		"of principal agent-runner, found on run run-1, for finding",
 		"stop of agent agent-9: this plane serves agent orders-assistant of tenant acme, so the stop matches no call",

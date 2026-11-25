@@ -32,6 +32,10 @@ func (r *Report) Lines() []string {
 	out = append(out, undeclaredLines(r.Undeclared, r.UndeclaredCut)...)
 	out = append(out, refusedLines(r.Refused)...)
 	out = append(out, unseenLines(r.Unseen)...)
+	for _, id := range r.Unclosed {
+		out = append(out, "unclosed write by "+printable(id)+
+			": its log holds a write no import report closes, so what follows its last report is unread")
+	}
 	return append(out, UndeclaredRow)
 }
 

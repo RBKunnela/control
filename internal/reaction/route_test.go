@@ -19,7 +19,7 @@ func TestParseRouteReadsADocument(t *testing.T) {
 	}
 	want := []reaction.Rule{
 		{ProcedureID: "refund", ProcedureVersion: "3", ProcedureDigest: procDigest, RuleID: "STEP_OUTSIDE_PROCEDURE", RuleVersion: "1", Lifetime: time.Hour},
-		{ProcedureID: "refund", ProcedureVersion: "3", ProcedureDigest: procDigest, RuleID: "DEADLINE_EXCEEDED", RuleVersion: "1"},
+		{ProcedureID: "refund", ProcedureVersion: "3", ProcedureDigest: procDigest, RuleID: "RESOURCE_OUTSIDE_RUN", RuleVersion: "1"},
 	}
 	got := r.Rules()
 	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
@@ -135,7 +135,7 @@ func TestParseRouteRefuses(t *testing.T) {
 		{"expires_seconds with a fraction", edit(`3600`, `3600.0`), reaction.ErrRouteLifetime},
 		{"expires_seconds as a string", edit(`3600`, `"3600"`), reaction.ErrRouteLifetime},
 		{"null expires_seconds", edit(`3600`, `null`), reaction.ErrRouteLifetime},
-		{"one rule twice", edit(`"DEADLINE_EXCEEDED"`, `"STEP_OUTSIDE_PROCEDURE"`), reaction.ErrRouteRuleRepeated},
+		{"one rule twice", edit(`"RESOURCE_OUTSIDE_RUN"`, `"STEP_OUTSIDE_PROCEDURE"`), reaction.ErrRouteRuleRepeated},
 	} {
 		_, err := reaction.ParseRoute([]byte(c.doc))
 		expectOnly(t, c.name, err, c.want, routeRefusals())
@@ -144,7 +144,7 @@ func TestParseRouteRefuses(t *testing.T) {
 
 // Two rules alike but for their lifetime are one rule twice.
 func TestParseRouteRefusesARuleRepeatedWithAnotherLifetime(t *testing.T) {
-	doc := strings.Replace(withLift(routeTemplate), `"DEADLINE_EXCEEDED", "rule_version": "1"`, `"STEP_OUTSIDE_PROCEDURE", "rule_version": "1", "expires_seconds": 60`, 1)
+	doc := strings.Replace(withLift(routeTemplate), `"RESOURCE_OUTSIDE_RUN", "rule_version": "1"`, `"STEP_OUTSIDE_PROCEDURE", "rule_version": "1", "expires_seconds": 60`, 1)
 	_, err := reaction.ParseRoute([]byte(doc))
 	expectOnly(t, "a repeated rule", err, reaction.ErrRouteRuleRepeated, routeRefusals())
 	doc = strings.Replace(doc, `"expires_seconds": 60`, `"expires_seconds": 60}, {"procedure_id": "refund", "version": "4", "digest": "`+procDigest+`", "rule_id": "R", "rule_version": "1"`, 1)

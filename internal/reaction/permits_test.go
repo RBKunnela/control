@@ -34,7 +34,7 @@ func TestPermits(t *testing.T) {
 	// A rule with no lifetime of its own is bounded by the longest a run
 	// lives, 720 hours.
 	noLifetime := claimOf(720 * time.Hour)
-	noLifetime.RuleID = "DEADLINE_EXCEEDED"
+	noLifetime.RuleID = "RESOURCE_OUTSIDE_RUN"
 	if err := r.Permits(noLifetime); err != nil {
 		t.Fatalf("a stop of 720 hours under a rule with no lifetime: %v", err)
 	}
@@ -55,7 +55,7 @@ func TestPermits(t *testing.T) {
 		{"another procedure digest", func(c *reaction.StopClaim) { c.ProcedureDigest = strings.Replace(procDigest, "0", "1", 1) }, reaction.ErrClaimRule},
 		{"a rule the route lacks", func(c *reaction.StopClaim) { c.RuleID = "REPEATED_DENIAL" }, reaction.ErrClaimRule},
 		{"another rule version", func(c *reaction.StopClaim) { c.RuleVersion = "2" }, reaction.ErrClaimRule},
-		{"one rule's procedure with another's id", func(c *reaction.StopClaim) { c.RuleID = "DEADLINE_EXCEEDED"; c.RuleVersion = "2" }, reaction.ErrClaimRule},
+		{"one rule's procedure with another's id", func(c *reaction.StopClaim) { c.RuleID = "RESOURCE_OUTSIDE_RUN"; c.RuleVersion = "2" }, reaction.ErrClaimRule},
 		{"a span one second over", func(c *reaction.StopClaim) { c.ExpiresAt = c.CreatedAt.Add(time.Hour + time.Second) }, reaction.ErrClaimLifetime},
 		{"a span one nanosecond over", func(c *reaction.StopClaim) { c.ExpiresAt = c.CreatedAt.Add(time.Hour + 1) }, reaction.ErrClaimLifetime},
 		{"expiry at creation", func(c *reaction.StopClaim) { c.ExpiresAt = c.CreatedAt }, reaction.ErrClaimTimes},

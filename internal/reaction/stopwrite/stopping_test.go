@@ -56,14 +56,16 @@ func refusedForTheRule(t *testing.T, what string, err error) {
 // carry from or into a list are refused under a route that names a rule
 // outside the table, or a stopping rule at another version, beside one that
 // may stop, though the judge accepts every list involved; nothing is written.
-// A carry from a route naming a superseded version alone is taken.
+// A carry from a route naming a superseded or a retired version alone is
+// taken.
 // The same writes under a route of REPEATED_DENIAL at version "2" are the
 // control.
 func TestNoWriterTakesARouteNamingARuleThatMayNotStop(t *testing.T) {
 	good := routeNamingAlso(t, "REPEATED_DENIAL", "2")
 	for _, c := range []struct{ id, version string }{
 		{"EXCEPTION_TAKEN", "1"}, {"STEP_OUT_OF_ORDER", "1"}, {"NO_SUCH_RULE", "1"},
-		{"REPEATED_DENIAL", "9"}, {"REPEATED_DENIAL", "1"}, {"DEADLINE_EXCEEDED", "2"},
+		{"REPEATED_DENIAL", "9"}, {"REPEATED_DENIAL", "1"}, {"DEADLINE_EXCEEDED", "2"}, {"DEADLINE_EXCEEDED", "1"},
+		{"DENIED_ACTION_RETRIED_ARGUMENTS", "1"},
 	} {
 		bad := routeNamingAlso(t, c.id, c.version)
 		name := c.id + " " + c.version
@@ -86,9 +88,9 @@ func TestNoWriterTakesARouteNamingARuleThatMayNotStop(t *testing.T) {
 
 		into := emptyDir(t)
 		_, err = stopwrite.Carry(bg, list, bad, into, good, clock0)
-		if c == (struct{ id, version string }{"REPEATED_DENIAL", "1"}) {
+		if name == "REPEATED_DENIAL 1" || name == "DEADLINE_EXCEEDED 1" || name == "DENIED_ACTION_RETRIED_ARGUMENTS 1" {
 			if err != nil {
-				t.Errorf("%s: Carry from it, which a superseded version allows: %v", name, err)
+				t.Errorf("%s: Carry from it, which a superseded or retired version allows: %v", name, err)
 			}
 			into = emptyDir(t)
 		} else {

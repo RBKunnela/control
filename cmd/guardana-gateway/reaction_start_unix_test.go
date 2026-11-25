@@ -253,11 +253,15 @@ func signedDirectly(t *testing.T, tr tree, rule, version string) {
 }
 
 // mayNotStop is each rule, at a version, a route may not name: rules whose
-// finding may not stop a run, an id no rule has, and rules that may stop at a
-// version that is not their own, one a version it had before.
+// finding may not stop a run, an id no rule has, rules that may stop at a
+// version that is not their own, one a version it had before, and the rules
+// whose verdict compares two events' times, at the version that could stop
+// and at the one that cannot.
 var mayNotStop = []struct{ rule, version string }{
 	{"EXCEPTION_TAKEN", "1"}, {"DENIED_ACTION_RETRIED_AROUND", "1"}, {"REQUIRED_STEP_SKIPPED", "1"},
 	{"NO_SUCH_RULE", "1"}, {"REPEATED_DENIAL", "9"}, {"REPEATED_DENIAL", "1"}, {"STEP_OUTSIDE_PROCEDURE", "2"},
+	{"DENIED_ACTION_RETRIED_ARGUMENTS", "1"}, {"DEADLINE_EXCEEDED", "1"}, {"DENIED_ACTION_RETRIED_ARGUMENTS", "2"},
+	{"DEADLINE_EXCEEDED", "2"},
 }
 
 // TestARouteNamingARuleThatMayNotStopRefusesTheStart: a route naming a rule

@@ -185,9 +185,8 @@ func (e *evaluation) retried(f *retryForm, group func(*request) *retryGroup) []d
 		if g == nil {
 			continue
 		}
-		decidedIn := e.exportsOf(d.decided)
 		for _, run := range g.runs {
-			parts = e.weigh(f, g.lanes[run], d, run, decidedIn, parts[:0])
+			parts = e.weigh(f, g.lanes[run], d, parts[:0])
 			if dr, ok := e.citeCalls(f.rule, d, run, f.key(d), parts); ok {
 				out = append(out, dr)
 			}
@@ -197,9 +196,8 @@ func (e *evaluation) retried(f *retryForm, group func(*request) *retryGroup) []d
 }
 
 // weigh is what of one run's lanes denial d compares, by verdict.
-func (e *evaluation) weigh(f *retryForm, lanes []*lane, d *request, run string, decidedIn []int, out []part) []part {
+func (e *evaluation) weigh(f *retryForm, lanes []*lane, d *request, out []part) []part {
 	k, da := f.key(d), f.attr(d)
-	own := e.ownScope(d.proposal.GetRunId(), run)
 	for _, l := range lanes {
 		v, ok := f.allows(da, l.attr)
 		if !ok {
@@ -208,10 +206,7 @@ func (e *evaluation) weigh(f *retryForm, lanes []*lane, d *request, run string, 
 		if l.trail != trailClear {
 			v = indeterminate
 		}
-		if !own {
-			v = weaker(v, suspected)
-		}
-		out = l.parts(d, k, v, decidedIn, e.retryIx().pos, out)
+		out = l.parts(d, k, v, e.retryIx().pos, out)
 	}
 	return out
 }

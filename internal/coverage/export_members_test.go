@@ -67,6 +67,7 @@ func TestReadExportRefusesAMissingOrMisspelledMember(t *testing.T) {
 		"a record after the partial tail":          lines(h, partialTail, ev, swap(tail(1, false), `"event":0`, `"event":1`)),
 		"a partial tail and no tail bytes":         lines(h, partialTail, trailer(0, 1, 0, true)),
 		"a partial tail a writer holds":            lines(h, partialTail, tail(1, true)),
+		"tail bytes no writer holds and no gap":    lines(h, ev, swap(end, `"tail_bytes":0`, `"tail_bytes":7`)),
 		"a duplicate without its offset":           lines(h, ev, swap(dup, `"offset":9,`, ""), trailer(1, 0, 1, true)),
 		"a duplicate without its event id":         lines(h, ev, swap(dup, `"event_id":"e1",`, ""), trailer(1, 0, 1, true)),
 		"a duplicate without its first offset":     lines(h, ev, swap(dup, `,"first_offset":0`, ""), trailer(1, 0, 1, true)),
@@ -105,6 +106,8 @@ func TestReadExportReadsWhatTheContractLeavesOut(t *testing.T) {
 		{"a limit of 1", lines(header(`{"limit":1}`), ev, trailer(1, 0, 0, true)), true, 1},
 		{"a limit of 100000", lines(header(`{"limit":100000}`), ev, trailer(1, 0, 0, true)), true, 1},
 		{"a byte bound of 1", lines(header(`{"limit":1000,"max_bytes":1}`), ev, trailer(1, 0, 0, true)), true, 1},
+		{"tail bytes past a limit that left no room for their gap", lines(header(`{"limit":1}`), ev,
+			swap(trailer(1, 0, 0, false), `"tail_bytes":0`, `"tail_bytes":7`)), false, 1},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

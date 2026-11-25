@@ -234,7 +234,7 @@ func TestARecordIsOfTheSchemaItsMembersCallFor(t *testing.T) {
 		"a 0.2 finding": findingRecord(finding02Record()),
 		"a 0.2 cut":     findingRecord(cut02Record()),
 		"a 0.2 cut citing observations alone": findingRecord(change02(func(f *findingv1alpha1.FindingRecord) {
-			f.RefsLeftOut = 3
+			f.RefsLeftOut, f.Finding.Verdict = 3, suspected
 			f.Refs = []*findingv1alpha1.Reference{{Ref: &findingv1alpha1.Reference_Observation{
 				Observation: &findingv1alpha1.ObservationRef{SourceId: "s1", ObservationId: "obs-0123456789abcdef0123456789abcdef"}}}}
 		})),

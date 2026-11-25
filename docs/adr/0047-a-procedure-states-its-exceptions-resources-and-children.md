@@ -284,3 +284,13 @@ now be stopped on its own.
   `INDETERMINATE`.
 - A 0.9 reader refuses a `"0.2"` record by name; `buf breaking` passes on
   `finding/v1alpha1` and holds v1.
+
+## Amendment: a retry is suspected at most
+
+Amended by [ADR-0088](0088-a-verdict-that-compares-two-events-times-is-at-most-suspected.md). The Decision's "A later time there is `CONFIRMED`" no longer
+holds: one export can hold two planes' clocks. `DENIED_ACTION_RETRIED_ARGUMENTS`
+and `DENIED_ACTION_RETRIED_RESOURCE` are now version `2`, `SUSPECTED` at
+most whatever export their events came from, and neither stops a run; the
+line "whether `_ARGUMENTS` stops a run is the route's choice" is withdrawn,
+since no route may name either. A stop already written under version `1` is
+kept by a carry and lifted by its operator.

@@ -189,9 +189,9 @@ func fuzzInput(t *testing.T, g *lcg, n int) Input {
 }
 
 // pairVerdict is what a call says as a retry of a denial, from every pair
-// apart from the index: the form, the approvals store, the plane's times,
-// which confirm only when one export holds both copies, and the scope.
-func pairVerdict(in Input, form string, d, r *request) (controlv1.FindingVerdict, bool) {
+// apart from the index: the form, the approvals store and the plane's times,
+// before the rule's row caps it.
+func pairVerdict(form string, d, r *request) (controlv1.FindingVerdict, bool) {
 	v, ok := pairForm(form, d, r)
 	switch {
 	case !ok || r.approval == controlv1.ApprovalState_APPROVAL_STATE_APPROVED && !r.doubt:
@@ -205,11 +205,6 @@ func pairVerdict(in Input, form string, d, r *request) (controlv1.FindingVerdict
 		v = indeterminate
 	case tr.AsTime().Before(td.AsTime()):
 		return 0, false
-	case !heldTogether(in, d.decided, r.proposal):
-		v = weaker(v, suspected)
-	}
-	if !descends(r.proposal.GetRunId(), d.proposal.GetRunId()) {
-		v = weaker(v, suspected)
 	}
 	return v, true
 }
@@ -240,33 +235,6 @@ func pairForm(form string, d, r *request) (controlv1.FindingVerdict, bool) {
 	return indeterminate, true
 }
 
-func heldTogether(in Input, a, b *controlv1.Event) bool {
-	for _, x := range in.Exports {
-		var hasA, hasB bool
-		for _, ev := range x.Events {
-			hasA = hasA || ev.GetEventId() == a.GetEventId() && proto.Equal(ev, a)
-			hasB = hasB || ev.GetEventId() == b.GetEventId() && proto.Equal(ev, b)
-		}
-		if hasA && hasB {
-			return true
-		}
-	}
-	return false
-}
-
-func descends(run, of string) bool {
-	parent := map[string]string{}
-	for _, r := range fuzzRuns {
-		parent[r.ID] = r.Parent
-	}
-	for ; run != ""; run = parent[run] {
-		if run == of {
-			return true
-		}
-	}
-	return false
-}
-
 // TestIndexedRetriesAgreeWithEveryPair: on generated trees, exports and
 // trails, each finding of the two plane forms has the verdict and the
 // retries that weighing every pair of a denial and a call gives, cites the
@@ -282,7 +250,7 @@ func TestIndexedRetriesAgreeWithEveryPair(t *testing.T) {
 		}
 		e := newEvaluation(in, rd)
 		for form, got := range map[string][]draft{"args": e.retriedArguments(), "resource": e.retriedResource()} {
-			want := everyPair(in, e, form)
+			want := everyPair(e, form)
 			if len(got) != len(want) {
 				t.Fatalf("round %d %s: %d findings, want %d", round, form, len(got), len(want))
 			}
@@ -295,7 +263,7 @@ func TestIndexedRetriesAgreeWithEveryPair(t *testing.T) {
 		}
 	}
 	t.Logf("verdicts reached: %v", seen)
-	if seen[confirmed] < 50 || seen[suspected] < 50 || seen[indeterminate] < 50 {
+	if seen[confirmed] < 50 || seen[indeterminate] < 50 {
 		t.Fatalf("the inputs reached too few verdicts: %v", seen)
 	}
 }
@@ -319,7 +287,7 @@ type pairFinding struct {
 
 // everyPair is each denial's finding per run, in the order the rule makes
 // them, from every call of the denial's group weighed on its own.
-func everyPair(in Input, e *evaluation, form string) []pairFinding {
+func everyPair(e *evaluation, form string) []pairFinding {
 	pos := map[*controlv1.Event]int{}
 	for i, ev := range e.rd.events {
 		pos[ev] = i
@@ -335,7 +303,7 @@ func everyPair(in Input, e *evaluation, form string) []pairFinding {
 	for _, d := range denials {
 		byRun := map[string]*pairFinding{}
 		for _, r := range e.reqs {
-			if v, ok := sameGroup(in, form, d, r); ok {
+			if v, ok := sameGroup(form, d, r); ok {
 				byRun = strongerOf(byRun, d, r, v)
 			}
 		}
@@ -352,7 +320,7 @@ func everyPair(in Input, e *evaluation, form string) []pairFinding {
 
 // sameGroup weighs r as a retry of d when it is another tool call of d's
 // group.
-func sameGroup(in Input, form string, d, r *request) (controlv1.FindingVerdict, bool) {
+func sameGroup(form string, d, r *request) (controlv1.FindingVerdict, bool) {
 	same := toolOf(r) == toolOf(d)
 	if form == "resource" {
 		same = resourceOf(r) == resourceOf(d)
@@ -360,7 +328,7 @@ func sameGroup(in Input, form string, d, r *request) (controlv1.FindingVerdict, 
 	if _, isTool := r.tool(); r == d || !isTool || !same {
 		return 0, false
 	}
-	return pairVerdict(in, form, d, r)
+	return pairVerdict(form, d, r)
 }
 
 // strongerOf keeps, per run, the retries of the strongest verdict.

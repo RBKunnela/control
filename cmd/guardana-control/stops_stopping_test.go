@@ -17,16 +17,23 @@ import (
 )
 
 // mayNotStop is each rule, at a version, a route may not name: rules whose
-// finding may not stop a run, an id no rule has, and a rule that may stop at
-// a version that is not its own.
+// finding may not stop a run, an id no rule has, a rule that may stop at a
+// version that is not its own, and the rules whose verdict compares two
+// events' times, at the version that could stop and at supervise's.
 var mayNotStop = []struct{ id, version string }{
 	{"EXCEPTION_TAKEN", "1"}, {"DENIED_ACTION_RETRIED_AROUND", "1"}, {"REQUIRED_STEP_SKIPPED", "1"},
 	{"NO_SUCH_RULE", "1"}, {"REPEATED_DENIAL", "9"}, {"REPEATED_DENIAL", "1"},
+	{"DENIED_ACTION_RETRIED_ARGUMENTS", "1"}, {"DEADLINE_EXCEEDED", "1"},
+	{"DENIED_ACTION_RETRIED_ARGUMENTS", "2"}, {"DEADLINE_EXCEEDED", "2"},
 }
 
-// supersededRule is the rule version a later one replaced, which only the
-// route a list is carried from may name.
-var supersededRule = struct{ id, version string }{"REPEATED_DENIAL", "1"}
+// supersededRule is the rule version a later one replaced, and retiredRules
+// the versions of rules that may no longer stop a run, which only the route
+// a list is carried from may name.
+var (
+	supersededRule = struct{ id, version string }{"REPEATED_DENIAL", "1"}
+	retiredRules   = []struct{ id, version string }{{"DENIED_ACTION_RETRIED_ARGUMENTS", "1"}, {"DEADLINE_EXCEEDED", "1"}}
+)
 
 // mayNotStopRefusal is what a reader of a signed route says, after the flag
 // and path that named the route, of rules[i] naming id at version.
@@ -77,9 +84,11 @@ func (tr stopTree) listUnder(t *testing.T, name string, route reaction.Route, ru
 // not stop a run or a stopping rule at another version, is refused by stops
 // init, stops list, stops lift and both sides of a carry, each naming the
 // flag and the rule, over a list the judge accepts under that route, and
-// nothing is written; the superseded version alone is taken as the route a
-// list is carried from. The route naming REPEATED_DENIAL version "2", over a
-// list written the same way, is the control: every command takes it.
+// nothing is written; the superseded and the retired versions alone are
+// taken as the route a list is carried from, and as the route a lift ends a
+// stop under, since a lift lets no one stop more. The route naming
+// REPEATED_DENIAL version "2", over a list written the same way, is the
+// control: every command takes it.
 func TestEveryStopsCommandRefusesARouteNamingARuleThatMayNotStop(t *testing.T) {
 	tr := newStopTree(t)
 	next := filepath.Join(tr.dir, "next.signed")
@@ -103,8 +112,9 @@ func TestEveryStopsCommandRefusesARouteNamingARuleThatMayNotStop(t *testing.T) {
 			{"a carry into it", withFlags(pub, "stops", "init", "--route", bad, "--carry", tr.stops, "--carry-route", tr.route, fresh),
 				"--route " + bad + ": " + refusal},
 		}
-		if c == supersededRule {
-			runs = slices.DeleteFunc(runs, func(r refusedRun) bool { return r.what == "a carry from it" })
+		carrySource := c == supersededRule || slices.Contains(retiredRules, c)
+		if carrySource {
+			runs = slices.DeleteFunc(runs, func(r refusedRun) bool { return r.what == "a carry from it" || r.what == "stops lift" })
 		}
 		expectRefused(t, c.id+" "+c.version, runs)
 		if !bytes.Equal(readList(t, list), before) {
@@ -112,6 +122,9 @@ func TestEveryStopsCommandRefusesARouteNamingARuleThatMayNotStop(t *testing.T) {
 		}
 		if _, err := os.Lstat(filepath.Join(fresh, stoplist.FileName)); !errors.Is(err, fs.ErrNotExist) {
 			t.Errorf("%s %s: a refused route started a list: %v", c.id, c.version, err)
+		}
+		if carrySource {
+			tr.expectLiftUnder(t, c.id+" "+c.version, withFlags(pub, "stops", "lift", "--route", bad, "--key", tr.liftKey, "--run", tr.open, list))
 		}
 	}
 
@@ -129,6 +142,15 @@ func TestEveryStopsCommandRefusesARouteNamingARuleThatMayNotStop(t *testing.T) {
 		if code, stdout, stderr := invoke(t, run.args...); code != exitOK || stderr != "" {
 			t.Errorf("the 0.9 route: %s answered %d: %q %q", run.what, code, stdout, stderr)
 		}
+	}
+}
+
+// expectLiftUnder runs args, a stops lift of tr's open run under the route
+// its list was written under, and expects the lift on line 3.
+func (tr stopTree) expectLiftUnder(t *testing.T, label string, args []string) {
+	t.Helper()
+	if code, stdout, stderr := invoke(t, args...); code != exitOK || stderr != "" || !strings.HasPrefix(stdout, "lift line 3 run "+tr.open+" ") {
+		t.Errorf("%s: stops lift under the route the list was written under answered %d: %q %q", label, code, stdout, stderr)
 	}
 }
 

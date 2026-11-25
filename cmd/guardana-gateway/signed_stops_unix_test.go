@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"errors"
 	"log/slog"
@@ -69,13 +70,13 @@ func writeLeveledRoster(t *testing.T, path string) trust.Document {
 // scope it names for an hour, and writes it there.
 func signedRouteFile(t *testing.T, path, who string, wider ...widerRule) {
 	t.Helper()
-	rule := func(id, version, scope string) string {
-		return `{"procedure_id":"refund","version":"3","digest":"` + fixtureProcedure + `","rule_id":"` + id +
+	rule := func(procedure, id, version, scope string) string {
+		return `{"procedure_id":"refund","version":"` + procedure + `","digest":"` + fixtureProcedure + `","rule_id":"` + id +
 			`","rule_version":"` + version + `","scope":"` + scope + `","expires_seconds":3600}`
 	}
-	rules := []string{rule(fixtureRule, "1", "run")}
+	rules := []string{rule("3", fixtureRule, "1", "run")}
 	for _, w := range wider {
-		rules = append(rules, rule(w.id, w.version, w.scope))
+		rules = append(rules, rule(cmp.Or(w.procedure, "3"), w.id, w.version, w.scope))
 	}
 	doc := `{"kind":"reaction-route/v1alpha3","plane_id":"plane-a","route_id":"` + fixtureRouteID + `","serial":1,"tenant_id":"acme","project_id":"orders",` +
 		`"rules":[` + strings.Join(rules, ",") + `]}`
@@ -150,8 +151,9 @@ func rosterRouteOf(t *testing.T, doc trust.Document, routePath, stops string) re
 	return route
 }
 
-// widerRule is a route rule that stops an agent or a principal.
-type widerRule struct{ id, version, scope string }
+// widerRule is a route rule that stops an agent or a principal, of the
+// procedure's version procedure, or "3" when it is empty.
+type widerRule struct{ id, version, scope, procedure string }
 
 // signedStopsTree is signedPlaneTree with a route dave signed, a 3.0 stop
 // list alice started at serial 1, their floors and a runs directory.

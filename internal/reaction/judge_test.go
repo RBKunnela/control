@@ -135,7 +135,7 @@ func TestJudgeHoldsEveryStopToTheRoute(t *testing.T) {
 	b := newList(t, r)
 	b.stop("fnd-1", "run-a", clock0, time.Hour)
 	unbounded := stopOf(t, "fnd-2", "run-b", clock0, 720*time.Hour)
-	unbounded.RuleID = "DEADLINE_EXCEEDED"
+	unbounded.RuleID = "RESOURCE_OUTSIDE_RUN"
 	b.add(unbounded.Marshal())
 	if _, err := judge(t, b.bytes()); err != nil {
 		t.Fatalf("a stop of the rule's whole lifetime and one of a rule with none: %v", err)

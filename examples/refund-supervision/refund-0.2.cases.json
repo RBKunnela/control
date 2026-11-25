@@ -25,7 +25,7 @@
         "rules": {"REPEATED_DENIAL": "CHECKED", "STEP_OUTSIDE_PROCEDURE": "CHECKED", "DEADLINE_EXCEEDED": "CHECKED", "REQUIRED_STEP_SKIPPED": "NOT_CHECKED", "STEP_OUT_OF_ORDER": "NOT_CHECKED", "CONTINUED_AFTER_FAILURE": "NOT_CHECKED", "RESOURCE_OUTSIDE_RUN": "CHECKED", "DENIED_ACTION_RETRIED_ARGUMENTS": "CHECKED", "DENIED_ACTION_RETRIED_RESOURCE": "CHECKED", "DENIED_ACTION_RETRIED_AROUND": "NOT_CHECKED", "EXCEPTION_TAKEN": "CHECKED"},
         "findings": [
           {"rule": "RESOURCE_OUTSIDE_RUN", "verdict": "CONFIRMED", "run": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "requests": ["r1", "r2", "r3"]},
-          {"rule": "DENIED_ACTION_RETRIED_RESOURCE", "verdict": "CONFIRMED", "run": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "requests": ["r2", "r3"]}
+          {"rule": "DENIED_ACTION_RETRIED_RESOURCE", "verdict": "SUSPECTED", "run": "run-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "requests": ["r2", "r3"]}
         ]
       }
     },

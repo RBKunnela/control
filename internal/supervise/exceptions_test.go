@@ -239,8 +239,7 @@ func TestNoRuleThatMayStopIsWaivedOnWhatTheAgentInduces(t *testing.T) {
 			stopping = append(stopping, id)
 		}
 	}
-	if want := []string{"REPEATED_DENIAL", "STEP_OUTSIDE_PROCEDURE", "DEADLINE_EXCEEDED", "RESOURCE_OUTSIDE_RUN",
-		"DENIED_ACTION_RETRIED_ARGUMENTS", "DENIED_ACTION_RETRIED_RESOURCE"}; !slices.Equal(stopping, want) {
+	if want := []string{"REPEATED_DENIAL", "STEP_OUTSIDE_PROCEDURE", "RESOURCE_OUTSIDE_RUN"}; !slices.Equal(stopping, want) {
 		t.Fatalf("the rules that may stop are %q, want %q", stopping, want)
 	}
 	for _, rule := range stopping {

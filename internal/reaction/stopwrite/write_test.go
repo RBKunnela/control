@@ -289,7 +289,7 @@ func TestAppendFindingNeverCutsALongerStopShort(t *testing.T) {
 	short := stopOf(t, "f-short", "run-1", clock0)
 	short.ExpiresAt = clock0.Add(10 * time.Minute)
 	long := stopOf(t, "f-long", "run-1", clock0)
-	long.RuleID, long.ExpiresAt = "DEADLINE_EXCEEDED", clock0.Add(5*time.Hour)
+	long.RuleID, long.ExpiresAt = "RESOURCE_OUTSIDE_RUN", clock0.Add(5*time.Hour)
 	shorter := stopOf(t, "f-shorter", "run-1", clock0)
 	shorter.ExpiresAt = clock0.Add(time.Minute)
 	for i, c := range []struct {

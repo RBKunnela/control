@@ -33,7 +33,7 @@ const routeTemplate = `{
     {"procedure_id": "refund", "version": "3", "digest": "` + procDigest + `",
      "rule_id": "STEP_OUTSIDE_PROCEDURE", "rule_version": "1", "expires_seconds": 3600},
     {"procedure_id": "refund", "version": "3", "digest": "` + procDigest + `",
-     "rule_id": "DEADLINE_EXCEEDED", "rule_version": "1"}
+     "rule_id": "RESOURCE_OUTSIDE_RUN", "rule_version": "1"}
   ]
 }`
 
@@ -41,7 +41,7 @@ const routeTemplate = `{
 // members sorted, no white space.
 const routeCanonical = `{"kind":"reaction-route/v1alpha1","lift_public_key":"LIFTKEY","route_id":"refunds",` +
 	`"rules":[{"digest":"` + procDigest + `","expires_seconds":3600,"procedure_id":"refund","rule_id":"STEP_OUTSIDE_PROCEDURE","rule_version":"1","version":"3"},` +
-	`{"digest":"` + procDigest + `","procedure_id":"refund","rule_id":"DEADLINE_EXCEEDED","rule_version":"1","version":"3"}],` +
+	`{"digest":"` + procDigest + `","procedure_id":"refund","rule_id":"RESOURCE_OUTSIDE_RUN","rule_version":"1","version":"3"}],` +
 	`"scope":"run","serial":7,"tenant_id":"acme"}`
 
 // seededKey derives a key from a seed of one repeated byte at run time, so

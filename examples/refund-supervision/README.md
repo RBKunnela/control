@@ -30,11 +30,11 @@ delivers each alert once.
 
 **Under `0.2`.** The agent reads `ord-1`, exports the customer's orders once
 a person approves, is denied a refund of `ord-2`, and sets `ord-2`'s status
-to `refunded` instead. `supervise --view` confirms
-`DENIED_ACTION_RETRIED_RESOURCE`, `RESOURCE_OUTSIDE_RUN` and
-`EXCEPTION_TAKEN` (the export) and draws a page without script.
-`findings export` writes them. `react` stops the first run on the retry
-alone; the second run's call runs. `procedure test` passes three cases.
+to `refunded` instead. `supervise --view` confirms `RESOURCE_OUTSIDE_RUN`
+and `EXCEPTION_TAKEN` (the export), suspects
+`DENIED_ACTION_RETRIED_RESOURCE`, and draws a page without script.
+`findings export` writes them. `react` stops the first run on
+`RESOURCE_OUTSIDE_RUN`; the second run's call runs. `procedure test` passes three cases.
 
 Not shown: a child run, the rules about what is missing (both runs stay
 open), the other retry forms, and an exception on a step. Whoever can write

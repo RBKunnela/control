@@ -26,13 +26,31 @@ import (
 // offset but none of its bytes. A missing file is an error that matches
 // fs.ErrNotExist.
 func ReadFile(path string) ([]*observev1.Record, error) {
+	c, err := ReadCommitted(path)
+	return c.Records, err
+}
+
+// Committed is what ReadCommitted reads of a log file.
+type Committed struct {
+	// Records are those of every write an import report closes, in file
+	// order.
+	Records []*observev1.Record
+	// Unclosed is true when bytes follow the last import report: a write
+	// still under way or one cut short, whose observations are not in
+	// Records and may be of any run.
+	Unclosed bool
+}
+
+// ReadCommitted reads the log file at path as ReadFile does, and says
+// whether it holds bytes past the last write an import report closes.
+func ReadCommitted(path string) (Committed, error) {
 	f, info, err := openJudged(path)
 	if err != nil {
-		return nil, err
+		return Committed{}, err
 	}
 	defer func() { _ = f.Close() }()
 	if info.Size() > MaxLogBytes {
-		return nil, fmt.Errorf("%w: %d bytes, limit %d", ErrTooLarge, info.Size(), MaxLogBytes)
+		return Committed{}, fmt.Errorf("%w: %d bytes, limit %d", ErrTooLarge, info.Size(), MaxLogBytes)
 	}
 	return readCommitted(f, info.Size())
 }
@@ -69,22 +87,23 @@ func openJudged(path string) (*os.File, os.FileInfo, error) {
 }
 
 // readCommitted reads the first size bytes of r as the writer's Open judges
-// them and returns the records of every write an import report closes.
-func readCommitted(r io.ReaderAt, size int64) ([]*observev1.Record, error) {
+// them and returns the records of every write an import report closes, and
+// whether any byte follows the last of them.
+func readCommitted(r io.ReaderAt, size int64) (Committed, error) {
 	end, err := lastLineEnd(r, size)
 	if err != nil {
-		return nil, err
+		return Committed{}, err
 	}
 	var out []*observev1.Record
-	_, _, err = scanLog(io.NewSectionReader(r, 0, end), func(write []*observev1.Record) { out = append(out, write...) })
+	_, committed, err := scanLog(io.NewSectionReader(r, 0, end), func(write []*observev1.Record) { out = append(out, write...) })
 	var fault *lineFault
 	switch {
 	case errors.As(err, &fault) && errors.Is(fault.cause, bufio.ErrBufferFull):
-		return nil, fmt.Errorf("%w: line %d, at byte %d, is over %d bytes", ErrDamaged, fault.number, fault.offset, observe.MaxLineBytes)
+		return Committed{}, fmt.Errorf("%w: line %d, at byte %d, is over %d bytes", ErrDamaged, fault.number, fault.offset, observe.MaxLineBytes)
 	case errors.As(err, &fault):
-		return nil, fmt.Errorf("%w: line %d, at byte %d", ErrDamaged, fault.number, fault.offset)
+		return Committed{}, fmt.Errorf("%w: line %d, at byte %d", ErrDamaged, fault.number, fault.offset)
 	case err != nil:
-		return nil, err
+		return Committed{}, err
 	}
-	return out, nil
+	return Committed{Records: out, Unclosed: committed < size}, nil
 }

@@ -15,10 +15,10 @@ func TestARuleNeverConfirmedIsCappedWhereTheRecordIsMade(t *testing.T) {
 	event := ref{r: &findingv1alpha1.Reference{Ref: &findingv1alpha1.Reference_Event{
 		Event: &findingv1alpha1.EventRef{EventId: "e1", RequestId: "q1"}}}, v: confirmed, run: "r"}
 	want := map[string]controlv1.FindingVerdict{
-		RuleRepeatedDenial: confirmed, RuleStepOutsideProcedure: confirmed, RuleDeadlineExceeded: confirmed,
+		RuleRepeatedDenial: confirmed, RuleStepOutsideProcedure: confirmed, RuleDeadlineExceeded: suspected,
 		RuleRequiredStepSkipped: suspected, RuleStepOutOfOrder: suspected, RuleContinuedAfterFailure: suspected,
-		RuleResourceOutsideRun: confirmed, RuleDeniedActionRetriedArguments: confirmed,
-		RuleDeniedActionRetriedResource: confirmed, RuleDeniedActionRetriedAround: suspected,
+		RuleResourceOutsideRun: confirmed, RuleDeniedActionRetriedArguments: suspected,
+		RuleDeniedActionRetriedResource: suspected, RuleDeniedActionRetriedAround: suspected,
 		RuleExceptionTaken: confirmed, "NO_SUCH_RULE": suspected,
 	}
 	if len(want) != len(ruleTable)+1 {

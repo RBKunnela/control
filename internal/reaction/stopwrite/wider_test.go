@@ -11,18 +11,18 @@ import (
 )
 
 // widerRouteIn is a v1alpha3 route of plane-a whose STEP_OUTSIDE_PROCEDURE
-// stops a run for an hour, REPEATED_DENIAL an agent and
-// DENIED_ACTION_RETRIED_ARGUMENTS a principal for two hours, taken for the
-// plane whose stop list is in dir.
+// stops a run for an hour, REPEATED_DENIAL an agent and, under the
+// procedure's next version, a principal for two hours, taken for the plane
+// whose stop list is in dir.
 func widerRouteIn(t *testing.T, dir string) reaction.Route {
 	t.Helper()
 	rule := func(id, version, scope, seconds string) string {
-		return `{"procedure_id":"refund","version":"1","digest":"` + refundDigest(t) + `","rule_id":"` + id +
-			`","rule_version":"` + version + `","scope":"` + scope + `","expires_seconds":` + seconds + `}`
+		return `{"procedure_id":"refund","version":"` + procedureVersionOf(scope) + `","digest":"` + refundDigest(t) +
+			`","rule_id":"` + id + `","rule_version":"` + version + `","scope":"` + scope + `","expires_seconds":` + seconds + `}`
 	}
 	doc := `{"kind":"reaction-route/v1alpha3","plane_id":"plane-a","route_id":"refunds","serial":1,"tenant_id":"acme",` +
 		`"project_id":"shop","rules":[` + rule("STEP_OUTSIDE_PROCEDURE", "1", "run", "3600") + "," +
-		rule("REPEATED_DENIAL", "2", "agent", "7200") + "," + rule("DENIED_ACTION_RETRIED_ARGUMENTS", "1", "principal", "7200") + `]}`
+		rule("REPEATED_DENIAL", "2", "agent", "7200") + "," + rule("REPEATED_DENIAL", "2", "principal", "7200") + `]}`
 	body, err := reaction.SignedRouteBody([]byte(doc), operatorID(), "/plane/route.json")
 	if err != nil {
 		t.Fatal(err)
@@ -40,20 +40,26 @@ func widerRouteIn(t *testing.T, dir string) reaction.Route {
 	return r
 }
 
+// procedureVersionOf is the version of the procedure whose rule of scope
+// widerRouteIn names: a route names one rule once per procedure.
+func procedureVersionOf(scope string) string {
+	if scope == reaction.ScopePrincipal {
+		return "2"
+	}
+	return "1"
+}
+
 // wideStopOf is a 3.0 stop of scope and subject for finding about run,
 // created at created and lasting life.
 func wideStopOf(t *testing.T, finding, run, scope, subject string, created time.Time, life time.Duration) reaction.Stop {
 	t.Helper()
 	id, version := "STEP_OUTSIDE_PROCEDURE", "1"
-	switch scope {
-	case reaction.ScopeAgent:
+	if scope != reaction.ScopeRun {
 		id, version = "REPEATED_DENIAL", "2"
-	case reaction.ScopePrincipal:
-		id, version = "DENIED_ACTION_RETRIED_ARGUMENTS", "1"
 	}
 	return reaction.Stop{
 		EntryID: reaction.EntryID(finding), TenantID: "acme", ProjectID: "shop", Scope: scope, Subject: subject,
-		RunID: run, FindingID: finding, ProcedureID: "refund", ProcedureVersion: "1", ProcedureDigest: refundDigest(t),
+		RunID: run, FindingID: finding, ProcedureID: "refund", ProcedureVersion: procedureVersionOf(scope), ProcedureDigest: refundDigest(t),
 		RuleID: id, RuleVersion: version, CreatedAt: created, ExpiresAt: created.Add(life),
 	}
 }

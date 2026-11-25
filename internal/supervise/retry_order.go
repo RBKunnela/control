@@ -33,29 +33,3 @@ func (e *evaluation) placesOf() map[string][]place {
 	}
 	return e.places
 }
-
-// exportsOf is the places in the input of the exports that hold ev, in
-// order.
-func (e *evaluation) exportsOf(ev *controlv1.Event) []int {
-	ps := e.placesOf()[ev.GetEventId()]
-	out := make([]int, len(ps))
-	for i, p := range ps {
-		out[i] = p.export
-	}
-	return out
-}
-
-// shareOne reports whether two ordered lists of exports name one in common.
-func shareOne(a, b []int) bool {
-	for i, j := 0, 0; i < len(a) && j < len(b); {
-		switch {
-		case a[i] == b[j]:
-			return true
-		case a[i] < b[j]:
-			i++
-		default:
-			j++
-		}
-	}
-	return false
-}

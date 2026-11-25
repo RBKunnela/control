@@ -62,6 +62,16 @@ func (r routeFlags) verified(dir string, note *rosterNote) (reaction.Route, erro
 	return rosterRoute("--route", r.route, r.roster, r.rootKey, dir, "", note, reaction.VerifySignedRoute)
 }
 
+// liftable is verified for a lift, which only ends a stop: the route may
+// also name a rule version that may no longer stop a run, as the route a
+// list is carried from may, so a stop written under it can still be ended.
+func (r routeFlags) liftable(dir string, note *rosterNote) (reaction.Route, error) {
+	if !r.signed() {
+		return readSignedRoute("--route", r.route, r.publicKey, reaction.VerifyCarrySource)
+	}
+	return rosterRoute("--route", r.route, r.roster, r.rootKey, dir, "", note, reaction.VerifySignedCarrySource)
+}
+
 // countLines counts the covered and lift lines of accepted, the part of a
 // list a judge accepted.
 func countLines(accepted []byte) (covered, lifts int, err error) {
@@ -85,11 +95,23 @@ func countLines(accepted []byte) (covered, lifts int, err error) {
 // does, and returns it with the bytes the judge accepted. A refusal names
 // the cause a plane would report.
 func judgedList(dir string, route reaction.Route, now time.Time) (reaction.List, []byte, error) {
+	return readJudged(dir, func(raw []byte) (reaction.List, error) { return reaction.Judge(route, reaction.Prefix{}, raw, now, 0) })
+}
+
+// liftableList is judgedList for a lift, its route held to the rules of the
+// route a list is carried from (reaction.JudgeForLift).
+func liftableList(dir string, route reaction.Route, now time.Time) (reaction.List, []byte, error) {
+	return readJudged(dir, func(raw []byte) (reaction.List, error) { return reaction.JudgeForLift(route, raw, now) })
+}
+
+// readJudged reads the list in dir as judgedList says and judges it with
+// judge.
+func readJudged(dir string, judge func([]byte) (reaction.List, error)) (reaction.List, []byte, error) {
 	raw, err := stoplist.Read(dir)
 	if err != nil {
 		return reaction.List{}, nil, fmt.Errorf("the stop list in %s is unknown (%s): %w", dir, stoplist.CauseOf(err), err)
 	}
-	list, err := reaction.Judge(route, reaction.Prefix{}, raw, now, 0)
+	list, err := judge(raw)
 	if err != nil {
 		return reaction.List{}, nil, fmt.Errorf("the stop list in %s is unknown (%s): %w", dir, reaction.CauseOf(err), err)
 	}

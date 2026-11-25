@@ -55,16 +55,21 @@ type Export struct {
 // reads: a span an import refused, or an observation the log refused for an
 // id it held with other content, was never read and may be a call of any
 // run, when EveryRunDoubted, or of a run DoubtedRuns names.
+// Sampling is its descriptor's; any value but SAMPLING_COMPLETE is a source
+// that may drop a call. Unclosed is a log holding a write no import report
+// closes, whose observations were not read.
 type Source struct {
 	SourceID         string
 	Kind             string
 	Tenant, Project  string
 	HeartbeatSeconds uint32
+	Sampling         observev1.Sampling
 	LastHeard        time.Time
 	Heard            bool
 	Observations     []*observev1.Observation
 	EveryRunDoubted  bool
 	DoubtedRuns      []string
+	Unclosed         bool
 }
 
 // Input is everything one supervision reads. SourcesNotRead names, as the

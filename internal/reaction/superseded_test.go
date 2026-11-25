@@ -97,17 +97,17 @@ func TestOnlyACarrySourceMayNameASupersededVersion(t *testing.T) {
 
 }
 
-// TestACarrySourceNamingAnyOtherRuleIsRefused: a route naming the six that
-// may stop and the superseded version is a carry source; one naming any
-// other rule beside one that may stop is refused by CheckCarrySource,
-// VerifyCarrySource and JudgeCarrySource.
+// TestACarrySourceNamingAnyOtherRuleIsRefused: a route naming the three that
+// may stop, the superseded version and the retired ones is a carry source;
+// one naming any other rule beside one that may stop is refused by
+// CheckCarrySource, VerifyCarrySource and JudgeCarrySource.
 func TestACarrySourceNamingAnyOtherRuleIsRefused(t *testing.T) {
-	if err := reaction.CheckCarrySource(routeNaming(t, append(slices.Clone(mayStop), superseded...)...)); err != nil {
-		t.Errorf("CheckCarrySource of the six and the superseded: %v", err)
+	if err := reaction.CheckCarrySource(routeNaming(t, slices.Concat(mayStop, superseded, retiredVersions)...)); err != nil {
+		t.Errorf("CheckCarrySource of the three, the superseded and the retired: %v", err)
 	}
 	for _, r := range insertable() {
 		err := reaction.CheckCarrySource(routeNaming(t, mayStop[0], r))
-		if slices.Contains(superseded, r) {
+		if slices.Contains(superseded, r) || slices.Contains(retiredVersions, r) {
 			if err != nil {
 				t.Errorf("CheckCarrySource naming %s %s: %v", r.ID, r.Version, err)
 			}

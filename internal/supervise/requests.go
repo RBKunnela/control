@@ -16,18 +16,20 @@ type request struct {
 	id     string
 	events []*controlv1.Event
 	// doubt is true when its trail is not one coherent chain in the order its
-	// links give, or an event id in it was read with two contents.
+	// links give, an event id in it was read with two contents, or a payload
+	// in it is of a version this build does not read.
 	doubt    bool
 	proposal *controlv1.Event
 	kernel   *controlv1.Decision
 	// decided is the POLICY_DECIDED event kernel was read from.
 	decided  *controlv1.Event
 	terminal *controlv1.Event
-	// waiting is true while an approval the trail requested is neither
-	// decided nor expired, and approval is the state of its first
-	// APPROVAL_DECIDED.
-	waiting  bool
-	approval controlv1.ApprovalState
+	// waiting is true while an approval the trail requested, or the policy
+	// required and the plane has not yet asked for, is neither decided nor
+	// expired, and approval is the state of its first APPROVAL_DECIDED.
+	// requested is whether the trail asked for one.
+	waiting, requested bool
+	approval           controlv1.ApprovalState
 }
 
 // requestsOf groups the run's events by request id, in the plane's time
@@ -49,7 +51,12 @@ func requestsOf(events []*controlv1.Event, doubtful map[string]bool) []*request 
 		rq.events, chained = linked(rq.events)
 		rq.doubt = doubtful[rq.id] || !chained || trailchain.Validate(rq.events) != nil
 		for _, ev := range rq.events {
-			rq.note(ev)
+			// A payload of a version this build does not read is not read.
+			if payloadReadable(ev) {
+				rq.note(ev)
+			} else {
+				rq.doubt = true
+			}
 		}
 	}
 	slices.SortFunc(out, byPlaneTime)
@@ -113,9 +120,12 @@ func (rq *request) note(ev *controlv1.Event) {
 	case controlv1.EventKind_EVENT_KIND_POLICY_DECIDED:
 		if rq.kernel == nil {
 			rq.kernel, rq.decided = ev.GetDecision(), ev
+			// The plane records a decision that requires approval before it
+			// asks for one, so a trail can end between the two.
+			rq.waiting = rq.kernel.GetVerdict() == controlv1.Verdict_VERDICT_REQUIRE_APPROVAL
 		}
 	case controlv1.EventKind_EVENT_KIND_APPROVAL_REQUESTED:
-		rq.waiting = true
+		rq.waiting, rq.requested = true, true
 	case controlv1.EventKind_EVENT_KIND_APPROVAL_DECIDED:
 		rq.waiting = false
 		if rq.approval == controlv1.ApprovalState_APPROVAL_STATE_UNSPECIFIED {
@@ -126,6 +136,7 @@ func (rq *request) note(ev *controlv1.Event) {
 	case controlv1.EventKind_EVENT_KIND_ACTION_COMPLETED, controlv1.EventKind_EVENT_KIND_ACTION_FAILED,
 		controlv1.EventKind_EVENT_KIND_ACTION_BLOCKED:
 		rq.terminal = ev
+		rq.waiting = rq.waiting && rq.requested
 	}
 }
 

@@ -12,15 +12,22 @@ import (
 // mayStop is every rule, at its version, a confirmed finding of which may
 // stop a run, spelled here rather than read from the package under test.
 var mayStop = []reaction.StoppingRule{
-	{ID: "REPEATED_DENIAL", Version: "2"}, {ID: "STEP_OUTSIDE_PROCEDURE", Version: "1"},
-	{ID: "DEADLINE_EXCEEDED", Version: "1"}, {ID: "RESOURCE_OUTSIDE_RUN", Version: "1"},
-	{ID: "DENIED_ACTION_RETRIED_ARGUMENTS", Version: "1"}, {ID: "DENIED_ACTION_RETRIED_RESOURCE", Version: "1"},
+	{ID: "REPEATED_DENIAL", Version: "2"}, {ID: "STEP_OUTSIDE_PROCEDURE", Version: "1"}, {ID: "RESOURCE_OUTSIDE_RUN", Version: "1"},
+}
+
+// retiredVersions is every rule version a route could once name whose rule
+// may stop a run at no version now, spelled here rather than read from the
+// package under test.
+var retiredVersions = []reaction.StoppingRule{
+	{ID: "DEADLINE_EXCEEDED", Version: "1"}, {ID: "DENIED_ACTION_RETRIED_ARGUMENTS", Version: "1"},
+	{ID: "DENIED_ACTION_RETRIED_RESOURCE", Version: "1"},
 }
 
 // mayNotStop is every other rule supervise has, and ids no rule has, a
 // spelling of a stopping rule apart from its own among them, each at version
-// "1"; and each stopping rule at a version that is not its own, a version it
-// had before among them.
+// "1"; each stopping rule at a version that is not its own, a version it had
+// before among them; and the rules that may no longer stop, at their retired
+// version and at supervise's.
 var mayNotStop = []reaction.StoppingRule{
 	{ID: "REQUIRED_STEP_SKIPPED", Version: "1"}, {ID: "STEP_OUT_OF_ORDER", Version: "1"},
 	{ID: "CONTINUED_AFTER_FAILURE", Version: "1"}, {ID: "DENIED_ACTION_RETRIED_AROUND", Version: "1"},
@@ -30,7 +37,10 @@ var mayNotStop = []reaction.StoppingRule{
 	{ID: "REPEATED_DENIAL", Version: "2 "}, {ID: "REPEATED_DENIAL", Version: ""},
 	{ID: "STEP_OUTSIDE_PROCEDURE", Version: "9"}, {ID: "DEADLINE_EXCEEDED", Version: "9"},
 	{ID: "RESOURCE_OUTSIDE_RUN", Version: "9"}, {ID: "DENIED_ACTION_RETRIED_ARGUMENTS", Version: "9"},
-	{ID: "DENIED_ACTION_RETRIED_RESOURCE", Version: "9"},
+	{ID: "DENIED_ACTION_RETRIED_RESOURCE", Version: "9"}, {ID: "DEADLINE_EXCEEDED", Version: "1"},
+	{ID: "DEADLINE_EXCEEDED", Version: "2"}, {ID: "DENIED_ACTION_RETRIED_ARGUMENTS", Version: "1"},
+	{ID: "DENIED_ACTION_RETRIED_ARGUMENTS", Version: "2"}, {ID: "DENIED_ACTION_RETRIED_RESOURCE", Version: "1"},
+	{ID: "DENIED_ACTION_RETRIED_RESOURCE", Version: "2"},
 }
 
 // namesOnlyStoppingRules reports whether every rule of r is in mayStop.
@@ -43,7 +53,7 @@ func namesOnlyStoppingRules(r reaction.Route) bool {
 	return true
 }
 
-func TestMayStopIsTheSixRulesThatMayStopAtTheirVersions(t *testing.T) {
+func TestMayStopIsTheThreeRulesThatMayStopAtTheirVersions(t *testing.T) {
 	for _, r := range mayStop {
 		if !reaction.MayStop(r.ID, r.Version) {
 			t.Errorf("MayStop(%q, %q) = false", r.ID, r.Version)
@@ -95,8 +105,8 @@ func insertable() []reaction.StoppingRule {
 }
 
 // TestCheckStoppingRefusesTheWholeRouteForOneRule: a route whose rules are
-// the six that may stop at their versions passes; the same route with any
-// other rule, or one of the six at another version, in any place is refused,
+// the three that may stop at their versions passes; the same route with any
+// other rule, or one of the three at another version, in any place is refused,
 // naming that place and the rule.
 func TestCheckStoppingRefusesTheWholeRouteForOneRule(t *testing.T) {
 	if err := reaction.CheckStopping(routeNaming(t, mayStop...)); err != nil {
@@ -107,7 +117,7 @@ func TestCheckStoppingRefusesTheWholeRouteForOneRule(t *testing.T) {
 		t.Fatalf("only %d case(s) a route can hold", len(cases))
 	}
 	for _, r := range cases {
-		for _, place := range []int{0, 3, len(mayStop)} {
+		for _, place := range []int{0, 1, len(mayStop)} {
 			err := reaction.CheckStopping(routeNaming(t, slices.Insert(slices.Clone(mayStop), place, r)...))
 			name := fmt.Sprintf("%s %s at rules[%d]", r.ID, r.Version, place)
 			expectOnly(t, name, err, reaction.ErrRouteRuleStops, append(routeRefusals(), reaction.ErrRouteRuleStops))
@@ -124,7 +134,7 @@ func TestCheckStoppingRefusesTheWholeRouteForOneRule(t *testing.T) {
 
 // TestVerifyRouteRefusesARuleThatMayNotStop: a route signed under the route
 // key whose signature, body and keys are all good is refused when one rule
-// may not stop a run, whatever signed it; the six at their versions are the
+// may not stop a run, whatever signed it; the three at their versions are the
 // control and verify.
 func TestVerifyRouteRefusesARuleThatMayNotStop(t *testing.T) {
 	sign := func(r reaction.Route) reaction.Envelope {
@@ -137,7 +147,7 @@ func TestVerifyRouteRefusesARuleThatMayNotStop(t *testing.T) {
 	}
 	control := routeNaming(t, mayStop...)
 	if v, err := reaction.VerifyRoute(sign(control), pubOf(routeKey())); err != nil || v.Digest() != control.Digest() {
-		t.Fatalf("the six at their versions: %v", err)
+		t.Fatalf("the three at their versions: %v", err)
 	}
 	for _, r := range insertable() {
 		_, err := reaction.VerifyRoute(sign(routeNaming(t, mayStop[0], r)), pubOf(routeKey()))
@@ -147,12 +157,12 @@ func TestVerifyRouteRefusesARuleThatMayNotStop(t *testing.T) {
 
 // TestJudgeRefusesARouteThatNamesARuleThatMayNotStop: a route parsed, never
 // verified, that names one rule outside the table judges no list, from the
-// start or from a list accepted before; the same list under the six rules
+// start or from a list accepted before; the same list under the three rules
 // that may stop is accepted.
 func TestJudgeRefusesARouteThatNamesARuleThatMayNotStop(t *testing.T) {
 	control := routeNaming(t, mayStop...)
 	if _, err := reaction.Judge(control, reaction.Prefix{}, newList(t, control).bytes(), clock0, poll); err != nil {
-		t.Fatalf("the six at their versions: %v", err)
+		t.Fatalf("the three at their versions: %v", err)
 	}
 	for _, r := range insertable() {
 		route := routeNaming(t, mayStop[0], r)

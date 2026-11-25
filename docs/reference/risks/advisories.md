@@ -33,7 +33,7 @@ On 2026-11-16 Google Threat Intelligence Group reported use of multi-agent frame
 | Exercised control | Test file and function |
 | --- | --- |
 | [Supervision of a run against its procedure](../../status.md#run-supervision) (`experimental`). An operator checks the recorded run tree and gets a finding when the child retries denied mail with a changed address. | `cmd/guardana-gateway/reaction_tree_unix_test.go` · `TestAChildsRetryIsSupervisedOverTheTreeAndStopsTheChild`. |
-| [Stopping a run through a signed route](../../status.md#run-stop) (`experimental`). When the operator applies the route configured for that finding and the stop takes effect, the gateway blocks the child's next covered call. The parent's call still runs. | `cmd/guardana-gateway/reaction_tree_unix_test.go` · `TestAChildsRetryIsSupervisedOverTheTreeAndStopsTheChild`. |
+| [Stopping a run through a signed route](../../status.md#run-stop) (`experimental`). When the operator applies a route naming the child's repeated denials and the stop takes effect, the gateway blocks the child's next covered call. The retry finding is suspected and stops nothing. The parent's call still runs. | `cmd/guardana-gateway/reaction_tree_unix_test.go` · `TestAChildsRetryIsSupervisedOverTheTreeAndStopsTheChild`. |
 
 **Bypasses and gaps.** A child can use an unconnected tool. An action already running can finish. Continuous checks are work in [B28](../../backlog.md). Guardana Control does not detect or stop an agent an attacker runs on the attacker's own machines. [Threat model](../../concepts/threat-model.md#an-agent-that-is-wrong-or-steered) and [operator guide](../../guides/supervise-and-stop-a-run.md).
 

@@ -85,6 +85,10 @@ func TestRouteSignRefusesARuleThatMayNotStop(t *testing.T) {
 		{first + `,"rule_version":"2"`, `"rule_id":"STEP_OUT_OF_ORDER","rule_version":"2"`, "rules[0]: STEP_OUT_OF_ORDER: reaction: the route names a rule that " + refused},
 		{second + `,"rule_version":"1"`, `"rule_id":"CONTINUED_AFTER_FAILURE","rule_version":"2"`, "rules[1]: CONTINUED_AFTER_FAILURE: reaction: the route names a rule that " + refused},
 		{second, `"rule_id":"DENIED_ACTION_RETRIED_AROUND"`, "rules[1]: DENIED_ACTION_RETRIED_AROUND: reaction: the route names a rule that " + refused},
+		{second, `"rule_id":"DENIED_ACTION_RETRIED_ARGUMENTS"`, `rules[1]: DENIED_ACTION_RETRIED_ARGUMENTS rule_version "1": reaction: the route names a rule that ` + refused},
+		{second, `"rule_id":"DEADLINE_EXCEEDED"`, `rules[1]: DEADLINE_EXCEEDED rule_version "1": reaction: the route names a rule that ` + refused},
+		{second + `,"rule_version":"1"`, `"rule_id":"DENIED_ACTION_RETRIED_RESOURCE","rule_version":"2"`, "rules[1]: DENIED_ACTION_RETRIED_RESOURCE: reaction: the route names a rule that " + refused},
+		{second + `,"rule_version":"1"`, `"rule_id":"DEADLINE_EXCEEDED","rule_version":"2"`, "rules[1]: DEADLINE_EXCEEDED: reaction: the route names a rule that " + refused},
 		{first + `,"rule_version":"2"`, `"rule_id":"EXCEPTION_TAKEN","rule_version":"1"`, "rules[0]: EXCEPTION_TAKEN: reaction: the route names a rule that " + refused},
 	} {
 		body := routeDoc(seeded(0x4c), 1)
@@ -104,20 +108,19 @@ func TestRouteSignRefusesARuleThatMayNotStop(t *testing.T) {
 	}
 }
 
-// TestRouteSignSignsEveryRuleThatMayStop: a route naming each of the six,
-// three of them only a 0.2 procedure configures, is signed.
+// TestRouteSignSignsEveryRuleThatMayStop: a route naming each of the three,
+// one of them only a 0.2 procedure configures, is signed.
 func TestRouteSignSignsEveryRuleThatMayStop(t *testing.T) {
 	tr := newStopTree(t)
 	var rules []string
-	for _, r := range [][2]string{{"REPEATED_DENIAL", "2"}, {"STEP_OUTSIDE_PROCEDURE", "1"}, {"DEADLINE_EXCEEDED", "1"},
-		{"RESOURCE_OUTSIDE_RUN", "1"}, {"DENIED_ACTION_RETRIED_ARGUMENTS", "1"}, {"DENIED_ACTION_RETRIED_RESOURCE", "1"}} {
+	for _, r := range [][2]string{{"REPEATED_DENIAL", "2"}, {"STEP_OUTSIDE_PROCEDURE", "1"}, {"RESOURCE_OUTSIDE_RUN", "1"}} {
 		rules = append(rules, `{"procedure_id":"refund","version":"1","digest":"`+stopProcDigest+`","rule_id":"`+r[0]+`","rule_version":"`+r[1]+`"}`)
 	}
 	lift := base64.StdEncoding.EncodeToString(seeded(0x4c).Public().(ed25519.PublicKey))
 	doc := filepath.Join(tr.dir, "route.json")
 	writeFixture(t, doc, `{"kind":"reaction-route/v1alpha1","route_id":"refund-stops","serial":2,"tenant_id":"acme",`+
 		`"scope":"run","lift_public_key":"`+lift+`","rules":[`+strings.Join(rules, ",")+`]}`)
-	if code, stdout, stderr := invoke(t, signArgs(tr.routeKey, filepath.Join(tr.dir, "six.signed"), doc)...); code != exitOK || stderr != "" {
+	if code, stdout, stderr := invoke(t, signArgs(tr.routeKey, filepath.Join(tr.dir, "three.signed"), doc)...); code != exitOK || stderr != "" {
 		t.Fatalf("route sign answered %d: %q %q", code, stdout, stderr)
 	}
 }

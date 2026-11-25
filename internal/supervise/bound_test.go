@@ -8,6 +8,7 @@ import (
 	"time"
 
 	findingv1alpha1 "github.com/guardana/control/api/gen/go/guardana/control/finding/v1alpha1"
+	observev1 "github.com/guardana/control/api/gen/go/guardana/control/observe/v1alpha1"
 	"github.com/guardana/control/internal/findinglog"
 	"github.com/guardana/control/internal/supervise"
 	"github.com/guardana/control/pkg/contract"
@@ -26,8 +27,8 @@ func countVerdicts(res *supervise.Result, rule string) map[string]int {
 // TestManyDenialsOfOneCallAreStillRetried: n denials of one refund, each
 // with the same arguments, then the refund with other arguments and the
 // order refunded by another tool. Each denial is retried in both forms, by
-// the root, confirmed when the root was denied and suggested when its child
-// was; no denial is left unjudged, however many there are.
+// the root, suggested whether the root or its child was denied; no denial is
+// left unjudged, however many there are.
 func TestManyDenialsOfOneCallAreStillRetried(t *testing.T) {
 	for _, n := range []int{1025, 4096} {
 		for _, deniedIn := range []string{runID, childRun} {
@@ -41,10 +42,7 @@ func TestManyDenialsOfOneCallAreStillRetried(t *testing.T) {
 				retry, other := again(), manual()
 				retry.at, other.at = 30*time.Second, 40*time.Second
 				res := supervise02(t, siblings(), acts(append(as, retry, other)...))
-				want := map[string]int{"FINDING_VERDICT_CONFIRMED": n}
-				if deniedIn != runID {
-					want = map[string]int{"FINDING_VERDICT_SUSPECTED": n}
-				}
+				want := map[string]int{"FINDING_VERDICT_SUSPECTED": n}
 				for _, rule := range []string{ruleArgs, ruleRes} {
 					if got := countVerdicts(res, rule); rules(res)[rule] != checked || fmt.Sprint(got) != fmt.Sprint(want) {
 						t.Errorf("%s is %s with %v; want %v", rule, rules(res)[rule], got, want)
@@ -74,12 +72,12 @@ func spacedDenials(n int) []act {
 
 // TestEveryDenialIsJudgedHoweverMany: 1449 denials of one tool, each with
 // its own arguments, are each retried by every denial after it, more than
-// a million pairs; each but the last is confirmed. The first rests on 1448
+// a million pairs; each but the last is suggested. The first rests on 1448
 // retries: it cites the first ten read and counts the other 1438.
 func TestEveryDenialIsJudgedHoweverMany(t *testing.T) {
 	res := retrySupervise(t, source(), acts(spacedDenials(1449)...))
 	got := countVerdicts(res, ruleArgs)
-	if rules(res)[ruleArgs] != checked || fmt.Sprint(got) != "map[FINDING_VERDICT_CONFIRMED:1448]" {
+	if rules(res)[ruleArgs] != checked || fmt.Sprint(got) != "map[FINDING_VERDICT_SUSPECTED:1448]" {
 		t.Fatalf("%s with %v", rules(res)[ruleArgs], got)
 	}
 	for _, f := range only(res, ruleArgs) {
@@ -93,19 +91,19 @@ func TestEveryDenialIsJudgedHoweverMany(t *testing.T) {
 	}
 }
 
-// TestEveryReportAroundADenialIsWeighed: 1024 reports of the refund after
-// 1025 denials of it on one order: each denial is retried around by all of
+// TestEveryReportAroundADenialIsWeighed: 1024 reports of the refund begun
+// after 1025 denials of it on one order: each denial is retried around by all of
 // them, citing ten of the reports and counting the rest with the denial,
 // and in the plane forms each but the last is retried by
 // the denials after it, while one tool on one order is no retry of itself.
 func TestEveryReportAroundADenialIsWeighed(t *testing.T) {
 	var reports []ob
 	for i := range 1024 {
-		reports = append(reports, ob{id: fmt.Sprintf("obs-%04d", i), name: "issue_refund", at: 5000 * time.Second})
+		reports = append(reports, ob{id: fmt.Sprintf("obs-%04d", i), name: "issue_refund", at: 5000 * time.Second, stage: observev1.Stage_STAGE_STARTED})
 	}
 	res := retrySupervise(t, source(reports...), acts(spacedDenials(1025)...))
 	want := map[string]string{
-		ruleArgs:   "map[FINDING_VERDICT_CONFIRMED:1024]",
+		ruleArgs:   "map[FINDING_VERDICT_SUSPECTED:1024]",
 		ruleRes:    "map[]",
 		ruleAround: "map[FINDING_VERDICT_SUSPECTED:1025]",
 	}
@@ -142,7 +140,7 @@ func TestAReportAtTheTreeBoundIsWritten(t *testing.T) {
 	}
 	var sources []supervise.Source
 	for i := range supervise.MaxSources {
-		sources = append(sources, supervise.Source{SourceID: fmt.Sprintf("%0128d", i), Kind: otelKind, Tenant: long, Project: long,
+		sources = append(sources, supervise.Source{SourceID: fmt.Sprintf("%0128d", i), Kind: otelKind, Sampling: observev1.Sampling_SAMPLING_COMPLETE, Tenant: long, Project: long,
 			HeartbeatSeconds: math.MaxUint32})
 	}
 	lookup := call{req: "r1", tool: "get_order", upstream: "shop", tenant: long, proj: long}
@@ -182,15 +180,16 @@ func floodOf(n int) []act {
 // TestAnotherRunsFloodLeavesARetryJudged: a closed child's 4 096 denials and
 // calls of the denied tool and of another on the order come first; the
 // root's own denial and its retry in each form are still judged on the
-// root's calls alone, confirmed by the plane and suggested by a source.
+// root's calls alone, suggested by the plane and by a source's reports of
+// calls begun after it.
 func TestAnotherRunsFloodLeavesARetryJudged(t *testing.T) {
 	var reports []ob
 	for i := range 512 {
-		reports = append(reports, ob{id: fmt.Sprintf("obs-%04d", i), name: "issue_refund", at: 5000 * time.Second})
+		reports = append(reports, ob{id: fmt.Sprintf("obs-%04d", i), name: "issue_refund", at: 5000 * time.Second, stage: observev1.Stage_STAGE_STARTED})
 	}
 	res := treeEvaluate(t, supervise.Input{Procedure: inheritProc(t), Tree: family(childRun),
 		Exports: []supervise.Export{acts(append(floodOf(4096), denial(), again(), manual())...)}, Sources: []supervise.Source{source(reports...)}})
-	for rule, want := range map[string]string{ruleArgs: "FINDING_VERDICT_CONFIRMED", ruleRes: "FINDING_VERDICT_CONFIRMED",
+	for rule, want := range map[string]string{ruleArgs: "FINDING_VERDICT_SUSPECTED", ruleRes: "FINDING_VERDICT_SUSPECTED",
 		ruleAround: "FINDING_VERDICT_SUSPECTED"} {
 		var got []string
 		for _, f := range only(res, rule) {

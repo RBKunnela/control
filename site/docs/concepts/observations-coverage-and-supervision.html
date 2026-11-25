@@ -199,7 +199,10 @@ denial or resource cannot get it stopped, and a finding that needs another
 run's call is suspected at most. There are two exceptions: a retry by a
 descendant of the denied run counts as its own, since it acts for that run,
 and each run's deadline is timed from the tree's first event, which may be
-another run's. Every other finding stays in the log, for <code>notify</code>,
+another run's. Neither is ever confirmed, since each compares two events'
+times that no event ties to one plane's clock
+(<a href="/docs/adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected">ADR-0088</a>).
+Every other finding stays in the log, for <code>notify</code>,
 <code>findings export</code> and the run view.</p>
 <h2 id="where-the-parts-meet">Where the parts meet</h2>
 <p>Observations and plane events meet by trace and span id: a joined
