@@ -8,6 +8,7 @@
 github.com/guardana/control/cmd/guardana-gateway TestHelperReportsItsEnvironment it runs in that child process alone
 github.com/guardana/control/cmd/guardana-gateway TestHelperServesAPlane it runs in that child process alone
 github.com/guardana/control/cmd/guardana-gateway TestHelperServesAStdioUpstream it runs in that child process alone
+github.com/guardana/control/internal/docscheck TestTheGateRefusesAMakefileMakeReadsFirst/makefile makefile and Makefile are one file on this file system
 github.com/guardana/control/internal/docscheck/sitedoc/mermaid TestHelperDrawsTheGoldens runs only as the fresh process of TestTheSameSourceDrawsTheSameBytes
 github.com/guardana/control/internal/evidence TestNoPayloadContentReachesTopLevelFields/Started this constructor takes no payload
 github.com/guardana/control/internal/evidence TestPayloadIsClonedNotAliased/Started this constructor takes no message

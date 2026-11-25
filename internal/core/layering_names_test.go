@@ -16,13 +16,17 @@ import (
 
 // The names the rule refuses in a package a guarded tree reaches, by import
 // path: the functions of allowed packages that read the clock, standard input
-// or the zone database, or draw on the system's randomness. .golangci.yml
-// refuses the same names through forbidigo, and layering_agreement_test.go
-// holds the two to each other.
+// or the zone database, or draw on the system's randomness. The timer types
+// are refused whole: Reset schedules from the clock, and a Reset selector
+// cannot be told from a buffer's without the receiver's type. A timer held
+// through an interface of its Reset alone names neither type: a read no name
+// reveals, which no name refusal can catch. .golangci.yml refuses the same
+// names through forbidigo, and layering_agreement_test.go holds the two to
+// each other.
 var refusedNames = map[string][]string{
 	"time": {
 		"Now", "Since", "Until", "After", "AfterFunc", "Tick", "NewTicker", "NewTimer", "Sleep",
-		"LoadLocation", "Local",
+		"Timer", "Ticker", "LoadLocation", "Local",
 	},
 	"google.golang.org/protobuf/types/known/timestamppb": {"Now"},
 	"context":        {"WithDeadline", "WithTimeout", "WithDeadlineCause", "WithTimeoutCause"},
@@ -178,6 +182,9 @@ func TestNamedReads(t *testing.T) {
 		{"promoted method", `import "time"; type s struct{ time.Time }; func f(v s) { _, _ = v.ZoneBounds() }`,
 			[]string{"names the method ZoneBounds"}},
 		{"dot import", `import . "time"; var _ = Now()`, []string{"imports time with a dot"}},
+		{"timer reset", `import "time"; func f(t *time.Timer) { t.Reset(0) }`, []string{"names time.Timer"}},
+		{"ticker reset", `import "time"; func f(k *time.Ticker) { k.Reset(1) }`, []string{"names time.Ticker"}},
+		{"timer field", `import clock "time"; type s struct{ t clock.Timer }`, []string{"names time.Timer"}},
 
 		{"allowed function", `import "time"; var _ = time.Unix(0, 0)`, nil},
 		{"allowed type", `import "time"; var _ time.Duration`, nil},

@@ -31,6 +31,16 @@ duration="${1:-10s}"
 list_only=false
 if [[ "${duration}" == --list ]]; then
   list_only=true
+elif [[ "${duration}" =~ ^([1-9][0-9]{0,4})(s|m|h)$ ]]; then
+  # Whole units only, so the time each run took can be held to it below.
+  case "${BASH_REMATCH[2]}" in
+    s) want_ms=$((BASH_REMATCH[1] * 1000)) ;;
+    m) want_ms=$((BASH_REMATCH[1] * 60000)) ;;
+    h) want_ms=$((BASH_REMATCH[1] * 3600000)) ;;
+  esac
+else
+  printf 'fuzz-smoke: the fuzz time %s is not a whole number of seconds, minutes or hours, such as 10s\n' "${duration}" >&2
+  exit 1
 fi
 
 files="$(repo_files '*_test.go')"
@@ -161,9 +171,37 @@ shown_package() {
   fi
 }
 
+# The names declared in the test files the build takes on this platform: go
+# list applies the build constraints the source search ignores, and runs no
+# test code.
+included=""
+while read -r mod pkg; do
+  [[ -n "${mod}" ]] || continue
+  if ! taken="$(go -C "${mod}" list \
+    -f '{{range .TestGoFiles}}{{$.Dir}}/{{.}}{{"\n"}}{{end}}{{range .XTestGoFiles}}{{$.Dir}}/{{.}}{{"\n"}}{{end}}' "${pkg}")"; then
+    printf 'fuzz-smoke: could not list the test files the build takes in %s\n' "$(shown_package "${mod}" "${pkg}")" >&2
+    exit 1
+  fi
+  while IFS= read -r file; do
+    [[ -n "${file}" ]] || continue
+    names="$(awk "${declared_awk}" "${file}")" || {
+      printf 'fuzz-smoke: cannot read the declarations of %s\n' "${file}" >&2
+      exit 1
+    }
+    while IFS= read -r name; do
+      [[ -n "${name}" ]] || continue
+      included+="${mod} ${pkg} ${name}"$'\n'
+    done <<<"${names}"
+  done <<<"${taken}"
+done <<<"${packages}"
+
 # The targets run are the ones each package's test binary lists on this
 # platform, never the ones read from the source: a declaration the source
-# search misses would otherwise compile and never fuzz.
+# search misses would otherwise compile and never fuzz. A listed line no file
+# the build takes declares is refused, not run: a TestMain can print a line
+# that begins with Fuzz before the listing, a name only a file left out
+# declares too, and fuzzing a name that matches no target passes with a
+# warning.
 targets=()
 compiled=""
 while read -r mod pkg; do
@@ -175,6 +213,11 @@ while read -r mod pkg; do
   while IFS= read -r line; do
     case "${line}" in
       Fuzz*)
+        if ! grep -Fxq -- "${mod} ${pkg} ${line}" <<<"${included}"; then
+          printf 'fuzz-smoke: %s lists "%s", which no file the build includes declares; refusing to count it as a target\n' \
+            "$(shown_package "${mod}" "${pkg}")" "${line}" >&2
+          exit 1
+        fi
         targets+=("${mod} ${pkg} ${line}")
         compiled+="${mod} ${pkg} ${line}"$'\n'
         ;;
@@ -218,13 +261,39 @@ if [[ "${list_only}" == true ]]; then
   exit 0
 fi
 
+# A run counts only on the fuzzing engine's own report of executions, from a
+# verbose run that ran the target under its own name and no other, for at
+# least nine tenths of the time asked for: a TestMain that exits 0 before
+# fuzzing passes go test too, one can point the engine at another target, and
+# one can cut the fuzz time. A TestMain that prints such a report, such names
+# and such a time itself still passes; that is left to review.
+log="$(mktemp)"
+trap 'rm -f "${log}"' EXIT
 for target in "${targets[@]}"; do
   read -r mod pkg name <<<"${target}"
   shown="$(shown_package "${mod}" "${pkg}")"
   printf 'fuzz-smoke: %s %s for %s\n' "${shown}" "${name}" "${duration}"
-  if ! go -C "${mod}" test "${pkg}" -run '^$' -fuzz "^${name}\$" -fuzztime "${duration}"; then
+  if ! go -C "${mod}" test "${pkg}" -v -run '^$' -fuzz "^${name}\$" -fuzztime "${duration}" 2>&1 | tee "${log}"; then
     printf 'fuzz-smoke: %s failed; the minimized input is now in the working tree at %s/testdata/fuzz/%s/ - keep it as a regression seed or delete it\n' \
       "${name}" "${shown}" "${name}" >&2
+    exit 1
+  fi
+  if ! grep -Eq '^fuzz: elapsed: [^,]*, execs: [1-9][0-9]* ' "${log}"; then
+    printf 'fuzz-smoke: %s %s reported no execution of the fuzzing engine, so nothing was fuzzed; refusing to count it as run\n' \
+      "${shown}" "${name}" >&2
+    exit 1
+  fi
+  ran="$(sed -nE 's/^=== RUN +([^ /]+).*/\1/p' "${log}" | LC_ALL=C sort -u | tr '\n' ' ')"
+  if [[ "${ran}" != "${name} " ]] || ! grep -Fq -- "--- PASS: ${name} (" "${log}"; then
+    ran="${ran% }"
+    printf 'fuzz-smoke: %s %s: its fuzz run ran %s, not that target alone under its own name; refusing to count it as run\n' \
+      "${shown}" "${name}" "${ran:-nothing}" >&2
+    exit 1
+  fi
+  took="$(sed -nE "s/^--- PASS: ${name} \(([0-9]+)\.([0-9]{2})s\)\$/\1\2/p" "${log}")"
+  if [[ ! "${took}" =~ ^[0-9]+$ ]] || ((100 * 10#${took} < 9 * want_ms)); then
+    printf 'fuzz-smoke: %s %s passed after %s of the %s asked for; refusing to count a cut fuzz run as run\n' \
+      "${shown}" "${name}" "$(grep -F -- "--- PASS: ${name} (" "${log}" | sed -E 's/.*\((.*)\)$/\1/' | head -n 1)" "${duration}" >&2
     exit 1
   fi
 done

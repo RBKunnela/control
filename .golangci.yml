@@ -58,13 +58,14 @@ linters:
         # same packages from their source. A decision is replayed from its
         # recorded inputs, and fmt, time, context, crypto/ed25519 and the
         # protobuf runtime are allowed there for what else they offer, not for
-        # these. Only reads a name reveals are caught: time.Local and the
+        # these. The timer types are refused whole, since their Reset reads
+        # the clock. Only reads a name reveals are caught: time.Local and the
         # Time methods Local, Zone, ZoneBounds and IsDST are, while
         # time.Unix(...).Format reads the local zone with no name and passes,
         # and the kernel's own tests hold it. A method promoted through an
         # embedded time.Time resolves to the embedding type's name and passes
         # too.
-        - pattern: '^(time\.(Now|Since|Until|After|AfterFunc|Tick|NewTicker|NewTimer|Sleep)|timestamppb\.Now|context\.With(Deadline|Timeout)(Cause)?)$'
+        - pattern: '^(time\.(Now|Since|Until|After|AfterFunc|Tick|NewTicker|NewTimer|Sleep|Timer|Ticker)|timestamppb\.Now|context\.With(Deadline|Timeout)(Cause)?)$'
           msg: "guarded tree: take the time from the injected clock"
         - pattern: '^(fmt\.Scan(f|ln)?|time\.(LoadLocation|Local|Time\.(Local|Zone|ZoneBounds|IsDST)))$'
           msg: "guarded tree: no I/O; this reads standard input, the zone database or the local zone"

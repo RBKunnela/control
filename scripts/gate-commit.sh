@@ -11,7 +11,8 @@
 #
 # Before the gate it refuses an archive that is not the commit: every path,
 # mode and blob `git ls-tree` names must be extracted as it is, since an
-# export-ignore or export-subst attribute changes what `git archive` writes.
+# export-ignore or export-subst attribute changes what `git archive` writes,
+# and no symbolic link may be absolute or hold a .. component.
 # The gate's file scans then read the commit's own file list (REPO_FILES_LIST
 # in scripts/lib/repo-files.sh), not a find over the export. The installed
 # tools are compared with the commit's own pins by its scripts/bootstrap.sh
@@ -19,16 +20,28 @@
 # commit's api/proto with the latest v* tag before the commit under the tag's
 # own buf.yaml, as CI's proto-breaking job does for a push, so the commit cannot
 # choose the rules it is judged by; a break, or no tag to compare with, means no
-# stamp. Replace refs are ignored: push sends the commit's own objects, so the
-# gate reads those. make runs in an emptied environment that keeps only the
-# locations and the network settings listed below, with GO=go, GOFLAGS empty,
-# GOENV=off and no MAKEFLAGS, so the caller's environment and go env cannot
-# narrow what the gate runs. PATH is kept and trusted: it picks git, buf, make,
-# go and the tools make calls.
+# stamp. Replace refs, grafts, a shallow file and a commit-graph are ignored,
+# so the gate reads the tree the local commit object names; it trusts the
+# local objects and the caller's command line. make runs in an emptied environment that
+# keeps only the locations and the network settings listed below, with GO=go,
+# GOFLAGS empty, GOENV=off and no MAKEFLAGS, so the caller's environment and go
+# env cannot narrow what the gate runs, and is told to read the Makefile, which
+# a committed GNUmakefile or makefile would otherwise shadow. PATH is kept and
+# trusted: it picks git, buf, make, go and the tools make calls.
 #
 #   scripts/gate-commit.sh [<commit>]    # HEAD by default
 set -euo pipefail
-export GIT_NO_REPLACE_OBJECTS=1
+# An empty GIT_SHALLOW_FILE names no shallow file. git takes parents from a
+# commit-graph, a file or a chain, without checking them against the objects,
+# so it is not read. Naming a grafts file makes git print its deprecation
+# advice on every commit it reads, so that advice is off. Both settings come
+# after any the caller passes the same way; git reads what `git -c` passes
+# after those, so the graph's setting goes last there too.
+n="${GIT_CONFIG_COUNT:-0}"
+export GIT_NO_REPLACE_OBJECTS=1 GIT_GRAFT_FILE=/dev/null GIT_SHALLOW_FILE='' \
+  "GIT_CONFIG_KEY_${n}=advice.graftFileDeprecated" "GIT_CONFIG_VALUE_${n}=false" \
+  "GIT_CONFIG_KEY_$((n + 1))=core.commitGraph" "GIT_CONFIG_VALUE_$((n + 1))=false" GIT_CONFIG_COUNT=$((n + 2))
+export GIT_CONFIG_PARAMETERS="${GIT_CONFIG_PARAMETERS:+${GIT_CONFIG_PARAMETERS} }'core.commitgraph'='false'"
 
 die() {
   printf 'gate-commit: %s\n' "$*" >&2
@@ -62,7 +75,9 @@ for v in HOME PATH TMPDIR USER LOGNAME LANG TERM \
     clean+=("${v}=${!v}")
   fi
 done
-clean+=(GIT_NO_REPLACE_OBJECTS=1 GOENV=off GOFLAGS= "REPO_FILES_LIST=${work}/files" "REPO_FILES_LIST_ROOT=${tree}")
+clean+=(GIT_NO_REPLACE_OBJECTS=1 GIT_GRAFT_FILE=/dev/null GIT_SHALLOW_FILE= GIT_CONFIG_COUNT=2
+  GIT_CONFIG_KEY_0=advice.graftFileDeprecated GIT_CONFIG_VALUE_0=false
+  GIT_CONFIG_KEY_1=core.commitGraph GIT_CONFIG_VALUE_1=false GOENV=off GOFLAGS= "REPO_FILES_LIST=${work}/files" "REPO_FILES_LIST_ROOT=${tree}")
 
 # The commit as git holds it, one "<mode> <object> <path>" line per entry, and
 # its NUL-delimited file list for repo_files.
@@ -89,7 +104,16 @@ while IFS= read -r -d '' path; do
   path="${path#./}"
   [[ "${path}" != *$'\n'* ]] || die "the archive of ${sha} holds a path with a newline"
   if [[ -L "${tree}/${path}" ]]; then
-    object="$(printf '%s' "$(readlink "${tree}/${path}")" | git hash-object --stdin)"
+    target="$(readlink "${tree}/${path}")"
+    # The comparison below holds a link's text, while the gate opens what it
+    # names; a link that is absolute or climbs with .. can name bytes the
+    # commit does not hold, and one link through another could climb further.
+    case "/${target}/" in
+      //* | */../*)
+        die "${path} is a symbolic link to ${target}, which can lead out of the commit; the gate would read what ${sha} does not hold; nothing stamped"
+        ;;
+    esac
+    object="$(printf '%s' "${target}" | git hash-object --stdin)"
     printf '120000 %s %s\n' "${object}" "${path}" >>"${work}/got"
   elif [[ -x "${tree}/${path}" ]]; then
     printf '100755 %s\n' "${path}" >>"${work}/blobs"
@@ -163,7 +187,7 @@ fi
 
 printf 'gate-commit: %s: cold make quality on its archive; log %s\n' "${sha}" "${log}"
 rc=0
-(cd "${tree}" && "${clean[@]}" go clean -testcache && "${clean[@]}" make GO=go quality) >>"${log}" 2>&1 || rc=$?
+(cd "${tree}" && "${clean[@]}" go clean -testcache && "${clean[@]}" make -f Makefile GO=go quality) >>"${log}" 2>&1 || rc=$?
 last="$(tail -n 1 "${log}")"
 if [[ ${rc} -ne 0 || "${last}" != "quality: green" ]]; then
   grep -nE '^(FAIL|--- FAIL)|Error [0-9]|panic:|^test-report:' "${log}" | head -n 20 >&2 || true
@@ -172,7 +196,7 @@ fi
 
 printf 'gate-commit: %s: every fuzz target fuzzed on its archive\n' "${sha}" | tee -a "${log}"
 rc=0
-(cd "${tree}" && "${clean[@]}" make GO=go fuzz-smoke) >>"${log}" 2>&1 || rc=$?
+(cd "${tree}" && "${clean[@]}" make -f Makefile GO=go fuzz-smoke) >>"${log}" 2>&1 || rc=$?
 fuzzed="$(tail -n 1 "${log}")"
 if [[ ${rc} -ne 0 || ! "${fuzzed}" =~ ^fuzz-smoke:\ [1-9][0-9]*\ target\(s\)\ run\ for\  ]]; then
   tail -n 20 "${log}" >&2

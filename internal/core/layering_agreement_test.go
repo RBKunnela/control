@@ -169,7 +169,7 @@ func TestAllThreeMechanismsGuardTheSameTrees(t *testing.T) {
 // edit to one changes what the rule refuses, and the probe plants only the
 // names it knows.
 var wantGuardedPatterns = []string{
-	`^(time\.(Now|Since|Until|After|AfterFunc|Tick|NewTicker|NewTimer|Sleep)|timestamppb\.Now|context\.With(Deadline|Timeout)(Cause)?)$`,
+	`^(time\.(Now|Since|Until|After|AfterFunc|Tick|NewTicker|NewTimer|Sleep|Timer|Ticker)|timestamppb\.Now|context\.With(Deadline|Timeout)(Cause)?)$`,
 	`^(fmt\.Scan(f|ln)?|time\.(LoadLocation|Local|Time\.(Local|Zone|ZoneBounds|IsDST)))$`,
 	`^ed25519\.GenerateKey$`,
 }

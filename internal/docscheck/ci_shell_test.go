@@ -15,14 +15,22 @@ import (
 const (
 	nightlyWorkflowPath = ".github/workflows/nightly.yml"
 	nightlyFuzzJob      = "fuzz"
-	nightlyFuzzCommand  = "/usr/bin/env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make fuzz-smoke"
+	nightlyFuzzCommand  = "/usr/bin/env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make -f Makefile fuzz-smoke"
 	// nightlyReportIf is the report job's condition: a red scheduled night,
 	// a job cancelled by its timeout or for want of a runner included.
 	nightlyReportIf = "${{ !cancelled() && github.event_name == 'schedule' && " +
 		"(contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}"
+	// nightlyGroup is the workflow's concurrency group. GitHub keeps one
+	// pending run per group and drops the one queued before it, so a manual
+	// run sharing the scheduled run's group could drop that night unreported.
+	nightlyGroup = "${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}"
 	// gateCommitFuzzLine is the line of scripts/gate-commit.sh that fuzzes
 	// the release commit's archive.
-	gateCommitFuzzLine = `(cd "${tree}" && "${clean[@]}" make GO=go fuzz-smoke) >>"${log}" 2>&1 || rc=$?`
+	gateCommitFuzzLine = `(cd "${tree}" && "${clean[@]}" make -f Makefile GO=go fuzz-smoke) >>"${log}" 2>&1 || rc=$?`
+	// gateCommitQualityLine is the line of scripts/gate-commit.sh that runs
+	// the gate on the release commit's archive. make reads a GNUmakefile or a
+	// makefile before a Makefile it is not told to read.
+	gateCommitQualityLine = `(cd "${tree}" && "${clean[@]}" go clean -testcache && "${clean[@]}" make -f Makefile GO=go quality) >>"${log}" 2>&1 || rc=$?`
 )
 
 // unquotedKey is a key as YAML reads it, quoted or not.
@@ -202,6 +210,11 @@ func nightlyProblems(lines []string) []string {
 	if !slices.ContainsFunc(root.children("on"), func(on *yamlNode) bool { return len(on.children("schedule")) == 1 }) {
 		problems = append(problems, "the workflow runs on no schedule")
 	}
+	if !slices.ContainsFunc(root.children("concurrency"), func(c *yamlNode) bool {
+		return slices.ContainsFunc(c.children("group"), func(g *yamlNode) bool { return g.value == nightlyGroup })
+	}) {
+		problems = append(problems, "the concurrency group is not "+nightlyGroup+", so a run of another event can displace a queued scheduled one")
+	}
 	for _, env := range root.children("env") {
 		problems = append(problems, fmt.Sprintf("line %d: the workflow sets env, which reaches the fuzz step", env.line))
 	}
@@ -214,7 +227,7 @@ func nightlyProblems(lines []string) []string {
 	if len(jobs) != 1 {
 		return append(problems, fmt.Sprintf("found %d %s job(s), want 1", len(jobs), nightlyFuzzJob))
 	}
-	for _, key := range []string{"if", "continue-on-error", "env", "strategy", "needs", "defaults", "container"} {
+	for _, key := range []string{"if", "continue-on-error", "env", "strategy", "needs", "defaults", "container", "concurrency"} {
 		for _, kid := range jobs[0].children(key) {
 			problems = append(problems, fmt.Sprintf("line %d: the %s job carries %s", kid.line, nightlyFuzzJob, key))
 		}
@@ -264,32 +277,73 @@ func TestFuzzingRunsOutsideTheGate(t *testing.T) {
 	for _, problem := range nightlyProblems(readLines(t, repoFS(t), nightlyWorkflowPath)) {
 		t.Errorf("%s: %s", nightlyWorkflowPath, problem)
 	}
-	if !slices.ContainsFunc(readLines(t, repoFS(t), "scripts/gate-commit.sh"), func(l string) bool { return strings.TrimSpace(l) == gateCommitFuzzLine }) {
+	gate := readLines(t, repoFS(t), "scripts/gate-commit.sh")
+	if !slices.ContainsFunc(gate, func(l string) bool { return strings.TrimSpace(l) == gateCommitFuzzLine }) {
 		t.Errorf("scripts/gate-commit.sh holds no line %q, which fuzzes the release commit's archive", gateCommitFuzzLine)
+	}
+	if !slices.ContainsFunc(gate, func(l string) bool { return strings.TrimSpace(l) == gateCommitQualityLine }) {
+		t.Errorf("scripts/gate-commit.sh holds no line %q, which runs the gate on the release commit's archive", gateCommitQualityLine)
 	}
 }
 
 func TestNightlyProblems(t *testing.T) {
-	good := "on:\n  schedule:\n    - cron: \"1 2 * * *\"\njobs:\n  fuzz:\n    runs-on: x\n    steps:\n      - run: " + nightlyFuzzCommand +
+	good := "on:\n  schedule:\n    - cron: \"1 2 * * *\"\nconcurrency:\n  group: " + nightlyGroup + "\njobs:\n  fuzz:\n    runs-on: x\n    steps:\n      - run: " + nightlyFuzzCommand +
 		"\n  report:\n    needs: [race, fuzz]\n    if: " + nightlyReportIf + "\n"
 	if problems := nightlyProblems(strings.Split(good, "\n")); len(problems) != 0 {
 		t.Fatalf("the correct fixture reported %q", problems)
 	}
 	step := "      - run: " + nightlyFuzzCommand + "\n"
 	for name, c := range map[string]struct{ old, replacement, want string }{
-		"no schedule":             {"  schedule:\n    - cron: \"1 2 * * *\"\n", "  workflow_dispatch:\n", "no schedule"},
-		"a fuzz time on the step": {step, step + "        env:\n          FUZZTIME: 1ns\n", "want 1"},
-		"a fuzz time on the job":  {"    runs-on: x\n", "    runs-on: x\n    env:\n      FUZZTIME: 1ns\n", "carries env"},
-		"masked on the job":       {"    runs-on: x\n", "    runs-on: x\n    continue-on-error: true\n", "carries continue-on-error"},
-		"another command":         {step, "      - run: make fuzz-smoke FUZZTIME=1ns\n", "want 1"},
-		"a report that waits not": {"needs: [race, fuzz]", "needs: race", "does not wait"},
-		"a report with no needs":  {"    needs: [race, fuzz]\n", "", "does not wait"},
-		"a report never run":      {"    if: " + nightlyReportIf + "\n", "    if: false\n", "another condition"},
-		"no report":               {"  report:\n", "  later:\n", "found 0 report job(s)"},
+		"no schedule":                {"  schedule:\n    - cron: \"1 2 * * *\"\n", "  workflow_dispatch:\n", "no schedule"},
+		"a fuzz time on the step":    {step, step + "        env:\n          FUZZTIME: 1ns\n", "want 1"},
+		"a fuzz time on the job":     {"    runs-on: x\n", "    runs-on: x\n    env:\n      FUZZTIME: 1ns\n", "carries env"},
+		"masked on the job":          {"    runs-on: x\n", "    runs-on: x\n    continue-on-error: true\n", "carries continue-on-error"},
+		"another command":            {step, "      - run: make fuzz-smoke FUZZTIME=1ns\n", "want 1"},
+		"the makefile found by name": {step, "      - run: /usr/bin/env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make fuzz-smoke\n", "want 1"},
+		"a report that waits not":    {"needs: [race, fuzz]", "needs: race", "does not wait"},
+		"a report with no needs":     {"    needs: [race, fuzz]\n", "", "does not wait"},
+		"a report never run":         {"    if: " + nightlyReportIf + "\n", "    if: false\n", "another condition"},
+		"no report":                  {"  report:\n", "  later:\n", "found 0 report job(s)"},
+		"one group for every event":  {"  group: " + nightlyGroup + "\n", "  group: ${{ github.workflow }}-${{ github.ref }}\n", "concurrency group"},
+		"no concurrency group":       {"concurrency:\n  group: " + nightlyGroup + "\n", "", "concurrency group"},
+		"a group on the fuzz job":    {"    runs-on: x\n", "    runs-on: x\n    concurrency: one\n", "carries concurrency"},
 	} {
 		problems := nightlyProblems(strings.Split(replaceOnce(t, good, c.old, c.replacement), "\n"))
 		if !slices.ContainsFunc(problems, func(s string) bool { return strings.Contains(s, c.want) }) {
 			t.Errorf("%s: want a problem containing %q, got %q", name, c.want, problems)
+		}
+	}
+}
+
+// TestARunOfAPushToMainIsNotDisplacedByAnotherEvent: GitHub keeps one pending
+// run per concurrency group, so a manual or scheduled run sharing the group
+// of a push to main could drop that push's run, and the release would find no
+// result for its commit. CI and Security give each event its own group,
+// cancel only a superseded pull request run, never a run on main, and no job
+// of theirs sets a group.
+func TestARunOfAPushToMainIsNotDisplacedByAnotherEvent(t *testing.T) {
+	for _, path := range []string{ciWorkflowPath, ".github/workflows/security.yml"} {
+		root, err := parseBlockYAML(readLines(t, repoFS(t), path))
+		if err != nil {
+			t.Fatalf("%s: %v", path, err)
+		}
+		if !slices.ContainsFunc(root.children("concurrency"), func(c *yamlNode) bool {
+			return slices.ContainsFunc(c.children("group"), func(g *yamlNode) bool { return g.value == nightlyGroup })
+		}) {
+			t.Errorf("%s: the concurrency group is not %s, so a run of another event can displace a pending push run on main", path, nightlyGroup)
+		}
+		const cancel = "${{ github.event_name == 'pull_request' }}"
+		if !slices.ContainsFunc(root.children("concurrency"), func(c *yamlNode) bool {
+			return slices.ContainsFunc(c.children("cancel-in-progress"), func(g *yamlNode) bool { return g.value == cancel })
+		}) {
+			t.Errorf("%s: cancel-in-progress is not %s, so a run on main can be cancelled by the next one", path, cancel)
+		}
+		for _, jobs := range root.children("jobs") {
+			for _, job := range jobs.kids {
+				for _, c := range job.children("concurrency") {
+					t.Errorf("%s: line %d: job %s sets a concurrency group of its own", path, c.line, job.key)
+				}
+			}
 		}
 	}
 }

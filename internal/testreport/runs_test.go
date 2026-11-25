@@ -55,6 +55,8 @@ func TestSummarizeRunsRefusesWhatDidNotPass(t *testing.T) {
 		"a missing test": {strings.Replace(bothRan,
 			`{"Action":"run","Package":"example.com/p","Test":"TestB"}`+"\n"+`{"Action":"pass","Package":"example.com/p","Test":"TestB"}`+"\n",
 			"", 1), nil},
+		"a pass with no run event": {strings.Replace(bothRan,
+			`{"Action":"run","Package":"example.com/p","Test":"TestB"}`+"\n", "", 1), nil},
 		"no events":         {"", testreport.ErrNoEvents},
 		"a stream of noise": {"PASS\nok  \texample.com/p\n", testreport.ErrNotEvent},
 		"a failed test":     {strings.Replace(bothRan, `"pass","Package":"example.com/p","Test":"TestB"`, `"fail","Package":"example.com/p","Test":"TestB"`, 1), testreport.ErrFailed},

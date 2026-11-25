@@ -10,7 +10,7 @@ import (
 const (
 	ciWorkflowPath = ".github/workflows/ci.yml"
 	ciGateJob      = "quality"
-	ciGateCommand  = "/usr/bin/env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make quality GO=go"
+	ciGateCommand  = "/usr/bin/env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make -f Makefile quality GO=go"
 	// ciShell is the shell every workflow's run steps start in: -p keeps the
 	// step's bash from reading the startup files, options and functions an
 	// earlier step can write through $GITHUB_ENV. Its first word is bash, the
@@ -418,7 +418,7 @@ jobs:
           printf '%s\n' "${pins}" >>"$GITHUB_ENV"
           if: this is script text, not a key
       - name: Run the quality gate
-        run: /usr/bin/env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make quality GO=go
+        run: /usr/bin/env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make -f Makefile quality GO=go
 
   other:
     if: false
@@ -438,10 +438,11 @@ func TestCIGateProblems(t *testing.T) {
 	cases := map[string]struct{ old, replacement, want string }{
 		"the quick gate":                {gateRun + "\n", "run: make quality-quick\n\n", "no step of the quality job runs exactly \"" + ciGateCommand + "\""},
 		"the gate in the caller's env":  {gateRun + "\n", "run: make quality GO=go\n\n", "runs exactly"},
-		"the gate with MAKEFLAGS kept":  {gateRun + "\n", "run: /usr/bin/env -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make quality GO=go\n\n", "runs exactly"},
-		"the gate with MAKEFILES kept":  {gateRun + "\n", "run: /usr/bin/env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS make quality GO=go\n\n", "runs exactly"},
-		"the gate with GO from the env": {gateRun + "\n", "run: /usr/bin/env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make quality\n\n", "runs exactly"},
-		"env from the path":             {gateRun + "\n", "run: env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make quality GO=go\n\n", "runs exactly"},
+		"the gate with MAKEFLAGS kept":  {gateRun + "\n", "run: /usr/bin/env -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make -f Makefile quality GO=go\n\n", "runs exactly"},
+		"the gate with MAKEFILES kept":  {gateRun + "\n", "run: /usr/bin/env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS make -f Makefile quality GO=go\n\n", "runs exactly"},
+		"the gate with GO from the env": {gateRun + "\n", "run: /usr/bin/env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make -f Makefile quality\n\n", "runs exactly"},
+		"env from the path":             {gateRun + "\n", "run: env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make -f Makefile quality GO=go\n\n", "runs exactly"},
+		"the makefile found by name":    {gateRun + "\n", "run: /usr/bin/env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make quality GO=go\n\n", "runs exactly"},
 		"the gate with a fallback":      {gateRun + "\n", "run: " + ciGateCommand + " || true\n\n", "runs exactly"},
 		"the gate in a block":           {gateRun + "\n", "run: |\n          " + ciGateCommand + "\n\n", "runs exactly"},
 		"the gate quoted":               {gateRun + "\n", "run: \"" + ciGateCommand + "\"\n\n", "runs exactly"},

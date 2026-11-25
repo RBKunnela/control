@@ -182,57 +182,80 @@ approval and activates no policy
 </ul>
 <h3 id="fixed">Fixed</h3>
 <ul>
-<li><code>policy test</code>, <code>policy explain</code> and <code>policy compare</code> refuse a case whose
+<li>
+<p><code>policy test</code>, <code>policy explain</code> and <code>policy compare</code> refuse a case whose
 <code>authorized_args</code> is not valid UTF-8 or holds an unpaired surrogate escape
 such as <code>\ud800</code>, naming the member. The case reader put U+FFFD in place
 of such bytes, so the kernel decided other arguments than the case wrote,
 and a case could pass <code>ALLOW</code> for bytes the kernel refuses
-(<a href="/docs/reference/policy-format#a-test-case">policy format</a>).</li>
-<li>A <code>procedure test</code> case states the project its run's record names, as
+(<a href="/docs/reference/policy-format#a-test-case">policy format</a>).</p>
+</li>
+<li>
+<p>A <code>procedure test</code> case states the project its run's record names, as
 <code>project</code> in <code>run</code> and in each run of <code>tree</code>, and is judged as <code>supervise</code>
 judges that run: events or a run of another project fail the case as
 <code>refused:</code>, and its sources are of the run's project. The case took the
 project from its events, so a case passed with a finding that <code>supervise</code>
 would refuse to make for a run recorded under another project
-(<a href="/docs/guides/test-a-procedure#2-write-a-case">test a procedure</a>).</li>
-<li><code>supervise</code> lists a step's requests, and a finding cites and keeps its
+(<a href="/docs/guides/test-a-procedure#2-write-a-case">test a procedure</a>).</p>
+</li>
+<li>
+<p><code>supervise</code> lists a step's requests, and a finding cites and keeps its
 references, in the order of the plane's times of the proposals, a tie by
 request id. It used the order in which an export first held each request,
 which follows the order the plane's batches reached the collector, so two
 exports of one run could list requests differently and a finding citing
 more than ten could keep other references
-(<a href="/docs/reference/supervision">supervision</a>).</li>
-<li>A signed start refuses a header a variable sets with its hyphens spelled
+(<a href="/docs/reference/supervision">supervision</a>).</p>
+</li>
+<li>
+<p>A signed start refuses a header a variable sets with its hyphens spelled
 as they are, such as <code>GUARDANA_CONTROL_EXPORT_HEADERS_X-TENANT</code>, as it
 refuses every other key the environment sets. Only a header spelled with
-<code>_</code> was refused; the hyphenated one was applied and the start went on.</li>
-<li>A retry checks the pause, the stops, the clock and the policy again after
+<code>_</code> was refused; the hyphenated one was applied and the start went on.</p>
+</li>
+<li>
+<p>A retry checks the pause, the stops, the clock and the policy again after
 the approval authority answers and before it spends the approval. A stop
 published, or a policy gone stale, while the answer was read spent the
 approval although the call was then blocked; the hold now stands for a
-later retry.</li>
-<li>A refusal of an upstream's <code>env</code> or <code>args</code> item the configuration reader
+later retry.</p>
+</li>
+<li>
+<p>A refusal of an upstream's <code>env</code> or <code>args</code> item the configuration reader
 cannot read, such as <code>API_KEY=value&amp;x</code> or <code>--token=value&amp;x</code>, no longer
-repeats the item, which can hold a pasted credential.</li>
-<li>The configuration refuses a block written twice, such as two <code>policy:</code>
-mappings, naming both lines. Two blocks whose keys differed were merged.</li>
-<li>The configuration refuses a key holding a <code>.</code>, such as
+repeats the item, which can hold a pasted credential.</p>
+</li>
+<li>
+<p>The configuration refuses a block written twice, such as two <code>policy:</code>
+mappings, naming both lines. Two blocks whose keys differed were merged.</p>
+</li>
+<li>
+<p>The configuration refuses a key holding a <code>.</code>, such as
 <code>policy.fail_open_read: true</code>; a path is written as nested blocks. The
-dotted spelling reopened a block already written.</li>
-<li><code>doctor</code> reads the spent ledger beside the hold journal as <code>run</code> opens and
+dotted spelling reopened a block already written.</p>
+</li>
+<li>
+<p><code>doctor</code> reads the spent ledger beside the hold journal as <code>run</code> opens and
 sweeps it, and fails naming it where <code>run</code> would refuse it: a damaged
 <code>ledger.meta</code>, a name the ledger did not write or a mark that will not
 decode. It printed <code>ok</code> for the approvals and <code>run</code> then refused to start.
-A mark a running plane removes while <code>doctor</code> reads the ledger is passed.</li>
-<li><code>/healthz</code> reports the <code>directory</code> approval authority <code>unavailable</code> once
+A mark a running plane removes while <code>doctor</code> reads the ledger is passed.</p>
+</li>
+<li>
+<p><code>/healthz</code> reports the <code>directory</code> approval authority <code>unavailable</code> once
 its approvals directory is not the one the plane opened; it said <code>usable</code>
-whatever became of it.</li>
-<li>After a restart, a signed plane closes an unexpired lost hold that nobody
+whatever became of it.</p>
+</li>
+<li>
+<p>After a restart, a signed plane closes an unexpired lost hold that nobody
 answered <code>APPROVAL_EXPIRED</code> while the hold's record stands, as the
 directory kind does and <a href="/docs/reference/failure-modes">failure modes</a>
 says. It closed it <code>APPROVAL_STATE_UNKNOWN</code>, which stays for a record that
-is gone.</li>
-<li>A signed answer that authenticates but whose body cannot be read as an
+is gone.</p>
+</li>
+<li>
+<p>A signed answer that authenticates but whose body cannot be read as an
 answer, such as a rejection with no <code>reason</code>, from an operator who may
 approve the hold, or where that cannot be told, leaves the call
 <code>INDETERMINATE</code> and the hold standing. It was left out, so a valid approval
@@ -240,96 +263,140 @@ beside it could run, though it may be the rejection that wins. From an
 operator who may not approve the hold it is left out. A file named for the
 approval that cannot be read as an answer at all still makes the batch
 unavailable, since it may be the rejection
-(<a href="/docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it">ADR-0073</a>).</li>
-<li>A signed start reads the trust root key only from the file its check
+(<a href="/docs/adr/0073-an-approval-counts-only-as-the-plane-judges-it">ADR-0073</a>).</p>
+</li>
+<li>
+<p>A signed start reads the trust root key only from the file its check
 judged, and refuses one renamed over the path in between. It opened the
-key again by name after the check.</li>
-<li>A signed plane refuses an <code>approvals.inbox_dir</code> its own account does not
+key again by name after the check.</p>
+</li>
+<li>
+<p>A signed plane refuses an <code>approvals.inbox_dir</code> its own account does not
 own, at the start, in <code>doctor</code> and at every read, since that owner may
 remove any operator's answer under the sticky bit, a rejection among them
-(<a href="/docs/concepts/approvals-and-the-held-call">approvals</a>).</li>
-<li>An inbox prune removes nothing from a directory this account does not
+(<a href="/docs/concepts/approvals-and-the-held-call">approvals</a>).</p>
+</li>
+<li>
+<p>An inbox prune removes nothing from a directory this account does not
 own, and says so. It unlinked there whatever stale answer the kernel let
-it remove.</li>
-<li>An approvals record whose <code>tenant</code>, <code>project</code> or any other member is
+it remove.</p>
+</li>
+<li>
+<p>An approvals record whose <code>tenant</code>, <code>project</code> or any other member is
 <code>null</code> is refused as a member of the wrong type. A <code>null</code> tenant or project
-was read as empty.</li>
-<li>An answer of the AuthZEN decision point whose body is not UTF-8 is refused
+was read as empty.</p>
+</li>
+<li>
+<p>An answer of the AuthZEN decision point whose body is not UTF-8 is refused
 with <code>PDP_ANSWER_REFUSED</code>, so the call is blocked. JSON text is UTF-8; such
 a body was read with replacement characters in its strings
-(<a href="/docs/guides/let-a-decision-point-veto">let a decision point veto</a>).</li>
-<li>An answer a decision point returns once its deadline, or the caller's, has
+(<a href="/docs/guides/let-a-decision-point-veto">let a decision point veto</a>).</p>
+</li>
+<li>
+<p>An answer a decision point returns once its deadline, or the caller's, has
 passed is a timeout, <code>PDP_TIMEOUT</code>, and one returned after the caller
 cancelled is <code>PDP_UNAVAILABLE</code>, whatever either says. The gateway took the
 answer an in-process decision point returned late, so an allow that came
-after the deadline lifted the veto.</li>
-<li>An approval whose expiry is not a valid timestamp, with nanos out of range
+after the deadline lifted the veto.</p>
+</li>
+<li>
+<p>An approval whose expiry is not a valid timestamp, with nanos out of range
 or a second past year 9999, is expired and never spent, and one whose
 decision time is not a valid timestamp is no decision. Each was normalised
-to another moment, which could fall inside the hold's window.</li>
-<li>The binary decoder refuses an int32 member outside int32, as it does an
+to another moment, which could fall inside the hold's window.</p>
+</li>
+<li>
+<p>The binary decoder refuses an int32 member outside int32, as it does an
 enum number, so a timestamp's <code>nanos</code> sent as 2^32+1 is refused before the
 parse instead of arriving as one nanosecond. Only bytes no conforming
 encoder writes are refused
-(<a href="/docs/contracts#decoding-and-validation">contracts</a>).</li>
-<li>A retry whose approval names a major this build does not read is refused
+(<a href="/docs/contracts#decoding-and-validation">contracts</a>).</p>
+</li>
+<li>
+<p>A retry whose approval names a major this build does not read is refused
 with <code>EVIDENCE_UNAVAILABLE</code> also when its expiry has passed. Such an
 approval closed the hold as <code>APPROVAL_EXPIRED</code> before its version was
-read.</li>
-<li><strong>Breaking:</strong> a signed plane refuses to start, and <code>doctor</code> fails, when
+read.</p>
+</li>
+<li>
+<p><strong>Breaking:</strong> a signed plane refuses to start, and <code>doctor</code> fails, when
 <code>records/</code> holds more than the 65,536 records a start reads to carry their
 closes; <code>guardana-control runs prune</code> archives the expired trees to bring
 it under. The start logged the cut and served, so the open record of a run
 closed past the cut, put back, was taken
 (<a href="/docs/reference/runs">runs</a>,
-<a href="/docs/adr/0076-a-signed-plane-takes-a-run-only-from-an-operators-signature">ADR-0076</a>).</li>
-<li>A signed child's first call beside a root whose state file is gone and
+<a href="/docs/adr/0076-a-signed-plane-takes-a-run-only-from-an-operators-signature">ADR-0076</a>).</p>
+</li>
+<li>
+<p>A signed child's first call beside a root whose state file is gone and
 whose lock file is not leaves no <code>.seen</code>. The mark was made before the
 call was refused, so once the root's state was put back the child ran
-after its parent's close was carried.</li>
-<li>A signed child's first call whose ancestor walk reads a closed ancestor
+after its parent's close was carried.</p>
+</li>
+<li>
+<p>A signed child's first call whose ancestor walk reads a closed ancestor
 carries that close and is refused as <code>closed</code>. The walk took the closed
 record as a link to its parent and admitted the grandchild
-(<a href="/docs/adr/0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close">ADR-0079</a>).</li>
-<li><strong>Breaking:</strong> <code>react</code> under a signed route refuses an unsigned <code>--runs</code>
+(<a href="/docs/adr/0079-a-signed-plane-admits-a-child-only-if-it-saw-it-before-its-parents-close">ADR-0079</a>).</p>
+</li>
+<li>
+<p><strong>Breaking:</strong> <code>react</code> under a signed route refuses an unsigned <code>--runs</code>
 directory. The
 route's <code>--roster</code> and <code>--root-key</code> did not count as flags that judge
 records, so without <code>--tenant</code> and <code>--project</code> it took a stop's subject
-from an unsigned record.</li>
-<li><code>react</code> reads a finding's run again once it holds the stop list's lock,
+from an unsigned record.</p>
+</li>
+<li>
+<p><code>react</code> reads a finding's run again once it holds the stop list's lock,
 and a run closed while it waited is counted as not stopping; a run it
 cannot read then, or one naming no subject of its rule's scope, stops the
 pass. It wrote the stop from what it read
-before the wait.</li>
-<li>A signed restore takes a backed-up root whose lock file stands without its
+before the wait.</p>
+</li>
+<li>
+<p>A signed restore takes a backed-up root whose lock file stands without its
 state as untrusted with an unknown read, as the plane does, and refuses,
 before its first write, a surviving root's lock file the join would refuse.
 It left such a root's live state as it was, and stamped floors and carried
 closes before it met the lock
-(<a href="/docs/guides/back-up-and-restore-a-plane">back up and restore</a>).</li>
-<li>A restore under the directory authority judges the backup's stop list
+(<a href="/docs/guides/back-up-and-restore-a-plane">back up and restore</a>).</p>
+</li>
+<li>
+<p>A restore under the directory authority judges the backup's stop list
 against the configured route also when the live list begins with it, and
 refuses one written under a route since replaced. It kept the old list,
-which the next start refused.</li>
-<li>Signed <code>/healthz</code> and <code>doctor</code> report a stop naming another tenant's or
+which the next start refused.</p>
+</li>
+<li>
+<p>Signed <code>/healthz</code> and <code>doctor</code> report a stop naming another tenant's or
 project's run as unheld, not as unread, which made the reaction check
-unknown.</li>
-<li>A list of another version put in place of the one a plane accepted is
+unknown.</p>
+</li>
+<li>
+<p>A list of another version put in place of the one a plane accepted is
 refused naming both versions and saying to put the accepted list back, or,
 for a <code>2.0</code> list in place of a <code>3.0</code> one, to carry it with
 <code>stops init --carry</code>. The changed header was refused without either
-(<a href="/docs/reference/reaction-signed">reaction under signed</a>).</li>
-<li><code>stops lift</code> refuses, with nothing written, a lift that ends no stop of
+(<a href="/docs/reference/reaction-signed">reaction under signed</a>).</p>
+</li>
+<li>
+<p><code>stops lift</code> refuses, with nothing written, a lift that ends no stop of
 the list as it stands under the writer's lock, such as one signed against
-the list before another lift ended that stop.</li>
-<li>A signed start refuses a stop list its own account may write, an access
+the list before another lift ended that stop.</p>
+</li>
+<li>
+<p>A signed start refuses a stop list its own account may write, an access
 control list among the ways, as it refuses the stops directory. Only the
 directory was judged
-(<a href="/docs/guides/set-up-signed-operators">set up signed operators</a>).</li>
-<li><code>state backup</code> makes its directories <code>0700</code> and its copies <code>0600</code> whatever
+(<a href="/docs/guides/set-up-signed-operators">set up signed operators</a>).</p>
+</li>
+<li>
+<p><code>state backup</code> makes its directories <code>0700</code> and its copies <code>0600</code> whatever
 the umask, as the guide says. A umask that took the owner's bits made them
-narrower.</li>
-<li><code>state restore</code> refuses, before its first write, a configuration where the
+narrower.</p>
+</li>
+<li>
+<p><code>state restore</code> refuses, before its first write, a configuration where the
 temporary name a missing floor directory is built under is, or holds, a
 path the configuration names, the hold journal and the keys among them,
 compared through links and without case, also where neither name exists
@@ -337,8 +404,10 @@ yet, so every refusal comes before the first write; the build removes there
 only a directory a build of its own left.
 Building the floor removed that path first, so a route floor named there
 was built again from the backup's lower serial, and a hold journal named
-there was lost.</li>
-<li><strong>Breaking:</strong> a signed carry takes the write bits off the list it carried
+there was lost.</p>
+</li>
+<li>
+<p><strong>Breaking:</strong> a signed carry takes the write bits off the list it carried
 from before it writes the new list, giving them back when that write left
 no new list in place, and <code>react</code> and <code>stops lift</code> refuse a list its owner may not
 write. Run the carry as the old list's owner: under another account it
@@ -347,138 +416,306 @@ fails to write; give the list its write bits back before 0.17 uses it
 after a roll back. A stop appended to the old list after the carry reached
 a plane still serving it and was missing from the new list, whose header
 the plane's floor followed (<a href="/docs/reference/reaction-signed">reaction under signed</a>,
-<a href="/docs/guides/upgrade-a-plane-from-0-17">upgrade a plane from 0.17</a>).</li>
-<li><code>coverage</code> joins an <code>mcp_tool</code> path's observation only to a proposal the
+<a href="/docs/guides/upgrade-a-plane-from-0-17">upgrade a plane from 0.17</a>).</p>
+</li>
+<li>
+<p><code>coverage</code> joins an <code>mcp_tool</code> path's observation only to a proposal the
 MCP adapter recorded. An enforcement API proposal with the same ids, tool
 and provider joined it too
-(<a href="/docs/reference/coverage#the-join">coverage</a>).</li>
-<li><code>coverage</code> exits 1 when its map cannot be written to standard output. It
+(<a href="/docs/reference/coverage#the-join">coverage</a>).</p>
+</li>
+<li>
+<p><code>coverage</code> exits 1 when its map cannot be written to standard output. It
 exited 2, the status of a refused input, after reading every input
-(<a href="/docs/reference/coverage#output-and-exit-status">coverage</a>).</li>
-<li>A shaped tool list cached before the plane halted material calls is shaped
+(<a href="/docs/reference/coverage#output-and-exit-status">coverage</a>).</p>
+</li>
+<li>
+<p>A shaped tool list cached before the plane halted material calls is shaped
 again once the halt stands, so a tool the halt denies is hidden. The cached
 list answered until its TTL ran out
-(<a href="/docs/reference/mcp-coverage#methods">MCP coverage</a>).</li>
-<li>A <code>tools/call</code> is recorded as sent with the bytes the upstream receives:
+(<a href="/docs/reference/mcp-coverage#methods">MCP coverage</a>).</p>
+</li>
+<li>
+<p>A <code>tools/call</code> is recorded as sent with the bytes the upstream receives:
 the agent's arguments as the protocol library writes them, without
 whitespace between tokens and with U+2028 and U+2029 escaped. The record
 named the agent's own spelling
-(<a href="/docs/contracts#the-action-digest">contracts</a>).</li>
-<li>A <code>tools/call</code> the gateway answers <code>-32603</code> because the upstream never
+(<a href="/docs/contracts#the-action-digest">contracts</a>).</p>
+</li>
+<li>
+<p>A <code>tools/call</code> the gateway answers <code>-32603</code> because the upstream never
 answered names its trail in <code>data</code>, as a wire error does. It carried no
 <code>data</code>
-(<a href="/docs/reference/mcp-coverage#the-codes-the-adapter-mints">MCP coverage</a>).</li>
-<li>A call blocked because its envelope could not be built carries <code>refused</code>
+(<a href="/docs/reference/mcp-coverage#the-codes-the-adapter-mints">MCP coverage</a>).</p>
+</li>
+<li>
+<p>A call blocked because its envelope could not be built carries <code>refused</code>
 with what the refusal said, as documented. Only an execution the adapter
 did not send carried it
-(<a href="/docs/reference/mcp-coverage#the-codes-the-adapter-mints">MCP coverage</a>).</li>
-<li>A tool name, prompt name or resource URI that quotes a credential the
+(<a href="/docs/reference/mcp-coverage#the-codes-the-adapter-mints">MCP coverage</a>).</p>
+</li>
+<li>
+<p>A tool name, prompt name or resource URI that quotes a credential the
 gateway holds, or that starts with <code>withheld:sha256:</code>, is recorded as
 <code>withheld:sha256:</code> and the digest of the name when a client calls it; the
 upstream still receives the name. The proposal recorded the name,
 credential included
-(<a href="/docs/concepts/privacy#what-an-evidence-event-holds">privacy</a>).</li>
-<li>A <code>tools/call</code> admitted under a classification a manifest refresh withdrew
+(<a href="/docs/concepts/privacy#what-an-evidence-event-holds">privacy</a>).</p>
+</li>
+<li>
+<p>A <code>tools/call</code> admitted under a classification a manifest refresh withdrew
 before the send is not sent outside <code>OBSERVE</code>: the adapter aborts it as
 <code>ACTION_UNCLASSIFIED</code>, and an approved retry's approval stays spent. Under
 <code>OBSERVE</code> it runs, as an unclassified call does. It ran under the decision
 made for the old definition
-(<a href="/docs/reference/mcp-coverage#reason-codes-in-the-gateways-answers">MCP coverage</a>).</li>
-<li><code>collect</code> answers a repeat of records it already holds only once it has
+(<a href="/docs/reference/mcp-coverage#reason-codes-in-the-gateways-answers">MCP coverage</a>).</p>
+</li>
+<li>
+<p><code>collect</code> answers a repeat of records it already holds only once it has
 read each repeated record's line back where it wrote it, in a sealed
 segment or the live one. A segment removed, cut or rewritten under it, or
 another file put at a segment's name, makes it answer 503 and take nothing
 more until it is started again. A repeat was answered 200 from the index
 alone, so the plane released records the trail had lost
-(<a href="/docs/guides/watch-a-plane-without-a-collector">watch a plane without a collector</a>).</li>
-<li><code>collect</code> and <code>prune</code> sync the directory the trail directory is named in
+(<a href="/docs/guides/watch-a-plane-without-a-collector">watch a plane without a collector</a>).</p>
+</li>
+<li>
+<p><code>collect</code> and <code>prune</code> sync the directory the trail directory is named in
 before the first answer, so a trail directory just made is still there
 after a power loss. Evidence was acknowledged while the directory's own
-name could still be lost.</li>
-<li>A segment log whose <code>segments.json</code> is a symbolic link is refused by
-<code>collect</code>, <code>prune</code> and every reader. The link was followed.</li>
-<li><code>prune</code> reads each segment it removes again before it writes the
+name could still be lost.</p>
+</li>
+<li>
+<p>A segment log whose <code>segments.json</code> is a symbolic link is refused by
+<code>collect</code>, <code>prune</code> and every reader. The link was followed.</p>
+</li>
+<li>
+<p><code>prune</code> reads each segment it removes again before it writes the
 tombstone, and refuses one that no longer holds what the manifest names,
 changing nothing; it unlinks a segment's file only while its name still
 names the file it read. A file put at a segment's name after the log was
-opened was unlinked unread.</li>
-<li><code>trail export</code> of a segment log stops, exit 2 and with no trailer, at an
+opened was unlinked unread.</p>
+</li>
+<li>
+<p><code>trail export</code> of a segment log stops, exit 2 and with no trailer, at an
 event of another tenant or project than the log is bound to. It wrote the
 event, so an unfiltered export could report no gap
 (<a href="/docs/contracts#a-directory-of-segments">contracts</a>). <code>trail</code> and a
 scenario reading a segment log refuse such an event too; they read it as
-an ordinary trail.</li>
-<li><code>trail export</code> of a segment log does not report the end at a sealed segment
+an ordinary trail.</p>
+</li>
+<li>
+<p><code>trail export</code> of a segment log does not report the end at a sealed segment
 when the live segment after it holds only bytes no newline ends; the export
 after its cursor reports them. A torn live segment after a seal was hidden
-behind <code>end_reached: true</code>.</li>
-<li><code>trail export</code> of a segment log no longer reports the end of the log when a
+behind <code>end_reached: true</code>.</p>
+</li>
+<li>
+<p><code>trail export</code> of a segment log no longer reports the end of the log when a
 seal renamed the live segment while the export was reading the manifest,
 also when the next write had made a new live file by then; it reads the
-log again. The sealed segment was left out behind <code>end_reached: true</code>.</li>
-<li><code>evidence-report -state</code> keeps its cursor on an export of a live segment
+log again. The sealed segment was left out behind <code>end_reached: true</code>.</p>
+</li>
+<li>
+<p><code>evidence-report -state</code> keeps its cursor on an export of a live segment
 that holds no whole line yet, and reads on once it does. It refused that
-export as another file, or as one naming no <code>next_cursor</code>.</li>
-<li><code>trail export</code> writes a line holding a <code>null</code> as a <code>malformed</code> gap, not as
+export as another file, or as one naming no <code>next_cursor</code>.</p>
+</li>
+<li>
+<p><code>trail export</code> writes a line holding a <code>null</code> as a <code>malformed</code> gap, not as
 an event. The codec reads a <code>null</code> as an absent member, and the export's
 reader refuses any record holding one, so an export of such a line could
-not be read (<a href="/docs/contracts#the-evidence-export">contracts</a>).</li>
-<li>A collector's 401 to a request without the credential is sent before the
+not be read (<a href="/docs/contracts#the-evidence-export">contracts</a>).</p>
+</li>
+<li>
+<p>A collector's 401 to a request without the credential is sent before the
 body is read, and closes the connection. Go's server read a small unread
-body first, so a slow body delayed the answer.</li>
-<li>A collector refuses with 415 a request carrying a content coding in any
+body first, so a slow body delayed the answer.</p>
+</li>
+<li>
+<p>A collector refuses with 415 a request carrying a content coding in any
 <code>Content-Encoding</code> field, or more than one <code>Content-Type</code> field. Only the
-first field of each was read.</li>
-<li><code>collect</code> prints its socket as an <code>export.endpoint</code> a plane reads, with a
+first field of each was read.</p>
+</li>
+<li>
+<p><code>collect</code> prints its socket as an <code>export.endpoint</code> a plane reads, with a
 <code>#</code>, <code>?</code> or <code>%</code> in the path escaped. It printed the path as it stands,
-which a plane refused or read as another path.</li>
-<li><code>collect</code> stops within ten seconds of its signal, or of its server
+which a plane refused or read as another path.</p>
+</li>
+<li>
+<p><code>collect</code> stops within ten seconds of its signal, or of its server
 failing, also when a write is still waiting on the disk; that request is
 not answered, and the plane sends it again. The stop waited on the write
-without a bound.</li>
-<li>The exporter refuses a collector's answer surrounded by bytes JSON does not
+without a bound.</p>
+</li>
+<li>
+<p>The exporter refuses a collector's answer surrounded by bytes JSON does not
 take as whitespace, such as a vertical tab, and sends the records again.
-Such an answer was trimmed and accepted, releasing the records.</li>
-<li>The page of the <a href="/docs/reference/claude-code-hooks">Claude Code hooks</a>
+Such an answer was trimmed and accepted, releasing the records.</p>
+</li>
+<li>
+<p>The page of the <a href="/docs/reference/claude-code-hooks">Claude Code hooks</a>
 says what classing <code>Agent</code> as <code>EXECUTE</code> costs: a rule on
 <code>SPAWN_OR_DELEGATE</code> never sees a sub-agent start and a rule that allows
 <code>EXECUTE</code> allows it, so a policy decides <code>Agent</code> by its name or its
 resource type, where a <code>DENY</code> or <code>REQUIRE_APPROVAL</code> overrides an <code>ALLOW</code>
-on <code>EXECUTE</code>; the profile lists it among its gaps.</li>
-<li>The enforcement API refuses a complete whose <code>resultHash</code> is not <code>sha256:</code>
+on <code>EXECUTE</code>; the profile lists it among its gaps.</p>
+</li>
+<li>
+<p>The enforcement API refuses a complete whose <code>resultHash</code> is not <code>sha256:</code>
 and 64 lower-case hex digits as <code>ERROR_CODE_MALFORMED</code>. Any text up to
 1 KiB was recorded, so a client could put a tool's output in the trail
 and the collector's export with capture off
 (<a href="/docs/contracts">contracts</a>). The Go and Python clients judge the hash
 before sending it: a tool's result whose hash is in any other form is
 completed <code>UNKNOWN</code> without the hash, and the Python client raises
-<code>BadResult</code>.</li>
-<li>An <code>EXECUTE</code> answer a shutdown overtakes reaches its client before the
+<code>BadResult</code>.</p>
+</li>
+<li>
+<p>An <code>EXECUTE</code> answer a shutdown overtakes reaches its client before the
 plane records the execution abandoned. The answer could wait in the
-server's buffer until after the abandon.</li>
-<li>The Go and Python clients of the enforcement API abort an <code>EXECUTE</code> that
+server's buffer until after the abandon.</p>
+</li>
+<li>
+<p>The Go and Python clients of the enforcement API abort an <code>EXECUTE</code> that
 carries no authorized bytes also when the call proposed none, as ADR-0051
-requires; they ran the tool with no bytes.</li>
-<li><code>scenario run</code> refuses a <code>/healthz</code> answer without a bundle digest, and a
+requires; they ran the tool with no bytes.</p>
+</li>
+<li>
+<p><code>scenario run</code> refuses a <code>/healthz</code> answer without a bundle digest, and a
 trail compared against no digest cannot pass; both sides empty compared
-equal (<a href="/docs/reference/scenario-format">scenario format</a>).</li>
-<li><code>scenario run</code> refuses to judge a step by a <code>POLICY_DECIDED</code> whose decision
-is of a major this build does not read, whatever the event's own version.</li>
-<li><code>scenario run</code> compares reason codes item by item: one code holding
-<code>RULE_UNDETERMINED, PDP_TIMEOUT</code> compared equal to the two codes.</li>
-<li><code>scenario run</code> and <code>dev --scenario</code> exit 2 when the report could not be
+equal (<a href="/docs/reference/scenario-format">scenario format</a>).</p>
+</li>
+<li>
+<p><code>scenario run</code> refuses to judge a step by a <code>POLICY_DECIDED</code> whose decision
+is of a major this build does not read, whatever the event's own version.</p>
+</li>
+<li>
+<p><code>scenario run</code> compares reason codes item by item: one code holding
+<code>RULE_UNDETERMINED, PDP_TIMEOUT</code> compared equal to the two codes.</p>
+</li>
+<li>
+<p><code>scenario run</code> and <code>dev --scenario</code> exit 2 when the report could not be
 written to standard output, and say so on standard error; a pass nobody
-could read exited 0.</li>
-<li>The hook bridge refuses an event whose <code>tool_input</code> names a member twice
+could read exited 0.</p>
+</li>
+<li>
+<p>The hook bridge refuses an event whose <code>tool_input</code> names a member twice
 in any of its objects, before anything is sent; only a member the event
-itself named twice was refused.</li>
-<li>The scenario reader judges <code>kind</code> before the depth bound, as ADR-0022
+itself named twice was refused.</p>
+</li>
+<li>
+<p>The scenario reader judges <code>kind</code> before the depth bound, as ADR-0022
 orders it: a document of another kind with containers past the bound was
-refused for its depth.</li>
-<li>The qualification of the
+refused for its depth.</p>
+</li>
+<li>
+<p>The qualification of the
 <a href="/docs/reference/claude-code-hooks">Claude Code hooks</a> credits a decision
 to a sub-agent's <code>Write</code> only when the trail holds more decided writes of that file than the other
-calls that wrote it could account for.</li>
+calls that wrote it could account for.</p>
+</li>
+<li>
+<p><code>make quality</code>, as CI and <code>scripts/gate-commit.sh</code> start it, reads the
+<code>Makefile</code> by name, and the <code>Makefile</code> refuses a <code>GNUmakefile</code> or a
+<code>makefile</code> beside it whatever the goal. make reads either one first when no
+makefile is named, so a committed one could replace every check with a
+recipe that prints the pass line. The nightly fuzz run, the race run and
+the external MCP client job name the <code>Makefile</code> too.</p>
+</li>
+<li>
+<p><code>scripts/gate-commit.sh</code> refuses a commit holding a symbolic link that is
+absolute or has a <code>..</code> component. The archive check compared a link's text,
+so a test could read a fixture through it from outside the commit, and the
+stamp rested on bytes the commit does not hold.</p>
+</li>
+<li>
+<p>The pre-push hook and <code>scripts/gate-commit.sh</code> ignore a local grafts file,
+a local shallow file and a local commit-graph, single or a chain, also when
+<code>git -c</code> turns the graph on, as they ignore replace refs, and keep git's
+advice about grafts out of their output. Each could hide an unstamped
+commit from the hook that the remote would still receive. Both still trust
+the local objects and the pusher's command line: they stop a mistake, not a
+writer of <code>.git</code>.</p>
+</li>
+<li>
+<p>The release checks the gate again right before it tags the image and right
+before it publishes. A <code>main</code> that moved past the commit after the first
+check stops the release at the next of those steps; what the earlier step
+published stays. The upload of the client to the package index first checks
+that the released commit's own CI and Security push runs on <code>main</code> passed,
+so a re-run of it still works once <code>main</code> has moved on.</p>
+</li>
+<li>
+<p>Publish names the release's tag in the request that publishes the draft,
+and reads the release back under that tag. A writer who moved the draft to
+another tag could have it published there while the job reported the tag it
+was started for.</p>
+</li>
+<li>
+<p><code>scripts/scan-binaries.sh</code> refuses an archive without the binary of each
+command under <code>cmd/</code> where goreleaser puts it. Any one Go binary satisfied
+it, so a product archive without the command-line binary passed the
+release's verification.</p>
+</li>
+<li>
+<p><code>make test</code> and <code>make test-race</code> refuse a module whose <code>./...</code> leaves out a
+package that holds Go files, as a <code>go.mod</code> <code>ignore</code> directive does, or a
+package the module's code imports, as one under <code>testdata</code> or a directory
+whose name starts with <code>_</code> is, and a module that builds code from a vendor
+directory, from a local <code>replace</code> target that is not one of the
+repository's modules, or, through a replace of one of them, from its
+<code>testdata</code> or a directory of it starting with <code>_</code>. That code's tests did not
+run, and the reporter, which sees only the packages that ran, could not
+tell. Not covered: a package only
+a test file, only a program under <code>//go:build ignore</code>, or only a file for
+another platform than the run's imports.</p>
+</li>
+<li>
+<p><code>scripts/two-accounts.sh</code> builds each package's test binary into a file of
+its own. Two import paths that differ only by a <code>/</code> and a <code>_</code> shared one,
+so a package with no test file in the tagged build ran the other's binary
+under its own name.</p>
+</li>
+<li>
+<p>The check that <code>scripts/expected-runs.txt</code> names every test of a
+<code>twoaccounts</code> file reads the build tags as the job's build sets them:
+release tags such as <code>go1.27</code>, <code>cgo</code>, and the toolchain's experiment tags.
+A file under <code>twoaccounts &amp;&amp; go1.27</code> or <code>twoaccounts &amp;&amp; cgo</code> counted as in
+neither build, so its tests could run in no job unnoticed.</p>
+</li>
+<li>
+<p><code>scripts/check-runs.go</code> counts a test as passed only after that test's
+<code>run</code> event. A pass with no start in the stream was taken.</p>
+</li>
+<li>
+<p><code>scripts/fuzz-smoke.sh</code> refuses a line of a package's fuzz listing that no
+file the build takes declares, such as one a <code>TestMain</code> prints before the
+listing, and counts a target as run only when the fuzzing engine reports
+executions in a verbose run that ran that target alone under its own name
+for at least nine tenths of the time asked for, which must be whole
+seconds, minutes or hours. It counted such a line as a target, and fuzzing
+it, a target whose <code>TestMain</code> exits before fuzzing, one whose <code>TestMain</code>
+points the engine at another target, or one whose <code>TestMain</code> cuts the fuzz
+time, ran nothing or almost nothing. A <code>TestMain</code> that prints the engine's
+report, the names and the time itself still passes.</p>
+</li>
+<li>
+<p>The dependency rule refuses <code>time.Timer</code> and <code>time.Ticker</code> in the guarded
+trees and the trees they reach, by name and through forbidigo. Their
+<code>Reset</code> schedules from the clock, so a timer a caller handed in let such a
+package read it.</p>
+</li>
+<li>
+<p>The nightly, CI and Security workflows keep one concurrency group per
+event, so a manual or scheduled run no longer replaces a run queued behind
+another: a scheduled night whose red then went unreported, or a push to
+<code>main</code> whose result the release then could not find.</p>
+</li>
+<li>
+<p>The port inventory check refuses a doctor key in <code>scripts/ports.txt</code> that
+the gateway's doctor does not report under. Any key but <code>none</code> passed.</p>
+</li>
 </ul>
 <h3 id="documentation">Documentation</h3>
 <ul>

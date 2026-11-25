@@ -10,16 +10,18 @@
 #            commits
 #   refused  a push to main with no stamp, with one commit of several
 #            unstamped (the older, the newer, a merge's side, one a replace
-#            ref hides), from a local branch of another name, from a source
-#            that holds a space, beside a branch push in either order, before
-#            or after a gated line, without a final newline, to a remote that
-#            has no main but holds the commits on a branch, past a remote
-#            commit this repository lacks, and of a tree; a stamp of two
-#            lines, of the wrong words, with words before or after, with a
-#            NUL byte, or that is a symbolic link; a release tag of any v
-#            name, new or moved, on a commit nobody gated, or on a tree; a
-#            line that lacks a field, or holds a destination or an object
-#            name git would not write; a push that names no remote
+#            ref, a graft or a shallow file hides), from a local branch of
+#            another name, from a source that holds a space, beside a branch
+#            push in either order, before or after a gated line, without a
+#            final newline, to a remote that has no main but holds the
+#            commits on a branch, past a remote commit this repository
+#            lacks, and of a tree; a stamp of two lines, of the wrong words,
+#            with words before or after, with a NUL byte, or that is a
+#            symbolic link; a release tag of any v name, new or moved, on a
+#            commit nobody gated, or on a tree; a line that lacks a field, or
+#            holds a destination or an object name git would not write; a
+#            push that names no remote
+# No case the hook is handed may print one of git's hints.
 set -euo pipefail
 
 _PROBE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
@@ -107,6 +109,12 @@ verdict() {
 check() {
   local out rc=0
   out="$(cd "${work}" && printf '%s' "$5" | /bin/bash "${hook}" ${4:+"$4"} 2>&1)" || rc=$?
+  if [[ "${out}" == *"hint:"* ]]; then
+    cases=$((cases + 1))
+    failed=$((failed + 1))
+    printf 'FAIL %s: git printed a hint into the hook'"'"'s output: %s\n' "$3" "${out}" >&2
+    return
+  fi
   verdict "$1" "$2" "$3" "${rc}" "${out}"
 }
 
@@ -153,6 +161,13 @@ check refused "1 of 3 commit(s) ungated" "a gated line after an ungated one" ori
 g replace --graft "${two}" "${base}"
 check refused "1 of 2 commit(s) ungated" "a commit a replace ref hides" origin "${to_main}${nl}"
 g replace -d "${two}" >/dev/null
+mkdir -p "${work}/.git/info"
+printf '%s %s\n' "${two}" "${base}" >"${work}/.git/info/grafts"
+check refused "1 of 2 commit(s) ungated" "a commit a graft hides" origin "${to_main}${nl}"
+rm "${work}/.git/info/grafts"
+printf '%s\n' "${two}" >"${work}/.git/shallow"
+check refused "1 of 2 commit(s) ungated" "a commit a shallow file hides" origin "${to_main}${nl}"
+rm "${work}/.git/shallow"
 stamp "${one}" "${merged}"
 check refused "1 of 4 commit(s) ungated" "a merge whose side nobody gated" origin \
   "refs/heads/main ${merged} refs/heads/main ${base}${nl}"

@@ -36,7 +36,7 @@ audit of the whole tree
    open a pull request; verify the live version, labels and links. The
    website names it only then.
 
-A version is `X.Y.Z`; a suffix such as `-rc.1` marks a preview.
+A version is `X.Y.Z`; a suffix like `-rc.1` marks a preview.
 
 ## What the workflow does
 
@@ -54,16 +54,16 @@ A version is `X.Y.Z`; a suffix such as `-rc.1` marks a preview.
    the image.
 7. Verifies downloads and image, adds the image's version tag, publishes the
    draft with its digest.
-8. Builds and attests the Python client's files first; after publication a
+8. Builds and attests the Python client's files; after publication a
    separate job, re-runnable alone, uploads them to PyPI and reads them back.
 
 A known-vulnerable symbol, called or not, or an unavailable scan stops release.
-Only `main`'s head may release, with CI, Security and the newest CodeQL
-analysis covering it; advancing `main` before approval fails it. Before
-Publish, failure leaves at most a draft and staging/version image tags:
-delete them, fix the cause, release the next version. Publish requires
-exactly the verified files and rereads their digests; failure then leaves a
-public release and names the recovery steps.
+Only `main`'s head, covered by CI, Security and the newest CodeQL analysis,
+may release; the image tag and Publish recheck that, the upload only the
+commit's own runs. Before Publish, failure leaves at most a draft and
+staging/version image tags: delete them, fix the cause, release the next
+version. Publish names the tag, requires exactly the verified files and
+rereads both; failure then leaves a public release and names recovery steps.
 
 ## A dry run
 
@@ -81,7 +81,7 @@ Name a broken release in the next version's changelog.
 
 ## Checking a download
 
-Download the archive, `checksums.txt` and `checksums.txt.sigstore.json`, then,
+Download the archive, `checksums.txt` and `checksums.txt.sigstore.json`;
 for `v0.1.0-alpha`:
 
 ```sh
@@ -98,8 +98,8 @@ gh attestation verify guardana-control_0.1.0-alpha_linux_amd64.tar.gz \
   --source-ref refs/tags/v0.1.0-alpha --deny-self-hosted-runners
 ```
 
-On macOS use `shasum -a 256 --ignore-missing -c checksums.txt`. The signature
-and the attestation bind the checksummed archive to the workflow and tag.
+On macOS use `shasum -a 256 --ignore-missing -c checksums.txt`. Signature
+and attestation bind the archive to the workflow and tag.
 
 ## Checking the image
 

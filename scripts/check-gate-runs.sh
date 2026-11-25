@@ -13,11 +13,15 @@
 # branch, not per commit, and judge main's newest CodeQL analysis, so that
 # analysis has to be of this commit. An answer that cannot be read is a
 # refusal.
+# With --released it judges the commit a published release was cut from by its
+# own push runs alone: main has moved on since, so neither main's head nor its
+# alerts describe that commit, and a re-run of what follows the publication
+# has to keep passing.
 # It asks GitHub, so it needs GH_TOKEN (or a gh login) with read access to the
-# repository's contents, Actions and security events, and GITHUB_REPOSITORY as
-# owner/name.
+# repository's contents, Actions and security events (Actions alone with
+# --released), and GITHUB_REPOSITORY as owner/name.
 #
-#   GITHUB_REPOSITORY=<owner>/<name> scripts/check-gate-runs.sh <commit sha>
+#   GITHUB_REPOSITORY=<owner>/<name> scripts/check-gate-runs.sh [--released] <commit sha>
 set -euo pipefail
 
 die() {
@@ -25,25 +29,32 @@ die() {
   exit 1
 }
 
-[[ $# -eq 1 && "$1" =~ ^[0-9a-f]{40}$ ]] || die "usage: scripts/check-gate-runs.sh <40-hex commit sha>"
+released=false
+if [[ $# -eq 2 && "$1" == --released ]]; then
+  released=true
+  shift
+fi
+[[ $# -eq 1 && "$1" =~ ^[0-9a-f]{40}$ ]] || die "usage: scripts/check-gate-runs.sh [--released] <40-hex commit sha>"
 sha="$1"
 repo="${GITHUB_REPOSITORY:-}"
 [[ "${repo}" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || die "GITHUB_REPOSITORY must be owner/name, not '${repo}'"
 
-# The branch is resolved by its full ref, because a bare "main" in a
-# comparison may resolve to a tag of that name.
-main="$(gh api "repos/${repo}/git/ref/heads/main" \
-  --jq 'if .ref != "refs/heads/main" then error("the answer names no refs/heads/main") else .object.sha end')" ||
-  die "could not read the head of main from GitHub"
-[[ "${main}" =~ ^[0-9a-f]{40}$ ]] || die "GitHub answered '${main}' for the head of main"
+if [[ "${released}" == false ]]; then
+  # The branch is resolved by its full ref, because a bare "main" in a
+  # comparison may resolve to a tag of that name.
+  main="$(gh api "repos/${repo}/git/ref/heads/main" \
+    --jq 'if .ref != "refs/heads/main" then error("the answer names no refs/heads/main") else .object.sha end')" ||
+    die "could not read the head of main from GitHub"
+  [[ "${main}" =~ ^[0-9a-f]{40}$ ]] || die "GitHub answered '${main}' for the head of main"
 
-status="$(gh api "repos/${repo}/compare/${main}...${sha}" \
-  --jq 'if (.status | type) != "string" then error("the answer holds no status") else .status end')" ||
-  die "could not compare ${sha} with main's head ${main} on GitHub"
-# behind is refused too: an older commit of main was judged by its own runs, but
-# main's alerts now describe a later commit.
-[[ "${status}" == identical ]] ||
-  die "${sha} is not main's head: compared with main's head ${main}, GitHub says '${status}'"
+  status="$(gh api "repos/${repo}/compare/${main}...${sha}" \
+    --jq 'if (.status | type) != "string" then error("the answer holds no status") else .status end')" ||
+    die "could not compare ${sha} with main's head ${main} on GitHub"
+  # behind is refused too: an older commit of main was judged by its own runs, but
+  # main's alerts now describe a later commit.
+  [[ "${status}" == identical ]] ||
+    die "${sha} is not main's head: compared with main's head ${main}, GitHub says '${status}'"
+fi
 
 # The first line is the total GitHub counts and the number of runs it answered
 # with; then one line per run: head_sha, event, head_branch, conclusion, with an
@@ -88,6 +99,11 @@ for workflow in ci.yml security.yml; do
   fi
   printf 'check-gate-runs: %s passed on %s (a successful push run on main)\n' "${workflow}" "${sha}"
 done
+
+if [[ "${released}" == true ]]; then
+  printf "check-gate-runs: %s was released from main; main's head and its alerts are not judged\n" "${sha}"
+  exit 0
+fi
 
 # The first line is the number of alerts GitHub answered with; then one line per
 # open CodeQL alert of severity high or critical: number, severity, rule. An

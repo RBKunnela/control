@@ -11,12 +11,24 @@
 # other branches was never gated. For a v* tag it is the commit the tag names:
 # a release is cut from a commit that was gated cold. A line git did not write,
 # a source that names no commit, or a commit list git cannot give, refuses the
-# push. Replace refs are ignored: a push sends the commits' own objects, so the
-# hook lists those.
+# push. Replace refs, grafts, a shallow file and a commit-graph are ignored, so
+# the hook lists the parents the local objects name, and a clone that lacks
+# them fails the listing. It trusts those objects and the pusher's command
+# line: it stops a mistake, not a writer of .git.
 #
 #   ln -s ../../scripts/pre-push.sh .git/hooks/pre-push
 set -euo pipefail
-export GIT_NO_REPLACE_OBJECTS=1
+# An empty GIT_SHALLOW_FILE names no shallow file. git takes parents from a
+# commit-graph, a file or a chain, without checking them against the objects,
+# so it is not read. Naming a grafts file makes git print its deprecation
+# advice on every commit it reads, so that advice is off. Both settings come
+# after any the caller passes the same way; git reads what `git -c` passes
+# after those, so the graph's setting goes last there too.
+n="${GIT_CONFIG_COUNT:-0}"
+export GIT_NO_REPLACE_OBJECTS=1 GIT_GRAFT_FILE=/dev/null GIT_SHALLOW_FILE='' \
+  "GIT_CONFIG_KEY_${n}=advice.graftFileDeprecated" "GIT_CONFIG_VALUE_${n}=false" \
+  "GIT_CONFIG_KEY_$((n + 1))=core.commitGraph" "GIT_CONFIG_VALUE_$((n + 1))=false" GIT_CONFIG_COUNT=$((n + 2))
+export GIT_CONFIG_PARAMETERS="${GIT_CONFIG_PARAMETERS:+${GIT_CONFIG_PARAMETERS} }'core.commitgraph'='false'"
 
 refuse() {
   printf 'pre-push: %s; nothing pushed\n' "$*" >&2

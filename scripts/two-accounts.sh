@@ -51,6 +51,7 @@ done <"${list}"
 [[ -n "${packages}" ]] || die "${list} names no test"
 
 status=0
+n=0
 while read -r entry <&3; do
   [[ -n "${entry}" ]] || continue
   pkg="${entry#<}"
@@ -59,7 +60,11 @@ while read -r entry <&3; do
   while read -r p test _; do
     [[ "${p}" == "${pkg}" ]] && names="${names}${names:+|}${test}"
   done <"${list}"
-  bin="${work}/$(printf '%s' "${pkg}" | tr '/.' '__').test"
+  # Numbered, never named after the import path: two paths can map to one
+  # name, and go test -c leaves an earlier package's binary in place when it
+  # writes none.
+  n=$((n + 1))
+  bin="${work}/${n}.test"
   if ! go test -c -tags twoaccounts -o "${bin}" "${pkg}" </dev/null; then
     printf 'two-accounts: %s does not build\n' "${pkg}" >&2
     status=1

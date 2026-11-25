@@ -17,8 +17,10 @@ on:
 permissions:
   contents: read
 
+# GitHub keeps one pending run per group and drops the one queued before it,
+# so each event has its own group: a manual run never displaces a scheduled one.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 defaults:
@@ -71,7 +73,7 @@ jobs:
       - name: Fuzz each target for ten seconds
         # The seeds run in make quality's tests on every pull request; this
         # searches past them (ADR-0062).
-        run: /usr/bin/env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make fuzz-smoke
+        run: /usr/bin/env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make -f Makefile fuzz-smoke
 
   report:
     name: Report a red night

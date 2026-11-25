@@ -1380,7 +1380,13 @@ the backup; under <code>signed</code> both commands refuse a key the environment
 outside <code>api/gen/</code> and a skipped test <code>scripts/expected-skips.txt</code> does not name
 (<a href="/docs/adr/0063-a-skipped-test-fails-the-gate-unless-the-repository-expects-it">ADR-0063</a>),
 and it reads what the test binary prints, so a test that prints its own pass and
-exits 0 hides the tests after it, which only review catches), <code>scripts/</code>,
+exits 0 hides the tests after it, which only review catches; before it, both
+targets refuse a module whose <code>./...</code> leaves out a package holding Go files, as
+a <code>go.mod</code> <code>ignore</code> directive can, or one the module's code imports, as one
+under <code>testdata</code> or <code>_</code> is, and a module that builds code from a vendor
+directory or a local <code>replace</code> outside the repository's modules; a package only
+a test, a <code>//go:build ignore</code> program or another platform's file imports is not
+covered), <code>scripts/</code>,
 <code>internal/docscheck/</code>, <code>internal/core/layering_test.go</code>. The dependency rule is
 an allowlist over six trees, all examined, and every package of this module they
 reach is held to the same refusals by name; no non-test file under <code>adapters/</code>
@@ -1402,7 +1408,8 @@ names the pages a change makes suspect.</p>
 <p><code>docs/adr/</code>.</p>
 <h3 id="continuous-integration">continuous-integration</h3>
 <p><code>.github/workflows/</code>: <code>ci.yml</code> runs <code>make quality</code> on Linux for every push to
-<code>main</code> and every pull request, its quality job also checking every action pin
+<code>main</code> and every pull request, naming the <code>Makefile</code>, which refuses a
+<code>GNUmakefile</code> or <code>makefile</code> beside it, its quality job also checking every action pin
 against the commit its version tag names in that action's repository
 (<code>scripts/pin-actions.sh --check</code>, failing when GitHub cannot answer),
 <code>make check-mcp-client</code> beside it
@@ -1439,11 +1446,16 @@ without a stored key, and a build provenance attestation for every archive, all
 verified by the workflow before it publishes.</p>
 <p>Every binary of every archive and the image's binary for each platform are
 scanned with <code>govulncheck</code> in binary mode before anything is attested; a finding
-stops the release (<code>scripts/scan-binaries.sh</code>). The release job refuses a commit
-that is not main's head, that lacks a successful CI and Security push run on
-main, or that main's newest CodeQL analysis is not of, and refuses while main
-has an open CodeQL alert of severity high or critical
-(<code>scripts/check-gate-runs.sh</code>).</p>
+stops the release (<code>scripts/scan-binaries.sh</code>), and so does an archive without
+the binary of a command under <code>cmd/</code> where goreleaser puts it. The release job
+refuses a commit that is not main's head, that lacks a successful CI and
+Security push run on main, or that main's newest CodeQL analysis is not of, and
+refuses while main has an open CodeQL alert of severity high or critical
+(<code>scripts/check-gate-runs.sh</code>); it checks again right before it tags the image
+and right before it publishes, names the tag in the request that publishes the
+draft, and reads the release back under that tag. The job that uploads the
+client to the package index first checks the released commit's own CI and
+Security push runs on main, so a re-run still works once main has moved on.</p>
 <p>Also an OCI image of the gateway, <code>ghcr.io/guardana/control-gateway</code>, for
 linux/amd64 and linux/arm64 on a distroless nonroot base, signed and attested by
 digest the same way, its digest named in the release notes

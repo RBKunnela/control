@@ -10,8 +10,10 @@
 #             extracted apart, and every Go binary inside it, which must be
 #             built for the platform the archive's _<os>_<arch>.tar.gz suffix
 #             names; an archive with no such suffix, one that holds no Go
-#             binary, a name holding a newline or a tab, and an ELF or
-#             Mach-O file go cannot read all fail
+#             binary or no Go binary of a command's name under cmd/ where
+#             goreleaser puts it (at the archive's top, or under bin/ in the
+#             directory of the archive's name), a name holding a newline or
+#             a tab, and an ELF or Mach-O file go cannot read all fail
 #   image     for each platform named, the binary the image's entrypoint
 #             names, copied out of a container created and never started; a
 #             reference by digest must name an index whose platforms are
@@ -64,6 +66,13 @@ case "${mode}" in
     [[ $# -eq 1 ]] || die "${usage}"
     dist="$1"
     [[ -d "${dist}" ]] || die "${dist} is not a directory"
+    # Each command under cmd/ builds the binary of its name, and the product
+    # and the demo archive each carry all of them: a count of Go binaries
+    # above zero would pass an archive that lost one, and a name matched
+    # anywhere in it would pass one that holds it somewhere nothing runs it.
+    commands="$(cd "${root}" && repo_files 'cmd/*.go' | awk -F/ 'NF > 2 { print $2 }' | LC_ALL=C sort -u)" ||
+      die "the commands under cmd/ could not be listed"
+    [[ -n "${commands}" ]] || die "no command under cmd/ is listed, so no archive can be checked for its binaries"
     archives=0
     for archive in "${dist}"/*.tar.gz; do
       [[ -f "${archive}" ]] || continue
@@ -83,6 +92,7 @@ case "${mode}" in
       # The extracted archive, not the repository, so repo_files has no say.
       files="$(find "${dir}" -type f | LC_ALL=C sort)" || die "the files of ${name} could not be listed"
       found=0
+      held=""
       while IFS= read -r file <&3; do
         [[ -n "${file}" ]] || continue
         if ! go version -m "${file}" >/dev/null 2>&1; then
@@ -99,9 +109,15 @@ case "${mode}" in
           continue
         fi
         found=$((found + 1))
+        held+="${file#"${dir}"/}"$'\n'
         printf '%s/%s\t%s\t%s\n' "${name}" "${file#"${dir}"/}" "${file}" "${want}" >>"${list}"
       done 3<<<"${files}"
       [[ ${found} -gt 0 ]] || die "${name} holds no Go binary"
+      wrapped="${name%.tar.gz}/bin"
+      while IFS= read -r command; do
+        grep -Fxq -e "${command}" -e "${wrapped}/${command}" <<<"${held}" ||
+          die "${name} holds no Go binary at ${command} or ${wrapped}/${command}, where the archive puts the binary of cmd/${command}"
+      done <<<"${commands}"
     done
     [[ ${archives} -gt 0 ]] || die "${dist} holds no .tar.gz archive"
     source_text="${archives} archives"

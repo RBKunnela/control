@@ -43,9 +43,9 @@ exec jq -r "$4" "${answer}"
 // main at gateMainSHA and a comparison that finds the commit identical, empty
 // alerts by an empty list, and empty analyses by one CodeQL analysis of
 // gateRunsSHA on main. An answer that starts with "HTTP " is a gh failure: the
-// stub prints it and exits 1.
+// stub prints it and exits 1. option, when set, goes before the commit.
 type gateAnswers struct {
-	ci, security, ref, compare, alerts, analyses string
+	ci, security, ref, compare, alerts, analyses, option string
 }
 
 func gateAnalysis(sha, ref, tool, analysisErr string) string {
@@ -189,6 +189,35 @@ func TestCheckGateRunsRefusesACommitNotOnMain(t *testing.T) {
 			checkGateVerdict(t, out, err, tc.pass, tc.want)
 		})
 	}
+}
+
+// TestCheckGateRunsJudgesAReleasedCommitByItsOwnRuns: with --released the
+// script judges the commit a published release was cut from by its own push
+// runs on main, so a re-run of an upload still passes once main has moved on
+// and its alerts describe a later commit; a commit whose runs did not pass is
+// refused all the same.
+func TestCheckGateRunsJudgesAReleasedCommitByItsOwnRuns(t *testing.T) {
+	bash, script := gateRunsTools(t)
+	good := gateRuns(gateRun(gateRunsSHA, "push", "main", "success"))
+	moved := gateAnswers{
+		ci: good, security: good, compare: gateCompare("behind"), option: "--released",
+		alerts:   "[" + gateAlert(9, "open", "critical") + "]",
+		analyses: "[" + gateAnalysis(gateMainSHA, "refs/heads/main", "CodeQL", "") + "]",
+	}
+	out, urls, err := runCheckGateRuns(t, bash, script, moved)
+	checkGateVerdict(t, out, err, true, "check-gate-runs: "+gateRunsSHA+" was released from main; main's head and its alerts are not judged")
+	for _, u := range urls {
+		if !strings.Contains(u, "/actions/workflows/") {
+			t.Errorf("with --released the script asked for %q", u)
+		}
+	}
+	failed := moved
+	failed.security = gateRuns(gateRun(gateRunsSHA, "push", "main", "failure"))
+	out, _, err = runCheckGateRuns(t, bash, script, failed)
+	checkGateVerdict(t, out, err, false, "security.yml has no successful push run on main for "+gateRunsSHA)
+
+	usage, err := exec.Command(bash, script, "--release", gateRunsSHA).CombinedOutput() //nolint:gosec // G204: bash from PATH running this repository's own script
+	checkGateVerdict(t, string(usage), err, false, "usage: scripts/check-gate-runs.sh [--released] <40-hex commit sha>")
 }
 
 func gateAlert(number int, state, level string) string {
@@ -356,7 +385,11 @@ func runCheckGateRuns(t *testing.T, bash, script string, a gateAnswers) (string,
 	if err := os.WriteFile(filepath.Join(dir, "gh"), []byte(stubGH), 0o700); err != nil { //nolint:gosec // G306: the stub has to be executable
 		t.Fatal(err)
 	}
-	cmd := exec.Command(bash, script, gateRunsSHA) //nolint:gosec // G204: bash from PATH running this repository's own script
+	args := []string{script, gateRunsSHA}
+	if a.option != "" {
+		args = []string{script, a.option, gateRunsSHA}
+	}
+	cmd := exec.Command(bash, args...) //nolint:gosec // G204: bash from PATH running this repository's own script
 	cmd.Env = append(os.Environ(),
 		"PATH="+dir+string(os.PathListSeparator)+os.Getenv("PATH"),
 		"STUB_DIR="+dir,

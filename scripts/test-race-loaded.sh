@@ -31,7 +31,7 @@ done
 printf 'test-race-loaded: %d busy loop(s) on %d processor(s)\n' "${#burners[@]}" "${cpus}"
 
 rc=0
-make test-race || rc=$?
+make -f Makefile test-race || rc=$?
 
 alive=0
 for pid in "${burners[@]}"; do

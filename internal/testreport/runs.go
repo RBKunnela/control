@@ -103,10 +103,13 @@ func SummarizeRuns(r io.Reader, w io.Writer, expected ExpectedRuns) (Summary, er
 	return sum, err
 }
 
-// passes is every test whose last result in the stream is a pass, read
-// with the parser Summarize uses, so a line it refuses counts for nothing.
+// passes is every test whose last result in the stream is a pass that
+// follows a run event of that test, read with the parser Summarize uses, so
+// a line it refuses counts for nothing. A result no run event opened is not
+// a test the binary started.
 func passes(raw []byte) map[Run]bool {
 	last := map[Run]string{}
+	started := map[Run]bool{}
 	sc := bufio.NewScanner(bytes.NewReader(raw))
 	sc.Buffer(nil, len(raw)+1)
 	for sc.Scan() {
@@ -114,9 +117,17 @@ func passes(raw []byte) map[Run]bool {
 		if !ok || e.Test == "" {
 			continue
 		}
+		key := Run{e.Package, e.Test}
 		switch e.Action {
+		case "run":
+			started[key] = true
 		case "pass", "fail", "skip":
-			last[Run{e.Package, e.Test}] = e.Action
+			if !started[key] {
+				last[key] = "unstarted"
+				continue
+			}
+			last[key] = e.Action
+			started[key] = false
 		}
 	}
 	out := map[Run]bool{}

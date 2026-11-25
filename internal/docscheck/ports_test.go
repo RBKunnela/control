@@ -11,9 +11,13 @@ import (
 	"path"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
+	"unicode"
+
+	"github.com/guardana/control/internal/brand"
 )
 
 const (
@@ -101,10 +105,83 @@ func lineProblems(fsys fs.FS, p portLine) []string {
 		problems = append(problems, fmt.Sprintf("%s:%d: %s", portsFile, p.at, problem))
 	}
 	problems = append(problems, conformanceProblems(fsys, p)...)
-	if p.doc == "none" && !recordSaysNoDoctor(fsys, p.name) {
-		problems = append(problems, fmt.Sprintf("%s:%d: port %s gives doctor key none, and no record says its component has no doctor", portsFile, p.at, p.name))
+	switch keys, err := doctorKeys(fsys); {
+	case p.doc == "none":
+		if !recordSaysNoDoctor(fsys, p.name) {
+			problems = append(problems, fmt.Sprintf("%s:%d: port %s gives doctor key none, and no record says its component has no doctor", portsFile, p.at, p.name))
+		}
+	case err != nil:
+		problems = append(problems, fmt.Sprintf("%s:%d: port %s: the doctor's keys cannot be read: %v", portsFile, p.at, p.name, err))
+	case !slices.Contains(keys, p.doc):
+		problems = append(problems, fmt.Sprintf("%s:%d: port %s gives doctor key %s, which the doctor reports under no key; it reports %s", portsFile, p.at, p.name, p.doc, strings.Join(keys, ", ")))
 	}
 	return problems
+}
+
+// doctorDir is the gateway command, whose doctor reports each port's verdict
+// under a key held in a constant named doctor<Something>.
+const doctorDir = "cmd/" + brand.Gateway
+
+// doctorKeys returns the string value of every constant named doctor<Upper>
+// in the non-test Go files of doctorDir; finding none is an error, so a
+// renamed directory or constant cannot pass every key unread.
+func doctorKeys(fsys fs.FS) ([]string, error) {
+	names, err := fs.Glob(fsys, doctorDir+"/*.go")
+	if err != nil {
+		return nil, err
+	}
+	var keys []string
+	for _, rel := range names {
+		if strings.HasSuffix(rel, "_test.go") {
+			continue
+		}
+		file, err := parseGo(fsys, rel)
+		if err != nil {
+			return nil, err
+		}
+		keys = append(keys, doctorConstants(file)...)
+	}
+	if len(keys) == 0 {
+		return nil, fmt.Errorf("no constant named doctor<Upper> with a string value in %s", doctorDir)
+	}
+	slices.Sort(keys)
+	return keys, nil
+}
+
+func doctorConstants(file *ast.File) []string {
+	var keys []string
+	for _, decl := range file.Decls {
+		gd, ok := decl.(*ast.GenDecl)
+		if !ok || gd.Tok != token.CONST {
+			continue
+		}
+		for _, spec := range gd.Specs {
+			vs := spec.(*ast.ValueSpec)
+			for i, name := range vs.Names {
+				if i < len(vs.Values) {
+					if key, ok := doctorKey(name.Name, vs.Values[i]); ok {
+						keys = append(keys, key)
+					}
+				}
+			}
+		}
+	}
+	return keys
+}
+
+// doctorKey is the value of a constant named doctor<Upper> whose value is a
+// string literal.
+func doctorKey(name string, value ast.Expr) (string, bool) {
+	rest, ok := strings.CutPrefix(name, "doctor")
+	if !ok || rest == "" || !unicode.IsUpper(rune(rest[0])) {
+		return "", false
+	}
+	lit, ok := value.(*ast.BasicLit)
+	if !ok || lit.Kind != token.STRING {
+		return "", false
+	}
+	key, err := strconv.Unquote(lit.Value)
+	return key, err == nil
 }
 
 // unlistedCaseDirs names each directory under testdata/ports no line lists.
@@ -359,10 +436,20 @@ func stagePorts(t *testing.T) fstest.MapFS {
 		}
 		stage[rel] = &fstest.MapFile{Data: data}
 	}
+	addGo := func(dir string) {
+		names, err := fs.Glob(repo, dir+"/*.go")
+		if err != nil || len(names) == 0 {
+			t.Fatalf("%s: no Go file to stage: %v", dir, err)
+		}
+		for _, rel := range names {
+			add(rel)
+		}
+	}
 	add(portsFile)
 	for _, record := range noDoctor {
 		add(record[0])
 	}
+	addGo(doctorDir)
 	err := fs.WalkDir(repo, portsCases, func(rel string, e fs.DirEntry, err error) error {
 		if err == nil && !e.IsDir() {
 			add(rel)
@@ -375,13 +462,7 @@ func stagePorts(t *testing.T) fstest.MapFS {
 	data, _ := fs.ReadFile(repo, portsFile)
 	for _, p := range readPortLines(data) {
 		dir, _, _ := strings.Cut(p.iface, ".")
-		names, err := fs.Glob(repo, dir+"/*.go")
-		if err != nil || len(names) == 0 {
-			t.Fatalf("%s: no Go file to stage: %v", dir, err)
-		}
-		for _, rel := range names {
-			add(rel)
-		}
+		addGo(dir)
 	}
 	return stage
 }
@@ -492,6 +573,9 @@ func TestPortProblemsRefuseEachPlantedDefect(t *testing.T) {
 		"doctor key none on a port with a doctor": {func(s fstest.MapFS) {
 			replaceIn(t, s, portsFile, trustLine, strings.TrimSuffix(trustLine, "trust")+"none")
 		}, "port trust-roster gives doctor key none"},
+		"a doctor key the doctor does not report": {func(s fstest.MapFS) {
+			replaceIn(t, s, portsFile, trustLine, trustLine+".typo")
+		}, "port trust-roster gives doctor key trust.typo, which the doctor reports under no key"},
 		"doctor key none and the record no longer says so": {func(s fstest.MapFS) {
 			replaceIn(t, s, noDoctor["record-log"][0], "`doctor` of its own", "doctor of its own")
 		}, "port record-log gives doctor key none"},

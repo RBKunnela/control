@@ -293,3 +293,64 @@ func TestTheGateRunsTheChecksMakeWasToldToSkip(t *testing.T) {
 		})
 	}
 }
+
+// shadowRefused is the refusal of a makefile make reads before the Makefile.
+const shadowRefused = "beside the Makefile, which make reads before it"
+
+// TestTheGateRefusesAMakefileMakeReadsFirst: make reads a GNUmakefile or a
+// makefile before a Makefile when no -f names one, so one planted beside it
+// would run its own quality and print the pass line. The entry points name
+// the Makefile, and the Makefile, so named, refuses either one for every goal.
+// A case-insensitive file system holds no makefile beside a Makefile, since
+// both are one file there, and that case is skipped.
+func TestTheGateRefusesAMakefileMakeReadsFirst(t *testing.T) {
+	makeBin, err := exec.LookPath("make")
+	if err != nil {
+		t.Fatalf("the gate needs make: %v", err)
+	}
+	const shadow = "quality fuzz-smoke quality-quick:\n\t@echo 'quality: green'\n"
+	for _, name := range []string{"GNUmakefile", "makefile"} {
+		t.Run(name, func(t *testing.T) {
+			dir := standInTree(t)
+			if err := os.WriteFile(filepath.Join(dir, name), []byte(shadow), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if !holdsBoth(t, dir, name, "Makefile") {
+				t.Skipf("%s and Makefile are one file on this file system, so there is nothing to plant", name)
+			}
+			bare := exec.Command(makeBin, "-C", dir, "quality") //nolint:gosec // G204: make, in a stand-in tree, with fixed arguments
+			bare.Env = cleanMakeEnv()
+			if out, err := bare.CombinedOutput(); err != nil || !strings.Contains(string(out), "quality: green") {
+				t.Fatalf("make quality with %s planted = %v, want the planted pass line, which shows make read it first:\n%.600s", name, err, out)
+			}
+			for _, goal := range []string{"quality", "fuzz-smoke", "quality-quick"} {
+				wantShadowRefused(t, makeBin, dir, goal, name)
+			}
+		})
+	}
+}
+
+// holdsBoth reports whether dir lists both names as entries of their own.
+func holdsBoth(t *testing.T, dir, a, b string) bool {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	has := func(name string) bool {
+		return slices.ContainsFunc(entries, func(e os.DirEntry) bool { return e.Name() == name })
+	}
+	return has(a) && has(b)
+}
+
+// wantShadowRefused runs make -f Makefile goal in dir and wants the refusal
+// of the makefile name planted there, never the planted pass line.
+func wantShadowRefused(t *testing.T, makeBin, dir, goal, name string) {
+	t.Helper()
+	cmd := exec.Command(makeBin, "-C", dir, "-f", "Makefile", goal) //nolint:gosec // G204: make, in a stand-in tree, with fixed arguments
+	cmd.Env = cleanMakeEnv()
+	out, err := cmd.CombinedOutput()
+	if err == nil || strings.Contains(string(out), "quality: green") || !strings.Contains(string(out), name+" "+shadowRefused) {
+		t.Errorf("make -f Makefile %s with %s planted = %v, want a refusal saying %q:\n%.600s", goal, name, err, name+" "+shadowRefused, out)
+	}
+}

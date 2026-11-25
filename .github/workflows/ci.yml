@@ -12,7 +12,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # GitHub keeps one pending run per group and drops the one queued before it,
+  # so each event has its own group: a manual run never displaces a pending
+  # push run on main. Two pushes to main in quick succession still can, and
+  # the release then refuses the commit that has no result of its own.
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   # Superseded pull request runs are cancelled; runs on main are not, because
   # every commit there has to have its own recorded result.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -126,8 +130,10 @@ jobs:
 
       - name: Run the quality gate
         # make takes options from these variables, so an earlier step that
-        # set one could make it skip a check; GO names the go the gate runs.
-        run: /usr/bin/env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make quality GO=go
+        # set one could make it skip a check; -f names the Makefile, which a
+        # GNUmakefile or makefile would otherwise shadow; GO names the go the
+        # gate runs.
+        run: /usr/bin/env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS -u MAKEFILES make -f Makefile quality GO=go
 
       - name: Check every action pin against its repository
         # The gate's own checks see only a pin's shape, and a commit from any
@@ -226,7 +232,7 @@ jobs:
           "${bin}/uv" python install --no-config --no-bin "${CLIENT_PYTHON_VERSION}"
 
       - name: Run the guide with an external MCP client
-        run: env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS make check-mcp-client GO=go
+        run: env -u MAKEFLAGS -u GNUMAKEFLAGS -u MFLAGS make -f Makefile check-mcp-client GO=go
 
   two-accounts:
     name: Two accounts

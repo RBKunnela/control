@@ -103,6 +103,19 @@ $(error cannot locate the repository root: computed $(ROOT). A path containing \
         whitespace breaks GNU make word splitting; move the checkout)
 endif
 
+# make reads a GNUmakefile or a makefile before a Makefile when no -f names
+# one, so either beside this file would replace every recipe of a bare make.
+# The entry points name this file with -f, and it refuses either one whatever
+# the goal. The brackets make wildcard read the directory and match names by
+# case; a plain name would match this file on a case-insensitive file system.
+ifeq ($(wildcard $(ROOT)/[M]akefile),)
+$(error cannot list $(ROOT), so no makefile make reads before this one can be ruled out)
+endif
+shadowing := $(notdir $(wildcard $(ROOT)/[G]NUmakefile $(ROOT)/[m]akefile))
+ifneq ($(shadowing),)
+$(error $(firstword $(shadowing)) beside the Makefile, which make reads before it; remove it)
+endif
+
 # The root reaches the recipes through the environment rather than being
 # interpolated into the recipe text, so a checkout path containing a quote
 # cannot break the shell line make generates.
@@ -236,13 +249,19 @@ lint:
 	done 3<<<"$$progs"; \
 	echo "lint: $$n program(s) under scripts/ linted"
 
+# Before the tests, every package of the module that holds Go files has to be
+# one ./... names: a go.mod's ignore directive drops a directory from ./...,
+# and the reporter, which sees only the packages that ran, could not tell. A
+# PKGS that narrows the root module is a choice, and is not checked.
+COVERED := . scripts/lib/go-modules.sh; go_packages_covered
+
 test:
-	$(call each_module,$(GO) -C "$$dir" test -count=1 -shuffle=on -json $$pkgs | $(GO) run scripts/test-report.go,test)
+	$(call each_module,{ [[ "$$pkgs" != ./... ]] || ($(COVERED) "$(GO)" "$$dir"); } && $(GO) -C "$$dir" test -count=1 -shuffle=on -json $$pkgs | $(GO) run scripts/test-report.go,test)
 
 # Through the reporter, as test is: a TestMain only a race build compiles could
 # otherwise return before m.Run and pass with no test run.
 test-race:
-	$(call each_module,$(GO) -C "$$dir" test -count=1 -race -json $$pkgs | $(GO) run scripts/test-report.go,test-race)
+	$(call each_module,{ [[ "$$pkgs" != ./... ]] || ($(COVERED) "$(GO)" "$$dir"); } && $(GO) -C "$$dir" test -count=1 -race -json $$pkgs | $(GO) run scripts/test-report.go,test-race)
 
 # The seeds of every fuzz target run in test and test-race; quality checks
 # that every target declared is compiled, and the nightly run and the release

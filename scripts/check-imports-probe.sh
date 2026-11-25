@@ -289,7 +289,7 @@ for dir in "${lint_dirs[@]}"; do
 done
 for dir in "${lint_dirs[@]}" "${reads_dirs[@]}"; do
   for name in time.Now time.Since time.Until time.After time.AfterFunc time.Tick \
-    time.NewTicker time.NewTimer time.Sleep "${timestamppb}.Now" context.WithTimeout \
+    time.NewTicker time.NewTimer time.Sleep time.Timer time.Ticker "${timestamppb}.Now" context.WithTimeout \
     context.WithDeadline fmt.Scanln time.LoadLocation time.Local "the method Local" \
     "the method Zone" "the method ZoneBounds" "the method IsDST" crypto/ed25519.GenerateKey; do
     expect layering_test.go "${dir}/zz_probe_reads.go:" "names ${name}, "
@@ -327,7 +327,7 @@ done
 for dir in "${lint_dirs[@]}" "${reads_dirs[@]}"; do
   for call in probeclock.Now probeclock.Since probeclock.Until probeclock.After \
     probeclock.AfterFunc probeclock.Tick probeclock.NewTicker probeclock.NewTimer \
-    probeclock.Sleep timestamppb.Now context.WithTimeout context.WithDeadline \
+    probeclock.Sleep probeclock.Timer probeclock.Ticker timestamppb.Now context.WithTimeout context.WithDeadline \
     fmt.Scanln probeclock.LoadLocation probeclock.Local t.Local t.Zone t.ZoneBounds p.IsDST \
     ed25519.GenerateKey; do
     expect forbidigo "${dir}/zz_probe_reads.go:" "use of \`${call}\` forbidden"

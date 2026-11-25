@@ -353,6 +353,80 @@ verify one.
   to a sub-agent's `Write` only when the trail holds more decided writes of that file than the other
   calls that wrote it could account for.
 
+- `make quality`, as CI and `scripts/gate-commit.sh` start it, reads the
+  `Makefile` by name, and the `Makefile` refuses a `GNUmakefile` or a
+  `makefile` beside it whatever the goal. make reads either one first when no
+  makefile is named, so a committed one could replace every check with a
+  recipe that prints the pass line. The nightly fuzz run, the race run and
+  the external MCP client job name the `Makefile` too.
+- `scripts/gate-commit.sh` refuses a commit holding a symbolic link that is
+  absolute or has a `..` component. The archive check compared a link's text,
+  so a test could read a fixture through it from outside the commit, and the
+  stamp rested on bytes the commit does not hold.
+- The pre-push hook and `scripts/gate-commit.sh` ignore a local grafts file,
+  a local shallow file and a local commit-graph, single or a chain, also when
+  `git -c` turns the graph on, as they ignore replace refs, and keep git's
+  advice about grafts out of their output. Each could hide an unstamped
+  commit from the hook that the remote would still receive. Both still trust
+  the local objects and the pusher's command line: they stop a mistake, not a
+  writer of `.git`.
+- The release checks the gate again right before it tags the image and right
+  before it publishes. A `main` that moved past the commit after the first
+  check stops the release at the next of those steps; what the earlier step
+  published stays. The upload of the client to the package index first checks
+  that the released commit's own CI and Security push runs on `main` passed,
+  so a re-run of it still works once `main` has moved on.
+- Publish names the release's tag in the request that publishes the draft,
+  and reads the release back under that tag. A writer who moved the draft to
+  another tag could have it published there while the job reported the tag it
+  was started for.
+- `scripts/scan-binaries.sh` refuses an archive without the binary of each
+  command under `cmd/` where goreleaser puts it. Any one Go binary satisfied
+  it, so a product archive without the command-line binary passed the
+  release's verification.
+- `make test` and `make test-race` refuse a module whose `./...` leaves out a
+  package that holds Go files, as a `go.mod` `ignore` directive does, or a
+  package the module's code imports, as one under `testdata` or a directory
+  whose name starts with `_` is, and a module that builds code from a vendor
+  directory, from a local `replace` target that is not one of the
+  repository's modules, or, through a replace of one of them, from its
+  `testdata` or a directory of it starting with `_`. That code's tests did not
+  run, and the reporter, which sees only the packages that ran, could not
+  tell. Not covered: a package only
+  a test file, only a program under `//go:build ignore`, or only a file for
+  another platform than the run's imports.
+- `scripts/two-accounts.sh` builds each package's test binary into a file of
+  its own. Two import paths that differ only by a `/` and a `_` shared one,
+  so a package with no test file in the tagged build ran the other's binary
+  under its own name.
+- The check that `scripts/expected-runs.txt` names every test of a
+  `twoaccounts` file reads the build tags as the job's build sets them:
+  release tags such as `go1.27`, `cgo`, and the toolchain's experiment tags.
+  A file under `twoaccounts && go1.27` or `twoaccounts && cgo` counted as in
+  neither build, so its tests could run in no job unnoticed.
+- `scripts/check-runs.go` counts a test as passed only after that test's
+  `run` event. A pass with no start in the stream was taken.
+- `scripts/fuzz-smoke.sh` refuses a line of a package's fuzz listing that no
+  file the build takes declares, such as one a `TestMain` prints before the
+  listing, and counts a target as run only when the fuzzing engine reports
+  executions in a verbose run that ran that target alone under its own name
+  for at least nine tenths of the time asked for, which must be whole
+  seconds, minutes or hours. It counted such a line as a target, and fuzzing
+  it, a target whose `TestMain` exits before fuzzing, one whose `TestMain`
+  points the engine at another target, or one whose `TestMain` cuts the fuzz
+  time, ran nothing or almost nothing. A `TestMain` that prints the engine's
+  report, the names and the time itself still passes.
+- The dependency rule refuses `time.Timer` and `time.Ticker` in the guarded
+  trees and the trees they reach, by name and through forbidigo. Their
+  `Reset` schedules from the clock, so a timer a caller handed in let such a
+  package read it.
+- The nightly, CI and Security workflows keep one concurrency group per
+  event, so a manual or scheduled run no longer replaces a run queued behind
+  another: a scheduled night whose red then went unreported, or a push to
+  `main` whose result the release then could not find.
+- The port inventory check refuses a doctor key in `scripts/ports.txt` that
+  the gateway's doctor does not report under. Any key but `none` passed.
+
 ### Documentation
 
 - The landing page and the documentation pages share one layout: the same

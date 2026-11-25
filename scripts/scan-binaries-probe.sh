@@ -8,21 +8,22 @@
 #            database time and scanner version the stand-in reported; an
 #            image by digest for the two platforms its index holds, each
 #            pulled
-#   refused  a dist with no archive, an archive holding no Go binary, an
-#            archive that cannot be extracted, an archive whose name names no
-#            platform, a binary built for another platform than its
+#   refused  a dist with no archive, an archive holding no Go binary, a
+#            product archive without the binary of one command under cmd/
+#            or with it out of its place, and a demo archive without one, an
+#            archive that cannot be extracted, an archive whose name names
+#            no platform, a binary built for another platform than its
 #            archive's name says, an ELF or a Mach-O file go cannot read
 #            beside a good binary, a file whose first bytes cannot be read
 #            beside a good binary, a file named with a newline or a tab, one
-#            vulnerable binary among
-#            five (every binary still scanned), a binary the scanner cannot
-#            read, a database time absent or malformed, a JSON scan that
-#            fails, an image binary built for another platform, an image
-#            with no entrypoint, a container that cannot be created, a
-#            vulnerable image binary, a platform that is not os/arch, a
-#            reference holding white space, and an index that holds a
-#            platform more or one fewer than those named, is no index, or
-#            cannot be read
+#            vulnerable binary among five (every binary still scanned), a
+#            binary the scanner cannot read, a database time absent or
+#            malformed, a JSON scan that fails, an image binary built for
+#            another platform, an image with no entrypoint, a container that
+#            cannot be created, a vulnerable image binary, a platform that is
+#            not os/arch, a reference holding white space, and an index that
+#            holds a platform more or one fewer than those named, is no
+#            index, or cannot be read
 set -euo pipefail
 
 _PROBE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
@@ -37,6 +38,12 @@ die() {
 root="$(repo_root)"
 script="${root}/scripts/scan-binaries.sh"
 [[ -f "${script}" ]] || die "${script} is missing"
+# The binaries every archive carries, one per command, as the script reads
+# them from this repository.
+commands="$(repo_files 'cmd/*.go' | awk -F/ 'NF > 2 { print $2 }' | LC_ALL=C sort -u)"
+[[ "$(grep -c . <<<"${commands}")" -eq 2 ]] || die "want two commands under cmd/, found: ${commands//$'\n'/ }"
+cli="$(sed -n 1p <<<"${commands}")"
+gateway="$(sed -n 2p <<<"${commands}")"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "${tmp}"' EXIT
@@ -133,23 +140,25 @@ binary() {
   chmod 0755 "$1"
 }
 
-# dist <directory> <verdict of the demo's victim>
-# A product archive with two binaries at its top, and a demo archive wrapped in
-# one directory with three binaries under bin/ beside a script and a README.
+# dist <directory> <verdict of the demo's victim> [<command whose binary the product archive lacks>]
+# A product archive with the two binaries at its top, and a demo archive
+# wrapped in a directory of the archive's name with three binaries under bin/
+# beside a script and a README, as goreleaser lays them out.
 dist() {
-  local d="$1" stage="${tmp}/stage-$RANDOM"
-  mkdir -p "${d}" "${stage}/product" "${stage}/demo/product-demo/examples"
-  binary "${stage}/product/cli" linux arm64 clean
-  binary "${stage}/product/gateway" linux arm64 clean
+  local d="$1" stage="${tmp}/stage-$RANDOM" c
+  mkdir -p "${d}" "${stage}/product" "${stage}/demo/product-demo_1.0.0_darwin_amd64/examples"
+  for c in "${cli}" "${gateway}"; do
+    [[ "${c}" == "${3:-}" ]] || binary "${stage}/product/${c}" linux arm64 clean
+  done
   printf 'readme\n' >"${stage}/product/README.md"
   tar -czf "${d}/product_1.0.0_linux_arm64.tar.gz" -C "${stage}/product" .
-  local demo="${stage}/demo/product-demo"
-  binary "${demo}/bin/cli" darwin amd64 clean
-  binary "${demo}/bin/gateway" darwin amd64 clean
+  local demo="${stage}/demo/product-demo_1.0.0_darwin_amd64"
+  binary "${demo}/bin/${cli}" darwin amd64 clean
+  binary "${demo}/bin/${gateway}" darwin amd64 clean
   binary "${demo}/bin/vulnerable-mcp-agent" darwin amd64 "$2"
   printf '#!/bin/sh\n' >"${demo}/examples/call.sh"
   chmod 0755 "${demo}/examples/call.sh"
-  tar -czf "${d}/product-demo_1.0.0_darwin_amd64.tar.gz" -C "${stage}/demo" product-demo
+  tar -czf "${d}/product-demo_1.0.0_darwin_amd64.tar.gz" -C "${stage}/demo" product-demo_1.0.0_darwin_amd64
 }
 
 cases=0
@@ -189,11 +198,33 @@ check "clean archives" pass \
   -- archives "${clean}"
 scanned "clean archives" 5
 check "a binary's facts" pass \
-  "scan-binaries: product-demo_1.0.0_darwin_amd64.tar.gz/product-demo/bin/vulnerable-mcp-agent: darwin/amd64, go1.99.0, example.com/probe v1.2.3, vcs.revision 0123456789abcdef0123456789abcdef01234567" \
+  "scan-binaries: product-demo_1.0.0_darwin_amd64.tar.gz/product-demo_1.0.0_darwin_amd64/bin/vulnerable-mcp-agent: darwin/amd64, go1.99.0, example.com/probe v1.2.3, vcs.revision 0123456789abcdef0123456789abcdef01234567" \
   -- archives "${clean}"
 
 mkdir -p "${tmp}/empty"
 check "no archive" fail "holds no .tar.gz archive" -- archives "${tmp}/empty"
+
+dist "${tmp}/nocli" clean "${cli}"
+check "a product archive without the command-line binary" fail \
+  "product_1.0.0_linux_arm64.tar.gz holds no Go binary at ${cli} or product_1.0.0_linux_arm64/bin/${cli}, where the archive puts the binary of cmd/${cli}" \
+  -- archives "${tmp}/nocli"
+scanned "a product archive without the command-line binary" 0
+stage="${tmp}/stage-nogateway"
+mkdir -p "${stage}/product-demo_1.0.0_darwin_arm64/bin" "${tmp}/nogateway"
+binary "${stage}/product-demo_1.0.0_darwin_arm64/bin/${cli}" darwin arm64 clean
+binary "${stage}/product-demo_1.0.0_darwin_arm64/bin/vulnerable-mcp-agent" darwin arm64 clean
+tar -czf "${tmp}/nogateway/product-demo_1.0.0_darwin_arm64.tar.gz" -C "${stage}" product-demo_1.0.0_darwin_arm64
+check "a demo archive without the gateway" fail \
+  "product-demo_1.0.0_darwin_arm64.tar.gz holds no Go binary at ${gateway} or product-demo_1.0.0_darwin_arm64/bin/${gateway}, where the archive puts the binary of cmd/${gateway}" \
+  -- archives "${tmp}/nogateway"
+stage="${tmp}/stage-misplaced"
+mkdir -p "${stage}/docs" "${tmp}/misplaced"
+binary "${stage}/docs/${cli}" linux arm64 clean
+binary "${stage}/${gateway}" linux arm64 clean
+tar -czf "${tmp}/misplaced/product_1.0.0_linux_arm64.tar.gz" -C "${stage}" .
+check "a product archive with the command-line binary out of place" fail \
+  "product_1.0.0_linux_arm64.tar.gz holds no Go binary at ${cli} or product_1.0.0_linux_arm64/bin/${cli}" -- archives "${tmp}/misplaced"
+scanned "a product archive with the command-line binary out of place" 0
 
 mkdir -p "${tmp}/nogo/stage/bin" "${tmp}/nogo/dist"
 printf '#!/bin/sh\necho hi\n' >"${tmp}/nogo/stage/bin/tool"
@@ -234,19 +265,20 @@ mkdir -p "${tmp}/oddname"
 cp "${clean}/product_1.0.0_linux_arm64.tar.gz" "${tmp}/oddname/a"$'\n'"b_linux_arm64.tar.gz"
 check "an archive named with a newline" fail "an archive's name holds a newline or a tab" -- archives "${tmp}/oddname"
 
-# archive <dist> <name> <file> <goos> <goarch>: one stand-in binary in an archive of that name.
+# archive <dist> <name> <goos> <goarch>: the two stand-in binaries in an archive of that name.
 archive() {
   local stage="${tmp}/stage-$RANDOM"
   mkdir -p "$1" "${stage}"
-  binary "${stage}/$3" "$4" "$5" clean
+  binary "${stage}/${cli}" "$3" "$4" clean
+  binary "${stage}/${gateway}" "$3" "$4" clean
   tar -czf "$1/$2" -C "${stage}" .
 }
-archive "${tmp}/unnamed" product.tar.gz gateway linux amd64
+archive "${tmp}/unnamed" product.tar.gz linux amd64
 check "an archive that names no platform" fail "product.tar.gz names no platform as _<os>_<arch>.tar.gz" \
   -- archives "${tmp}/unnamed"
-archive "${tmp}/misbuilt" product_1.0.0_linux_amd64.tar.gz gateway linux arm64
+archive "${tmp}/misbuilt" product_1.0.0_linux_amd64.tar.gz linux arm64
 check "a binary for another platform than its archive's" fail \
-  "product_1.0.0_linux_amd64.tar.gz/gateway: built for linux/arm64, not linux/amd64" -- archives "${tmp}/misbuilt"
+  "product_1.0.0_linux_amd64.tar.gz/${gateway}: built for linux/arm64, not linux/amd64" -- archives "${tmp}/misbuilt"
 scanned "a binary for another platform than its archive's" 0
 
 # An executable header with no build information behind it, beside a good binary.
@@ -280,7 +312,7 @@ scanned "a file whose first bytes cannot be read" 0
 vuln="${tmp}/vuln"
 dist "${vuln}" vulnerable
 check "one vulnerable binary" fail \
-  "product-demo_1.0.0_darwin_amd64.tar.gz/product-demo/bin/vulnerable-mcp-agent: govulncheck exited 3" \
+  "product-demo_1.0.0_darwin_amd64.tar.gz/product-demo_1.0.0_darwin_amd64/bin/vulnerable-mcp-agent: govulncheck exited 3" \
   -- archives "${vuln}"
 scanned "one vulnerable binary" 5
 check "the finding shown" fail "Vulnerability #1: GO-0000-0001" -- archives "${vuln}"

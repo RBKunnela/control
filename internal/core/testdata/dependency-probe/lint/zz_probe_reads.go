@@ -41,6 +41,14 @@ func DependencyProbeWaits() *timestamppb.Timestamp {
 	return timestamppb.Now()
 }
 
+// DependencyProbeReset schedules a timer and a ticker a caller made, which
+// Reset does from the clock.
+func DependencyProbeReset(t *probeclock.Timer,
+	k *probeclock.Ticker) {
+	t.Reset(0)
+	k.Reset(probeclock.Second)
+}
+
 // DependencyProbeBounded derives deadlines, which the context package takes
 // from the clock.
 func DependencyProbeBounded(ctx context.Context) (context.Context, context.CancelFunc, context.CancelFunc) {
