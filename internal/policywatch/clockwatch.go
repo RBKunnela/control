@@ -95,8 +95,8 @@ func (b *bounded) Floor(ctx context.Context, bundleID string) (policy.Floor, err
 	return b.wait(ctx, func() (policy.Floor, error) { return b.s.Floor(ctx, bundleID) })
 }
 
-func (b *bounded) Raise(ctx context.Context, st policy.Statement, now time.Time) (policy.Floor, error) {
-	return b.wait(ctx, func() (policy.Floor, error) { return b.s.Raise(ctx, st, now) })
+func (b *bounded) RaiseAt(ctx context.Context, st policy.Statement, now policy.Reading) (policy.Floor, error) {
+	return b.wait(ctx, func() (policy.Floor, error) { return b.s.RaiseAt(ctx, st, now) })
 }
 
 // wait takes the turn, runs call and returns its answer, or ctx's error once

@@ -33,10 +33,8 @@ func Init(ctx context.Context, dir string, kind Kind, bundleID string) (err erro
 	if err != nil {
 		return err
 	}
-	// The mode is only ever narrowed by the umask, and an owner without
-	// access cannot open the directory, so no mode wider than 0700 results.
-	if err := os.Mkdir(dir, 0o700); err != nil && !errors.Is(err, fs.ErrExist) {
-		return fmt.Errorf("%w: %w", ErrNotStateDir, err)
+	if err := makeDir(dir); err != nil {
+		return err
 	}
 	d, err := openDir(dir)
 	if err != nil {

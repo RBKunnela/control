@@ -2,6 +2,7 @@ package policykey
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -253,13 +254,45 @@ func ReadStatement(path string) (policy.StatementEnvelope, error) {
 	return ParseStatement(raw)
 }
 
+// ReadStatementOf is ReadStatement of the very file judged describes, as
+// files.ReadRegularOf holds it.
+func ReadStatementOf(path string, judged fs.FileInfo) (policy.StatementEnvelope, error) {
+	raw, err := files.ReadRegularOf(filepath.Clean(path), MaxStatementFileBytes, judged)
+	if err != nil {
+		return policy.StatementEnvelope{}, fmt.Errorf("the statement file: %w", err)
+	}
+	return ParseStatement(raw)
+}
+
 // WriteStatement writes env to path with mode 0644, a statement being public,
-// through a temporary file and a rename, so a reader sees the old file or the
-// new. It replaces only a path that is absent or already a regular file
-// holding a freshness statement, and refuses anything else there, a key, a
-// bundle, a directory and a link among them, with ErrStatementOut. An
-// envelope of another payload type is policy.ErrStatementPayloadType.
-func WriteStatement(path string, env policy.StatementEnvelope) error {
+// through a temporary file that takes the name in one step, so a reader sees
+// the old file or the new. It replaces only a path that is absent or already
+// a regular file holding a freshness statement, and that entry only, and
+// refuses anything else there, a key, a bundle, a directory and a link among
+// them, with ErrStatementOut. An envelope of another payload type is
+// policy.ErrStatementPayloadType. It waits for a lock of the file another
+// process holds until ctx ends, as files.ReplaceJudgedIn does.
+func WriteStatement(ctx context.Context, path string, env policy.StatementEnvelope) error {
+	return writeStatement(ctx, path, env, func(held fs.FileInfo) (fs.FileInfo, error) { return held, nil })
+}
+
+// WriteStatementOver is WriteStatement that replaces only the entry judged
+// describes, as a read of path found it, and with a nil judged writes only
+// where nothing stands at path: one put there since, a statement among
+// them, is refused with files.ErrNotJudged and left as it is, and
+// files.ErrNothingWritten says when nothing was written.
+func WriteStatementOver(ctx context.Context, path string, env policy.StatementEnvelope, judged fs.FileInfo) error {
+	return writeStatement(ctx, path, env, func(held fs.FileInfo) (fs.FileInfo, error) {
+		if (held == nil) != (judged == nil) || held != nil && !files.SameEntry(held, judged) {
+			return nil, fmt.Errorf("%s: %w: %w", filepath.Base(path), files.ErrNotJudged, files.ErrNothingWritten)
+		}
+		return judged, nil
+	})
+}
+
+// writeStatement writes env to path over the entry over returns, given the
+// entry checkStatementOut judged there.
+func writeStatement(ctx context.Context, path string, env policy.StatementEnvelope, over func(held fs.FileInfo) (fs.FileInfo, error)) error {
 	if env.PayloadType != bundle.StatementPayloadType {
 		return policy.ErrStatementPayloadType
 	}
@@ -273,47 +306,55 @@ func WriteStatement(path string, env policy.StatementEnvelope) error {
 		return err
 	}
 	name := filepath.Base(path)
-	err = checkStatementOut(root, name)
+	held, err := checkStatementOut(root, name)
 	if err == nil {
-		err = files.ReplaceIn(root, name, raw, 0o644)
+		held, err = over(held)
+	}
+	if err == nil {
+		beforeStatementReplaced()
+		err = files.ReplaceJudgedIn(ctx, root, name, raw, 0o644, held)
 	}
 	return errors.Join(err, root.Close())
 }
 
+// beforeStatementReplaced runs, in a test, once the entry at the name was
+// judged and before the statement takes its place.
+var beforeStatementReplaced = func() {}
+
 // checkStatementOut refuses a name in root that holds anything but a
-// statement. It judges through the handle the replace goes through, so a
-// directory swapped in after the judgement receives nothing; the file judged
-// is the one opened, which neither follows a link nor waits on a pipe. A file
-// put under the name between the judgement and the rename is not seen: a
-// rename cannot compare what it replaces.
-func checkStatementOut(root *os.Root, name string) error {
+// statement, and returns the entry it judged, nil where none stands. It
+// judges through the handle the replace goes through, so a directory swapped
+// in after the judgement receives nothing; the file judged is the one
+// opened, which neither follows a link nor waits on a pipe, and the replace
+// takes that entry's place only.
+func checkStatementOut(root *os.Root, name string) (fs.FileInfo, error) {
 	info, err := root.Lstat(name)
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
-		return nil
+		return nil, nil
 	case err != nil:
-		return err
+		return nil, err
 	case !info.Mode().IsRegular():
-		return fmt.Errorf("%s: %w", name, ErrStatementOut)
+		return nil, fmt.Errorf("%s: %w", name, ErrStatementOut)
 	}
 	f, err := root.OpenFile(name, os.O_RDONLY|syscall.O_NONBLOCK, 0)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func() { _ = f.Close() }()
 	held, err := f.Stat()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !held.Mode().IsRegular() || !os.SameFile(info, held) {
-		return fmt.Errorf("%s: %w: it changed while it was judged", name, ErrStatementOut)
+		return nil, fmt.Errorf("%s: %w: it changed while it was judged", name, ErrStatementOut)
 	}
 	existing, err := io.ReadAll(io.LimitReader(f, MaxStatementFileBytes+1))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !IsStatement(existing) {
-		return fmt.Errorf("%s: %w", name, ErrStatementOut)
+		return nil, fmt.Errorf("%s: %w", name, ErrStatementOut)
 	}
-	return nil
+	return info, nil
 }

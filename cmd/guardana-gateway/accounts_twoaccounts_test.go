@@ -129,6 +129,12 @@ func TestHelperActsAsAnotherAccount(t *testing.T) {
 		os.Exit(answerSignedStart(arg))
 	case "collector":
 		os.Exit(serveCollector(arg))
+	case "add-pause":
+		os.Exit(addPauseAsOperator(arg))
+	case "read-pause":
+		os.Exit(readPauseAsPlane(arg))
+	case "file-answer":
+		os.Exit(fileAnswerAsOperator(arg))
 	}
 	fmt.Fprintf(os.Stderr, "no role %q\n", role)
 	os.Exit(2)

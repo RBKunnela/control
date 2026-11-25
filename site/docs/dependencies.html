@@ -237,12 +237,15 @@ bump is read, as a dependency bump is, rather than merged on a green gate.</li>
 <li>Problem it solves: naming the account on the other end of a Unix socket,
 <code>SO_PEERCRED</code> on Linux and <code>LOCAL_PEERCRED</code> on macOS, which the plane reads
 before it sends the collector's credential on a <code>unix://</code> export endpoint
-and before it answers <code>health.socket</code>. <code>internal/peercred/</code> is its only
-importer.</li>
+and before it answers <code>health.socket</code>; and exchanging two names of a
+directory in one step, <code>renameat2</code> with <code>RENAME_EXCHANGE</code> on Linux and
+<code>renameatx_np</code> with <code>RENAME_SWAP</code> on macOS, by which a command or a signed
+pause writer replaces only the output it judged. Its importers are
+<code>internal/peercred/</code>, <code>internal/files/</code> and the gateway's socket code.</li>
 <li>Why the standard library will not do: <code>syscall</code> reads <code>SO_PEERCRED</code> on
-Linux only and has no <code>xucred</code> for macOS; writing the <code>getsockopt</code> call and
-the structure's layout by hand per platform is what this module already
-does, generated from the system headers.</li>
+Linux only and has no <code>xucred</code> for macOS, and has neither exchange call;
+writing the calls and the structures' layout by hand per platform is what
+this module already does, generated from the system headers.</li>
 <li>Licence: BSD-3-Clause, read from the module's <code>LICENSE</code> file, with a
 separate patent grant in <code>PATENTS</code>.</li>
 <li>Maintenance signal: published from <code>go.googlesource.com/sys</code> by the Go
@@ -250,7 +253,8 @@ project; v0.49.0 is tagged at commit <code>b6b8557e8e29</code>, dated 2026-10-06
 module proxy's record. It was linked into the gateway before, through the
 MCP module.</li>
 <li>Request path: yes. A read it gets wrong lets the credential or the whole
-health answer reach another account, so a version bump is read rather than
+health answer reach another account, and <code>internal/files</code> serves the
+plane's pause, trust and floor reads, so a version bump is read rather than
 merged on a green gate.</li>
 </ul>
 <h2 id="test-only">Test-only</h2>

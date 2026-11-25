@@ -125,7 +125,7 @@ func wantUnknown(t *testing.T, what string, s Snapshot, cause Cause) {
 
 func TestASignedFileAJudgeTakesPausesAndNamesItsSigner(t *testing.T) {
 	p := newSignedPlane(t)
-	p.write(t, "alice", header("alice", 1), paused)
+	p.write(t, "alice", p.header(t, "alice", 1), paused)
 	var judged Signed
 	s := p.read(t, judgeFunc(func(f Signed) (SignedBy, error) { judged = f; return takes(f) }))
 	if s.State() != Paused || !s.Covers("tool", "u", "x", Vouched{}) {
@@ -134,10 +134,10 @@ func TestASignedFileAJudgeTakesPausesAndNamesItsSigner(t *testing.T) {
 	if by, ok := s.SignedBy(); !ok || by.Subject != "alice" || by.Serial != 1 {
 		t.Errorf("SignedBy = %+v, %v", by, ok)
 	}
-	if judged.Envelope.PayloadType != PayloadType || len(judged.Envelope.Signatures) != 1 || judged.Body.Header != header("alice", 1) {
+	if judged.Envelope.PayloadType != PayloadType || len(judged.Envelope.Signatures) != 1 || judged.Body.Header != p.header(t, "alice", 1) {
 		t.Errorf("the judge was handed %+v", judged)
 	}
-	p.write(t, "alice", header("alice", 2), Document{})
+	p.write(t, "alice", p.header(t, "alice", 2), Document{})
 	if s := p.read(t, takes); s.State() != Clear {
 		t.Errorf("the lift = %s, %q: %s; want clear", s.State(), s.Cause(), s.Detail())
 	}
@@ -147,7 +147,7 @@ func TestASignedFileAJudgeTakesPausesAndNamesItsSigner(t *testing.T) {
 // pauses nothing.
 func TestEveryRefusalOfTheJudgeIsUnknownWithItsCause(t *testing.T) {
 	p := newSignedPlane(t)
-	p.write(t, "alice", header("alice", 1), Document{})
+	p.write(t, "alice", p.header(t, "alice", 1), Document{})
 	for _, c := range []struct {
 		err   Error
 		cause Cause
@@ -169,7 +169,7 @@ func TestAnUnsignedOrTamperedFileUnderSignedIsUnknown(t *testing.T) {
 	wantUnknown(t, "a version 2 file", p.read(t, takes), CauseUnsigned)
 	p.writeRaw(t, []byte(`{"schema_version":"1","entries":[]}`))
 	wantUnknown(t, "a version 1 file", p.read(t, takes), CauseUnsigned)
-	raw, err := signFile(header("alice", 1), paused, signer("alice"))
+	raw, err := signFile(p.header(t, "alice", 1), paused, signer("alice"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +202,7 @@ func TestAnUnsignedOrTamperedFileUnderSignedIsUnknown(t *testing.T) {
 // leaves the poller Unknown, which blocks, and never Clear.
 func TestAPollerUnderSignedNeverUnpausesOnARefusal(t *testing.T) {
 	p := newSignedPlane(t)
-	p.write(t, "alice", header("alice", 1), paused)
+	p.write(t, "alice", p.header(t, "alice", 1), paused)
 	refuse := false
 	j := judgeFunc(func(f Signed) (SignedBy, error) {
 		if refuse {
@@ -219,7 +219,7 @@ func TestAPollerUnderSignedNeverUnpausesOnARefusal(t *testing.T) {
 		t.Fatalf("the first read = %s", s.State())
 	}
 	refuse = true
-	p.write(t, "bob", header("bob", 2), Document{})
+	p.write(t, "bob", p.header(t, "bob", 2), Document{})
 	wantUnknown(t, "a refused lift polled", poller.Poll(), CauseUnauthorized)
 	if n := poller.Stats().Failed[CauseUnauthorized]; n != 1 {
 		t.Errorf("the failures counted under %q = %d, want 1", CauseUnauthorized, n)
@@ -236,7 +236,7 @@ func TestAPollerUnderSignedNeverUnpausesOnARefusal(t *testing.T) {
 // the group may write is refused whoever owns it.
 func TestASignedPlaneRefusesAFileItsOwnAccountOwns(t *testing.T) {
 	p := newSignedPlane(t)
-	p.write(t, "alice", header("alice", 1), paused)
+	p.write(t, "alice", p.header(t, "alice", 1), paused)
 	me, other := os.Geteuid(), os.Geteuid()+1
 	asked := false
 	j := judgeFunc(func(f Signed) (SignedBy, error) { asked = true; return takes(f) })
@@ -280,7 +280,7 @@ func TestASignedPlaneRefusesAFileItsOwnAccountOwns(t *testing.T) {
 
 func TestAnUnsignedPlaneReadsNoSignedFile(t *testing.T) {
 	p := newSignedPlane(t)
-	p.write(t, "alice", header("alice", 1), paused)
+	p.write(t, "alice", p.header(t, "alice", 1), paused)
 	s := Read(p.path, signedNow, time.Second)
 	if s.State() != Unknown || s.Cause() != CauseSignedFile {
 		t.Errorf("Read of a signed file = %s, %q, want unknown, %q", s.State(), s.Cause(), CauseSignedFile)
@@ -426,6 +426,33 @@ func TestTheSignedWriterRefusesAFileThatChangedUnderIt(t *testing.T) {
 		t.Error("the writer replaced a file that changed under it")
 	}
 	beforeReplace = nil
+	if _, err := AddSigned(t.Context(), p.path, Entry{ID: "h", Scope: Scope{Kind: ScopeGlobal}, CreatedAt: signedNow}, signer("alice")); err != nil {
+		t.Errorf("the same add over a file that stood still = %v", err)
+	}
+}
+
+// TestTheSignedWriterReplacesOnlyTheFileItReadLast: a writer that skipped
+// the lock put a higher serial in place once this writer had read the file
+// again and found it unchanged; that file is kept and the write refused.
+func TestTheSignedWriterReplacesOnlyTheFileItReadLast(t *testing.T) {
+	p := newSignedPlane(t)
+	if err := InitSigned(t.Context(), p.path, header("alice", 1), signer("alice")); err != nil {
+		t.Fatal(err)
+	}
+	theirs, err := signFile(p.header(t, "alice", 5), paused, signer("alice"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeRename = func() { p.writeRaw(t, theirs) }
+	t.Cleanup(func() { beforeRename = nil })
+	_, err = AddSigned(t.Context(), p.path, Entry{ID: "h", Scope: Scope{Kind: ScopeGlobal}, CreatedAt: signedNow}, signer("alice"))
+	if !errors.Is(err, ErrChanged) {
+		t.Errorf("an add over a file replaced after its last read = %v, want ErrChanged", err)
+	}
+	if now, _ := os.ReadFile(p.path); string(now) != string(theirs) {
+		t.Error("the writer replaced the higher serial put in place after its last read")
+	}
+	beforeRename = nil
 	if _, err := AddSigned(t.Context(), p.path, Entry{ID: "h", Scope: Scope{Kind: ScopeGlobal}, CreatedAt: signedNow}, signer("alice")); err != nil {
 		t.Errorf("the same add over a file that stood still = %v", err)
 	}

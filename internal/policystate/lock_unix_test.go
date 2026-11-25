@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
@@ -403,4 +404,36 @@ func TestHelperRaisesFromAnotherProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, _ = fmt.Fprintln(os.Stderr, helperDone)
+}
+
+// TestRaiseAtReadsTheClockOnlyOnceItHoldsTheLock: a raise waiting on the
+// lock another holder keeps takes its reading after that holder lets go, and
+// a reading that refuses leaves the floor file as it was.
+func TestRaiseAtReadsTheClockOnlyOnceItHoldsTheLock(t *testing.T) {
+	dir, s := raised(t)
+	before := readFile(t, filepath.Join(dir, fileA))
+	release := holdLock(t, dir)
+	var released, readWhileHeld atomic.Bool
+	refusal := errors.New("the statement expired while the raise waited")
+	st, now := statement(t, idA, 6, d6, "11:30:00"), noon(t)
+	done := make(chan error, 1)
+	go func() {
+		_, err := s.RaiseAt(context.Background(), st, func() (time.Time, error) {
+			readWhileHeld.Store(!released.Load())
+			return now, refusal
+		})
+		done <- err
+	}()
+	awaitWriters(t, dir, 1)
+	released.Store(true)
+	release()
+	if err := answer(t, done); !errors.Is(err, refusal) {
+		t.Errorf("a raise whose reading refused = %v, want that refusal", err)
+	}
+	if readWhileHeld.Load() {
+		t.Error("the raise read the clock while another holder kept the lock")
+	}
+	if got := readFile(t, filepath.Join(dir, fileA)); got != before {
+		t.Errorf("a refused reading changed the floor file to %s", got)
+	}
 }

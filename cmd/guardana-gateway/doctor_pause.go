@@ -69,11 +69,11 @@ func (d *examination) signedPauseVerdict() (string, string, string) {
 	}
 	d.pauseEntries = entries
 	stray := strayEntries(entries, targetsOf(d.cfg, nil, false))
-	shares := d.printCoverage(entries, stray)
+	shares, unknown := d.printCoverage(entries, stray)
 	state := pause.Clear
 	if len(entries) > 0 {
 		state = pause.Paused
 	}
-	return verdictOK, "pause", fmt.Sprintf("%s is %s: %d entry(ies), %d naming a provider this configuration does not have; %s; %s; read every %s",
+	return coverageVerdict(unknown), "pause", fmt.Sprintf("%s is %s: %d entry(ies), %d naming a provider this configuration does not have; %s; %s; read every %s",
 		path, state, len(entries), len(stray), signer, shares, d.cfg.Pause.PollInterval)
 }

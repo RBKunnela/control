@@ -259,18 +259,29 @@ func (o owner) judge(info fs.FileInfo, mine Error) error {
 // load reads and decodes the file at path with every check Read names,
 // owners judged under o.
 func load(path string, o owner) (file, error) {
+	f, _, err := loadFrom(path, o)
+	return f, err
+}
+
+// loadFrom is load that also returns the directory it read the file from,
+// as the descriptor it read through describes it.
+func loadFrom(path string, o owner) (file, fs.FileInfo, error) {
 	if !permissionBits {
-		return file{}, ErrNoPermissionBits
+		return file{}, nil, ErrNoPermissionBits
 	}
 	root, err := openDir(filepath.Dir(path), o)
 	if err != nil {
-		return file{}, err
+		return file{}, nil, err
 	}
 	defer func() { _ = root.Close() }()
+	dir, err := root.Stat(".")
+	if err != nil {
+		return file{}, nil, err
+	}
 	for attempt := 1; ; attempt++ {
 		f, _, err := loadIn(root, path, o)
 		if !errors.Is(err, ErrFileChanged) || attempt == readAttempts {
-			return f, err
+			return f, dir, err
 		}
 	}
 }
@@ -291,36 +302,44 @@ func loadIn(root *os.Root, path string, o owner) (file, []byte, error) {
 // the file's own name whatever the flags say, so the file opened has to be
 // the one judged no link.
 func readIn(root *os.Root, path string, o owner) ([]byte, error) {
+	raw, _, err := readHeld(root, path, o)
+	return raw, err
+}
+
+// readHeld is readIn that also returns the entry at the file's name as it
+// was judged, for a write to replace that entry and no other.
+func readHeld(root *os.Root, path string, o owner) ([]byte, fs.FileInfo, error) {
 	name := filepath.Base(path)
 	named, err := root.Lstat(name)
 	if err != nil {
-		return nil, missing(err)
+		return nil, nil, missing(err)
 	}
 	if named.Mode()&fs.ModeSymlink != 0 {
-		return nil, fmt.Errorf("%w: %s", ErrLink, path)
+		return nil, nil, fmt.Errorf("%w: %s", ErrLink, path)
 	}
 	step(stepFileNamed)
 	f, err := root.OpenFile(name, os.O_RDONLY|openFlags, 0)
 	if err != nil {
-		return nil, missing(err)
+		return nil, nil, missing(err)
 	}
 	defer func() { _ = f.Close() }()
 	info, err := f.Stat()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	switch {
 	case !os.SameFile(named, info):
-		return nil, fmt.Errorf("%w: %s", ErrFileChanged, path)
+		return nil, nil, fmt.Errorf("%w: %s", ErrFileChanged, path)
 	case !info.Mode().IsRegular():
-		return nil, fmt.Errorf("%w: %s", ErrNotRegular, info.Mode().Type())
+		return nil, nil, fmt.Errorf("%w: %s", ErrNotRegular, info.Mode().Type())
 	case info.Mode().Perm()&forbidden != 0:
-		return nil, fmt.Errorf("%w: mode %04o", ErrFileMode, info.Mode().Perm())
+		return nil, nil, fmt.Errorf("%w: mode %04o", ErrFileMode, info.Mode().Perm())
 	}
 	if err := o.judge(info, ErrFileOwner); err != nil {
-		return nil, fmt.Errorf("the file: %w", err)
+		return nil, nil, fmt.Errorf("the file: %w", err)
 	}
-	return io.ReadAll(io.LimitReader(f, MaxFileBytes+1))
+	raw, err := io.ReadAll(io.LimitReader(f, MaxFileBytes+1))
+	return raw, named, err
 }
 
 func missing(err error) error {

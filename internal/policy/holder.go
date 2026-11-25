@@ -159,6 +159,13 @@ func (h *Holder) installUnconfirmed(ctx context.Context, b *controlv1.PolicyBund
 // anything is published: a raise the store refuses or fails is ErrFloorRaise,
 // wrapping the store's error, and leaves the current snapshot as it was.
 func (h *Holder) InstallConfirmed(ctx context.Context, b *controlv1.PolicyBundle, keys bundle.Keyring, st Statement, now time.Time) error {
+	return h.InstallConfirmedAt(ctx, b, keys, st, At(now))
+}
+
+// InstallConfirmedAt is InstallConfirmed judged at the reading now gives
+// once the store holds its lock; an error now returns refuses the raise as
+// the store's refusal would.
+func (h *Holder) InstallConfirmedAt(ctx context.Context, b *controlv1.PolicyBundle, keys bundle.Keyring, st Statement, now Reading) error {
 	if h.store == nil {
 		return ErrNoFloorStore
 	}
@@ -175,6 +182,12 @@ func (h *Holder) InstallConfirmed(ctx context.Context, b *controlv1.PolicyBundle
 // does with the current bundle, so st must name it. With no current snapshot
 // it is ErrNoBundle.
 func (h *Holder) Confirm(ctx context.Context, st Statement, now time.Time) error {
+	return h.ConfirmAt(ctx, st, At(now))
+}
+
+// ConfirmAt is Confirm judged at the reading now gives once the store holds
+// its lock, as InstallConfirmedAt is.
+func (h *Holder) ConfirmAt(ctx context.Context, st Statement, now Reading) error {
 	if h.store == nil {
 		return ErrNoFloorStore
 	}
@@ -224,7 +237,7 @@ func (h *Holder) loadPinned(b *controlv1.PolicyBundle, keys bundle.Keyring, comp
 // confirm publishes snap confirmed by st once the store raised the floor to
 // st. Every refusal comes before the raise, and the raise before the
 // publish. mu is held.
-func (h *Holder) confirm(ctx context.Context, snap *Snapshot, st Statement, now time.Time) error {
+func (h *Holder) confirm(ctx context.Context, snap *Snapshot, st Statement, now Reading) error {
 	if err := bound(st, snap); err != nil {
 		return err
 	}
@@ -238,7 +251,7 @@ func (h *Holder) confirm(ctx context.Context, snap *Snapshot, st Statement, now 
 			return err
 		}
 	}
-	raised, err := h.store.Raise(ctx, st, now)
+	raised, err := h.store.RaiseAt(ctx, st, now)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrFloorRaise, err)
 	}

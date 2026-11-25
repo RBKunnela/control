@@ -119,12 +119,15 @@ imported outside that part, by the adapter and by the gateway's command.
 - Problem it solves: naming the account on the other end of a Unix socket,
   `SO_PEERCRED` on Linux and `LOCAL_PEERCRED` on macOS, which the plane reads
   before it sends the collector's credential on a `unix://` export endpoint
-  and before it answers `health.socket`. `internal/peercred/` is its only
-  importer.
+  and before it answers `health.socket`; and exchanging two names of a
+  directory in one step, `renameat2` with `RENAME_EXCHANGE` on Linux and
+  `renameatx_np` with `RENAME_SWAP` on macOS, by which a command or a signed
+  pause writer replaces only the output it judged. Its importers are
+  `internal/peercred/`, `internal/files/` and the gateway's socket code.
 - Why the standard library will not do: `syscall` reads `SO_PEERCRED` on
-  Linux only and has no `xucred` for macOS; writing the `getsockopt` call and
-  the structure's layout by hand per platform is what this module already
-  does, generated from the system headers.
+  Linux only and has no `xucred` for macOS, and has neither exchange call;
+  writing the calls and the structures' layout by hand per platform is what
+  this module already does, generated from the system headers.
 - Licence: BSD-3-Clause, read from the module's `LICENSE` file, with a
   separate patent grant in `PATENTS`.
 - Maintenance signal: published from `go.googlesource.com/sys` by the Go
@@ -132,7 +135,8 @@ imported outside that part, by the adapter and by the gateway's command.
   module proxy's record. It was linked into the gateway before, through the
   MCP module.
 - Request path: yes. A read it gets wrong lets the credential or the whole
-  health answer reach another account, so a version bump is read rather than
+  health answer reach another account, and `internal/files` serves the
+  plane's pause, trust and floor reads, so a version bump is read rather than
   merged on a green gate.
 
 ## Test-only

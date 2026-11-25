@@ -170,10 +170,14 @@ func (p peekFloor) Floor(ctx context.Context, bundleID string) (policy.Floor, er
 	return p.store.Floor(ctx, bundleID)
 }
 
-func (p peekFloor) Raise(ctx context.Context, st policy.Statement, now time.Time) (policy.Floor, error) {
+func (p peekFloor) RaiseAt(ctx context.Context, st policy.Statement, now policy.Reading) (policy.Floor, error) {
 	f, err := p.store.Floor(ctx, st.BundleID())
 	if err != nil {
 		return policy.Floor{}, err
 	}
-	return f.Raise(st, now)
+	at, err := now()
+	if err != nil {
+		return policy.Floor{}, err
+	}
+	return f.Raise(st, at)
 }

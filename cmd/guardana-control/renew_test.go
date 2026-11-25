@@ -273,7 +273,7 @@ func TestRenewRefusesABundleThatDoesNotVerify(t *testing.T) {
 	if err := policykey.WriteBundle(altered, &b); err != nil {
 		t.Fatal(err)
 	}
-	renewRefused(t, "another key", r, "--bundle "+otherKey+": "+string(policy.ErrKey), r.args("--bundle", otherKey)...)
+	renewRefused(t, "another key", r, "--bundle "+otherKey+": "+string(policy.ErrSignature), r.args("--bundle", otherKey)...)
 	renewRefused(t, "an altered signature", r, "--bundle "+altered+": "+string(policy.ErrSignature), r.args("--bundle", altered)...)
 	renewRefused(t, "not a bundle", r, "--bundle "+r.bundlePub+": "+string(errNotABundle), r.args("--bundle", r.bundlePub)...)
 }
@@ -484,5 +484,35 @@ func checkRenewUsage(t *testing.T, name string, args []string) {
 	}
 	if line := oneStderrLine(t, stderr); !strings.HasPrefix(line, brand.CLI+": policy renew: takes ") {
 		t.Errorf("%s: stderr %q is not the command's own usage line", name, line)
+	}
+}
+
+// TestRenewTakesABundleSignedUnderAConfiguredKeyID: a bundle naming an id a
+// plane configures for its key, not the id the key derives, verifies under
+// the public key given and is renewed; the same id over a signature by
+// another key is refused.
+func TestRenewTakesABundleSignedUnderAConfiguredKeyID(t *testing.T) {
+	r := newRenewTree(t)
+	aliased := filepath.Join(r.dir, "aliased.bundle")
+	writeAliasedBundle(t, aliased, r.bundleSigner)
+	renewed(t, r, aliased, 3)
+	if _, st := freshStatement(t, r.out); st.Digest() != bundleDigest(t, aliased) {
+		t.Errorf("--out holds the statement for %s, want the aliased bundle's", st.Digest())
+	}
+	forged := filepath.Join(r.dir, "forged.bundle")
+	writeAliasedBundle(t, forged, freshSigner(t))
+	renewRefused(t, "a bundle under the alias signed by another key", r, "--bundle "+forged+": "+string(policy.ErrSignature), r.args("--bundle", forged)...)
+}
+
+// writeAliasedBundle writes the renew document at serial 3 signed by key
+// under the configured id orders-prod.
+func writeAliasedBundle(t *testing.T, path string, key ed25519.PrivateKey) {
+	t.Helper()
+	b, err := policy.Sign([]byte(renewDocument(3, "allow-reads")), key, "orders-prod")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := policykey.WriteBundle(path, b); err != nil {
+		t.Fatal(err)
 	}
 }

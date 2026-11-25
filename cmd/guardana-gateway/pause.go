@@ -156,7 +156,8 @@ func (d *examination) pauseFile(context.Context) (string, string, string) {
 	entries := snap.Entries()
 	d.pauseEntries = entries
 	stray := strayEntries(entries, targetsOf(d.cfg, nil, false))
-	shares := d.printCoverage(entries, stray)
+	shares, unknown := d.printCoverage(entries, stray)
+	verdict := coverageVerdict(unknown)
 	if d.cfg.Listener.Kind == gatewayconfig.ListenerEnforceAPI {
 		for _, e := range stray {
 			if e.tool != "" {
@@ -167,15 +168,24 @@ func (d *examination) pauseFile(context.Context) (string, string, string) {
 			writeLine(d.out, fmt.Sprintf("       pause entry %s names provider %s, which no tool in tools has: it pauses no call this plane runs",
 				oneLine(e.id), oneLine(strconv.Quote(e.provider))))
 		}
-		return verdictOK, "pause", fmt.Sprintf("%s is %s: %d entry(ies), %d naming a provider or a tool the tool table does not have; %s; read every %s",
+		return verdict, "pause", fmt.Sprintf("%s is %s: %d entry(ies), %d naming a provider or a tool the tool table does not have; %s; read every %s",
 			path, snap.State(), len(entries), len(stray), shares, d.cfg.Pause.PollInterval)
 	}
 	for _, e := range stray {
 		writeLine(d.out, fmt.Sprintf("       pause entry %s names upstream %s, which this configuration does not have: it pauses only calls that carry no provider, which are calls to names no upstream lists",
 			oneLine(e.id), oneLine(strconv.Quote(e.provider))))
 	}
-	return verdictOK, "pause", fmt.Sprintf("%s is %s: %d entry(ies), %d naming an upstream this configuration does not have; %s, before the upstreams check judges the tools; read every %s",
+	return verdict, "pause", fmt.Sprintf("%s is %s: %d entry(ies), %d naming an upstream this configuration does not have; %s, before the upstreams check judges the tools; read every %s",
 		path, snap.State(), len(entries), len(stray), shares, d.cfg.Pause.PollInterval)
+}
+
+// coverageVerdict is the pause check's verdict once printCoverage could not
+// judge unknown entries: a coverage it could not judge is a check not made.
+func coverageVerdict(unknown int) string {
+	if unknown > 0 {
+		return verdictUnknown
+	}
+	return verdictOK
 }
 
 // strayTools prints each pause entry naming a tool its upstream does not

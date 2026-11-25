@@ -17,7 +17,7 @@ func TestWriteStatementRefusesANamedPipe(t *testing.T) {
 	if err := syscall.Mkfifo(path, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := policykey.WriteStatement(path, signedStatement(t)); !errors.Is(err, policykey.ErrStatementOut) {
+	if err := policykey.WriteStatement(t.Context(), path, signedStatement(t)); !errors.Is(err, policykey.ErrStatementOut) {
 		t.Fatalf("a named pipe: %v, want ErrStatementOut", err)
 	}
 }

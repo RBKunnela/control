@@ -1,15 +1,18 @@
 package main
 
 import (
+	"context"
 	"crypto/ed25519"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"path/filepath"
 	"strconv"
 	"time"
 
+	ondisk "github.com/guardana/control/internal/files"
 	"github.com/guardana/control/internal/policy"
 	"github.com/guardana/control/internal/policykey"
 )
@@ -57,7 +60,8 @@ const maxPublicKeyFileBytes = 1 << 10
 const publicLineBytes = 44
 
 // floorLockWait bounds how long a command waits for another holder of the
-// floor directory's lock. A test shortens it.
+// floor directory's lock; renew waits for any lock of --out within what is
+// left of it. A test shortens it.
 var floorLockWait = 10 * time.Second
 
 // renewPaths is what renew is told.
@@ -163,24 +167,56 @@ func signedStatement(p renewPaths, issuedAt time.Time) (signed, error) {
 	return signed{env: env, st: st, freshPub: freshPub}, nil
 }
 
+// outAttempts bounds how often a renew judges out again after another
+// writer, under another signer floor directory, replaced it in between.
+const outAttempts = 3
+
+// writeOut is the write of a statement over the entry at out a renew judged.
+var writeOut = policykey.WriteStatementOver
+
 // raiseAndWrite raises the signer floor to s and, still holding the floor
-// directory's lock, checks out for a newer statement and writes s there. An
-// error after the write says the statement was written.
+// directory's lock, writes s at out as writeJudged does. An error after the
+// write says the statement was written.
 func raiseAndWrite(floor, out string, s signed, issuedAt time.Time) error {
 	written := false
-	err := raiseSignerFloor(floor, s.st, issuedAt, func() error {
+	err := raiseSignerFloor(floor, s.st, issuedAt, func(ctx context.Context) error {
 		afterRaise()
-		if err := checkNotNewer(out, s.st, s.freshPub); err != nil {
+		if err := writeJudged(ctx, out, s); err != nil {
 			return err
-		}
-		if err := policykey.WriteStatement(out, s.env); err != nil {
-			return fmt.Errorf("--out %s: %w; the signer floor was raised to the statement", out, err)
 		}
 		written = true
 		return nil
 	})
 	if err != nil && written {
 		return fmt.Errorf("%w; the statement was written to %s", err, out)
+	}
+	return err
+}
+
+// writeJudged checks out for a newer statement and writes s over what it
+// judged there. A statement another renew put at out in between is judged
+// in turn, so an older one is replaced and a newer one kept: a read or a
+// write refused with nothing written judges out again, up to outAttempts
+// times, and any other failure ends the renew with its error, which names a
+// file it left.
+func writeJudged(ctx context.Context, out string, s signed) error {
+	var err error
+	for range outAttempts {
+		var judged fs.FileInfo
+		if judged, err = checkNotNewer(out, s.st, s.freshPub); err != nil {
+			if errors.Is(err, ondisk.ErrNotJudged) {
+				continue
+			}
+			return err
+		}
+		beforeOutReplaced(out)
+		if err = writeOut(ctx, out, s.env, judged); err == nil {
+			return nil
+		}
+		err = fmt.Errorf("--out %s: %w; the signer floor was raised to the statement", out, err)
+		if !errors.Is(err, ondisk.ErrNothingWritten) {
+			return err
+		}
 	}
 	return err
 }

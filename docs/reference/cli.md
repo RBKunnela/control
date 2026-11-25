@@ -8,10 +8,9 @@ covers: [cmd/guardana-control/**, cmd/guardana-gateway/**, internal/policykey/**
 # Command line
 
 Two binaries, built from the repository root with `go build ./cmd/<name>`;
-[status.md](../status.md) says what each does today. Each fenced block below
-is the help its binary prints on a usage error, byte for byte; the test its
-marker names diffs it against the binary, so a flag or command changed
-without this page fails the gate.
+[status.md](../status.md) says what each does. Each fenced block below
+is the help its binary prints on a usage error, byte for byte, which the test
+its marker names diffs against the binary.
 
 | Exit status | Means |
 | --- | --- |
@@ -52,8 +51,8 @@ a reset reaches a running plane's clock check only when it restarts.
 `policy keygen` creates the directory `--out` names, mode `0700`, and refuses a
 path that exists. Into it go `signing.key`, the private key as one PKCS#8 PEM
 block, mode `0600`, and `signing.pub`, the public key as one line of standard
-base64 and a newline, which `policy.public_key` takes as it is. It prints exactly two lines, `key_id: <id>` and `public_key: <line>`,
-the two members the gateway's `policy` group takes. The id is `ed25519-` and
+base64 and a newline, which `policy.public_key` takes as it is. It prints two lines, `key_id: <id>` and `public_key: <line>`,
+the gateway's `policy` members. The id is `ed25519-` and
 the first 16 hex digits of SHA-256 over the public key's 32 bytes; nothing
 lets an operator choose it.
 
@@ -64,13 +63,15 @@ document that does not parse, refused before the key is opened; a key file
 another account owns, one on which the group or others have any permission,
 one that is not a regular file, and one that is not exactly one unencrypted
 Ed25519 key in PKCS#8, with an OpenSSH, encrypted, EC, RSA or public key each
-named; an `--out` that is the key or the document by any spelling or link, and
-one that exists and is not a policy bundle, so no other file, another key
-included, is replaced; and a bundle the loader would refuse. `--out` is
-cleaned as text before anything reads it, so `a/link/../x` names `a/x`
-whatever `a/link` points at. If syncing the directory fails after the
-rename, `sign` reports it; the new bundle may be in
-place.
+named; an `--out` that is the key or the document by any spelling or link, or
+exists and is not a policy bundle; and a bundle the loader would refuse.
+`--out` is cleaned as text first, so `a/link/../x` names `a/x`
+whatever `a/link` points at. `sign`, `renew` and `operators roster sign`
+replace only the `--out` they judged, by a swap, refusing an existing one on
+file systems without it; a failed sync after it is reported, the file
+perhaps in place. The file's lock holds off this program's writers, not
+others; a reader holding one delays the write up to ten seconds, then
+nothing is written.
 
 The key reaches the command only as a path, and no refusal quotes it. Both
 refuse on a platform without permission bits
@@ -88,8 +89,8 @@ to the digest; the listing says so. An incomplete listing exits 1 naming
 what it could not read. Writing nothing, it lists the plane's directory from
 a signed operator's account.
 
-A claim is written whether or not a
-plane runs, and exit 0 either way: the record waits for the next
+A claim is written, exit 0, whether or not a
+plane runs: the record waits for the next
 plane. Where no plane holds the directory they say so on stderr: no held
 call waits for the answer, since a hold does not outlive its plane, and a
 plane that keeps a hold journal records it on that call's trail as too late.
@@ -99,9 +100,8 @@ an approver answered already, one past its expiry, and an approver id or a
 reason over its bound — each on its own line, naming what to do about it.
 
 The `pause` commands write and read the pause file a plane names in
-`pause.file` ([ADR-0019](../adr/0019-an-operator-can-pause-calls.md)), and
-[concepts/enforcement-modes.md](../concepts/enforcement-modes.md) says what a
-pause does to a call. `pause init` creates the file, pausing nothing, and
+`pause.file` ([ADR-0019](../adr/0019-an-operator-can-pause-calls.md)).
+`pause init` creates the file, pausing nothing, and
 refuses a name that is taken. `pause add` takes exactly one scope: `--global`;
 `--provider <p>`, an upstream by its configured name; `--action <k>`
 (`tool`, `prompt` or `resource`) with `--provider <p>`, and for a tool
@@ -118,8 +118,8 @@ commands as that user. They refuse, writing nothing, a file or directory the gro
 others may write or another account owns, a link, a file the plane would
 refuse to read, a second scope or none, a name, a reason or a scope the file
 cannot hold, and a 65th entry, each on one line that does not repeat the
-value. A writer waits up to ten seconds for another writer's lock; a
-running plane takes none. A pause blocks every call not yet handed out
+value. A writer waits up to ten seconds for any lock, then writes nothing;
+a running plane takes none. A pause blocks every call not yet handed out
 when the plane reads it, within one `pause.poll_interval`; it cancels
 nothing already running.
 

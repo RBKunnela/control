@@ -51,12 +51,20 @@ func (s *memStore) Floor(_ context.Context, bundleID string) (policy.Floor, erro
 	return f, nil
 }
 
-func (s *memStore) Raise(_ context.Context, st policy.Statement, now time.Time) (policy.Floor, error) {
+func (s *memStore) Raise(ctx context.Context, st policy.Statement, now time.Time) (policy.Floor, error) {
+	return s.RaiseAt(ctx, st, policy.At(now))
+}
+
+func (s *memStore) RaiseAt(_ context.Context, st policy.Statement, at policy.Reading) (policy.Floor, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	stored, ok := s.floors[st.BundleID()]
 	if !ok {
 		return policy.Floor{}, fmt.Errorf("memStore: no floor for %q", st.BundleID())
+	}
+	now, err := at()
+	if err != nil {
+		return policy.Floor{}, err
 	}
 	next, err := stored.Raise(st, now)
 	if err != nil {
@@ -93,6 +101,6 @@ type liarStore struct{ floor policy.Floor }
 
 func (s liarStore) Floor(context.Context, string) (policy.Floor, error) { return s.floor, nil }
 
-func (s liarStore) Raise(context.Context, policy.Statement, time.Time) (policy.Floor, error) {
+func (s liarStore) RaiseAt(context.Context, policy.Statement, policy.Reading) (policy.Floor, error) {
 	return s.floor, nil
 }

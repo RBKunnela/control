@@ -88,7 +88,8 @@ memory for the session and never written. Dev writes the first statement
 before the plane starts and a new one every third of the budget, the smaller
 of the document's `maxStaleSeconds` and `policy.max_stale`, or every budget
 less twice `policy.poll_interval` when that is sooner; a poll interval of half
-the budget or more is refused. The plane pins
+the budget or more is refused. Each replaces the last by a swap, which a file
+system without one refuses. The plane pins
 both public halves, and reads the bundle and the statement again every
 `policy.poll_interval`, which the configuration sets.
 

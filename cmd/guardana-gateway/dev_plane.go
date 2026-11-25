@@ -349,7 +349,7 @@ func (d *devPlane) layOut(ctx context.Context, control sibling) error {
 	if _, err := control.run(ctx, "policy", "state", "init", "--kind", "plane", "--bundle-id", d.signer.id, floors); err != nil {
 		return fmt.Errorf("creating the floor directory: %w", err)
 	}
-	if err := d.signer.renew(time.Now()); err != nil {
+	if err := d.signer.renew(ctx, time.Now()); err != nil {
 		return fmt.Errorf("writing the first freshness statement: %w", err)
 	}
 	return nil

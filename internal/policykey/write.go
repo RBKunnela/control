@@ -1,6 +1,7 @@
 package policykey
 
 import (
+	"context"
 	"crypto/ed25519"
 	"errors"
 	"fmt"
@@ -247,10 +248,31 @@ func IsBundle(raw []byte) bool {
 // bundle is public, and a plane running as another account has to read it.
 // The bytes are deterministic for one build of the protobuf runtime.
 func WriteBundle(path string, b *controlv1.PolicyBundle) error {
-	raw, err := proto.MarshalOptions{Deterministic: true}.Marshal(b)
+	raw, err := marshalBundle(b)
 	if err != nil {
-		return fmt.Errorf("policykey: serializing the bundle: %w", err)
+		return err
 	}
 	path = filepath.Clean(path)
 	return files.Replace(filepath.Dir(path), filepath.Base(path), raw, 0o644)
+}
+
+// WriteBundleOver is WriteBundle that replaces only the entry judged
+// describes, as files.ReplaceJudgedIn does, and with a nil judged writes only
+// where nothing stands at path. It waits for a lock of the file another
+// process holds until ctx ends.
+func WriteBundleOver(ctx context.Context, path string, b *controlv1.PolicyBundle, judged fs.FileInfo) error {
+	raw, err := marshalBundle(b)
+	if err != nil {
+		return err
+	}
+	path = filepath.Clean(path)
+	return files.ReplaceJudged(ctx, filepath.Dir(path), filepath.Base(path), raw, 0o644, judged)
+}
+
+func marshalBundle(b *controlv1.PolicyBundle) ([]byte, error) {
+	raw, err := proto.MarshalOptions{Deterministic: true}.Marshal(b)
+	if err != nil {
+		return nil, fmt.Errorf("policykey: serializing the bundle: %w", err)
+	}
+	return raw, nil
 }

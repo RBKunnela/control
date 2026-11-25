@@ -3,6 +3,9 @@ package pause
 import (
 	"context"
 	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -56,12 +59,38 @@ func Inspect(path string) (Signed, error) {
 }
 
 func inspect(path string, o owner) (Signed, error) {
-	f, err := load(path, o)
+	f, dir, err := loadFrom(path, o)
 	switch {
 	case err != nil:
 		return Signed{}, err
 	case f.signed == nil:
 		return Signed{}, fmt.Errorf("%w: %s", ErrUnsigned, path)
 	}
+	if err := boundHere(path, dir, f.signed.Body.File); err != nil {
+		return Signed{}, err
+	}
 	return *f.signed, nil
+}
+
+// boundHere refuses, with ErrOtherFile, a signed file whose body names
+// another file than path names now, or that was read from another directory
+// than the one path's links name now. A judge compares the body with the
+// binding it was given at start; this holds the read to the body, so a copy
+// read through a link retargeted since then is refused before it is judged.
+func boundHere(path string, read fs.FileInfo, named string) error {
+	bound, err := BindingOf(path)
+	if err != nil {
+		return err
+	}
+	if named != bound {
+		return fmt.Errorf("%w: it names %s, and %s is now %s", ErrOtherFile, named, path, bound)
+	}
+	dir, err := os.Stat(filepath.Dir(bound))
+	if err != nil {
+		return missing(err)
+	}
+	if !os.SameFile(read, dir) {
+		return fmt.Errorf("%w: it was read from another directory than %s", ErrOtherFile, filepath.Dir(bound))
+	}
+	return nil
 }

@@ -56,13 +56,14 @@ func (s *devSigner) public() ed25519.PublicKey {
 	return pub
 }
 
-// renew writes a statement for the bundle issued at now, to the second.
-func (s *devSigner) renew(now time.Time) error {
+// renew writes a statement for the bundle issued at now, to the second,
+// waiting for another holder's lock of the file until ctx ends.
+func (s *devSigner) renew(ctx context.Context, now time.Time) error {
 	env, err := policy.SignStatement(s.id, s.serial, s.digest, now.UTC().Truncate(time.Second), s.key, s.keyID)
 	if err != nil {
 		return err
 	}
-	return policykey.WriteStatement(s.path, env)
+	return policykey.WriteStatement(ctx, s.path, env)
 }
 
 // renewalEvery is how often the statement is renewed: a third of the budget
@@ -93,7 +94,8 @@ func (s *devSigner) schedule(cfg *gatewayconfig.Config) (string, error) {
 
 // start renews the statement every period schedule set until halt, saying on
 // log when a renewal fails: the plane then turns stale at the end of its
-// budget, and /healthz says so.
+// budget, and /healthz says so. A renewal still waiting for a lock of the
+// file when its period ends fails, and the next tick tries again.
 func (s *devSigner) start(ctx context.Context, log io.Writer) {
 	interval := s.every
 	ctx, s.stop = context.WithCancel(ctx)
@@ -107,7 +109,10 @@ func (s *devSigner) start(ctx context.Context, log io.Writer) {
 			case <-ctx.Done():
 				return
 			case now := <-t.C:
-				if err := s.renew(now); err != nil {
+				renewal, cancel := context.WithTimeout(ctx, interval)
+				err := s.renew(renewal, now)
+				cancel()
+				if err != nil {
 					writeLine(log, brand.Gateway+": dev: renewing the freshness statement: "+oneLine(err.Error()))
 				}
 			}

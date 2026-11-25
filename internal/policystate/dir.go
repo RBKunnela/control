@@ -90,6 +90,33 @@ func openDir(name string) (*dir, error) {
 	return d, nil
 }
 
+// makeDir makes dir, mode 0700, when nothing stands at the name. The umask
+// can take the owner's own write or search bit from the mode Mkdir is given,
+// so the mode is set again on the directory made, through a descriptor that
+// refuses a link put at the name since. A umask that takes the owner's read
+// bit leaves a directory that descriptor cannot open: it is removed, so a
+// later Init makes it again.
+func makeDir(dir string) error {
+	err := os.Mkdir(dir, 0o700)
+	switch {
+	case errors.Is(err, fs.ErrExist):
+		return nil
+	case err != nil:
+		return fmt.Errorf("%w: %w", ErrNotStateDir, err)
+	}
+	made, err := files.OpenDir(dir)
+	if errors.Is(err, files.ErrNoDirOpen) {
+		return nil
+	}
+	if err == nil {
+		err = errors.Join(made.Chmod(0o700), made.Close())
+	}
+	if err != nil {
+		return errors.Join(fmt.Errorf("%w: %w", ErrNotStateDir, err), os.Remove(dir))
+	}
+	return nil
+}
+
 // isDirectory refuses a name where no directory stands. The name is not
 // followed, so a link to a directory is refused too.
 func isDirectory(name string) error {

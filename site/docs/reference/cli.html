@@ -131,10 +131,9 @@
 <main id="main" class="prose">
 <h1 id="command-line">Command line</h1>
 <p>Two binaries, built from the repository root with <code>go build ./cmd/&lt;name&gt;</code>;
-<a href="/docs/status">status.md</a> says what each does today. Each fenced block below
-is the help its binary prints on a usage error, byte for byte; the test its
-marker names diffs it against the binary, so a flag or command changed
-without this page fails the gate.</p>
+<a href="/docs/status">status.md</a> says what each does. Each fenced block below
+is the help its binary prints on a usage error, byte for byte, which the test
+its marker names diffs against the binary.</p>
 <div class="tbl">
 <table>
 <thead>
@@ -186,8 +185,8 @@ a reset reaches a running plane's clock check only when it restarts.
 <p><code>policy keygen</code> creates the directory <code>--out</code> names, mode <code>0700</code>, and refuses a
 path that exists. Into it go <code>signing.key</code>, the private key as one PKCS#8 PEM
 block, mode <code>0600</code>, and <code>signing.pub</code>, the public key as one line of standard
-base64 and a newline, which <code>policy.public_key</code> takes as it is. It prints exactly two lines, <code>key_id: &lt;id&gt;</code> and <code>public_key: &lt;line&gt;</code>,
-the two members the gateway's <code>policy</code> group takes. The id is <code>ed25519-</code> and
+base64 and a newline, which <code>policy.public_key</code> takes as it is. It prints two lines, <code>key_id: &lt;id&gt;</code> and <code>public_key: &lt;line&gt;</code>,
+the gateway's <code>policy</code> members. The id is <code>ed25519-</code> and
 the first 16 hex digits of SHA-256 over the public key's 32 bytes; nothing
 lets an operator choose it.</p>
 <p><code>policy sign</code> prints one <code>name: value</code> line each for <code>bundle_id</code>, <code>version</code>,
@@ -197,13 +196,15 @@ document that does not parse, refused before the key is opened; a key file
 another account owns, one on which the group or others have any permission,
 one that is not a regular file, and one that is not exactly one unencrypted
 Ed25519 key in PKCS#8, with an OpenSSH, encrypted, EC, RSA or public key each
-named; an <code>--out</code> that is the key or the document by any spelling or link, and
-one that exists and is not a policy bundle, so no other file, another key
-included, is replaced; and a bundle the loader would refuse. <code>--out</code> is
-cleaned as text before anything reads it, so <code>a/link/../x</code> names <code>a/x</code>
-whatever <code>a/link</code> points at. If syncing the directory fails after the
-rename, <code>sign</code> reports it; the new bundle may be in
-place.</p>
+named; an <code>--out</code> that is the key or the document by any spelling or link, or
+exists and is not a policy bundle; and a bundle the loader would refuse.
+<code>--out</code> is cleaned as text first, so <code>a/link/../x</code> names <code>a/x</code>
+whatever <code>a/link</code> points at. <code>sign</code>, <code>renew</code> and <code>operators roster sign</code>
+replace only the <code>--out</code> they judged, by a swap, refusing an existing one on
+file systems without it; a failed sync after it is reported, the file
+perhaps in place. The file's lock holds off this program's writers, not
+others; a reader holding one delays the write up to ten seconds, then
+nothing is written.</p>
 <p>The key reaches the command only as a path, and no refusal quotes it. Both
 refuse on a platform without permission bits
 (<a href="/docs/adr/0018-keys-and-bundles-on-disk">ADR-0018</a>).</p>
@@ -217,8 +218,8 @@ readable fields of the projection the plane wrote at hold time, not bound
 to the digest; the listing says so. An incomplete listing exits 1 naming
 what it could not read. Writing nothing, it lists the plane's directory from
 a signed operator's account.</p>
-<p>A claim is written whether or not a
-plane runs, and exit 0 either way: the record waits for the next
+<p>A claim is written, exit 0, whether or not a
+plane runs: the record waits for the next
 plane. Where no plane holds the directory they say so on stderr: no held
 call waits for the answer, since a hold does not outlive its plane, and a
 plane that keeps a hold journal records it on that call's trail as too late.</p>
@@ -226,9 +227,8 @@ plane that keeps a hold journal records it on that call's trail as too late.</p>
 an approver answered already, one past its expiry, and an approver id or a
 reason over its bound — each on its own line, naming what to do about it.</p>
 <p>The <code>pause</code> commands write and read the pause file a plane names in
-<code>pause.file</code> (<a href="/docs/adr/0019-an-operator-can-pause-calls">ADR-0019</a>), and
-<a href="/docs/concepts/enforcement-modes">concepts/enforcement-modes.md</a> says what a
-pause does to a call. <code>pause init</code> creates the file, pausing nothing, and
+<code>pause.file</code> (<a href="/docs/adr/0019-an-operator-can-pause-calls">ADR-0019</a>).
+<code>pause init</code> creates the file, pausing nothing, and
 refuses a name that is taken. <code>pause add</code> takes exactly one scope: <code>--global</code>;
 <code>--provider &lt;p&gt;</code>, an upstream by its configured name; <code>--action &lt;k&gt;</code>
 (<code>tool</code>, <code>prompt</code> or <code>resource</code>) with <code>--provider &lt;p&gt;</code>, and for a tool
@@ -244,8 +244,8 @@ commands as that user. They refuse, writing nothing, a file or directory the gro
 others may write or another account owns, a link, a file the plane would
 refuse to read, a second scope or none, a name, a reason or a scope the file
 cannot hold, and a 65th entry, each on one line that does not repeat the
-value. A writer waits up to ten seconds for another writer's lock; a
-running plane takes none. A pause blocks every call not yet handed out
+value. A writer waits up to ten seconds for any lock, then writes nothing;
+a running plane takes none. A pause blocks every call not yet handed out
 when the plane reads it, within one <code>pause.poll_interval</code>; it cancels
 nothing already running.</p>
 <p>Signed pause files, <code>--key</code>, <code>pause sign</code> and <code>pause floor init</code>:

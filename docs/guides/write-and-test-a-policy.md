@@ -144,7 +144,8 @@ repeated.
 
 `sign` refuses a document that does not parse before it opens the key, and a
 bundle the loader would refuse. The bundle is public, mode `0644`, and
-replaces only an earlier bundle at `--out`. Give each new version a higher
+replaces only the earlier bundle at `--out` it checked. Give each new
+version a higher
 `serial` ([ADR-0018](../adr/0018-keys-and-bundles-on-disk.md)).
 
 ### 6. Vouch that the bundle is current

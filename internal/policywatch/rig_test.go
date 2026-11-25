@@ -113,6 +113,10 @@ type memFloor struct {
 	// readBlocked, when set, makes Floor wait until its context ends; each
 	// such read is announced on it first.
 	readBlocked chan struct{}
+	// readHeld, when set, makes Floor wait until readRelease is closed, as a
+	// read does while another process holds the directory's lock, and then
+	// answer; each such read is announced on readHeld first.
+	readHeld, readRelease chan struct{}
 }
 
 var errStore = errors.New("memFloor: the store failed")
@@ -125,6 +129,12 @@ func (s *memFloor) Floor(ctx context.Context, _ string) (policy.Floor, error) {
 		<-ctx.Done()
 		return policy.Floor{}, ctx.Err()
 	}
+	if held := s.readHeld; held != nil {
+		s.mu.Unlock()
+		held <- struct{}{}
+		<-s.readRelease
+		s.mu.Lock()
+	}
 	defer s.mu.Unlock()
 	if s.failRead {
 		return policy.Floor{}, errStore
@@ -132,7 +142,7 @@ func (s *memFloor) Floor(ctx context.Context, _ string) (policy.Floor, error) {
 	return s.floor, nil
 }
 
-func (s *memFloor) Raise(ctx context.Context, st policy.Statement, now time.Time) (policy.Floor, error) {
+func (s *memFloor) RaiseAt(ctx context.Context, st policy.Statement, at policy.Reading) (policy.Floor, error) {
 	s.mu.Lock()
 	if hung := s.hung; hung != nil {
 		s.mu.Unlock()
@@ -147,6 +157,10 @@ func (s *memFloor) Raise(ctx context.Context, st policy.Statement, now time.Time
 		return policy.Floor{}, ctx.Err()
 	}
 	defer s.mu.Unlock()
+	now, err := at()
+	if err != nil {
+		return policy.Floor{}, err
+	}
 	next, err := s.floor.Raise(st, now)
 	if err != nil {
 		return policy.Floor{}, err

@@ -13,10 +13,10 @@ import (
 
 // raiseSignerFloor raises the signer's floor in dir to st and, once the floor
 // took it, runs then under the directory's lock. Opening the directory and
-// raising share one wait of floorLockWait for its lock. A refusal of the
-// raise names what the floor holds when it can be read; then's error is
-// returned as it is.
-func raiseSignerFloor(dir string, st policy.Statement, now time.Time, then func() error) (err error) {
+// raising share one wait of floorLockWait for its lock, and then is handed
+// what is left of it. A refusal of the raise names what the floor holds when
+// it can be read; then's error is returned as it is.
+func raiseSignerFloor(dir string, st policy.Statement, now time.Time, then func(context.Context) error) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), floorLockWait)
 	defer cancel()
 	store, err := policystate.OpenContext(ctx, dir, policystate.KindSigner)
@@ -32,7 +32,7 @@ func raiseSignerFloor(dir string, st policy.Statement, now time.Time, then func(
 	var thenErr error
 	_, err = store.RaiseWith(ctx, st, now, func(policy.Floor) error {
 		ran = true
-		thenErr = then()
+		thenErr = then(ctx)
 		return thenErr
 	})
 	switch {

@@ -154,8 +154,8 @@ guardana-control stops lift --route &lt;file&gt; --public-key &lt;file&gt; --key
 <p>The route says which findings may stop a run: its tenant, and rules, each a
 procedure by id, version and digest and a supervise rule, with an optional
 lifetime for the stops it allows. Without one a stop lasts as long as its run.
-<code>route sign</code> signs it with its own key and writes it mode <code>0644</code>,
-replacing only an earlier signed route. It refuses any rule but the three whose finding
+<code>route sign</code> signs it, mode <code>0644</code>, replacing only the route it judged by a
+swap, locked against this program's writers only. It refuses any rule but the three whose finding
 may stop a run, each at its version: <code>REPEATED_DENIAL</code> at <code>2</code>, and
 <code>STEP_OUTSIDE_PROCEDURE</code> and <code>RESOURCE_OUTSIDE_RUN</code> at <code>1</code>
 (<a href="/docs/adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected">ADR-0088</a>).
@@ -163,7 +163,7 @@ Every reader of a signed route refuses one naming another, but
 <code>--carry-route</code> and <code>stops lift</code>. The route also names the lift key, whose holder alone can
 lift a stop; it need not be on the plane's machine.</p>
 <p>The route floor keeps, per route id, the highest serial a plane took and its
-digest, in a directory of its own that <code>policy state init --kind route</code> makes.
+digest, in its own directory that <code>policy state init --kind route</code> makes.
 At start a plane refuses a missing floor, a route below the floor's serial,
 and a route at that serial with another digest. It raises the floor once the
 list's first read is served, before it listens, and never makes one. A plane reads the route at start only: a stale route can

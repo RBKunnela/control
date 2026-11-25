@@ -48,7 +48,8 @@ const pauseAuthority = "Write access to the pause file is the authority to pause
 	"plane, so it is signed for --plane-id whichever plane it came from: sign only this plane's file."
 
 // pauseLockWait bounds how long a writer waits for another writer's lock on
-// the pause file's directory. A running plane never takes it.
+// the pause file's directory and, for a signed write, for any lock of the
+// file. A running plane never takes either.
 const pauseLockWait = 10 * time.Second
 
 // keyFlag declares --key, the operator key a signed pause file is signed

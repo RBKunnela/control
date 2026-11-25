@@ -3,6 +3,7 @@
 package pause
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -10,6 +11,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/guardana/control/internal/files"
 )
 
 // TestALockIsTakenOnTheJudgedDirectory: a lock held on the judged directory
@@ -35,5 +38,61 @@ func TestALockIsTakenOnTheJudgedDirectory(t *testing.T) {
 	}
 	if !errors.Is(err, ErrLocked) {
 		t.Errorf("Remove = %v, want ErrLocked: the lock was not taken on the judged directory", err)
+	}
+}
+
+// sharedLocked takes a shared flock of path on an open of its own, as a
+// reader of the file may, and returns that open; closing it lets the lock go.
+func sharedLocked(t *testing.T, path string) *os.File {
+	t.Helper()
+	f, err := os.Open(filepath.Clean(path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = f.Close() })
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_SH); err != nil {
+		t.Fatal(err)
+	}
+	return f
+}
+
+// TestAReaderLockOfTheSignedFileRefusesTheWriteWhenTheContextEnds: the
+// plane's account reads a signed pause file through its group and may hold a
+// shared flock of it; a signed write waits for that lock only until its
+// context ends, is refused with nothing written, and lets the directory's
+// lock go, so the next writer is not refused by it.
+func TestAReaderLockOfTheSignedFileRefusesTheWriteWhenTheContextEnds(t *testing.T) {
+	p := newSignedPlane(t)
+	if err := InitSigned(t.Context(), p.path, header("alice", 1), signer("alice")); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.ReadFile(p.path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader := sharedLocked(t, p.path)
+	ctx, cancel := context.WithTimeout(t.Context(), 300*time.Millisecond)
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		_, err := AddSigned(ctx, p.path, globalEntry, signer("carol"))
+		done <- err
+	}()
+	select {
+	case err = <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("AddSigned with a 300ms context is still running after 5s")
+	}
+	if !errors.Is(err, files.ErrLockHeld) || errors.Is(err, ErrLocked) {
+		t.Errorf("AddSigned = %v, want files.ErrLockHeld and not the directory's ErrLocked", err)
+	}
+	if after, readErr := os.ReadFile(p.path); readErr != nil || !bytes.Equal(after, before) {
+		t.Errorf("the pause file changed under a refused write: %v", readErr)
+	}
+	if err := reader.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := AddSigned(t.Context(), p.path, globalEntry, signer("carol")); err != nil {
+		t.Errorf("AddSigned once the reader let go = %v, want nil", err)
 	}
 }

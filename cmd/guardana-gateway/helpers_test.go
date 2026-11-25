@@ -144,7 +144,7 @@ func writeStatement(t *testing.T, path, bundlePath string, at time.Time) {
 	if err != nil {
 		t.Fatalf("signing the statement: %v", err)
 	}
-	if err := policykey.WriteStatement(path, env); err != nil {
+	if err := policykey.WriteStatement(t.Context(), path, env); err != nil {
 		t.Fatalf("writing the statement: %v", err)
 	}
 }

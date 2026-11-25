@@ -78,8 +78,8 @@ func InitAuthority(ctx context.Context, dir, rosterID string) (err error) {
 	if err != nil {
 		return err
 	}
-	if err := os.Mkdir(dir, 0o700); err != nil && !errors.Is(err, fs.ErrExist) {
-		return fmt.Errorf("%w: %w", ErrNotStateDir, err)
+	if err := makeDir(dir); err != nil {
+		return err
 	}
 	d, err := openDir(dir)
 	if err != nil {

@@ -148,9 +148,13 @@ func (s *floorInMemory) Floor(context.Context, string) (Floor, error) {
 	return s.floor, nil
 }
 
-func (s *floorInMemory) Raise(_ context.Context, st Statement, now time.Time) (Floor, error) {
+func (s *floorInMemory) RaiseAt(_ context.Context, st Statement, at Reading) (Floor, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	now, err := at()
+	if err != nil {
+		return Floor{}, err
+	}
 	next, err := s.floor.Raise(st, now)
 	if err != nil {
 		return Floor{}, err

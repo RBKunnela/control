@@ -4,6 +4,7 @@ package policystate_test
 
 import (
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -182,6 +183,33 @@ func TestTheModesInitWritesDoNotFollowTheUmask(t *testing.T) {
 	}
 }
 
+// TestEveryInitMakesItsDirectoryOwnerOnlyUnderAnyUmask: a umask that takes
+// the owner's own write bit leaves each kind's new directory 0700 and the
+// init done; the control is the same init under no mask.
+func TestEveryInitMakesItsDirectoryOwnerOnlyUnderAnyUmask(t *testing.T) {
+	inits := map[string]func(dir string) error{
+		"Init":          func(dir string) error { return policystate.Init(t.Context(), dir, policystate.KindSigner, idA) },
+		"InitAuthority": func(dir string) error { return policystate.InitAuthority(t.Context(), dir, "roster-a") },
+		"InitRoute":     func(dir string) error { return policystate.InitRoute(t.Context(), dir, "route-a") },
+		"InitPause":     func(dir string) error { return policystate.InitPause(t.Context(), dir, "t1", "A") },
+		"InitStops":     func(dir string) error { return policystate.InitStops(t.Context(), dir, "t1", "A") },
+	}
+	for name, init := range inits {
+		for _, mask := range []int{0, 0o200, 0o100} {
+			dir := filepath.Join(t.TempDir(), "floors")
+			err := func() error {
+				saved := syscall.Umask(mask)
+				defer syscall.Umask(saved)
+				return init(dir)
+			}()
+			info, statErr := os.Lstat(dir)
+			if err != nil || statErr != nil || info.Mode().Perm() != 0o700 {
+				t.Errorf("%s under umask %03o = %v; the directory %v, %v; want done and 0700", name, mask, err, info.Mode(), statErr)
+			}
+		}
+	}
+}
+
 func TestANameThePackageDoesNotWriteRefusesTheDirectory(t *testing.T) {
 	for _, name := range []string{
 		"notes.txt", fileA + ".bak", "D8832A1B44E0743B0465F2C7DAA51EFA12D7C5538FBC27240B46ADAEB465AB87.floor.json",
@@ -237,5 +265,37 @@ func TestResetJudgesWhatTheDirectoryHolds(t *testing.T) {
 				t.Errorf("a refused Reset wrote %s", after)
 			}
 		})
+	}
+}
+
+// TestAnInitUnderAUmaskTakingTheOwnersReadBitLeavesNoDirectory: a umask
+// that takes the owner's read bit leaves a directory Init cannot open to set
+// its mode; Init is refused and removes it, so the next Init, under an
+// ordinary umask, makes it 0700.
+func TestAnInitUnderAUmaskTakingTheOwnersReadBitLeavesNoDirectory(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("the superuser opens a directory whatever its mode")
+	}
+	for _, mask := range []int{0o400, 0o700} {
+		dir := filepath.Join(t.TempDir(), "floors")
+		err := func() error {
+			saved := syscall.Umask(mask)
+			defer syscall.Umask(saved)
+			return policystate.InitAuthority(t.Context(), dir, "roster-a")
+		}()
+		if !errors.Is(err, policystate.ErrNotStateDir) {
+			t.Errorf("InitAuthority under umask %03o = %v, want ErrNotStateDir", mask, err)
+		}
+		if info, err := os.Lstat(dir); !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("under umask %03o the directory was left: %v, %v", mask, info.Mode(), err)
+			_ = os.Chmod(dir, 0o700) //nolint:gosec // G302: a directory, opened again so the test can remove it
+			continue
+		}
+		if err := policystate.InitAuthority(t.Context(), dir, "roster-a"); err != nil {
+			t.Fatalf("the next InitAuthority, under the test's umask: %v", err)
+		}
+		if info, err := os.Lstat(dir); err != nil || info.Mode().Perm() != 0o700 {
+			t.Errorf("the directory the next InitAuthority made: %v, %v; want 0700", info.Mode(), err)
+		}
 	}
 }

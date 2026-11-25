@@ -25,6 +25,12 @@ verify one.
   and a host, a query, a fragment or a `%` that escapes nothing is refused.
   A socket path holding `#`, `?`, `%` or a space is given escaped, as
   `collect` prints it.
+- **Breaking:** `policy sign`, `route sign`, `operators roster sign`,
+  `policy renew`, `supervise --view`, the signed pause writers and the dev
+  plane's statement replace an existing output by swapping two names in one
+  step, and refuse to replace it where the platform or file system cannot,
+  as outside Linux and macOS or on some network file systems. A first
+  output, where nothing stands yet, is written as before.
 - **Breaking:** `DEADLINE_EXCEEDED`, `DENIED_ACTION_RETRIED_ARGUMENTS` and
   `DENIED_ACTION_RETRIED_RESOURCE` are rule version `2` and `SUSPECTED` at
   most, and none of them may stop a run, an agent or a principal. Each
@@ -439,6 +445,66 @@ verify one.
   [Claude Code hooks](docs/reference/claude-code-hooks.md) credits a decision
   to a sub-agent's `Write` only when the trail holds more decided writes of that file than the other
   calls that wrote it could account for.
+- A lookup in the trust roster judges the roster's expiry by the time read
+  after it waited on the trust floor's lock. A roster that expired while
+  another process held the lock still named its keys.
+- `guardana-gateway doctor` refuses a roster at the floor's serial with
+  another digest, and one naming a pinned key such as the policy key as an
+  operator, as a serving plane refuses both. It reported the trust check
+  `ok` for either.
+- A plane under `signed` takes a pause file only when the directory it read
+  the file from is still the one the pause path leads to. A link on the path
+  retargeted between the path's binding and the read let the plane take a
+  copy of a signed file from another directory.
+- The policy watcher's start judges a statement's expiry by the time read
+  after it read the floor and the files, and its start and its polls judge
+  it again once the floor's store holds its lock to raise the floor. A
+  statement that expired while another process held the floor's lock was
+  taken, and raised the floor.
+- `policy sign`, `route sign`, `operators roster sign`, `policy renew`,
+  `supervise --view` and the signed pause writers replace their output only
+  while it is still the file they judged: its inode, type, mode, size and
+  times, so another file put there or one reusing a freed inode number is
+  another; a rewrite in place to the same size within one tick of the file
+  system's clock is not seen. Writers of this program wait for each other on
+  a lock of the judged file and judge it again once they hold it, so of any
+  number of them only one replaces it and the others are refused with
+  nothing written; they lock the new file too until the swap settled, so a
+  writer that judged it waits rather than replacing it first. Any process
+  that can read the file can hold a lock of it: the write waits for it up to
+  the command's ten seconds, and the dev plane's statement renewal up to its
+  renewal period, then is refused with nothing written. Another program takes
+  no such lock: a file it puts there between that check and the swap comes
+  out of the swap and is put back, but
+  a reader of the name in that instant reads the refused file. A write
+  succeeds only while the name holds its own file once the swap settled. A
+  file renamed over the output after the last check was replaced, and with
+  three writers a refused file could end at the name.
+- `policy renew` runs over one `--out` under different signer floor
+  directories keep the newest statement, in any order: a run whose write was
+  refused with nothing written judges `--out` again, up to three times, and
+  writes over an older statement but not a newer one; a write that failed
+  having written ends the run, naming any file it left. The older statement
+  could be written over the newer, and a run could exit 0 with an older
+  statement at `--out`.
+- The policy watcher counts an unchanged statement past its budget as
+  expired and refuses it, judging the budget by the time read after the
+  floor. A statement the floor still took was confirmed again although it
+  had expired.
+- `policy renew` verifies a bundle signed under a key id a plane configures
+  for its key, not only the id the key derives; a bundle another key signed
+  is still refused. It refused such a bundle as naming no usable key.
+- Initialising a floor directory leaves it `0700` under any umask that keeps
+  the owner's read bit, and under one that takes it fails and leaves no
+  directory. Under a umask of `0200` or `0100` the initialisation could not
+  write its own new directory, failed, and left it `0500` or `0600`.
+- `guardana-gateway doctor` reports pause coverage as unknown, counting the
+  entries, when it cannot read a run record a pause entry names. It counted
+  such an entry as covering nothing and passed.
+- The [signed operators guide](docs/guides/set-up-signed-operators.md) says
+  that a sticky directory on a path, such as `/tmp`, passes the signed start
+  check although the plane's account may write it, as the check lets it; the
+  entry the path ends at never passes that way.
 - `procedure test` refuses an inline event whose `schemaVersion` is of
   another major or not `MAJOR.MINOR`, as the export reader refuses it; such
   an event was judged as if this build could read it.

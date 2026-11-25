@@ -244,7 +244,8 @@ file, never its text: an argument holding key text is refused without being
 repeated.</p>
 <p><code>sign</code> refuses a document that does not parse before it opens the key, and a
 bundle the loader would refuse. The bundle is public, mode <code>0644</code>, and
-replaces only an earlier bundle at <code>--out</code>. Give each new version a higher
+replaces only the earlier bundle at <code>--out</code> it checked. Give each new
+version a higher
 <code>serial</code> (<a href="/docs/adr/0018-keys-and-bundles-on-disk">ADR-0018</a>).</p>
 <h3 id="6-vouch-that-the-bundle-is-current">6. Vouch that the bundle is current</h3>
 <pre><code>$ go run ./cmd/guardana-control policy keygen --out freshness

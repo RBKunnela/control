@@ -94,8 +94,11 @@ and nothing reads a clock, so one supervision draws the same bytes twice.
 | any other file, a link, a directory, a path in a missing directory, or a file another account owns | refused with status 2 before any input is read |
 
 The page is written after the findings log, with mode `0600` whatever an old
-page's mode was. It replaces the old page by a rename, so the path holds the
-old page or the new one, never part of either. A failure to write it exits 2,
+page's mode was. It swaps the new page in for the page it judged, so the
+path holds the old page or the new one, never part of either; a file that
+took the path after the check is kept and the run fails naming `--view`, and
+where two names cannot be swapped, outside Linux and macOS, an old page is
+not replaced. A failure to write it exits 2,
 prints no report and says the log was written. When the page is written,
 what `supervise` prints and its exit status are the same as without
 `--view`. `--view-all` without `--view`, and `--view` given twice, are usage

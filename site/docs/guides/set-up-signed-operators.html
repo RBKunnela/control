@@ -155,7 +155,11 @@ runs directory's <code>records/</code>, or any directory on their paths; one whe
 is missing or carries an access control list (on Linux and macOS); one
 whose environment sets any of its keys; and one whose <code>approvals.inbox_dir</code>
 its own account does not own. Root's files of mode <code>0644</code> in root's
-directories of mode <code>0755</code> pass.</p>
+directories of mode <code>0755</code> pass. A directory on a path, though not the
+entry the path ends at, passes although the plane's account may write it
+when it carries the sticky bit, as <code>/tmp</code> does: there only an entry's owner
+or the directory's can replace the entry, and the entry below is judged in
+turn.</p>
 <div class="tbl">
 <table>
 <thead>
@@ -270,6 +274,12 @@ guardana-control pause add --action tool --provider orders --name refund \
   file: /srv/pause/pause.json
   floor_dir: /var/lib/guardana/pause-floor
 </code></pre>
+<p>The signed pause writers, like <code>operators roster sign</code>, replace the file only
+while it is the one they read, by swapping two names in one step, and refuse
+where the file system cannot. Writers of this program wait for each other on
+the pause directory's lock and on a lock of the file. Another program takes
+neither: its file can be swapped back, and a plane reading in that instant
+reads the refused one.</p>
 <h3 id="6-renew-and-revoke">6. Renew and revoke</h3>
 <p>Sign the roster again before <code>expires_at</code>, each time with a higher <code>serial</code>,
 and install it over the old one. The plane reads the roster file again each
@@ -286,9 +296,12 @@ roster's id and serial, how many keys it names and the floor's serial. A
 held request answered in step 4 runs on the agent's retry.</p>
 <p>The two-account job of continuous integration runs the cases
 <a href="https://github.com/guardana/control/blob/main/scripts/expected-runs.txt">scripts/expected-runs.txt</a> names: file
-ownership, a signed run, <code>react</code> under a signed route, and the health and
-export sockets. None of them approves a held request from an operator's own
-account.</p>
+ownership, a signed run, <code>react</code> under a signed route, the health and export
+sockets, a pause the operator rewrites that the plane's account reads through
+its group, and an answer an operator files from their own account that runs a
+held request. In that last case root is the plane, the test repeats the
+approve steps instead of running <code>approvals approve</code>, and the account outside
+the group is shown only failing to read the hold.</p>
 <h2 id="roll-back">Roll back</h2>
 <p>For a plane with no <code>runs.dir</code> and no route: set <code>approvals.authority: directory</code>, remove <code>plane_id</code>, <code>approvals.inbox_dir</code>, <code>pause.floor_dir</code> and the
 <code>trust</code> and <code>operators</code> keys, which every other authority refuses, give the

@@ -154,15 +154,25 @@ type FloorStore interface {
 	// never from memory. A bundle id the store holds no floor for is an
 	// error, never an empty floor.
 	Floor(ctx context.Context, bundleID string) (Floor, error)
-	// Raise holds the store's exclusive lock while it reads the floor stored
-	// for st's bundle id, computes stored.Raise(st, now), writes the result
-	// durably when it differs from what is stored, and returns it. When
-	// stored.Raise refuses or the read fails, Raise returns that error and the
-	// stored floor is unchanged. When the write fails, Raise returns that
-	// error and the stored floor may be the raised one: a failed Raise never
-	// lowers a floor and may have raised it, so a caller publishes nothing on
-	// an error.
-	Raise(ctx context.Context, st Statement, now time.Time) (Floor, error)
+	// RaiseAt holds the store's exclusive lock while it reads the floor
+	// stored for st's bundle id, takes the reading now gives, computes
+	// stored.Raise(st, reading), writes the result durably when it differs
+	// from what is stored, and returns it. When now, stored.Raise or the read
+	// refuses or fails, RaiseAt returns that error and the stored floor is
+	// unchanged. When the write fails, RaiseAt returns that error and the
+	// stored floor may be the raised one: a failed raise never lowers a floor
+	// and may have raised it, so a caller publishes nothing on an error.
+	RaiseAt(ctx context.Context, st Statement, now Reading) (Floor, error)
+}
+
+// Reading is the clock reading a raise is judged at, taken once the store
+// holds its lock, so a wait on that lock comes before it. An error refuses
+// the raise.
+type Reading func() (time.Time, error)
+
+// At is the reading of a time read already.
+func At(now time.Time) Reading {
+	return func() (time.Time, error) { return now, nil }
 }
 
 // StartAction is what a plane does with the bundle on disk at start. The zero

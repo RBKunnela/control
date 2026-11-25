@@ -122,7 +122,8 @@ func rosterSign(v rosterSignValues, source string, now time.Time, stdout, stderr
 }
 
 // rosterLockWait bounds how long roster sign waits for another signer's lock
-// on the output directory. A test shortens it.
+// on the output directory and, within what is left of it, for any lock of
+// --out. A test shortens it.
 var rosterLockWait = 10 * time.Second
 
 // afterRosterLock runs once replaceRoster holds the directory's lock, before
@@ -153,7 +154,7 @@ func replaceRoster(out string, read *trust.Envelope, next trust.Document, key ed
 	}
 	defer func() { err = errors.Join(err, unlock()) }()
 	afterRosterLock()
-	prev, err := rosterIn(root, out)
+	prev, judged, err := rosterIn(root, out)
 	if err != nil {
 		return err
 	}
@@ -163,7 +164,8 @@ func replaceRoster(out string, read *trust.Envelope, next trust.Document, key ed
 	if !sameEnvelope(read, prev) {
 		return fmt.Errorf("--out %s changed since roster sign first read it; nothing was written, so read it and sign again", out)
 	}
-	if err := ondisk.ReplaceIn(root, filepath.Base(out), body, rosterFileMode); err != nil {
+	beforeOutReplaced(out)
+	if err := ondisk.ReplaceJudgedIn(ctx, root, filepath.Base(out), body, rosterFileMode, judged); err != nil {
 		return fmt.Errorf("--out %s: %w", out, err)
 	}
 	return nil
@@ -193,21 +195,25 @@ func checkRosterOut(out string) (*trust.Envelope, error) {
 }
 
 // rosterIn is checkRosterOut's read of --out through root, the directory the
-// lock is held on and the replace writes into, so the roster checked is the
-// one replaced.
-func rosterIn(root *os.Root, out string) (*trust.Envelope, error) {
+// lock is held on and the replace writes into, and returns the entry it read
+// as well, nil where none stands, so the roster checked is the one replaced.
+func rosterIn(root *os.Root, out string) (*trust.Envelope, fs.FileInfo, error) {
 	name := filepath.Base(out)
 	info, err := root.Lstat(name)
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
-		return nil, nil
+		return nil, nil, nil
 	case err != nil:
-		return nil, fmt.Errorf("--out %s: %w", out, err)
+		return nil, nil, fmt.Errorf("--out %s: %w", out, err)
 	case !info.Mode().IsRegular():
-		return nil, notARoster(out)
+		return nil, nil, notARoster(out)
 	}
-	raw, err := ondisk.ReadRegularIn(root, name, trust.MaxFileBytes)
-	return envelopeAt(out, raw, err)
+	raw, err := ondisk.ReadRegularInOf(root, name, trust.MaxFileBytes, info)
+	env, err := envelopeAt(out, raw, err)
+	if err != nil {
+		return nil, nil, err
+	}
+	return env, info, nil
 }
 
 // envelopeAt is the roster envelope a read of --out returned, refusing what

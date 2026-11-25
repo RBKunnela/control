@@ -90,11 +90,9 @@ Sources: `adapters/mcp/listener.go`, `cmd/guardana-gateway/adapter.go`,
 `adapters/authzen/mapping.go`.
 
 A dotted line is a path around the plane or a
-write the file checks refuse. The account is the strongest boundary this
-build has: the approvals directory, the pause file, the hold journal, the
-trail file and the key are each refused when the group or the world may write
-them, and the hold journal, the trail file and the key also when another
-account owns them.
+write the file checks refuse. The account is this build's strongest
+boundary; [another local account](#another-local-account) names each file
+check.
 
 ## An agent that is wrong or steered
 
@@ -328,6 +326,9 @@ What it does not do:
   [ADR-0080](../adr/0080-evidence-leaves-a-plane-over-a-unix-socket-or-tls.md)).
 - The spool writes its files `0600` and refuses a directory another account
   owns or that others can write.
+- Any account that can read a statement, bundle, route or roster can lock
+  it, refusing every write until it lets go: renews fail, the statement ages,
+  and the plane turns stale, refusing calls but granting nothing.
 - A peer `health.socket` or a unix collector admits can pass its connection
   on (`SCM_RIGHTS`): trust stops at its account.
 - The checks read the owner and mode bits, not access control lists. On

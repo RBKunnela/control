@@ -80,6 +80,7 @@ func causeOf(err error) Cause {
 		err   error
 		cause Cause
 	}{
+		{ErrStatementExpired, CauseStatementExpired},
 		{policy.ErrConfirmationWithdrawn, CauseWithdrawn},
 		{policy.ErrStatementFuture, CauseStatementFuture},
 		{policy.ErrClockBehindFloor, CauseClockBehindFloor},

@@ -12,6 +12,7 @@ import (
 	"github.com/guardana/control/internal/canon"
 	"github.com/guardana/control/internal/policy/bundle"
 	"github.com/guardana/control/internal/policykey"
+	"github.com/guardana/control/internal/policystate"
 	"github.com/guardana/control/internal/trust"
 )
 
@@ -104,4 +105,38 @@ func writeGrantsRoster(t *testing.T, path string, levels map[string][]string) {
 		t.Fatal(err)
 	}
 	writeTestFile(t, path, raw)
+}
+
+// TestDoctorRefusesTheRostersTheServingPlaneRefuses: a roster at the floor's
+// serial with another digest, and one naming the plane's policy key as an
+// operator's, are each a failed trust check; the same tree with the floor's
+// own digest and without that key is the control.
+func TestDoctorRefusesTheRostersTheServingPlaneRefuses(t *testing.T) {
+	policyKey := fixtureKey().Public().(ed25519.PublicKey)
+	cases := []struct {
+		name  string
+		keys  []ed25519.PublicKey
+		floor string
+		want  string
+	}{
+		{"the control", []ed25519.PublicKey{signedTestPublic("alice")}, "", ""},
+		{"a roster at the floor's serial with another digest", []ed25519.PublicKey{signedTestPublic("alice")}, "sha256:" + strings.Repeat("5", 64), string(trust.CauseForked)},
+		{"a roster naming the policy key", []ed25519.PublicKey{signedTestPublic("alice"), policyKey}, "", "a key the plane pins for another authority"},
+	}
+	for _, c := range cases {
+		tr := signedPlaneTree(t, "roster-a", c.keys, "roster-a")
+		placedApart(t)
+		if c.floor != "" {
+			if _, err := policystate.RaiseAuthority(t.Context(), filepath.Join(tr.dir, "trust", "floors"), "roster-a", 1, c.floor); err != nil {
+				t.Fatal(err)
+			}
+		}
+		verdict, _, found := (&examination{cfg: tr.load(t)}).trust(t.Context())
+		switch {
+		case c.want == "" && verdict != verdictOK:
+			t.Errorf("%s: doctor's trust check = %s, %q; want ok", c.name, verdict, found)
+		case c.want != "" && (verdict != verdictFail || !strings.Contains(found, c.want)):
+			t.Errorf("%s: doctor's trust check = %s, %q; want a failure naming %q", c.name, verdict, found, c.want)
+		}
+	}
 }

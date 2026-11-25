@@ -234,11 +234,9 @@ read steers it. Each of the others has a section below.</p>
 <code>internal/console/console.go</code>, <code>cmd/guardana-gateway/collect.go</code>,
 <code>adapters/authzen/mapping.go</code>.</p>
 <p>A dotted line is a path around the plane or a
-write the file checks refuse. The account is the strongest boundary this
-build has: the approvals directory, the pause file, the hold journal, the
-trail file and the key are each refused when the group or the world may write
-them, and the hold journal, the trail file and the key also when another
-account owns them.</p>
+write the file checks refuse. The account is this build's strongest
+boundary; <a href="#another-local-account">another local account</a> names each file
+check.</p>
 <h2 id="an-agent-that-is-wrong-or-steered">An agent that is wrong or steered</h2>
 <p>What the plane does today:</p>
 <ul>
@@ -466,6 +464,9 @@ it (<a href="/docs/adr/0072-the-collector-keeps-bounded-segments-of-one-project-
 <a href="/docs/adr/0080-evidence-leaves-a-plane-over-a-unix-socket-or-tls">ADR-0080</a>).</li>
 <li>The spool writes its files <code>0600</code> and refuses a directory another account
 owns or that others can write.</li>
+<li>Any account that can read a statement, bundle, route or roster can lock
+it, refusing every write until it lets go: renews fail, the statement ages,
+and the plane turns stale, refusing calls but granting nothing.</li>
 <li>A peer <code>health.socket</code> or a unix collector admits can pass its connection
 on (<code>SCM_RIGHTS</code>): trust stops at its account.</li>
 <li>The checks read the owner and mode bits, not access control lists. On

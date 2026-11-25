@@ -106,3 +106,32 @@ func TestARunEntryCoversOnlyARunThePlaneServes(t *testing.T) {
 		t.Errorf("pause.coverage_causes = %v, want %v", member["coverage_causes"], causes)
 	}
 }
+
+// TestARunEntryWhoseRecordCannotBeReadIsACheckNotMade: a run entry whose
+// record no longer parses leaves the pause check unknown, which stops doctor;
+// the same tree before the record is damaged passes it, the entry covering
+// some.
+func TestARunEntryWhoseRecordCannotBeReadIsACheckNotMade(t *testing.T) {
+	tr := newTree(t)
+	ids := openedRuns(t, tr)
+	tr.withPauseFile(t, pauseDocument(pauseEntry("child", `{"kind":"run","id":"`+ids["child"]+`"}`)), time.Second)
+	var stdout, stderr bytes.Buffer
+	doctor(context.Background(), tr.config, &stdout, &stderr)
+	if line := reportLine(stdout.String(), "pause"); !strings.HasPrefix(line, verdictOK+" ") || !strings.HasSuffix(strings.SplitN(line, ", before", 2)[0], "1 some, 0 none") {
+		t.Fatalf("the control, an intact record: the pause line %q", line)
+	}
+	record := filepath.Join(tr.dir, "runs", ids["child"]+".run.json")
+	info, err := os.Stat(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(record, []byte("{"), info.Mode().Perm()); err != nil {
+		t.Fatal(err)
+	}
+	stdout.Reset()
+	doctor(context.Background(), tr.config, &stdout, &stderr)
+	line := reportLine(stdout.String(), "pause")
+	if !strings.HasPrefix(line, verdictUnknown+" ") || !strings.Contains(line, "0 some, 0 none, 1 unknown") {
+		t.Errorf("a run entry whose record cannot be read: the pause line %q; want unknown, the entry counted unknown", line)
+	}
+}

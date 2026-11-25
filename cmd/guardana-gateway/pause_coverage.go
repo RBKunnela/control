@@ -100,26 +100,45 @@ func allOrNone(all bool) string {
 	return coverNone
 }
 
-// printCoverage prints each agent or principal entry that is not the
-// listener's and each run entry that covers none, with why, and returns how
-// many entries cover all, some and none of the plane's calls.
-func (d *examination) printCoverage(entries []pause.Entry, stray []strayEntry) string {
-	var dir *runs.Plane
-	if d.cfg.Runs.Dir != "" {
-		if opened, err := d.openRunsCheck(); err == nil {
-			dir = opened
-			defer func() {
-				if err := opened.Close(); err != nil {
-					writeLine(d.out, "       the runs directory did not close: "+oneLine(err.Error()))
-				}
-			}()
+// unread reports whether c is a run entry whose records could not be read,
+// so its share is not known.
+func (c cover) unread() bool {
+	return c.cause == runUnreadable || c.cause == runsUnread
+}
+
+// runsForCoverage opens the runs directory a run entry's coverage reads, if
+// the plane has one and it opens, and returns what closes it.
+func (d *examination) runsForCoverage() (*runs.Plane, func()) {
+	if d.cfg.Runs.Dir == "" {
+		return nil, func() {}
+	}
+	opened, err := d.openRunsCheck()
+	if err != nil {
+		return nil, func() {}
+	}
+	return opened, func() {
+		if err := opened.Close(); err != nil {
+			writeLine(d.out, "       the runs directory did not close: "+oneLine(err.Error()))
 		}
 	}
+}
+
+// printCoverage prints each agent or principal entry that is not the
+// listener's and each run entry that covers none, with why, and returns how
+// many entries cover all, some and none of the plane's calls, and how many
+// run entries it could not judge, which leave the check unmade.
+func (d *examination) printCoverage(entries []pause.Entry, stray []strayEntry) (string, int) {
+	dir, done := d.runsForCoverage()
+	defer done()
 	covers := coverage(entries, d.cfg, stray, dir, time.Now())
-	counts := map[string]int{}
+	counts, unknown := map[string]int{}, 0
 	for _, e := range entries {
 		c := covers[e.ID]
-		counts[c.share]++
+		if c.unread() {
+			unknown++
+		} else {
+			counts[c.share]++
+		}
 		if c.share != coverNone {
 			continue
 		}
@@ -129,11 +148,15 @@ func (d *examination) printCoverage(entries []pause.Entry, stray []strayEntry) s
 				oneLine(e.ID), k, oneLine(strconv.Quote(e.Scope.ID))))
 		case pause.ScopeRun:
 			then := "so it pauses no call this plane runs"
-			if c.cause == runUnreadable || c.cause == runsUnread {
+			if c.unread() {
 				then = "so whether it pauses a call is unknown"
 			}
 			writeLine(d.out, fmt.Sprintf("       pause entry %s names run %s: %s, %s", oneLine(e.ID), oneLine(e.Scope.ID), c.cause, then))
 		}
 	}
-	return fmt.Sprintf("%d covering all of this plane's calls, %d some, %d none", counts[coverAll], counts[coverSome], counts[coverNone])
+	shares := fmt.Sprintf("%d covering all of this plane's calls, %d some, %d none", counts[coverAll], counts[coverSome], counts[coverNone])
+	if unknown > 0 {
+		shares += fmt.Sprintf(", %d unknown", unknown)
+	}
+	return shares, unknown
 }

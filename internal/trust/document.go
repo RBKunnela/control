@@ -61,6 +61,12 @@ func (d Document) UsableAt(now time.Time) error {
 	return nil
 }
 
+// NamesNoneOf refuses, with ErrKeyReused, a roster that names one of others,
+// the keys a plane pins for another authority, as the file kind refuses it.
+func (d Document) NamesNoneOf(others ...ed25519.PublicKey) error {
+	return distinct(d, nil, others)
+}
+
 func (d Document) key(id string) (Key, bool) {
 	i := slices.IndexFunc(d.keys, func(k Key) bool { return k.id == id })
 	if i < 0 || id == "" {

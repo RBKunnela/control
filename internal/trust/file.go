@@ -133,12 +133,12 @@ func (f *fileRoster) Lookup(ctx context.Context, keyID string) Answer {
 		return Unavailable(CauseCanceled)
 	}
 	defer func() { f.turn <- struct{}{} }()
-	now := f.clock()
-	f.note(f.refresh(ctx, now))
+	f.note(f.refresh(ctx, f.clock()))
 	if f.held == nil {
 		return Unavailable(f.last)
 	}
-	if err := f.held.UsableAt(now); err != nil {
+	// Read again: the refresh can wait on the floor's lock past the expiry.
+	if err := f.held.UsableAt(f.clock()); err != nil {
 		cause := CauseExpired
 		if errors.Is(err, ErrFuture) {
 			cause = CauseFuture

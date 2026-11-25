@@ -42,10 +42,36 @@ const (
 	// ErrNoDirOpen is OpenDir on a platform that cannot open a directory
 	// without following a link.
 	ErrNoDirOpen Error = "files: this platform cannot open a directory without following a link"
-	// ErrNotJudged is a file ReadRegularOf opened that is not the one its
-	// caller judged.
+	// ErrNotJudged is a file ReadRegularOf opened, or ReplaceJudgedIn found
+	// under the name, that is not the one its caller judged.
 	ErrNotJudged Error = "files: not the file that was judged"
+	// ErrNoExchange is ReplaceJudgedIn on a platform, or a file system, that
+	// cannot exchange two names in one step.
+	ErrNoExchange Error = "files: this platform cannot exchange two names in one step"
+	// ErrNotPutBack is a ReplaceJudgedIn refused once the exchange was made
+	// whose exchange back failed: the new file holds the name, and the error
+	// names where what stood there is.
+	ErrNotPutBack Error = "files: what stood at the name could not be put back"
+	// ErrNotOneName is a name that is not one entry of the directory: empty,
+	// ".", "..", or holding a separator.
+	ErrNotOneName Error = "files: not one name in the directory"
+	// ErrNothingWritten marks a refusal that left the directory as it found
+	// it, so a caller may judge the name again and retry.
+	ErrNothingWritten Error = "files: nothing was written"
+	// ErrNotKept is a ReplaceJudgedIn whose new file took the name and was
+	// replaced before the exchange settled. Only a writer that takes no lock
+	// of this package can do that: one that does waits on the new file's
+	// lock until the exchange settled.
+	ErrNotKept Error = "files: the new file no longer holds the name"
+	// ErrLockHeld is a ReplaceJudgedIn refused, with nothing written, because
+	// another open of the judged file or of the new one held a lock of it
+	// until the caller's context ended. It is not ErrNothingWritten, since
+	// judging the name again would wait on the same lock.
+	ErrLockHeld Error = "files: another open of the file holds a lock of it"
 )
+
+// errLink is an open of the judged name that found a symbolic link there.
+const errLink Error = "files: a symbolic link stands at the name"
 
 // tmpPrefix starts every temporary name this package makes. The random rest,
 // rand.Text's 26 characters of the standard base32 alphabet, keeps two
@@ -89,7 +115,7 @@ func CreateNoReplaceIn(root *os.Root, name string, body []byte, perm fs.FileMode
 	}
 	if err := root.Link(tmp, name); err != nil {
 		if errors.Is(err, fs.ErrExist) {
-			return errors.Join(fmt.Errorf("%w: %q", ErrExists, name), root.Remove(tmp))
+			return unwritten(fmt.Errorf("%w: %q", ErrExists, name), root.Remove(tmp))
 		}
 		return errors.Join(err, root.Remove(tmp))
 	}
@@ -200,18 +226,40 @@ func read(path string, limit int64, forbidden fs.FileMode, owner int) ([]byte, e
 // path since is refused with ErrNotJudged. The identity is read from the
 // opened descriptor, so the bytes returned are the judged file's.
 func ReadRegularOf(path string, limit int64, judged fs.FileInfo) ([]byte, error) {
+	return readOf(path, limit, 0, anyOwner, judged)
+}
+
+// ReadOwnedOf is ReadOwned of the very file judged describes, as
+// ReadRegularOf holds it.
+func ReadOwnedOf(path string, limit int64, forbidden fs.FileMode, uid int, judged fs.FileInfo) ([]byte, error) {
+	if uid < 0 {
+		return nil, ErrOwnerUnknown
+	}
+	return readOf(path, limit, forbidden, uid, judged)
+}
+
+func readOf(path string, limit int64, forbidden fs.FileMode, owner int, judged fs.FileInfo) ([]byte, error) {
+	if forbidden != 0 && !PermissionBits {
+		return nil, ErrNoPermissionBits
+	}
 	f, err := os.OpenFile(path, os.O_RDONLY|nonBlocking, 0) //nolint:gosec // G304: the path is the caller's to name, and the descriptor is held to the file judged before any byte is read
 	if err != nil {
 		return nil, err
 	}
+	return readOpenedOf(f, path, limit, forbidden, owner, judged)
+}
+
+// readOpenedOf is readOpened of f, refused with ErrNotJudged unless it is
+// the file judged describes.
+func readOpenedOf(f *os.File, name string, limit int64, forbidden fs.FileMode, owner int, judged fs.FileInfo) ([]byte, error) {
 	info, err := f.Stat()
-	if err == nil && !os.SameFile(info, judged) {
-		err = fmt.Errorf("%w: %s", ErrNotJudged, path)
+	if err == nil && !SameEntry(info, judged) {
+		err = fmt.Errorf("%w: %s", ErrNotJudged, name)
 	}
 	if err != nil {
 		return nil, errors.Join(err, f.Close())
 	}
-	return readOpened(f, limit, 0, anyOwner)
+	return readOpened(f, limit, forbidden, owner)
 }
 
 // ReadRegularIn is ReadRegular of name in the directory root holds, with no
@@ -223,6 +271,16 @@ func ReadRegularIn(root *os.Root, name string, limit int64) ([]byte, error) {
 		return nil, err
 	}
 	return readOpened(f, limit, 0, anyOwner)
+}
+
+// ReadRegularInOf is ReadRegularIn of the very file judged describes, as
+// ReadRegularOf holds it.
+func ReadRegularInOf(root *os.Root, name string, limit int64, judged fs.FileInfo) ([]byte, error) {
+	f, err := root.OpenFile(name, os.O_RDONLY|nonBlocking, 0)
+	if err != nil {
+		return nil, err
+	}
+	return readOpenedOf(f, name, limit, 0, anyOwner, judged)
 }
 
 // readOpened judges the opened f, as read describes, closes it and returns
@@ -308,6 +366,8 @@ func describe(m fs.FileMode) string {
 	switch {
 	case m.IsDir():
 		return "a directory"
+	case m&fs.ModeSymlink != 0:
+		return "a symbolic link"
 	case m&fs.ModeNamedPipe != 0:
 		return "a named pipe"
 	case m&fs.ModeSocket != 0:

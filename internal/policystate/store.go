@@ -152,7 +152,14 @@ func (s *Store) Record(ctx context.Context, bundleID string) (_ Record, err erro
 // raised floor, which is never lower. While another open file holds the lock,
 // Raise tries again until ctx ends.
 func (s *Store) Raise(ctx context.Context, st policy.Statement, now time.Time) (policy.Floor, error) {
-	return s.RaiseWith(ctx, st, now, nil)
+	return s.raise(ctx, st, policy.At(now), nil)
+}
+
+// RaiseAt is Raise at the reading now gives once the lock is held and the
+// floor read, so a wait on another process's lock comes before the clock is
+// read. An error now returns refuses the raise and leaves the file as it was.
+func (s *Store) RaiseAt(ctx context.Context, st policy.Statement, now policy.Reading) (policy.Floor, error) {
+	return s.raise(ctx, st, now, nil)
 }
 
 // RaiseWith raises as Raise does and, when the raise is taken, calls then
@@ -161,7 +168,11 @@ func (s *Store) Raise(ctx context.Context, st policy.Statement, now time.Time) (
 // refused or failed raise never calls then. An error then returns is
 // returned, and the raised floor stays written. then must not call s: the
 // lock it would wait for is the one s holds.
-func (s *Store) RaiseWith(ctx context.Context, st policy.Statement, now time.Time, then func(policy.Floor) error) (_ policy.Floor, err error) {
+func (s *Store) RaiseWith(ctx context.Context, st policy.Statement, now time.Time, then func(policy.Floor) error) (policy.Floor, error) {
+	return s.raise(ctx, st, policy.At(now), then)
+}
+
+func (s *Store) raise(ctx context.Context, st policy.Statement, now policy.Reading, then func(policy.Floor) error) (_ policy.Floor, err error) {
 	if s == nil {
 		return policy.Floor{}, ErrClosed
 	}
@@ -179,7 +190,11 @@ func (s *Store) RaiseWith(ctx context.Context, st policy.Statement, now time.Tim
 	if err != nil {
 		return policy.Floor{}, err
 	}
-	next, err := stored.Floor.Raise(st, now)
+	at, err := now()
+	if err != nil {
+		return policy.Floor{}, err
+	}
+	next, err := stored.Floor.Raise(st, at)
 	if err != nil {
 		return policy.Floor{}, err
 	}

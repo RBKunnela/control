@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -29,7 +30,8 @@ func viewPath(a *superviseArgs) (string, error) {
 		return "", nil
 	}
 	out := filepath.Clean(a.view[0])
-	return out, checkViewOut(out)
+	_, err := checkViewOut(out)
+	return out, err
 }
 
 // drawView is the page of res, or nil when no --view was given.
@@ -45,31 +47,31 @@ func drawView(out string, p *supervise.Procedure, res *supervise.Result, all boo
 // supervise drew: --view replaces an earlier page and nothing else, so a
 // mistyped path cannot replace a procedure, an export, a log or a key.
 // Whoever may write the path may write any page there.
-func checkViewOut(out string) error {
+func checkViewOut(out string) (fs.FileInfo, error) {
 	info, err := os.Lstat(out)
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
 		if err := ondisk.CheckDir(filepath.Dir(out), 0); err != nil {
-			return fmt.Errorf("--view %s: %w", out, err)
+			return nil, fmt.Errorf("--view %s: %w", out, err)
 		}
-		return nil
+		return nil, nil
 	case err != nil:
-		return fmt.Errorf("--view %s: %w", out, err)
+		return nil, fmt.Errorf("--view %s: %w", out, err)
 	}
 	notAPage := fmt.Errorf("--view %s exists and is not a page supervise drew, and --view replaces nothing else", out)
 	if !info.Mode().IsRegular() {
-		return notAPage
+		return nil, notAPage
 	}
-	raw, err := ondisk.ReadOwned(out, runview.MaxPageBytes, 0, os.Geteuid())
+	raw, err := ondisk.ReadOwnedOf(out, runview.MaxPageBytes, 0, os.Geteuid(), info)
 	switch {
 	case errors.Is(err, ondisk.ErrTooLarge):
-		return notAPage
+		return nil, notAPage
 	case err != nil:
-		return fmt.Errorf("--view %s: %w", out, err)
+		return nil, fmt.Errorf("--view %s: %w", out, err)
 	case !runview.IsPage(raw):
-		return notAPage
+		return nil, notAPage
 	}
-	return nil
+	return info, nil
 }
 
 // writeView, when --view was given, judges out again, since the findings log was written after it
@@ -79,10 +81,14 @@ func writeView(out string, page []byte) error {
 	if out == "" {
 		return nil
 	}
-	if err := checkViewOut(out); err != nil {
+	judged, err := checkViewOut(out)
+	if err != nil {
 		return err
 	}
-	if err := ondisk.Replace(filepath.Dir(out), filepath.Base(out), page, viewFileMode); err != nil {
+	beforeOutReplaced(out)
+	ctx, cancel := context.WithTimeout(context.Background(), outLockWait)
+	defer cancel()
+	if err := ondisk.ReplaceJudged(ctx, filepath.Dir(out), filepath.Base(out), page, viewFileMode, judged); err != nil {
 		return fmt.Errorf("--view %s: %w", out, err)
 	}
 	return nil

@@ -49,8 +49,8 @@ Sources: `cmd/guardana-control/react.go`, `cmd/guardana-control/stops.go`, `inte
 The route says which findings may stop a run: its tenant, and rules, each a
 procedure by id, version and digest and a supervise rule, with an optional
 lifetime for the stops it allows. Without one a stop lasts as long as its run.
-`route sign` signs it with its own key and writes it mode `0644`,
-replacing only an earlier signed route. It refuses any rule but the three whose finding
+`route sign` signs it, mode `0644`, replacing only the route it judged by a
+swap, locked against this program's writers only. It refuses any rule but the three whose finding
 may stop a run, each at its version: `REPEATED_DENIAL` at `2`, and
 `STEP_OUTSIDE_PROCEDURE` and `RESOURCE_OUTSIDE_RUN` at `1`
 ([ADR-0088](../adr/0088-a-verdict-that-compares-two-events-times-is-at-most-suspected.md)).
@@ -59,7 +59,7 @@ Every reader of a signed route refuses one naming another, but
 lift a stop; it need not be on the plane's machine.
 
 The route floor keeps, per route id, the highest serial a plane took and its
-digest, in a directory of its own that `policy state init --kind route` makes.
+digest, in its own directory that `policy state init --kind route` makes.
 At start a plane refuses a missing floor, a route below the floor's serial,
 and a route at that serial with another digest. It raises the floor once the
 list's first read is served, before it listens, and never makes one. A plane reads the route at start only: a stale route can

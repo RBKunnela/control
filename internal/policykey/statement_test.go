@@ -161,7 +161,7 @@ func TestAStatementRoundTripsThroughItsFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(t.TempDir(), "statement.json")
-	if err := policykey.WriteStatement(path, env); err != nil {
+	if err := policykey.WriteStatement(t.Context(), path, env); err != nil {
 		t.Fatalf("WriteStatement: %v", err)
 	}
 	if mode := modeOf(t, path); mode != 0o644 {
@@ -235,7 +235,7 @@ func TestWriteStatementReplacesAStatement(t *testing.T) {
 	if err := os.WriteFile(path, []byte(envelopeFile), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := policykey.WriteStatement(path, env); err != nil {
+	if err := policykey.WriteStatement(t.Context(), path, env); err != nil {
 		t.Fatalf("replacing a statement: %v", err)
 	}
 	want, err := policykey.MarshalStatement(env)
@@ -281,7 +281,7 @@ func TestWriteStatementRefusesAnotherFile(t *testing.T) {
 	others["policy.bundle"] = readFile(t, filepath.Join(dir, "policy.bundle"))
 	for name, body := range others {
 		p := filepath.Join(dir, name)
-		if err := policykey.WriteStatement(p, env); !errors.Is(err, policykey.ErrStatementOut) {
+		if err := policykey.WriteStatement(t.Context(), p, env); !errors.Is(err, policykey.ErrStatementOut) {
 			t.Errorf("%s: WriteStatement = %v, want ErrStatementOut", name, err)
 		}
 		if got := readFile(t, p); !bytes.Equal(got, body) {
@@ -302,14 +302,14 @@ func TestWriteStatementRefusesALinkADirectoryAndAnotherType(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(dir, "sub"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := policykey.WriteStatement(filepath.Join(dir, "sub"), env); !errors.Is(err, policykey.ErrStatementOut) {
+	if err := policykey.WriteStatement(t.Context(), filepath.Join(dir, "sub"), env); !errors.Is(err, policykey.ErrStatementOut) {
 		t.Errorf("a directory: %v", err)
 	}
 	link := filepath.Join(dir, "link.json")
 	if err := os.Symlink(path, link); err != nil {
 		t.Fatal(err)
 	}
-	if err := policykey.WriteStatement(link, env); !errors.Is(err, policykey.ErrStatementOut) {
+	if err := policykey.WriteStatement(t.Context(), link, env); !errors.Is(err, policykey.ErrStatementOut) {
 		t.Errorf("a link to a statement: %v", err)
 	}
 	if info, err := os.Lstat(link); err != nil || info.Mode()&os.ModeSymlink == 0 {
@@ -318,13 +318,13 @@ func TestWriteStatementRefusesALinkADirectoryAndAnotherType(t *testing.T) {
 	if got := readFile(t, path); string(got) != envelopeFile {
 		t.Errorf("the statement behind the link was changed")
 	}
-	if err := policykey.WriteStatement(filepath.Join(dir, "missing", "statement.json"), env); err == nil {
+	if err := policykey.WriteStatement(t.Context(), filepath.Join(dir, "missing", "statement.json"), env); err == nil {
 		t.Error("a path in a missing directory was written")
 	}
 	other := env
 	other.PayloadType = "application/vnd.agent-policy+json"
 	fresh := filepath.Join(dir, "fresh.json")
-	if err := policykey.WriteStatement(fresh, other); !errors.Is(err, policy.ErrStatementPayloadType) {
+	if err := policykey.WriteStatement(t.Context(), fresh, other); !errors.Is(err, policy.ErrStatementPayloadType) {
 		t.Errorf("an envelope of the bundle type: %v", err)
 	}
 	if _, err := os.Lstat(fresh); !errors.Is(err, os.ErrNotExist) {
@@ -346,13 +346,45 @@ func TestWriteStatementReadsTheExistingFileToItsBound(t *testing.T) {
 	if err := os.WriteFile(over, []byte(padded+" "), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := policykey.WriteStatement(at, env); err != nil {
+	if err := policykey.WriteStatement(t.Context(), at, env); err != nil {
 		t.Errorf("a statement of 4096 bytes: %v", err)
 	}
-	if err := policykey.WriteStatement(over, env); !errors.Is(err, policykey.ErrStatementOut) {
+	if err := policykey.WriteStatement(t.Context(), over, env); !errors.Is(err, policykey.ErrStatementOut) {
 		t.Errorf("a statement of 4097 bytes: %v, want ErrStatementOut", err)
 	}
 	if got := readFile(t, over); string(got) != padded+" " {
 		t.Error("the file over the bound was changed")
+	}
+}
+
+// TestWriteStatementReplacesOnlyTheStatementItJudged: a statement renamed
+// over the path once the write judged it is kept and the write refused; the
+// control, the path as it was judged, is replaced.
+func TestWriteStatementReplacesOnlyTheStatementItJudged(t *testing.T) {
+	env := signedStatement(t)
+	dir := t.TempDir()
+	path := filepath.Join(dir, "statement.json")
+	if err := os.WriteFile(path, []byte(envelopeFile), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	other := filepath.Join(dir, "other.json")
+	const another = envelopeFile + "\n"
+	policykey.BeforeStatementReplaced(t, func() {
+		if err := os.WriteFile(other, []byte(another), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Rename(other, path); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if err := policykey.WriteStatement(t.Context(), path, env); !errors.Is(err, files.ErrNotJudged) {
+		t.Errorf("a write over a statement renamed in after it was judged = %v, want files.ErrNotJudged", err)
+	}
+	if got := readFile(t, path); string(got) != another {
+		t.Errorf("the statement renamed in now holds %q", got)
+	}
+	policykey.BeforeStatementReplaced(t, func() {})
+	if err := policykey.WriteStatement(t.Context(), path, env); err != nil {
+		t.Errorf("the control, the statement as it was judged: %v", err)
 	}
 }

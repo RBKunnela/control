@@ -55,6 +55,9 @@ func (d *examination) trust(context.Context) (string, string, string) {
 		return verdictFail, doctorTrust, "trust.root_public_key: " + err.Error()
 	}
 	doc, err := d.roster(root)
+	if err == nil {
+		err = doc.NamesNoneOf(others...)
+	}
 	if err != nil {
 		return verdictFail, doctorTrust, "trust.roster: " + err.Error()
 	}
@@ -62,8 +65,8 @@ func (d *examination) trust(context.Context) (string, string, string) {
 	if err != nil {
 		return verdictFail, doctorTrust, "trust.floor_dir: " + err.Error()
 	}
-	if floor.Serial > doc.Serial() {
-		return verdictFail, doctorTrust, fmt.Sprintf("trust.roster: serial %d is below the floor's %d (%s)", doc.Serial(), floor.Serial, trust.CauseBelowFloor)
+	if refused := belowOrForked(doc, floor); refused != "" {
+		return verdictFail, doctorTrust, refused
 	}
 	found := fmt.Sprintf(
 		"plane %s, one tenant %s: roster %s serial %d names %d key(s) and verifies under the pinned root; the floor holds serial %d; %d other pinned key(s) no roster may name; %s are not the plane's to change, and the environment sets no key",
@@ -72,6 +75,18 @@ func (d *examination) trust(context.Context) (string, string, string) {
 		found += fmt.Sprintf("; %d read grant(s) grant nothing yet: reading is by the health socket's peer uid and by file modes (ADR-0071)", n)
 	}
 	return verdictOK, doctorTrust, found
+}
+
+// belowOrForked names why the floor refuses doc, as a serving plane would:
+// a serial below the floor's, or the floor's serial with another digest.
+func belowOrForked(doc trust.Document, floor policystate.AuthorityFloor) string {
+	switch {
+	case floor.Serial > doc.Serial():
+		return fmt.Sprintf("trust.roster: serial %d is below the floor's %d (%s)", doc.Serial(), floor.Serial, trust.CauseBelowFloor)
+	case floor.Serial == doc.Serial() && floor.Digest != doc.Digest():
+		return fmt.Sprintf("trust.roster: serial %d is the floor's with another digest (%s)", doc.Serial(), trust.CauseForked)
+	}
+	return ""
 }
 
 // checkedKeys names the keys of every path the signed start checked, as one

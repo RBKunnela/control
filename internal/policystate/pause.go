@@ -73,9 +73,8 @@ func InitPause(ctx context.Context, dir, tenant, project string) (err error) {
 	if err != nil {
 		return err
 	}
-	// The mode is only ever narrowed by the umask, as in Init.
-	if err := os.Mkdir(dir, 0o700); err != nil && !errors.Is(err, fs.ErrExist) {
-		return fmt.Errorf("%w: %w", ErrNotStateDir, err)
+	if err := makeDir(dir); err != nil {
+		return err
 	}
 	d, err := openDir(dir)
 	if err != nil {

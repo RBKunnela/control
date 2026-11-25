@@ -55,23 +55,28 @@ func checkStatementOut(out string) error {
 // Ed25519 signature over one body is one value, so writing it again changes
 // nothing. An absent out, or one holding a statement this key did not sign
 // or another id's, is replaced; one that can no longer be read as a
-// statement is refused, since it was one before the raise.
-func checkNotNewer(out string, st policy.Statement, freshPub ed25519.PublicKey) error {
-	env, err := policykey.ReadStatement(out)
-	switch {
-	case errors.Is(err, fs.ErrNotExist):
-		return nil
-	case err != nil:
-		return fmt.Errorf("--out %s: %w; the signer floor was raised to this renew's statement", out, err)
+// statement is refused, since it was one before the raise. It returns the
+// entry it read, nil where none stands, so the write replaces that one only.
+func checkNotNewer(out string, st policy.Statement, freshPub ed25519.PublicKey) (fs.FileInfo, error) {
+	judged, err := os.Lstat(out)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	var env policy.StatementEnvelope
+	if err == nil {
+		env, err = policykey.ReadStatementOf(out, judged)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("--out %s: %w; the signer floor was raised to this renew's statement", out, err)
 	}
 	held, ours := signedBy(env, freshPub)
 	if !ours || held.BundleID() != st.BundleID() {
-		return nil
+		return judged, nil
 	}
 	if held.Serial() > st.Serial() || (held.Serial() == st.Serial() && held.IssuedAt().After(st.IssuedAt())) {
-		return fmt.Errorf("--out %s: %s; the signer floor was raised to this renew's statement", out, errRaceLost)
+		return nil, fmt.Errorf("--out %s: %s; the signer floor was raised to this renew's statement", out, errRaceLost)
 	}
-	return nil
+	return judged, nil
 }
 
 // signedBy reads env as a statement pub signed, and reports whether it is

@@ -34,9 +34,11 @@ func readPublicKey(flagName, path string) (ed25519.PublicKey, error) {
 	return pub, nil
 }
 
-// verifiedBundle reads the bundle and verifies it under pub, by the id that
-// key derives, with every check a plane's load makes: the signature, the
-// canonical form, the digest.
+// verifiedBundle reads the bundle and verifies it under pub with every check
+// a plane's load makes: the signature, the canonical form, the digest. The
+// key_id the bundle names selects pub whatever it spells, the id pub derives
+// or one a plane configures for it, since pub is the one key given; an empty
+// key_id selects nothing.
 func verifiedBundle(bundlePath string, pub ed25519.PublicKey, now time.Time) (*policy.Snapshot, error) {
 	raw, err := ondisk.ReadRegular(bundlePath, maxReadBytes, 0)
 	// The file named may be a key given in the wrong place; the decoder
@@ -49,7 +51,7 @@ func verifiedBundle(bundlePath string, pub ed25519.PublicKey, now time.Time) (*p
 	if !policykey.IsBundle(raw) || proto.Unmarshal(raw, &b) != nil {
 		return nil, fmt.Errorf("--bundle %s: %s", bundlePath, errNotABundle)
 	}
-	snap, err := policy.Load(&b, bundle.Keyring{policykey.KeyID(pub): pub}, now)
+	snap, err := policy.Load(&b, bundle.Keyring{b.GetKeyId(): pub}, now)
 	if err != nil {
 		return nil, fmt.Errorf("--bundle %s: %w", bundlePath, err)
 	}

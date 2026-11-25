@@ -22,7 +22,7 @@ func (s *stuckStore) Floor(context.Context, string) (policy.Floor, error) {
 	return policy.Floor{}, nil
 }
 
-func (s *stuckStore) Raise(context.Context, policy.Statement, time.Time) (policy.Floor, error) {
+func (s *stuckStore) RaiseAt(context.Context, policy.Statement, policy.Reading) (policy.Floor, error) {
 	s.inFlight.Add(1)
 	defer s.inFlight.Add(-1)
 	<-s.release
