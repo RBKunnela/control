@@ -11,6 +11,42 @@ verify one.
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-11-26
+
+Upgrading from 0.18 changes requirements across several tools, and more under
+`approvals.authority: signed`. `collect` and `prune` refuse symlinked trail
+directories and require parents owned by this account or root (sticky if
+writable by group or others). `collect` reads `--listen` as a URL; escape
+socket paths holding `#`, `?` or `%`. Signers, `policy renew`,
+`supervise --view`, signed pause writers and the dev statement swap names
+atomically to replace existing outputs, refusing where unsupported (outside
+Linux and macOS or on some network file systems). Remove `DEADLINE_EXCEEDED`,
+`DENIED_ACTION_RETRIED_ARGUMENTS` and `DENIED_ACTION_RETRIED_RESOURCE` from
+routes (now version `2`, `SUSPECTED` at most, and never stopping runs, agents
+or principals) and `route sign` again; carry stops with `stops init --carry
+<old list> --carry-route <old route>` under the new route and review kept
+stops with `stops list`. In `procedure test`, add the record's project to
+`run` and each run in `tree`. In `notify`, name each needed variable with
+`--env`. Under `signed`, a plane refuses to start and `doctor` fails above
+65,536 records in `records/` (`guardana-control runs prune` archives expired
+trees), and `react` refuses an unsigned `--runs` directory. Run a signed carry
+as the old list's owner; it takes the write bits off the old list before
+writing the new one
+([upgrade a plane from 0.18](docs/guides/upgrade-a-plane-from-0-18.md)).
+
+New: `guardana-gateway attempts run` counts the effects and legitimate steps
+of scripted attempts at the demo's victim journals
+([ADR-0086](docs/adr/0086-controlled-attempts-are-counted-at-the-victim.md)).
+`guardana-control policy compare` simulates decisions under the current and a
+candidate policy through the kernel's own evaluation, counting unknown cases
+apart
+([ADR-0087](docs/adr/0087-a-candidate-policy-is-compared-through-the-kernels-own-evaluation.md)).
+Risk references map the published agentic and LLM risk lists to the controls
+that address them. This release fixes what a whole-tree audit found across the
+plane, the evidence trail, supervision, the signed files and the gates. The
+hook profile, qualified on two releases of its runtime, was not qualified
+again for this release.
+
 ### Changed
 
 - **Breaking:** `collect` and `prune` refuse a trail directory whose parent
@@ -3285,7 +3321,8 @@ yet.
   independence of this project from Guardana
   ([ADR-0024](docs/adr/0024-control-and-guardana-are-independent.md)).
 
-[Unreleased]: https://github.com/guardana/control/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/guardana/control/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/guardana/control/releases/tag/v0.19.0
 [0.18.0]: https://github.com/guardana/control/releases/tag/v0.18.0
 [0.17.0]: https://github.com/guardana/control/releases/tag/v0.17.0
 [0.16.0]: https://github.com/guardana/control/releases/tag/v0.16.0

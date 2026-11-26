@@ -138,7 +138,39 @@
 <a href="/docs/adr/0008-branching-and-release-policy">ADR-0008</a>. Each release is built,
 signed and attested from its tag; <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a> shows how to
 verify one.</p>
-<h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.18.0...HEAD">Unreleased</a></h2>
+<h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.19.0...HEAD">Unreleased</a></h2>
+<h2 id="0190---2026-11-26"><a href="https://github.com/guardana/control/releases/tag/v0.19.0">0.19.0</a> - 2026-11-26</h2>
+<p>Upgrading from 0.18 changes requirements across several tools, and more under
+<code>approvals.authority: signed</code>. <code>collect</code> and <code>prune</code> refuse symlinked trail
+directories and require parents owned by this account or root (sticky if
+writable by group or others). <code>collect</code> reads <code>--listen</code> as a URL; escape
+socket paths holding <code>#</code>, <code>?</code> or <code>%</code>. Signers, <code>policy renew</code>,
+<code>supervise --view</code>, signed pause writers and the dev statement swap names
+atomically to replace existing outputs, refusing where unsupported (outside
+Linux and macOS or on some network file systems). Remove <code>DEADLINE_EXCEEDED</code>,
+<code>DENIED_ACTION_RETRIED_ARGUMENTS</code> and <code>DENIED_ACTION_RETRIED_RESOURCE</code> from
+routes (now version <code>2</code>, <code>SUSPECTED</code> at most, and never stopping runs, agents
+or principals) and <code>route sign</code> again; carry stops with <code>stops init --carry &lt;old list&gt; --carry-route &lt;old route&gt;</code> under the new route and review kept
+stops with <code>stops list</code>. In <code>procedure test</code>, add the record's project to
+<code>run</code> and each run in <code>tree</code>. In <code>notify</code>, name each needed variable with
+<code>--env</code>. Under <code>signed</code>, a plane refuses to start and <code>doctor</code> fails above
+65,536 records in <code>records/</code> (<code>guardana-control runs prune</code> archives expired
+trees), and <code>react</code> refuses an unsigned <code>--runs</code> directory. Run a signed carry
+as the old list's owner; it takes the write bits off the old list before
+writing the new one
+(<a href="/docs/guides/upgrade-a-plane-from-0-18">upgrade a plane from 0.18</a>).</p>
+<p>New: <code>guardana-gateway attempts run</code> counts the effects and legitimate steps
+of scripted attempts at the demo's victim journals
+(<a href="/docs/adr/0086-controlled-attempts-are-counted-at-the-victim">ADR-0086</a>).
+<code>guardana-control policy compare</code> simulates decisions under the current and a
+candidate policy through the kernel's own evaluation, counting unknown cases
+apart
+(<a href="/docs/adr/0087-a-candidate-policy-is-compared-through-the-kernels-own-evaluation">ADR-0087</a>).
+Risk references map the published agentic and LLM risk lists to the controls
+that address them. This release fixes what a whole-tree audit found across the
+plane, the evidence trail, supervision, the signed files and the gates. The
+hook profile, qualified on two releases of its runtime, was not qualified
+again for this release.</p>
 <h3 id="changed">Changed</h3>
 <ul>
 <li><strong>Breaking:</strong> <code>collect</code> and <code>prune</code> refuse a trail directory whose parent
