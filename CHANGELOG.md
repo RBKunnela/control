@@ -11,6 +11,14 @@ verify one.
 
 ## [Unreleased]
 
+### Fixed
+
+- The release job's demo archive check stopped 0.19.0's release before it
+  attested, signed or published anything because the archive lacked
+  `examples/vulnerable-mcp-agent/attempts/manifest.json`, added in #134. The
+  demo archive now packs `examples/vulnerable-mcp-agent/attempts/*.json` with
+  the same owner, mode (`0644`) and time as the scenarios.
+
 ## [0.19.0] - 2026-11-26
 
 Upgrading from 0.18 changes requirements across several tools, and more under

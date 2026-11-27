@@ -111,6 +111,8 @@ archives:
         info: {owner: root, group: root, mode: 0755, mtime: "{{ .CommitDate }}"}
       - src: examples/vulnerable-mcp-agent/scenarios/*.json
         info: {owner: root, group: root, mode: 0644, mtime: "{{ .CommitDate }}"}
+      - src: examples/vulnerable-mcp-agent/attempts/*.json
+        info: {owner: root, group: root, mode: 0644, mtime: "{{ .CommitDate }}"}
 
 # The gateway's image, built by ko from the build above without a Dockerfile.
 # A release pushes it under a staging tag and the workflow signs, attests and
