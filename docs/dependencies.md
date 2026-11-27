@@ -71,7 +71,7 @@ page is wrong.
   v1.1.3 (MIT), its JSON encoder and that encoder's assembly kernels;
   `github.com/yosida95/uritemplate/v3` v3.0.2 (BSD-3-Clause, the text in its
   `LICENSE` file), which expands resource templates; `golang.org/x/oauth2`
-  v0.35.0, `golang.org/x/sync` v0.23.0, `golang.org/x/sys` v0.49.0, also a
+  v0.35.0, `golang.org/x/sync` v0.23.0, `golang.org/x/sys` v0.50.0, also a
   direct dependency below, and `golang.org/x/time` v0.15.0 (all
   BSD-3-Clause), for the bearer-token middleware, the transports'
   concurrency helpers, system calls and its rate limiter. They sit in the request path with the module that brings them, and a
@@ -114,7 +114,7 @@ imported outside that part, by the adapter and by the gateway's command.
 - Request path: yes. It is the filesystem the gateway runs on, so a digest
   bump is read, as a dependency bump is, rather than merged on a green gate.
 
-### `golang.org/x/sys` v0.49.0
+### `golang.org/x/sys` v0.50.0
 
 - Problem it solves: naming the account on the other end of a Unix socket,
   `SO_PEERCRED` on Linux and `LOCAL_PEERCRED` on macOS, which the plane reads
@@ -131,7 +131,7 @@ imported outside that part, by the adapter and by the gateway's command.
 - Licence: BSD-3-Clause, read from the module's `LICENSE` file, with a
   separate patent grant in `PATENTS`.
 - Maintenance signal: published from `go.googlesource.com/sys` by the Go
-  project; v0.49.0 is tagged at commit `b6b8557e8e29`, dated 2026-10-06 in the
+  project; v0.50.0 is tagged at commit `00227f1d1928`, dated 2026-11-06 in the
   module proxy's record. It was linked into the gateway before, through the
   MCP module.
 - Request path: yes. A read it gets wrong lets the credential or the whole

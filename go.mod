@@ -11,7 +11,7 @@ tool (
 require (
 	github.com/modelcontextprotocol/go-sdk v1.8.0
 	github.com/yuin/goldmark v1.8.7
-	golang.org/x/sys v0.49.0
+	golang.org/x/sys v0.50.0
 	google.golang.org/protobuf v1.36.12
 	pgregory.net/rapid v1.3.0
 )
