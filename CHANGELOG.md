@@ -11,15 +11,7 @@ verify one.
 
 ## [Unreleased]
 
-### Fixed
-
-- The release job's demo archive check stopped 0.19.0's release before it
-  attested, signed or published anything because the archive lacked
-  `examples/vulnerable-mcp-agent/attempts/manifest.json`, added in #134. The
-  demo archive now packs `examples/vulnerable-mcp-agent/attempts/*.json` with
-  the same owner, mode (`0644`) and time as the scenarios.
-
-## [0.19.0] - 2026-11-26
+## [0.19.1] - 2026-11-27
 
 Upgrading from 0.18 changes requirements across several tools, and more under
 `approvals.authority: signed`. `collect` and `prune` refuse symlinked trail
@@ -53,7 +45,8 @@ Risk references map the published agentic and LLM risk lists to the controls
 that address them. This release fixes what a whole-tree audit found across the
 plane, the evidence trail, supervision, the signed files and the gates. The
 hook profile, qualified on two releases of its runtime, was not qualified
-again for this release.
+again for this release. 0.19.0 was tagged with most of these changes and
+never published: its release job stopped at the demo archive check.
 
 ### Changed
 
@@ -690,6 +683,17 @@ again for this release.
   same values, which made it appear that a fail-open read ran when the policy
   was available rather than when it was unavailable
   ([how a call is decided](docs/concepts/how-a-call-is-decided.md#when-the-kernel-cannot-decide)).
+- The release job's demo archive check stopped 0.19.0's release before it
+  attested, signed or published anything because the archive lacked
+  `examples/vulnerable-mcp-agent/attempts/manifest.json`, added in #134. The
+  demo archive now packs `examples/vulnerable-mcp-agent/attempts/*.json` with
+  the same owner, mode (`0644`) and time as the scenarios.
+
+## [0.19.0] - 2026-11-26
+
+Tagged and never published: the release job stopped at the demo archive
+check before it attested, signed or published anything. Its changes are
+listed under 0.19.1.
 
 ## [0.18.0] - 2026-11-18
 
@@ -3329,7 +3333,8 @@ yet.
   independence of this project from Guardana
   ([ADR-0024](docs/adr/0024-control-and-guardana-are-independent.md)).
 
-[Unreleased]: https://github.com/guardana/control/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/guardana/control/compare/v0.19.1...HEAD
+[0.19.1]: https://github.com/guardana/control/releases/tag/v0.19.1
 [0.19.0]: https://github.com/guardana/control/releases/tag/v0.19.0
 [0.18.0]: https://github.com/guardana/control/releases/tag/v0.18.0
 [0.17.0]: https://github.com/guardana/control/releases/tag/v0.17.0

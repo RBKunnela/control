@@ -138,16 +138,8 @@
 <a href="/docs/adr/0008-branching-and-release-policy">ADR-0008</a>. Each release is built,
 signed and attested from its tag; <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a> shows how to
 verify one.</p>
-<h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.19.0...HEAD">Unreleased</a></h2>
-<h3 id="fixed">Fixed</h3>
-<ul>
-<li>The release job's demo archive check stopped 0.19.0's release before it
-attested, signed or published anything because the archive lacked
-<code>examples/vulnerable-mcp-agent/attempts/manifest.json</code>, added in #134. The
-demo archive now packs <code>examples/vulnerable-mcp-agent/attempts/*.json</code> with
-the same owner, mode (<code>0644</code>) and time as the scenarios.</li>
-</ul>
-<h2 id="0190---2026-11-26"><a href="https://github.com/guardana/control/releases/tag/v0.19.0">0.19.0</a> - 2026-11-26</h2>
+<h2 id="unreleased"><a href="https://github.com/guardana/control/compare/v0.19.1...HEAD">Unreleased</a></h2>
+<h2 id="0191---2026-11-27"><a href="https://github.com/guardana/control/releases/tag/v0.19.1">0.19.1</a> - 2026-11-27</h2>
 <p>Upgrading from 0.18 changes requirements across several tools, and more under
 <code>approvals.authority: signed</code>. <code>collect</code> and <code>prune</code> refuse symlinked trail
 directories and require parents owned by this account or root (sticky if
@@ -178,7 +170,8 @@ Risk references map the published agentic and LLM risk lists to the controls
 that address them. This release fixes what a whole-tree audit found across the
 plane, the evidence trail, supervision, the signed files and the gates. The
 hook profile, qualified on two releases of its runtime, was not qualified
-again for this release.</p>
+again for this release. 0.19.0 was tagged with most of these changes and
+never published: its release job stopped at the demo archive check.</p>
 <h3 id="changed">Changed</h3>
 <ul>
 <li><strong>Breaking:</strong> <code>collect</code> and <code>prune</code> refuse a trail directory whose parent
@@ -265,7 +258,7 @@ approval and activates no policy
 (<a href="/docs/reference/policy-compare">policy compare</a>,
 <a href="/docs/adr/0087-a-candidate-policy-is-compared-through-the-kernels-own-evaluation">ADR-0087</a>).</li>
 </ul>
-<h3 id="fixed-1">Fixed</h3>
+<h3 id="fixed">Fixed</h3>
 <ul>
 <li>
 <p><code>policy test</code>, <code>policy explain</code> and <code>policy compare</code> refuse a case whose
@@ -1045,7 +1038,16 @@ availability&quot;. It was previously headed &quot;the policy available&quot; ov
 same values, which made it appear that a fail-open read ran when the policy
 was available rather than when it was unavailable
 (<a href="/docs/concepts/how-a-call-is-decided#when-the-kernel-cannot-decide">how a call is decided</a>).</li>
+<li>The release job's demo archive check stopped 0.19.0's release before it
+attested, signed or published anything because the archive lacked
+<code>examples/vulnerable-mcp-agent/attempts/manifest.json</code>, added in #134. The
+demo archive now packs <code>examples/vulnerable-mcp-agent/attempts/*.json</code> with
+the same owner, mode (<code>0644</code>) and time as the scenarios.</li>
 </ul>
+<h2 id="0190---2026-11-26"><a href="https://github.com/guardana/control/releases/tag/v0.19.0">0.19.0</a> - 2026-11-26</h2>
+<p>Tagged and never published: the release job stopped at the demo archive
+check before it attested, signed or published anything. Its changes are
+listed under 0.19.1.</p>
 <h2 id="0180---2026-11-18"><a href="https://github.com/guardana/control/releases/tag/v0.18.0">0.18.0</a> - 2026-11-18</h2>
 <p>Upgrading from 0.17 changes three things on every plane, and more under
 <code>approvals.authority: signed</code>. On every plane the health answer is schema
@@ -1177,7 +1179,7 @@ denial, and <code>doctor</code> names each rule that stops an agent or a princip
 <li><code>llms.txt</code> on the website: every documentation page with its address and
 summary, grouped as the index groups them, and the records.</li>
 </ul>
-<h3 id="fixed-2">Fixed</h3>
+<h3 id="fixed-1">Fixed</h3>
 <ul>
 <li>Under <code>signed</code> a new stop list is written <code>0640</code>, so a plane on an account
 of its own reads it through the group of the list's directory: the stop
@@ -1318,7 +1320,7 @@ socket path is at most 103 bytes.</li>
 <li><strong>Breaking:</strong> <code>otel.Options.AllowPlaintext</code> is gone, and the exporter
 refuses an <code>http</code> endpoint even when built directly.</li>
 </ul>
-<h3 id="fixed-3">Fixed</h3>
+<h3 id="fixed-2">Fixed</h3>
 <ul>
 <li>A signed start judges the very configuration file the plane read, and
 refuses a file renamed over its path after the read; a path holding a
@@ -1572,7 +1574,7 @@ serve it before anything is uploaded; a tag that already has a release, or
 a draft of the same name, is refused, a draft a failed run left included
 (<a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a>).</li>
 </ul>
-<h3 id="fixed-4">Fixed</h3>
+<h3 id="fixed-3">Fixed</h3>
 <ul>
 <li>A long-running plane no longer reaches <code>approvals.max_records</code> and refuses
 every hold: it forgets expired approval records and ledger marks older
@@ -1966,7 +1968,7 @@ are named there
 time, which no lint read before.</p>
 </li>
 </ul>
-<h3 id="fixed-5">Fixed</h3>
+<h3 id="fixed-4">Fixed</h3>
 <ul>
 <li><code>policy test</code> skipped a case named <code>*.json</code> that is a pipe or a socket and
 passed on the rest; it now refuses the directory, naming the entry.</li>
@@ -2134,7 +2136,7 @@ fingerprints were taken from; nothing this project ships uses them.</li>
 effect class
 (<a href="/docs/adr/0060-pkg-contract-exports-what-each-effect-class-requires">ADR-0060</a>).</li>
 </ul>
-<h3 id="fixed-6">Fixed</h3>
+<h3 id="fixed-5">Fixed</h3>
 <ul>
 <li><code>scripts/github-bootstrap.sh</code>'s preflight runs the docscheck test that
 holds <code>.github/CODEOWNERS</code> on every pull request, so it judges each file by
@@ -2358,7 +2360,7 @@ reference filesystem server, on every pull request
 The example now pins the server and its packages in a lockfile, and the
 guide installs it with <code>npm ci --ignore-scripts</code>.</li>
 </ul>
-<h3 id="fixed-7">Fixed</h3>
+<h3 id="fixed-6">Fixed</h3>
 <ul>
 <li>An enforcement receiver's <code>Serve</code> refuses any listener but the one its own
 <code>Listen</code> bound with the socket's lock held, and that one a second time, so
@@ -2458,7 +2460,7 @@ for the commit a <code>v*</code> tag names, and for nothing else: a branch push 
 none. A <code>main</code> the remote does not hold yet counts every commit. The hook
 has a negative control, <code>make pre-push-probe</code>, in <code>make quality</code>.</li>
 </ul>
-<h3 id="fixed-8">Fixed</h3>
+<h3 id="fixed-7">Fixed</h3>
 <ul>
 <li>The enforcement receiver removes a socket left at its path only when a
 connection to it is refused. A timeout, a full backlog on Linux or a
@@ -2595,7 +2597,7 @@ and links to the policies and runnable example.</li>
 controlling how they act. The 1.0 goal is marked <code>planned</code> beside what the
 alpha does, and the declared repository description says the same.</li>
 </ul>
-<h3 id="fixed-9">Fixed</h3>
+<h3 id="fixed-8">Fixed</h3>
 <ul>
 <li><code>scripts/github-settings-check.sh</code> and the bootstrap, run by macOS's bash
 3.2 on a loaded machine, could build a declared ruleset as nothing and
@@ -2721,7 +2723,7 @@ GitHub's <code>good first issue</code> and <code>help wanted</code>.</li>
 <li>CI's quality job may run 45 minutes; its fuzz smoke alone took 14 of the 30
 it had.</li>
 </ul>
-<h3 id="fixed-10">Fixed</h3>
+<h3 id="fixed-9">Fixed</h3>
 <ul>
 <li>A plane reading the pause file while a writer replaced it, as
 <code>guardana-control pause add</code> and <code>remove</code> and most editors do, turned the
@@ -2833,7 +2835,7 @@ finding's id, so supervising a run again writes their findings as new
 records and alerts again. Neither may stop a run; the six that may stay at
 version <code>1</code>, so a route signed before still holds.</li>
 </ul>
-<h3 id="fixed-11">Fixed</h3>
+<h3 id="fixed-10">Fixed</h3>
 <ul>
 <li>A finding that rests on many events, such as ten thousand denials, was past
 the log's line bound and refused the whole write. It now cites ten
@@ -2927,7 +2929,7 @@ the answer bound measures a slow client's progress in steps of that size.
 Linux grows a connection's buffer to megabytes, which cut off a client
 reading steadily but slowly.</li>
 </ul>
-<h3 id="fixed-12">Fixed</h3>
+<h3 id="fixed-11">Fixed</h3>
 <ul>
 <li>A plane whose policy floor is read back below the statement it confirmed,
 a copy restored from before its raise, counts the poll as refused under
@@ -3062,7 +3064,7 @@ closing record keeps the upstream's outcome and hash, with <code>withheld:</code
 its protocol status. <code>doctor</code> names the values too short to scan, and
 <code>/metrics</code> counts withheld answers.</li>
 </ul>
-<h3 id="fixed-13">Fixed</h3>
+<h3 id="fixed-12">Fixed</h3>
 <ul>
 <li>A call that needs an approval, under a run an operator opened, was blocked
 with <code>EVIDENCE_UNAVAILABLE</code> on a live plane instead of held: the run's expiry
@@ -3132,7 +3134,7 @@ release, which <code>make docs-gen</code> takes from this file. Documentation pa
 a menu above the content on narrow screens, and a wide table scrolls inside
 itself instead of breaking words.</li>
 </ul>
-<h3 id="fixed-14">Fixed</h3>
+<h3 id="fixed-13">Fixed</h3>
 <ul>
 <li>A stateful listener near its <code>listener.max_sessions</code> cap no longer refuses
 an open while the previous open's answer is still being written: a session
@@ -3357,7 +3359,7 @@ seconds, which <code>doctor</code> now prints.</p>
 <code>policy.fail_open_read</code> lets a read run while the policy is unavailable.</p>
 </li>
 </ul>
-<h3 id="fixed-15">Fixed</h3>
+<h3 id="fixed-14">Fixed</h3>
 <ul>
 <li><code>runs list</code> and <code>runs close</code> no longer make an empty directory a runs
 directory; they refuse it, and only <code>runs open</code> makes one. A temporary file
@@ -3451,7 +3453,7 @@ use, and a profile for the MCP project's reference filesystem server that
 classifies its 14 tools and holds every write for approval
 (<a href="/docs/guides/connect-an-existing-mcp-setup">guides/connect-an-existing-mcp-setup.md</a>).</li>
 </ul>
-<h3 id="fixed-16">Fixed</h3>
+<h3 id="fixed-15">Fixed</h3>
 <ul>
 <li>A <code>tools/call</code> the plane blocked or held for a tool that declares an output
 schema reached the agent as a schema error from any client that checks
@@ -3509,7 +3511,7 @@ counted by cause. A plane without <code>runs.dir</code> is unchanged.</li>
 <li>The release job waits for a maintainer to approve it in the <code>release</code>
 environment before it builds; <a href="https://github.com/guardana/control/blob/main/RELEASING.md">RELEASING.md</a> has the step.</li>
 </ul>
-<h3 id="fixed-17">Fixed</h3>
+<h3 id="fixed-16">Fixed</h3>
 <ul>
 <li>A plane with a stdio listener wrote its start lines, the mode and the count
 of held calls lost to a restart among them, to standard output, which is the agent's protocol stream,
@@ -3562,7 +3564,7 @@ cannot read, and a trailer; <code>examples/evidence-report</code> rebuilds each 
 lifecycle from it without importing the project's internals
 (<a href="/docs/adr/0035-a-versioned-evidence-export-and-a-bounded-query">ADR-0035</a>).</li>
 </ul>
-<h3 id="fixed-18">Fixed</h3>
+<h3 id="fixed-17">Fixed</h3>
 <ul>
 <li>A <code>restrict_resources</code> obligation with a <code>prefix</code> let a resource id such
 as <code>/srv/data/../../etc/passwd</code>, <code>/srv/data/%2e%2e/etc</code> or
@@ -3641,7 +3643,7 @@ literal only, as <code>pdp.allow_plaintext</code> already did and as
 states. A plaintext endpoint on any other host, a name such as <code>localhost</code>
 included, is refused at start.</li>
 </ul>
-<h3 id="fixed-19">Fixed</h3>
+<h3 id="fixed-18">Fixed</h3>
 <ul>
 <li>A tool whose definition holds a fractional number, such as
 <code>&quot;default&quot;: 0.7</code>, is fingerprinted and can be classified, and a call
